@@ -540,11 +540,6 @@ export function ReportBlockTopTabs({ variant, features, profile }: SidebarProps)
                   )}
                 >
                   {item.block.shortLabel}
-                  {item.access === "partial" && item.partialBadge ? (
-                    <span className="ml-1 text-accent-gold tabular-nums">
-                      {item.partialBadge}
-                    </span>
-                  ) : null}
                 </span>
               </button>
             );
@@ -589,10 +584,6 @@ export function ReportBlockTopTabs({ variant, features, profile }: SidebarProps)
                 onAccessibleClick={(id) => {
                   setSheetOpen(false);
                   setTimeout(() => scrollToBlock(id), 180);
-                }}
-                onLockedClick={() => {
-                  setSheetOpen(false);
-                  setTimeout(() => scrollToCofre(), 180);
                 }}
               />
             </div>
