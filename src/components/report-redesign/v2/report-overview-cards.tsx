@@ -340,20 +340,41 @@ const BUFFER_GENERAL_RANGE = { min: 3, max: 5 };
 // ─── Card 2 — Ritmo de publicação ────────────────────────────────────
 
 function PostingRhythmCard({
-  postsAnalyzed,
-  postingFrequencyWeekly,
-  windowDays,
   followers,
+  cadence,
 }: {
-  postsAnalyzed: number;
-  postingFrequencyWeekly: number;
-  windowDays: number;
   followers: number;
+  cadence: CadenceResult;
 }) {
-  const hasWindow = windowDays > 0 && postsAnalyzed > 0;
-  // Use the already-corrected value from keyMetrics (recalculated in snapshotToReportData)
-  const weekly = hasWindow ? postingFrequencyWeekly : 0;
-  const daily = hasWindow ? Math.round((postsAnalyzed / windowDays) * 10) / 10 : 0;
+  const method = cadence.method;
+  const sufficient = cadence.sufficient;
+  const sampleSize = cadence.sampleSize;
+  const windowDays = cadence.windowDays;
+  const weekly = cadence.weekly;
+  const provisional = sufficient && cadence.reliability === "low";
+
+  const header =
+    method === "window_30d" ? "Ritmo observado nos últimos 30 dias"
+    : method === "window_90d" ? "Ritmo observado nos últimos 90 dias"
+    : method === "sample_span" ? "Ritmo observado na amostra recente"
+    : "Ritmo de publicação";
+
+  const summaryLine = !sufficient
+    ? null
+    : method === "window_30d"
+      ? `${sampleSize} publicações nos últimos 30 dias`
+      : method === "window_90d"
+        ? `${sampleSize} publicações nos últimos 90 dias`
+        : `${sampleSize} publicações em ${windowDays} dias (amostra reduzida)`;
+
+  const formulaNote =
+    method === "window_30d"
+      ? "Cadência estimada = publicações na janela ÷ 4,345 semanas"
+      : method === "window_90d"
+        ? "Cadência estimada = publicações na janela ÷ 12,857 semanas"
+        : method === "sample_span"
+          ? "Cadência estimada = publicações na amostra ÷ semanas da amostra"
+          : null;
 
   const tier = getTierForFollowers(followers);
   const tierLabel = getTierLabel(tier);
@@ -364,16 +385,22 @@ function PostingRhythmCard({
 
   return (
     <PremiumCard
-      title="Ritmo de publicação"
+      title={header}
       icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />}
-      interpretation={hasWindow ? gapStatus.label : "Dados insuficientes"}
-      interpretationTone={gapStatus.tone}
+      interpretation={
+        !sufficient
+          ? "Dados insuficientes"
+          : provisional
+            ? "Leitura provisória"
+            : gapStatus.label
+      }
+      interpretationTone={!sufficient ? "neutral" : provisional ? "warn" : gapStatus.tone}
       accentTone={gapStatus.tone === "good" ? "green" : gapStatus.tone === "warn" ? "rose" : gapStatus.tone === "bad" ? "rose" : undefined}
       sourceSlot={
         <div className="space-y-1.5">
-          <p className="text-xs text-slate-400 leading-relaxed">
-            Frequência = publicações ÷ dias analisados × 7
-          </p>
+          {formulaNote ? (
+            <p className="text-xs text-slate-400 leading-relaxed">{formulaNote}</p>
+          ) : null}
           <p className="text-xs text-slate-400 leading-relaxed">
             <a href="https://later.com/blog/how-often-post-to-instagram" target="_blank" rel="noopener noreferrer" aria-label="Later — referência por escalão" className="underline decoration-slate-300 hover:text-slate-600 transition-colors">[1]</a>{" "}
             referência por escalão{" · "}
@@ -385,56 +412,38 @@ function PostingRhythmCard({
     >
       {/* Main metric */}
       <div className="flex items-end gap-3 flex-wrap">
+        {sufficient ? (
+          <span className="text-eyebrow text-slate-400 pb-1">≈</span>
+        ) : null}
         <span className="tabular-nums text-[1.85rem] md:text-[2.1rem] font-semibold tracking-[-0.015em] text-slate-900 leading-none tabular-nums">
-          {hasWindow ? weekly.toFixed(1).replace(".", ",") : "—"}
+          {sufficient ? weekly.toFixed(1).replace(".", ",") : "—"}
         </span>
         <span className="text-eyebrow text-slate-500 pb-1">
           /semana
         </span>
-        {hasWindow ? (
-          <span className="text-[13px] text-slate-400 pb-1">
-            ≈ {daily.toFixed(1).replace(".", ",")} /dia
-          </span>
-        ) : null}
       </div>
-      {!hasWindow ? (
+      {!sufficient ? (
         <p className="text-[13px] text-slate-600 leading-relaxed">
-          A amostra recente é insuficiente para medir a cadência com segurança.
+          Dados recentes insuficientes para estimar ritmo.
         </p>
       ) : null}
 
       {/* Window context */}
-      {postsAnalyzed > 0 || windowDays > 0 ? (
+      {summaryLine ? (
         <p className="text-[13px] text-slate-600 leading-relaxed">
-          {postsAnalyzed > 0 ? (
-            <>
-              <span className="font-medium text-slate-800 tabular-nums">
-                {postsAnalyzed}
-              </span>{" "}
-              publicações
-            </>
-          ) : null}
-          {postsAnalyzed > 0 && windowDays > 0 ? " em " : null}
-          {windowDays > 0 ? (
-            <>
-              <span className="font-medium text-slate-800 tabular-nums">
-                {windowDays}
-              </span>{" "}
-              dias analisados
-            </>
-          ) : null}
+          {summaryLine}
         </p>
       ) : null}
 
       {/* Format transparency note */}
-      {postsAnalyzed > 0 && (
+      {sufficient && (
         <p className="text-xs text-slate-400 leading-relaxed">
           Inclui imagens, carrosséis e Reels publicados no feed.
         </p>
       )}
 
       {/* Benchmark bar chart */}
-      {hasWindow && (
+      {sufficient && (
         <FrequencyBenchmarkBars
           profileValue={weekly}
           benchmarkValue={benchmarkWeekly}
