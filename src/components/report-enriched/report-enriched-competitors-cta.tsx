@@ -25,16 +25,21 @@ export function ReportEnrichedCompetitorsCta() {
             {ENRICHED_COPY.competitorsCta.body}
           </p>
         </div>
-        <button
-          type="button"
-          disabled
-          aria-disabled="true"
-          title="Disponível em breve"
-          className="text-eyebrow shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full border border-border-subtle/50 text-content-tertiary cursor-not-allowed self-start md:self-auto"
-        >
-          <UserPlus className="size-3.5" aria-hidden="true" />
-          {ENRICHED_COPY.competitorsCta.cta} · em breve
-        </button>
+        <div className="shrink-0 flex flex-col items-start md:items-end gap-1.5 self-start md:self-auto">
+          <button
+            type="button"
+            disabled
+            aria-disabled="true"
+            title="Disponível nas secções premium."
+            className="text-eyebrow inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full border border-border-subtle/50 text-content-tertiary cursor-not-allowed"
+          >
+            <UserPlus className="size-3.5" aria-hidden="true" />
+            {ENRICHED_COPY.competitorsCta.cta}
+          </button>
+          <span className="text-xs text-content-tertiary">
+            Disponível nas secções premium.
+          </span>
+        </div>
       </div>
     </section>
   );

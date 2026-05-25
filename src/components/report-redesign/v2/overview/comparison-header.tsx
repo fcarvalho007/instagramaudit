@@ -90,10 +90,6 @@ export function ComparisonHeader() {
               <span className="text-sm font-semibold text-content-primary leading-snug">
                 {t("comparison.roadmap_card_title")}
               </span>
-              {/* EM BREVE badge — local decorative purple (no semantic purple token) */}
-              <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-purple-600 leading-none">
-                {t("comparison.roadmap_card_badge")}
-              </span>
             </div>
             <p className="text-xs text-content-tertiary mt-0.5 leading-relaxed">
               Facebook · TikTok · YouTube

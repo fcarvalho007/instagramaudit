@@ -314,10 +314,10 @@ function ReportDetailPage() {
             disabled
             className="inline-flex items-center gap-1.5 rounded-md border border-border-default/10 bg-surface-muted px-3 py-1.5 text-xs font-medium text-content-tertiary cursor-not-allowed"
             aria-disabled="true"
-            aria-label="Regenerar PDF — funcionalidade disponível em breve"
+            aria-label="PDF indisponível neste momento"
           >
             <RefreshCw className="size-3" />
-            Regenerar PDF — em breve
+            PDF indisponível neste momento
           </button>
         </div>
       </div>
