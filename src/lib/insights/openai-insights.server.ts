@@ -723,6 +723,14 @@ export async function generateInsightsV2(
             },
           }
         : {}),
+      ...(validation.editorialVerdict
+        ? {
+            editorial_verdict: finalizeEditorialVerdict(
+              validation.editorialVerdict,
+              ctx,
+            ),
+          }
+        : {}),
     };
     return { ok: true, insights: out, reason: null };
   } catch (err) {
