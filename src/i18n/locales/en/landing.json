@@ -32,7 +32,7 @@
     "errors": {
       "empty": "Enter a valid username to continue",
       "invalid": "Enter a public Instagram profile, e.g. @brand or instagram.com/brand.",
-      "competitorInvalid": "Invalid competitor. Only letters, numbers, dot and underscore."
+      "competitorInvalid": "Invalid competitor. Enter an @ handle or an instagram.com/brand link."
     }
   },
   "handwritten": {
