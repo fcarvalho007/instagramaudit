@@ -384,6 +384,7 @@ export function EditorialIdentityCard({
   averageLikes,
   averageComments,
   cadenceSufficient,
+  cadenceReliability,
   competitorsCount,
 }: EditorialIdentityCardProps) {
   const { t, i18n } = useTranslation("report");
@@ -397,6 +398,7 @@ export function EditorialIdentityCard({
     postsPerWeek30d:
       typeof postingFrequencyWeekly === "number" ? postingFrequencyWeekly : null,
     cadenceSufficient: cadenceSufficient ?? true,
+    cadenceReliability: cadenceReliability ?? "high",
     engagementPct: keyMetrics?.engagementRate ?? 0,
     benchmarkEngagementPct:
       keyMetrics && keyMetrics.engagementBenchmark > 0
