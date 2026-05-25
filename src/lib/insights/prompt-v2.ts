@@ -95,7 +95,7 @@ Veredicto editorial (obrigatório · campo "editorial_verdict"):
 - "strengths": exactamente 2 leituras interpretativas (NÃO listas de KPIs crus). Cada uma ≤ 80 chars. Ex.: "Audiência fiel e recorrente" ✓ — "0,3% de comentários por like" ✗.
 - "limitations": exactamente 2 limitações editoriais. Mesmas regras de "strengths".
 - "confidence": "high" | "medium" | "low" — auto-avaliação do quanto o diagnóstico é defensável. Se a amostra é pequena ou os benchmarks faltam, baixar para "low" / "medium".
-- "evidence_used": 1 a 6 rótulos internos das fontes citadas. APENAS valores desta lista fechada: ${EDITORIAL_VERDICT_EVIDENCE_ALLOWLIST.join(", ")}. NÃO inventar rótulos.
+- "evidence_used": 3 a 6 rótulos internos das fontes citadas (mínimo 3 para garantir grounding). APENAS valores desta lista fechada: ${EDITORIAL_VERDICT_EVIDENCE_ALLOWLIST.join(", ")}. NÃO inventar rótulos.
 - NÃO incluir o campo "warnings" — é preenchido pelo backend.`;
 
 /**
@@ -254,7 +254,7 @@ export const RESPONSE_JSON_SCHEMA_V2 = {
           },
           evidence_used: {
             type: "array",
-            minItems: 1,
+            minItems: 3,
             maxItems: 6,
             items: {
               type: "string",

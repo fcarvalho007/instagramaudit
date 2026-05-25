@@ -61,7 +61,8 @@ const editorialVerdictSchema = z.object({
   strengths: z.array(z.string().min(1).max(120)).length(2),
   limitations: z.array(z.string().min(1).max(120)).length(2),
   confidence: z.enum(["high", "medium", "low"]),
-  evidence_used: z.array(z.string().min(1)).min(1).max(6),
+  // ≥ 3 itens — alinhado com o Prompt 4 para garantir grounding.
+  evidence_used: z.array(z.string().min(1)).min(3).max(6),
 });
 
 export const aiInsightsV2ResponseSchema = z.object({

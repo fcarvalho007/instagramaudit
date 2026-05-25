@@ -76,6 +76,24 @@
         "paragraph": "Os indicadores estão próximos da referência do escalão. Há espaço para subir engagement ajustando formatos dominantes e reforçando a conversa nos comentários."
       }
     },
+    "fallback_priority": {
+      "strong": "Manter o ritmo e diversificar formatos para abrir nova conversa.",
+      "promising": "Reforçar regularidade editorial e testar formatos durante 30 dias.",
+      "needs_work": "Rever ângulo editorial e clarificar o pedido de interação em cada publicação.",
+      "limited_data": "Reunir amostra maior antes de tirar conclusões definitivas."
+    },
+    "verdict": {
+      "provisional": "Leitura provisória",
+      "provisional_hint": "Leitura ajustada por divergência entre a interpretação editorial e os números observados."
+    },
+    "warnings": {
+      "low_sample": "Amostra pequena — leitura indicativa.",
+      "stale_data": "Dados desactualizados — última publicação há mais de 60 dias.",
+      "cadence_uncertain": "Cadência ainda inconclusiva.",
+      "no_market_signals": "Sem sinais de pesquisa de mercado.",
+      "benchmark_missing": "Sem benchmark comparável para este escalão."
+    },
+    "priority_label": "Próximo passo",
     "signals": {
       "freq_consistent": {
         "title": "Publicação consistente",

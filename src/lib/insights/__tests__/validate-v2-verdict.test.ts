@@ -19,7 +19,11 @@ const VALID_VERDICT = {
   strengths: ["Audiência fiel e recorrente", "Cadência semanal consistente"],
   limitations: ["Pouca conversa nos comentários", "Formato muito repetitivo"],
   confidence: "medium",
-  evidence_used: ["benchmark.tier_delta", "format_mix.dominant_share"],
+  evidence_used: [
+    "benchmark.tier_delta",
+    "format_mix.dominant_share",
+    "cadence.window_30d",
+  ],
 };
 
 function payload(overrides: Partial<typeof VALID_VERDICT> = {}) {
@@ -61,7 +65,15 @@ describe("validateInsightsV2 — editorial_verdict", () => {
   });
 
   it("rejects evidence outside the allowlist", () => {
-    const r = validateInsightsV2(payload({ evidence_used: ["unknown.signal"] }));
+    const r = validateInsightsV2(
+      payload({
+        evidence_used: [
+          "benchmark.tier_delta",
+          "format_mix.dominant_share",
+          "unknown.signal",
+        ],
+      }),
+    );
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.reason).toBe("EVIDENCE_UNKNOWN");
   });
