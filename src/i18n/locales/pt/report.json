@@ -28,7 +28,7 @@
     "actions": {
       "new_report": "Novo relatório",
       "compare": "Comparar concorrente",
-      "pro": "Pro",
+      "pro": "Premium",
       "pdf": "PDF",
       "share": "Partilhar",
       "coming_soon": "Em breve",
@@ -452,7 +452,7 @@
     "sections": "Secções do relatório",
     "menu_aria": "Menu de secções",
     "lab": "Laboratório interno",
-    "pro_active": "Pro ativo",
+    "pro_active": "Premium ativo",
     "avatar_alt": "Avatar de {{handle}}",
     "access": {
       "badge_free": "Grátis",
@@ -488,7 +488,7 @@
     "mercado": "Referência de mercado externa",
     "auto": "Cálculo ou classificação automática",
     "ia": "Leitura editorial por IA",
-    "pro": "Funcionalidade disponível na versão PRO"
+    "pro": "Funcionalidade disponível na secção premium"
   },
   "cache": {
     "fresh": "Dados atualizados",
@@ -975,11 +975,11 @@
     "critical_label": "PONTO CRÍTICO",
     "watch_label": "A OBSERVAR",
     "fallback": {
-      "public_title": "Análise visual disponível na versão Pro.",
+      "public_title": "Análise visual disponível na secção premium.",
       "public_body": "As capas dos posts são avaliadas por inteligência artificial para consistência visual, presença de texto e diversidade de formatos.",
       "dev_title": "Análise visual indisponível — aguarda processamento IA.",
       "dev_body": "Os thumbnails acima serão analisados por visão computacional numa próxima atualização.",
-      "score_public_title": "Score visual · Pro",
+      "score_public_title": "Score visual · Premium",
       "score_public_body": "Disponível na versão completa do relatório.",
       "score_dev_title": "Score visual indisponível",
       "score_dev_body": "Será calculado automaticamente quando a análise por visão computacional estiver ativa."
