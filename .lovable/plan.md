@@ -1,143 +1,100 @@
-# Veredicto editorial — gaps do Prompt 3B + Prompt 4
+## Auditoria — cálculo de cadência / "posts in X days"
 
-## Estado actual (já feito)
+### Conclusão geral
+O fix aplicado a `@robs.cortez` **resolve o caso reportado** ("12 publicações em 1111 dias"). O pipeline está limpo: `is_pinned` é normalizado, propagado e excluído de todas as séries temporais. Faltam, contudo, **três defesas adicionais** antes de considerar isto "robusto para uso público".
 
-- `EditorialVerdict` tipado em `src/lib/insights/types.ts` com `verdict_label`, `title`, `paragraph`, `priority`, `strengths`, `limitations`, `confidence`, `evidence_used`, `warnings`.
-- JSON schema strict em `prompt-v2.ts` (strengths/limitations = 2, paragraph 30–75 palavras, evidence allowlist).
-- Validador em `validate-v2.ts` com deteção de fugas técnicas e pt-BR.
-- `finalizeEditorialVerdict` em `openai-insights.server.ts` calcula `warnings` determinísticos (`low_sample`, `stale_data`, `cadence_uncertain`, `no_market_signals`, `benchmark_missing`) e rebaixa `confidence`.
-- `EditorialIdentityCard` consome `aiVerdict` com `priority` numa linha abaixo do parágrafo; `buildFallbackCopy` cobre os 4 bands + cenários (i18n PT).
-- 471 testes a passar.
+---
 
-## Gaps a fechar
+### Findings (numerados conforme as 10 perguntas)
 
-### Gap 1 — Guard determinístico de contradições (Prompt 4, Parte 4)
-Não existe `deriveEditorialVerdict(input)`. Hoje o card consome `aiVerdict` directamente ou cai no `buildFallbackCopy` apenas quando a IA está ausente. Não há rejeição quando a IA contradiz métricas.
+1. **`is_pinned` no payload normalizado** — Sim, fiável. `normalize.ts:567` faz `Boolean(raw.isPinned ?? raw.is_pinned ?? false)`. O schema (`report-snapshots/schema.ts:45`) aceita nullable. Sempre presente como boolean.
 
-Criar `src/lib/report/editorial-verdict.ts`:
+2. **Quando Apify não devolve `is_pinned`** — Cai para `false`. Logo, posts pinned antigos de actors antigos/alternativos podem **passar despercebidos**. Este é o risco real residual.
 
-```ts
-export interface EditorialVerdictMetrics {
-  postsPerWeek30d: number | null;       // cadência corrigida (do snapshot)
-  cadenceSufficient: boolean;            // do módulo cadence
-  engagementPct: number;                 // perfil
-  benchmarkEngagementPct: number | null; // tier
-  avgComments: number;
-  avgLikes: number;
-  competitorsCount: number;
-  postsAnalyzed: number;
-  daysSinceLastPost: number | null;
-}
+3. **Pinned excluídos de todos os cálculos temporais?** — Sim. `snapshot-to-report-data.ts:1077` filtra `cadencePostsRaw = posts.filter(p => !p.is_pinned)` e alimenta `buildTemporalSeries`, `buildPostingHeatmap`, `buildBestDays`, `computeCadence`. Existe fallback `if (cadencePosts.length === 0)` (usa todos), mas o módulo `cadence.ts:83` volta a filtrar pinned e devolve `insufficient` — não há leak de janela.
 
-export interface EditorialVerdictResolution {
-  verdict: EditorialVerdict;
-  source: "ai" | "ai_downgraded" | "fallback";
-  rejectionReasons: ReadonlyArray<
-    | "cadence_contradiction"
-    | "engagement_contradiction"
-    | "conversation_contradiction"
-    | "phantom_competitors"
-    | "schema_invalid"
-  >;
-}
+4. **Pinned em secções não-temporais?** — Sim, intencional: `topPosts`, `hashtags`, `themes`, `keywords` veem o array completo. ✅ Correcto conceptualmente, **mas não marcado visualmente** — um pinned de 2023 com muito engagement aparece como "Top post" sem etiqueta.
 
-export function deriveEditorialVerdict(
-  ai: EditorialVerdict | null,
-  metrics: EditorialVerdictMetrics,
-  fallback: EditorialVerdict,
-): EditorialVerdictResolution
-```
+5. **Pinned distorce top/worst posts?** — Sim, parcialmente. `buildTopPosts` ordena por `engagement_pct` desc sem distinguir pinned. Posts pinned acumulam interacções ao longo do tempo (efeito da própria fixação), logo enviesam para cima.
 
-Regras de rejeição (palavras-chave pt-PT detectadas com regex case-insensitive nos campos `title`, `paragraph`, `priority`, `strengths`, `limitations`):
+6. **UI rotula como "amostra recente"?** — Sim. `snapshot-to-report-data.ts:1205-1220` produz `windowLabel = "últimos N dias"` ou `"amostra de N dias"` e `kpiSubtitle = "N publicações nos últimos N dias"`. Quando `cadence.method === "insufficient"`, copy neutro ("amostra recente insuficiente"). ✅
 
-1. **cadence_contradiction** — IA usa termos `cadência fraca|baixa cadência|publica pouco|publicar mais|aumentar frequência` quando `postsPerWeek30d ≥ 2.5` e `cadenceSufficient === true`.
-2. **engagement_contradiction** — IA usa `audiência não reage|envolvimento forte|reage muito|excelente envolvimento` quando `engagementPct ≥ benchmarkEngagementPct * 1.1` (positivo falso) ou inverso quando IA diz `forte` e `engagementPct < benchmarkEngagementPct * 0.7`.
-3. **conversation_contradiction** — IA usa `conversa ativa|conversa saudável|comentários ricos` quando `avgComments < 2`.
-4. **phantom_competitors** — IA menciona `concorrente|competidor|benchmark do setor` quando `competitorsCount === 0`.
+7. **Distingue estados?** — Parcialmente. O módulo `cadence.ts` distingue `window_30d | window_90d | sample_span | insufficient`. **Falta**: `stale_data` (já existe em `editorial-verdict-warnings` mas baseado em `days_since_last_post`, não propaga para a cadência) e **falta uma flag explícita `pinned_excluded`** quando há pinned filtrados.
 
-Acção por número de contradições:
-- 0 → `source: "ai"`, devolve `ai` tal como veio.
-- 1 → `source: "ai_downgraded"`, preserva `title`/`strengths`/`limitations`/`priority` mas substitui `paragraph` pelo do `fallback`, força `confidence: "low"`, anota `rejectionReasons`.
-- ≥2 → `source: "fallback"`, descarta IA, devolve `fallback` com `confidence: "low"`.
+8. **Evita "12 posts in 1111 days"?** — Sim. A cascata 30d→90d→sample_span (≤180d) torna o cenário 1111 dias **impossível** de emergir: o ramo `sample_span` rejeita spans > 180 dias.
 
-Adicionalmente, se `ai === null` (IA ausente ou schema_invalid) → `source: "fallback"`.
+9. **Defesa contra outliers sem `is_pinned`** — **Não existe.** Se um actor devolver pinned com flag em falta, o post passa para a cascata. No 30d/90d isto é inócuo (filtrado por janela). No `sample_span` (≤180d, ≥2 posts) um outlier antigo pode entrar — mas o cap de 180d limita o estrago a um span razoável. Recomenda-se mesmo assim defesa preventiva.
 
-### Gap 2 — `evidence_used` mínimo (Prompt 4, Parte 1)
-Spec diz "at least 3 items". Esquema actual e validador permitem `min(1)`.
+10. **Cobertura de testes** — `cadence.test.ts` (12 testes) e `snapshot-pinned-window.test.ts` (2 testes). Falta: outlier sem pin, marcação visível de pinned em top posts, defesa quando 1 post recente + 1 muito antigo entram no `sample_span`.
 
-Mudanças:
-- `src/lib/insights/validate-v2.ts`: `evidence_used: z.array(...).min(3).max(6)`.
-- `src/lib/insights/prompt-v2.ts`: JSON schema `minItems: 3` em `evidence_used`; texto do prompt passa a "3 a 6 rótulos".
+---
 
-Risco: aumenta probabilidade de schema reject em respostas curtas. Mitigação: `EVIDENCE_ALLOWLIST` tem 14 itens e o contexto típico cobre cadence + benchmark + format_mix, logo ≥3 é alcançável; se ainda assim falhar, o novo `deriveEditorialVerdict` cai para fallback.
+### Mudanças propostas (em 3 camadas)
 
-### Gap 3 — Integrar `deriveEditorialVerdict` no adapter (snapshot → report)
-Hoje `snapshot-to-report-data.ts` expõe `editorialVerdict` cru da IA. Passar a chamar `deriveEditorialVerdict(aiVerdict, metrics, fallback)` aqui, onde já existe acesso a `cadence`, `benchmark`, `content_summary` e `competitors`.
+#### A. `src/lib/report/cadence.ts` — defesa por outlier e flags
+- Adicionar detecção de outlier por data **independente de `is_pinned`**:
+  - Depois de filtrar pinned/inválidos, calcular mediana e MAD dos timestamps.
+  - Excluir posts > 180 dias mais antigos que a mediana do cluster recente (top-10).
+- Estender `CadenceResult`:
+  ```ts
+  reliability: "high" | "medium" | "low";
+  warnings: Array<"pinned_excluded" | "low_sample" | "date_outlier_detected" | "stale_data">;
+  excludedPinned: number;
+  excludedOutliers: number;
+  ```
+- Regras de `reliability`:
+  - `high`: `window_30d` com ≥5 posts e nenhum warning.
+  - `medium`: `window_90d`, ou `window_30d` com 3–4 posts, ou 1 warning.
+  - `low`: `sample_span`, ≥2 warnings, ou `insufficient`.
 
-Resultado exposto em `ReportEnriched`:
-```ts
-editorialVerdict: EditorialVerdict;             // sempre presente
-editorialVerdictSource: "ai" | "ai_downgraded" | "fallback";
-editorialVerdictRejections: string[];           // para diagnóstico admin
-```
+#### B. `src/lib/report/snapshot-to-report-data.ts`
+- Propagar `cadence.reliability`, `cadence.warnings`, contadores excluídos para `ReportEnriched` (campo novo `cadenceMeta`).
+- `buildTopPosts`: anexar `isPinned: boolean` ao output (tipo casted, igual ao `thumbnailUrl` actual), para que a UI possa marcar quando o unlock chegar.
+- Reaproveitar a defesa de outlier do módulo `cadence.ts` também para `cadencePosts` antes de `buildTemporalSeries / buildPostingHeatmap / buildBestDays` — assim a heatmap/best-days não fica enviesada por 1 post solto de há 5 meses quando o cluster vive nas últimas 4 semanas.
 
-O `fallback` é construído server-side a partir das mesmas regras já em `buildFallbackCopy` do componente (extrair lógica partilhada para `src/lib/report/editorial-verdict-fallback.ts`, usar em ambos os sítios).
+#### C. `editorial-verdict.ts` + `EditorialIdentityCard`
+- Já existe `cadenceSufficient`; adicionar leitura de `cadence.reliability`. Quando `reliability === "low"`:
+  - Forçar fallback / downgrade para `confidence: "low"` no resolver.
+  - Bloquear claims fortes sobre ritmo no parágrafo (já existe `cadence_contradiction`; adicionar regra "afirmação forte sobre cadência + reliability low → contradição").
+- Em copy pública, padronizar para **"ritmo observado nas últimas N publicações"** em vez de "nos últimos N dias" quando `method === "sample_span"`.
 
-### Gap 4 — UI consome resolução, não a IA bruta
-`EditorialIdentityCard` passa a receber `editorialVerdict` (já resolvido) + `editorialVerdictSource`. Quando `source !== "ai"`, mostrar pequeno badge `Leitura provisória` ao lado do título (i18n `identity.verdict.provisional`). Layout intacto.
+#### D. Copy/i18n (`report.json` pt + en)
+- Acrescentar chaves:
+  - `cadence.reliability.low_hint`: "Leitura provisória — amostra recente curta."
+  - `cadence.pinned_excluded_hint`: "N publicações fixadas foram excluídas do cálculo de ritmo."
+  - `cadence.outlier_detected_hint`: "Publicações antigas foram excluídas do cálculo de ritmo."
 
-### Gap 5 — i18n EN (Prompt 4, Parte 6)
-`buildFallbackCopy` usa `t("identity.fallback.<key>.title|paragraph")`. Verificar `src/i18n/locales/en.json` e adicionar chaves para `strong`, `promising`, `needs_work`, `limited_data` + cenários (`low_engagement`, `healthy_cadence_low_engagement`, `low_cadence_low_engagement`, `weak_comments`, `insufficient_sample`). PT já existe.
+---
 
-### Gap 6 — Testes (Prompt 4, Parte 7)
-Criar `src/lib/report/__tests__/editorial-verdict.test.ts`:
+### Testes a adicionar
 
-- cadência saudável (`postsPerWeek30d=4`, `cadenceSufficient=true`) + IA diz "publicar mais" → 1 contradição → `ai_downgraded`, `confidence=low`.
-- cadência fraca + envolvimento fraco + IA admite ambos → `source=ai`.
-- bons gostos + comentários ~0 + IA diz "conversa saudável" → 1 contradição → `ai_downgraded`.
-- envolvimento > benchmark + IA diz "audiência não reage" → 1 contradição → `ai_downgraded`.
-- IA menciona "concorrentes" com `competitorsCount=0` → 1 contradição → `ai_downgraded`.
-- 2 contradições em simultâneo → `source=fallback`.
-- `ai === null` → `source=fallback`.
-- `postsAnalyzed < 5` → fallback usa `limited_data`.
-- EN locale → fallback devolve cópia inglesa.
-- IA limpa coerente com métricas → `source=ai`, `confidence` preservado.
+`src/lib/report/__tests__/cadence-outliers.test.ts` (novo):
+1. 2 pinned 2023 + 10 recentes → `excludedPinned: 2`, `reliability: "high"`, sem warnings de outlier.
+2. 1 post de há 200 dias + 0 recentes → `insufficient`, `reliability: "low"`.
+3. 1 post de há 200 dias (sem `is_pinned`) + 8 nos últimos 14 dias → outlier detectado, `excludedOutliers: 1`, `reliability` ≥ `medium`.
+4. 2 posts apenas, ambos há 5 e 40 dias → `sample_span`, `reliability: "low"`, warning `low_sample`.
+5. Posts sem datas → `insufficient`, sem crash.
+6. Pinned com `is_pinned: undefined` mas datas > 1 ano vs cluster recente → defesa por outlier dispara.
 
-## Onde mexer
+`src/lib/report/__tests__/snapshot-pinned-toppost.test.ts` (novo):
+7. 2 pinned com muito engagement + 5 recentes → `topPosts[0].isPinned === true` quando o pinned ganha.
+8. Mesmo cenário → `temporalSeries` e `bestDays` não contêm dias dos pinned.
 
-| Ficheiro | Mudança |
-|---|---|
-| `src/lib/report/editorial-verdict.ts` (novo) | `deriveEditorialVerdict` + tipos |
-| `src/lib/report/editorial-verdict-fallback.ts` (novo) | `buildFallbackVerdict` partilhado (server + client) |
-| `src/lib/insights/validate-v2.ts` | `evidence_used.min(3)` |
-| `src/lib/insights/prompt-v2.ts` | `minItems: 3` + texto do prompt |
-| `src/lib/report/snapshot-to-report-data.ts` | chamar `deriveEditorialVerdict`, expor `source`/`rejections` |
-| `src/components/report-redesign/v2/overview/editorial-identity-card.tsx` | consumir `editorialVerdict` resolvido + badge `provisional` |
-| `src/i18n/locales/en.json` | chaves `identity.fallback.*` e `identity.verdict.provisional` |
-| `src/i18n/locales/pt.json` | chave `identity.verdict.provisional` |
-| `src/lib/report/__tests__/editorial-verdict.test.ts` (novo) | 10 testes acima |
+`src/lib/report/__tests__/editorial-verdict.test.ts` (estender):
+9. `cadence.reliability === "low"` + IA afirma "ritmo consistente" → contradição → fallback.
 
-## Riscos
+---
 
-- **Falsos positivos do regex de contradição** — palavras-chave pt-PT podem aparecer em frases não-contraditórias ("não é cadência fraca"). Mitigação: regex simples + threshold conservador (1 contradição = downgrade suave, não fallback total) + testes de regressão com excertos reais.
-- **`evidence_used.min(3)` aumenta retries** — aceitar 1 retry; se persistir, fallback.
-- **Tradução EN** — só cobre os deterministic fallbacks; IA continua a responder em pt-PT (validador pt-BR mantém-se).
+### Risk assessment
 
-## Não-objectivos
+- **Risco actual sem este plano**: BAIXO para perfis tipo `@robs.cortez` (resolvido). MÉDIO se um actor Apify alternativo devolver pinned sem flag — defesa por outlier mitiga.
+- **Risco de regressão da mudança proposta**: BAIXO. As alterações são aditivas (novos campos), o algoritmo principal (cascata 30d/90d/sample_span) **não muda**. Apenas adiciona-se um pré-filtro de outlier e metadados.
+- **Custo de provider**: ZERO. Tudo pós-processamento, sem nova chamada Apify nem OpenAI.
 
-- Não criar nova chamada à OpenAI.
-- Não mexer em Blocos 2–6, gauge, métricas, gating, pricing, admin.
-- Não alterar prompt além do `minItems: 3` em `evidence_used`.
+---
 
-## Checkpoint
-
-- ☐ Auditar `i18n/locales/en.json` para chaves `identity.fallback.*`
-- ☐ Extrair `buildFallbackVerdict` partilhado
-- ☐ Criar `deriveEditorialVerdict` com 4 regras de contradição
-- ☐ Subir `evidence_used` para `min(3)` em validador + schema + prompt
-- ☐ Integrar no adapter `snapshot-to-report-data.ts`
-- ☐ Card consome resolução + badge `provisional`
-- ☐ i18n PT/EN actualizado
-- ☐ 10 testes do helper a passar
-- ☐ `bunx tsc --noEmit` limpo
-- ☐ `bunx vitest run` todo verde (espera 481+ testes)
+### Checkpoint
+- ☐ Aprovar a divisão em 3 camadas (cadence.ts / snapshot-to-report-data.ts / editorial-verdict).
+- ☐ Confirmar que o campo `isPinned` em `topPosts` pode ser emitido já (mesmo antes do unlock visual em `report-mock-data.ts`).
+- ☐ Confirmar copy "ritmo observado nas últimas N publicações" para o ramo `sample_span`.
+- ☐ Confirmar threshold de outlier (proposta: > 180 dias mais antigo que a mediana do cluster top-10).
