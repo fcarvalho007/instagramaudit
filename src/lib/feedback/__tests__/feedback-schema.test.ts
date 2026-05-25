@@ -57,11 +57,10 @@ describe("feedbackFormSchema", () => {
 
   it("accepts every pricing_preference option", () => {
     for (const opt of [
-      "one_off_3",
-      "bundle_5_13",
-      "plano_mensal",
-      "plano_agencia",
-      "nao_sei",
+      "single_report_7",
+      "pack_5_reports_28",
+      "not_ready_to_pay",
+      "other",
     ] as const) {
       const r = feedbackFormSchema.safeParse({
         usefulness_score: 4,
