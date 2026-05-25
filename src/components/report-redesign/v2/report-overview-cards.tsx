@@ -2,6 +2,7 @@ import { Activity, CalendarDays, Layers, Info, ArrowUp, ArrowDown, Minus } from 
 import type { ReactNode } from "react";
 
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
+import type { CadenceResult } from "@/lib/report/cadence";
 import { cn } from "@/lib/utils";
 import {
   INSTAGRAM_BENCHMARK_CONTEXT,
@@ -43,9 +44,9 @@ const FORMAT_PT: Record<string, string> = {
  */
 export function ReportOverviewCards({ result }: Props) {
   const k = result.data.keyMetrics;
-  const windowDays = result.coverage.windowDays ?? 0;
   const breakdown = result.data.formatBreakdown ?? [];
   const followers = result.data.profile.followers ?? 0;
+  const cadence = result.enriched.cadence;
 
   return (
     <div className="grid grid-cols-1 gap-4 md:gap-5 lg:grid-cols-3">
@@ -61,10 +62,8 @@ export function ReportOverviewCards({ result }: Props) {
       {/* Secondary stack — rhythm + format */}
       <div className="lg:col-span-1 flex flex-col gap-4 md:gap-5">
         <PostingRhythmCard
-          postsAnalyzed={k.postsAnalyzed}
-          postingFrequencyWeekly={k.postingFrequencyWeekly}
-          windowDays={windowDays}
           followers={followers}
+          cadence={cadence}
         />
         <DominantFormatCard
           dominantFormat={k.dominantFormat}
