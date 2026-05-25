@@ -606,8 +606,16 @@
     "registered": "Registado",
     "dialog": {
       "title": "Desbloquear acesso premium",
-      "subtitle": "O primeiro bloco continua gratuito. Nesta fase de lançamento, o Diagnóstico editorial está incluído como oferta. As restantes secções premium ficam disponíveis com um desbloqueio pago.",
+      "subtitle": "O primeiro bloco continua gratuito. O Diagnóstico editorial está incluído nesta fase de lançamento. As restantes secções premium ficam disponíveis com desbloqueio.",
+      "free": {
+        "label": "Incluído",
+        "title": "Visão inicial do perfil",
+        "bullet_block": "Bloco 1 sempre disponível",
+        "bullet_diag": "Diagnóstico editorial aberto agora",
+        "cta": "Continuar a explorar"
+      },
       "single": {
+        "label": "Premium",
         "title": "1 relatório",
         "price": "7€",
         "bullet_profile": "1 perfil",
@@ -616,6 +624,7 @@
         "cta": "Escolher 1 relatório"
       },
       "pack": {
+        "label": "Melhor valor",
         "title": "Pack 5 relatórios",
         "price": "28€",
         "bullet_reports": "5 relatórios",
@@ -623,7 +632,8 @@
         "savings_badge": "Poupa 20%",
         "cta": "Escolher pack de 5"
       },
-      "trust_note": "Sem subscrição. Sem renovação automática."
+      "trust_note": "Sem subscrição. Sem renovação automática.",
+      "pending_note": "Pagamento brevemente disponível — o botão regista o teu interesse."
     }
   },
   "engagement": {

@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 // NOTE: Real checkout endpoint is not yet wired. CTAs only emit a typed
 // `pricing_option_clicked` event so we can measure intent without faking a
 // payment flow. Wire to real checkout when the payment integration lands.
-export type PricingOption = "single_report" | "pack_5_reports";
+export type PricingOption = "free" | "single_report" | "pack_5_reports";
 
 interface Props {
   open: boolean;
@@ -52,11 +52,14 @@ export function PremiumInterestDialog({
         },
       },
     }).catch(() => {});
+    if (option === "free") {
+      onOpenChange(false);
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px]">
+      <DialogContent className="sm:max-w-[760px]">
         <DialogHeader className="text-left">
           <DialogTitle className="text-lg font-semibold text-content-primary">
             {t("premium.dialog.title")}
@@ -66,9 +69,24 @@ export function PremiumInterestDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
+          <PricingCard
+            id="free"
+            tone="free"
+            label={t("premium.dialog.free.label")}
+            title={t("premium.dialog.free.title")}
+            bullets={[
+              t("premium.dialog.free.bullet_block"),
+              t("premium.dialog.free.bullet_diag"),
+            ]}
+            cta={t("premium.dialog.free.cta")}
+            selected={selected === "free"}
+            onSelect={handleSelect}
+          />
           <PricingCard
             id="single_report"
+            tone="premium"
+            label={t("premium.dialog.single.label")}
             title={t("premium.dialog.single.title")}
             price={t("premium.dialog.single.price")}
             bullets={[
@@ -82,15 +100,14 @@ export function PremiumInterestDialog({
           />
           <PricingCard
             id="pack_5_reports"
+            tone="best-value"
+            label={t("premium.dialog.pack.label")}
             title={t("premium.dialog.pack.title")}
             price={t("premium.dialog.pack.price")}
-            bullets={[
-              t("premium.dialog.pack.bullet_reports"),
-              t("premium.dialog.pack.bullet_unit"),
-            ]}
+            unit={t("premium.dialog.pack.bullet_unit")}
+            bullets={[t("premium.dialog.pack.bullet_reports")]}
             cta={t("premium.dialog.pack.cta")}
             badge={t("premium.dialog.pack.savings_badge")}
-            recommended
             selected={selected === "pack_5_reports"}
             onSelect={handleSelect}
           />
@@ -100,49 +117,72 @@ export function PremiumInterestDialog({
           <ShieldCheck className="size-3.5" aria-hidden="true" />
           {t("premium.dialog.trust_note")}
         </p>
+        <p className="mt-1 text-xs text-content-tertiary leading-relaxed">
+          {t("premium.dialog.pending_note")}
+        </p>
       </DialogContent>
     </Dialog>
   );
 }
 
+type PricingTone = "free" | "premium" | "best-value";
+
 interface PricingCardProps {
   id: PricingOption;
+  tone: PricingTone;
+  label: string;
   title: string;
-  price: string;
+  price?: string;
+  unit?: string;
   bullets: string[];
   note?: string;
   cta: string;
   badge?: string;
-  recommended?: boolean;
   selected: boolean;
   onSelect: (id: PricingOption) => void;
 }
 
 function PricingCard({
   id,
+  tone,
+  label,
   title,
   price,
+  unit,
   bullets,
   note,
   cta,
   badge,
-  recommended = false,
   selected,
   onSelect,
 }: PricingCardProps) {
+  const isBest = tone === "best-value";
+  const isFree = tone === "free";
+
   return (
     <div
       className={cn(
-        "relative flex flex-col rounded-xl border bg-surface-base p-4 sm:p-5",
-        "border-border-default transition-colors",
-        recommended && "ring-1 ring-accent-secondary/30",
-        selected && "border-accent-primary/50",
+        "relative flex flex-col overflow-hidden rounded-xl border p-4 backdrop-blur-sm",
+        isFree
+          ? "bg-surface-muted/70 border-border-default"
+          : "bg-white/90 border-border-default shadow-[0_18px_48px_-32px_rgba(15,23,42,0.18)]",
+        isBest && "ring-1 ring-accent-secondary/30",
+        selected && "ring-2 ring-accent-primary/40",
       )}
     >
+      <div
+        aria-hidden="true"
+        className={cn(
+          "absolute inset-x-0 top-0 h-px",
+          isFree
+            ? "bg-gradient-to-r from-transparent via-border-default to-transparent"
+            : "bg-gradient-to-r from-transparent via-accent-primary/40 to-transparent",
+        )}
+      />
       {badge ? (
         <span
           className={cn(
-            "absolute -top-2 right-4 inline-flex items-center rounded-full",
+            "absolute right-3 top-3 inline-flex items-center rounded-full",
             "px-2 py-0.5 text-eyebrow-sm",
             "bg-accent-secondary/10 text-accent-secondary ring-1 ring-accent-secondary/20",
           )}
@@ -151,10 +191,26 @@ function PricingCard({
         </span>
       ) : null}
 
-      <p className="text-sm font-semibold text-content-primary">{title}</p>
+      <span
+        className={cn(
+          "inline-flex w-fit items-center rounded-full px-2 py-0.5 text-eyebrow-sm",
+          isFree && "bg-surface-base text-content-tertiary ring-1 ring-border-default",
+          tone === "premium" &&
+            "bg-accent-primary/10 text-accent-primary ring-1 ring-accent-primary/20",
+          isBest &&
+            "bg-accent-secondary/10 text-accent-secondary ring-1 ring-accent-secondary/20",
+        )}
+      >
+        {label}
+      </span>
+
+      <p className="mt-2 text-sm font-semibold text-content-primary">{title}</p>
       <p className="mt-1 text-2xl font-bold text-content-primary tabular-nums">
-        {price}
+        {price ?? "0€"}
       </p>
+      {unit ? (
+        <p className="text-xs text-content-tertiary tabular-nums">{unit}</p>
+      ) : null}
 
       <ul className="mt-3 space-y-1.5">
         {bullets.map((b) => (
@@ -164,9 +220,12 @@ function PricingCard({
           >
             <Check
               aria-hidden="true"
-              className="mt-0.5 size-3.5 shrink-0 text-accent-primary"
+              className={cn(
+                "mt-0.5 size-3.5 shrink-0",
+                isFree ? "text-content-tertiary" : "text-accent-primary",
+              )}
             />
-            <span className="tabular-nums">{b}</span>
+            <span>{b}</span>
           </li>
         ))}
       </ul>
@@ -181,7 +240,7 @@ function PricingCard({
         <Button
           type="button"
           onClick={() => onSelect(id)}
-          variant={recommended ? "primary" : "outline"}
+          variant={isBest ? "primary" : isFree ? "ghost" : "outline"}
           className="w-full"
           aria-pressed={selected}
         >
