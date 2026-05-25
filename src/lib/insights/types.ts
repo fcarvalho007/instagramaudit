@@ -350,9 +350,10 @@ export type EditorialVerdictEvidence =
 
 export interface EditorialVerdict {
   verdict_label: EditorialVerdictBand;
-  /** Título editorial, ≤ 7 palavras, sem ponto final. */
+  /** Título editorial, 4–8 palavras, sem ponto final, sem dígitos. */
   title: string;
-  /** 30–75 palavras, máx. 2 frases. */
+  /** Diagnóstico editorial: 80–220 palavras (alvo 120–180), 2–6 frases
+   *  distribuídas por 1–4 parágrafos curtos. Sem verbos prescritivos. */
   paragraph: string;
   /** Próxima prioridade prática, 1 frase no infinitivo impessoal. */
   priority: string;
