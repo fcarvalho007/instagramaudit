@@ -315,6 +315,9 @@ function AccessSummaryCard({
         {t("nav.access.cta")}
         <ArrowRight className="size-3.5" aria-hidden="true" />
       </button>
+      <p className="mt-2 text-center text-[11px] leading-relaxed text-content-tertiary">
+        {t("nav.access.pending_note")}
+      </p>
       <p className="mt-2 text-center text-[11px] text-content-tertiary">
         {t("nav.access.trust")}
       </p>
