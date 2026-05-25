@@ -4,6 +4,9 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import type { ReportEnriched } from "@/lib/report/snapshot-to-report-data";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/hooks/use-language";
+import { formatNumber } from "@/lib/i18n/format";
+import type { SupportedLanguage } from "@/i18n";
 import { InsightCallout } from "./overview/insight-callout";
 
 type EnrichedPost = ReportEnriched["topPosts"][number];
@@ -38,6 +41,7 @@ export function PostComparisonBlock({
   windowLabel,
 }: PostComparisonBlockProps) {
   const { t } = useTranslation("report");
+  const { language } = useLanguage();
   const bestLabels = [t("posts.rank.best_1"), t("posts.rank.best_2")] as const;
   const worstLabels = [t("posts.rank.worst_1"), t("posts.rank.worst_2")] as const;
   const best2 = topPosts.slice(0, 2);
@@ -69,14 +73,14 @@ export function PostComparisonBlock({
       headline = t("posts.ai_fallback.caption");
     }
 
-    const bestStr = bestEng.toString().replace(".", ",");
-    const worstStr = worstEng.toString().replace(".", ",");
+    const bestStr = formatNumber(bestEng, language, { maximumFractionDigits: 2 });
+    const worstStr = formatNumber(worstEng, language, { maximumFractionDigits: 2 });
     const body = multiplierLabel
       ? t("posts.ai_fallback.body_mult", { best: bestStr, mult: multiplierLabel })
       : t("posts.ai_fallback.body_plain", { best: bestStr, worst: worstStr });
 
     return { headline, body };
-  }, [hasComparison, best2, worst2, bestEng, worstEng, multiplierLabel, t]);
+  }, [hasComparison, best2, worst2, bestEng, worstEng, multiplierLabel, t, language]);
 
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
@@ -93,7 +97,7 @@ export function PostComparisonBlock({
       {hasComparison ? (
         <div className="px-5 md:px-6 pb-5 md:pb-6 space-y-4">
           {/* VS Bar */}
-          <VsBar bestEng={bestEng} worstEng={worstEng} t={t} />
+          <VsBar bestEng={bestEng} worstEng={worstEng} t={t} language={language} />
 
           {/* Main grid: best | divider | worst */}
           <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-5 md:gap-0">
@@ -107,7 +111,7 @@ export function PostComparisonBlock({
                     tone="best"
                     mirror={false}
                   />
-                  <PostCard post={post} tone="best" t={t} />
+                  <PostCard post={post} tone="best" t={t} language={language} />
                 </div>
               ))}
             </div>
@@ -128,7 +132,7 @@ export function PostComparisonBlock({
                     tone="worst"
                     mirror={true}
                   />
-                  <PostCard post={post} tone="worst" mirror t={t} />
+                  <PostCard post={post} tone="worst" mirror t={t} language={language} />
                 </div>
               ))}
             </div>
@@ -141,7 +145,7 @@ export function PostComparisonBlock({
         <div className="px-5 md:px-6 pb-5 md:pb-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {best2.map((post) => (
-              <PostCard key={post.id} post={post} tone="best" t={t} />
+              <PostCard key={post.id} post={post} tone="best" t={t} language={language} />
             ))}
           </div>
         </div>
@@ -152,7 +156,7 @@ export function PostComparisonBlock({
 
 // ─── VS Bar ─────────────────────────────────────────────────────────
 
-function VsBar({ bestEng, worstEng, t }: { bestEng: number; worstEng: number; t: TR }) {
+function VsBar({ bestEng, worstEng, t, language }: { bestEng: number; worstEng: number; t: TR; language: SupportedLanguage }) {
   const worstBarPct = bestEng > 0 ? Math.max(8, (worstEng / bestEng) * 100) : 50;
 
   return (
@@ -170,7 +174,7 @@ function VsBar({ bestEng, worstEng, t }: { bestEng: number; worstEng: number; t:
           <span className="text-[9px] font-bold uppercase tracking-widest text-accent-primary">{t("posts.vs.best")}</span>
         </div>
         <span className="tabular-nums text-[18px] md:text-[22px] font-bold tabular-nums text-accent-primary leading-none">
-          {bestEng.toString().replace(".", ",")}%
+          {formatNumber(bestEng, language, { maximumFractionDigits: 2 })}%
         </span>
         <div className="w-full h-1.5 rounded-full bg-accent-primary/10 mt-0.5">
           <div className="h-full rounded-full bg-accent-primary" style={{ width: "100%" }} />
@@ -191,7 +195,7 @@ function VsBar({ bestEng, worstEng, t }: { bestEng: number; worstEng: number; t:
           <TrendingDown className="size-3 text-signal-warning" aria-hidden="true" />
         </div>
         <span className="tabular-nums text-[18px] md:text-[22px] font-bold tabular-nums text-signal-warning leading-none">
-          {worstEng.toString().replace(".", ",")}%
+          {formatNumber(worstEng, language, { maximumFractionDigits: 2 })}%
         </span>
         <div className="w-full h-1.5 rounded-full bg-signal-warning/10 mt-0.5">
           <div
@@ -334,11 +338,13 @@ function PostCard({
   tone,
   mirror = false,
   t,
+  language,
 }: {
   post: EnrichedPost;
   tone: "best" | "worst";
   mirror?: boolean;
   t: TR;
+  language: SupportedLanguage;
 }) {
   const [imgError, setImgError] = useState(false);
 
@@ -388,7 +394,7 @@ function PostCard({
       <div className="flex-1 min-w-0 flex flex-col justify-between gap-0.5">
         {/* Engagement — hero metric */}
         <span className={cn("tabular-nums text-[15px] font-bold tabular-nums leading-none", engColor)}>
-          {post.engagementPct.toFixed(2).replace(".", ",")}%
+          {formatNumber(post.engagementPct, language, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
         </span>
 
         {/* Caption */}
@@ -401,12 +407,12 @@ function PostCard({
           <span className="inline-flex items-center gap-1 text-[10px] text-content-secondary">
             <Heart className="size-2.5" aria-hidden="true" />
             <span className="tabular-nums tabular-nums">
-              {post.likes.toLocaleString("pt-PT")}
+              {formatNumber(post.likes, language)}
             </span>
           </span>
           <span className="inline-flex items-center gap-1 text-[10px] text-content-secondary">
             <MessageCircle className="size-2.5" aria-hidden="true" />
-            <span className="tabular-nums tabular-nums">{post.comments}</span>
+            <span className="tabular-nums tabular-nums">{formatNumber(post.comments, language)}</span>
           </span>
           <span className="ml-auto text-[9px] text-content-tertiary uppercase tracking-wide">
             {post.date}

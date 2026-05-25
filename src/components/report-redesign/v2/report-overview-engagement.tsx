@@ -19,6 +19,8 @@ import {
 } from "@/lib/knowledge/benchmark-context";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+import { useLanguage } from "@/hooks/use-language";
+import { formatNumber } from "@/lib/i18n/format";
 import { ReportEngagementBenchmarkChart } from "./report-engagement-benchmark-chart";
 import { InsightCallout } from "./overview/insight-callout";
 
@@ -28,6 +30,7 @@ interface Props {
 
 export function EngagementCardRefined({ result }: Props) {
   const { t } = useTranslation("report");
+  const { language } = useLanguage();
   const k = result.data.keyMetrics;
   const followers = result.data.profile.followers ?? 0;
   const benchmarkSeries = getConsolidatedBenchmarkSeries();
@@ -89,14 +92,14 @@ export function EngagementCardRefined({ result }: Props) {
   } else if (isBelowBenchmark && highestTierBenchmark > 0 && k.engagementRate > 0) {
     const highMult = highestTierBenchmark / k.engagementRate;
     const highMultLabel = highMult >= 10
-      ? `${Math.round(highMult)}×`
-      : `${highMult.toFixed(1).replace(".", ",")}×`;
+      ? `${formatNumber(Math.round(highMult), language)}×`
+      : `${formatNumber(highMult, language, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}×`;
     readingText = t("engagement.reading.below", { tier: highestTierLabel, mult: highMultLabel });
   } else if (isPositive && chartBenchmarkVal > 0 && k.engagementRate > 0) {
     const aboveMult = k.engagementRate / chartBenchmarkVal;
     const aboveMultLabel = aboveMult >= 10
-      ? `${Math.round(aboveMult)}×`
-      : `${aboveMult.toFixed(1).replace(".", ",")}×`;
+      ? `${formatNumber(Math.round(aboveMult), language)}×`
+      : `${formatNumber(aboveMult, language, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}×`;
     readingText = t("engagement.reading.above", { mult: aboveMultLabel });
   }
 
@@ -142,7 +145,7 @@ export function EngagementCardRefined({ result }: Props) {
             </span>
             <div className="flex items-baseline">
               <span className="tabular-nums text-[1.6rem] sm:text-[2.25rem] font-bold text-content-primary leading-none tracking-tight">
-                {fmtPctHero(k.engagementRate)}
+                {fmtPctHero(k.engagementRate, language)}
               </span>
               <span className="tabular-nums text-[1.6rem] sm:text-[2.25rem] font-light text-content-secondary/50 ml-0.5">
                 %
@@ -162,7 +165,7 @@ export function EngagementCardRefined({ result }: Props) {
             </span>
             <div className="flex items-baseline">
               <span className="tabular-nums text-[1.6rem] sm:text-[2.25rem] font-bold text-content-primary leading-none tracking-tight">
-                {fmtPctHero(chartBenchmarkVal)}
+                {fmtPctHero(chartBenchmarkVal, language)}
               </span>
               <span className="tabular-nums text-[1.6rem] sm:text-[2.25rem] font-light text-content-secondary/50 ml-0.5">
                 %
@@ -243,8 +246,11 @@ export function EngagementCardRefined({ result }: Props) {
 
 // ─── Formatters ─────────────────────────────────────────────────────
 
-function fmtPctHero(n: number): string {
-  if (!Number.isFinite(n)) return "0,00";
-  return n.toFixed(2).replace(".", ",");
+function fmtPctHero(n: number, lang: "pt" | "en"): string {
+  if (!Number.isFinite(n)) return lang === "pt" ? "0,00" : "0.00";
+  return formatNumber(n, lang, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
