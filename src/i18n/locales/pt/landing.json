@@ -8,11 +8,6 @@
     "noSignup": "Sem registo necessário",
     "gdpr": "RGPD compliant"
   },
-  "devShortcuts": {
-    "label": "Acesso rápido · Testes",
-    "live": "Report live · frederico.m.carvalho",
-    "mockup": "Report mockup editorial"
-  },
   "hero": {
     "headline": "Analisar qualquer perfil de Instagram em menos de 30 segundos.",
     "subtitle": "Benchmark, comparação e insights claros para decidir melhor."
