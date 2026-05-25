@@ -173,6 +173,21 @@ describe("deriveEditorialVerdict", () => {
     expect(res.rejectionReasons).toEqual([]);
   });
 
+  it("downgrades when cadenceReliability is low but AI claims a consistent rhythm", () => {
+    const ai = makeAi({
+      paragraph:
+        "O ritmo consistente nas últimas semanas sustenta a leitura positiva do perfil.",
+    });
+    const res = deriveEditorialVerdict(
+      ai,
+      metrics({ cadenceReliability: "low" }),
+      makeFallback(),
+    );
+    expect(res.source).toBe("ai_downgraded");
+    expect(res.rejectionReasons).toContain("cadence_contradiction");
+    expect(res.verdict.confidence).toBe("low");
+  });
+
   it("detectVerdictContradictions is stable and returns ordered reasons", () => {
     const ai = makeAi({
       paragraph:
