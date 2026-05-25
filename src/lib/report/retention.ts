@@ -18,6 +18,28 @@
 export const REPORT_RETENTION_DAYS = 15;
 
 /**
+ * Source of truth dinâmica (lazy): chave `report_retention_days` em
+ * `app_config`. Helper async disponível para futuras server functions que
+ * queiram ler de runtime. **Não ligado** ainda aos consumidores actuais —
+ * `REPORT_RETENTION_DAYS` continua a ser a constante usada em testes e
+ * paths síncronos. Fallback = 15 caso a leitura falhe.
+ */
+export async function getReportRetentionDays(): Promise<number> {
+  try {
+    const { readAppConfigValue, parseConfigInt } = await import(
+      "@/lib/config/app-config.server"
+    );
+    const raw = await readAppConfigValue(
+      "report_retention_days",
+      String(REPORT_RETENTION_DAYS),
+    );
+    return parseConfigInt(raw, REPORT_RETENTION_DAYS);
+  } catch {
+    return REPORT_RETENTION_DAYS;
+  }
+}
+
+/**
  * TTL do snapshot de cache. Hoje igual à retenção do relatório, mas
  * mantido como constante separada para permitir divergência futura
  * (ex.: cache curta + retenção longa) sem refactor.
