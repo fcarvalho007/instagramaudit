@@ -1,6 +1,20 @@
 {
+  "a11y": {
+    "back_to_top": "Voltar ao topo"
+  },
+  "sticky_unlock": {
+    "body": "3 secções premium por desbloquear",
+    "cta": "Desbloquear",
+    "cta_aria": "Abrir opções de desbloqueio"
+  },
+  "shortcuts": {
+    "title": "Atalhos de teclado",
+    "subtitle": "Navega pelo relatório sem sair do teclado.",
+    "go_block": "Saltar para o bloco N",
+    "top": "Voltar ao topo",
+    "help": "Mostrar atalhos"
+  },
   "hero": {
-    "_": "_",
     "verified": "Conta verificada",
     "metric_followers": "seguidores",
     "metric_followers_one": "seguidor",
