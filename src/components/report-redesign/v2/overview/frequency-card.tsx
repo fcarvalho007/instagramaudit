@@ -574,7 +574,8 @@ export function FrequencyCard({
         </div>
       )}
 
-      {/* Verdict */}
+      {/* Verdict — suppressed when cadence is insufficient (no strong claims). */}
+      {!isInsufficient && (
       <InsightCallout tone={verdictTone} label={verdictLabel} className="mt-auto mx-4 sm:mx-5 md:mx-6 mb-5 sm:mb-6 md:mb-8">
         <p>
           <span className="font-semibold">{verdict.strong}</span>{" "}
