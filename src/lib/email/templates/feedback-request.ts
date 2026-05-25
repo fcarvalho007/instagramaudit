@@ -20,6 +20,8 @@ export interface FeedbackRequestInput {
   feedbackUrl?: string | null;
   /** Whether the recipient has actually viewed the report. Defaults to true. */
   reportViewed?: boolean;
+  /** Optional one-click unsubscribe URL (marketing footer). */
+  unsubscribeUrl?: string | null;
 }
 
 const HEADLINE = "Pedido de feedback";
@@ -37,6 +39,7 @@ export function renderFeedbackRequest(input: FeedbackRequestInput): RenderedEmai
   const reportUrl = input.reportUrl?.trim() || null;
   const reportViewed = input.reportViewed ?? true;
   const subject = buildSubject(input.instagramHandle);
+  const unsubscribeUrl = input.unsubscribeUrl?.trim() || null;
 
   const openingText = reportViewed
     ? `Vimos que já abriste o relatório de ${handle}. Obrigado por experimentares.`
@@ -66,6 +69,9 @@ export function renderFeedbackRequest(input: FeedbackRequestInput): RenderedEmai
       ? [`(Se quiseres rever o relatório antes: ${reportUrl})`, ""]
       : []),
     ...signatureText("Obrigado pela ajuda,"),
+    ...(unsubscribeUrl
+      ? ["", "Se já não queres receber estes emails, anula a subscrição:", unsubscribeUrl]
+      : []),
   ]);
 
   const ctaHtml = feedbackUrl
@@ -94,7 +100,13 @@ export function renderFeedbackRequest(input: FeedbackRequestInput): RenderedEmai
   return {
     subject,
     text,
-    html: wrapHtml({ title: subject, headline: HEADLINE, bodyHtml, preheader: PREHEADER }),
+    html: wrapHtml({
+      title: subject,
+      headline: HEADLINE,
+      bodyHtml,
+      preheader: PREHEADER,
+      unsubscribeUrl,
+    }),
   };
 }
 
