@@ -12,7 +12,7 @@
 
 import { renderWelcomeBeta } from "./templates/welcome-beta";
 import { sendTransactionalEmail } from "./transactional-email.server";
-import { resolveReportUrl } from "./url";
+import { resolveReportUrl, buildUnsubscribeUrl } from "./url";
 
 export interface SendWelcomeBetaArgs {
   toEmail: string;
@@ -44,6 +44,7 @@ export async function sendWelcomeBetaEmail(
       ),
       feedbackUrl:
         args.feedbackUrl ?? (process.env.FEEDBACK_URL?.trim() || null),
+      unsubscribeUrl: args.leadId ? buildUnsubscribeUrl(args.leadId) : null,
     });
   } catch (err) {
     return {
