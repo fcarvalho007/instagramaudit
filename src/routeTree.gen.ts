@@ -15,6 +15,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
+import { Route as PrecosRouteImport } from './routes/precos'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DevLoadingPreviewRouteImport } from './routes/dev-loading-preview'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
@@ -151,6 +152,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const PrivacidadeRoute = PrivacidadeRouteImport.update({
   id: '/privacidade',
   path: '/privacidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrecosRoute = PrecosRouteImport.update({
+  id: '/precos',
+  path: '/precos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -738,6 +744,7 @@ export interface FileRoutesByFullPath {
   '/design-system': typeof DesignSystemRoute
   '/dev-loading-preview': typeof DevLoadingPreviewRoute
   '/login': typeof LoginRoute
+  '/precos': typeof PrecosRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
@@ -852,6 +859,7 @@ export interface FileRoutesByTo {
   '/design-system': typeof DesignSystemRoute
   '/dev-loading-preview': typeof DevLoadingPreviewRoute
   '/login': typeof LoginRoute
+  '/precos': typeof PrecosRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
@@ -968,6 +976,7 @@ export interface FileRoutesById {
   '/design-system': typeof DesignSystemRoute
   '/dev-loading-preview': typeof DevLoadingPreviewRoute
   '/login': typeof LoginRoute
+  '/precos': typeof PrecosRoute
   '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
@@ -1085,6 +1094,7 @@ export interface FileRouteTypes {
     | '/design-system'
     | '/dev-loading-preview'
     | '/login'
+    | '/precos'
     | '/privacidade'
     | '/reset-password'
     | '/signup'
@@ -1199,6 +1209,7 @@ export interface FileRouteTypes {
     | '/design-system'
     | '/dev-loading-preview'
     | '/login'
+    | '/precos'
     | '/privacidade'
     | '/reset-password'
     | '/signup'
@@ -1314,6 +1325,7 @@ export interface FileRouteTypes {
     | '/design-system'
     | '/dev-loading-preview'
     | '/login'
+    | '/precos'
     | '/privacidade'
     | '/reset-password'
     | '/signup'
@@ -1430,6 +1442,7 @@ export interface RootRouteChildren {
   DesignSystemRoute: typeof DesignSystemRoute
   DevLoadingPreviewRoute: typeof DevLoadingPreviewRoute
   LoginRoute: typeof LoginRoute
+  PrecosRoute: typeof PrecosRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
@@ -1552,6 +1565,13 @@ declare module '@tanstack/react-router' {
       path: '/privacidade'
       fullPath: '/privacidade'
       preLoaderRoute: typeof PrivacidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/precos': {
+      id: '/precos'
+      path: '/precos'
+      fullPath: '/precos'
+      preLoaderRoute: typeof PrecosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -2484,6 +2504,7 @@ const rootRouteChildren: RootRouteChildren = {
   DesignSystemRoute: DesignSystemRoute,
   DevLoadingPreviewRoute: DevLoadingPreviewRoute,
   LoginRoute: LoginRoute,
+  PrecosRoute: PrecosRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
