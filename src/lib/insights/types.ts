@@ -264,6 +264,12 @@ export interface AiInsightsV2 {
    * determinístico em `block02-diagnostic.ts`.
    */
   priorities?: AiInsightsV2Priorities;
+  /**
+   * Veredicto editorial estruturado para o primeiro cartão (Bloco 1).
+   * Opcional para retrocompat com snapshots antigos — quando ausente o
+   * cartão cai para `sections.hero` + heurística determinística.
+   */
+  editorial_verdict?: EditorialVerdict | null;
 }
 
 /** Nível editorial das prioridades de ação geradas pela IA. */
@@ -286,6 +292,72 @@ export interface AiInsightsV2Priorities {
   items: ReadonlyArray<AiPriorityItem>;
   /** "ai" quando vem do modelo; reservado para futuras origens. */
   source: "ai";
+}
+
+/* ===========================================================================
+ * Editorial Verdict — Bloco 1 / primeiro cartão
+ * ---------------------------------------------------------------------------
+ * Veredicto editorial estruturado, separado do `sections.hero`. Permite que
+ * o frontend renderize um diagnóstico claro sem precisar de heurística
+ * sobre uma string única. Os `warnings` são calculados pelo backend a
+ * partir de sinais determinísticos do payload — o modelo nunca os define.
+ * ========================================================================= */
+
+export type EditorialVerdictBand =
+  | "strong"
+  | "promising"
+  | "needs_work"
+  | "limited_data";
+
+export type EditorialVerdictConfidence = "high" | "medium" | "low";
+
+export type EditorialVerdictWarning =
+  | "low_sample"
+  | "stale_data"
+  | "cadence_uncertain"
+  | "no_market_signals"
+  | "benchmark_missing";
+
+/** Allowlist de rótulos válidos em `evidence_used`. Set fechado para
+ *  impedir o modelo de inventar fontes. */
+export const EDITORIAL_VERDICT_EVIDENCE_ALLOWLIST = [
+  "cadence.window_30d",
+  "cadence.window_90d",
+  "cadence.sample_span",
+  "benchmark.tier_delta",
+  "benchmark.tier_label",
+  "format_mix.dominant_share",
+  "format_mix.dominant_format",
+  "top_posts.top1",
+  "caption_intelligence.topics",
+  "caption_intelligence.length",
+  "editorial_patterns.collaboration_lift",
+  "editorial_patterns.comments_to_likes_ratio",
+  "editorial_patterns.engagement_trend",
+  "market_signals.strongest_keyword",
+  "market_signals.trend_direction",
+] as const;
+
+export type EditorialVerdictEvidence =
+  (typeof EDITORIAL_VERDICT_EVIDENCE_ALLOWLIST)[number];
+
+export interface EditorialVerdict {
+  verdict_label: EditorialVerdictBand;
+  /** Título editorial, ≤ 7 palavras, sem ponto final. */
+  title: string;
+  /** 30–75 palavras, máx. 2 frases. */
+  paragraph: string;
+  /** Próxima prioridade prática, 1 frase no infinitivo impessoal. */
+  priority: string;
+  /** Exatamente 2 pontos fortes editoriais. */
+  strengths: readonly [string, string];
+  /** Exatamente 2 limitações editoriais. */
+  limitations: readonly [string, string];
+  confidence: EditorialVerdictConfidence;
+  /** Rótulos internos das fontes citadas. Sempre ⊆ allowlist. */
+  evidence_used: ReadonlyArray<EditorialVerdictEvidence>;
+  /** Calculado pelo backend após validação. Nunca vem do modelo. */
+  warnings?: ReadonlyArray<EditorialVerdictWarning>;
 }
 
 /** Resultado tipado do gerador v2. Mesmo padrão do `InsightsGenerationResult`. */

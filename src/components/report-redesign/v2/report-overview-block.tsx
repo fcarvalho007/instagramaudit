@@ -116,6 +116,7 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
           aiHeroEmphasis={
             enriched.aiInsightsV2?.sections.hero?.emphasis ?? null
           }
+          aiVerdict={enriched.aiInsightsV2?.editorialVerdict ?? null}
           keyMetrics={{
             engagementRate: k.engagementRate,
             engagementBenchmark: k.engagementBenchmark,

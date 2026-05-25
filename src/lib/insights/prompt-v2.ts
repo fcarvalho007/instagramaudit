@@ -15,7 +15,10 @@ import { createHash } from "crypto";
 
 import { buildInsightsUserPayload, type InsightsUserPayload } from "./prompt";
 import type { AiInsightV2Section, InsightsContext } from "./types";
-import { AI_INSIGHT_V2_SECTIONS } from "./types";
+import {
+  AI_INSIGHT_V2_SECTIONS,
+  EDITORIAL_VERDICT_EVIDENCE_ALLOWLIST,
+} from "./types";
 import type { KnowledgeContext } from "@/lib/knowledge/types";
 import { formatKnowledgeContextForPrompt } from "@/lib/knowledge/context.server";
 import {
@@ -81,7 +84,19 @@ Prioridades de ação (obrigatório · campo "priorities"):
 - Devolver exactamente 3 itens accionáveis derivados do diagnóstico editorial (tipo de conteúdo, fase de funil, captions, audiência, integração entre canais, formato dominante).
 - Cada item: { "level": "alta" | "media" | "oportunidade", "title": ≤ 60 chars no infinitivo impessoal, "body": 1 frase ≤ 180 chars com pelo menos um número concreto do payload, "resolves": frase curta a indicar que pergunta(s) do diagnóstico endereça (ex.: "Resolve a Pergunta 06.", "Resolve as Perguntas 02 e 07."). IMPORTANTE: o diagnóstico só tem 7 perguntas (01–07) — NUNCA referenciar "Pergunta 08" ou números superiores.
 - Hierarquia esperada: 1 "alta" (problema mais urgente), 1 "media" (correção estrutural), 1 "oportunidade" (alavanca de crescimento). Se não houver problema "alta", trocar por "media".
-- Distintas entre si — sem repetir a mesma recomendação. Sem citar fontes externas. Sem snake_case.`;
+- Distintas entre si — sem repetir a mesma recomendação. Sem citar fontes externas. Sem snake_case.
+
+Veredicto editorial (obrigatório · campo "editorial_verdict"):
+- É a primeira leitura estratégica do relatório. Diagnóstico interpretativo — NÃO repetir literalmente envolvimento, médias de gostos/comentários ou ritmo (esses números já aparecem na faixa de métricas).
+- "verdict_label": "strong" (perfil sólido, alavanca clara) | "promising" (sinais positivos parciais) | "needs_work" (gap relevante face ao tier) | "limited_data" (amostra insuficiente — usar quando posts analisados < 5 ou cadência inconclusiva).
+- "title": gancho editorial ≤ 7 palavras, ≤ 60 chars, sem ponto final, sem números. Ex.: "Audiência fiel mas silenciosa", "Ritmo forte sem tração", "Sinal ainda parcial".
+- "paragraph": 35–65 palavras, máximo 2 frases. 1ª frase = diagnóstico com PELO MENOS um número concreto do payload (ex.: delta vs tier, share do formato dominante). 2ª frase = interpretação editorial do que isso significa para o perfil. Sem repetir literalmente os 3 KPIs principais.
+- "priority": 1 frase no infinitivo impessoal com a próxima alavanca prática. ≤ 160 chars.
+- "strengths": exactamente 2 leituras interpretativas (NÃO listas de KPIs crus). Cada uma ≤ 80 chars. Ex.: "Audiência fiel e recorrente" ✓ — "0,3% de comentários por like" ✗.
+- "limitations": exactamente 2 limitações editoriais. Mesmas regras de "strengths".
+- "confidence": "high" | "medium" | "low" — auto-avaliação do quanto o diagnóstico é defensável. Se a amostra é pequena ou os benchmarks faltam, baixar para "low" / "medium".
+- "evidence_used": 1 a 6 rótulos internos das fontes citadas. APENAS valores desta lista fechada: ${EDITORIAL_VERDICT_EVIDENCE_ALLOWLIST.join(", ")}. NÃO inventar rótulos.
+- NÃO incluir o campo "warnings" — é preenchido pelo backend.`;
 
 /**
  * Constrói o system prompt completo, injectando o bloco de contexto da KB
@@ -171,7 +186,7 @@ export const RESPONSE_JSON_SCHEMA_V2 = {
   schema: {
     type: "object",
     additionalProperties: false,
-    required: ["sections", "priorities"],
+    required: ["sections", "priorities", "editorial_verdict"],
     properties: {
       sections: {
         type: "object",
@@ -197,6 +212,54 @@ export const RESPONSE_JSON_SCHEMA_V2 = {
             title: { type: "string", minLength: 1, maxLength: 80 },
             body: { type: "string", minLength: 1, maxLength: 220 },
             resolves: { type: "string", minLength: 1, maxLength: 120 },
+          },
+        },
+      },
+      editorial_verdict: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "verdict_label",
+          "title",
+          "paragraph",
+          "priority",
+          "strengths",
+          "limitations",
+          "confidence",
+          "evidence_used",
+        ],
+        properties: {
+          verdict_label: {
+            type: "string",
+            enum: ["strong", "promising", "needs_work", "limited_data"],
+          },
+          title: { type: "string", minLength: 1, maxLength: 70 },
+          paragraph: { type: "string", minLength: 1, maxLength: 480 },
+          priority: { type: "string", minLength: 1, maxLength: 200 },
+          strengths: {
+            type: "array",
+            minItems: 2,
+            maxItems: 2,
+            items: { type: "string", minLength: 1, maxLength: 100 },
+          },
+          limitations: {
+            type: "array",
+            minItems: 2,
+            maxItems: 2,
+            items: { type: "string", minLength: 1, maxLength: 100 },
+          },
+          confidence: {
+            type: "string",
+            enum: ["high", "medium", "low"],
+          },
+          evidence_used: {
+            type: "array",
+            minItems: 1,
+            maxItems: 6,
+            items: {
+              type: "string",
+              enum: [...EDITORIAL_VERDICT_EVIDENCE_ALLOWLIST],
+            },
           },
         },
       },

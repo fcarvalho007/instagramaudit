@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { formatCompactNumber } from "@/lib/i18n/format";
 import type { ScoreKey } from "./score-utils";
+import type { EditorialVerdict } from "@/lib/insights/types";
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 
@@ -33,6 +34,9 @@ interface EditorialIdentityCardProps {
   scores: Record<ScoreKey, { value: number; subtitle: string }>;
   aiHeroText?: string | null;
   aiHeroEmphasis?: "positive" | "negative" | "default" | "neutral" | null;
+  /** Veredicto editorial estruturado. Quando presente, tem prioridade
+   *  sobre `aiHeroText` (que continua a servir de fallback editorial). */
+  aiVerdict?: EditorialVerdict | null;
   keyMetrics?: {
     engagementRate: number;
     engagementBenchmark: number;
@@ -170,6 +174,12 @@ function bandFor(score: number): Band {
   if (score >= 70) return "solid";
   if (score >= 40) return "developing";
   return "warning";
+}
+
+function verdictLabelToBand(label: EditorialVerdict["verdict_label"]): Band {
+  if (label === "strong") return "solid";
+  if (label === "promising") return "developing";
+  return "warning"; // needs_work | limited_data
 }
 
 function bandLabel(band: Band, t: TFunction): string {
@@ -356,6 +366,7 @@ export function EditorialIdentityCard({
   scores,
   aiHeroText,
   aiHeroEmphasis,
+  aiVerdict,
   keyMetrics,
   dominantFormat,
   dominantFormatShare,
@@ -367,15 +378,19 @@ export function EditorialIdentityCard({
 }: EditorialIdentityCardProps) {
   const { t, i18n } = useTranslation("report");
   const fallback = buildFallbackCopy(scores, t);
-  const copy = aiHeroText
-    ? deriveCopyFromAi(aiHeroText, fallback, aiHeroEmphasis ?? null)
-    : fallback;
+  const copy: EditorialCopy = aiVerdict
+    ? { title: aiVerdict.title, paragraph: aiVerdict.paragraph }
+    : aiHeroText
+      ? deriveCopyFromAi(aiHeroText, fallback, aiHeroEmphasis ?? null)
+      : fallback;
   const overall = computeOverall(scores);
-  const band = bandFor(overall);
+  const band: Band = aiVerdict
+    ? verdictLabelToBand(aiVerdict.verdict_label)
+    : bandFor(overall);
   const lowConfidence =
     typeof postsAnalyzed === "number" && postsAnalyzed > 0 && postsAnalyzed < 5;
 
-  const { strengths, limits } = deriveSignals(
+  const derived = deriveSignals(
     scores,
     keyMetrics,
     dominantFormat,
@@ -385,6 +400,12 @@ export function EditorialIdentityCard({
     t,
     i18n.language,
   );
+  const strengths: Bullet[] = aiVerdict
+    ? aiVerdict.strengths.map((s) => ({ destaque: s, detalhe: "" }))
+    : derived.strengths;
+  const limits: Bullet[] = aiVerdict
+    ? aiVerdict.limitations.map((s) => ({ destaque: s, detalhe: "" }))
+    : derived.limits;
 
   const hasAnyMetric =
     typeof averageLikes === "number" ||
@@ -426,7 +447,35 @@ export function EditorialIdentityCard({
             {copy.paragraph}
           </p>
 
-          {lowConfidence ? (
+          {aiVerdict?.priority ? (
+            <p className="text-sm text-content-primary font-medium max-w-2xl pt-1">
+              <span className="text-eyebrow-sm text-content-tertiary mr-2">
+                {t("identity.priority_label", { defaultValue: "Próximo passo" })}:
+              </span>
+              {aiVerdict.priority}
+            </p>
+          ) : null}
+
+          {aiVerdict?.warnings && aiVerdict.warnings.length > 0 ? (
+            <p className="text-xs text-content-tertiary pt-1">
+              {aiVerdict.warnings
+                .map((w) =>
+                  t(`identity.warnings.${w}`, {
+                    defaultValue:
+                      w === "low_sample"
+                        ? "Amostra pequena — leitura indicativa."
+                        : w === "stale_data"
+                          ? "Dados desactualizados."
+                          : w === "cadence_uncertain"
+                            ? "Cadência ainda inconclusiva."
+                            : w === "no_market_signals"
+                              ? "Sem sinais de pesquisa de mercado."
+                              : "Sem benchmark comparável.",
+                  }),
+                )
+                .join(" · ")}
+            </p>
+          ) : lowConfidence ? (
             <p className="text-xs text-content-tertiary pt-1">
               {t("identity.low_confidence", { count: postsAnalyzed })}
             </p>
