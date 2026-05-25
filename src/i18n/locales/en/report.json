@@ -76,6 +76,24 @@
         "paragraph": "Indicators are close to the tier reference. There is room to lift engagement by adjusting dominant formats and reinforcing conversation in the comments."
       }
     },
+    "fallback_priority": {
+      "strong": "Keep the rhythm and diversify formats to open new conversation.",
+      "promising": "Reinforce editorial regularity and test formats over 30 days.",
+      "needs_work": "Revisit editorial angle and clarify the call to interact in every post.",
+      "limited_data": "Gather a larger sample before drawing firm conclusions."
+    },
+    "verdict": {
+      "provisional": "Provisional reading",
+      "provisional_hint": "Reading adjusted because the editorial interpretation conflicted with the observed numbers."
+    },
+    "warnings": {
+      "low_sample": "Small sample — indicative reading only.",
+      "stale_data": "Stale data — last post was over 60 days ago.",
+      "cadence_uncertain": "Cadence still inconclusive.",
+      "no_market_signals": "No market search signals available.",
+      "benchmark_missing": "No comparable benchmark for this tier."
+    },
+    "priority_label": "Next step",
     "signals": {
       "freq_consistent": {
         "title": "Consistent publishing",
