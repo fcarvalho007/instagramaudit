@@ -358,6 +358,13 @@ export interface ReportEnriched {
     type: "carousel" | "reel" | "image" | "video" | "unknown";
     thumbnailUrl?: string;
   }>;
+  /**
+   * Cadence metadata — the full result of the cascading window strategy
+   * used to derive `keyMetrics.postingFrequencyWeekly`. Consumers that
+   * need to differentiate "no signal" from "0 posts/week" should branch
+   * on `cadence.sufficient` and surface `cadence.notePt` when false.
+   */
+  cadence: CadenceResult;
 }
 
 // ============================================================================
