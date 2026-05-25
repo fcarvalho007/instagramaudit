@@ -4,33 +4,60 @@
     "description": "Simple, transparent InstaBench pricing: 1 report for €7 or a pack of 5 for €28. No subscription."
   },
   "hero": {
-    "title": "Simple pricing, no complications",
-    "subtitle": "Start with a free profile overview. If you want to go deeper, there are two simple options to unlock premium access."
+    "title": "Simple pricing with progressive access",
+    "subtitle": "Start with the free profile overview. The Editorial Diagnosis is temporarily included as a launch offer. To unlock the remaining premium sections, choose one of two simple options."
+  },
+  "free": {
+    "label": "Free",
+    "title": "Initial profile overview",
+    "bullets": [
+      "Block 1 included",
+      "Editorial Diagnosis available as a launch offer",
+      "Ideal to get to know the profile before going deeper"
+    ],
+    "cta": "Start free"
   },
   "single": {
+    "label": "Premium",
     "title": "1 report",
     "price": "€7",
-    "bullet_profile": "1 profile",
-    "bullet_unlock": "1 premium unlock",
-    "note": "Ideal for a one-off analysis",
-    "cta": "Buy 1 report"
+    "bullets": [
+      "1 profile",
+      "1 premium unlock",
+      "Ideal for a one-off analysis"
+    ],
+    "cta": "Choose 1 report"
   },
   "pack": {
+    "label": "Best value",
     "title": "Pack of 5 reports",
     "price": "€28",
-    "bullet_reports": "5 reports",
-    "bullet_unit": "€5.60/report",
+    "unit": "€5.60/report",
+    "bullets": [
+      "5 reports",
+      "Best for comparing several profiles",
+      "More flexibility for less cost"
+    ],
     "savings_badge": "Save 20%",
-    "cta": "Buy pack of 5"
+    "cta": "Choose pack of 5"
   },
   "trust_note": "No subscription. No automatic renewal.",
-  "pending_note": "Payments coming soon — buttons register your interest.",
+  "pending_note": "Payment coming soon — the button registers your interest.",
   "access": {
     "title": "How access works",
-    "items": [
-      "The Overview is free.",
-      "The Editorial diagnosis is temporarily included as a launch offer.",
-      "Premium sections help you go deeper into performance, content, search demand and comparison."
+    "steps": [
+      {
+        "title": "Explore for free",
+        "body": "See the first profile reading with no commitment."
+      },
+      {
+        "title": "Get the launch extra",
+        "body": "The Editorial Diagnosis is currently open to better demonstrate the product value."
+      },
+      {
+        "title": "Unlock premium",
+        "body": "Performance, Content, Search and Comparison become available after purchase."
+      }
     ]
   }
 }
