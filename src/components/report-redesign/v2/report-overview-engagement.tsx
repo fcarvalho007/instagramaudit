@@ -18,6 +18,7 @@ import {
   getActiveTierIndex,
 } from "@/lib/knowledge/benchmark-context";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 import { ReportEngagementBenchmarkChart } from "./report-engagement-benchmark-chart";
 import { InsightCallout } from "./overview/insight-callout";
 
@@ -26,6 +27,7 @@ interface Props {
 }
 
 export function EngagementCardRefined({ result }: Props) {
+  const { t } = useTranslation("report");
   const k = result.data.keyMetrics;
   const followers = result.data.profile.followers ?? 0;
   const benchmarkSeries = getConsolidatedBenchmarkSeries();
@@ -44,11 +46,11 @@ export function EngagementCardRefined({ result }: Props) {
 
   // Dynamic engagement status word
   const engagementStatus: string = (() => {
-    if (chartBenchmarkVal <= 0) return "Baixa";
+    if (chartBenchmarkVal <= 0) return t("engagement.status.low");
     const pctDiff = ((k.engagementRate - chartBenchmarkVal) / chartBenchmarkVal) * 100;
-    if (pctDiff >= 0) return "Alta";
-    if (pctDiff >= -30) return "Média";
-    return "Baixa";
+    if (pctDiff >= 0) return t("engagement.status.high");
+    if (pctDiff >= -30) return t("engagement.status.medium");
+    return t("engagement.status.low");
   })();
 
   // KPI 3: percentage difference vs benchmark
@@ -59,11 +61,11 @@ export function EngagementCardRefined({ result }: Props) {
     if (Number.isFinite(pctDiff)) {
       const absPct = Math.abs(Math.round(pctDiff));
       pctDiffLabel = `${absPct}%`;
-      pctDiffDirection = pctDiff >= 0 ? "superior" : "inferior";
+      pctDiffDirection = pctDiff >= 0 ? t("engagement.kpi.direction_above") : t("engagement.kpi.direction_below");
     }
   } else if (k.engagementRate === 0 && chartBenchmarkVal > 0) {
     pctDiffLabel = "100%";
-    pctDiffDirection = "inferior";
+    pctDiffDirection = t("engagement.kpi.direction_below");
   }
 
   // Tier label — extract short form from parentheses
@@ -83,27 +85,26 @@ export function EngagementCardRefined({ result }: Props) {
 
   let readingText = "";
   if (k.engagementRate === 0) {
-    readingText =
-      "Mesmo os escalões maiores apresentam uma referência superior — o problema parece estar na reação da audiência.";
+    readingText = t("engagement.reading.zero");
   } else if (isBelowBenchmark && highestTierBenchmark > 0 && k.engagementRate > 0) {
     const highMult = highestTierBenchmark / k.engagementRate;
     const highMultLabel = highMult >= 10
       ? `${Math.round(highMult)}×`
       : `${highMult.toFixed(1).replace(".", ",")}×`;
-    readingText = `Mesmo perfis com ${highestTierLabel} seguidores têm ${highMultLabel} mais engagement do que este perfil — o problema não é a dimensão da audiência, é como ela reage.`;
+    readingText = t("engagement.reading.below", { tier: highestTierLabel, mult: highMultLabel });
   } else if (isPositive && chartBenchmarkVal > 0 && k.engagementRate > 0) {
     const aboveMult = k.engagementRate / chartBenchmarkVal;
     const aboveMultLabel = aboveMult >= 10
       ? `${Math.round(aboveMult)}×`
       : `${aboveMult.toFixed(1).replace(".", ",")}×`;
-    readingText = `Este perfil supera a média do seu escalão em ${aboveMultLabel} — há sinais de engagement acima da referência.`;
+    readingText = t("engagement.reading.above", { mult: aboveMultLabel });
   }
 
   // Status pill styling
   const pillClass =
-    engagementStatus === "Alta"
+    engagementStatus === t("engagement.status.high")
       ? "bg-signal-success/8 text-signal-success border-signal-success/20"
-      : engagementStatus === "Média"
+      : engagementStatus === t("engagement.status.medium")
         ? "bg-signal-warning/8 text-signal-warning border-signal-warning/20"
         : "bg-signal-danger/8 text-signal-danger border-signal-danger/20";
 
@@ -111,10 +112,10 @@ export function EngagementCardRefined({ result }: Props) {
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
       {/* Header */}
       <div className="px-4 sm:px-5 md:px-6 pt-6 sm:pt-8 md:pt-10 pb-4 sm:pb-5 space-y-3">
-        <p className="text-eyebrow-sm text-content-secondary">ENGAGEMENT</p>
+        <p className="text-eyebrow-sm text-content-secondary">{t("engagement.eyebrow")}</p>
         <div className="flex items-center gap-3 flex-wrap">
           <h3 className="font-display text-[1.25rem] sm:text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight">
-            Taxa de Engagement
+            {t("engagement.title")}
           </h3>
           <span
             className={cn(
@@ -126,7 +127,7 @@ export function EngagementCardRefined({ result }: Props) {
           </span>
         </div>
         <p className="text-[15px] text-content-secondary leading-relaxed">
-          Média de gostos + comentários + partilhas ÷ seguidores.
+          {t("engagement.subtitle")}
         </p>
       </div>
 
@@ -136,8 +137,8 @@ export function EngagementCardRefined({ result }: Props) {
 
           <div className="rounded-xl border border-border-default bg-surface-muted/50 px-4 py-4 sm:px-5 sm:py-5">
             <span className="text-eyebrow-sm text-content-secondary block mb-2">
-              <span className="hidden sm:inline">Avaliação deste perfil</span>
-              <span className="sm:hidden">Este perfil</span>
+              <span className="hidden sm:inline">{t("engagement.kpi.profile_full")}</span>
+              <span className="sm:hidden">{t("engagement.kpi.profile_short")}</span>
             </span>
             <div className="flex items-baseline">
               <span className="tabular-nums text-[1.6rem] sm:text-[2.25rem] font-bold text-content-primary leading-none tracking-tight">
@@ -148,16 +149,16 @@ export function EngagementCardRefined({ result }: Props) {
               </span>
             </div>
             <span className="block text-sm text-content-secondary mt-1.5 leading-snug">
-              <span className="hidden sm:inline">interação com o conteúdo</span>
-              <span className="sm:hidden">interação</span>
+              <span className="hidden sm:inline">{t("engagement.kpi.profile_caption_full")}</span>
+              <span className="sm:hidden">{t("engagement.kpi.profile_caption_short")}</span>
             </span>
           </div>
 
           {/* KPI 2 — Tier benchmark */}
           <div className="rounded-xl border border-border-default bg-surface-muted/50 px-4 py-4 sm:px-5 sm:py-5">
             <span className="text-eyebrow-sm text-content-secondary block mb-2">
-              <span className="hidden sm:inline">Média do escalão</span>
-              <span className="sm:hidden">Benchmark</span>
+              <span className="hidden sm:inline">{t("engagement.kpi.tier_full")}</span>
+              <span className="sm:hidden">{t("engagement.kpi.tier_short")}</span>
             </span>
             <div className="flex items-baseline">
               <span className="tabular-nums text-[1.6rem] sm:text-[2.25rem] font-bold text-content-primary leading-none tracking-tight">
@@ -168,8 +169,8 @@ export function EngagementCardRefined({ result }: Props) {
               </span>
             </div>
             <span className="block text-sm text-content-secondary mt-1.5 leading-snug">
-              <span className="hidden sm:inline">Média de perfis no mesmo escalão.</span>
-              <span className="sm:hidden">média escalão</span>
+              <span className="hidden sm:inline">{t("engagement.kpi.tier_caption_full")}</span>
+              <span className="sm:hidden">{t("engagement.kpi.tier_caption_short")}</span>
             </span>
           </div>
 
@@ -183,8 +184,8 @@ export function EngagementCardRefined({ result }: Props) {
             )}
           >
             <span className="text-eyebrow-sm text-content-secondary block mb-2">
-              <span className="hidden sm:inline">Distância à média</span>
-              <span className="sm:hidden">Distância</span>
+              <span className="hidden sm:inline">{t("engagement.kpi.gap_full")}</span>
+              <span className="sm:hidden">{t("engagement.kpi.gap_short")}</span>
             </span>
             <div className="flex items-baseline gap-1.5">
               <span
@@ -207,7 +208,7 @@ export function EngagementCardRefined({ result }: Props) {
               )}
             </div>
             <span className="block text-sm text-content-secondary mt-1.5 leading-snug">
-              face ao benchmark do escalão
+              {t("engagement.kpi.gap_caption")}
             </span>
           </div>
         </div>
@@ -230,7 +231,7 @@ export function EngagementCardRefined({ result }: Props) {
         <div className="px-4 sm:px-5 md:px-6 pb-6 sm:pb-7 md:pb-8">
           <InsightCallout
             tone={isBelowBenchmark ? "danger" : "positive"}
-            label="DIAGNÓSTICO"
+            label={t("engagement.callout_label")}
           >
             <p>{readingText}</p>
           </InsightCallout>
