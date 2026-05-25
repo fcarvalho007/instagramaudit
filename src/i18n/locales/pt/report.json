@@ -974,5 +974,34 @@
         }
       }
     }
+  },
+  "positioning": {
+    "aria": "O que mostra o InstaBench",
+    "lead": "O <1>InstaBench</1> mostra o que o perfil comunica publicamente, como compara com perfis semelhantes e que temas têm procura fora do Instagram.",
+    "chip_public_content": "Conteúdo público",
+    "chip_peer_comparison": "Comparação com pares",
+    "chip_external_demand": "Procura externa",
+    "source_note": "Fontes de enquadramento: Socialinsider, Buffer e Hootsuite.",
+    "benchmark_note": "Os benchmarks são referências direcionais. A leitura pode variar consoante dimensão da conta, setor, período analisado e método de cálculo."
+  },
+  "attention": {
+    "title": "O que merece atenção primeiro",
+    "engagement_gap_title": "Engagement abaixo da referência",
+    "engagement_gap_body": "O perfil está em {{rate}}, abaixo da referência de {{benchmark}}.",
+    "cadence_vs_response_title": "Ritmo elevado, resposta baixa",
+    "cadence_vs_response_body": "Há cerca de {{rhythm}} publicações por semana, mas a resposta média ainda é fraca.",
+    "format_concentration_title": "Dependência de um formato",
+    "format_concentration_body": "A amostra está muito concentrada em {{format}} ({{share}}% das publicações analisadas)."
+  },
+  "benchmarkEvidence": {
+    "market_reference": "Referência de mercado",
+    "platform_instagram": "Instagram",
+    "sector_prefix": "setor {{name}}",
+    "tier_prefix": "contas {{tier}}",
+    "general_context": "contexto geral",
+    "sources_label": "fontes:",
+    "ctx_socialinsider": "engagement por formato",
+    "ctx_buffer": "referência por dimensão da conta",
+    "ctx_hootsuite": "contexto cross-indústria"
   }
 }

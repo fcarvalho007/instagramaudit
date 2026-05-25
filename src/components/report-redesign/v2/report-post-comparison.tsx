@@ -1,10 +1,13 @@
 import { Heart, MessageCircle, ImageOff, TrendingUp, TrendingDown } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import type { ReportEnriched } from "@/lib/report/snapshot-to-report-data";
 import { cn } from "@/lib/utils";
 import { InsightCallout } from "./overview/insight-callout";
 
 type EnrichedPost = ReportEnriched["topPosts"][number];
+type TR = TFunction<"report", undefined>;
 
 interface PostComparisonBlockProps {
   topPosts: EnrichedPost[];
@@ -14,16 +17,11 @@ interface PostComparisonBlockProps {
   windowLabel?: string;
 }
 
-// ─── Label maps ─────────────────────────────────────────────────────
-
-const BEST_LABELS = ["Melhor performance", "Segundo melhor"] as const;
-const WORST_LABELS = ["Pior performance", "Segundo pior"] as const;
-
 /** Map internal format to pt-PT chip label */
-function formatChipLabel(format: string): string {
+function formatChipLabel(format: string, t: TR): string {
   switch (format) {
     case "Carousel":
-      return "CARROSSEL";
+      return t("posts.format_chip.carousel");
     default:
       return format.toUpperCase();
   }
@@ -39,6 +37,9 @@ export function PostComparisonBlock({
   aiInsightText,
   windowLabel,
 }: PostComparisonBlockProps) {
+  const { t } = useTranslation("report");
+  const bestLabels = [t("posts.rank.best_1"), t("posts.rank.best_2")] as const;
+  const worstLabels = [t("posts.rank.worst_1"), t("posts.rank.worst_2")] as const;
   const best2 = topPosts.slice(0, 2);
   const worst2 = bottomPosts.slice(0, 2);
   const hasComparison = best2.length > 0 && worst2.length > 0;
@@ -59,40 +60,40 @@ export function PostComparisonBlock({
     const bestHasCaption = (best2[0]?.caption ?? "").length > 20;
     const worstHasCaption = (worst2[0]?.caption ?? "").length > 20;
 
-    let headline = "O formato e a legenda fazem a diferença.";
+    let headline = t("posts.ai_fallback.default");
     if (bestFormat === "Reel" && worstFormat !== "Reel") {
-      headline = "Reels superam formatos estáticos nesta conta.";
+      headline = t("posts.ai_fallback.reels");
     } else if (bestFormat === "Carousel" && worstFormat !== "Carousel") {
-      headline = "Carrosséis geram mais engagement do que posts simples.";
+      headline = t("posts.ai_fallback.carousel");
     } else if (bestHasCaption && !worstHasCaption) {
-      headline = "Legendas descritivas vencem publicações sem contexto.";
+      headline = t("posts.ai_fallback.caption");
     }
 
-    const body =
-      `O conteúdo com melhor desempenho atingiu ${bestEng.toString().replace(".", ",")}% de engagement` +
-      (multiplierLabel
-        ? `, ${multiplierLabel} acima do pior resultado.`
-        : ` contra ${worstEng.toString().replace(".", ",")}% do pior.`);
+    const bestStr = bestEng.toString().replace(".", ",");
+    const worstStr = worstEng.toString().replace(".", ",");
+    const body = multiplierLabel
+      ? t("posts.ai_fallback.body_mult", { best: bestStr, mult: multiplierLabel })
+      : t("posts.ai_fallback.body_plain", { best: bestStr, worst: worstStr });
 
     return { headline, body };
-  }, [hasComparison, best2, worst2, bestEng, worstEng, multiplierLabel]);
+  }, [hasComparison, best2, worst2, bestEng, worstEng, multiplierLabel, t]);
 
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
       {/* Header */}
       <div className="px-5 md:px-6 pt-6 md:pt-8 pb-4 space-y-2.5">
         <h3 className="font-display text-[1.2rem] sm:text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight break-words">
-          Melhores e Piores Publicações
+          {t("posts.title")}
         </h3>
         <p className="text-[13px] md:text-[14px] text-content-secondary leading-snug">
-          Os extremos do conteúdo
+          {t("posts.subtitle")}
         </p>
       </div>
 
       {hasComparison ? (
         <div className="px-5 md:px-6 pb-5 md:pb-6 space-y-4">
           {/* VS Bar */}
-          <VsBar bestEng={bestEng} worstEng={worstEng} />
+          <VsBar bestEng={bestEng} worstEng={worstEng} t={t} />
 
           {/* Main grid: best | divider | worst */}
           <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-5 md:gap-0">
@@ -102,20 +103,20 @@ export function PostComparisonBlock({
                 <div key={post.id} className="space-y-1.5">
                   <RankRow
                     rank={i + 1}
-                    label={BEST_LABELS[i]}
+                    label={bestLabels[i]}
                     tone="best"
                     mirror={false}
                   />
-                  <PostCard post={post} tone="best" />
+                  <PostCard post={post} tone="best" t={t} />
                 </div>
               ))}
             </div>
 
             {/* Central divider — desktop only */}
-            <CentralDivider multiplierLabel={multiplierLabel} />
+            <CentralDivider multiplierLabel={multiplierLabel} t={t} />
 
             {/* Mobile-only horizontal difference marker */}
-            <MobileDifferenceMarker multiplierLabel={multiplierLabel} />
+            <MobileDifferenceMarker multiplierLabel={multiplierLabel} t={t} />
 
             {/* Worst column */}
             <div className="space-y-3 md:pl-6">
@@ -123,24 +124,24 @@ export function PostComparisonBlock({
                 <div key={post.id} className="space-y-1.5">
                   <RankRow
                     rank={i + 1}
-                    label={WORST_LABELS[i]}
+                    label={worstLabels[i]}
                     tone="worst"
                     mirror={true}
                   />
-                  <PostCard post={post} tone="worst" mirror />
+                  <PostCard post={post} tone="worst" mirror t={t} />
                 </div>
               ))}
             </div>
           </div>
 
           {/* AI / Editorial reading */}
-          <AiReading aiText={aiInsightText} fallback={aiFallback} />
+          <AiReading aiText={aiInsightText} fallback={aiFallback} t={t} />
         </div>
       ) : (
         <div className="px-5 md:px-6 pb-5 md:pb-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {best2.map((post) => (
-              <PostCard key={post.id} post={post} tone="best" />
+              <PostCard key={post.id} post={post} tone="best" t={t} />
             ))}
           </div>
         </div>
@@ -151,7 +152,7 @@ export function PostComparisonBlock({
 
 // ─── VS Bar ─────────────────────────────────────────────────────────
 
-function VsBar({ bestEng, worstEng }: { bestEng: number; worstEng: number }) {
+function VsBar({ bestEng, worstEng, t }: { bestEng: number; worstEng: number; t: TR }) {
   const worstBarPct = bestEng > 0 ? Math.max(8, (worstEng / bestEng) * 100) : 50;
 
   return (
@@ -166,7 +167,7 @@ function VsBar({ bestEng, worstEng }: { bestEng: number; worstEng: number }) {
       <div className="flex flex-col items-start gap-0.5 min-w-[60px] sm:min-w-[70px] md:min-w-[100px]">
         <div className="flex items-center gap-1.5">
           <TrendingUp className="size-3 text-accent-primary" aria-hidden="true" />
-          <span className="text-[9px] font-bold uppercase tracking-widest text-accent-primary">Melhor</span>
+          <span className="text-[9px] font-bold uppercase tracking-widest text-accent-primary">{t("posts.vs.best")}</span>
         </div>
         <span className="tabular-nums text-[18px] md:text-[22px] font-bold tabular-nums text-accent-primary leading-none">
           {bestEng.toString().replace(".", ",")}%
@@ -186,7 +187,7 @@ function VsBar({ bestEng, worstEng }: { bestEng: number; worstEng: number }) {
       {/* Worst side */}
       <div className="flex flex-col items-end gap-0.5 min-w-[60px] sm:min-w-[70px] md:min-w-[100px]">
         <div className="flex items-center gap-1.5">
-          <span className="text-[9px] font-bold uppercase tracking-widest text-signal-warning">Pior</span>
+          <span className="text-[9px] font-bold uppercase tracking-widest text-signal-warning">{t("posts.vs.worst")}</span>
           <TrendingDown className="size-3 text-signal-warning" aria-hidden="true" />
         </div>
         <span className="tabular-nums text-[18px] md:text-[22px] font-bold tabular-nums text-signal-warning leading-none">
@@ -257,7 +258,7 @@ function RankRow({
 
 // ─── Central Divider (desktop) ──────────────────────────────────────
 
-function CentralDivider({ multiplierLabel }: { multiplierLabel: string }) {
+function CentralDivider({ multiplierLabel, t }: { multiplierLabel: string; t: TR }) {
   return (
     <div className="hidden md:flex flex-col items-center justify-center gap-2 px-5 min-w-[80px]">
       <div className="w-px flex-1 bg-border-subtle" />
@@ -267,7 +268,7 @@ function CentralDivider({ multiplierLabel }: { multiplierLabel: string }) {
             {multiplierLabel}
           </span>
           <span className="text-[8px] font-bold uppercase tracking-widest text-content-tertiary text-center leading-tight">
-            diferença
+            {t("posts.diff")}
           </span>
         </div>
       )}
@@ -278,11 +279,7 @@ function CentralDivider({ multiplierLabel }: { multiplierLabel: string }) {
 
 // ─── Mobile Difference Marker ───────────────────────────────────────
 
-function MobileDifferenceMarker({
-  multiplierLabel,
-}: {
-  multiplierLabel: string;
-}) {
+function MobileDifferenceMarker({ multiplierLabel, t }: { multiplierLabel: string; t: TR }) {
   if (!multiplierLabel) return null;
   return (
     <div className="flex md:hidden items-center gap-3 py-1">
@@ -292,7 +289,7 @@ function MobileDifferenceMarker({
           {multiplierLabel}
         </span>
         <span className="text-[8px] font-bold uppercase tracking-widest text-content-tertiary">
-          diferença
+          {t("posts.diff")}
         </span>
       </div>
       <div className="h-px flex-1 bg-border-subtle" />
@@ -305,16 +302,18 @@ function MobileDifferenceMarker({
 function AiReading({
   aiText,
   fallback,
+  t,
 }: {
   aiText?: string | null;
   fallback: { headline: string; body: string } | null;
+  t: TR;
 }) {
   const hasAi = !!aiText && aiText.trim().length > 10;
 
   return (
     <InsightCallout
       tone="ai"
-      label="DIAGNÓSTICO COMPARATIVO"
+      label={t("posts.callout_label")}
     >
       {hasAi ? (
         <p>{aiText}</p>
@@ -334,10 +333,12 @@ function PostCard({
   post,
   tone,
   mirror = false,
+  t,
 }: {
   post: EnrichedPost;
   tone: "best" | "worst";
   mirror?: boolean;
+  t: TR;
 }) {
   const [imgError, setImgError] = useState(false);
 
@@ -379,7 +380,7 @@ function PostCard({
         )}
         {/* Format chip */}
         <span className="absolute top-1 left-1 z-10 text-[7px] font-bold uppercase tracking-[0.04em] px-1.5 py-[2px] rounded bg-white/85 backdrop-blur-sm text-content-primary leading-none shadow-sm">
-          {formatChipLabel(post.format)}
+          {formatChipLabel(post.format, t)}
         </span>
       </div>
 
@@ -392,7 +393,7 @@ function PostCard({
 
         {/* Caption */}
         <p className="text-[11px] md:text-[12px] text-content-primary leading-snug line-clamp-2">
-          {post.caption || "Sem legenda"}
+          {post.caption || t("posts.no_caption")}
         </p>
 
         {/* Likes + Comments */}

@@ -10,6 +10,8 @@
  */
 import { type ReactNode, useState } from "react";
 import { useVariantFeatures } from "@/lib/report/report-variant";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import {
   FileText, AlertTriangle, Type, Zap, HelpCircle,
   BookOpen, Sparkles, Mic, Repeat, ChevronDown, ChevronUp,
@@ -44,6 +46,8 @@ import {
 } from "@/components/ui/collapsible";
 
 const KB_SOURCES = INSTAGRAM_CAPTION_CONTEXT.sources;
+
+type TR = TFunction<"report", undefined>;
 
 // ---------------------------------------------------------------------------
 // Theme quality guard
@@ -86,58 +90,61 @@ function fmt(n: number): string {
   return n.toLocaleString("pt-PT");
 }
 
-function buildDiagnosticStatement(data: CaptionIntelligence): string {
+function buildDiagnosticStatement(data: CaptionIntelligence, t: TR): string {
   const { distributions, ctaPatterns } = data;
   const dominantOpening = distributions.openings[0];
   const questionEnding = distributions.endings.find((e) => e.type === "question");
   const longPct = distributions.length.find((l) => l.bucket === "long")?.pct ?? 0;
 
   const openingPart = dominantOpening
-    ? `O perfil tende a abrir as legendas com ${dominantOpening.label.toLowerCase()}`
-    : "As legendas não revelam um padrão de abertura dominante";
+    ? t("caption.diag.opening_dominant", { label: dominantOpening.label.toLowerCase() })
+    : t("caption.diag.opening_none");
 
   const lengthPart = longPct >= 60
-    ? "— a escrita tende a ser longa e explicativa"
+    ? t("caption.diag.length_long")
     : longPct >= 30
-      ? "— com comprimento variável entre posts"
-      : "— a escrita tende a ser curta e direta";
+      ? t("caption.diag.length_mixed")
+      : t("caption.diag.length_short");
 
   const endPart = (questionEnding?.pct ?? 0) < 20
-    ? ". Poucas legendas terminam com pergunta, o que sugere menor estímulo à conversa nos comentários."
-    : ". A presença de perguntas no final indica um padrão orientado para interação nos comentários.";
+    ? t("caption.diag.ending_low_q")
+    : t("caption.diag.ending_with_q");
 
-  const ctaPart = ctaPatterns.hasCtaPct >= 40 ? "" : " A presença de CTAs explícitos é reduzida nesta amostra.";
+  const ctaPart = ctaPatterns.hasCtaPct >= 40 ? "" : t("caption.diag.cta_low");
 
   return `${openingPart} ${lengthPart}${endPart}${ctaPart}`;
 }
 
-function buildWhatWorks(data: CaptionIntelligence): string {
+function buildWhatWorks(data: CaptionIntelligence, t: TR): string {
   if (data.editorialReading.whatWorks && data.editorialReading.whatWorks !== "—") {
     return data.editorialReading.whatWorks;
   }
-  return "O perfil mantém consistência editorial — a voz é reconhecível entre posts.";
+  return t("caption.diag.what_works_default");
 }
 
-function buildCriticalPoint(data: CaptionIntelligence): string {
+function buildCriticalPoint(data: CaptionIntelligence, t: TR): string {
   if (data.editorialReading.whatIsMissing && data.editorialReading.whatIsMissing !== "—") {
     return data.editorialReading.whatIsMissing;
   }
   const questionPct = data.distributions.endings.find((e) => e.type === "question")?.pct ?? 0;
   if (questionPct < 20) {
-    return "A baixa frequência de perguntas no final das legendas pode limitar o estímulo à conversa pública.";
+    return t("caption.diag.critical_low_q");
   }
-  return "Sem risco editorial identificado na amostra atual.";
+  return t("caption.diag.critical_none");
 }
 
-function buildToWatch(data: CaptionIntelligence): string {
+function buildToWatch(data: CaptionIntelligence, t: TR): string {
   const topExpr = data.recurringExpressions.items.slice(0, 2);
   if (topExpr.length >= 2) {
-    return `Repetição de expressões como "${topExpr[0].expression.toLowerCase()}" ou "${topExpr[1].expression.toLowerCase()}" sugere uma estrutura que pode tornar-se previsível.`;
+    return t("caption.diag.watch_repeats", {
+      a: topExpr[0].expression.toLowerCase(),
+      b: topExpr[1].expression.toLowerCase(),
+    });
   }
   if (data.editorialReading.recommendedImprovement) {
     return data.editorialReading.recommendedImprovement;
   }
-  return "A diversidade de estrutura entre posts é um sinal a acompanhar ao longo do tempo.";
+  return t("caption.diag.watch_default");
 }
 
 // ---------------------------------------------------------------------------
@@ -357,6 +364,7 @@ function SectionThemes({
   tooShortForThemes,
   posts,
   semanticAnalysisCount,
+  t,
 }: {
   hasSemantic: boolean;
   semanticThemes: Array<{ label: string; postsCount: number; evidence: string[]; confidence: "high" | "medium" | "low" }>;
@@ -364,6 +372,7 @@ function SectionThemes({
   tooShortForThemes: boolean;
   posts: PostLike[];
   semanticAnalysisCount?: number;
+  t: TR;
 }) {
   const [openTheme, setOpenTheme] = useState<number | null>(null);
   const themes = hasSemantic ? semanticThemes : deterministicThemes;
@@ -372,25 +381,25 @@ function SectionThemes({
   if (!hasThemes) return null;
 
   const CONFIDENCE_STYLE = {
-    high: { label: "SINAL FORTE", cls: "text-signal-success bg-tint-success ring-signal-success/15" },
-    medium: { label: "SINAL MÉDIO", cls: "text-accent-primary bg-tint-primary ring-accent-primary/15" },
-    low: { label: "SINAL FRACO", cls: "text-content-secondary bg-surface-muted ring-border-default" },
+    high: { label: t("caption.section_a.signal_high"), cls: "text-signal-success bg-tint-success ring-signal-success/15" },
+    medium: { label: t("caption.section_a.signal_medium"), cls: "text-accent-primary bg-tint-primary ring-accent-primary/15" },
+    low: { label: t("caption.section_a.signal_low"), cls: "text-content-secondary bg-surface-muted ring-border-default" },
   } as const;
 
   return (
     <div className="space-y-4">
       <SectionHeader
-        letter="A"
-        label="SOBRE O QUE FALA"
+        letter={t("caption.section_a.letter").split(" · ")[0] ?? "A"}
+        label={t("caption.section_a.letter").split(" · ").slice(1).join(" · ") || "SOBRE O QUE FALA"}
         badge={
           <div className="flex items-center gap-2">
             {semanticAnalysisCount != null && (
               <span className="text-xs text-content-tertiary">
-                {semanticAnalysisCount} {semanticAnalysisCount === 1 ? "análise semântica" : "análises semânticas"}
+                {t("caption.section_a.analyses", { count: semanticAnalysisCount })}
               </span>
             )}
             <span className="text-xs text-content-tertiary border border-border-subtle rounded-full px-2 py-0.5">
-              {themes.length} {themes.length === 1 ? "tema detetado" : "temas detetados"}
+              {t("caption.section_a.themes", { count: themes.length })}
             </span>
           </div>
         }
@@ -399,27 +408,27 @@ function SectionThemes({
       <div className="rounded-xl border border-border-subtle bg-white p-4 md:p-5 space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-eyebrow-sm text-content-tertiary">ASSUNTOS MAIS RECORRENTES</p>
+            <p className="text-eyebrow-sm text-content-tertiary">{t("caption.section_a.card_title")}</p>
             <p className="text-xs text-content-tertiary mt-0.5">
               {hasSemantic
-                ? "Temas identificados por análise semântica das legendas"
-                : "Temas extraídos do corpo das legendas — não confundir com hashtags"}
+                ? t("caption.section_a.hint_semantic")
+                : t("caption.section_a.hint_deterministic")}
             </p>
           </div>
         </div>
 
         <div className="space-y-2">
-          {themes.map((t, i) => {
-            const conf = CONFIDENCE_STYLE[t.confidence];
+          {themes.map((theme, i) => {
+            const conf = CONFIDENCE_STYLE[theme.confidence];
             const isOpen = openTheme === i;
             const evidenceArr = hasSemantic
-              ? (t as typeof semanticThemes[number]).evidence
-              : [(t as typeof deterministicThemes[number]).evidence].filter(Boolean) as string[];
-            const matched = isOpen ? matchPostsByTheme(posts, t.label, evidenceArr) : [];
+              ? (theme as typeof semanticThemes[number]).evidence
+              : [(theme as typeof deterministicThemes[number]).evidence].filter(Boolean) as string[];
+            const matched = isOpen ? matchPostsByTheme(posts, theme.label, evidenceArr) : [];
 
             return (
               <Collapsible
-                key={`${t.label}-${i}`}
+                key={`${theme.label}-${i}`}
                 open={isOpen}
                 onOpenChange={(open) => setOpenTheme(open ? i : null)}
               >
@@ -434,12 +443,12 @@ function SectionThemes({
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="text-[15px] font-semibold text-content-primary leading-snug">
-                          {t.label}
+                          {theme.label}
                         </p>
                         <p className="text-[12px] text-content-tertiary mt-0.5">
-                          Identificado em <strong>{t.postsCount}</strong> {t.postsCount === 1 ? "post" : "posts"}
-                          {i === 0 && t.confidence === "high" ? " · sinal mais forte da grelha" : ""}
-                          {isOpen ? " · evidência abaixo" : ""}
+                          {t("caption.section_a.identified_in", { count: theme.postsCount })}
+                          {i === 0 && theme.confidence === "high" ? t("caption.section_a.strongest_signal") : ""}
+                          {isOpen ? t("caption.section_a.evidence_below") : ""}
                         </p>
                       </div>
                     </div>
@@ -454,7 +463,7 @@ function SectionThemes({
                             ? "bg-accent-primary text-white"
                             : "bg-surface-muted text-content-secondary hover:bg-surface-muted/80",
                         )}>
-                          {isOpen ? "Ocultar" : "Ver evidência"}
+                          {isOpen ? t("caption.section_a.hide") : t("caption.section_a.show")}
                           {isOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                         </button>
                       </CollapsibleTrigger>
@@ -474,7 +483,7 @@ function SectionThemes({
                               className="flex items-center gap-1 hover:text-accent-primary transition-colors"
                             >
                               <Download className="w-3 h-3" />
-                              Ver os {matched.length} posts · descarregar CSV com excertos
+                              {t("caption.section_a.see_csv", { count: matched.length })}
                             </button>
                           </div>
                         </>
@@ -877,20 +886,22 @@ function BoldableParagraph({ text }: { text: string }) {
 function SectionEditorialReading({
   data,
   semantic,
+  t,
 }: {
   data: CaptionIntelligence;
   semantic?: CaptionSemanticAnalysis | null;
+  t: TR;
 }) {
   const hasSemantic = semantic != null;
 
   return (
     <div className="space-y-4">
       <SectionHeader
-        letter="C"
-        label="LEITURA EDITORIAL"
+        letter={t("caption.section_c.letter").split(" · ")[0] ?? "C"}
+        label={t("caption.section_c.letter").split(" · ").slice(1).join(" · ") || "LEITURA EDITORIAL"}
         badge={
           <span className="text-xs text-content-tertiary italic">
-            síntese gerada por IA
+            {t("caption.section_c.ai_subtitle")}
           </span>
         }
       />
@@ -898,34 +909,34 @@ function SectionEditorialReading({
       <div className="rounded-xl bg-[rgb(var(--tint-primary))] ring-1 ring-accent-primary/20 p-5 md:p-6 space-y-5">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-accent-primary" />
-          <p className="text-eyebrow-sm text-accent-primary">SÍNTESE EDITORIAL · IA</p>
+          <p className="text-eyebrow-sm text-accent-primary">{t("caption.section_c.ai_badge")}</p>
         </div>
 
         <p className="text-[15px] md:text-[17px] text-content-primary leading-[1.7] font-sans">
           <BoldableParagraph
             text={hasSemantic && semantic.diagnostic
               ? semantic.diagnostic.main
-              : buildDiagnosticStatement(data)}
+              : buildDiagnosticStatement(data, t)}
           />
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-accent-primary/20">
           <DiagnosticColumn
             symbol="✓"
-            label="PADRÃO FORTE"
-            text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.works : buildWhatWorks(data)}
+            label={t("caption.section_c.strong")}
+            text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.works : buildWhatWorks(data, t)}
             toneClass="text-signal-success"
           />
           <DiagnosticColumn
             symbol="✕"
-            label="RISCO EDITORIAL"
-            text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.critical : buildCriticalPoint(data)}
+            label={t("caption.section_c.risk")}
+            text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.critical : buildCriticalPoint(data, t)}
             toneClass="text-signal-danger"
           />
           <DiagnosticColumn
             symbol="◎"
-            label="SINAL A ACOMPANHAR"
-            text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.watch : buildToWatch(data)}
+            label={t("caption.section_c.watch")}
+            text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.watch : buildToWatch(data, t)}
             toneClass="text-signal-warning"
           />
         </div>
@@ -937,9 +948,13 @@ function SectionEditorialReading({
           {semantic.hookQuality && (
             <SemanticPill
               icon={Sparkles}
-              label="Qualidade do hook"
+              label={t("caption.quality.hook_label")}
               rating={semantic.hookQuality.rating}
-              ratingLabels={{ strong: "Forte", moderate: "Moderado", weak: "Fraco" }}
+              ratingLabels={{
+                strong: t("caption.quality.hook_strong"),
+                moderate: t("caption.quality.hook_moderate"),
+                weak: t("caption.quality.hook_weak"),
+              }}
               explanation={semantic.hookQuality.explanation}
               tone={semantic.hookQuality.rating === "strong" ? "success" : semantic.hookQuality.rating === "weak" ? "danger" : "neutral"}
             />
@@ -947,9 +962,13 @@ function SectionEditorialReading({
           {semantic.brandVoice && (
             <SemanticPill
               icon={Mic}
-              label="Voz da marca"
+              label={t("caption.quality.voice_label")}
               rating={semantic.brandVoice.rating}
-              ratingLabels={{ consistent: "Consistente", mixed: "Mista", inconsistent: "Inconsistente" }}
+              ratingLabels={{
+                consistent: t("caption.quality.voice_consistent"),
+                mixed: t("caption.quality.voice_mixed"),
+                inconsistent: t("caption.quality.voice_inconsistent"),
+              }}
               explanation={semantic.brandVoice.explanation}
               tone={semantic.brandVoice.rating === "consistent" ? "success" : semantic.brandVoice.rating === "inconsistent" ? "danger" : "neutral"}
             />
@@ -957,9 +976,12 @@ function SectionEditorialReading({
           {semantic.formulaicPatterns && (
             <SemanticPill
               icon={Repeat}
-              label="Padrões repetitivos"
+              label={t("caption.quality.patterns_label")}
               rating={semantic.formulaicPatterns.hasFormulas ? "alert" : "ok"}
-              ratingLabels={{ alert: "Detetados", ok: "Sem repetição" }}
+              ratingLabels={{
+                alert: t("caption.quality.patterns_alert"),
+                ok: t("caption.quality.patterns_ok"),
+              }}
               explanation={semantic.formulaicPatterns.explanation}
               tone={semantic.formulaicPatterns.hasFormulas ? "danger" : "success"}
               examples={semantic.formulaicPatterns.hasFormulas ? semantic.formulaicPatterns.examples : undefined}
@@ -972,7 +994,7 @@ function SectionEditorialReading({
       <div className="flex items-start gap-2 text-xs text-content-tertiary leading-relaxed">
         <span className="shrink-0 mt-px">ⓘ</span>
         <span>
-          Análise apenas a legendas públicas. Hashtags em P03. Boas práticas:{" "}
+          {t("caption.section_c.footer_note")}{" "}
           {KB_SOURCES.map((src, i) => (
             <span key={src.name}>
               {i > 0 && " · "}
@@ -1074,9 +1096,10 @@ function SemanticPill({
 // ---------------------------------------------------------------------------
 
 export function CaptionDiagnosticsCard({ data, semantic, posts = [] }: CaptionDiagnosticsCardProps) {
+  const { t } = useTranslation("report");
   const hasSemantic = semantic != null;
   const themes = data.themes.items
-    .filter((t) => !isWeakThemeLabel(t.label))
+    .filter((theme) => !isWeakThemeLabel(theme.label))
     .slice(0, 5);
   const semanticThemes = semantic?.dominantThemes?.slice(0, 5) ?? [];
   const expressions = data.recurringExpressions.items;
@@ -1088,9 +1111,7 @@ export function CaptionDiagnosticsCard({ data, semantic, posts = [] }: CaptionDi
     return (
       <CardShell sampleSize={data.sampleSize} totalWords={stats.totalWords}>
         <p className="text-sm text-content-secondary leading-relaxed max-w-xl">
-          Legendas são curtas demais ou em número insuficiente para uma
-          leitura semântica fiável. À medida que houver mais publicações
-          com texto, este bloco abre a interpretação editorial completa.
+          {t("caption.empty")}
         </p>
       </CardShell>
     );
@@ -1106,6 +1127,7 @@ export function CaptionDiagnosticsCard({ data, semantic, posts = [] }: CaptionDi
         tooShortForThemes={tooShortForThemes}
         posts={posts}
         semanticAnalysisCount={hasSemantic ? semantic.analyzedCaptions : undefined}
+        t={t}
       />
 
       {/* ── B · Como escreve ── */}
@@ -1120,7 +1142,7 @@ export function CaptionDiagnosticsCard({ data, semantic, posts = [] }: CaptionDi
       />
 
       {/* ── C · Leitura editorial ── */}
-      <SectionEditorialReading data={data} semantic={semantic} />
+      <SectionEditorialReading data={data} semantic={semantic} t={t} />
     </CardShell>
   );
 }
@@ -1138,9 +1160,10 @@ function CardShell({
   totalWords: number;
   children: ReactNode;
 }) {
+  const { t } = useTranslation("report");
   return (
     <section
-      aria-label="Pergunta 04 · Diagnóstico de legendas"
+      aria-label={t("caption.aria")}
       className="rounded-2xl border border-border-subtle bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden p-4 sm:p-5 md:p-7 flex flex-col gap-5 sm:gap-6 md:col-span-2"
     >
       {/* Header */}
@@ -1151,19 +1174,19 @@ function CardShell({
               <FileText className="w-3 h-3 text-content-tertiary/70" />
             </span>
             <span className="text-xs md:text-xs tracking-[0.16em] text-content-tertiary uppercase font-sans">
-              <span className="hidden sm:inline">04 · DIAGNÓSTICO DE LEGENDAS · {sampleSize} LEGENDAS · {fmt(totalWords)} PALAVRAS</span>
-              <span className="sm:hidden">04 · LEGENDAS · {sampleSize} · {fmt(totalWords)} PAL.</span>
+              <span className="hidden sm:inline">{t("caption.header_full", { sample: sampleSize, words: fmt(totalWords) })}</span>
+              <span className="sm:hidden">{t("caption.header_mobile", { sample: sampleSize, words: fmt(totalWords) })}</span>
             </span>
           </div>
           <span className="text-xs md:text-xs font-medium tracking-[0.12em] text-content-tertiary/70 border border-border-subtle/60 rounded-full px-2 py-0.5">
-            DIAGNÓSTICO
+            {t("caption.header_badge")}
           </span>
         </div>
         <h3 className="font-display text-[1.2rem] sm:text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight mt-4 sm:mt-5 break-words">
-          O que as legendas revelam sobre a estratégia de conteúdo?
+          {t("caption.title")}
         </h3>
         <p className="text-[13px] md:text-[14px] text-content-secondary leading-relaxed mt-2">
-          Padrões extraídos das legendas públicas dos posts analisados.
+          {t("caption.subtitle")}
         </p>
       </header>
       {children}

@@ -974,5 +974,34 @@
         }
       }
     }
+  },
+  "positioning": {
+    "aria": "What InstaBench shows",
+    "lead": "<1>InstaBench</1> shows what the profile publicly communicates, how it compares to similar profiles, and which topics have demand beyond Instagram.",
+    "chip_public_content": "Public content",
+    "chip_peer_comparison": "Peer comparison",
+    "chip_external_demand": "External demand",
+    "source_note": "Framing sources: Socialinsider, Buffer and Hootsuite.",
+    "benchmark_note": "Benchmarks are directional references. Readings may vary depending on account size, sector, analysed period and calculation method."
+  },
+  "attention": {
+    "title": "What to address first",
+    "engagement_gap_title": "Engagement below reference",
+    "engagement_gap_body": "The profile is at {{rate}}, below the {{benchmark}} reference.",
+    "cadence_vs_response_title": "High cadence, low response",
+    "cadence_vs_response_body": "Around {{rhythm}} posts per week, yet the average response is still weak.",
+    "format_concentration_title": "Dependence on one format",
+    "format_concentration_body": "The sample is heavily concentrated in {{format}} ({{share}}% of analysed posts)."
+  },
+  "benchmarkEvidence": {
+    "market_reference": "Market reference",
+    "platform_instagram": "Instagram",
+    "sector_prefix": "{{name}} sector",
+    "tier_prefix": "{{tier}} accounts",
+    "general_context": "general context",
+    "sources_label": "sources:",
+    "ctx_socialinsider": "engagement by format",
+    "ctx_buffer": "reference by account size",
+    "ctx_hootsuite": "cross-industry context"
   }
 }

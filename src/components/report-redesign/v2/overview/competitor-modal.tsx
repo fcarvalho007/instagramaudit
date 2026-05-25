@@ -1,4 +1,5 @@
 import { Check } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -13,22 +14,22 @@ interface CompetitorModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const BENEFITS = [
-  "Comparação direta com até 2 concorrentes",
-  "Gap competitivo por formato e dia",
-  "Histórico de evolução cruzado",
-] as const;
-
 export function CompetitorModal({ open, onOpenChange }: CompetitorModalProps) {
+  const { t } = useTranslation("report");
+  const benefits = [
+    t("competitor.benefit_compare"),
+    t("competitor.benefit_gap"),
+    t("competitor.benefit_history"),
+  ];
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[480px] p-6">
         <DialogHeader>
           <DialogTitle className="font-display text-lg font-medium">
-            Comparar com concorrentes
+            {t("competitor.title")}
           </DialogTitle>
           <DialogDescription className="text-[13px] text-slate-500">
-            Vê este perfil lado a lado com até 2 concorrentes diretos
+            {t("competitor.description")}
           </DialogDescription>
         </DialogHeader>
 
@@ -36,13 +37,13 @@ export function CompetitorModal({ open, onOpenChange }: CompetitorModalProps) {
         <div className="mt-4 rounded-xl border border-slate-200/60 bg-slate-50/50 p-4 animate-fade-in">
           <GhostChart />
           <p className="mt-3 text-[12px] text-slate-500 leading-relaxed text-center">
-            Assim verias este perfil comparado com concorrentes diretos no mesmo gráfico.
+            {t("competitor.preview_caption")}
           </p>
         </div>
 
         {/* Benefits */}
         <ul className="mt-5 space-y-2.5">
-          {BENEFITS.map((b) => (
+          {benefits.map((b) => (
             <li key={b} className="flex items-start gap-3 text-[13px] text-slate-700">
               <Check className="size-[18px] text-emerald-500 shrink-0 mt-0.5" aria-hidden="true" />
               {b}
@@ -53,14 +54,14 @@ export function CompetitorModal({ open, onOpenChange }: CompetitorModalProps) {
         {/* CTAs */}
         <div className="mt-6 flex flex-col gap-2">
           <Button className="w-full bg-gradient-to-r from-amber-500 to-amber-600 text-white hover:from-amber-600 hover:to-amber-700 shadow-[0_2px_8px_-2px_rgba(245,158,11,0.4)]">
-            Ver planos PRO
+            {t("competitor.cta_pro")}
           </Button>
           <Button
             variant="ghost"
             className="w-full"
             onClick={() => onOpenChange(false)}
           >
-            Continuar grátis
+            {t("competitor.cta_free")}
           </Button>
         </div>
       </DialogContent>

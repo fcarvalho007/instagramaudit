@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Plus, Users } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { CompetitorModal } from "./competitor-modal";
 
@@ -11,6 +12,7 @@ import { CompetitorModal } from "./competitor-modal";
  *   2. Multi-network roadmap teaser (1/3 width)
  */
 export function ComparisonHeader() {
+  const { t } = useTranslation("report");
   const [modalOpen, setModalOpen] = useState(false);
   const [showRoadmapInfo, setShowRoadmapInfo] = useState(false);
 
@@ -21,7 +23,7 @@ export function ComparisonHeader() {
         <button
           type="button"
           onClick={() => setModalOpen(true)}
-          aria-label="Comparar com concorrentes diretos"
+          aria-label={t("comparison.cta_aria")}
           className={cn(
             "flex items-center gap-4 rounded-xl border border-border-default bg-white p-3.5 text-left shadow-[0_1px_3px_rgba(15,23,42,0.04)]",
             "transition-all duration-200 hover:border-accent-primary/30",
@@ -36,17 +38,17 @@ export function ComparisonHeader() {
           {/* Copy */}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-content-primary leading-snug">
-              Compara com concorrentes diretos
+              {t("comparison.cta_title")}
             </p>
             <p className="text-xs text-content-secondary mt-0.5 leading-relaxed line-clamp-1">
-              Adiciona até 2 perfis e vê este perfil lado a lado em todos os blocos do relatório.
+              {t("comparison.cta_description")}
             </p>
           </div>
 
           {/* CTA pill — intentional dark primary CTA */}
           <div className="shrink-0 hidden sm:flex items-center gap-1.5 rounded-full bg-content-primary text-white px-3 py-1.5 text-xs font-medium shadow-[0_1px_3px_rgba(15,23,42,0.12)] transition-colors duration-150 hover:bg-content-primary/90">
             <Plus className="size-3.5" aria-hidden="true" />
-            <span>Adicionar</span>
+            <span>{t("comparison.cta_add")}</span>
             {/* PRO badge — local decorative amber/gold accent */}
             <span className="ml-0.5 rounded bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold tracking-[0.04em] text-amber-500 leading-none">
               PRO
@@ -63,8 +65,8 @@ export function ComparisonHeader() {
         <button
           type="button"
           onClick={() => setShowRoadmapInfo(true)}
-          aria-label="Funcionalidade em breve: análise de outras redes"
-          title="Em breve: análise de outras redes"
+          aria-label={t("comparison.roadmap_aria")}
+          title={t("comparison.roadmap_title")}
           className={cn(
             "flex items-center gap-3 rounded-xl border border-border-default bg-white p-3.5 text-left shadow-[0_1px_3px_rgba(15,23,42,0.04)]",
             "transition-all duration-200 hover:border-border-strong",
@@ -75,7 +77,7 @@ export function ComparisonHeader() {
           <div
             className="shrink-0 flex items-center -space-x-2"
             role="img"
-            aria-label="Redes futuras: Facebook, TikTok e YouTube"
+            aria-label={t("comparison.roadmap_networks_alt")}
           >
             <SocialCircle letter="f" bg="bg-blue-600" />
             <SocialCircle letter="t" bg="bg-content-primary" />
@@ -86,11 +88,11 @@ export function ComparisonHeader() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-semibold text-content-primary leading-snug">
-                Adicionar outra rede
+                {t("comparison.roadmap_card_title")}
               </span>
               {/* EM BREVE badge — local decorative purple (no semantic purple token) */}
               <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-purple-600 leading-none">
-                Em breve
+                {t("comparison.roadmap_card_badge")}
               </span>
             </div>
             <p className="text-xs text-content-tertiary mt-0.5 leading-relaxed">
@@ -130,6 +132,7 @@ function SocialCircle({ letter, bg }: { letter: string; bg: string }) {
 
 /** Lightweight informational modal for the multi-network roadmap. */
 function RoadmapInfoDialog({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation("report");
   const btnRef = useRef<HTMLButtonElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
 
@@ -167,11 +170,10 @@ function RoadmapInfoDialog({ onClose }: { onClose: () => void }) {
         onClick={(e) => e.stopPropagation()}
       >
         <p id="roadmap-dialog-title" className="text-base font-semibold text-content-primary">
-          Em breve
+          {t("comparison.roadmap_dialog_title")}
         </p>
         <p className="mt-2 text-sm text-content-secondary leading-relaxed">
-          Análise de Facebook, TikTok e YouTube. Estamos a preparar tudo para
-          que seja possível analisar todas as redes num único relatório.
+          {t("comparison.roadmap_dialog_body")}
         </p>
         <button
           ref={btnRef}
@@ -179,7 +181,7 @@ function RoadmapInfoDialog({ onClose }: { onClose: () => void }) {
           onClick={onClose}
           className="mt-5 w-full rounded-lg bg-content-primary py-2.5 text-sm font-medium text-white transition-colors duration-150 hover:bg-content-primary/90"
         >
-          Entendido
+          {t("comparison.roadmap_dialog_ok")}
         </button>
       </div>
     </div>
