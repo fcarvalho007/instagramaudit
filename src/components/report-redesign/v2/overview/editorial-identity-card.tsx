@@ -19,6 +19,11 @@ import type { TFunction } from "i18next";
 import { formatCompactNumber } from "@/lib/i18n/format";
 import type { ScoreKey } from "./score-utils";
 import type { EditorialVerdict } from "@/lib/insights/types";
+import {
+  deriveEditorialVerdict,
+  type EditorialVerdictMetrics,
+} from "@/lib/report/editorial-verdict";
+import { buildFallbackVerdict } from "@/lib/report/editorial-verdict-fallback";
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 
@@ -49,6 +54,12 @@ interface EditorialIdentityCardProps {
   postsAnalyzed?: number;
   averageLikes?: number;
   averageComments?: number;
+  /** Cadência considerada suficiente pelo módulo de cadence. Usado pelo
+   *  guard determinístico para rejeitar veredictos que contradigam o ritmo. */
+  cadenceSufficient?: boolean;
+  /** Quantidade de concorrentes com dados reais. Usado pelo guard para
+   *  rejeitar menções a concorrentes inexistentes. */
+  competitorsCount?: number;
 }
 
 /* ── Fallback determinístico ───────────────────────────────────────── */
@@ -375,18 +386,49 @@ export function EditorialIdentityCard({
   postsAnalyzed,
   averageLikes,
   averageComments,
+  cadenceSufficient,
+  competitorsCount,
 }: EditorialIdentityCardProps) {
   const { t, i18n } = useTranslation("report");
   const fallback = buildFallbackCopy(scores, t);
-  const copy: EditorialCopy = aiVerdict
-    ? { title: aiVerdict.title, paragraph: aiVerdict.paragraph }
-    : aiHeroText
+
+  // ── Resolução do veredicto: corre o guard determinístico ──────────
+  // Constrói as métricas mínimas. Quando a IA não devolveu veredicto, o
+  // guard cai automaticamente no fallback determinístico (também usado
+  // como base de comparação para downgrades parciais).
+  const verdictMetrics: EditorialVerdictMetrics = {
+    postsPerWeek30d:
+      typeof postingFrequencyWeekly === "number" ? postingFrequencyWeekly : null,
+    cadenceSufficient: cadenceSufficient ?? true,
+    engagementPct: keyMetrics?.engagementRate ?? 0,
+    benchmarkEngagementPct:
+      keyMetrics && keyMetrics.engagementBenchmark > 0
+        ? keyMetrics.engagementBenchmark
+        : null,
+    avgComments: typeof averageComments === "number" ? averageComments : 0,
+    avgLikes: typeof averageLikes === "number" ? averageLikes : 0,
+    competitorsCount: competitorsCount ?? 0,
+    postsAnalyzed: typeof postsAnalyzed === "number" ? postsAnalyzed : 0,
+  };
+  const fallbackVerdict = buildFallbackVerdict(verdictMetrics, t);
+  const resolution = deriveEditorialVerdict(
+    aiVerdict ?? null,
+    verdictMetrics,
+    fallbackVerdict,
+  );
+  const resolved = resolution.verdict;
+  const isProvisional = resolution.source !== "ai";
+
+  // Quando o resolver descartou completamente a IA e não havia hero
+  // text, mantemos o pipeline antigo (`deriveCopyFromAi`) como segunda
+  // hipótese visual; quando a IA está disponível usamos sempre `resolved`.
+  const copy: EditorialCopy =
+    resolution.source === "fallback" && !aiVerdict && aiHeroText
       ? deriveCopyFromAi(aiHeroText, fallback, aiHeroEmphasis ?? null)
-      : fallback;
+      : { title: resolved.title, paragraph: resolved.paragraph };
+
   const overall = computeOverall(scores);
-  const band: Band = aiVerdict
-    ? verdictLabelToBand(aiVerdict.verdict_label)
-    : bandFor(overall);
+  const band: Band = verdictLabelToBand(resolved.verdict_label);
   const lowConfidence =
     typeof postsAnalyzed === "number" && postsAnalyzed > 0 && postsAnalyzed < 5;
 
@@ -400,12 +442,14 @@ export function EditorialIdentityCard({
     t,
     i18n.language,
   );
-  const strengths: Bullet[] = aiVerdict
-    ? aiVerdict.strengths.map((s) => ({ destaque: s, detalhe: "" }))
-    : derived.strengths;
-  const limits: Bullet[] = aiVerdict
-    ? aiVerdict.limitations.map((s) => ({ destaque: s, detalhe: "" }))
-    : derived.limits;
+  const strengths: Bullet[] =
+    resolution.source !== "fallback"
+      ? resolved.strengths.map((s) => ({ destaque: s, detalhe: "" }))
+      : derived.strengths;
+  const limits: Bullet[] =
+    resolution.source !== "fallback"
+      ? resolved.limitations.map((s) => ({ destaque: s, detalhe: "" }))
+      : derived.limits;
 
   const hasAnyMetric =
     typeof averageLikes === "number" ||
@@ -437,6 +481,19 @@ export function EditorialIdentityCard({
             >
               {bandLabel(band, t)}
             </span>
+            {isProvisional ? (
+              <span
+                className="inline-flex items-center rounded-full bg-surface-muted px-2 py-0.5 text-xs font-medium tracking-wide uppercase leading-none text-content-tertiary"
+                title={t("identity.verdict.provisional_hint", {
+                  defaultValue:
+                    "Leitura ajustada por divergência entre a interpretação editorial e os números observados.",
+                })}
+              >
+                {t("identity.verdict.provisional", {
+                  defaultValue: "Leitura provisória",
+                })}
+              </span>
+            ) : null}
           </div>
 
           <h2 className="font-display text-xl sm:text-2xl font-semibold leading-[1.25] tracking-[-0.015em] text-content-primary max-w-2xl">
@@ -447,18 +504,18 @@ export function EditorialIdentityCard({
             {copy.paragraph}
           </p>
 
-          {aiVerdict?.priority ? (
+          {resolved.priority ? (
             <p className="text-sm text-content-primary font-medium max-w-2xl pt-1">
               <span className="text-eyebrow-sm text-content-tertiary mr-2">
                 {t("identity.priority_label", { defaultValue: "Próximo passo" })}:
               </span>
-              {aiVerdict.priority}
+              {resolved.priority}
             </p>
           ) : null}
 
-          {aiVerdict?.warnings && aiVerdict.warnings.length > 0 ? (
+          {resolved.warnings && resolved.warnings.length > 0 ? (
             <p className="text-xs text-content-tertiary pt-1">
-              {aiVerdict.warnings
+              {resolved.warnings
                 .map((w) =>
                   t(`identity.warnings.${w}`, {
                     defaultValue:
