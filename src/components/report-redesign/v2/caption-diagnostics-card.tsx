@@ -1160,9 +1160,10 @@ function CardShell({
   totalWords: number;
   children: ReactNode;
 }) {
+  const { t } = useTranslation("report");
   return (
     <section
-      aria-label="Pergunta 04 · Diagnóstico de legendas"
+      aria-label={t("caption.aria")}
       className="rounded-2xl border border-border-subtle bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden p-4 sm:p-5 md:p-7 flex flex-col gap-5 sm:gap-6 md:col-span-2"
     >
       {/* Header */}
@@ -1173,19 +1174,19 @@ function CardShell({
               <FileText className="w-3 h-3 text-content-tertiary/70" />
             </span>
             <span className="text-xs md:text-xs tracking-[0.16em] text-content-tertiary uppercase font-sans">
-              <span className="hidden sm:inline">04 · DIAGNÓSTICO DE LEGENDAS · {sampleSize} LEGENDAS · {fmt(totalWords)} PALAVRAS</span>
-              <span className="sm:hidden">04 · LEGENDAS · {sampleSize} · {fmt(totalWords)} PAL.</span>
+              <span className="hidden sm:inline">{t("caption.header_full", { sample: sampleSize, words: fmt(totalWords) })}</span>
+              <span className="sm:hidden">{t("caption.header_mobile", { sample: sampleSize, words: fmt(totalWords) })}</span>
             </span>
           </div>
           <span className="text-xs md:text-xs font-medium tracking-[0.12em] text-content-tertiary/70 border border-border-subtle/60 rounded-full px-2 py-0.5">
-            DIAGNÓSTICO
+            {t("caption.header_badge")}
           </span>
         </div>
         <h3 className="font-display text-[1.2rem] sm:text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight mt-4 sm:mt-5 break-words">
-          O que as legendas revelam sobre a estratégia de conteúdo?
+          {t("caption.title")}
         </h3>
         <p className="text-[13px] md:text-[14px] text-content-secondary leading-relaxed mt-2">
-          Padrões extraídos das legendas públicas dos posts analisados.
+          {t("caption.subtitle")}
         </p>
       </header>
       {children}
