@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useVariantFeatures } from "@/lib/report/report-variant";
 import { cn } from "@/lib/utils";
 import {
@@ -15,10 +16,6 @@ import {
 import type {
   VisualCoverAnalysis,
   ThumbnailStatus,
-} from "@/lib/report/visual-cover-types";
-import {
-  STATUS_LABEL,
-  THUMB_STATUS_LABEL,
 } from "@/lib/report/visual-cover-types";
 import { InsightCallout } from "./insight-callout";
 import type { SnapshotPost } from "@/lib/report/snapshot-to-report-data";
@@ -45,22 +42,22 @@ const STATUS_RING: Record<ThumbnailStatus, string> = {
   weak: "ring-signal-danger/30",
 };
 
-const SUB_SCORE_LABELS: { key: keyof VisualCoverAnalysis["subScores"]; label: string }[] = [
-  { key: "recognizability", label: "Reconhecibilidade" },
-  { key: "colorCoherence", label: "Coerência cromática" },
-  { key: "composition", label: "Composição" },
-  { key: "visualVariety", label: "Variedade visual" },
-  { key: "textDensity", label: "Densidade de texto" },
+const SUB_SCORE_KEYS: (keyof VisualCoverAnalysis["subScores"])[] = [
+  "recognizability",
+  "colorCoherence",
+  "composition",
+  "visualVariety",
+  "textDensity",
 ];
 
-const METHODOLOGY_AXES = [
-  "Composição",
-  "Presença humana",
-  "Texto na imagem",
-  "Enquadramento / cropping",
-  "Cor e luz",
-  "Reconhecibilidade",
-  "Coerência de grelha",
+const METHODOLOGY_AXES_KEYS = [
+  "composition",
+  "human_presence",
+  "text_in_image",
+  "framing",
+  "color_light",
+  "recognizability",
+  "grid_coherence",
 ];
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -72,6 +69,7 @@ function proxyThumbUrl(rawUrl: string): string {
 // ─── Component ──────────────────────────────────────────────────────
 
 export function VisualCoverAnalysisCard({ posts, analysis }: Props) {
+  const { t } = useTranslation("report");
   const thumbPosts = posts
     .filter((p) => typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0)
     .slice(0, 12);
@@ -101,7 +99,7 @@ export function VisualCoverAnalysisCard({ posts, analysis }: Props) {
       <header className="space-y-2">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="text-eyebrow-sm text-content-tertiary">
-            07 · ANÁLISE VISUAL DAS CAPAS · {analyzedCount} THUMBNAILS ANALISADOS
+            {t("cover.header", { count: analyzedCount })}
           </span>
           <span
             className={cn(
@@ -111,14 +109,14 @@ export function VisualCoverAnalysisCard({ posts, analysis }: Props) {
             )}
           >
             <Eye className="size-3" aria-hidden />
-            IA · Visão computacional
+            {t("cover.ai_badge")}
           </span>
         </div>
         <h3 className="text-lg md:text-xl font-semibold text-content-primary leading-snug">
-          As capas comunicam em 1 segundo?
+          {t("cover.title")}
         </h3>
         <p className="text-[13px] text-content-secondary leading-relaxed max-w-2xl">
-          Análise IA aos thumbnails dos posts — composição, presença humana, texto, cor e legibilidade.
+          {t("cover.subtitle")}
         </p>
       </header>
 
@@ -138,7 +136,7 @@ export function VisualCoverAnalysisCard({ posts, analysis }: Props) {
             </div>
           ) : null}
           <p className="text-[10.5px] text-content-tertiary italic">
-            Cada thumbnail tem score individual
+            {t("cover.thumb_hint")}
           </p>
         </div>
 
@@ -158,19 +156,19 @@ export function VisualCoverAnalysisCard({ posts, analysis }: Props) {
       {/* ── Methodology axes ───────────────────────────────────── */}
       <div className="space-y-2">
         <p className="text-eyebrow-sm text-content-tertiary">
-          EIXOS DE AVALIAÇÃO
+          {t("cover.axes_title")}
         </p>
         <div className="flex flex-wrap gap-2">
-          {METHODOLOGY_AXES.map((axis) => (
+          {METHODOLOGY_AXES_KEYS.map((axisKey) => (
             <span
-              key={axis}
+              key={axisKey}
               className={cn(
                 "inline-flex items-center rounded-full px-2.5 py-1",
                 "ring-1 ring-border-default bg-surface-muted",
                 "text-xs text-content-secondary",
               )}
             >
-              {axis}
+              {t(`cover.axes.${axisKey}`)}
             </span>
           ))}
         </div>
@@ -179,27 +177,27 @@ export function VisualCoverAnalysisCard({ posts, analysis }: Props) {
       {/* ── Final diagnostic callout ───────────────────────────── */}
       {hasAi ? (
         <div className="space-y-3">
-          <InsightCallout tone="editorial" label="DIAGNÓSTICO VISUAL">
+          <InsightCallout tone="editorial" label={t("cover.diagnostic_label")}>
             {analysis.diagnostic.main}
           </InsightCallout>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <MicroConclusion
               icon={CheckCircle2}
-              label="FUNCIONA"
+              label={t("cover.works_label")}
               text={analysis.diagnostic.works}
               color="text-signal-success"
               bg="bg-tint-success"
             />
             <MicroConclusion
               icon={AlertTriangle}
-              label="PONTO CRÍTICO"
+              label={t("cover.critical_label")}
               text={analysis.diagnostic.critical}
               color="text-signal-danger"
               bg="bg-tint-danger"
             />
             <MicroConclusion
               icon={Search}
-              label="A OBSERVAR"
+              label={t("cover.watch_label")}
               text={analysis.diagnostic.watch}
               color="text-signal-warning"
               bg="bg-tint-warning"
@@ -251,6 +249,7 @@ function ThumbnailCell({
   thumbnailUrl: string;
   status: ThumbnailStatus | null;
 }) {
+  const { t } = useTranslation("report");
   const [imgError, setImgError] = useState(false);
 
   return (
@@ -274,8 +273,8 @@ function ThumbnailCell({
             "absolute top-1 right-1 size-3 rounded-full ring-2 ring-white/80",
             STATUS_COLOR[status],
           )}
-          title={THUMB_STATUS_LABEL[status]}
-          aria-label={THUMB_STATUS_LABEL[status]}
+          title={t(`cover.thumb_status.${status}`)}
+          aria-label={t(`cover.thumb_status.${status}`)}
         />
       )}
     </div>
@@ -283,16 +282,18 @@ function ThumbnailCell({
 }
 
 function StatusLegendItem({ status, count }: { status: ThumbnailStatus; count: number }) {
+  const { t } = useTranslation("report");
   return (
     <span className="inline-flex items-center gap-1.5">
       <span className={cn("size-2 rounded-full", STATUS_COLOR[status])} aria-hidden />
-      <span>{THUMB_STATUS_LABEL[status]} {count}</span>
+      <span>{t(`cover.thumb_status.${status}`)} {count}</span>
     </span>
   );
 }
 
 function ScorePanel({ analysis }: { analysis: VisualCoverAnalysis }) {
-  const statusLabel = STATUS_LABEL[analysis.status];
+  const { t } = useTranslation("report");
+  const statusLabel = t(`cover.status.${analysis.status}`);
   const statusColor =
     analysis.status === "strong"
       ? "text-signal-success"
@@ -317,7 +318,8 @@ function ScorePanel({ analysis }: { analysis: VisualCoverAnalysis }) {
 
       {/* Sub-score bars */}
       <div className="space-y-2.5">
-        {SUB_SCORE_LABELS.map(({ key, label }) => {
+        {SUB_SCORE_KEYS.map((key) => {
+          const label = t(`cover.sub_scores.${key}`);
           const value = analysis.subScores[key];
           return (
             <div key={key} className="space-y-0.5">
@@ -341,18 +343,15 @@ function ScorePanel({ analysis }: { analysis: VisualCoverAnalysis }) {
 
 function VisualAnalysisFallback() {
   const features = useVariantFeatures();
+  const { t } = useTranslation("report");
   const isPublic = features.debugLabels === "hidden";
   return (
     <div className="rounded-xl border border-dashed border-border-default bg-surface-muted px-4 py-5 text-center">
       <p className="text-[13px] text-content-secondary leading-relaxed">
-        {isPublic
-          ? "Análise visual disponível na versão Pro."
-          : "Análise visual indisponível — aguarda processamento IA."}
+        {isPublic ? t("cover.fallback.public_title") : t("cover.fallback.dev_title")}
       </p>
       <p className="text-xs text-content-tertiary mt-1">
-        {isPublic
-          ? "As capas dos posts são avaliadas por inteligência artificial para consistência visual, presença de texto e diversidade de formatos."
-          : "Os thumbnails acima serão analisados por visão computacional numa próxima atualização."}
+        {isPublic ? t("cover.fallback.public_body") : t("cover.fallback.dev_body")}
       </p>
     </div>
   );
@@ -360,40 +359,40 @@ function VisualAnalysisFallback() {
 
 function ScorePanelUnavailable() {
   const features = useVariantFeatures();
+  const { t } = useTranslation("report");
   const isPublic = features.debugLabels === "hidden";
   return (
     <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border-default bg-surface-muted p-6 text-center space-y-2">
       <Eye className="size-8 text-content-tertiary/30" aria-hidden />
       <p className="text-[13px] text-content-secondary font-medium">
-        {isPublic ? "Score visual \u00b7 Pro" : "Score visual indisponível"}
+        {isPublic ? t("cover.fallback.score_public_title") : t("cover.fallback.score_dev_title")}
       </p>
       <p className="text-xs text-content-tertiary max-w-[16rem] leading-relaxed">
-        {isPublic
-          ? "Disponível na versão completa do relatório."
-          : "Será calculado automaticamente quando a análise por visão computacional estiver ativa."}
+        {isPublic ? t("cover.fallback.score_public_body") : t("cover.fallback.score_dev_body")}
       </p>
     </div>
   );
 }
 
 function AiSeesRow({ aggregate }: { aggregate: VisualCoverAnalysis["aggregate"] }) {
+  const { t } = useTranslation("report");
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
       <AiSeesMiniCard
         icon={User}
-        label="Presença humana"
+        label={t("cover.ai_sees.human_presence_label")}
         value={`${Math.round(aggregate.humanPresencePct)}%`}
-        detail="das capas com rostos ou pessoas visíveis"
+        detail={t("cover.ai_sees.human_presence_detail")}
       />
       <AiSeesMiniCard
         icon={Type}
-        label="Texto na imagem"
+        label={t("cover.ai_sees.text_in_image_label")}
         value={`${Math.round(aggregate.textInImagePct)}%`}
-        detail="das capas onde se deteta texto"
+        detail={t("cover.ai_sees.text_in_image_detail")}
       />
       <AiSeesMiniCard
         icon={Palette}
-        label="Paleta dominante"
+        label={t("cover.ai_sees.palette_label")}
         value={null}
         detail={null}
       >
@@ -411,9 +410,9 @@ function AiSeesRow({ aggregate }: { aggregate: VisualCoverAnalysis["aggregate"] 
       </AiSeesMiniCard>
       <AiSeesMiniCard
         icon={Copy}
-        label="Repetição de template"
+        label={t("cover.ai_sees.template_label")}
         value={`${aggregate.repeatedTemplateCount}`}
-        detail={aggregate.repeatedTemplateNote ?? "padrões visuais repetidos"}
+        detail={aggregate.repeatedTemplateNote ?? t("cover.ai_sees.template_default_detail")}
       />
     </div>
   );
