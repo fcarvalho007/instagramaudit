@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Check, ExternalLink } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Container } from "@/components/layout/container";
@@ -70,34 +69,6 @@ function Home() {
       <div id="exemplos" style={{ scrollMarginTop: "5rem" }}>
         <ProductPreviewSection />
       </div>
-
-      {/* Dev/admin: acesso rápido aos reports — só visível em desenvolvimento */}
-      {import.meta.env.DEV && (
-      <section className="border-t border-border-default bg-surface-secondary/40 py-6">
-        <Container size="lg">
-          <p className="text-eyebrow-sm text-[0.625rem] text-content-tertiary mb-3">
-            {t("devShortcuts.label")}
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              to="/analyze/$username"
-              params={{ username: "frederico.m.carvalho" }}
-              className="inline-flex items-center gap-2 rounded-lg border border-border-subtle bg-surface-elevated px-4 py-2.5 font-sans text-sm text-content-secondary transition-colors hover:text-content-primary hover:border-accent-primary/40"
-            >
-              <ExternalLink className="size-3.5" aria-hidden="true" />
-              {t("devShortcuts.live")}
-            </Link>
-            <Link
-              to="/report/example"
-              className="inline-flex items-center gap-2 rounded-lg border border-border-subtle bg-surface-elevated px-4 py-2.5 font-sans text-sm text-content-secondary transition-colors hover:text-content-primary hover:border-accent-primary/40"
-            >
-              <ExternalLink className="size-3.5" aria-hidden="true" />
-              {t("devShortcuts.mockup")}
-            </Link>
-          </div>
-        </Container>
-      </section>
-      )}
     </>
   );
 }
