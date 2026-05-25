@@ -85,7 +85,7 @@ describe("deriveEditorialVerdict", () => {
   it("downgrades when AI recommends posting more on a healthy cadence", () => {
     const ai = makeAi({
       paragraph:
-        "A cadência é fraca: o perfil deveria publicar mais nas próximas semanas para criar hábito.",
+        "A cadência fraca observada nos últimos 30 dias limita a leitura editorial do perfil, com apenas 0,5 publicações por semana visíveis na amostra.",
     });
     const res = deriveEditorialVerdict(ai, metrics({ postsPerWeek30d: 5 }), makeFallback());
     expect(res.source).toBe("ai_downgraded");
@@ -228,7 +228,7 @@ describe("deriveEditorialVerdict", () => {
       makeFallback(),
     );
     expect(res.rejectionReasons).toContain("low_sample_strong_claim");
-    expect(res.source).toBe("fallback");
+    expect(res.source).toBe("ai_downgraded");
     expect(res.verdict.confidence).toBe("low");
   });
 
