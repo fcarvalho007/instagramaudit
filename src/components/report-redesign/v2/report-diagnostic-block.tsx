@@ -84,6 +84,7 @@ interface Props {
  * Não chama providers, OpenAI, Supabase write, nada.
  */
 export function ReportDiagnosticBlock({ result, payload }: Props) {
+  const { t } = useTranslation("report");
   const posts = payload?.posts ?? [];
   const features = useVariantFeatures();
   const km = result.data.keyMetrics;
@@ -140,8 +141,8 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   // Build cards as nullable list, then split into groups
   // A · Identidade editorial: Q01 + Q02
   const groupA = compact([
-    renderContentTypeCard(contentType),
-    renderFunnelCard(funnel),
+    renderContentTypeCard(contentType, t),
+    renderFunnelCard(funnel, t),
   ]);
   // B · Como comunica: Q03 (hashtags) — Q04 (captions) rendered inside group
   const groupB = compact([
@@ -164,11 +165,11 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
       ? result.enriched.commentIntelligence
       : null;
   const groupC = compact([
-    renderAudienceCard(audience, effectiveCommentIntel, captionEngagementStrategy, captionAsksForCommentsPct),
+    renderAudienceCard(audience, effectiveCommentIntel, captionEngagementStrategy, captionAsksForCommentsPct, t),
   ]);
   // D · Contexto estratégico: Q06 + Q07
   const groupD = compact([
-    renderIntegrationCard(integration),
+    renderIntegrationCard(integration, t),
   ]);
 
   const totalCards = groupA.length + groupB.length + 1 + groupC.length + groupD.length;
