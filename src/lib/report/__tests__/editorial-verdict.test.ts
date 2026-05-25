@@ -216,6 +216,47 @@ describe("deriveEditorialVerdict", () => {
       "engagement_contradiction",
       "conversation_contradiction",
       "phantom_competitors",
+      "attention_no_conversation_missed",
     ]);
+  });
+
+  it("falls back when sample is below 4 posts and AI claims strong/promising", () => {
+    const ai = makeAi({ verdict_label: "strong" });
+    const res = deriveEditorialVerdict(
+      ai,
+      metrics({ postsAnalyzed: 3 }),
+      makeFallback(),
+    );
+    expect(res.rejectionReasons).toContain("low_sample_strong_claim");
+    expect(res.source).toBe("fallback");
+    expect(res.verdict.confidence).toBe("low");
+  });
+
+  it("downgrades when likes are healthy but comments are nearly zero without attention framing", () => {
+    const ai = makeAi({
+      paragraph:
+        "Os números sugerem 1,6% de envolvimento médio em linha com a referência do tier ao longo das últimas 4 semanas.",
+    });
+    const res = deriveEditorialVerdict(
+      ai,
+      metrics({
+        engagementPct: 1.6,
+        benchmarkEngagementPct: 1.5,
+        avgComments: 0.5,
+      }),
+      makeFallback(),
+    );
+    expect(res.rejectionReasons).toContain("attention_no_conversation_missed");
+    expect(res.source).not.toBe("ai");
+  });
+
+  it("downgrades when paragraph contains a prescriptive verb", () => {
+    const ai = makeAi({
+      paragraph:
+        "O padrão observado indica 1,2% de envolvimento médio nas últimas 4 semanas. Publique mais carrosséis para abrir conversa.",
+    });
+    const res = deriveEditorialVerdict(ai, metrics(), makeFallback());
+    expect(res.rejectionReasons).toContain("prescriptive_language");
+    expect(res.source).not.toBe("ai");
   });
 });
