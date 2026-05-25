@@ -710,6 +710,12 @@ export function TestProfilesCard() {
     queryFn: () => getTestProfileStatuses(),
     staleTime: 30_000,
   });
+  const { data: modeData } = useQuery({
+    queryKey: ["admin", "execution-mode"],
+    queryFn: () => getExecutionMode(),
+    staleTime: 10_000,
+  });
+  const isCacheOnlyMode = (modeData?.mode ?? "cache_only") === "cache_only";
   const now = useNow();
 
   const profiles = data?.profiles ?? [];
@@ -743,6 +749,22 @@ export function TestProfilesCard() {
           Perfis de teste
         </p>
         <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+          {/* Modo de execução ativo — visível no contexto da lista */}
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px] font-semibold whitespace-nowrap"
+            style={{
+              backgroundColor: isCacheOnlyMode ? "#E8F5EE" : "#FFF3E0",
+              color: isCacheOnlyMode ? "#1D9E75" : "#BA7517",
+            }}
+            title={
+              isCacheOnlyMode
+                ? "Modo cache_only: análises só leem snapshots guardados, sem chamadas pagas."
+                : "Modo fresh: análises podem chamar Apify, OpenAI e DataForSEO (com custos)."
+            }
+          >
+            {isCacheOnlyMode ? <Database size={11} /> : <Zap size={11} />}
+            {isCacheOnlyMode ? "Modo: guardados · $0" : "Modo: novos · $$"}
+          </span>
           <span
             className="text-[12px] text-admin-text-tertiary leading-snug"
             title={
