@@ -9,11 +9,12 @@ import { useMutation } from "@tanstack/react-query";
 import {
   getTestProfileStatuses,
   getExecutionMode,
+  setExecutionMode,
   type TestProfileStatus,
 } from "@/server/admin/execution-mode.functions";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ExternalLink, RefreshCw, Clock, Plus, DollarSign, Zap, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { ExternalLink, RefreshCw, Clock, Plus, DollarSign, Zap, CheckCircle2, XCircle, AlertTriangle, Lock, Database } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -310,6 +311,14 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
   });
   const isCacheOnlyMode = (modeData?.mode ?? "cache_only") === "cache_only";
 
+  // Mutation to switch mode → fresh (used by the "Mudar e atualizar" shortcut).
+  const switchModeMutation = useMutation({
+    mutationFn: () => setExecutionMode({ data: { mode: "fresh" } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "execution-mode"] });
+    },
+  });
+
   // Preflight query — only runs when modal opens
   const {
     data: preflight,
@@ -495,34 +504,57 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
 
         {/* Actions */}
         <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:shrink-0 w-full sm:w-auto">
-          <button
-            type="button"
-            onClick={() => {
-              if (isCacheOnlyMode) {
-                toast.warning(
-                  "Modo \u201cUsar dados guardados\u201d ativo \u2014 muda para \u201cBuscar dados novos\u201d para permitir chamadas pagas.",
-                );
-                return;
-              }
-              setRefreshConfirmOpen(true);
-              refetchPreflight();
-            }}
-            disabled={refreshMutation.isPending || isCacheOnlyMode}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg border px-3.5 py-2 text-[12px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed w-full sm:w-auto whitespace-nowrap"
-            style={{
-              borderColor: "rgba(55,114,229,0.3)",
-              color: "#3772E5",
-              backgroundColor: "rgba(55,114,229,0.05)",
-            }}
-            title={
-              isCacheOnlyMode
-                ? "Bloqueado pelo modo \u201cUsar dados guardados\u201d. Muda o modo no painel acima para permitir chamadas pagas."
-                : "Busca dados novos ao fornecedor e volta a cache_only automaticamente."
-            }
-          >
-            <Zap size={12} className={refreshMutation.isPending ? "animate-pulse" : ""} />
-            {refreshMutation.isPending ? "A atualizar…" : "Atualizar agora"}
-          </button>
+          {isCacheOnlyMode ? (
+            <button
+              type="button"
+              onClick={async () => {
+                // Atalho de 1 clique: muda para fresh e abre o diálogo de preflight.
+                toast.info("A mudar para modo \u201cBuscar dados novos\u201d\u2026");
+                try {
+                  await switchModeMutation.mutateAsync();
+                  toast.success("Modo alterado. A abrir confirmação\u2026");
+                  setRefreshConfirmOpen(true);
+                  refetchPreflight();
+                } catch (err) {
+                  toast.error(
+                    `Falhou a mudar o modo: ${(err as Error).message}`,
+                  );
+                }
+              }}
+              disabled={switchModeMutation.isPending || refreshMutation.isPending}
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg border px-3.5 py-2 text-[12px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed w-full sm:w-auto whitespace-nowrap"
+              style={{
+                borderColor: "rgba(186,117,23,0.35)",
+                color: "#BA7517",
+                backgroundColor: "rgba(186,117,23,0.06)",
+              }}
+              title="Muda o modo de execução para \u201cBuscar dados novos\u201d e abre a confirmação de atualização."
+            >
+              <Lock size={12} />
+              {switchModeMutation.isPending
+                ? "A mudar modo\u2026"
+                : "Mudar e atualizar"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setRefreshConfirmOpen(true);
+                refetchPreflight();
+              }}
+              disabled={refreshMutation.isPending}
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg border px-3.5 py-2 text-[12px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed w-full sm:w-auto whitespace-nowrap"
+              style={{
+                borderColor: "rgba(55,114,229,0.3)",
+                color: "#3772E5",
+                backgroundColor: "rgba(55,114,229,0.05)",
+              }}
+              title="Busca dados novos ao fornecedor e volta a cache_only automaticamente."
+            >
+              <Zap size={12} className={refreshMutation.isPending ? "animate-pulse" : ""} />
+              {refreshMutation.isPending ? "A atualizar\u2026" : "Atualizar agora"}
+            </button>
+          )}
           {p.latestSnapshotId && !isExpired ? (
             <Link
               to="/admin/report-preview/snapshot/$snapshotId"
@@ -678,6 +710,12 @@ export function TestProfilesCard() {
     queryFn: () => getTestProfileStatuses(),
     staleTime: 30_000,
   });
+  const { data: modeData } = useQuery({
+    queryKey: ["admin", "execution-mode"],
+    queryFn: () => getExecutionMode(),
+    staleTime: 10_000,
+  });
+  const isCacheOnlyMode = (modeData?.mode ?? "cache_only") === "cache_only";
   const now = useNow();
 
   const profiles = data?.profiles ?? [];
@@ -711,6 +749,22 @@ export function TestProfilesCard() {
           Perfis de teste
         </p>
         <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+          {/* Modo de execução ativo — visível no contexto da lista */}
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px] font-semibold whitespace-nowrap"
+            style={{
+              backgroundColor: isCacheOnlyMode ? "#E8F5EE" : "#FFF3E0",
+              color: isCacheOnlyMode ? "#1D9E75" : "#BA7517",
+            }}
+            title={
+              isCacheOnlyMode
+                ? "Modo cache_only: análises só leem snapshots guardados, sem chamadas pagas."
+                : "Modo fresh: análises podem chamar Apify, OpenAI e DataForSEO (com custos)."
+            }
+          >
+            {isCacheOnlyMode ? <Database size={11} /> : <Zap size={11} />}
+            {isCacheOnlyMode ? "Modo: guardados · $0" : "Modo: novos · $$"}
+          </span>
           <span
             className="text-[12px] text-admin-text-tertiary leading-snug"
             title={

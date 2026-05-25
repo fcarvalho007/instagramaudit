@@ -1,53 +1,59 @@
-## Diagnóstico
 
-Confirmei o estado real do switch "Usar dados guardados / Buscar dados novos":
+## Avaliação do estado atual
 
-1. **Persistência: OK.** O clique grava em `app_config.analysis_execution_mode`. DB mostra `value='fresh'`, atualizado hoje às 09:39 UTC pela ação do admin.
-2. **Leitura: OK.** `getAnalysisExecutionMode()` lê da DB com TTL em memória de 30 s.
-3. **Enforcement em `/api/analyze-public-v1`: OK.** Quando o modo é `cache_only` e não existe snapshot válido, devolve stale ou `CACHE_ONLY_NO_DATA` — nenhuma chamada Apify/OpenAI/DataForSEO acontece.
+Depois do último pedido o toggle já funciona e propaga até 30s. Mas ao reler o código (`execution-mode-card.tsx`, `test-profiles-card.tsx`, `execution-mode.functions.ts`) identifiquei 4 refinamentos que vale a pena fazer:
 
-## Por que parece que "não está a ativar/desativar a cache"
+### 1. Bug: o toast "Modo bloqueado" nunca aparece
 
-São 3 efeitos reais, nenhum deles é o switch estar partido:
+Em `test-profiles-card.tsx` (linha 498-510), o botão "Atualizar agora" tem em simultâneo:
+- `onClick` que verifica `isCacheOnlyMode` e mostra `toast.warning(...)`
+- `disabled={refreshMutation.isPending || isCacheOnlyMode}`
 
-### A. Quando o snapshot está fresco, os dois modos servem cache
-Os últimos 15 eventos em `analysis_events` são todos `data_source=cache, outcome=success`. O perfil `frederico.m.carvalho` tem cache válido até 07/06, portanto qualquer pedido devolve cache — independentemente do modo. A diferença só é visível quando a cache expira ou está em falta. Visualmente parece que "nada muda".
+Botões `disabled` no HTML não disparam `onClick` — logo a mensagem nunca é mostrada. O utilizador vê apenas um botão cinzento sem perceber porquê. A única pista é o `title` (tooltip), que **não existe em mobile**.
 
-### B. "Atualizar agora" nos perfis de teste IGNORA o modo (by design)
-O botão "Atualizar agora" usa `/api/admin/refresh-profile` → `analyze-public-v1?refresh=1` com `INTERNAL_API_TOKEN`. Esse caminho **salta o guard de modo** propositadamente (ver comentário em `analyze-public-v1.ts:471-474`). Resultado: mesmo com "Usar dados guardados — SEM CUSTOS" ativo, clicar Atualizar agora gasta dinheiro. Isto contradiz a promessa visual do switch.
+**Fix:** trocar `disabled` por estilo "visualmente desativado" mantendo o botão clicável apenas para mostrar o toast. Ou — preferível — manter `disabled` e adicionar um chip inline "Bloqueado pelo modo cache" visível ao lado do botão.
 
-### C. Cache em memória de 30 s por Worker
-Cada instância serverless tem o seu próprio cache de modo. A ação do admin invalida a instância que recebeu o POST, mas outras instâncias podem servir o modo antigo até 30 s. Aceitável, mas a UI pode dar a ilusão de "não mudou".
+### 2. Falta caminho de saída de 1 clique
 
-## Riscos adicionais encontrados
+Hoje, se o admin está em cache_only e quer atualizar um perfil, tem de:
+1. Ler o tooltip
+2. Subir até ao card de modo
+3. Mudar para "Buscar dados novos" (com diálogo de confirmação)
+4. Voltar ao perfil
+5. Clicar "Atualizar agora"
 
-- **`getExecutionMode` / `setExecutionMode` não têm guard de admin.** São server functions sem `requireAdminSession`/middleware. Qualquer caller autenticado (ou não) que conheça o nome pode ler/alterar o modo. Devia exigir sessão de admin.
+**Fix:** quando bloqueado, o tooltip/chip mostra um botão secundário **"Mudar para fresh e atualizar"** que faz o switch + abre o diálogo de preflight no mesmo clique (com confirmação única).
 
-## Correções propostas (visuais + comportamentais, sem mexer em lógica de produto)
+### 3. Indicador de modo ativo invisível no contexto do perfil
 
-1. **Bloquear "Atualizar agora" quando o modo é `cache_only`** (`test-profiles-card.tsx`):
-   - Ler `getExecutionMode` no card; quando `cache_only`, desativar o botão "Atualizar agora" com tooltip "Modo dados guardados ativo — muda para 'Buscar dados novos' para permitir chamadas pagas".
-   - Alternativa mais permissiva: manter clicável mas abrir confirmação extra a avisar que vai chamar APIs pagas apesar de estar em modo cache_only. Recomendo a primeira (bloquear) porque alinha com a promessa "SEM CUSTOS".
+O modo só está visível no card de cima. Quando se está a olhar para a lista de perfis, não é óbvio em que modo o sistema corre.
 
-2. **Adicionar `requireAdminSession` a `getExecutionMode` e `setExecutionMode`** (`src/server/admin/execution-mode.functions.ts`):
-   - Envolver os handlers num check de sessão admin (mesmo padrão usado em `/api/admin/force-refresh.ts`). Devolver 401/403 quando não há sessão admin.
+**Fix:** adicionar uma micro-pill ao topo da `TestProfilesCard` ("Modo: dados guardados · sem custos" / "Modo: buscar novos · custos variáveis"), com a mesma cor do switch.
 
-3. **Feedback visual imediato após toggle** (`execution-mode-card.tsx`):
-   - Mostrar `toast.success("Modo alterado para …")` no `onSuccess` da mutation. Hoje o toggle muda silenciosamente — contribui para a sensação de "não aconteceu nada".
-   - Adicionar nota inline: "Pode demorar até 30 s a propagar entre instâncias do servidor."
+### 4. Brecha de segurança ainda em aberto
 
-4. **Verificação ao vivo (opcional, mesmo turno):** depois das mudanças, fazer um teste manual:
-   - Pôr o modo em `cache_only`.
-   - Expirar o snapshot do `frederico.m.carvalho` via "Forçar atualização" → confirmar que o próximo `GET /api/analyze-public-v1?username=...` devolve `CACHE_ONLY_NO_DATA` (ou serve stale) e cria um `analysis_event` com `outcome='blocked_cache_only'`.
-   - Voltar a pôr `fresh` e repetir → confirmar `outcome='success'` com `data_source='fresh'` e linhas em `provider_call_logs`.
+`getExecutionMode`, `setExecutionMode`, `getTestProfileStatuses` e `expireSnapshotForHandle` em `src/server/admin/execution-mode.functions.ts` **não têm guarda de admin** — qualquer um com o URL público das serverFn consegue ler ou mudar o modo de execução.
 
-## Ficheiros a tocar
+**Fix:** adicionar `requireAdminSession` (middleware existente no projeto, usado pelas outras serverFn de admin) aos 4 handlers. Se o middleware ainda não existir, criar a partir de `requireSupabaseAuth` + verificação de email contra a allowlist de admin.
 
-- `src/server/admin/execution-mode.functions.ts` — adicionar guard admin.
-- `src/components/admin/v2/sistema/execution-mode-card.tsx` — toast + nota de propagação.
-- `src/components/admin/v2/sistema/test-profiles-card.tsx` — desativar "Atualizar agora" quando `cache_only`.
+Verifico primeiro se já existe a infra `attachSupabaseAuth` + middleware de admin no projeto antes de implementar; se não existir, faço só as 3 melhorias visuais (1-3) e deixo a 4 documentada para tarefa separada (envolve mexer em `src/start.ts` e criar middleware partilhado, fora do âmbito UI).
 
-## Fora de âmbito
+## Ficheiros tocados
 
-- Não tocar em `/report.example`, RLS, pipeline de enriquecimento, nem nos endpoints públicos de análise.
-- Não alterar a lógica de bypass do `forceRefresh` no `analyze-public-v1` (o bypass continua válido para automações internas — o que mudamos é a UI esconder o botão quando o modo global é cache_only).
+- `src/components/admin/v2/sistema/test-profiles-card.tsx` — fix do bug do click, chip inline, botão "mudar e atualizar"
+- `src/components/admin/v2/sistema/execution-mode-card.tsx` — sem alterações (ou só uma melhoria mínima de copy)
+- `src/components/admin/v2/sistema/index.tsx` (ou wrapper equivalente) — micro-pill de modo na `TestProfilesCard`
+- `src/server/admin/execution-mode.functions.ts` — **só se** já houver `requireAdminSession`; caso contrário fica para depois
+
+## Fora do âmbito
+
+- Mudanças à lógica de enforcement em `analyze-public-v1`
+- Bypass do `forceRefresh` admin via `INTERNAL_API_TOKEN` (já intencional)
+- RLS, pipeline, public endpoints
+
+## Checkpoint
+
+- ☐ Botão bloqueado mostra feedback claro em desktop **e** mobile
+- ☐ Existe atalho "mudar para fresh e atualizar" no perfil
+- ☐ Modo ativo visível no contexto da lista de perfis
+- ☐ ServerFn de admin têm guarda (ou está documentado porque não)
