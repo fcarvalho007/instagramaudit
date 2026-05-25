@@ -409,7 +409,11 @@
     "rhythm": {
       "label": "Ritmo semanal",
       "source": "Datas de publicação",
-      "help": "publicações por semana"
+      "help": "publicações por semana",
+      "help_window_30d": "≈ {{n}} pub./sem nos últimos 30 dias",
+      "help_window_90d": "≈ {{n}} pub./sem nos últimos 90 dias",
+      "help_sample_span": "≈ {{n}} pub./sem na amostra recente",
+      "help_insufficient": "Dados recentes insuficientes"
     },
     "format": {
       "label": "Formato dominante",
@@ -421,6 +425,20 @@
       "Reels": "Reels",
       "Imagens": "Imagens",
       "Vídeos": "Vídeos"
+    },
+    "cadence": {
+      "header_window_30d": "Ritmo observado nos últimos 30 dias",
+      "header_window_90d": "Ritmo observado nos últimos 90 dias",
+      "header_sample_span": "Ritmo observado na amostra recente",
+      "header_insufficient": "Ritmo de publicação",
+      "window_summary_30d": "{{count}} publicações nos últimos 30 dias",
+      "window_summary_90d": "{{count}} publicações nos últimos 90 dias",
+      "sample_summary": "{{count}} publicações em {{days}} dias (amostra reduzida)",
+      "insufficient_label": "Dados recentes insuficientes para estimar ritmo",
+      "provisional_badge": "Leitura provisória",
+      "note_window_30d": "Cadência estimada = publicações na janela ÷ 4,345 semanas",
+      "note_window_90d": "Cadência estimada = publicações na janela ÷ 12,857 semanas",
+      "note_sample_span": "Cadência estimada = publicações na amostra ÷ semanas da amostra"
     }
   },
   "nav": {
