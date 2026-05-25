@@ -135,7 +135,7 @@ describe("cadence in OpenAI payload", () => {
   });
 
   it("amostra insuficiente: weekly e windowDays a null, note presente", () => {
-    // 2 posts apenas → method=insufficient (cascade exige >=3 em 30d, >=4 em 90d)
+    // 1 post apenas → insufficient (sample_span exige >=2 posts dentro de 180d).
     const posts: Post[] = [
       {
         format: "Reels",
@@ -143,13 +143,6 @@ describe("cadence in OpenAI payload", () => {
         comments: 1,
         engagement_pct: 0.1,
         taken_at_iso: daysAgoIso(40),
-      },
-      {
-        format: "Reels",
-        likes: 10,
-        comments: 1,
-        engagement_pct: 0.1,
-        taken_at_iso: daysAgoIso(80),
       },
     ];
     const payload = buildInsightsUserPayload(buildCtxFor(posts));
