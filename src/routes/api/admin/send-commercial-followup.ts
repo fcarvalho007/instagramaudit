@@ -16,6 +16,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
 import { recordLeadEvent } from "@/lib/admin/lead-events.server";
 import { renderCommercialFollowup } from "@/lib/email/templates";
+import { buildUnsubscribeUrl } from "@/lib/email/url";
 import { resolveSender } from "@/lib/email/sender";
 import { interpretFeedback } from "@/lib/admin/feedback-intent";
 import type { BetaFeedbackSummary } from "@/lib/admin/kanban-columns";
@@ -176,6 +177,7 @@ export const Route = createFileRoute("/api/admin/send-commercial-followup")({
           reportUrl,
           replyToEmail: null,
           checkoutUrl,
+          unsubscribeUrl: lead?.id ? buildUnsubscribeUrl(lead.id) : null,
         });
 
         const sender = resolveSender();
