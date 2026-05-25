@@ -1,49 +1,92 @@
-### Goal
-Emit a `lead_magnet_sequence_not_invoked` product event when `processReportUnlock` finds an existing report_request so the lead magnet sequence is not invoked. This improves observability so returning leads / repeated unlocks are visible in admin/event logs instead of looking like a silent failure.
+### Problema
+No hero da homepage, escrever `/chatgptricks/` mostra "Username inválido". O `extractUsername` em `src/components/landing/hero-action-bar.tsx` só remove `/` à direita, e o regex `^[A-Za-z0-9._]{1,30}$` rejeita o `/` à esquerda.
 
-### Changes
+Variações que devem ser aceites em silêncio (sem erro):
+- a) `/chatgptricks/`
+- b) `chatgptricks`
+- c) `https://www.instagram.com/chatgptricks/` (com ou sem `https`, com ou sem `www`, com query string `?igsh=...`)
+- d) `@chatgptricks`, `@/chatgptricks/`, com espaços à volta
+- e) URLs `instagram.com/chatgptricks/reels/...` → extrair `chatgptricks` (segmento imediatamente a seguir ao domínio, ignorar `p`, `reel`, `reels`, `tv`, `stories`, `explore` se aparecerem como primeiro segmento? Para já apenas reconhecer e rejeitar com mensagem mais clara — ver abaixo)
 
-#### 1. `src/lib/unlock.server.ts` — emit observability event
-In the `else` branch where `createdReportRequest === false` (existing report_request found), add a `recordProductEvent` call **before** the `unlock_completed` event block:
+### Alterações
 
-- `eventType`: `"lead_magnet_sequence_not_invoked"`
-- `leadId`: existing lead id
-- `snapshotId`: `data.analysis_snapshot_id`
-- `handle`: `data.instagram_username`
-- `metadata`:
-  ```ts
-  {
-    reason: "returning_lead_existing_report_request",
-    lead_id: leadId,
-    report_request_id: reportRequestId,
-    analysis_snapshot_id: data.analysis_snapshot_id,
-    email_normalized: emailNormalized,
-    transactional_delivery: false,
+#### 1. `src/components/landing/hero-action-bar.tsx` — `extractUsername` mais tolerante
+Substituir a função para:
+
+```ts
+const RESERVED_IG_SEGMENTS = new Set([
+  "p", "reel", "reels", "tv", "stories", "explore", "accounts", "directory",
+]);
+
+function extractUsername(raw: string): string {
+  if (!raw) return "";
+  let s = raw.trim();
+  if (!s) return "";
+
+  // 1) Se for URL com instagram.com, agarra o primeiro segmento de path.
+  const urlMatch = s.match(/instagram\.com\/+([^/?#\s]+)/i);
+  if (urlMatch) {
+    const seg = urlMatch[1].toLowerCase();
+    // Se o primeiro segmento é uma rota reservada (ex.: /reel/XYZ), não é
+    // um username — devolve vazio para que o caller mostre erro de input.
+    if (RESERVED_IG_SEGMENTS.has(seg)) return "";
+    return seg;
   }
-  ```
 
-This event is placed **after** the report_request upsert logic and **before** `unlock_completed`, so the `reportRequestId` is always set.
+  // 2) Caso contrário, normaliza: remove @ inicial, barras à volta e
+  //    espaços/zero-width chars.
+  s = s
+    .replace(/^[\s\u200B-\u200D\uFEFF]+|[\s\u200B-\u200D\uFEFF]+$/g, "")
+    .replace(/^@+/, "")
+    .replace(/^\/+/, "")
+    .replace(/\/+$/, "")
+    .toLowerCase();
 
-No Brevo, no email, no analysis logic is touched.
+  // 3) Se ainda tiver `/` no meio (ex.: o utilizador colou `user/posts`),
+  //    fica com o primeiro segmento.
+  const firstSeg = s.split("/")[0] ?? "";
+  return firstSeg;
+}
+```
 
-#### 2. `src/lib/__tests__/unlock.server.test.ts` — new test file
-Test the new observable behaviour with a mocked `supabaseAdmin`:
+Comportamento:
+- `chatgptricks` → `chatgptricks` ✓
+- `/chatgptricks/` → `chatgptricks` ✓
+- `@chatgptricks` → `chatgptricks` ✓
+- `https://www.instagram.com/chatgptricks/` → `chatgptricks` ✓
+- `https://instagram.com/chatgptricks/?igsh=abc` → `chatgptricks` ✓
+- `instagram.com/chatgptricks/reels/123` → `chatgptricks` ✓
+- `instagram.com/reel/XYZ123` → `""` → cai no erro `invalid` (esperado: URL de post, não de perfil)
 
-- **Test: "existing report_request emits `lead_magnet_sequence_not_invoked`"**
-  - Mock `from("analysis_snapshots")` → row exists.
-  - Mock `from("leads")` → existing lead (returning lead).
-  - Mock `from("report_requests")` → existing row for `(lead_id, snapshot_id)`.
-  - Call `processReportUnlock`.
-  - Assert `recordProductEvent` was called with `eventType: "lead_magnet_sequence_not_invoked"` and correct metadata fields (`reason`, `lead_id`, `report_request_id`, `analysis_snapshot_id`, `email_normalized`, `transactional_delivery: false`).
-  - Assert `sendLeadMagnetSequence` is never imported/called.
+Aplicar a mesma normalização (já é, porque `extractUsername` é partilhada) aos campos de concorrentes — sem alterações adicionais necessárias.
 
-- **Test: "new report_request does NOT emit `lead_magnet_sequence_not_invoked`"**
-  - Same mocks but `report_requests` returns no row.
-  - Assert `recordProductEvent` was never called with `eventType: "lead_magnet_sequence_not_invoked"`.
+#### 2. Mensagem de erro mais clara para inputs que não são username
+Manter o `t("actionBar.errors.invalid")` atual; apenas garantir que o texto continua compreensível. Não é preciso mexer nos JSONs `pt/landing.json` e `en/landing.json` — a normalização absorve os casos a/b/c sem disparar erro.
 
-#### 3. Validation
+#### 3. Teste unitário
+Criar `src/components/landing/__tests__/hero-action-bar-extract.test.ts` que exporte o helper (export nomeado em hero-action-bar.tsx) e cubra cada variação.
+
+Para isso, exportar `extractUsername` no ficheiro original:
+```ts
+export function extractUsername(raw: string): string { ... }
+```
+
+Casos no teste:
+- `chatgptricks` → `chatgptricks`
+- `/chatgptricks/` → `chatgptricks`
+- `@chatgptricks` → `chatgptricks`
+- `  @/chatgptricks/  ` → `chatgptricks`
+- `https://www.instagram.com/chatgptricks/` → `chatgptricks`
+- `https://instagram.com/chatgptricks/?igsh=xyz` → `chatgptricks`
+- `instagram.com/chatgptricks/reels/123` → `chatgptricks`
+- `instagram.com/reel/XYZ123` → `""`
+- `""` / `"   "` → `""`
+
+### Validação
 - `bunx tsc --noEmit`
-- `bunx vitest run`
+- `bunx vitest run src/components/landing/__tests__/hero-action-bar-extract.test.ts`
 
-### No database changes
-`product_events.event_type` is a plain `text` column (no enum or CHECK constraint), so the new event name does not require a migration.
+### Fora de scope
+- Não muda UI/layout do hero.
+- Não muda lógica de análise nem chamadas a backend.
+- Não muda o `reportUnlockSchema` server-side (já normaliza `@` e lowercase, e a homepage envia sempre o handle já normalizado pela rota `/analyze/$username`).
