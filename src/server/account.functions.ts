@@ -111,6 +111,18 @@ export const updateMarketingConsent = createServerFn({ method: "POST" })
       metadata: { consent: data.consent, source: "account_page" },
     });
 
+    if (data.consent === false) {
+      try {
+        await recordProductEvent({
+          eventType: "lead_unsubscribed" as any,
+          leadId,
+          metadata: { source: "account_page" },
+        });
+      } catch (err) {
+        console.error("[account] lead_unsubscribed event failed:", err);
+      }
+    }
+
     return { ok: true, marketingConsent: data.consent };
   });
 

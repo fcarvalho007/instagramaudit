@@ -77,6 +77,12 @@ export interface WrapHtmlInput {
   bodyHtml: string;
   /** Hidden preview text shown in inbox lists (Gmail/Outlook/Apple Mail). */
   preheader?: string;
+  /**
+   * Optional absolute unsubscribe URL. When present, an extra footer row
+   * with a one-click marketing unsubscribe link is rendered. Only set on
+   * marketing/onboarding emails — never on pure transactional sends.
+   */
+  unsubscribeUrl?: string | null;
 }
 
 export function wrapHtml(input: WrapHtmlInput): string {
@@ -116,6 +122,9 @@ export function wrapHtml(input: WrapHtmlInput): string {
           <tr>
             <td style="padding:20px 40px;background-color:#fafaf9;border-top:1px solid #e7e5e4;">
               <p style="margin:0;font-size:12px;line-height:1.5;color:#78716c;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;"><strong style="color:#0a0e1a;">${BRAND}</strong> · Análise competitiva para Instagram</p>
+              ${input.unsubscribeUrl
+                ? `<p style="margin:8px 0 0 0;font-size:12px;line-height:1.5;color:#78716c;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Se já não queres receber estes emails, <a href="${escapeHtml(input.unsubscribeUrl)}" style="color:#3772E5;text-decoration:underline;">anula a subscrição</a>.</p>`
+                : ""}
             </td>
           </tr>
         </table>

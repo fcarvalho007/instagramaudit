@@ -6,6 +6,8 @@
  * o report_snapshot ainda não foi persistido.
  */
 
+import { signUnsubscribeToken } from "./unsubscribe-token.server";
+
 const DEFAULT_BASE_URL = "https://instagramaudit.lovable.app";
 
 function resolveBaseUrl(): string {
@@ -28,4 +30,16 @@ export function resolveReportUrl(
   }
   const safeHandle = encodeURIComponent(handle.replace(/^@/, ""));
   return `${base}/analyze/${safeHandle}`;
+}
+
+/**
+ * Server-only: returns the absolute URL for the public unsubscribe page,
+ * carrying a signed token bound to a single lead. Safe to embed in
+ * marketing emails; never include in transactional emails (report-ready,
+ * personal-area-saved, request-received).
+ */
+export function buildUnsubscribeUrl(leadId: string): string {
+  const token = signUnsubscribeToken(leadId);
+  const base = resolveBaseUrl();
+  return `${base}/unsubscribe?token=${encodeURIComponent(token)}`;
 }

@@ -16,6 +16,7 @@ import {
   updateLeadCommercialStatus,
 } from "@/lib/admin/lead-events.server";
 import { renderFeedbackRequest } from "@/lib/email/templates";
+import { buildUnsubscribeUrl } from "@/lib/email/url";
 import { resolveSender } from "@/lib/email/sender";
 
 const RequestSchema = z.object({
@@ -181,6 +182,7 @@ export const Route = createFileRoute("/api/admin/send-feedback-request")({
           instagramHandle: rr.instagram_username,
           reportUrl,
           feedbackUrl,
+          unsubscribeUrl: lead?.id ? buildUnsubscribeUrl(lead.id) : null,
         });
 
         // Send via Resend

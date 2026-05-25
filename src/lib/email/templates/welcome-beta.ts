@@ -20,6 +20,8 @@ export interface WelcomeBetaInput {
   reportUrl: string;
   /** Optional secondary CTA URL ("Dar feedback…"). Omitted when null. */
   feedbackUrl?: string | null;
+  /** Optional one-click unsubscribe URL (marketing footer). */
+  unsubscribeUrl?: string | null;
 }
 
 const SUBJECT = "Bem-vindo à beta — o que esperar daqui";
@@ -36,6 +38,7 @@ export function renderWelcomeBeta(input: WelcomeBetaInput): RenderedEmail {
   const safeHandle = escapeHtml(handle);
   const url = input.reportUrl.trim();
   const feedbackUrl = input.feedbackUrl?.trim() || null;
+  const unsubscribeUrl = input.unsubscribeUrl?.trim() || null;
 
   const text = joinLines([
     greetingText(input.firstName),
@@ -61,6 +64,9 @@ export function renderWelcomeBeta(input: WelcomeBetaInput): RenderedEmail {
       : []),
     "",
     ...signatureText("Bom trabalho,"),
+    ...(unsubscribeUrl
+      ? ["", "Se já não queres receber estes emails, anula a subscrição:", unsubscribeUrl]
+      : []),
   ]);
 
   const bodyHtml = [
@@ -95,7 +101,13 @@ export function renderWelcomeBeta(input: WelcomeBetaInput): RenderedEmail {
   return {
     subject: SUBJECT,
     text,
-    html: wrapHtml({ title: SUBJECT, headline: HEADLINE, bodyHtml, preheader: PREHEADER }),
+    html: wrapHtml({
+      title: SUBJECT,
+      headline: HEADLINE,
+      bodyHtml,
+      preheader: PREHEADER,
+      unsubscribeUrl,
+    }),
   };
 }
 

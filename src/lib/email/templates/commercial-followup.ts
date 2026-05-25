@@ -20,6 +20,8 @@ export interface CommercialFollowupInput {
   replyToEmail?: string | null;
   /** Optional checkout URL — primary CTA when present. */
   checkoutUrl?: string | null;
+  /** Optional one-click unsubscribe URL (marketing footer). */
+  unsubscribeUrl?: string | null;
 }
 
 const SUBJECT = "Próximos passos para o relatório completo";
@@ -32,6 +34,7 @@ export function renderCommercialFollowup(input: CommercialFollowupInput): Render
   const checkoutUrl = input.checkoutUrl?.trim() || null;
   const reportUrl = input.reportUrl?.trim() || null;
   const replyTo = input.replyToEmail?.trim() || null;
+  const unsubscribeUrl = input.unsubscribeUrl?.trim() || null;
 
   const text = joinLines([
     greetingText(input.firstName),
@@ -47,6 +50,9 @@ export function renderCommercialFollowup(input: CommercialFollowupInput): Render
     ...(reportUrl ? ["", `Rever o relatório: ${reportUrl}`] : []),
     "",
     ...signatureText(),
+    ...(unsubscribeUrl
+      ? ["", "Se já não queres receber estes emails, anula a subscrição:", unsubscribeUrl]
+      : []),
   ]);
 
   const ctaHtml = checkoutUrl
@@ -79,7 +85,13 @@ export function renderCommercialFollowup(input: CommercialFollowupInput): Render
   return {
     subject: SUBJECT,
     text,
-    html: wrapHtml({ title: SUBJECT, headline: HEADLINE, bodyHtml, preheader: PREHEADER }),
+    html: wrapHtml({
+      title: SUBJECT,
+      headline: HEADLINE,
+      bodyHtml,
+      preheader: PREHEADER,
+      unsubscribeUrl,
+    }),
   };
 }
 

@@ -42,6 +42,8 @@ export interface ReportSummaryInput {
   reportUrl: string;
   kpis: ReportSummaryKpis;
   topPost: ReportSummaryTopPost;
+  /** Optional one-click unsubscribe URL (marketing footer). */
+  unsubscribeUrl?: string | null;
 }
 
 function formatInt(n: number): string {
@@ -119,6 +121,7 @@ export function renderReportSummary(input: ReportSummaryInput): RenderedEmail {
   const url = input.reportUrl.trim();
   const subject = buildSubject(handle);
   const insights = buildInsights(handle, input.kpis, input.topPost);
+  const unsubscribeUrl = input.unsubscribeUrl?.trim() || null;
 
   const text = joinLines([
     greetingText(input.firstName),
@@ -135,6 +138,9 @@ export function renderReportSummary(input: ReportSummaryInput): RenderedEmail {
     "O relatório tem o detalhe e a evidência por trás de cada conclusão — incluindo outras observações que não couberam neste resumo.",
     "",
     ...signatureText(),
+    ...(unsubscribeUrl
+      ? ["", "Se já não queres receber estes emails, anula a subscrição:", unsubscribeUrl]
+      : []),
   ]);
 
   const bodyHtml = [
@@ -156,6 +162,12 @@ export function renderReportSummary(input: ReportSummaryInput): RenderedEmail {
   return {
     subject,
     text,
-    html: wrapHtml({ title: subject, headline: HEADLINE, bodyHtml, preheader: PREHEADER }),
+    html: wrapHtml({
+      title: subject,
+      headline: HEADLINE,
+      bodyHtml,
+      preheader: PREHEADER,
+      unsubscribeUrl,
+    }),
   };
 }
