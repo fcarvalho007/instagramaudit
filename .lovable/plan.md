@@ -1,49 +1,43 @@
-# Lote G — Turn 2: Localização dos blocos editoriais grandes
+## Lote G — Turn 3 (finalizar)
 
-## Objetivo
+Objetivo: eliminar a copy PT hard-coded restante no report público, sem mexer em lógica/dados.
 
-Concluir a tradução PT/EN do report v2, cobrindo os ficheiros com copy editorial extensa que ficaram fora do Turn 1 (que tratou veredicto, prioridades, CTA, cards de síntese, premium callout/dialog).
+### Ficheiros a localizar
 
-## Âmbito (6 ficheiros)
+Grandes (editorial):
+1. `caption-diagnostics-card.tsx` (~1170 linhas) — verbatim das perguntas Q03/Q04, fallbacks, callouts.
 
-1. `report-diagnostic-block.tsx` (530 linhas) — perguntas verbatim, blocos editoriais grandes
-2. `caption-diagnostics-card.tsx` (1171 linhas) — diagnóstico de legendas
-3. `hashtag-diagnostics-card.tsx` (307 linhas) — diagnóstico de hashtags
-4. `report-themes-feature.tsx` (218 linhas) — temas dominantes
-5. `visual-cover-analysis-card.tsx` (477 linhas) — análise de capas
-6. `report-comment-intelligence.tsx` (531 linhas) — inteligência de comentários
+Médios:
+2. `report-post-comparison.tsx` (417) — labels de comparação de posts.
+3. `report-overview-engagement.tsx` (249) — copy do bloco engagement overview.
+4. `report-overview-attention-row.tsx` (204) — labels da linha de atenção.
+5. `overview/comparison-header.tsx` (187) — cabeçalho do modo comparação.
+6. `overview/diagnostic-summary.tsx` (159) — resumo lateral.
+7. `report-benchmark-evidence.tsx` (115) — chips de evidência.
+8. `overview/competitor-modal.tsx` (101) — modal de concorrente.
+9. `report-positioning-banner.tsx` (57) — banner curto.
 
-## Abordagem
+### Abordagem
 
-Para cada ficheiro:
-- Importar `useTranslation` do `react-i18next` com namespace `report`.
-- Substituir strings hardcoded (títulos, eyebrows, perguntas-guia, labels, fallbacks, tooltips, botões, vazios) por chamadas `t("caption.title")`, `t("hashtag.empty")`, etc.
-- Manter o `key` namespacing por componente: `caption.*`, `hashtag.*`, `themes.*`, `cover.*`, `comments.*`, `diagnostic.questions.*`.
-- Preservar interpolações com `{{var}}` (handle, contagens, percentagens). Para singular/plural usar a sintaxe `count` do i18next.
-- Strings derivadas de dados (ex.: nomes de temas vindos do payload) **não** se traduzem; apenas a moldura editorial.
+- Adicionar chaves em `src/i18n/locales/{pt,en}/report.json` agrupadas por namespace (`caption.*`, `posts_comparison.*`, `engagement_overview.*`, `attention_row.*`, `comparison.*`, `diagnostic_summary.*`, `benchmark_evidence.*`, `competitor_modal.*`, `positioning.*`).
+- Em cada ficheiro: `useTranslation("report")` + substituir literais por `t(...)`.
+- Preservar formatação numérica via `formatCompactNumber` / `Intl.NumberFormat` já existentes.
+- Nenhuma alteração à lógica de cálculo, props, ou estilos.
 
-## Chaves adicionadas em `src/i18n/locales/{pt,en}/report.json`
+### Ordem de execução
 
-```text
-diagnostic.questions.*    — perguntas-guia e copy editorial de report-diagnostic-block
-caption.*                 — eyebrow, título, perguntas, métricas, vazios, tooltips
-hashtag.*                 — eyebrow, título, métricas, labels, vazios
-themes.*                  — eyebrow, título, descrição, labels, vazios
-cover.*                   — eyebrow, título, métricas, perguntas, vazios
-comments.*                — eyebrow, título, segmentos, perguntas, vazios
-```
+1. Médios + pequenos (2–9) primeiro — wins rápidos, baixo risco.
+2. `caption-diagnostics-card.tsx` por último, em sub-passos: (a) headers e badges, (b) corpo das perguntas Q03/Q04, (c) fallbacks e callouts.
+3. `bunx tsc --noEmit` no fim para validar.
 
-PT em pt-PT (Acordo Ortográfico pós-1990, sem pt-BR). EN em inglês neutro.
+### Fora de scope
 
-## Não está no âmbito
+- Componentes admin/internos.
+- Cards já localizados (themes, hashtag, cover, comments, diagnostic-block).
+- Refactor visual ou lógico.
 
-- Não alteramos lógica, dados, layout, design tokens ou tamanhos.
-- Não tocamos em `report-overview-block` nem nos componentes já localizados no Turn 1.
-- Não geramos novas chaves de gateway/auth/footer.
+### Checkpoint
 
-## Checkpoint
-
-☐ Os 6 ficheiros usam `useTranslation("report")` e não têm strings PT hardcoded visíveis ao utilizador.
-☐ `report.json` PT e EN têm as mesmas chaves (paridade).
-☐ Build limpo; preview do report renderiza em PT por defeito e troca para EN via switcher do footer.
-☐ Interpolações (handle, números) formatadas corretamente em ambos os idiomas.
+☐ 9 ficheiros localizados, sem strings PT residuais visíveis ao utilizador.
+☐ `report.json` PT/EN com paridade total das novas chaves.
+☐ Build sem erros TypeScript.
