@@ -14,6 +14,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 
+import { normalizeInstagramHandle } from "@/lib/instagram/normalize-handle";
 import {
   ApifyConfigError,
   ApifyUpstreamError,
@@ -96,9 +97,8 @@ const MAX_COMPETITORS = 2;
 
 const usernameSchema = z
   .string()
-  .trim()
-  .transform((v) => v.replace(/^@/, ""))
-  .pipe(z.string().regex(/^[A-Za-z0-9._]{1,30}$/));
+  .transform((v) => normalizeInstagramHandle(v))
+  .pipe(z.string().regex(/^[a-z0-9._]{1,30}$/));
 
 const PayloadSchema = z.object({
   instagram_username: usernameSchema,

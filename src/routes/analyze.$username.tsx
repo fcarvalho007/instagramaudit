@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { AnalysisErrorState } from "@/components/product/analysis-error-state";
 import { AnalysisSkeleton } from "@/components/product/analysis-skeleton";
+import { normalizeInstagramHandle } from "@/lib/instagram/normalize-handle";
 import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
 import { ReportShellV2 } from "@/components/report-redesign/v2/report-shell-v2";
 import { useReportShareActions } from "@/components/report-share/use-report-share-actions";
@@ -160,7 +161,7 @@ type LoadState =
 function AnalyzePage() {
   const { username } = Route.useParams();
   const { vs, previewLoading } = Route.useSearch();
-  const cleaned = username.replace(/^@/, "");
+  const cleaned = normalizeInstagramHandle(username);
   const { t: tAnalyze } = useTranslation("analyze");
   const { t: tErrors } = useTranslation("errors");
   const resolveErrorMessage = useResolveErrorMessage();
@@ -196,7 +197,7 @@ function AnalyzePage() {
     if (!vs) return [];
     return vs
       .split(",")
-      .map((s: string) => s.trim().replace(/^@/, ""))
+      .map((s: string) => normalizeInstagramHandle(s))
       .filter((s: string) => s.length > 0)
       .slice(0, 2);
   }, [vs]);
@@ -208,6 +209,17 @@ function AnalyzePage() {
   const load = useCallback(async () => {
     setState({ status: "loading" });
     const loadStart = Date.now();
+
+    // Defensive: se o param da URL não corresponde a um handle válido após
+    // normalização, falha imediatamente sem chamar a API.
+    if (!cleaned) {
+      setState({
+        status: "error",
+        message: resolveErrorMessage("INVALID_USERNAME"),
+        errorCode: "INVALID_USERNAME",
+      });
+      return;
+    }
 
     // Minimum skeleton display: 3s — gives the user a sense of structured
     // progress and lets the layout settle. Fresh Apify runs take 7-20s, so

@@ -31,8 +31,8 @@
     "competitor2Aria": "Username do segundo concorrente",
     "errors": {
       "empty": "Inserir um username válido para continuar",
-      "invalid": "Username inválido. Apenas letras, números, ponto e underscore.",
-      "competitorInvalid": "Concorrente inválido. Apenas letras, números, ponto e underscore."
+      "invalid": "Insere um perfil público do Instagram, por exemplo @marca ou instagram.com/marca.",
+      "competitorInvalid": "Concorrente inválido. Insere um @ ou um link instagram.com/marca."
     }
   },
   "handwritten": {
