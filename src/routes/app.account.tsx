@@ -25,12 +25,6 @@ interface AccountData {
   marketingConsent: boolean | null;
 }
 
-const planLabels: Record<string, string> = {
-  free: "Free",
-  pro: "Pro",
-  agency: "Agency",
-};
-
 function AccountPage() {
   const navigate = useNavigate();
   const [account, setAccount] = useState<AccountData | null>(null);
