@@ -447,7 +447,35 @@ export function EditorialIdentityCard({
             {copy.paragraph}
           </p>
 
-          {lowConfidence ? (
+          {aiVerdict?.priority ? (
+            <p className="text-sm text-content-primary font-medium max-w-2xl pt-1">
+              <span className="text-eyebrow-sm text-content-tertiary mr-2">
+                {t("identity.priority_label", { defaultValue: "Próximo passo" })}:
+              </span>
+              {aiVerdict.priority}
+            </p>
+          ) : null}
+
+          {aiVerdict?.warnings && aiVerdict.warnings.length > 0 ? (
+            <p className="text-xs text-content-tertiary pt-1">
+              {aiVerdict.warnings
+                .map((w) =>
+                  t(`identity.warnings.${w}`, {
+                    defaultValue:
+                      w === "low_sample"
+                        ? "Amostra pequena — leitura indicativa."
+                        : w === "stale_data"
+                          ? "Dados desactualizados."
+                          : w === "cadence_uncertain"
+                            ? "Cadência ainda inconclusiva."
+                            : w === "no_market_signals"
+                              ? "Sem sinais de pesquisa de mercado."
+                              : "Sem benchmark comparável.",
+                  }),
+                )
+                .join(" · ")}
+            </p>
+          ) : lowConfidence ? (
             <p className="text-xs text-content-tertiary pt-1">
               {t("identity.low_confidence", { count: postsAnalyzed })}
             </p>
