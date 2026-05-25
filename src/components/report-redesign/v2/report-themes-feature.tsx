@@ -1,5 +1,5 @@
 import { Hash, Quote, Sparkles } from "lucide-react";
-import { useTranslation, Trans } from "react-i18next";
+import { useTranslation } from "react-i18next";
 import { ReportSourceLabel } from "./report-source-label";
 
 import { cn } from "@/lib/utils";

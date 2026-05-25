@@ -6,6 +6,7 @@
  */
 import type { ReactNode } from "react";
 import { Hash } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { InsightCallout } from "./insight-callout";
 import { INSTAGRAM_CAPTION_CONTEXT } from "@/lib/knowledge/instagram-caption-context";
 
@@ -46,24 +47,27 @@ function computeStats(
   return { postsWithHashtags, totalHashtagUses, avgPerPost };
 }
 
-function avgBadge(avg: number): { label: string; className: string } {
+function avgBadge(
+  avg: number,
+  t: (key: string) => string,
+): { label: string; className: string } {
   const { min, max } = KB_HASHTAGS.recommendedRange;
   if (avg >= min && avg <= max) {
     return {
-      label: "DENTRO DO IDEAL",
+      label: t("hashtag.badge_within"),
       className:
         "bg-tint-success/60 text-signal-success border border-signal-success/20",
     };
   }
   if (avg < min) {
     return {
-      label: "ABAIXO DO IDEAL",
+      label: t("hashtag.badge_below"),
       className:
         "bg-amber-50 text-amber-700 border border-amber-200",
     };
   }
   return {
-    label: "ACIMA DO IDEAL",
+    label: t("hashtag.badge_above"),
     className:
       "bg-amber-50 text-amber-700 border border-amber-200",
   };
@@ -73,14 +77,17 @@ function buildDiagnosticText(
   items: HashtagDiagnosticsProps["items"],
   avg: number,
   postsAnalyzed: number,
+  t: (key: string, opts?: Record<string, unknown>) => string,
 ): string {
   const { min, max } = KB_HASHTAGS.recommendedRange;
 
   if (items.length === 0) {
-    return "Sem hashtags públicas detectadas na amostra. Isto pode ser uma escolha editorial, mas limita a leitura dos territórios temáticos associados ao conteúdo.";
+    return t("hashtag.diag.none");
   }
 
-  const avgFormatted = avg.toFixed(1).replace(".", ",");
+  const lng = (typeof navigator !== "undefined" ? navigator.language : "pt") || "pt";
+  const sep = lng.toLowerCase().startsWith("en") ? "." : ",";
+  const avgFormatted = avg.toFixed(1).replace(".", sep);
 
   // Check if top 2 appear in >50% of posts
   const top2 = items.slice(0, 2);
@@ -91,24 +98,24 @@ function buildDiagnosticText(
 
   const rangePart =
     avg < min
-      ? `abaixo da recomendação de ${min}–${max} por post`
+      ? t("hashtag.diag.range_below", { min, max })
       : avg <= max
-        ? `dentro da recomendação de ${min}–${max} por post`
-        : `acima da recomendação de ${min}–${max} por post`;
+        ? t("hashtag.diag.range_within", { min, max })
+        : t("hashtag.diag.range_above", { min, max });
 
   if (top2InMajority) {
-    return `As 2 hashtags principais (${top2[0].text}, ${top2[1].text}) aparecem em mais de metade dos posts. A média de ${avgFormatted} hashtags por post está ${rangePart}.`;
+    return t("hashtag.diag.top2_majority", { a: top2[0].text, b: top2[1].text, avg: avgFormatted, range: rangePart });
   }
 
   if (avg < min) {
-    return `O perfil usa poucas hashtags por post (média ${avgFormatted}). Pode haver margem para testar combinações mais específicas, mantendo a legenda limpa.`;
+    return t("hashtag.diag.below", { avg: avgFormatted });
   }
 
   if (avg > max) {
-    return `O perfil usa muitas hashtags por post (média ${avgFormatted}). Pode ser útil reduzir volume e privilegiar hashtags mais relevantes.`;
+    return t("hashtag.diag.above", { avg: avgFormatted });
   }
 
-  return `A utilização de hashtags está equilibrada (média ${avgFormatted} por post). O próximo passo é variar combinações por tema e formato.`;
+  return t("hashtag.diag.balanced", { avg: avgFormatted });
 }
 
 // ---------------------------------------------------------------------------
@@ -207,15 +214,17 @@ export function HashtagDiagnosticsCard({
   postsAnalyzed,
   posts,
 }: HashtagDiagnosticsProps) {
+  const { t } = useTranslation("report");
   const { postsWithHashtags, avgPerPost } = computeStats(posts, postsAnalyzed);
   const uniqueCount = items.length;
   const maxWeight = Math.max(1, ...items.map((x) => x.weight));
-  const allPostsHaveHashtags =
-    postsAnalyzed > 0 && postsWithHashtags === postsAnalyzed;
-  const badge = avgBadge(avgPerPost);
+  void postsWithHashtags;
+  const badge = avgBadge(avgPerPost, t);
   const isEmpty = items.length === 0;
 
-  const diagnosticText = buildDiagnosticText(items, avgPerPost, postsAnalyzed);
+  const diagnosticText = buildDiagnosticText(items, avgPerPost, postsAnalyzed, t);
+  const lng = (typeof navigator !== "undefined" ? navigator.language : "pt") || "pt";
+  const decSep = lng.toLowerCase().startsWith("en") ? "." : ",";
 
   return (
     <div className="rounded-2xl border border-border-subtle bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden md:col-span-2">
@@ -228,17 +237,17 @@ export function HashtagDiagnosticsCard({
               <Hash className="w-3 h-3 text-content-tertiary/70" />
             </span>
             <span className="text-xs md:text-xs tracking-[0.16em] text-content-tertiary uppercase font-sans">
-              03 · HASHTAGS · {postsAnalyzed} POSTS ANALISADOS
+              {t("hashtag.header", { count: postsAnalyzed })}
             </span>
           </div>
         </div>
 
         {/* title */}
         <h3 className="font-display text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight mt-5">
-          Que hashtags aparecem mais vezes?
+          {t("hashtag.title")}
         </h3>
         <p className="text-[13px] md:text-[14px] text-content-secondary leading-relaxed mt-2">
-          Hashtags extraídas das legendas. Hashtags no primeiro comentário não são contabilizadas.
+          {t("hashtag.subtitle")}
         </p>
       </div>
 
@@ -246,19 +255,22 @@ export function HashtagDiagnosticsCard({
       <div className="px-5 md:px-7 pb-5 pt-2">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <KpiCard
-            label="HASHTAGS DIFERENTES"
+            label={t("hashtag.kpi.unique_label")}
             value={uniqueCount}
-            sub="no total"
+            sub={t("hashtag.kpi.unique_sub")}
           />
           <KpiCard
-            label="USOS REGISTADOS"
+            label={t("hashtag.kpi.uses_label")}
             value={computeStats(posts, postsAnalyzed).totalHashtagUses}
-            sub={`em ${postsAnalyzed} posts`}
+            sub={t("hashtag.kpi.uses_sub", { count: postsAnalyzed })}
           />
           <KpiCard
-            label="MÉDIA POR POST"
-            value={avgPerPost.toFixed(1).replace(".", ",")}
-            sub={`recomendado: ${KB_HASHTAGS.recommendedRange.min}–${KB_HASHTAGS.recommendedRange.max}`}
+            label={t("hashtag.kpi.avg_label")}
+            value={avgPerPost.toFixed(1).replace(".", decSep)}
+            sub={t("hashtag.kpi.avg_sub", {
+              min: KB_HASHTAGS.recommendedRange.min,
+              max: KB_HASHTAGS.recommendedRange.max,
+            })}
             badge={postsAnalyzed > 0 ? badge : undefined}
           />
         </div>
@@ -267,13 +279,13 @@ export function HashtagDiagnosticsCard({
       {/* ── Frequency list ── */}
       <div className="px-5 md:px-7 pb-5">
         <p className="text-eyebrow-sm text-content-tertiary mb-3">
-          FREQUÊNCIA DE CADA HASHTAG{" "}
-          <span className="font-normal normal-case">· ordenado por uso</span>
+          {t("hashtag.list_title")}{" "}
+          <span className="font-normal normal-case">· {t("hashtag.list_sort")}</span>
         </p>
 
         {isEmpty ? (
           <p className="text-sm text-content-secondary py-4">
-            Não foram encontradas hashtags públicas nas legendas analisadas.
+            {t("hashtag.empty")}
           </p>
         ) : (
           <div className="divide-y divide-border-subtle">
@@ -290,6 +302,7 @@ export function HashtagDiagnosticsCard({
                 }
                 barPct={(it.weight / maxWeight) * 100}
                 isTop3={i < 3}
+                t={t}
               />
             ))}
           </div>
@@ -298,7 +311,7 @@ export function HashtagDiagnosticsCard({
 
       {/* ── Diagnostic callout ── */}
       <div className="px-5 md:px-7 pb-5">
-        <InsightCallout tone="editorial" label="Diagnóstico">
+        <InsightCallout tone="editorial" label={t("hashtag.diagnostic_label")}>
           {diagnosticText}
         </InsightCallout>
       </div>
