@@ -83,6 +83,10 @@ export interface FrequencyCardProps {
   windowDays: number;
   postingFrequencyWeekly: number;
   calendarDays: DayEntry[];
+  /** Cadence cascade result — drives copy gating when sample is insufficient. */
+  cadenceSufficient?: boolean;
+  cadenceSampleSize?: number;
+  cadenceWindowDays?: number;
 }
 
 // ─── Weekly summary helpers ─────────────────────────────────────────
@@ -361,15 +365,31 @@ export function FrequencyCard({
   windowDays,
   postingFrequencyWeekly,
   calendarDays,
+  cadenceSufficient,
+  cadenceSampleSize,
+  cadenceWindowDays,
 }: FrequencyCardProps) {
   const { t, i18n } = useTranslation("report");
-  // Source-of-truth for "Y dias" is the calendar itself when present.
-  // Falls back to the windowDays prop (matches now, defensive for future).
+  // Prefer cadence-derived sample (pinned-excluded) for subtitle counts.
+  const effectiveSampleSize =
+    typeof cadenceSampleSize === "number" && cadenceSampleSize > 0
+      ? cadenceSampleSize
+      : postsAnalyzed;
   const effectiveWindowDays =
-    calendarDays.length > 0 ? calendarDays.length : windowDays;
+    typeof cadenceWindowDays === "number" && cadenceWindowDays > 0
+      ? cadenceWindowDays
+      : calendarDays.length > 0
+        ? calendarDays.length
+        : windowDays;
+  // When cadence is explicitly insufficient, do NOT derive headline from
+  // a fabricated postsPerDay (would yield "Less than 1 post per week" on
+  // empty samples). Use the neutral insufficient headline.
+  const isInsufficient = cadenceSufficient === false;
   const postsPerDay =
-    effectiveWindowDays > 0 ? postsAnalyzed / effectiveWindowDays : 0;
-  const headline = t(getFrequencyHeadlineKey(postsPerDay));
+    effectiveWindowDays > 0 ? effectiveSampleSize / effectiveWindowDays : 0;
+  const headline = isInsufficient
+    ? t("frequency.headline.insufficient")
+    : t(getFrequencyHeadlineKey(postsPerDay));
   const score = computeFrequencia(postingFrequencyWeekly);
   const statusKey = getFrequencyStatusKey(score);
   const verdictKey = statusKey === "high" ? "high" : statusKey === "medium" ? "medium" : "low";
@@ -390,13 +410,14 @@ export function FrequencyCard({
   const weekdayShort = (t("frequency.weekday_short", { returnObjects: true }) as string[]) ?? [];
 
   // Dynamic subtitle: "1 post a cada 1–2 dias · 12 publicações em 18 dias"
-  const hasUsableData = postsAnalyzed > 0 && effectiveWindowDays > 0;
+  const hasUsableData =
+    !isInsufficient && effectiveSampleSize > 0 && effectiveWindowDays > 0;
   const subtitleLine = hasUsableData
     ? t("frequency.subtitle", {
         headline,
-        posts: postsAnalyzed,
+        posts: effectiveSampleSize,
         postsLabel: t(
-          postsAnalyzed === 1 ? "frequency.posts_one" : "frequency.posts_other",
+          effectiveSampleSize === 1 ? "frequency.posts_one" : "frequency.posts_other",
         ),
         days: effectiveWindowDays,
         daysLabel: t(
