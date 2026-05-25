@@ -620,8 +620,8 @@
         "label": "Premium",
         "title": "1 report",
         "price": "€7",
-        "bullet_profile": "1 profile",
-        "bullet_unlock": "1 premium unlock",
+        "launch_price": "Launch price",
+        "bullet_combined": "1 profile · all premium sections",
         "note": "Ideal for a one-off analysis",
         "cta": "Choose 1 report"
       },
@@ -629,7 +629,7 @@
         "label": "Best value",
         "title": "Pack of 5 reports",
         "price": "€28",
-        "bullet_reports": "5 reports",
+        "bullet_reports": "5 profiles",
         "bullet_unit": "€5.60/report",
         "savings_badge": "Save 20%",
         "cta": "Choose pack of 5"
