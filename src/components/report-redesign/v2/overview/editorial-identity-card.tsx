@@ -13,7 +13,7 @@
  * + frequência semanal + tier de seguidores).
  */
 import { cn } from "@/lib/utils";
-import { ArrowDownRight, ArrowUpRight, Heart, MessageCircle, CalendarDays } from "lucide-react";
+import { Target } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { formatCompactNumber } from "@/lib/i18n/format";
@@ -22,13 +22,6 @@ import type { ScoreKey } from "./score-utils";
 /* ── Types ─────────────────────────────────────────────────────────── */
 
 type Band = "warning" | "developing" | "solid";
-
-type Tone = "success" | "warning";
-
-interface Bullet {
-  destaque: string;
-  detalhe: string;
-}
 
 interface EditorialIdentityCardProps {
   scores: Record<ScoreKey, { value: number; subtitle: string }>;
@@ -40,7 +33,7 @@ interface EditorialIdentityCardProps {
     engagementBenchmark: number;
     engagementDeltaPct: number;
   };
-  /** Optional signals usados para derivar bullets de fortes/limitações */
+  /** Optional signals usados para derivar a métrica âncora e a nota "porque importa" */
   dominantFormat?: "Reels" | "Carousels" | "Imagens" | string;
   dominantFormatShare?: number;
   postingFrequencyWeekly?: number;
