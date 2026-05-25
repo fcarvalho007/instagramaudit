@@ -236,6 +236,17 @@ function computeAvailableSignals(ctx: InsightsContext): string[] {
   if (Number.isFinite(cs.estimated_posts_per_week))
     signals.push("content_summary.estimated_posts_per_week");
 
+  // Cadence (source of truth for posting rhythm). Only expose paths that
+  // exist in the serialised payload to keep `allowed_evidence_paths`
+  // consistent.
+  const cad = ctx.cadence;
+  signals.push("cadence.method");
+  signals.push("cadence.sampleSize");
+  signals.push("cadence.sufficient");
+  if (cad.weekly !== null) signals.push("cadence.weekly");
+  if (cad.windowDays !== null) signals.push("cadence.windowDays");
+  if (cad.pinnedExcluded > 0) signals.push("cadence.pinnedExcluded");
+
   // Per-post allow-list. Mirrors the trimmed `top_posts` array sent in
   // `buildInsightsUserPayload` (cap = PROMPT_TOP_POSTS_CAP). Order is
   // deterministic both across posts (index order) and within a post
@@ -418,6 +429,22 @@ export function buildInsightsUserPayload(
       estimated_posts_per_week: round2(
         ctx.content_summary.estimated_posts_per_week,
       ),
+    },
+    cadence: {
+      method: ctx.cadence.method,
+      sampleSize: ctx.cadence.sampleSize,
+      sufficient: ctx.cadence.sufficient,
+      weekly:
+        ctx.cadence.weekly !== null ? round2(ctx.cadence.weekly) : null,
+      windowDays: ctx.cadence.windowDays,
+      ...(ctx.cadence.pinnedExcluded > 0
+        ? { pinnedExcluded: ctx.cadence.pinnedExcluded }
+        : {}),
+      ...(!ctx.cadence.sufficient || ctx.cadence.reliability === "low"
+        ? ctx.cadence.note
+          ? { note: ctx.cadence.note }
+          : {}
+        : {}),
     },
     top_posts: ctx.top_posts.slice(0, PROMPT_TOP_POSTS_CAP).map((post) => ({
       format: post.format,
