@@ -10,6 +10,8 @@
  */
 import { type ReactNode, useState } from "react";
 import { useVariantFeatures } from "@/lib/report/report-variant";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import {
   FileText, AlertTriangle, Type, Zap, HelpCircle,
   BookOpen, Sparkles, Mic, Repeat, ChevronDown, ChevronUp,
@@ -44,6 +46,8 @@ import {
 } from "@/components/ui/collapsible";
 
 const KB_SOURCES = INSTAGRAM_CAPTION_CONTEXT.sources;
+
+type TR = TFunction<"report", undefined>;
 
 // ---------------------------------------------------------------------------
 // Theme quality guard
@@ -86,58 +90,61 @@ function fmt(n: number): string {
   return n.toLocaleString("pt-PT");
 }
 
-function buildDiagnosticStatement(data: CaptionIntelligence): string {
+function buildDiagnosticStatement(data: CaptionIntelligence, t: TR): string {
   const { distributions, ctaPatterns } = data;
   const dominantOpening = distributions.openings[0];
   const questionEnding = distributions.endings.find((e) => e.type === "question");
   const longPct = distributions.length.find((l) => l.bucket === "long")?.pct ?? 0;
 
   const openingPart = dominantOpening
-    ? `O perfil tende a abrir as legendas com ${dominantOpening.label.toLowerCase()}`
-    : "As legendas não revelam um padrão de abertura dominante";
+    ? t("caption.diag.opening_dominant", { label: dominantOpening.label.toLowerCase() })
+    : t("caption.diag.opening_none");
 
   const lengthPart = longPct >= 60
-    ? "— a escrita tende a ser longa e explicativa"
+    ? t("caption.diag.length_long")
     : longPct >= 30
-      ? "— com comprimento variável entre posts"
-      : "— a escrita tende a ser curta e direta";
+      ? t("caption.diag.length_mixed")
+      : t("caption.diag.length_short");
 
   const endPart = (questionEnding?.pct ?? 0) < 20
-    ? ". Poucas legendas terminam com pergunta, o que sugere menor estímulo à conversa nos comentários."
-    : ". A presença de perguntas no final indica um padrão orientado para interação nos comentários.";
+    ? t("caption.diag.ending_low_q")
+    : t("caption.diag.ending_with_q");
 
-  const ctaPart = ctaPatterns.hasCtaPct >= 40 ? "" : " A presença de CTAs explícitos é reduzida nesta amostra.";
+  const ctaPart = ctaPatterns.hasCtaPct >= 40 ? "" : t("caption.diag.cta_low");
 
   return `${openingPart} ${lengthPart}${endPart}${ctaPart}`;
 }
 
-function buildWhatWorks(data: CaptionIntelligence): string {
+function buildWhatWorks(data: CaptionIntelligence, t: TR): string {
   if (data.editorialReading.whatWorks && data.editorialReading.whatWorks !== "—") {
     return data.editorialReading.whatWorks;
   }
-  return "O perfil mantém consistência editorial — a voz é reconhecível entre posts.";
+  return t("caption.diag.what_works_default");
 }
 
-function buildCriticalPoint(data: CaptionIntelligence): string {
+function buildCriticalPoint(data: CaptionIntelligence, t: TR): string {
   if (data.editorialReading.whatIsMissing && data.editorialReading.whatIsMissing !== "—") {
     return data.editorialReading.whatIsMissing;
   }
   const questionPct = data.distributions.endings.find((e) => e.type === "question")?.pct ?? 0;
   if (questionPct < 20) {
-    return "A baixa frequência de perguntas no final das legendas pode limitar o estímulo à conversa pública.";
+    return t("caption.diag.critical_low_q");
   }
-  return "Sem risco editorial identificado na amostra atual.";
+  return t("caption.diag.critical_none");
 }
 
-function buildToWatch(data: CaptionIntelligence): string {
+function buildToWatch(data: CaptionIntelligence, t: TR): string {
   const topExpr = data.recurringExpressions.items.slice(0, 2);
   if (topExpr.length >= 2) {
-    return `Repetição de expressões como "${topExpr[0].expression.toLowerCase()}" ou "${topExpr[1].expression.toLowerCase()}" sugere uma estrutura que pode tornar-se previsível.`;
+    return t("caption.diag.watch_repeats", {
+      a: topExpr[0].expression.toLowerCase(),
+      b: topExpr[1].expression.toLowerCase(),
+    });
   }
   if (data.editorialReading.recommendedImprovement) {
     return data.editorialReading.recommendedImprovement;
   }
-  return "A diversidade de estrutura entre posts é um sinal a acompanhar ao longo do tempo.";
+  return t("caption.diag.watch_default");
 }
 
 // ---------------------------------------------------------------------------
