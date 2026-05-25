@@ -5,7 +5,9 @@
  * via `onOpenDetail`, partilhando o mesmo sheet com a vista Pipeline.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   Table,
   TableBody,
@@ -15,7 +17,26 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Inbox, Search } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Inbox, Loader2, Search, Trash2, X } from "lucide-react";
+import { adminFetch } from "@/lib/admin/fetch";
 import {
   KANBAN_COLUMNS,
   type EnrichedLead,
@@ -33,6 +54,9 @@ interface LeadsTableProps {
   leads: EnrichedLead[];
   onOpenDetail: (lead: EnrichedLead) => void;
 }
+
+type SortKey = "recent" | "oldest" | "name" | "status";
+const HARD_CONFIRM_PHRASE = "APAGAR";
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> =
   Object.fromEntries(
