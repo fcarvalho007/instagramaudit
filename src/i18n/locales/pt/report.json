@@ -456,13 +456,15 @@
     "avatar_alt": "Avatar de {{handle}}",
     "access": {
       "badge_free": "Grátis",
-      "badge_launch": "Oferta de lançamento",
+      "badge_included": "Incluído",
       "badge_premium": "Premium",
-      "beta_note": "O Diagnóstico editorial faz parte da experiência premium, mas está aberto nesta fase beta.",
+      "beta_note": "O Diagnóstico está incluído nesta fase beta.",
+      "available_now": "Disponível agora",
+      "progress": "{{accessible}} de {{total}} secções acessíveis",
+      "premium_count": "{{count}} por desbloquear",
       "cta": "Ver opções de acesso",
       "cta_aria": "Ver opções de acesso premium",
-      "trust": "1 relatório ou pack de 5. Sem subscrição.",
-      "pending_note": "Pagamento brevemente disponível — os botões registam o teu interesse."
+      "trust": "1 relatório ou pack de 5. Sem subscrição."
     }
   },
   "shell": {
