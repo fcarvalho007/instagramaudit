@@ -1083,9 +1083,15 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   // Fallback: if every post is pinned, use the full set so we still emit
   // something instead of an empty cadence/timeline.
   const cadencePosts = cadencePostsRaw.length > 0 ? cadencePostsRaw : posts;
-  const temporalSeries = buildTemporalSeries(cadencePosts);
-  const postingHeatmap = buildPostingHeatmap(cadencePosts);
-  const bestDays = buildBestDays(cadencePosts);
+  // Apply the same defensive outlier guard the cadence module uses, so the
+  // heatmap / best-days / timeline don't get skewed by a single stale post
+  // that the actor failed to flag as pinned. We compute the cutoff from the
+  // 10 most-recent valid timestamps and drop anything > 180d older than the
+  // median of that cluster.
+  const cadencePostsClean = pruneDateOutliers(cadencePosts);
+  const temporalSeries = buildTemporalSeries(cadencePostsClean);
+  const postingHeatmap = buildPostingHeatmap(cadencePostsClean);
+  const bestDays = buildBestDays(cadencePostsClean);
 
   const postsForText: PostForText[] = posts.map((p) => ({
     caption: p.caption,
