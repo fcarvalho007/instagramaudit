@@ -246,7 +246,7 @@ export const RESPONSE_JSON_SCHEMA_V2 = {
             enum: ["strong", "promising", "needs_work", "limited_data"],
           },
           title: { type: "string", minLength: 1, maxLength: 70 },
-          paragraph: { type: "string", minLength: 1, maxLength: 480 },
+          paragraph: { type: "string", minLength: 1, maxLength: 1400 },
           priority: { type: "string", minLength: 1, maxLength: 200 },
           strengths: {
             type: "array",
