@@ -1108,7 +1108,10 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   // smaller than 30 days, so the report stops promising "30 dias" when only
   // a 12-post sample is available. Strings are crafted to read naturally
   // wherever the layout interpolates them ("nos últimos N dias", etc.).
-  const sampleSize = posts.length;
+  // Sample size for cadence-related labels excludes pinned posts (same
+  // reason as `cadencePosts` above). topPosts/themes still see all posts,
+  // but "X publicações em Y dias" must match the cadence window.
+  const sampleSize = cadencePosts.length;
   const windowLabel =
     windowDays > 0 ? `últimos ${windowDays} dias` : "amostra recolhida";
   const windowShortLabel =
