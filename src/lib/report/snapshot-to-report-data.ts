@@ -347,6 +347,9 @@ export interface ReportEnriched {
       body: string;
       resolves: string;
     }> | null;
+    /** Veredicto editorial estruturado para o Bloco 1. Null em snapshots
+     *  antigos — nesse caso o cartão cai para `sections.hero`. */
+    editorialVerdict: EditorialVerdict | null;
   } | null;
   /**
    * Editorial crossovers (R4-B). Derived from posts + market signals to
