@@ -31,6 +31,8 @@ import {
 import type {
   AiInsightsV1,
   AiInsightsV2,
+  EditorialVerdict,
+  EditorialVerdictWarning,
   InsightsContext,
   InsightsGenerationResult,
   InsightsV2GenerationResult,
