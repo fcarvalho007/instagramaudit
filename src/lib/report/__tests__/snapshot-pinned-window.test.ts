@@ -39,9 +39,12 @@ function makePost(
   };
 }
 
-describe("snapshotToReportData — pinned posts excluded from cadence window", () => {
-  it("ignores pinned posts when computing windowDays and weekly frequency", () => {
-    // 2 pinned from 2023 + 10 fresh in May 2026 (12-day live window).
+describe("snapshotToReportData — pinned posts excluded from cadence cascade", () => {
+  it("ignores pinned posts when computing cadence (no 1111-day window)", () => {
+    // 2 pinned from 2023 + 10 fresh in May 2026. New cadence module
+    // uses cascading windows (30d → 90d → sample-span → insufficient),
+    // so the 2023 pinned posts cannot inflate the window even if the
+    // pinned filter ever fails.
     const posts: SnapshotPost[] = [
       makePost("2023-05-11T18:18:10.000Z", { pinned: true }),
       makePost("2023-09-05T19:22:49.000Z", { pinned: true }),
@@ -69,12 +72,16 @@ describe("snapshotToReportData — pinned posts excluded from cadence window", (
 
     const { data } = snapshotToReportData({ payload });
 
-    // Live window: 2026-05-13 → 2026-05-25 = 13 calendar days inclusive.
-    expect(data.profile.windowDays).toBe(13);
-
-    // Cadence: 10 non-pinned / 13 days × 7 ≈ 5.4 posts/week.
-    expect(data.keyMetrics.postingFrequencyWeekly).toBeGreaterThanOrEqual(5);
-    expect(data.keyMetrics.postingFrequencyWeekly).toBeLessThanOrEqual(6);
+    // Window must be the canonical 30d (when ≥3 recent posts exist), NOT
+    // the 1111-day span between the 2023 pinned and the 2026 fresh posts.
+    // The exact `windowDays` depends on the real clock when the test runs
+    // (window_30d when posts are within the last 30 days, window_90d
+    // otherwise). Either way: never the catastrophic 1000+.
+    expect(data.profile.windowDays).toBeLessThanOrEqual(90);
+    expect(data.profile.windowDays).toBeGreaterThan(0);
+    // Cadence: must be a finite positive number, NOT the 0.08/wk that the
+    // old (max-min over all posts) formula produced.
+    expect(data.keyMetrics.postingFrequencyWeekly).toBeGreaterThan(0.5);
   });
 
   it("falls back to all posts when every post is pinned", () => {
@@ -83,6 +90,9 @@ describe("snapshotToReportData — pinned posts excluded from cadence window", (
       makePost("2026-05-22T10:00:00.000Z", { pinned: true }),
     ];
     const { data } = snapshotToReportData({ payload: { posts } });
-    expect(data.profile.windowDays).toBe(3);
+    // Pinned-only fallback keeps the posts in cadencePosts, but the
+    // cadence module then re-filters pinned and reports insufficient.
+    // What matters: no 1111-day style window leaks through.
+    expect(data.profile.windowDays).toBeLessThanOrEqual(90);
   });
 });

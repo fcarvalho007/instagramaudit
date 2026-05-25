@@ -22,6 +22,7 @@ import type {
 import { AI_INSIGHT_V2_SECTIONS } from "@/lib/insights/types";
 
 import { resolveReportTier } from "./tiers";
+import { computeCadence, type CadenceResult } from "./cadence";
 import {
   extractTopHashtags,
   extractTopKeywords,
@@ -357,6 +358,13 @@ export interface ReportEnriched {
     type: "carousel" | "reel" | "image" | "video" | "unknown";
     thumbnailUrl?: string;
   }>;
+  /**
+   * Cadence metadata — the full result of the cascading window strategy
+   * used to derive `keyMetrics.postingFrequencyWeekly`. Consumers that
+   * need to differentiate "no signal" from "0 posts/week" should branch
+   * on `cadence.sufficient` and surface `cadence.notePt` when false.
+   */
+  cadence: CadenceResult;
 }
 
 // ============================================================================
@@ -968,36 +976,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   const cadencePostsRaw = posts.filter((p) => !p.is_pinned);
   // Fallback: if every post is pinned, use the full set so we still emit
   // something instead of an empty cadence/timeline.
-  let cadencePosts = cadencePostsRaw.length > 0 ? cadencePostsRaw : posts;
-
-  // Defense-in-depth: even after filtering pinned, a profile may have an
-  // archived/unmarked-pinned outlier that inflates the window (e.g. one post
-  // from 2 years ago + 10 from this week → 1100-day window). If the gap
-  // between consecutive posts (sorted desc) exceeds 90 days and we still
-  // have ≥3 recent posts, drop the older tail. This is conservative: it
-  // only trims when the gap is dramatic, never inside a normal hiatus.
-  if (cadencePosts.length >= 3) {
-    const sorted = [...cadencePosts]
-      .filter((p) => p.taken_at_iso)
-      .sort(
-        (a, b) =>
-          new Date(b.taken_at_iso!).getTime() -
-          new Date(a.taken_at_iso!).getTime(),
-      );
-    const GAP_MS = 90 * 86_400_000;
-    let cutIndex = sorted.length;
-    for (let i = 1; i < sorted.length; i++) {
-      const prev = new Date(sorted[i - 1].taken_at_iso!).getTime();
-      const cur = new Date(sorted[i].taken_at_iso!).getTime();
-      if (prev - cur > GAP_MS && i >= 3) {
-        cutIndex = i;
-        break;
-      }
-    }
-    if (cutIndex < sorted.length) {
-      cadencePosts = sorted.slice(0, cutIndex);
-    }
-  }
+  const cadencePosts = cadencePostsRaw.length > 0 ? cadencePostsRaw : posts;
   const temporalSeries = buildTemporalSeries(cadencePosts);
   const postingHeatmap = buildPostingHeatmap(cadencePosts);
   const bestDays = buildBestDays(cadencePosts);
@@ -1011,38 +990,14 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   const topKeywords = extractTopKeywords(postsForText, 5);
   const topThemes = extractTopThemes(postsForText, 8);
 
-  // Window in days = (newest - oldest) ceil to days, +1 to be inclusive.
-  let windowDays = 0;
-  let minTs = Infinity;
-  let maxTs = -Infinity;
-  for (const p of cadencePosts) {
-    if (!p.taken_at_iso) continue;
-    const t = new Date(p.taken_at_iso).getTime();
-    if (!Number.isFinite(t)) continue;
-    minTs = Math.min(minTs, t);
-    maxTs = Math.max(maxTs, t);
-  }
-  if (Number.isFinite(minTs) && Number.isFinite(maxTs)) {
-    // Use date-based (UTC) diff so windowDays === postingTimeline.length.
-    // Posts at different hours of the day must NOT inflate the window.
-    const DAY_MS = 86_400_000;
-    const minDay = Math.floor(minTs / DAY_MS) * DAY_MS;
-    const maxDay = Math.floor(maxTs / DAY_MS) * DAY_MS;
-    windowDays = Math.max(1, Math.round((maxDay - minDay) / DAY_MS) + 1);
-  }
+  // Cadence — v3 cascading window (30d → 90d → sample → insufficient).
+  // Pure module guarantees: pinned excluded, invalid/future ts excluded,
+  // sorted desc, neutral copy when sample is too thin to be reliable.
+  // See src/lib/report/cadence.ts for the formula table.
+  const cadence = computeCadence(cadencePosts);
+  const windowDays = cadence.windowDays;
   const profileWithWindow = { ...profile, windowDays };
-
-  // Recalculate posting frequency from windowDays so every consumer
-  // (overview card, attention row, share message, KPI grids) uses the
-  // same value that matches the visible "X publicações em Y dias".
-  // Use cadencePosts.length (excludes pinned) so a profile with 2 pinned
-  // posts from 2 years ago + 10 recent posts reads as "10 / 12 dias", not
-  // "12 / 1111 dias".
-  if (windowDays > 0 && cadencePosts.length > 0) {
-    keyMetrics.postingFrequencyWeekly = round1(
-      (cadencePosts.length / windowDays) * 7,
-    );
-  }
+  keyMetrics.postingFrequencyWeekly = cadence.weekly;
 
   // Competitors: only emit a row when the snapshot carries real competitor
   // data. Otherwise return an empty array so the section can show its empty
@@ -1140,24 +1095,34 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   // Sample size for cadence-related labels excludes pinned posts (same
   // reason as `cadencePosts` above). topPosts/themes still see all posts,
   // but "X publicações em Y dias" must match the cadence window.
-  const sampleSize = cadencePosts.length;
-  const windowLabel =
-    windowDays > 0 ? `últimos ${windowDays} dias` : "amostra recolhida";
-  const windowShortLabel =
-    windowDays > 0 ? `${windowDays} dias` : "amostra";
-  const kpiSubtitle =
-    windowDays > 0
+  // Labels derive from the cadence cascade so they always match the
+  // weekly value rendered on KPI cards. When the sample is insufficient
+  // (`cadence.method === "insufficient"`) we emit a neutral message
+  // instead of a misleading "amostra de 0 publicações · 0 dias".
+  const sampleSize = cadence.sampleSize;
+  const isInsufficient = !cadence.sufficient;
+  const windowLabel = isInsufficient
+    ? "amostra recente insuficiente"
+    : cadence.method === "sample_span"
+      ? `amostra de ${windowDays} dias`
+      : `últimos ${windowDays} dias`;
+  const windowShortLabel = isInsufficient
+    ? "amostra insuficiente"
+    : `${windowDays} dias`;
+  const kpiSubtitle = isInsufficient
+    ? cadence.notePt ?? "amostra recente insuficiente"
+    : cadence.method === "sample_span"
       ? `amostra de ${sampleSize} publicações · ${windowDays} dias`
-      : `amostra de ${sampleSize} publicações`;
-  const sampleCaption = `Análise baseada nas últimas ${sampleSize} publicações recolhidas.`;
-  const temporalLabel =
-    windowDays > 0
-      ? `Evolução temporal · janela de ${windowDays} dias`
-      : `Evolução temporal · amostra de ${sampleSize} publicações`;
-  const topPostsSubtitle =
-    windowDays > 0
-      ? `Ordenadas por envolvimento. Janela observada: ${windowDays} dias.`
-      : `Ordenadas por envolvimento na amostra recolhida.`;
+      : `${sampleSize} publicações nos últimos ${windowDays} dias`;
+  const sampleCaption = isInsufficient
+    ? "Análise baseada na amostra recolhida (cadência não calculada)."
+    : `Análise baseada nas últimas ${sampleSize} publicações recolhidas.`;
+  const temporalLabel = isInsufficient
+    ? "Evolução temporal · amostra recolhida"
+    : `Evolução temporal · janela de ${windowDays} dias`;
+  const topPostsSubtitle = isInsufficient
+    ? "Ordenadas por envolvimento na amostra recolhida."
+    : `Ordenadas por envolvimento. Janela observada: ${windowDays} dias.`;
 
   // Views are only populated for Reels; if every post has 0 views, hide the
   // series in the temporal chart.
@@ -1360,6 +1325,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     commentIntelligence: (payload as { comment_intelligence?: CommentIntelligence | null }).comment_intelligence ?? null,
     postingTimeline: buildPostingTimeline(posts),
     analysedPostFormats: buildAnalysedPostFormats(posts),
+    cadence,
   };
 
   const data: ReportData = {

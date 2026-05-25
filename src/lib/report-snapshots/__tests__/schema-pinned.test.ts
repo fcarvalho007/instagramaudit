@@ -72,8 +72,9 @@ describe("ReportPayloadV1Schema — preserves is_pinned", () => {
     const { data } = snapshotToReportData({
       payload: parsed as unknown as Parameters<typeof snapshotToReportData>[0]["payload"],
     });
-    expect(data.profile.windowDays).toBeLessThanOrEqual(20);
-    expect(data.profile.windowDays).toBeGreaterThanOrEqual(10);
-    expect(data.keyMetrics.postingFrequencyWeekly).toBeGreaterThanOrEqual(3);
+    // Cadence cascade (30d → 90d → sample) — never the 1111-day catastrophe.
+    expect(data.profile.windowDays).toBeLessThanOrEqual(90);
+    expect(data.profile.windowDays).toBeGreaterThan(0);
+    expect(data.keyMetrics.postingFrequencyWeekly).toBeGreaterThan(0.5);
   });
 });

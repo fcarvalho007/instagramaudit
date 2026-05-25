@@ -1,66 +1,108 @@
-## Auditoria — cadência errada em `robs.cortez`
+## Cadência v3 — fórmula em janelas (30d → 90d → amostra)
 
-### Causa raiz (1 linha)
+### Old vs new formula
 
-`ReportPayloadV1Schema` em `src/lib/report-snapshots/schema.ts` **não inclui `is_pinned`** no `PostSchema`. Quando o Zod valida o payload antes de gravar em `report_snapshots`, a flag `is_pinned` é silenciosamente removida. O filtro de pinned em `snapshot-to-report-data.ts:968` torna-se um no-op para reports históricos, e os 2 posts fixos de 2023 voltam a inflar a janela para 1111 dias.
-
-### Evidência
-
-Snapshot `cdec97d1-…` (robs.cortez, persistido 16:00 hoje):
-
-| Camada | `posts[*].is_pinned` presente? | Cadência calculada |
+| | Atual | Nova |
 |---|---|---|
-| `analysis_snapshots.normalized_payload.posts` | ✅ `true`/`false` | 10 posts / 13 dias ≈ **5,4/sem** ✔ |
-| `report_snapshots.report_payload_jsonb.posts` | ❌ `null` em todos | 12 posts / 1111 dias ≈ **0,08/sem** ✘ |
+| Janela | `(max - min) / 7 dias` da amostra inteira | **30 dias rolling** (`posts_30d / 4.345`) → fallback **90 dias** (`posts_90d / 12.857`) → fallback **sample span** (`posts / span_weeks`) |
+| Pinned | Filtrados antes do cálculo | Igual |
+| Sample inválida | Mostra número distorcido | Mostra copy neutra "amostra recente insuficiente…" e `postingFrequencyWeekly = 0` |
+| Sort | Não explícito | Sempre desc por ts antes de tudo |
+| Timestamps | Só `taken_at_iso` | `taken_at_iso` OR `taken_at` (auto-detect s vs ms) |
 
-A página `/analyze/$username` (lê de `analysis_snapshots`) mostra cadência correta. Qualquer leitor que use `report_snapshots` (link partilhado, email summary, dashboard pessoal, PDF) mostra "12 publicações em 1111 dias".
+### Plano cirúrgico
 
-Bónus: `report_payload_jsonb.content_summary.estimated_posts_per_week = 0.1` vem já errado do upstream (calculado em `content_summary` antes do filtro de pinned). A reescrita em `snapshot-to-report-data.ts:1012` corrige isto, mas só funciona quando `is_pinned` chega ao adapter — daí o bug ficar invisível para `/analyze` e visível para `/report`.
+**1. Novo módulo puro `src/lib/report/cadence.ts`**
+Função exportada `computeCadence(posts, { now? })` que devolve:
+```ts
+{
+  method: "window_30d" | "window_90d" | "sample_span" | "insufficient",
+  weekly: number,           // 0 se insufficient
+  sampleSize: number,       // posts considerados na janela final
+  windowDays: number,       // 30, 90, ou span real
+  sufficient: boolean,
+  notePt: string | null,    // copy neutra se !sufficient
+  noteEn: string | null,
+}
+```
+Lógica:
+- normaliza ts: prefere `taken_at_iso`, fallback `taken_at` (heurística s/ms: valor < 1e12 → segundos × 1000)
+- filtra `is_pinned === true`
+- filtra ts inválido/NaN/futuro
+- ordena desc
+- count em <30d / <90d a partir de `now`
+- se `count_30 >= 3` → `weekly = count_30 / 4.345`, method window_30d
+- senão se `count_90 >= 3` → `weekly = count_90 / 12.857`, method window_90d
+- senão se `posts.length >= 2` e span entre max e min ≤ 180 dias → sample_span
+- senão → insufficient (weekly=0, notePt/EN preenchidos)
 
-### Resumo das respostas
+**2. Substituir bloco em `src/lib/report/snapshot-to-report-data.ts:968-1044`**
+- continuar a filtrar pinned para `temporalSeries`/`heatmap`/`bestDays` (igual ao atual — não mexer)
+- chamar `computeCadence(posts)` para `keyMetrics.postingFrequencyWeekly` e `windowDays`
+- remover o "defense-in-depth gap filter" introduzido na volta anterior (a nova função substitui)
+- labels: `kpiSubtitle` / `windowLabel` / `temporalLabel` / `sampleCaption` passam a usar o `method` retornado:
+  - `window_30d` → "últimos 30 dias · N publicações"
+  - `window_90d` → "últimos 90 dias · N publicações"
+  - `sample_span` → "amostra de N publicações · X dias"
+  - `insufficient` → "amostra recente insuficiente para medir cadência"
+- expor `cadence` no `ReportEnriched` para componentes que queiram method/note
 
-1. **Onde:** `src/lib/report/snapshot-to-report-data.ts:968-1016`. Override de `postingFrequencyWeekly` em `:1012-1015` a partir de `cadencePosts.length / windowDays * 7`.
-2. **Fonte de dados:** janela entre `min` e `max` `taken_at_iso` da amostra retornada pelo Apify, **excluindo pinned**. Não usa janelas fixas 30/60/90 dias nem `profile.posts_count`.
-3. **Ordenação:** `temporalSeries`/`heatmap` ordenam internamente; o cálculo da janela é min/max, não depende de ordem.
-4. **Pinned a distorcer:** sim — para reports gravados em `report_snapshots` (causa do bug). Não para `/analyze` direto.
-5. **Timestamps:** `taken_at_iso` (string ISO) parseado com `new Date(...).getTime()` em ms. Sem mistura s/ms.
-6. **Amostra suficiente:** 12 posts (`apify/instagram-scraper`), inclui ~10 recentes + 2 pinned antigos. Suficiente para janela 12-15 dias.
-7. **Fresh vs stale:** UI atual lê dependendo da rota. `/analyze/$username` = `analysis_snapshots` (correto). `/report/$id` partilhado/email = `report_snapshots` (estragado).
-8. **Cache velha?:** não — só existe 1 snapshot para este handle, criado hoje 15:53/16:00. Bug é estrutural, não de cache.
-9. **Campos relevantes:** `posts[].taken_at_iso`, `posts[].is_pinned`. Cálculo final em `snapshot-to-report-data.ts` (`cadencePosts`, `windowDays`, `keyMetrics.postingFrequencyWeekly`).
+**3. Componentes consumidores — só copy, sem mudança estrutural**
+- `report-overview-block.tsx` → `frequenciaSubtitle` passa a aceitar `cadence` e mostrar a copy neutra quando `!sufficient`
+- `editorial-identity-card.tsx` → `rhythmBand` só corre se `cadence.sufficient`; senão a linha "Frequência" passa a "—" + nota
+- `frequency-card.tsx` → `computeFrequencia` recebe `cadence.weekly` (já está), mas se `!sufficient` mostra estado vazio
+- `report-kpi-grid.tsx` / `report-kpi-grid-v2.tsx` → quando `!sufficient`, render "—" em vez de `0,0`
+- `share-message.ts` → omite frase de cadência quando `!sufficient`
+- `report-overview-attention-row.tsx` → linha "alta cadência" só dispara se `sufficient`
 
-### Plano de correção (cirúrgico)
+**4. Scoring**
+`computeFrequencia` em `frequency-card.tsx` é uma função pura sobre `weekly`. Não muda — recebe um `weekly` mais fiável. Confirmar via grep que nenhum scoring usa `windowDays` directo.
 
-**Edit 1 — `src/lib/report-snapshots/schema.ts`**
-Adicionar `is_pinned: z.boolean().nullable().optional()` ao `PostSchema`. Single line. Sem migration, sem novo campo na base de dados.
+**5. Tests novos — `src/lib/report/__tests__/cadence.test.ts`**
+- recent active (10 posts nos últimos 13 dias) → window_30d, weekly ≈ 5.4
+- pinned antigo + recentes (caso robs.cortez) → window_30d, weekly ≈ 5.4, ignora pinned
+- timestamps em segundos (`taken_at = 1716623400`) → normalizado, weekly calculado
+- timestamps em milissegundos (`taken_at = 1716623400000`) → normalizado, weekly calculado
+- timestamps em falta → ignorados, restantes contam
+- stale (último post há 200 dias) → insufficient + notePt
+- empty posts → insufficient + notePt
+- exactly 2 posts em 30 dias → cai para window_90d se 3+; senão sample_span
+- post futuro (ts > now) → descartado
 
-**Edit 2 — backfill leve (opcional, sem code change na primeira volta)**
-O snapshot `cdec97d1-…` ficou gravado sem `is_pinned`. Opções:
-- (a) **não fazer nada** — quando o utilizador voltar a desbloquear ou o pipeline reescrever o report (re-publish/re-analyze), o novo schema preserva o flag. Custo zero.
-- (b) **regenerar 1 snapshot** chamando `persistReportSnapshotInternal(reportRequestId, source)` para o request id do robs.cortez. Custo $0 (não bate no Apify, só relê `analysis_snapshots`).
+**6. Backfill — não necessário desta vez**
+O snapshot do robs.cortez já tem `is_pinned` correto (backfill anterior). A nova fórmula vai recalcular na próxima leitura sem tocar na DB.
 
-Recomendo (b) só para o robs.cortez (1 row), para que a tua próxima visita ao report partilhado mostre já o número certo. Faço isto via `psql` num script one-off, sem mutar mais nada.
+**7. Validação final**
+- `bunx tsc --noEmit`
+- `bunx vitest run` (444 → 444 + ~10 novos)
+- query SQL para confirmar que o report do robs.cortez, ao ser lido, devolveria `method=window_30d, weekly≈5.4` (verificado via test fixture com os ts reais)
 
-**Edit 3 — defesa em profundidade em `snapshot-to-report-data.ts`**
-Acrescentar fallback: se `windowDays > 365` E `cadencePosts.length >= 3`, descartar os outliers mais antigos (posts isolados a > 90 dias do segundo-mais-recente) e recalcular. Isto protege contra pinned não marcados, posts arquivados, ou perfis que voltam após hiato. Comentado claramente como guarda secundária.
+### Ficheiros a tocar
 
-**Edit 4 — teste de regressão**
-Novo teste `src/lib/report-snapshots/__tests__/schema-pinned.test.ts`:
-- payload com 2 posts `is_pinned: true` antigos + 10 recentes
-- `ReportPayloadV1Schema.parse(payload)` mantém `is_pinned: true` em ambos
-- `snapshotToReportData` aplicado ao parsed payload devolve `windowDays <= 20`, `postingFrequencyWeekly >= 3`
+| Tipo | Caminho |
+|---|---|
+| novo | `src/lib/report/cadence.ts` |
+| novo | `src/lib/report/__tests__/cadence.test.ts` |
+| edit | `src/lib/report/snapshot-to-report-data.ts` (substituir bloco cadence ~970-1050, adicionar `cadence` ao enriched) |
+| edit | `src/components/report-redesign/v2/report-overview-block.tsx` (subtitle neutra) |
+| edit | `src/components/report-redesign/v2/overview/editorial-identity-card.tsx` (rhythmBand opt-out) |
+| edit | `src/components/report-redesign/v2/overview/frequency-card.tsx` (empty state) |
+| edit | `src/components/report-redesign/v2/report-overview-cards.tsx` (render "—") |
+| edit | `src/components/report-redesign/report-kpi-grid.tsx` (render "—") |
+| edit | `src/components/report-redesign/v2/report-kpi-grid-v2.tsx` (render "—") |
+| edit | `src/components/report-share/share-message.ts` (omitir frase) |
+| edit | `src/components/report-redesign/v2/report-overview-attention-row.tsx` (guarda sufficient) |
 
-### Fora de scopo (não tocar nesta volta)
+### Fora de scope
 
-- Copy do card "Identidade Editorial" — só voltar a olhar depois do número estar certo.
-- `content_summary.estimated_posts_per_week` upstream — fica a ser sobrescrito pelo adapter, não vale a pena tocar agora.
-- Scoring / benchmark engagement — não depende de `postingFrequencyWeekly`.
-- UI/copy/locales — sem mudanças.
+- Re-fetch Apify · prompt v2 · UI layout · novos benchmarks · backfill de snapshots históricos.
 
 ### Checkpoint
 
-- ☐ `PostSchema` aceita e preserva `is_pinned`
-- ☐ Snapshot do robs.cortez regenerado (opcional, mas recomendado)
-- ☐ Novo teste verde
-- ☐ `bunx vitest run` global verde (sem regressão nos 90 testes existentes)
-- ☐ Confirmação por query SQL: `report_payload_jsonb->'posts'->0->>'is_pinned'` deixa de ser `null` para snapshots novos
+- ☐ Novo `cadence.ts` puro e testado
+- ☐ `snapshot-to-report-data.ts` usa-o e remove o gap-filter de defesa
+- ☐ Todos os consumidores tratam `!sufficient` com copy neutra (sem `0,0` enganador)
+- ☐ Copy PT/EN da fallback aplicada
+- ☐ `tsc --noEmit` verde
+- ☐ `vitest run` verde com tests novos
+- ☐ Snapshot do robs.cortez deixa de produzir "12 / 1111 dias"; passa a "últimos 30 dias · 10 publicações · 5,4/sem"

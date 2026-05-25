@@ -56,7 +56,11 @@ export function ReportKpiGridV2({ result }: Props) {
       <KpiCard
         icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />}
         label={t("kpi.rhythm.label")}
-        value={k.postingFrequencyWeekly.toFixed(1).replace(".", ",")}
+        value={
+          k.postingFrequencyWeekly > 0
+            ? k.postingFrequencyWeekly.toFixed(1).replace(".", ",")
+            : "—"
+        }
         help={t("kpi.rhythm.help")}
         sourceBadge={<ReportSourceLabel type="auto" detail={t("kpi.rhythm.source")} />}
       />
