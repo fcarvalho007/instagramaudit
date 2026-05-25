@@ -42,7 +42,10 @@ export type EditorialVerdictRejection =
   | "cadence_contradiction"
   | "engagement_contradiction"
   | "conversation_contradiction"
-  | "phantom_competitors";
+  | "phantom_competitors"
+  | "prescriptive_language"
+  | "attention_no_conversation_missed"
+  | "low_sample_strong_claim";
 
 export interface EditorialVerdictResolution {
   verdict: EditorialVerdict;
@@ -79,10 +82,23 @@ const RE_COMPETITORS =
 const RE_CADENCE_STRONG =
   /\b(ritmo\s+(consistente|saud[áa]vel|est[áa]vel|forte|s[óo]lido|regular)|cad[êe]ncia\s+(consistente|saud[áa]vel|est[áa]vel|forte|s[óo]lida|regular)|publica(r)?\s+de\s+forma\s+consistente|publica[çc][õo]es\s+regulares)\b/i;
 
+// Verbos prescritivos no parágrafo — defesa em profundidade caso o
+// validador (que opera sobre o JSON cru) deixe passar.
+const RE_PRESCRIPTIVE =
+  /\b(deve(s|m)?|deveria(m|s)?|recomenda[- ]se|a\s+prioridade\s+é|publique(m)?|teste(m)?|use(m)?\s+mais|aposte(m)?|publicar\s+mais|cria(r)?\s+mais|apostar\s+em)\b/i;
+
+// Marca diagnóstica de "atenção sem conversa". Quando likes saudáveis +
+// comentários quase nulos, exigimos que a IA enquadre o cenário desta
+// forma; caso contrário consideramos contradição.
+const RE_ATTENTION_FRAMING =
+  /\b(aten[çc][ãa]o\s+sem\s+conversa|sem\s+conversa|pouca\s+conversa|coment[áa]rios\s+raros|silenciosa|silencioso|silen[cç]io)\b/i;
+
 const CADENCE_HEALTHY_THRESHOLD = 2.5; // posts/semana
 const ENGAGEMENT_ABOVE_RATIO = 1.1; // >10% acima da referência
 const ENGAGEMENT_BELOW_RATIO = 0.7; // <70% da referência
 const LOW_COMMENTS_THRESHOLD = 2; // média < 2 → sem conversa
+const MIN_SAMPLE_FOR_STRONG_CLAIM = 4; // < 4 posts → fallback obrigatório
+const ATTENTION_LIKES_RATIO = 0.9; // likes ≥ 90% do benchmark = saudável
 
 /** Junta todos os campos textuais que o utilizador vê. */
 function corpus(v: EditorialVerdict): string {
@@ -145,6 +161,33 @@ export function detectVerdictContradictions(
   // 4. menção a concorrentes quando nenhum existe.
   if (m.competitorsCount === 0 && RE_COMPETITORS.test(text)) {
     reasons.push("phantom_competitors");
+  }
+
+  // 5. amostra demasiado pequena para uma conclusão categórica.
+  if (
+    m.postsAnalyzed > 0 &&
+    m.postsAnalyzed < MIN_SAMPLE_FOR_STRONG_CLAIM &&
+    (ai.verdict_label === "strong" || ai.verdict_label === "promising")
+  ) {
+    reasons.push("low_sample_strong_claim");
+  }
+
+  // 6. atenção sem conversa: likes saudáveis mas comentários quase nulos.
+  //    Se a IA não enquadrou o padrão como "silenciosa / sem conversa",
+  //    consideramos diagnóstico errado.
+  if (
+    typeof m.benchmarkEngagementPct === "number" &&
+    m.benchmarkEngagementPct > 0 &&
+    m.engagementPct / m.benchmarkEngagementPct >= ATTENTION_LIKES_RATIO &&
+    m.avgComments < LOW_COMMENTS_THRESHOLD &&
+    !RE_ATTENTION_FRAMING.test(text)
+  ) {
+    reasons.push("attention_no_conversation_missed");
+  }
+
+  // 7. verbos prescritivos no corpus (defesa em profundidade).
+  if (RE_PRESCRIPTIVE.test(ai.paragraph)) {
+    reasons.push("prescriptive_language");
   }
 
   return reasons;
