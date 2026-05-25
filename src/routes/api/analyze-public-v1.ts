@@ -14,6 +14,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 
+import { normalizeInstagramHandle } from "@/lib/instagram/normalize-handle";
 import {
   ApifyConfigError,
   ApifyUpstreamError,
