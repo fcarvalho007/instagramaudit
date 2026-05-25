@@ -1,66 +1,75 @@
 ## Goal
-Replace the old price-card "cofre" area in the public report sidebar with a clean access summary that matches the simplified pricing model (€7 single / €28 pack, no subscription). Remove all €3/€13 pricing and "Abrir o cofre" wording from the sidebar.
+Remove Pro / Agency / "Em breve" copy from authenticated app surfaces so they match the simplified pricing model (€7 single / €28 pack, no subscription).
 
-## Scope (touched files)
-- `src/components/report-redesign/v2/report-block-nav.tsx` — sidebar component
-- `src/i18n/locales/pt/report.json` — PT strings under `nav`
-- `src/i18n/locales/en/report.json` — EN strings under `nav`
+## Files touched
+- `src/routes/app.plan.tsx` — replace with a redirect to `/precos`
+- `src/components/app/pro-tracking-teaser.tsx` — neutral copy + remove plan CTA
+- `src/routes/app.account.tsx` — replace `planLabels` with a single "Conta ativa" status
+- `src/lib/brand/contact.ts` — add `mailtoProfessionalAccess`; deprecate `mailtoPro`/`mailtoAgency` as thin aliases
 
-Not touched: block-config, premium-interest-dialog, report-shell-v2, pricing logic, providers, snapshots, unlock flow, `/precos`.
+Not touched (per scope): `post-analysis-conversion-layer.tsx`, public report sidebar, premium modal, `/precos`, feedback/email templates, subscriptions/checkout, RLS, providers.
 
 ## Changes
 
-### 1. `report-block-nav.tsx`
-- **Delete** `CofreCard` component entirely (lines ~275–412) and the `COFRE_ANCHOR_ID` / `scrollToCofre` helper.
-- **Add** new `AccessSummaryCard` component rendered in the same slot inside `SidebarList`. It contains:
-  - Short note (only shown when `variant === "public_mvp"` and Block 2 is in the list): `t("nav.access.beta_note")`.
-  - Single CTA button `t("nav.access.cta")` that opens `PremiumInterestDialog` (reuses existing `useReportTracking` + `trackEvent({ eventType: "unlock_clicked", source_component: "sidebar_access" })`).
-  - Trust microcopy below CTA: `t("nav.access.trust")`.
-  - Clean, low-visual-weight styling using existing tokens (white surface, `border-border-default`, no gold gradient, no price cards, no star badge).
-- **Remove** the locked-row scroll-to-cofre behavior: rename `onLockedClick` to open the same dialog. Simplest path — lift dialog state into `SidebarList` (or pass a single `onLockedClick={openDialog}` from the parent components). To keep the diff small, keep `AccessSummaryCard` owning the dialog and expose its `openDialog` via a ref-less pattern: move dialog state up into `SidebarList` and pass `openDialog` to both `AccessSummaryCard` and the locked `ItemRow` via `onLockedClick`. Desktop + mobile-drawer parents simply call the same opener.
-- **Add per-item access badges in `ItemRow`** (replaces partial "3/5" and active dot semantics for the access label slot):
-  - `overview` → `t("nav.access.badge_free")` (emerald)
-  - `diagnostico` → `t("nav.access.badge_launch")` (amber)
-  - all others → `t("nav.access.badge_premium")` (gold)
-  - Determined via a new `accessBadge` field set inside `buildSidebarItems` based on `block.id`. Existing "partial 3/5" badge dropped from the public sidebar (no longer needed, since access is now communicated by the per-block badge).
-
-### 2. i18n — `nav.access` namespace (PT/EN), replace the old `nav.cofre` block
-
-PT:
+### 1. `src/routes/app.plan.tsx`
+Rewrite as a thin redirect using `beforeLoad`:
+```ts
+import { createFileRoute, redirect } from "@tanstack/react-router";
+export const Route = createFileRoute("/app/plan")({
+  beforeLoad: () => { throw redirect({ to: "/precos" }); },
+});
 ```
-"access": {
-  "badge_free": "Grátis",
-  "badge_launch": "Oferta de lançamento",
-  "badge_premium": "Premium",
-  "beta_note": "O Diagnóstico editorial faz parte da experiência premium, mas está aberto nesta fase beta.",
-  "cta": "Ver opções de acesso",
-  "trust": "1 relatório ou pack de 5. Sem subscrição."
-}
-```
+Removes all Pro/Agency tiers, manifesto card, Supabase profile fetch, and "Em breve" badges in one shot. Any deep link or stale bookmark to `/app/plan` lands on `/precos` (which holds the canonical €7/€28 copy).
 
-EN:
-```
-"access": {
-  "badge_free": "Free",
-  "badge_launch": "Launch offer",
-  "badge_premium": "Premium",
-  "beta_note": "Editorial diagnosis is part of the premium experience, but it is open during this beta phase.",
-  "cta": "View access options",
-  "trust": "1 report or pack of 5. No subscription."
-}
-```
+### 2. `src/components/app/pro-tracking-teaser.tsx`
+- Remove the violet "PRO" pill, the `<Lock>` "Disponível em breve" overlay, and the "Saber mais sobre os planos →" `Link` to `/app/plan`.
+- Header label changes from "Tracking diário" to neutral "Acompanhamento recorrente".
+- Replace the body paragraph with the supplied neutral copy:
+  - PT: "Acompanhamento recorrente ficará disponível numa fase futura."
+  - EN: "Recurring tracking will be available in a future phase."
+- Component currently has no i18n wiring (hardcoded PT). Add `useTranslation("app")` and use `app.tracking_teaser.title` / `app.tracking_teaser.note` keys (added to both `pt/app.json` and `en/app.json`). If `app` namespace does not exist, fall back to hardcoded PT only and note it — quick check during implementation will confirm. The mini-chart visual stays as a non-interactive placeholder with a neutral inline label instead of the "Em breve" pill.
+- Drop the `Link`, `to="/app/plan"` import.
 
-The `nav.cofre.*` keys are removed (no other consumer — grep confirms only `report-block-nav.tsx` reads them).
+### 3. `src/routes/app.account.tsx`
+- Delete `planLabels` constant.
+- Change the rendered block from `{planLabels[account.plan] ?? account.plan}` to a fixed string:
+  - PT: "Conta ativa"
+- The page is currently hardcoded PT; keep that pattern.
+- Keep the `plan` field in `AccountData` (DB still has it) — just don't render its value.
+- Optionally relabel the field caption from "Plano" to "Estado da conta".
 
-## Layout / mobile
-- Card stays inside `SidebarList`, so it renders on desktop (sticky sidebar) and inside the mobile sheet drawer — same as today. No new fixed positioning.
-- Compact: one note paragraph + one full-width CTA + one microcopy line. No grid of cards, no decorative glow.
+### 4. `src/lib/brand/contact.ts`
+- Add new generic helper:
+  ```ts
+  export function mailtoProfessionalAccess(email: string): string {
+    const subject = encodeURIComponent("Acesso profissional — InstaBench");
+    const body = encodeURIComponent("Gostaria de saber mais sobre acesso profissional ao InstaBench.");
+    return `mailto:${email}?subject=${subject}&body=${body}`;
+  }
+  ```
+- Mark `mailtoPro` and `mailtoAgency` as `@deprecated` with a JSDoc note pointing to `mailtoProfessionalAccess`, and have them delegate internally:
+  ```ts
+  /** @deprecated Use mailtoProfessionalAccess. */
+  export const mailtoPro = mailtoProfessionalAccess;
+  /** @deprecated Use mailtoProfessionalAccess. */
+  export const mailtoAgency = mailtoProfessionalAccess;
+  ```
+- This avoids touching `post-analysis-conversion-layer.tsx` (out of scope) while ensuring both CTAs already in the wild now open the same generic subject line.
 
 ## Validation
 - `bunx tsc --noEmit`
 - `bunx vitest run`
-- `rg "€3|€13|Abrir o cofre|cofre" src/components/report-redesign/v2/report-block-nav.tsx` → empty.
-- Manual: public report sidebar shows "Grátis" on Block 1, "Oferta de lançamento" on Block 2 with note, "Premium" badge on Blocks 3–6, single CTA opens existing PremiumInterestDialog. PT/EN both.
+- `rg -n "\\bPro\\b|\\bAgency\\b|plano mensal|monthly plan|subscription|subscrição|€3|€13" src/` and classify residuals.
 
-## Out of scope
-Feedback form, commercial email templates, `app.plan.tsx`, `app.account.tsx`, brand contact helpers — these P0 items from the prior audit are NOT part of this prompt and will be addressed in separate prompts.
+### Expected residual matches (acceptable, to be reported back, not removed in this prompt)
+- `src/components/product/post-analysis-conversion-layer.tsx` — Pro/Agency tier cards (out-of-scope public marketing component; flagged as obsolete, to be addressed in a follow-up prompt).
+- `src/lib/feedback/feedback-schema.ts`, `src/lib/email/templates/commercial-followup.ts`, related tests — already identified P0s, explicitly excluded by user scope.
+- `src/lib/admin/mock-data.ts`, `src/lib/__tests__/unlock-flow.test.ts`, `gate.json` — internal/admin/tests; not user-facing.
+- `src/i18n/locales/*/report.json` premium copy keys (e.g. `premium.*`) — segmentation labels, not pricing.
+- `mailtoPro` / `mailtoAgency` symbol names in `contact.ts` — kept as deprecated aliases for back-compat.
+
+## Out of scope (will be separate prompts)
+- `post-analysis-conversion-layer.tsx` (Pro/Agency cards in public analysis dashboard)
+- Feedback form options €3/€13
+- Commercial follow-up email templates with €3/€13
+- Brand contact helpers being fully removed
