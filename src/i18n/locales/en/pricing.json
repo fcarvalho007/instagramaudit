@@ -1,0 +1,36 @@
+{
+  "meta": {
+    "title": "Pricing — InstaBench",
+    "description": "Simple, transparent InstaBench pricing: 1 report for €7 or a pack of 5 for €28. No subscription."
+  },
+  "hero": {
+    "title": "Simple pricing, no complications",
+    "subtitle": "Start with a free profile overview. If you want to go deeper, there are two simple options to unlock premium access."
+  },
+  "single": {
+    "title": "1 report",
+    "price": "€7",
+    "bullet_profile": "1 profile",
+    "bullet_unlock": "1 premium unlock",
+    "note": "Ideal for a one-off analysis",
+    "cta": "Buy 1 report"
+  },
+  "pack": {
+    "title": "Pack of 5 reports",
+    "price": "€28",
+    "bullet_reports": "5 reports",
+    "bullet_unit": "€5.60/report",
+    "savings_badge": "Save 20%",
+    "cta": "Buy pack of 5"
+  },
+  "trust_note": "No subscription. No automatic renewal.",
+  "pending_note": "Payments coming soon — buttons register your interest.",
+  "access": {
+    "title": "How access works",
+    "items": [
+      "The Overview is free.",
+      "The Editorial diagnosis is temporarily included as a launch offer.",
+      "Premium sections help you go deeper into performance, content, search demand and comparison."
+    ]
+  }
+}
