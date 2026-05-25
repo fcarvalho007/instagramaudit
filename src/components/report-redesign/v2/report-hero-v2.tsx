@@ -133,26 +133,21 @@ export function ReportHeroV2({
                   onClick={actions.onExportPdf}
                   disabled={actions.pdfDisabled || actions.pdfBusy}
                   aria-busy={actions.pdfBusy}
-                  title={t("hero.actions.coming_soon_tooltip")}
+                  title={t("hero.actions.pdf")}
                   className={cn(
-                    "inline-flex flex-col items-center justify-center gap-0.5 rounded-xl h-11 px-3",
+                    "inline-flex items-center justify-center gap-2 rounded-xl h-11 px-3",
                     "border border-border-default bg-white text-content-secondary text-sm font-semibold",
                     "transition-colors duration-150",
                     "hover:bg-surface-muted hover:border-border-strong hover:text-content-primary",
                     "disabled:cursor-not-allowed disabled:opacity-50",
                   )}
                 >
-                  <span className="inline-flex items-center gap-2">
-                    {actions.pdfBusy ? (
-                      <Loader2 className="size-[15px] animate-spin" aria-hidden="true" />
-                    ) : (
-                      <Download className="size-[15px]" aria-hidden="true" />
-                    )}
-                    {t("hero.actions.pdf")}
-                  </span>
-                  <span className="text-[10px] font-medium uppercase tracking-wide text-content-tertiary leading-none">
-                    {t("hero.actions.coming_soon")} · {t("hero.actions.coming_soon_detail")}
-                  </span>
+                  {actions.pdfBusy ? (
+                    <Loader2 className="size-[15px] animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Download className="size-[15px]" aria-hidden="true" />
+                  )}
+                  {t("hero.actions.pdf")}
                 </button>
                 <ShareReportPopover
                   result={result}
