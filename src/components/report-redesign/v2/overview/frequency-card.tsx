@@ -439,6 +439,7 @@ export function FrequencyCard({
         <div className="flex items-start gap-3">
           <h3 className="font-display text-[1.25rem] sm:text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight break-words">
             {t("frequency.title")}{" "}
+            {!isInsufficient ? (
             <span
               className="font-semibold"
               style={{
@@ -454,17 +455,22 @@ export function FrequencyCard({
             >
               {frequencyStatus}
             </span>
+            ) : null}
           </h3>
         </div>
-        {subtitleLine && (
+        {subtitleLine ? (
           <p className="text-[15px] text-content-secondary leading-relaxed">
             {subtitleLine}
           </p>
-        )}
+        ) : isInsufficient ? (
+          <p className="text-[15px] text-content-secondary leading-relaxed">
+            {headline}
+          </p>
+        ) : null}
       </div>
 
-      {/* Resumo da semana */}
-      <WeeklySummary days={calendarDays} t={t} />
+      {/* Resumo da semana — hidden when cadence is insufficient */}
+      {!isInsufficient && <WeeklySummary days={calendarDays} t={t} />}
 
       {/* Calendar grid */}
       {weeks.length > 0 && (
