@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 import type {
   AdapterResult,
@@ -82,6 +84,7 @@ interface Props {
  * Não chama providers, OpenAI, Supabase write, nada.
  */
 export function ReportDiagnosticBlock({ result, payload }: Props) {
+  const { t } = useTranslation("report");
   const posts = payload?.posts ?? [];
   const features = useVariantFeatures();
   const km = result.data.keyMetrics;
@@ -138,8 +141,8 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   // Build cards as nullable list, then split into groups
   // A · Identidade editorial: Q01 + Q02
   const groupA = compact([
-    renderContentTypeCard(contentType),
-    renderFunnelCard(funnel),
+    renderContentTypeCard(contentType, t),
+    renderFunnelCard(funnel, t),
   ]);
   // B · Como comunica: Q03 (hashtags) — Q04 (captions) rendered inside group
   const groupB = compact([
@@ -162,11 +165,11 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
       ? result.enriched.commentIntelligence
       : null;
   const groupC = compact([
-    renderAudienceCard(audience, effectiveCommentIntel, captionEngagementStrategy, captionAsksForCommentsPct),
+    renderAudienceCard(audience, effectiveCommentIntel, captionEngagementStrategy, captionAsksForCommentsPct, t),
   ]);
   // D · Contexto estratégico: Q06 + Q07
   const groupD = compact([
-    renderIntegrationCard(integration),
+    renderIntegrationCard(integration, t),
   ]);
 
   const totalCards = groupA.length + groupB.length + 1 + groupC.length + groupD.length;
@@ -178,7 +181,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
           {groupA.length > 0 ? (
             <ReportDiagnosticGroup
               letter="A"
-              label="Identidade editorial"
+              label={t("diagnostic_groups.A")}
               questionsCount={groupA.length}
             >
               {groupA}
@@ -187,7 +190,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
 
           <ReportDiagnosticGroup
             letter="B"
-            label="Como comunica"
+            label={t("diagnostic_groups.B")}
             questionsCount={groupB.length + 1}
           >
             {groupB}
@@ -197,7 +200,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
           {/* E · Análise visual */}
           <ReportDiagnosticGroup
             letter="E"
-            label="Análise visual"
+            label={t("diagnostic_groups.E")}
             questionsCount={1}
           >
             <VisualCoverAnalysisCard
@@ -209,7 +212,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
           {groupC.length > 0 ? (
             <ReportDiagnosticGroup
               letter="C"
-              label="Resposta do público"
+              label={t("diagnostic_groups.C")}
               questionsCount={groupC.length}
             >
               {groupC}
@@ -219,7 +222,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
           {groupD.length > 0 ? (
             <ReportDiagnosticGroup
               letter="D"
-              label="Contexto estratégico"
+              label={t("diagnostic_groups.D")}
               questionsCount={groupD.length}
             >
               {groupD}
@@ -236,9 +239,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
         </>
       ) : (
         <p className="text-sm text-content-secondary leading-relaxed max-w-2xl">
-          A amostra de publicações é demasiado pequena para sustentar um
-          diagnóstico editorial detalhado. À medida que houver mais
-          atividade, este bloco passa a abrir até oito perguntas de leitura.
+          {t("diagnostic_groups.small_sample")}
         </p>
       )}
 
@@ -259,34 +260,23 @@ function compact<T>(arr: Array<T | null>): T[] {
 // ─────────────────────────────────────────────────────────────────────
 
 
-const CONTENT_TYPE_SUBLABELS: Record<string, string> = {
-  Institucional: "quem somos, missão, valores, bastidores",
-  Promocional: "campanhas, descontos, lançamentos",
-  Educativo: "dicas, tutoriais, explicações",
-  Inspiracional: "frases, histórias, motivação",
-  Entretenimento: "memes, trends, desafios",
-  "Prova social": "clientes, reviews, testemunhos",
-};
+type TR = TFunction<"report", undefined>;
 
-function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
+function renderContentTypeCard(r: ContentTypeResult, t: TR): ReactNode | null {
   if (!r.available) return null;
   if (r.label === "Misto / pouco claro" || !r.label) {
-    // Quando há um top com share relevante mas sem distância suficiente para
-    // dominar (regra share≥35% AND top≥1.5×second), o veredicto honesto é:
-    // "há sinal, mas não chega para foco editorial". A copy reflete o que
-    // a barra mostra — sem contradizer o número visível.
     const top = r.distribution[0];
     const hasStrongTop = !!top && top.sharePct >= 35;
     const body = hasStrongTop && top
-      ? `Há um sinal mais forte em ${top.label.toLowerCase()} (${top.sharePct} %), mas sem distância clara para os restantes registos — ainda não chega para falar em foco editorial.`
-      : "Nenhuma natureza domina claramente — a comunicação alterna entre vários registos sem foco editorial visível.";
+      ? t("diagnostic_questions.content_type.body_strong_signal", { label: top.label.toLowerCase(), share: top.sharePct })
+      : t("diagnostic_questions.content_type.body_no_dominant");
     return (
       <ReportDiagnosticCard
         key="q01"
         number="01"
-      label="Tipo de conteúdo · Classificação"
-        question="Que natureza de conteúdo aparece mais?"
-        answer="Padrão misto"
+        label={t("diagnostic_questions.content_type.label")}
+        question={t("diagnostic_questions.content_type.question")}
+        answer={t("diagnostic_questions.content_type.answer_mixed")}
         tone="slate"
         span="half"
         body={body}
@@ -315,19 +305,23 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
     <ReportDiagnosticCard
       key="q01"
       number="01"
-      label="Tipo de conteúdo · Classificação"
-      question="Que natureza de conteúdo aparece mais?"
+      label={t("diagnostic_questions.content_type.label")}
+      question={t("diagnostic_questions.content_type.question")}
       answer={r.label}
       tone="blue"
         span="half"
-      body={`Classificação do tipo de conteúdo publicado nas legendas e padrões editoriais. Cerca de ${r.sharePct} % das ${r.sampleSize} publicações analisadas têm uma assinatura ${r.label.toLowerCase()}.`}
+      body={t("diagnostic_questions.content_type.body_with_label", {
+        share: r.sharePct,
+        sample: r.sampleSize,
+        label: r.label.toLowerCase(),
+      })}
     >
       {r.distribution.length >= 2 && (
         <DiagnosticDistributionBar
           variant="vertical-list"
           items={r.distribution.map((d, i) => ({
             label: d.label,
-            sublabel: CONTENT_TYPE_SUBLABELS[d.label],
+            sublabel: t(`diagnostic_questions.content_type.sublabels.${d.label}`, { defaultValue: "" }) || undefined,
             value: d.sharePct,
             color: colorByIndex(i),
           }))}
@@ -337,20 +331,8 @@ function renderContentTypeCard(r: ContentTypeResult): ReactNode | null {
   );
 }
 
-function renderFunnelCard(r: FunnelStageResult): ReactNode | null {
+function renderFunnelCard(r: FunnelStageResult, t: TR): ReactNode | null {
   if (!r.available) return null;
-  const bodyByLabel: Record<string, string> = {
-    "Topo do funil":
-      "A maior parte das publicações procura captar atenção e gerar curiosidade — forte para alcance, fraca para conversão.",
-    "Meio do funil":
-      "A maioria do conteúdo educa e explica, posicionando o perfil como referência antes da decisão.",
-    "Fundo do funil":
-      "Há sinais frequentes de chamada à ação — links, ofertas ou pedidos de contacto.",
-    "Pós-venda / fidelização":
-      "O perfil dá protagonismo a clientes, comunidade e agradecimentos.",
-    "Comunicação dispersa":
-      "Os sinais de atrair, educar, converter e fidelizar misturam-se sem uma fase claramente dominante.",
-  };
   const isFocused = r.label !== "Comunicação dispersa";
   const stageKeyByLabel: Record<string, "topo" | "meio" | "fundo" | "pos" | null> = {
     "Topo do funil": "topo",
@@ -360,15 +342,18 @@ function renderFunnelCard(r: FunnelStageResult): ReactNode | null {
     "Comunicação dispersa": null,
   };
   const dominantStage = stageKeyByLabel[r.label ?? "Comunicação dispersa"] ?? null;
+  const bodyKey = r.label ?? "Comunicação dispersa";
+  const bodyText = `${t("diagnostic_questions.funnel.body_lead")} ${t(`diagnostic_questions.funnel.bodies.${bodyKey}`)}`;
+  const stageLabelKey = (s: string) => `diagnostic_questions.funnel.stage_labels.${s}`;
   return (
     <ReportDiagnosticCard
       key="q02"
       number="02"
-      label="Funil · Mapeamento"
-      question="Atrai, educa, converte ou fideliza?"
-      answer={r.label ?? "—"}
+      label={t("diagnostic_questions.funnel.label")}
+      question={t("diagnostic_questions.funnel.question")}
+      answer={r.label ? t(stageLabelKey(r.label), { defaultValue: r.label }) : "—"}
       tone={isFocused ? "emerald" : "amber"}
-      body={`Mapeamento da função do conteúdo na jornada — atenção, educação, decisão ou relação. ${bodyByLabel[r.label ?? "Comunicação dispersa"]}`}
+      body={bodyText}
     >
       <div className="flex flex-col gap-4">
         {r.breakdown.length > 0 ? (
@@ -382,10 +367,8 @@ function renderFunnelCard(r: FunnelStageResult): ReactNode | null {
           />
         ) : null}
         {!isFocused && (
-          <InsightCallout tone="warning" label="O que isto sugere">
-            Sem uma fase dominante, o conteúdo pode não estar a conduzir a audiência
-            numa direção clara. Definir uma intenção por bloco de publicações pode
-            melhorar a coerência editorial.
+          <InsightCallout tone="warning" label={t("diagnostic_questions.funnel.callout_label")}>
+            {t("diagnostic_questions.funnel.callout_body")}
           </InsightCallout>
         )}
       </div>
@@ -398,15 +381,17 @@ function renderAudienceCard(
   commentIntel: CommentIntelligence | null,
   captionEngagementStrategy?: "active" | "occasional" | "passive" | null,
   captionAsksForCommentsPct?: number | null,
+  t?: TR,
 ): ReactNode | null {
+  const tr = t as TR;
   // — State B: data unavailable —
   if (!r.available) {
     return (
       <ReportDiagnosticCard
         key="q05"
         number="05"
-        label="Conversa"
-        question="O público responde ou só consome?"
+        label={tr("diagnostic_questions.audience.label")}
+        question={tr("diagnostic_questions.audience.question")}
         answer={r.label}
         tone="slate"
         span="full"
@@ -415,8 +400,7 @@ function renderAudienceCard(
       >
         <div className="rounded-md border border-dashed border-border-default bg-surface-muted px-3 py-3">
           <p className="text-[12.5px] text-content-secondary leading-relaxed">
-            Quando estes dados estiverem disponíveis, o relatório compara
-            reação, conversa e concentração de comentários.
+            {tr("diagnostic_questions.audience.empty_help")}
           </p>
         </div>
         <CommentIntelligenceUnavailable data={commentIntel} />
@@ -436,14 +420,14 @@ function renderAudienceCard(
     <ReportDiagnosticCard
       key="q05"
       number="05"
-      label="Conversa"
-      question="O público responde ou só consome?"
+      label={tr("diagnostic_questions.audience.label")}
+      question={tr("diagnostic_questions.audience.question")}
       answer={r.label}
       tone={tone}
       span="full"
       body={r.explanation}
       sourceType="auto"
-      sourceDetail="Gostos + comentários"
+      sourceDetail={tr("diagnostic_questions.audience.source_detail")}
     >
       <DiagnosticAudienceHighlight
         avgLikes={r.avgLikes}
@@ -467,7 +451,7 @@ function renderAudienceCard(
   );
 }
 
-function renderIntegrationCard(r: IntegrationResult): ReactNode | null {
+function renderIntegrationCard(r: IntegrationResult, t: TR): ReactNode | null {
   if (!r.available || r.label === "Sem sinais suficientes") return null;
   const tone: DiagnosticTone =
     r.label === "Integração clara"
@@ -475,42 +459,41 @@ function renderIntegrationCard(r: IntegrationResult): ReactNode | null {
       : r.label === "Integração parcial"
         ? "blue"
         : "amber";
-  const bodyByLabel: Record<string, string> = {
-    "Integração clara": "Existe infraestrutura de saída do Instagram.",
-    "Integração parcial": "Há sinais parciais de saída do Instagram.",
-    "Sem integração": "Sem infraestrutura de saída do Instagram.",
-  };
+  const body = t(`diagnostic_questions.integration.bodies.${r.label}`, {
+    defaultValue: t("diagnostic_questions.integration.body_default"),
+  });
+  const integrationLabel = t(`diagnostic_questions.integration.labels.${r.label}`, { defaultValue: r.label });
   return (
     <ReportDiagnosticCard
       key="q06"
       number="06"
-      label="Integração"
-      question="Há ligação entre canais?"
-      answer={r.label}
+      label={t("diagnostic_questions.integration.label")}
+      question={t("diagnostic_questions.integration.question")}
+      answer={integrationLabel}
       tone={tone}
-      body={bodyByLabel[r.label] ?? "Avaliação da ligação entre Instagram e canais externos."}
-      sourceDetail="Bio + legendas"
+      body={body}
+      sourceDetail={t("diagnostic_questions.integration.source_detail")}
     >
       <DiagnosticChecklist
         items={[
           {
             label: r.signals.bioLink.value
-              ? `Link na bio · ${shortenUrl(r.signals.bioLink.value)}`
-              : "Link na bio",
+              ? t("diagnostic_questions.integration.signals.bio_with_url", { url: shortenUrl(r.signals.bioLink.value) })
+              : t("diagnostic_questions.integration.signals.bio_without_url"),
             status: r.signals.bioLink.detected ? "detected" : "missing",
           },
           {
-            label: "Menções a site/newsletter",
+            label: t("diagnostic_questions.integration.signals.mentions"),
             status: r.signals.siteOrNewsletter.detected
               ? "detected"
               : "missing",
             hint:
               r.signals.siteOrNewsletter.count > 0
-                ? `${r.signals.siteOrNewsletter.count} posts`
+                ? t("diagnostic_questions.integration.signals.mentions_hint", { count: r.signals.siteOrNewsletter.count })
                 : undefined,
           },
           {
-            label: "CTAs explícitos no fim de posts",
+            label: t("diagnostic_questions.integration.signals.cta"),
             status:
               r.signals.explicitCta.sharePct >= 30
                 ? "detected"

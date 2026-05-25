@@ -1,4 +1,5 @@
 import { Hash, Quote, Sparkles } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { ReportSourceLabel } from "./report-source-label";
 
 import { cn } from "@/lib/utils";
@@ -23,12 +24,12 @@ interface Props {
  *  - Empty state explícito quando `available=false`.
  */
 export function ReportThemesFeature({ themes }: Props) {
+  const { t } = useTranslation("report");
   if (!themes.available) {
     return (
       <ThemesShell>
         <p className="text-sm text-slate-600 leading-relaxed max-w-xl">
-          A amostra ainda não tem palavras suficientes nas legendas para
-          identificar temas claros.
+          {t("themes.empty")}
         </p>
       </ThemesShell>
     );
@@ -46,8 +47,8 @@ export function ReportThemesFeature({ themes }: Props) {
       headline={themes.headline}
       sampleHint={
         totalPosts > 0
-          ? `Baseado em ${totalPosts} ${totalPosts === 1 ? "post" : "posts"}`
-          : "Baseado nas legendas"
+          ? t("themes.sample", { count: totalPosts })
+          : t("themes.sample_default")
       }
     >
       <div
@@ -71,7 +72,7 @@ export function ReportThemesFeature({ themes }: Props) {
           >
             <div className="inline-flex items-center gap-2">
               <ReportSourceLabel type="ia" />
-              <span className="text-eyebrow-sm text-slate-500">Interpretação</span>
+              <span className="text-eyebrow-sm text-slate-500">{t("themes.interpretation")}</span>
             </div>
             <p className="text-[14px] text-slate-700 leading-relaxed italic">
               <Quote
@@ -85,14 +86,12 @@ export function ReportThemesFeature({ themes }: Props) {
       </div>
 
       <p className="text-[12.5px] text-slate-500 leading-relaxed border-t border-slate-100 pt-4 mt-2">
-        Estes temas resultam da análise das palavras recorrentes nas legendas
-        analisadas — os excertos abaixo de cada tema vêm directamente dos posts.
-        Não correspondem necessariamente às{" "}
+        {t("themes.footer_note_part1")}{" "}
         <span className="inline-flex items-center gap-1 align-middle">
           <Hash aria-hidden className="size-3 text-slate-400" />
-          hashtags
+          {t("themes.footer_note_hashtags")}
         </span>{" "}
-        utilizadas — essas vivem na Pergunta 03.
+        {t("themes.footer_note_part2")}
       </p>
     </ThemesShell>
   );
@@ -107,9 +106,10 @@ function ThemesShell({
   sampleHint?: string;
   children: React.ReactNode;
 }) {
+  const { t } = useTranslation("report");
   return (
     <section
-      aria-label="Pergunta 04 · Temas das legendas"
+      aria-label={t("themes.aria")}
       className={cn(
         "rounded-2xl border border-slate-200/70 bg-white",
         "p-7 md:p-9",
@@ -121,10 +121,10 @@ function ThemesShell({
         <div className="space-y-2 min-w-0">
           <p className="text-eyebrow-sm text-slate-500 inline-flex items-center gap-1.5">
             <Sparkles aria-hidden className="size-3 text-slate-400" />
-            Pergunta 04 · Temas das legendas
+            {t("themes.eyebrow")}
           </p>
           <h3 className="font-display text-[1.25rem] md:text-[1.5rem] font-semibold tracking-tight text-slate-900 leading-snug">
-            Sobre que assuntos o perfil fala mais?
+            {t("themes.title")}
           </h3>
         </div>
         <span
@@ -134,7 +134,7 @@ function ThemesShell({
             "bg-slate-50 text-slate-600 ring-slate-200",
           )}
         >
-          {sampleHint ?? "Baseado nas legendas"}
+          {sampleHint ?? t("themes.sample_default")}
         </span>
       </header>
 
@@ -159,6 +159,7 @@ function ThemesRanking({
     snippets: string[];
   }>;
 }) {
+  const { t } = useTranslation("report");
   const max = Math.max(1, ...items.map((it) => it.weight));
   return (
     <ol className="flex flex-col divide-y divide-slate-100">
@@ -184,8 +185,7 @@ function ThemesRanking({
                 {it.postsCount > 0 ? (
                   <span className="text-slate-400">
                     {" · "}
-                    {it.postsCount}{" "}
-                    {it.postsCount === 1 ? "post" : "posts"}
+                    {t("themes.post", { count: it.postsCount })}
                   </span>
                 ) : null}
               </span>

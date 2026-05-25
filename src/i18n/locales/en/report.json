@@ -598,5 +598,381 @@
     "improve": "TO IMPROVE",
     "alert": "ALERT",
     "diagnostic": "DIAGNOSIS"
+  },
+  "diagnostic_groups": {
+    "A": "Editorial identity",
+    "B": "How it communicates",
+    "C": "Audience response",
+    "D": "Strategic context",
+    "E": "Visual analysis",
+    "small_sample": "The post sample is too small to support a detailed editorial diagnosis. As more activity accumulates, this block will open up to eight reading questions."
+  },
+  "diagnostic_questions": {
+    "content_type": {
+      "label": "Content type · Classification",
+      "question": "What type of content shows up most?",
+      "answer_mixed": "Mixed pattern",
+      "body_strong_signal": "There is a stronger signal in {{label}} ({{share}}%), but without clear distance from the rest — not enough to call it editorial focus.",
+      "body_no_dominant": "No type clearly dominates — communication shifts between registers without visible editorial focus.",
+      "body_with_label": "Classification of content type from captions and editorial patterns. About {{share}}% of the {{sample}} analyzed posts carry a {{label}} signature.",
+      "sublabels": {
+        "Institucional": "who we are, mission, values, behind the scenes",
+        "Promocional": "campaigns, discounts, launches",
+        "Educativo": "tips, tutorials, explanations",
+        "Inspiracional": "quotes, stories, motivation",
+        "Entretenimento": "memes, trends, challenges",
+        "Prova social": "customers, reviews, testimonials"
+      }
+    },
+    "funnel": {
+      "label": "Funnel · Mapping",
+      "question": "Attract, educate, convert or retain?",
+      "dash": "—",
+      "body_lead": "Mapping of content function along the journey — attention, education, decision or relationship.",
+      "bodies": {
+        "Topo do funil": "Most posts seek to capture attention and spark curiosity — strong for reach, weak for conversion.",
+        "Meio do funil": "Most content educates and explains, positioning the profile as a reference before the decision.",
+        "Fundo do funil": "Frequent calls to action — links, offers or contact requests.",
+        "Pós-venda / fidelização": "The profile highlights customers, community and gratitude.",
+        "Comunicação dispersa": "Attract, educate, convert and retain signals mix without a clearly dominant stage."
+      },
+      "callout_label": "What this suggests",
+      "callout_body": "Without a dominant stage, content may not be steering the audience in a clear direction. Defining intent per block of posts can improve editorial coherence.",
+      "stage_labels": {
+        "Topo do funil": "Top of funnel",
+        "Meio do funil": "Middle of funnel",
+        "Fundo do funil": "Bottom of funnel",
+        "Pós-venda / fidelização": "Post-sale / retention",
+        "Comunicação dispersa": "Scattered communication"
+      }
+    },
+    "audience": {
+      "label": "Conversation",
+      "question": "Does the audience respond or just consume?",
+      "empty_help": "When this data becomes available, the report compares reaction, conversation and comment concentration.",
+      "source_detail": "Likes + comments"
+    },
+    "integration": {
+      "label": "Integration",
+      "question": "Is there a link between channels?",
+      "source_detail": "Bio + captions",
+      "bodies": {
+        "Integração clara": "There is infrastructure for leaving Instagram.",
+        "Integração parcial": "There are partial signals of leaving Instagram.",
+        "Sem integração": "No infrastructure for leaving Instagram."
+      },
+      "body_default": "Assessment of the link between Instagram and external channels.",
+      "signals": {
+        "bio_with_url": "Bio link · {{url}}",
+        "bio_without_url": "Bio link",
+        "mentions": "Mentions of website/newsletter",
+        "mentions_hint": "{{count}} posts",
+        "cta": "Explicit CTAs at the end of posts"
+      },
+      "labels": {
+        "Integração clara": "Clear integration",
+        "Integração parcial": "Partial integration",
+        "Sem integração": "No integration"
+      }
+    }
+  },
+  "caption": {
+    "aria": "Question 04 · Caption diagnostics",
+    "header_full": "04 · CAPTION DIAGNOSTICS · {{sample}} CAPTIONS · {{words}} WORDS",
+    "header_mobile": "04 · CAPTIONS · {{sample}} · {{words}} W.",
+    "header_badge": "DIAGNOSIS",
+    "title": "What do the captions reveal about the content strategy?",
+    "subtitle": "Patterns extracted from the public captions of analyzed posts.",
+    "empty": "Captions are too short or too few for a reliable semantic reading. As more posts with text accumulate, this block will open the full editorial interpretation.",
+    "evidence_pending": "Detailed evidence in development.",
+    "evidence_open": "Open",
+    "evidence_likes": "{{count}} likes",
+    "format_short": {
+      "Reels": "REEL",
+      "Carrosséis": "CAROUSEL",
+      "Imagens": "IMAGE"
+    },
+    "section_a": {
+      "letter": "A · WHAT IT TALKS ABOUT",
+      "analyses_one": "{{count}} semantic analysis",
+      "analyses_other": "{{count}} semantic analyses",
+      "themes_one": "{{count}} theme detected",
+      "themes_other": "{{count}} themes detected",
+      "card_title": "MOST RECURRING TOPICS",
+      "hint_semantic": "Themes identified through semantic caption analysis",
+      "hint_deterministic": "Themes extracted from caption body — not to be confused with hashtags",
+      "identified_in_one": "Identified in {{count}} post",
+      "identified_in_other": "Identified in {{count}} posts",
+      "strongest_signal": " · strongest signal in the grid",
+      "evidence_below": " · evidence below",
+      "show": "Show evidence",
+      "hide": "Hide",
+      "see_csv": "See {{count}} posts · download CSV with excerpts",
+      "signal_high": "STRONG SIGNAL",
+      "signal_medium": "MEDIUM SIGNAL",
+      "signal_low": "WEAK SIGNAL"
+    },
+    "section_b": {
+      "letter": "B · HOW IT WRITES",
+      "patterns_one": "{{count}} structural pattern",
+      "patterns_other": "{{count}} structural patterns",
+      "openings_title": "HOW THEY START",
+      "openings_hint": "first 8 words",
+      "endings_title": "HOW THEY END",
+      "endings_hint": "last caption lines",
+      "length_title": "LENGTH DISTRIBUTION",
+      "length_hint": "{{count}} captions analyzed",
+      "expressions_title": "RECURRING EXPRESSIONS",
+      "expressions_hint": "Phrases and wording that appear across multiple posts",
+      "csv_download": "Download CSV",
+      "see_n_posts": "See {{count}} posts",
+      "ask_comments_title": "DOES IT ASK FOR COMMENTS?",
+      "ask_comments_hint": "Frequency of explicit calls to comment",
+      "strategy_active": "ACTIVE",
+      "strategy_occasional": "OCCASIONAL",
+      "strategy_passive": "PASSIVE",
+      "examples_label": "DETECTED EXAMPLES",
+      "type_labels": {
+        "topic": "Topic",
+        "cta": "CTA",
+        "brand": "Brand",
+        "product": "Product",
+        "community": "Community",
+        "other": "Other"
+      }
+    },
+    "section_c": {
+      "letter": "C · EDITORIAL READING",
+      "ai_subtitle": "AI-generated synthesis",
+      "ai_badge": "EDITORIAL SYNTHESIS · AI",
+      "strong": "STRONG PATTERN",
+      "risk": "EDITORIAL RISK",
+      "watch": "SIGNAL TO MONITOR",
+      "footer_note": "Analysis of public captions only. Hashtags in P03. Best practices:"
+    },
+    "diag": {
+      "opening_dominant": "The profile tends to open captions with {{label}}",
+      "opening_none": "Captions don't show a dominant opening pattern",
+      "length_long": "— writing tends to be long and explanatory",
+      "length_mixed": "— with variable length between posts",
+      "length_short": "— writing tends to be short and direct",
+      "ending_low_q": ". Few captions end with a question, suggesting less stimulus for comment conversation.",
+      "ending_with_q": ". The presence of questions at the end indicates a pattern oriented to comment interaction.",
+      "cta_low": " Explicit CTAs are scarce in this sample.",
+      "what_works_default": "The profile keeps editorial consistency — the voice is recognizable across posts.",
+      "critical_low_q": "The low frequency of questions at the end of captions may limit public conversation.",
+      "critical_none": "No editorial risk identified in the current sample.",
+      "watch_repeats": "Repetition of expressions like \"{{a}}\" or \"{{b}}\" suggests a structure that may become predictable.",
+      "watch_default": "Structural diversity between posts is a signal to monitor over time."
+    },
+    "quality": {
+      "hook_label": "Hook quality",
+      "hook_strong": "Strong",
+      "hook_moderate": "Moderate",
+      "hook_weak": "Weak",
+      "voice_label": "Brand voice",
+      "voice_consistent": "Consistent",
+      "voice_mixed": "Mixed",
+      "voice_inconsistent": "Inconsistent",
+      "patterns_label": "Repetitive patterns",
+      "patterns_alert": "Detected",
+      "patterns_ok": "No repetition"
+    }
+  },
+  "hashtag": {
+    "header": "03 · HASHTAGS · {{count}} POSTS ANALYZED",
+    "title": "Which hashtags show up most often?",
+    "subtitle": "Hashtags extracted from captions. Hashtags in the first comment are not counted.",
+    "kpi": {
+      "unique_label": "DIFFERENT HASHTAGS",
+      "unique_sub": "in total",
+      "uses_label": "RECORDED USES",
+      "uses_sub": "across {{count}} posts",
+      "avg_label": "AVERAGE PER POST",
+      "avg_sub": "recommended: {{min}}–{{max}}"
+    },
+    "badge_within": "WITHIN IDEAL",
+    "badge_below": "BELOW IDEAL",
+    "badge_above": "ABOVE IDEAL",
+    "list_title": "FREQUENCY OF EACH HASHTAG",
+    "list_sort": "sorted by use",
+    "uses_suffix": "{{count}} uses",
+    "posts_suffix": "{{pct}}% posts",
+    "empty": "No public hashtags found in the analyzed captions.",
+    "diagnostic_label": "Diagnosis",
+    "diag": {
+      "none": "No public hashtags detected in the sample. This may be an editorial choice, but it limits reading the thematic territories associated with the content.",
+      "top2_majority": "The top 2 hashtags ({{a}}, {{b}}) appear in more than half of posts. The average of {{avg}} hashtags per post is {{range}}.",
+      "below": "The profile uses few hashtags per post (average {{avg}}). There may be room to test more specific combinations while keeping captions clean.",
+      "above": "The profile uses many hashtags per post (average {{avg}}). It may help to reduce volume and prioritize more relevant hashtags.",
+      "balanced": "Hashtag usage is balanced (average {{avg}} per post). The next step is to vary combinations by theme and format.",
+      "range_below": "below the recommendation of {{min}}–{{max}} per post",
+      "range_within": "within the recommendation of {{min}}–{{max}} per post",
+      "range_above": "above the recommendation of {{min}}–{{max}} per post"
+    }
+  },
+  "themes": {
+    "aria": "Question 04 · Caption themes",
+    "eyebrow": "Question 04 · Caption themes",
+    "title": "What does the profile talk about most?",
+    "empty": "The sample doesn't yet have enough caption words to identify clear themes.",
+    "sample_one": "Based on {{count}} post",
+    "sample_other": "Based on {{count}} posts",
+    "sample_default": "Based on captions",
+    "interpretation": "Interpretation",
+    "post_one": "{{count}} post",
+    "post_other": "{{count}} posts",
+    "footer_note_part1": "These themes come from analyzing recurring words in the captions — the excerpts under each theme come directly from posts. They don't necessarily match the",
+    "footer_note_hashtags": "hashtags",
+    "footer_note_part2": "used — those live in Question 03."
+  },
+  "cover": {
+    "header": "07 · VISUAL COVER ANALYSIS · {{count}} THUMBNAILS ANALYZED",
+    "ai_badge": "AI · Computer vision",
+    "title": "Do the covers communicate in 1 second?",
+    "subtitle": "AI analysis of post thumbnails — composition, human presence, text, color and legibility.",
+    "thumb_hint": "Each thumbnail has an individual score",
+    "axes_title": "EVALUATION AXES",
+    "axes": {
+      "composition": "Composition",
+      "human_presence": "Human presence",
+      "text_in_image": "Text in image",
+      "framing": "Framing / cropping",
+      "color_light": "Color and light",
+      "recognizability": "Recognizability",
+      "grid_coherence": "Grid coherence"
+    },
+    "sub_scores": {
+      "recognizability": "Recognizability",
+      "colorCoherence": "Color coherence",
+      "composition": "Composition",
+      "visualVariety": "Visual variety",
+      "textDensity": "Text density"
+    },
+    "status": {
+      "strong": "Strong",
+      "needs_improvement": "Needs improvement",
+      "weak": "Weak"
+    },
+    "thumb_status": {
+      "good": "Good",
+      "medium": "Medium",
+      "weak": "Weak"
+    },
+    "ai_sees": {
+      "human_presence_label": "Human presence",
+      "human_presence_detail": "of covers with visible faces or people",
+      "text_in_image_label": "Text in image",
+      "text_in_image_detail": "of covers where text is detected",
+      "palette_label": "Dominant palette",
+      "template_label": "Template repetition",
+      "template_default_detail": "repeated visual patterns"
+    },
+    "diagnostic_label": "VISUAL DIAGNOSIS",
+    "works_label": "WORKS",
+    "critical_label": "CRITICAL POINT",
+    "watch_label": "TO WATCH",
+    "fallback": {
+      "public_title": "Visual analysis available in the Pro version.",
+      "public_body": "Post covers are evaluated by AI for visual consistency, text presence and format diversity.",
+      "dev_title": "Visual analysis unavailable — awaiting AI processing.",
+      "dev_body": "The thumbnails above will be analyzed by computer vision in an upcoming update.",
+      "score_public_title": "Visual score · Pro",
+      "score_public_body": "Available in the full version of the report.",
+      "score_dev_title": "Visual score unavailable",
+      "score_dev_body": "It will be calculated automatically once computer vision analysis is active."
+    }
+  },
+  "comments": {
+    "subtitle": "Does the brand take part in the conversation?",
+    "status": {
+      "insufficient_label": "Not enough data",
+      "insufficient_body": "The sample of analyzed comments is too small to determine whether the brand participates in the conversation.",
+      "active_label": "Replies actively",
+      "active_body": "The brand keeps a consistent presence in comments — replies to a significant share of the audience.",
+      "occasional_label": "Replies occasionally",
+      "occasional_body": "There are sporadic replies, but without consistency that signals an active community management policy.",
+      "minimal_label": "Barely replies",
+      "minimal_body": "A few replies were detected, but in insufficient volume to indicate active participation in the conversation.",
+      "absent_label": "No replies detected",
+      "absent_body": "No brand replies were found in the analyzed comments. The audience comments but receives no public response."
+    },
+    "scope_note": "This reading uses public comments accessible on the analyzed posts. It doesn't include DMs, deleted comments, private replies or comments not visible without login.",
+    "methodology_note": "Reading based on public comments visible on the analyzed posts. Doesn't include DMs, deleted comments or comments only visible after login.",
+    "sample_title": "Analyzed sample",
+    "sample": {
+      "posts": "Posts analyzed",
+      "public_comments": "Public comments collected",
+      "thread_replies": "Thread replies",
+      "audience_comments": "Audience comments",
+      "brand_replies": "Brand replies",
+      "brand_reply_rate": "Brand reply rate"
+    },
+    "signals": {
+      "title": "Conversation signals",
+      "hint": "Automatic reading — heuristic classification of public comments.",
+      "questions": "Questions",
+      "praise": "Praise",
+      "complaint": "Problems or complaints",
+      "buying": "Buying intent",
+      "spam": "Noise or spam"
+    },
+    "callout": {
+      "editorial": "Editorial reading",
+      "warning": "Attention",
+      "suggestion": "What this suggests",
+      "action_label": "Recommended action"
+    },
+    "metrics": {
+      "brand_replies": "Brand replies",
+      "reply_rate": "Reply rate",
+      "posts_with_reply": "Posts with reply",
+      "audience_questions": "Audience questions",
+      "buying_intent": "Buying intent",
+      "complaints": "Complaints detected"
+    },
+    "top": {
+      "label": "Post with most brand interaction",
+      "reply_one": "reply",
+      "reply_other": "replies",
+      "in": "in",
+      "comments": "comments"
+    },
+    "unavailable": {
+      "default_title": "Detailed comment analysis not included",
+      "default_body": "Detailed comment analysis is not included in this beta report. The reading below uses public post signals such as comment volume and conversation ratio.",
+      "pro_title": "In-depth comment analysis",
+      "pro_body": "Available in advanced reports. Analyzes questions, objections, praise and real audience signals.",
+      "reasons": {
+        "processing": {
+          "title": "Awaiting comment analysis",
+          "body": "Comment analysis is processing. Refresh the report in a few moments."
+        },
+        "budget_blocked": {
+          "title": "Analysis not executed",
+          "body": "Comment analysis was not executed to keep cost within operational limits."
+        },
+        "comment_scraper_failed": {
+          "title": "Analysis unavailable",
+          "body": "Couldn't analyze comments in this execution."
+        },
+        "comment_scraper_disabled": {
+          "title": "Detailed comment analysis not included",
+          "body": "Detailed comment analysis is not included in this beta report. The reading below uses public post signals such as comment volume and conversation ratio."
+        },
+        "no_posts_with_comments": {
+          "title": "No accessible comments",
+          "body": "The analyzed posts contain no accessible public comments."
+        },
+        "no_valid_post_urls": {
+          "title": "Insufficient URLs",
+          "body": "Not enough public URLs to analyze comments."
+        },
+        "comment_scraper_timeout": {
+          "title": "Analysis timed out",
+          "body": "Comment analysis exceeded the available time. Try again later."
+        }
+      }
+    }
   }
 }

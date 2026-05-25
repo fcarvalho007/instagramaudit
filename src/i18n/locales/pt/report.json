@@ -598,5 +598,381 @@
     "improve": "A MELHORAR",
     "alert": "ALERTA",
     "diagnostic": "DIAGNÓSTICO"
+  },
+  "diagnostic_groups": {
+    "A": "Identidade editorial",
+    "B": "Como comunica",
+    "C": "Resposta do público",
+    "D": "Contexto estratégico",
+    "E": "Análise visual",
+    "small_sample": "A amostra de publicações é demasiado pequena para sustentar um diagnóstico editorial detalhado. À medida que houver mais atividade, este bloco passa a abrir até oito perguntas de leitura."
+  },
+  "diagnostic_questions": {
+    "content_type": {
+      "label": "Tipo de conteúdo · Classificação",
+      "question": "Que natureza de conteúdo aparece mais?",
+      "answer_mixed": "Padrão misto",
+      "body_strong_signal": "Há um sinal mais forte em {{label}} ({{share}} %), mas sem distância clara para os restantes registos — ainda não chega para falar em foco editorial.",
+      "body_no_dominant": "Nenhuma natureza domina claramente — a comunicação alterna entre vários registos sem foco editorial visível.",
+      "body_with_label": "Classificação do tipo de conteúdo publicado nas legendas e padrões editoriais. Cerca de {{share}} % das {{sample}} publicações analisadas têm uma assinatura {{label}}.",
+      "sublabels": {
+        "Institucional": "quem somos, missão, valores, bastidores",
+        "Promocional": "campanhas, descontos, lançamentos",
+        "Educativo": "dicas, tutoriais, explicações",
+        "Inspiracional": "frases, histórias, motivação",
+        "Entretenimento": "memes, trends, desafios",
+        "Prova social": "clientes, reviews, testemunhos"
+      }
+    },
+    "funnel": {
+      "label": "Funil · Mapeamento",
+      "question": "Atrai, educa, converte ou fideliza?",
+      "dash": "—",
+      "body_lead": "Mapeamento da função do conteúdo na jornada — atenção, educação, decisão ou relação.",
+      "bodies": {
+        "Topo do funil": "A maior parte das publicações procura captar atenção e gerar curiosidade — forte para alcance, fraca para conversão.",
+        "Meio do funil": "A maioria do conteúdo educa e explica, posicionando o perfil como referência antes da decisão.",
+        "Fundo do funil": "Há sinais frequentes de chamada à ação — links, ofertas ou pedidos de contacto.",
+        "Pós-venda / fidelização": "O perfil dá protagonismo a clientes, comunidade e agradecimentos.",
+        "Comunicação dispersa": "Os sinais de atrair, educar, converter e fidelizar misturam-se sem uma fase claramente dominante."
+      },
+      "callout_label": "O que isto sugere",
+      "callout_body": "Sem uma fase dominante, o conteúdo pode não estar a conduzir a audiência numa direção clara. Definir uma intenção por bloco de publicações pode melhorar a coerência editorial.",
+      "stage_labels": {
+        "Topo do funil": "Topo do funil",
+        "Meio do funil": "Meio do funil",
+        "Fundo do funil": "Fundo do funil",
+        "Pós-venda / fidelização": "Pós-venda / fidelização",
+        "Comunicação dispersa": "Comunicação dispersa"
+      }
+    },
+    "audience": {
+      "label": "Conversa",
+      "question": "O público responde ou só consome?",
+      "empty_help": "Quando estes dados estiverem disponíveis, o relatório compara reação, conversa e concentração de comentários.",
+      "source_detail": "Gostos + comentários"
+    },
+    "integration": {
+      "label": "Integração",
+      "question": "Há ligação entre canais?",
+      "source_detail": "Bio + legendas",
+      "bodies": {
+        "Integração clara": "Existe infraestrutura de saída do Instagram.",
+        "Integração parcial": "Há sinais parciais de saída do Instagram.",
+        "Sem integração": "Sem infraestrutura de saída do Instagram."
+      },
+      "body_default": "Avaliação da ligação entre Instagram e canais externos.",
+      "signals": {
+        "bio_with_url": "Link na bio · {{url}}",
+        "bio_without_url": "Link na bio",
+        "mentions": "Menções a site/newsletter",
+        "mentions_hint": "{{count}} posts",
+        "cta": "CTAs explícitos no fim de posts"
+      },
+      "labels": {
+        "Integração clara": "Integração clara",
+        "Integração parcial": "Integração parcial",
+        "Sem integração": "Sem integração"
+      }
+    }
+  },
+  "caption": {
+    "aria": "Pergunta 04 · Diagnóstico de legendas",
+    "header_full": "04 · DIAGNÓSTICO DE LEGENDAS · {{sample}} LEGENDAS · {{words}} PALAVRAS",
+    "header_mobile": "04 · LEGENDAS · {{sample}} · {{words}} PAL.",
+    "header_badge": "DIAGNÓSTICO",
+    "title": "O que as legendas revelam sobre a estratégia de conteúdo?",
+    "subtitle": "Padrões extraídos das legendas públicas dos posts analisados.",
+    "empty": "Legendas são curtas demais ou em número insuficiente para uma leitura semântica fiável. À medida que houver mais publicações com texto, este bloco abre a interpretação editorial completa.",
+    "evidence_pending": "Evidência detalhada em desenvolvimento.",
+    "evidence_open": "Abrir",
+    "evidence_likes": "{{count}} gostos",
+    "format_short": {
+      "Reels": "REEL",
+      "Carrosséis": "CARROSSEL",
+      "Imagens": "IMAGEM"
+    },
+    "section_a": {
+      "letter": "A · SOBRE O QUE FALA",
+      "analyses_one": "{{count}} análise semântica",
+      "analyses_other": "{{count}} análises semânticas",
+      "themes_one": "{{count}} tema detetado",
+      "themes_other": "{{count}} temas detetados",
+      "card_title": "ASSUNTOS MAIS RECORRENTES",
+      "hint_semantic": "Temas identificados por análise semântica das legendas",
+      "hint_deterministic": "Temas extraídos do corpo das legendas — não confundir com hashtags",
+      "identified_in_one": "Identificado em {{count}} post",
+      "identified_in_other": "Identificado em {{count}} posts",
+      "strongest_signal": " · sinal mais forte da grelha",
+      "evidence_below": " · evidência abaixo",
+      "show": "Ver evidência",
+      "hide": "Ocultar",
+      "see_csv": "Ver os {{count}} posts · descarregar CSV com excertos",
+      "signal_high": "SINAL FORTE",
+      "signal_medium": "SINAL MÉDIO",
+      "signal_low": "SINAL FRACO"
+    },
+    "section_b": {
+      "letter": "B · COMO ESCREVE",
+      "patterns_one": "{{count}} padrão estrutural",
+      "patterns_other": "{{count}} padrões estruturais",
+      "openings_title": "COMO COMEÇAM",
+      "openings_hint": "primeiras 8 palavras",
+      "endings_title": "COMO ACABAM",
+      "endings_hint": "últimas linhas da legenda",
+      "length_title": "DISTRIBUIÇÃO COMPRIMENTO",
+      "length_hint": "{{count}} legendas analisadas",
+      "expressions_title": "EXPRESSÕES RECORRENTES",
+      "expressions_hint": "Frases e formulações que aparecem em múltiplos posts",
+      "csv_download": "Descarregar CSV",
+      "see_n_posts": "Ver {{count}} posts",
+      "ask_comments_title": "PEDE COMENTÁRIOS NOS POSTS?",
+      "ask_comments_hint": "Frequência de chamadas explícitas a comentar",
+      "strategy_active": "ATIVA",
+      "strategy_occasional": "OCASIONAL",
+      "strategy_passive": "PASSIVA",
+      "examples_label": "EXEMPLOS DETETADOS",
+      "type_labels": {
+        "topic": "Tema",
+        "cta": "CTA",
+        "brand": "Marca",
+        "product": "Produto",
+        "community": "Comunidade",
+        "other": "Outro"
+      }
+    },
+    "section_c": {
+      "letter": "C · LEITURA EDITORIAL",
+      "ai_subtitle": "síntese gerada por IA",
+      "ai_badge": "SÍNTESE EDITORIAL · IA",
+      "strong": "PADRÃO FORTE",
+      "risk": "RISCO EDITORIAL",
+      "watch": "SINAL A ACOMPANHAR",
+      "footer_note": "Análise apenas a legendas públicas. Hashtags em P03. Boas práticas:"
+    },
+    "diag": {
+      "opening_dominant": "O perfil tende a abrir as legendas com {{label}}",
+      "opening_none": "As legendas não revelam um padrão de abertura dominante",
+      "length_long": "— a escrita tende a ser longa e explicativa",
+      "length_mixed": "— com comprimento variável entre posts",
+      "length_short": "— a escrita tende a ser curta e direta",
+      "ending_low_q": ". Poucas legendas terminam com pergunta, o que sugere menor estímulo à conversa nos comentários.",
+      "ending_with_q": ". A presença de perguntas no final indica um padrão orientado para interação nos comentários.",
+      "cta_low": " A presença de CTAs explícitos é reduzida nesta amostra.",
+      "what_works_default": "O perfil mantém consistência editorial — a voz é reconhecível entre posts.",
+      "critical_low_q": "A baixa frequência de perguntas no final das legendas pode limitar o estímulo à conversa pública.",
+      "critical_none": "Sem risco editorial identificado na amostra atual.",
+      "watch_repeats": "Repetição de expressões como \"{{a}}\" ou \"{{b}}\" sugere uma estrutura que pode tornar-se previsível.",
+      "watch_default": "A diversidade de estrutura entre posts é um sinal a acompanhar ao longo do tempo."
+    },
+    "quality": {
+      "hook_label": "Qualidade do hook",
+      "hook_strong": "Forte",
+      "hook_moderate": "Moderado",
+      "hook_weak": "Fraco",
+      "voice_label": "Voz da marca",
+      "voice_consistent": "Consistente",
+      "voice_mixed": "Mista",
+      "voice_inconsistent": "Inconsistente",
+      "patterns_label": "Padrões repetitivos",
+      "patterns_alert": "Detetados",
+      "patterns_ok": "Sem repetição"
+    }
+  },
+  "hashtag": {
+    "header": "03 · HASHTAGS · {{count}} POSTS ANALISADOS",
+    "title": "Que hashtags aparecem mais vezes?",
+    "subtitle": "Hashtags extraídas das legendas. Hashtags no primeiro comentário não são contabilizadas.",
+    "kpi": {
+      "unique_label": "HASHTAGS DIFERENTES",
+      "unique_sub": "no total",
+      "uses_label": "USOS REGISTADOS",
+      "uses_sub": "em {{count}} posts",
+      "avg_label": "MÉDIA POR POST",
+      "avg_sub": "recomendado: {{min}}–{{max}}"
+    },
+    "badge_within": "DENTRO DO IDEAL",
+    "badge_below": "ABAIXO DO IDEAL",
+    "badge_above": "ACIMA DO IDEAL",
+    "list_title": "FREQUÊNCIA DE CADA HASHTAG",
+    "list_sort": "ordenado por uso",
+    "uses_suffix": "{{count}} usos",
+    "posts_suffix": "{{pct}}% posts",
+    "empty": "Não foram encontradas hashtags públicas nas legendas analisadas.",
+    "diagnostic_label": "Diagnóstico",
+    "diag": {
+      "none": "Sem hashtags públicas detectadas na amostra. Isto pode ser uma escolha editorial, mas limita a leitura dos territórios temáticos associados ao conteúdo.",
+      "top2_majority": "As 2 hashtags principais ({{a}}, {{b}}) aparecem em mais de metade dos posts. A média de {{avg}} hashtags por post está {{range}}.",
+      "below": "O perfil usa poucas hashtags por post (média {{avg}}). Pode haver margem para testar combinações mais específicas, mantendo a legenda limpa.",
+      "above": "O perfil usa muitas hashtags por post (média {{avg}}). Pode ser útil reduzir volume e privilegiar hashtags mais relevantes.",
+      "balanced": "A utilização de hashtags está equilibrada (média {{avg}} por post). O próximo passo é variar combinações por tema e formato.",
+      "range_below": "abaixo da recomendação de {{min}}–{{max}} por post",
+      "range_within": "dentro da recomendação de {{min}}–{{max}} por post",
+      "range_above": "acima da recomendação de {{min}}–{{max}} por post"
+    }
+  },
+  "themes": {
+    "aria": "Pergunta 04 · Temas das legendas",
+    "eyebrow": "Pergunta 04 · Temas das legendas",
+    "title": "Sobre que assuntos o perfil fala mais?",
+    "empty": "A amostra ainda não tem palavras suficientes nas legendas para identificar temas claros.",
+    "sample_one": "Baseado em {{count}} post",
+    "sample_other": "Baseado em {{count}} posts",
+    "sample_default": "Baseado nas legendas",
+    "interpretation": "Interpretação",
+    "post_one": "{{count}} post",
+    "post_other": "{{count}} posts",
+    "footer_note_part1": "Estes temas resultam da análise das palavras recorrentes nas legendas analisadas — os excertos abaixo de cada tema vêm directamente dos posts. Não correspondem necessariamente às",
+    "footer_note_hashtags": "hashtags",
+    "footer_note_part2": "utilizadas — essas vivem na Pergunta 03."
+  },
+  "cover": {
+    "header": "07 · ANÁLISE VISUAL DAS CAPAS · {{count}} THUMBNAILS ANALISADOS",
+    "ai_badge": "IA · Visão computacional",
+    "title": "As capas comunicam em 1 segundo?",
+    "subtitle": "Análise IA aos thumbnails dos posts — composição, presença humana, texto, cor e legibilidade.",
+    "thumb_hint": "Cada thumbnail tem score individual",
+    "axes_title": "EIXOS DE AVALIAÇÃO",
+    "axes": {
+      "composition": "Composição",
+      "human_presence": "Presença humana",
+      "text_in_image": "Texto na imagem",
+      "framing": "Enquadramento / cropping",
+      "color_light": "Cor e luz",
+      "recognizability": "Reconhecibilidade",
+      "grid_coherence": "Coerência de grelha"
+    },
+    "sub_scores": {
+      "recognizability": "Reconhecibilidade",
+      "colorCoherence": "Coerência cromática",
+      "composition": "Composição",
+      "visualVariety": "Variedade visual",
+      "textDensity": "Densidade de texto"
+    },
+    "status": {
+      "strong": "Forte",
+      "needs_improvement": "A melhorar",
+      "weak": "Fraco"
+    },
+    "thumb_status": {
+      "good": "Boa",
+      "medium": "Média",
+      "weak": "Fraca"
+    },
+    "ai_sees": {
+      "human_presence_label": "Presença humana",
+      "human_presence_detail": "das capas com rostos ou pessoas visíveis",
+      "text_in_image_label": "Texto na imagem",
+      "text_in_image_detail": "das capas onde se deteta texto",
+      "palette_label": "Paleta dominante",
+      "template_label": "Repetição de template",
+      "template_default_detail": "padrões visuais repetidos"
+    },
+    "diagnostic_label": "DIAGNÓSTICO VISUAL",
+    "works_label": "FUNCIONA",
+    "critical_label": "PONTO CRÍTICO",
+    "watch_label": "A OBSERVAR",
+    "fallback": {
+      "public_title": "Análise visual disponível na versão Pro.",
+      "public_body": "As capas dos posts são avaliadas por inteligência artificial para consistência visual, presença de texto e diversidade de formatos.",
+      "dev_title": "Análise visual indisponível — aguarda processamento IA.",
+      "dev_body": "Os thumbnails acima serão analisados por visão computacional numa próxima atualização.",
+      "score_public_title": "Score visual · Pro",
+      "score_public_body": "Disponível na versão completa do relatório.",
+      "score_dev_title": "Score visual indisponível",
+      "score_dev_body": "Será calculado automaticamente quando a análise por visão computacional estiver ativa."
+    }
+  },
+  "comments": {
+    "subtitle": "A marca participa na conversa?",
+    "status": {
+      "insufficient_label": "Sem dados suficientes",
+      "insufficient_body": "A amostra de comentários analisados é demasiado pequena para determinar se a marca participa na conversa.",
+      "active_label": "Responde ativamente",
+      "active_body": "A marca mantém presença consistente nos comentários — responde a uma parte significativa da audiência.",
+      "occasional_label": "Responde pontualmente",
+      "occasional_body": "Há respostas esporádicas, mas sem consistência que sinalize uma política ativa de community management.",
+      "minimal_label": "Quase não responde",
+      "minimal_body": "Foram detetadas respostas pontuais, mas em volume insuficiente para indicar participação ativa na conversa.",
+      "absent_label": "Sem respostas detetadas",
+      "absent_body": "Não foram encontradas respostas da marca nos comentários analisados. A audiência comenta, mas não recebe retorno público."
+    },
+    "scope_note": "Esta leitura usa comentários públicos acessíveis nos posts analisados. Não inclui DMs, comentários apagados, respostas privadas ou comentários não visíveis sem login.",
+    "methodology_note": "Leitura baseada em comentários públicos visíveis nos posts analisados. Não inclui DMs, comentários apagados ou comentários apenas visíveis após login.",
+    "sample_title": "Amostra analisada",
+    "sample": {
+      "posts": "Publicações analisadas",
+      "public_comments": "Comentários públicos recolhidos",
+      "thread_replies": "Respostas em thread",
+      "audience_comments": "Comentários da audiência",
+      "brand_replies": "Respostas da marca",
+      "brand_reply_rate": "Taxa de resposta da marca"
+    },
+    "signals": {
+      "title": "Sinais de conversa",
+      "hint": "Leitura automática — classificação heurística dos comentários públicos.",
+      "questions": "Perguntas",
+      "praise": "Elogios",
+      "complaint": "Problemas ou queixas",
+      "buying": "Intenção de compra",
+      "spam": "Ruído ou spam"
+    },
+    "callout": {
+      "editorial": "Leitura editorial",
+      "warning": "Atenção",
+      "suggestion": "O que isto sugere",
+      "action_label": "Ação recomendada"
+    },
+    "metrics": {
+      "brand_replies": "Respostas da marca",
+      "reply_rate": "Taxa de resposta",
+      "posts_with_reply": "Posts com resposta",
+      "audience_questions": "Perguntas do público",
+      "buying_intent": "Intenção de compra",
+      "complaints": "Queixas detetadas"
+    },
+    "top": {
+      "label": "Publicação com mais interação da marca",
+      "reply_one": "resposta",
+      "reply_other": "respostas",
+      "in": "em",
+      "comments": "comentários"
+    },
+    "unavailable": {
+      "default_title": "Análise detalhada de comentários não incluída",
+      "default_body": "Análise detalhada de comentários não incluída neste relatório beta. A leitura abaixo usa sinais públicos dos posts, como volume de comentários e rácio de conversa.",
+      "pro_title": "Análise aprofundada de comentários",
+      "pro_body": "Disponível em relatórios avançados. Analisa perguntas, objeções, elogios e sinais reais da audiência.",
+      "reasons": {
+        "processing": {
+          "title": "A aguardar análise de comentários",
+          "body": "Análise de comentários em processamento. Atualiza o relatório dentro de alguns instantes."
+        },
+        "budget_blocked": {
+          "title": "Análise não executada",
+          "body": "Análise de comentários não executada para manter o custo dentro do limite operacional."
+        },
+        "comment_scraper_failed": {
+          "title": "Análise indisponível",
+          "body": "Não foi possível analisar comentários nesta execução."
+        },
+        "comment_scraper_disabled": {
+          "title": "Análise detalhada de comentários não incluída",
+          "body": "Análise detalhada de comentários não incluída neste relatório beta. A leitura abaixo usa sinais públicos dos posts, como volume de comentários e rácio de conversa."
+        },
+        "no_posts_with_comments": {
+          "title": "Sem comentários acessíveis",
+          "body": "As publicações analisadas não contêm comentários públicos acessíveis."
+        },
+        "no_valid_post_urls": {
+          "title": "URLs insuficientes",
+          "body": "Não havia URLs públicos suficientes para analisar comentários."
+        },
+        "comment_scraper_timeout": {
+          "title": "Análise excedeu o tempo limite",
+          "body": "A análise de comentários excedeu o tempo disponível. Tenta novamente mais tarde."
+        }
+      }
+    }
   }
 }
