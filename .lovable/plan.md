@@ -1,140 +1,89 @@
-## Diagnóstico
+## Final validation — GO/NO-GO
 
-**Bug #1 — "12 posts em 1111 dias" para `@robs.cortez`**
-
-Os 12 posts devolvidos pelo Apify incluem **2 posts pinned** de 2023 (Maio e Setembro). O Instagram permite até 3 pinned no topo do grid, independentes da data. O cálculo de `windowDays` em `src/lib/report/snapshot-to-report-data.ts:975-993` faz `max(taken_at) − min(taken_at)` sobre **todos** os posts, ignorando o flag `is_pinned: true` (que já é capturado em `src/lib/analysis/normalize.ts:567`). Resultado: janela = 1111 dias, cadência ≈ 0,1 posts/semana. Os 10 posts reais cobrem 12 dias (~5,8 posts/semana).
-
-**Bug #2 — Veredicto editorial cai sempre no fallback estático**
-
-A IA gera correctamente o `sections.hero.text` (verificado no snapshot persistido: "Este perfil regista 0,46% de envolvimento médio, abaixo da referência do tier micro (1,8%). Com 0,1 posts/semana, reforçar a cadência pode ajudar a recuperar tração.").
-
-Em `src/components/report-redesign/v2/overview/editorial-identity-card.tsx:97-112`, `deriveCopyFromAi` só promove a primeira frase da IA a título quando tem **≤ 5 palavras** — condição que NUNCA é cumprida porque o prompt exige números e contexto. Logo o título cai sempre no fallback estático ("Audiência existe, falta direção") e o card parece genérico, embora o parágrafo da IA esteja lá. Pior: enquanto o enriquecimento OpenAI não corre (janela de ~30-120 s após o fetch Apify), o card mostra título **e** parágrafo do fallback — foi o que o utilizador apanhou.
-
-Adicionalmente, o prompt `hero` actual ("panorama global do perfil — envolvimento + tier + ritmo") está a usar `0,1 posts/semana` como facto — que vem do bug #1. Corrigir o bug #1 também corrige o input do prompt.
+**Veredicto: NO-GO para beta público** até resolver os dois bloqueadores abaixo. Tudo o resto está saudável.
 
 ---
 
-## Mudanças
+### 1. Análise fresh pública (natgeo / chatgptricks) — ❌ BLOQUEADOR
 
-### 1. Excluir pinned dos cálculos temporais
+A flag `APIFY_TESTING_MODE` não está a desativar o allowlist em produção. Evidência em `analysis_events`:
 
-`src/lib/report/snapshot-to-report-data.ts`
+- `natgeo` 2026-05-25 10:52 → `blocked_allowlist` / `PROFILE_NOT_ALLOWED`
+- `chatgptricks` 2026-05-25 09:40 → `blocked_allowlist` / `PROFILE_NOT_ALLOWED`
 
-- Logo após `const posts = buildPosts(...)` (linha ~947), derivar:
-  ```ts
-  const cadencePosts = posts.filter((p) => !p.is_pinned);
-  ```
-- Usar `cadencePosts` em vez de `posts` em:
-  - `temporalSeries = buildTemporalSeries(cadencePosts)`
-  - `postingHeatmap = buildPostingHeatmap(cadencePosts)`
-  - `bestDays = buildBestDays(cadencePosts)`
-  - loop `for (const p of posts)` que calcula `minTs`/`maxTs` (linhas 977-985)
-  - recálculo de `postingFrequencyWeekly` (linhas 999-1003) — usar `cadencePosts.length` em vez de `keyMetrics.postsAnalyzed`
-  - `sampleSize`, `windowLabel`, `kpiSubtitle`, etc. (linhas 1098-1115) — usar `cadencePosts.length`
-- `topPosts`, hashtags, keywords, themes mantêm-se sobre `posts` completo (pinned são conteúdo legítimo, só desvirtuam timing).
-- Edge case: se `cadencePosts.length === 0` (perfil só com pinned), cair de volta ao conjunto completo para não esconder tudo.
-- Adicionar test em `src/lib/report/__tests__/` que injecta 12 posts (2 pinned 2023 + 10 recentes 2026) e valida que `windowDays = 12` e `postingFrequencyWeekly` corresponde a 10/12*7.
+`robs.cortez` correu fresh em 15:53 (12 posts, custo $0.011, duração 7.6s) — mas apenas porque foi adicionado ao `APIFY_ALLOWLIST`, não porque o testing-mode foi desativado.
 
-### 2. Veredicto editorial: deixar o título vir da IA
-
-`src/components/report-redesign/v2/overview/editorial-identity-card.tsx`
-
-a. Subir o limite de palavras do título de 5 → 10 e usar a **primeira frase inteira como parágrafo + um título curto sintetizado**:
-
-- Nova função `synthesizeTitleFromAi(firstSentence)`: extrai 2-5 palavras-chave (substantivos + verbo principal) ou cai no fallback. Implementação pragmática: se a primeira frase tem ≤ 10 palavras, usar como título; caso contrário, derivar do tom (`emphasis`) + métrica saliente:
-  - `negative` → "Envolvimento abaixo do tier" (ou tema detectado)
-  - `positive` → "Envolvimento acima do tier"
-  - `default` → manter fallback determinístico (band-based)
-  - `neutral` → "Sinal ainda parcial"
-
-b. Sempre que `aiHeroText` está presente, o **parágrafo é o texto da IA na íntegra** (truncado a 320 chars como hoje). Nunca misturar com fallback.
-
-c. Quando `aiHeroText` está ausente (cache miss / enriquecimento ainda a correr), mostrar um skeleton subtil em vez do fallback estático completo — para o utilizador perceber que o veredicto IA está a chegar (~30-120 s). Após 5 s sem AI, mostrar o fallback determinístico como hoje.
-
-### 3. Reforçar prompt v2 da secção `hero`
-
-`src/lib/insights/prompt-v2.ts` (system prompt, secção das 9 chaves)
-
-Substituir a linha do `hero` por uma instrução mais precisa, exigindo cruzamento de pelo menos 3 sinais e abertura forte sem snake_case:
-
+Causa em `src/lib/security/apify-allowlist.ts`:
+```ts
+return process.env.APIFY_TESTING_MODE !== "false"; // default ON
 ```
-- "hero": leitura editorial de abertura do relatório. Combinar OBRIGATORIAMENTE
-  três sinais: (1) envolvimento médio com posição face ao tier, (2) ritmo
-  semanal real (estimated_posts_per_week), (3) formato dominante ou tema
-  recorrente das captions. Estrutura: 1 frase com o diagnóstico (que números
-  o sustentam) + 1 frase com a alavanca prioritária no infinitivo. Evitar
-  abrir com "Este perfil" — preferir abertura editorial ("Audiência fiel mas
-  silenciosa", "Ritmo curto, sinal forte", "Conteúdo regular sem tração").
-  Máx. 240 chars. Tom: directo, não condescendente, sem alarmismo.
-```
+O valor atual da secret não é a string literal `"false"`, então o allowlist continua a bloquear todos os handles fora da lista.
 
-Adicionar 1 exemplo CORRECTO e 1 PROIBIDO logo a seguir, no mesmo estilo já usado para `marketSignals`.
-
-### 4. Diagnóstico admin
-
-Adicionar coluna `cadence_posts_count` e `pinned_posts_count` no `analysis_diagnostics` (componente que já existe no `/admin/perfis` ou cockpit). Sem migração — derivado on-the-fly a partir do payload. Útil para detectar futuros perfis com pinned a inflar a janela.
+**Ação necessária (operacional, sem código):** definir `APIFY_TESTING_MODE=false` (literal) nas secrets e republicar. Validar com 1 fresh a `natgeo` ou `chatgptricks`.
 
 ---
 
-## Ficheiros tocados
+### 2. Email `report-summary` perdido — ❌ BLOQUEADOR
 
-- `src/lib/report/snapshot-to-report-data.ts` — filtrar pinned em window/cadence/series/heatmap/bestDays
-- `src/lib/report/__tests__/snapshot-pinned-window.test.ts` — novo
-- `src/components/report-redesign/v2/overview/editorial-identity-card.tsx` — `synthesizeTitleFromAi`, skeleton em vez de fallback durante warm-up
-- `src/lib/insights/prompt-v2.ts` — instrução `hero` reforçada
-- (Opcional, baixa prioridade) componente de diagnóstico admin
+`product_events` não contém `report_summary_email_sent` nem `report_summary_email_failed` para os 2 unlocks mais recentes (frederico.m.carvalho 13:58; robs.cortez 16:00). Só `beta_welcome_email_sent` aparece (e só para o frederico).
 
-## Fora de âmbito
+Causa em `src/lib/unlock.server.ts` linhas 475-496: `sendLeadMagnetSequence` é invocada dentro de `void (async () => {...})()` fire-and-forget. O comentário do passo 7 (Brevo sync) já reconhece que "Cloudflare Workers terminate background async work as soon as the response is returned (no `waitUntil` is registered here)" — e na sequência lead-magnet o welcome (~300ms) por vezes passa, mas o summary que vem a seguir é morto pelo runtime.
 
-- Não tocar no scraper Apify (a flag `is_pinned` já chega — basta usá-la).
-- Não tocar no schema do snapshot (sem migração).
-- Não tocar nos outros 8 insights v2.
+**Fix proposto:** alinhar com o passo 7 — `await sendLeadMagnetSequence(...)` em vez de fire-and-forget. A função internamente já tem try/catch por cada email, não throwa e não bloqueia o utilizador (unlock continua a responder). Custo: +500–1500 ms de latência no unlock, aceitável.
 
-## Prompt actual do hero (já em vigor) — para partilha com o utilizador
+---
 
-```
-"hero": panorama global do perfil (envolvimento médio + tier + ritmo).
-```
+### 3. Cache — ✅ OK
 
-(via system prompt em `src/lib/insights/prompt-v2.ts:67`, dentro do
-mapeamento das 9 secções)
+`robs.cortez` após fresh às 15:53:
+- 15:59:11 → `data_source=cache` (130 ms)
+- 15:59:32 → `data_source=cache` (86 ms)
 
-Regras de qualidade globais já aplicadas a TODAS as secções (incluindo hero):
-- 1 observação concreta com número + 1 recomendação prática (infinitivo)
-- Citar pelo menos 1 valor numérico do payload
-- Sem snake_case, sem caminhos com pontos, sem rótulos crus em inglês
-- Máx. 240 caracteres
-- pt-PT AO90, registo impessoal
+Nenhum hit adicional ao Apify. `analysis_execution_mode = fresh` em `app_config`. Toggle `cache_only` validado em sessões anteriores (handles `chatgptrick`, `martimsilvai`, `nonexistent_*` ficam `blocked_cache_only`).
 
-## Prompt revisto do hero — que será aplicado
+---
 
-```
-- "hero": leitura editorial de abertura do relatório. Combinar OBRIGATORIAMENTE
-  três sinais: (1) envolvimento médio com posição face ao tier, (2) ritmo
-  semanal real (estimated_posts_per_week), (3) formato dominante OU tema
-  recorrente das captions. Estrutura: 1 frase com o diagnóstico (com os
-  números que o sustentam) + 1 frase com a alavanca prioritária no infinitivo
-  impessoal. Evitar abertura factual fria — preferir abertura editorial
-  curta ("Audiência fiel mas silenciosa", "Ritmo curto, sinal forte",
-  "Conteúdo regular sem tração"). Máx. 240 chars. Tom directo, sem
-  alarmismo nem condescendência.
+### 4. UX pública — ✅ OK (sem teste manual no browser)
 
-  CORRECTO: "Audiência fiel mas silenciosa: 0,5% de envolvimento médio,
-  abaixo dos 1,8% típicos do tier micro, com 5 publicações por semana
-  dominadas por Reels. Testar 2 carrosséis editoriais por semana durante
-  4 semanas e medir a conversa nos comentários."
+`bunx vitest run normalize-handle.test.ts` → 31/31 passa, cobrindo `@handle`, `/handle/`, `instagram.com/handle`, `https://www.instagram.com/handle/?hl=en` e variantes inválidas. Não há indício de regressão; sem teste de browser nesta volta (regra do prompt: 1 fresh paid no máximo).
 
-  PROIBIDO (factual, sem ângulo): "Este perfil tem 0,5% de envolvimento e
-  publica 5 vezes por semana."
-```
+---
 
-## Checkpoint
+### 5. Custo observado
 
-- ☐ `@robs.cortez` mostra "10 publicações em 12 dias" e cadência ≈ 5-6/semana
-- ☐ Pinned posts continuam visíveis em hashtags/temas/top posts
-- ☐ Teste novo cobre o cenário "pinned antigo + posts recentes"
-- ☐ Veredicto editorial mostra título dinâmico (≤ 10 palavras) ou frase de abertura editorial vinda da IA
-- ☐ Parágrafo do veredicto vem 100% da IA quando `aiHeroText` está presente
-- ☐ Durante warm-up (~30-120 s) o card mostra skeleton, não copy estático
-- ☐ Prompt v2 do `hero` exige 3 sinais cruzados e abertura editorial
-- ☐ Build limpo, sem regressões nos testes existentes
+| item | valor |
+|---|---|
+| Apify fresh `robs.cortez` (estimado) | $0.011 |
+| Apify fresh `robs.cortez` (actual) | $0.000 (ainda não importado do billing) |
+| OpenAI insights/visual/caption (enrichment) | ~$0.039 |
+| **Total real desta volta de validação** | ~$0.05 |
+
+Dentro do `APIFY_HARD_CAP_USD` e `OPENAI_DAILY_CAP_USD`. Cache evitou cobranças repetidas no mesmo handle.
+
+---
+
+### Resumo executivo
+
+- **Cache evita custo repetido:** sim
+- **Custo provider observado:** ~$0.05 nesta volta
+- **Lead magnet entrega:** parcial — welcome chega às vezes, summary nunca chegou nos 2 unlocks recentes
+- **Pronto para partilhar publicamente:** não, antes dos 2 fixes acima
+
+---
+
+### Plano de correção (a executar após aprovação)
+
+1. **Secret operacional** (sem código): definir `APIFY_TESTING_MODE=false` nas secrets do projeto. Validar com 1 fresh `natgeo` ou `chatgptricks`. Esperado: `data_source=fresh`, `provider_call_logs` com nova entrada Apify, `analysis_events.outcome=success`.
+
+2. **Code edit cirúrgico** em `src/lib/unlock.server.ts` (passo 6, linhas 475-496): trocar o `void (async () => {...})().catch(...)` por um `await sendLeadMagnetSequence(...)` envolvido em try/catch igual ao passo 7. Manter o `import()` dinâmico. Não tocar em mais nada.
+
+3. **Re-validação:** novo unlock com email não-conhecido para um handle já em cache (evita gastar Apify); confirmar em `product_events` a sequência: `beta_welcome_email_sent` + `report_summary_email_sent` (ou `_failed`/`_skipped_no_data` com razão visível).
+
+Sem alterações de UI. Sem alterações de schema. Sem alterações nos prompts AI. Sem novo email enviado para leads existentes.
+
+**Checkpoint final antes de partilhar publicamente:**
+- ☐ `APIFY_TESTING_MODE=false` aplicado e republicado
+- ☐ Fresh em handle fora do allowlist → `outcome=success`
+- ☐ `unlock.server.ts` passa a aguardar `sendLeadMagnetSequence`
+- ☐ Novo unlock produz `report_summary_email_sent` em `product_events`
+- ☐ Cache continua a servir o 2º pedido do mesmo handle
