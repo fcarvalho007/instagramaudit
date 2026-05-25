@@ -64,7 +64,7 @@ Tom por "emphasis":
 - "neutral": contexto sem julgamento (ex.: dados insuficientes). Tom factual.
 
 Mapeamento das 9 secções (uma observação dirigida a cada uma):
-- "hero": panorama global do perfil (envolvimento médio + tier + ritmo).
+- "hero": leitura editorial de abertura do relatório. Combinar OBRIGATORIAMENTE três sinais: (1) envolvimento médio com posição face ao tier, (2) ritmo semanal real (estimated_posts_per_week), (3) formato dominante OU tema recorrente das captions. Estrutura: 1 frase de diagnóstico com os números que o sustentam + 1 frase com a alavanca prioritária no infinitivo impessoal. Evitar abertura factual fria — preferir uma abertura editorial curta de ≤ 6 palavras antes dos dois pontos ("Audiência fiel mas silenciosa:", "Ritmo curto, sinal forte:", "Conteúdo regular sem tração:"). Máx. 240 chars. Tom directo, sem alarmismo nem condescendência. CORRECTO: "Audiência fiel mas silenciosa: 0,5% de envolvimento médio, abaixo dos 1,8% do tier micro, com 5 publicações por semana dominadas por Reels. Testar 2 carrosséis editoriais por semana durante 4 semanas e medir a conversa." PROIBIDO (factual, sem ângulo): "Este perfil tem 0,5% de envolvimento e publica 5 vezes por semana."
 - "marketSignals": procura de mercado vs temas do perfil (se "market_signals.has_free" for false, escrever um texto neutro a explicar que não há sinais de pesquisa para cruzar; nunca inventar tendências).
 - "evolutionChart": evolução temporal de likes/comentários ao longo dos posts analisados.
 - "benchmark": posicionamento face ao benchmark do tier + formato dominante.
