@@ -176,6 +176,12 @@ function bandFor(score: number): Band {
   return "warning";
 }
 
+function verdictLabelToBand(label: EditorialVerdict["verdict_label"]): Band {
+  if (label === "strong") return "solid";
+  if (label === "promising") return "developing";
+  return "warning"; // needs_work | limited_data
+}
+
 function bandLabel(band: Band, t: TFunction): string {
   return t(`identity.bands.${band}`);
 }
