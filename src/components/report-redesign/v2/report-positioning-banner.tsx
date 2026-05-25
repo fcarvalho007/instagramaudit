@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { REDESIGN_TOKENS } from "../report-tokens";
-import { INSTAGRAM_BENCHMARK_CONTEXT } from "@/lib/knowledge/benchmark-context";
+import { useTranslation, Trans } from "react-i18next";
 
 /**
  * Banner editorial curto entre o hero e o bloco 01: explica em uma
@@ -11,24 +11,31 @@ import { INSTAGRAM_BENCHMARK_CONTEXT } from "@/lib/knowledge/benchmark-context";
  * "Política de fontes de benchmark" na Knowledge Base.
  */
 export function ReportPositioningBanner() {
+  const { t } = useTranslation("report");
+  const chips = [
+    t("positioning.chip_public_content"),
+    t("positioning.chip_peer_comparison"),
+    t("positioning.chip_external_demand"),
+  ];
   return (
     <section
-      aria-label="O que mostra o InstaBench"
+      aria-label={t("positioning.aria")}
       className={cn("w-full", REDESIGN_TOKENS.bandWhite, "border-y border-slate-200/70")}
     >
       <div className="mx-auto max-w-7xl px-5 md:px-6 py-6 md:py-7 space-y-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <p className="text-sm md:text-[15px] text-slate-700 leading-relaxed max-w-3xl">
-            O <strong className="text-slate-900">InstaBench</strong> mostra o que o perfil
-            comunica publicamente, como compara com perfis semelhantes e que
-            temas têm procura fora do Instagram.
+            <Trans
+              i18nKey="positioning.lead"
+              t={t}
+              components={[<strong key="0" className="text-slate-900" />]}
+            />
           </p>
           <ul
             aria-hidden="true"
             className="flex flex-wrap gap-2 shrink-0"
           >
-            {["Conteúdo público", "Comparação com pares", "Procura externa"].map(
-              (chip) => (
+            {chips.map((chip) => (
                 <li
                   key={chip}
                   className={cn(
@@ -40,15 +47,14 @@ export function ReportPositioningBanner() {
                   <span className="size-1.5 rounded-full bg-blue-500" />
                   {chip}
                 </li>
-              ),
-            )}
+              ))}
           </ul>
         </div>
 
         <p className="text-eyebrow-sm text-[10.5px] text-slate-500 leading-relaxed">
-          {INSTAGRAM_BENCHMARK_CONTEXT.visibleCopyRulesPt.sourceNote}{" "}
+          {t("positioning.source_note")}{" "}
           <span className="normal-case tracking-normal font-sans text-[12px] text-slate-500">
-            {INSTAGRAM_BENCHMARK_CONTEXT.visibleCopyRulesPt.benchmarkNote}
+            {t("positioning.benchmark_note")}
           </span>
         </p>
       </div>
