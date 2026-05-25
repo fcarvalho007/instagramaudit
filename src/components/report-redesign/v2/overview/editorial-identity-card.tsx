@@ -63,30 +63,9 @@ interface EditorialIdentityCardProps {
   competitorsCount?: number;
 }
 
-/* ── Fallback determinístico ───────────────────────────────────────── */
-
 interface EditorialCopy {
   title: string;
   paragraph: string;
-}
-
-function buildFallbackCopy(
-  scores: Record<ScoreKey, { value: number; subtitle: string }>,
-  t: TFunction,
-): EditorialCopy {
-  const eng = scores.envolvimento.value;
-  const freq = scores.frequencia.value;
-  const inter = scores.interaccao.value;
-
-  const pick = (key: string): EditorialCopy => ({
-    title: t(`identity.fallback.${key}.title`),
-    paragraph: t(`identity.fallback.${key}.paragraph`),
-  });
-  if (eng >= 60 && freq >= 60) return pick("solid_consistent");
-  if (eng >= 60 && freq < 40) return pick("irregular_reach");
-  if (freq >= 60 && eng < 40) return pick("cadence_no_signal");
-  if (eng < 40 && inter < 40) return pick("no_direction");
-  return pick("opportunity");
 }
 
 /* ── Pontuação + bandas ────────────────────────────────────────────── */
