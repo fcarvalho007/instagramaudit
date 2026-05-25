@@ -1,46 +1,48 @@
 /**
  * Editorial Identity Card — Veredicto executivo (Block 1)
  *
- * Layout (mockup):
- *   Zona macro  | gauge circular + eyebrow VEREDICTO + badge de estado +
- *               | título editorial + síntese curta + barra de referência
- *   Zona accionável | duas colunas: "O QUE JÁ FUNCIONA" (success) /
- *                   | "O QUE LIMITA O CRESCIMENTO" (warning), 2 bullets cada.
- *
- * Sem nova chamada de IA. Título/síntese vêm de `aiInsightsV2.hero.text`
- * com fallback determinístico. Pontos fortes/limitações são derivados de
- * sinais já presentes no snapshot (scores + keyMetrics + formato dominante
- * + frequência semanal + tier de seguidores).
+ * Layout:
+ *   Zona macro      | gauge + eyebrow VEREDICTO + badge + título + síntese + barra de referência
+ *   MetricsStrip    | 3 blocos: média de likes, média de comentários, frequência semanal
+ *   Zona accionável | duas colunas: "O QUE JÁ FUNCIONA" (success) / "O QUE LIMITA O CRESCIMENTO" (warning)
  */
 import { cn } from "@/lib/utils";
-import { Target } from "lucide-react";
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  CalendarDays,
+  Heart,
+  MessageCircle,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
+import { formatCompactNumber } from "@/lib/i18n/format";
 import type { ScoreKey } from "./score-utils";
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 
 type Band = "warning" | "developing" | "solid";
+type Tone = "success" | "warning";
+
+interface Bullet {
+  destaque: string;
+  detalhe: string;
+}
 
 interface EditorialIdentityCardProps {
   scores: Record<ScoreKey, { value: number; subtitle: string }>;
-  /** AI hero insight text, if available */
   aiHeroText?: string | null;
-  /** Extra key metrics for richer subtitles */
   keyMetrics?: {
     engagementRate: number;
     engagementBenchmark: number;
     engagementDeltaPct: number;
   };
-  /** Optional signals usados para derivar a métrica âncora e a nota "porque importa" */
   dominantFormat?: "Reels" | "Carousels" | "Imagens" | string;
   dominantFormatShare?: number;
   postingFrequencyWeekly?: number;
   followers?: number;
   postsAnalyzed?: number;
-  /** Avg likes per analyzed post. */
   averageLikes?: number;
-  /** Avg comments per analyzed post. */
   averageComments?: number;
 }
 
@@ -101,11 +103,6 @@ function deriveCopyFromAi(
 
   const { first, rest } = splitFirstSentence(cleaned);
   const firstClean = first.replace(/[.!?]+$/, "").trim();
-
-  // Title rule: ≤ 5 words. If AI first sentence is short enough, use it as
-  // title and let the remaining sentences be the paragraph. Otherwise fall
-  // back to the deterministic title but keep the FULL AI text as paragraph
-  // — discarding the first sentence drops the metric framing the IA wrote.
   const titleFromAi = countWords(firstClean) <= 5;
   const title = titleFromAi ? firstClean : fallback.title;
   const paragraphRaw = titleFromAi ? (rest || cleaned) : cleaned;
@@ -135,7 +132,6 @@ function bandLabel(band: Band, t: TFunction): string {
   return t(`identity.bands.${band}`);
 }
 
-/** Mapeia a banda para a cor do arco/badge. Construtivo — nunca vermelho. */
 function bandTextClass(band: Band): string {
   if (band === "solid") return "text-signal-success";
   if (band === "developing") return "text-accent-primary";
@@ -149,103 +145,165 @@ function bandFillClass(band: Band): string {
 }
 
 function bandBadgeClass(band: Band): string {
-  if (band === "solid")
-    return "bg-signal-success/10 text-signal-success";
-  if (band === "developing")
-    return "bg-accent-primary/10 text-accent-primary";
+  if (band === "solid") return "bg-signal-success/10 text-signal-success";
+  if (band === "developing") return "bg-accent-primary/10 text-accent-primary";
   return "bg-signal-warning/15 text-signal-warning";
 }
 
-/* ── Selector: métrica âncora ──────────────────────────────────────── */
-
-export type AnchorKind = "engagement" | "comments" | "rhythm" | null;
-
-export interface AnchorSelection {
-  kind: AnchorKind;
-  /** Pre-formatted display value (no label/caption). */
-  value: string;
-  /** Translation key for the full sentence (with interpolation already resolved). */
-  sentence: string;
-  /** Optional short caption appended after a separator. */
-  caption: string | null;
-}
+/* ── Helpers numéricos ─────────────────────────────────────────────── */
 
 function formatDecimal(value: number, locale: string, digits = 1): string {
   const sep = locale.startsWith("pt") ? "," : ".";
   return value.toFixed(digits).replace(".", sep);
 }
 
-export function selectAnchor(
-  keyMetrics: EditorialIdentityCardProps["keyMetrics"],
-  averageComments: number | undefined,
-  postingFrequencyWeekly: number | undefined,
-  t: TFunction,
-  locale: string,
-): AnchorSelection {
-  if (keyMetrics && keyMetrics.engagementBenchmark > 0) {
-    const delta = Math.round(keyMetrics.engagementDeltaPct);
-    if (Math.abs(delta) >= 10) {
-      const key = delta >= 0
-        ? "identity.anchor.engagement_above"
-        : "identity.anchor.engagement_below";
-      return {
-        kind: "engagement",
-        value: `${delta > 0 ? "+" : ""}${delta}%`,
-        sentence: t(key, { delta: Math.abs(delta) }),
-        caption: null,
-      };
-    }
-  }
-  if (typeof averageComments === "number" && averageComments >= 1) {
-    const value = formatDecimal(averageComments, locale, 1);
-    return {
-      kind: "comments",
-      value,
-      sentence: t("identity.anchor.comments", { value }),
-      caption: t("identity.anchor.comments_caption"),
-    };
-  }
-  if (typeof postingFrequencyWeekly === "number" && postingFrequencyWeekly >= 1) {
-    const value = formatDecimal(postingFrequencyWeekly, locale, 1);
-    return {
-      kind: "rhythm",
-      value,
-      sentence: t("identity.anchor.rhythm", { value }),
-      caption: t("identity.anchor.rhythm_caption"),
-    };
-  }
-  return { kind: null, value: "", sentence: "", caption: null };
+function tierLabelFromFollowers(followers: number): string {
+  if (followers >= 1_000_000) return "Mega";
+  if (followers >= 250_000) return "Macro";
+  if (followers >= 50_000) return "Mid";
+  if (followers >= 10_000) return "Micro";
+  return "Nano";
 }
 
-/* ── Selector: "porque importa" ────────────────────────────────────── */
+function formatNameSingular(fmt: string | undefined, t: TFunction): string {
+  if (!fmt) return t("identity.format_singular.default");
+  const known = ["Reels", "Carousels", "Imagens", "Video"] as const;
+  if ((known as readonly string[]).includes(fmt)) {
+    return t(`identity.format_singular.${fmt}`);
+  }
+  return fmt.toLowerCase();
+}
 
-export type WhyKind =
-  | "solid_above"
-  | "developing"
-  | "warning_below"
-  | "weak_cadence"
-  | "format_concentrated"
-  | "neutral";
+/* ── Bullets: strengths / limits ───────────────────────────────────── */
 
-export function selectWhy(
-  band: Band,
+interface DerivedSignals {
+  strengths: Bullet[];
+  limits: Bullet[];
+}
+
+export function deriveSignals(
+  scores: Record<ScoreKey, { value: number; subtitle: string }>,
   keyMetrics: EditorialIdentityCardProps["keyMetrics"],
-  postingFrequencyWeekly: number | undefined,
+  dominantFormat: string | undefined,
   dominantFormatShare: number | undefined,
-): WhyKind {
-  const delta = keyMetrics?.engagementBenchmark
-    ? keyMetrics.engagementDeltaPct
-    : 0;
-  if (typeof postingFrequencyWeekly === "number" && postingFrequencyWeekly < 1) {
-    return "weak_cadence";
+  postingFrequencyWeekly: number | undefined,
+  followers: number | undefined,
+  t: TFunction,
+  language: string,
+): DerivedSignals {
+  const strengths: Bullet[] = [];
+  const limits: Bullet[] = [];
+
+  const ppw = typeof postingFrequencyWeekly === "number" ? postingFrequencyWeekly : null;
+  if (ppw !== null) {
+    if (ppw >= 3 && ppw <= 7) {
+      const sep = language.startsWith("pt") ? "," : ".";
+      const perDay = (ppw / 7).toFixed(1).replace(".", sep);
+      strengths.push({
+        destaque: t("identity.signals.freq_consistent.title"),
+        detalhe: t("identity.signals.freq_consistent.detail", { perDay }),
+      });
+    } else if (ppw < 1) {
+      limits.push({
+        destaque: t("identity.signals.freq_weak.title"),
+        detalhe: t("identity.signals.freq_weak.detail"),
+      });
+    } else if (ppw > 7) {
+      limits.push({
+        destaque: t("identity.signals.freq_excess.title"),
+        detalhe: t("identity.signals.freq_excess.detail"),
+      });
+    }
   }
-  if (band === "warning" && delta <= -30) return "warning_below";
-  if (band === "solid" && delta >= 10) return "solid_above";
-  if (typeof dominantFormatShare === "number" && dominantFormatShare >= 70) {
-    return "format_concentrated";
+
+  if (typeof followers === "number" && followers > 0) {
+    const tier = tierLabelFromFollowers(followers);
+    if (tier !== "Nano") {
+      strengths.push({
+        destaque: t("identity.signals.audience_relevant.title"),
+        detalhe: t("identity.signals.audience_relevant.detail"),
+      });
+    } else if (followers < 2_000) {
+      limits.push({
+        destaque: t("identity.signals.audience_small.title"),
+        detalhe: t("identity.signals.audience_small.detail"),
+      });
+    }
   }
-  if (band === "developing") return "developing";
-  return "neutral";
+
+  if (keyMetrics && keyMetrics.engagementBenchmark > 0) {
+    const delta = keyMetrics.engagementDeltaPct;
+    if (delta >= 10) {
+      strengths.push({
+        destaque: t("identity.signals.engagement_above.title"),
+        detalhe: t("identity.signals.engagement_above.detail", { delta: Math.round(delta) }),
+      });
+    } else if (delta <= -30) {
+      limits.push({
+        destaque: t("identity.signals.engagement_below.title"),
+        detalhe: t("identity.signals.engagement_below.detail", { delta: Math.round(delta) }),
+      });
+    }
+  }
+
+  const inter = scores.interaccao.value;
+  if (inter >= 60) {
+    strengths.push({
+      destaque: t("identity.signals.interaction_active.title"),
+      detalhe: t("identity.signals.interaction_active.detail"),
+    });
+  } else if (inter < 30) {
+    limits.push({
+      destaque: t("identity.signals.interaction_low.title"),
+      detalhe: t("identity.signals.interaction_low.detail"),
+    });
+  }
+
+  if (typeof dominantFormatShare === "number" && dominantFormatShare > 0) {
+    if (dominantFormatShare < 55) {
+      strengths.push({
+        destaque: t("identity.signals.format_mixed.title"),
+        detalhe: t("identity.signals.format_mixed.detail"),
+      });
+    } else if (dominantFormatShare >= 70) {
+      limits.push({
+        destaque: t("identity.signals.format_repetitive.title"),
+        detalhe: t("identity.signals.format_repetitive.detail", {
+          pct: Math.round(dominantFormatShare),
+          format: formatNameSingular(dominantFormat, t),
+        }),
+      });
+    }
+  }
+
+  while (strengths.length < 2) {
+    strengths.push(
+      strengths.length === 0
+        ? {
+            destaque: t("identity.signals.fallback_active.title"),
+            detalhe: t("identity.signals.fallback_active.detail"),
+          }
+        : {
+            destaque: t("identity.signals.fallback_history.title"),
+            detalhe: t("identity.signals.fallback_history.detail"),
+          },
+    );
+  }
+  while (limits.length < 2) {
+    limits.push(
+      limits.length === 0
+        ? {
+            destaque: t("identity.signals.fallback_diversify.title"),
+            detalhe: t("identity.signals.fallback_diversify.detail"),
+          }
+        : {
+            destaque: t("identity.signals.fallback_conversation.title"),
+            detalhe: t("identity.signals.fallback_conversation.detail"),
+          },
+    );
+  }
+
+  return { strengths: strengths.slice(0, 2), limits: limits.slice(0, 2) };
 }
 
 /* ── Main Component ────────────────────────────────────────────────── */
@@ -270,23 +328,21 @@ export function EditorialIdentityCard({
   const lowConfidence =
     typeof postsAnalyzed === "number" && postsAnalyzed > 0 && postsAnalyzed < 5;
 
-  const anchor = selectAnchor(
+  const { strengths, limits } = deriveSignals(
+    scores,
     keyMetrics,
-    averageComments,
+    dominantFormat,
+    dominantFormatShare,
     postingFrequencyWeekly,
+    followers,
     t,
     i18n.language,
   );
-  const whyKind = selectWhy(
-    band,
-    keyMetrics,
-    postingFrequencyWeekly,
-    dominantFormatShare,
-  );
-  // Reserved for future enrichment (avatar density / etc.)
-  void averageLikes;
-  void dominantFormat;
-  void followers;
+
+  const hasAnyMetric =
+    typeof averageLikes === "number" ||
+    typeof averageComments === "number" ||
+    typeof postingFrequencyWeekly === "number";
 
   return (
     <article
@@ -333,21 +389,33 @@ export function EditorialIdentityCard({
         </div>
       </div>
 
-      {/* Zona âncora — uma única métrica que enquadra o veredicto */}
-      {anchor.kind !== null && (
-        <div className="px-6 pb-5">
-          <AnchorMetric anchor={anchor} t={t} />
+      {/* Zona métrica — gostos / comentários / ritmo */}
+      {hasAnyMetric && (
+        <div className="px-6 pb-6">
+          <MetricsStrip
+            averageLikes={averageLikes}
+            averageComments={averageComments}
+            postingFrequencyWeekly={postingFrequencyWeekly}
+            followers={followers}
+            t={t}
+            locale={i18n.language}
+          />
         </div>
       )}
 
-      {/* Zona "porque importa" — nota interpretativa, sem bullets */}
-      <div className="border-t border-border-default bg-surface-muted px-6 py-5">
-        <p className="text-eyebrow-sm text-content-tertiary mb-1.5">
-          {t("identity.why.eyebrow")}
-        </p>
-        <p className="text-[15px] leading-relaxed text-content-secondary max-w-2xl">
-          {t(`identity.why.${whyKind}`)}
-        </p>
+      {/* Zona accionável */}
+      <div className="border-t border-border-default grid grid-cols-1 md:grid-cols-2">
+        <BulletColumn
+          tone="success"
+          title={t("identity.columns.strengths")}
+          items={strengths}
+        />
+        <BulletColumn
+          tone="warning"
+          title={t("identity.columns.limits")}
+          items={limits}
+          className="border-t md:border-t-0 md:border-l border-border-default"
+        />
       </div>
     </article>
   );
@@ -442,29 +510,153 @@ function ReferenceBar({
   );
 }
 
-/* ── Anchor Metric ─────────────────────────────────────────────────── */
+/* ── Bullet Column ─────────────────────────────────────────────────── */
 
-function AnchorMetric({ anchor, t }: { anchor: AnchorSelection; t: TFunction }) {
+function BulletColumn({
+  tone,
+  title,
+  items,
+  className,
+}: {
+  tone: Tone;
+  title: string;
+  items: Bullet[];
+  className?: string;
+}) {
+  const bg = tone === "success" ? "bg-tint-success" : "bg-tint-warning";
+  const accent = tone === "success" ? "text-signal-success" : "text-signal-warning";
+  const dot = tone === "success" ? "bg-signal-success" : "bg-signal-warning";
+  const Icon = tone === "success" ? ArrowUpRight : ArrowDownRight;
+
   return (
-    <div className="rounded-xl border border-border-default bg-surface-muted px-4 py-3 flex items-start gap-3">
-      <span
-        className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-md bg-accent-primary/10 text-accent-primary shrink-0"
-        aria-hidden="true"
-      >
-        <Target className="h-3.5 w-3.5" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-eyebrow-sm text-content-tertiary mb-0.5">
-          {t("identity.anchor.eyebrow")}
-        </p>
-        <p className="text-[15px] leading-snug text-content-primary">
-          <span className="font-semibold tabular-nums">{anchor.value}</span>
-          <span className="text-content-secondary"> · {anchor.sentence}</span>
-          {anchor.caption ? (
-            <span className="text-content-tertiary"> · {anchor.caption}</span>
-          ) : null}
-        </p>
+    <div className={cn("px-5 py-5 sm:px-7 sm:py-6", bg, className)}>
+      <div className="flex items-center gap-2 mb-3">
+        <Icon className={cn("h-3.5 w-3.5", accent)} aria-hidden="true" />
+        <span className={cn("text-eyebrow-sm", accent)}>{title}</span>
       </div>
+      <ul className="space-y-2.5">
+        {items.map((it, i) => (
+          <li key={i} className="flex gap-2 text-[15px] leading-relaxed">
+            <span
+              className={cn("mt-1.5 h-1.5 w-1.5 rounded-full shrink-0", dot)}
+              aria-hidden="true"
+            />
+            <span className="text-content-secondary">
+              <span className="font-medium text-content-primary">{it.destaque}</span>
+              {" · "}
+              {it.detalhe}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/* ── Metrics Strip ─────────────────────────────────────────────────── */
+
+function commentsBand(avg: number): "low" | "medium" | "active" {
+  if (avg >= 5) return "active";
+  if (avg >= 1) return "medium";
+  return "low";
+}
+
+function rhythmBand(ppw: number): "excess" | "good" | "low" {
+  if (ppw > 7) return "excess";
+  if (ppw >= 1) return "good";
+  return "low";
+}
+
+function MetricsStrip({
+  averageLikes,
+  averageComments,
+  postingFrequencyWeekly,
+  followers,
+  t,
+  locale,
+}: {
+  averageLikes?: number;
+  averageComments?: number;
+  postingFrequencyWeekly?: number;
+  followers?: number;
+  t: TFunction;
+  locale: string;
+}) {
+  const items: Array<{
+    key: string;
+    icon: typeof Heart;
+    label: string;
+    value: string;
+    unit: string;
+    subtitle: string;
+  }> = [];
+
+  if (typeof averageLikes === "number" && averageLikes >= 0) {
+    const subtitle =
+      typeof followers === "number" && followers > 0
+        ? t("identity.metrics.likes_subtitle", {
+            pct: formatDecimal((averageLikes / followers) * 100, locale, 2),
+          })
+        : t("identity.metrics.likes_subtitle_na");
+    items.push({
+      key: "likes",
+      icon: Heart,
+      label: t("identity.metrics.likes_label"),
+      value: formatCompactNumber(Math.round(averageLikes), locale),
+      unit: t("identity.metrics.per_post"),
+      subtitle,
+    });
+  }
+
+  if (typeof averageComments === "number" && averageComments >= 0) {
+    const band = commentsBand(averageComments);
+    items.push({
+      key: "comments",
+      icon: MessageCircle,
+      label: t("identity.metrics.comments_label"),
+      value: formatCompactNumber(Math.round(averageComments), locale),
+      unit: t("identity.metrics.per_post"),
+      subtitle: t(`identity.metrics.comments_${band}`),
+    });
+  }
+
+  if (typeof postingFrequencyWeekly === "number" && postingFrequencyWeekly >= 0) {
+    const band = rhythmBand(postingFrequencyWeekly);
+    items.push({
+      key: "rhythm",
+      icon: CalendarDays,
+      label: t("identity.metrics.rhythm_label"),
+      value: formatDecimal(postingFrequencyWeekly, locale, 1),
+      unit: t("identity.metrics.per_week"),
+      subtitle: t(`identity.metrics.rhythm_${band}`),
+    });
+  }
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {items.map((it) => {
+        const Icon = it.icon;
+        return (
+          <div
+            key={it.key}
+            className="rounded-xl border border-border-default bg-surface-muted px-4 py-3.5"
+          >
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Icon className="h-3.5 w-3.5 text-accent-primary" aria-hidden="true" />
+              <span className="text-eyebrow-sm text-content-tertiary">{it.label}</span>
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-sans text-xl font-semibold tabular-nums text-content-primary leading-none">
+                {it.value}
+              </span>
+              <span className="text-sm text-content-secondary">{it.unit}</span>
+            </div>
+            <p className="mt-1 text-xs text-content-tertiary">{it.subtitle}</p>
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -1,85 +1,61 @@
-# Plano · Normalização de handles Instagram + mensagens de erro públicas
+# Plano · Restaurar pontos fortes, limite de crescimento e os 3 blocos de métricas (Bloco 1)
 
-## Objetivo
-Aceitar variações comuns de input do Instagram (`/handle/`, `@handle`, URLs completos), normalizar antes da validação e melhorar a copy dos erros (input + códigos do backend) — sem mexer em providers, secrets, BD ou UI de relatório.
+## Contexto
+O primeiro card do Bloco 1 (`EditorialIdentityCard`, `src/components/report-redesign/v2/overview/editorial-identity-card.tsx`) já teve três zonas que foram removidas:
 
-## 1. Helper partilhado `normalizeInstagramHandle`
+1. **Strip métrica horizontal** com 3 blocos: média de likes/post, média de comentários/post e frequência semanal de publicação.
+2. **Coluna "O que já funciona"** (pontos fortes, success).
+3. **Coluna "O que limita o crescimento"** (warning).
 
-Criar `src/lib/instagram/normalize-handle.ts` (isomórfico, sem deps):
+Foram substituídas por uma "Anchor Metric" + uma nota "Porquê importa". O utilizador quer as 3 zonas antigas de volta.
 
-```ts
-export function normalizeInstagramHandle(input: string): string
-```
+Todas as chaves i18n necessárias **continuam presentes** em `src/i18n/locales/{pt,en}/report.json` (subárvores `identity.metrics`, `identity.signals`, `identity.columns`, `identity.format_singular`) — não é preciso mexer nos JSONs.
 
-Regras:
-- `trim` + remoção de zero-width chars.
-- Se contém `://` ou começa por `www.` / `instagram.com`: tem de ser host `instagram.com` (ou `www.instagram.com`/`m.instagram.com`). Outros hosts → `""`.
-- Aceita `instagram.com/<handle>` (com ou sem path/query/hash).
-- Remove `@` inicial, `/` à volta e baixa caixa.
-- Fica só com o primeiro segmento de path.
-- Rejeita (`""`) se o segmento estiver em `RESERVED`: `p`, `reel`, `reels`, `tv`, `stories`, `explore`, `accounts`, `directory`, `about`, `developer`, `legal`.
-- Valida contra `/^[a-z0-9._]{1,30}$/` no fim; falha → `""`.
-- Input vazio → `""`.
+O call-site (`report-overview-block.tsx`) já passa `averageLikes`, `averageComments`, `postingFrequencyWeekly`, `dominantFormat`, `dominantFormatShare`, `followers` ao card — não é preciso mexer.
 
-Substitui a lógica de `extractUsername` em `hero-action-bar.tsx` (que será re-exportada do helper para manter API + os testes existentes).
+## Alterações (1 ficheiro)
 
-## 2. Aplicar nos 3 pontos
+### `src/components/report-redesign/v2/overview/editorial-identity-card.tsx`
 
-- **`src/components/landing/hero-action-bar.tsx`** — `extractUsername` passa a delegar em `normalizeInstagramHandle`. Mensagem de "inválido" trocada (ver §3).
-- **`src/routes/analyze.$username.tsx`** — `cleaned` (linha 163) e cada competitor (linhas 198-200) passam por `normalizeInstagramHandle`. Se devolver vazio para o principal → mostrar `AnalysisErrorState` com `INVALID_USERNAME` em vez de chamar a API.
-- **`src/routes/api/analyze-public-v1.ts`** — `usernameSchema` (linhas 97-101) muda de `replace(/^@/, "")` para `transform(normalizeInstagramHandle)` + `.refine(v => v.length > 0)`. Aplica-se a primary + competitors, antes do regex final.
+1. **Imports:** trocar `Target` por `ArrowUpRight`, `ArrowDownRight`, `Heart`, `MessageCircle`, `CalendarDays` (lucide-react). Adicionar `formatCompactNumber` (de `@/lib/format` — confirmar import existente no projeto, fallback para Intl.NumberFormat se não houver).
 
-## 3. Mensagem de validação no input
+2. **Tipos:** adicionar `type Tone = "success" | "warning"` e `interface Bullet { destaque: string; detalhe: string }`.
 
-`src/i18n/locales/pt/landing.json` → `actionBar.errors.invalid` e `competitorInvalid`:
+3. **Restaurar `deriveSignals(...)`**: função pura que devolve `{ strengths, limits }`, ambos com até 2 bullets, baseada em frequência semanal, tier de seguidores, delta de engagement vs benchmark, score de interação e concentração de formato. Garante 2+2 com fallbacks neutros já existentes em i18n.
 
-> "Insere um perfil público do Instagram, por exemplo @marca ou instagram.com/marca."
+4. **Restaurar `MetricsStrip`**: grelha `sm:grid-cols-3` com 3 cards, cada um com ícone (Heart/MessageCircle/CalendarDays), valor compacto + unidade + subtítulo derivado de bandas (`commentsBand`, `rhythmBand`). Renderiza só os blocos com dados.
 
-(Equivalente em `en/landing.json` se existir.)
+5. **Restaurar `BulletColumn`**: duas colunas (success/warning) com fundo `bg-tint-success` / `bg-tint-warning` e bullets coloridos. Empilham em mobile, lado a lado em `md:`.
 
-## 4. Mapping de `error_code` → copy pt-PT
+6. **Layout do `article`** (substitui a Anchor + Porque-importa actuais):
+   ```
+   ┌────────────────────────────────────────────┐
+   │ Macro: gauge + título + parágrafo + ref bar│
+   ├────────────────────────────────────────────┤
+   │ MetricsStrip (likes / comments / ritmo)    │  ← se houver ≥1 métrica
+   ├──────────────────────┬─────────────────────┤
+   │ O que já funciona    │ O que limita        │  ← 2 colunas, sempre 2+2 bullets
+   └──────────────────────┴─────────────────────┘
+   ```
 
-Atualizar `src/i18n/locales/pt/errors.json` e `en/errors.json` com os textos exatos pedidos:
+7. **Remover** `AnchorMetric`, `selectAnchor`, `selectWhy`, exports `AnchorKind`/`AnchorSelection`/`WhyKind` e os `void averageLikes; void dominantFormat; void followers;` (passam a ser usados). Manter `ScoreGauge`, `ReferenceBar`, `buildFallbackCopy`, `deriveCopyFromAi`, `computeOverall`, `bandFor`, `bandLabel`, `bandTextClass`, `bandFillClass`, `bandBadgeClass`, `formatDecimal`.
 
-| Código | Copy pt-PT |
-|---|---|
-| `PROFILE_NOT_ALLOWED` | O modo público ainda não está ativo para este perfil. |
-| `PROVIDER_DISABLED` | A análise automática está temporariamente desligada. |
-| `CACHE_ONLY_NO_DATA` | Ainda não temos dados guardados para este perfil. |
-| `PROFILE_NOT_FOUND` | Não encontrámos este perfil no Instagram. |
-| `PROFILE_PRIVATE` | Este perfil parece ser privado. |
-| `RATE_LIMITED` (+ `_IP`/`_HANDLE`) | Foram feitas demasiadas análises. Tenta novamente mais tarde. |
-| `BUDGET_EXCEEDED` | As análises gratuitas de hoje atingiram o limite. |
-| `UPSTREAM_FAILED` | Não foi possível concluir a análise neste momento. |
-
-`useResolveErrorMessage` (analyze.$username.tsx) já lê do namespace `errors` por `toUpperCase()` — não precisa de mudanças de código, só dos JSONs. `CACHE_ONLY_NO_DATA` continua a usar o título dedicado do `AnalysisErrorState` (mensagem fica para o body via t()).
-
-## 5. Testes (vitest, sem rede)
-
-- **Novo** `src/lib/instagram/__tests__/normalize-handle.test.ts`:
-  - Aceita: `chatgptricks`, `@chatgptricks`, `/chatgptricks/`, `instagram.com/chatgptricks`, `www.instagram.com/chatgptricks/`, `https://www.instagram.com/chatgptricks/?hl=en`, `  @ChatGPTricks  ` → todos `chatgptricks`.
-  - Rejeita (`""`): `""`, `   `, `https://tiktok.com/@chatgptricks`, `instagram.com/p/ABC123`, `instagram.com/reel/xyz`, `instagram.com/stories/foo`, `@@bad name`, `foo bar`, `instagram.com/explore`.
-- **Atualizar** `src/components/landing/__tests__/hero-action-bar-extract.test.ts` para o novo comportamento (incluir hosts não-Instagram).
-- **Atualizar** `src/routes/api/__tests__/analyze-public-v1-sanitize.test.ts` (ou novo `analyze-public-v1-normalize.test.ts`) a confirmar que `PayloadSchema.safeParse` aceita as variantes válidas e rejeita as inválidas com `INVALID_USERNAME`.
-- Copy do frontend: snapshot pequeno do `errors.json` (string-equality) para garantir os 8 mapeamentos pedidos.
-
-## 6. Validação
-
-```bash
-bunx tsc --noEmit
-bunx vitest run
-```
+8. **Testes:** correr `src/components/report-redesign/v2/overview/__tests__/` — se houver testes que importam `selectAnchor`/`selectWhy`, atualizar/remover (manterei `deriveSignals` testável). Substituir por testes mínimos de `deriveSignals` (2 cenários: forte vs fraco). Decisão final depois de ler `__tests__`.
 
 ## Fora de scope
+- Sem mexer em JSONs i18n (chaves antigas já existem).
+- Sem mexer no call-site (`report-overview-block.tsx`).
+- Sem mudanças noutros cards / blocos.
+- Sem alterar pipeline de dados nem snapshot adapter.
 
-- Sem mudanças em provider/Apify, secrets, BD, ou UI de relatório.
-- Sem alterar `HTTP_STATUS` nem `ERROR_MESSAGES` do servidor (a copy oficial pública passa a vir do i18n no cliente; o servidor mantém o seu fallback técnico).
+## Validação
+- `bunx tsc --noEmit`
+- `bunx vitest run src/components/report-redesign/v2/overview`
+- Inspecionar preview do Bloco 1 num relatório real (ex. `/analyze/frederico.m.carvalho`) para confirmar as 3 zonas restauradas.
 
 ## Checkpoint
 
-- ☐ `normalize-handle.ts` criado com regras + testes a passar
-- ☐ `hero-action-bar` e `analyze.$username` a usar o helper
-- ☐ Zod do `analyze-public-v1` a aceitar URLs/`@`/`/handle/`
-- ☐ Copy do erro do input atualizada
-- ☐ 8 mapeamentos de `error_code` no `errors.json` (pt + en)
+- ☐ `MetricsStrip` com 3 blocos (likes, comments, ritmo) renderizado abaixo da zona macro
+- ☐ Duas colunas "O que já funciona" / "O que limita o crescimento" com 2 bullets cada
+- ☐ Zonas "âncora" e "porque importa" removidas (substituídas pelas anteriores)
 - ☐ `tsc --noEmit` e `vitest run` verdes
