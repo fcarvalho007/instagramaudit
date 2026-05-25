@@ -123,7 +123,8 @@ export const INSTAGRAM_BENCHMARK_CONTEXT = {
       uiDisplayAllowed: true,
       linksAllowedInReport: false,
       url: "https://www.socialinsider.io/social-media-benchmarks/instagram",
-      publishedYear: 2025,
+      publishedYear: 2026,
+      lastUpdatedLabel: "Fev 2026",
       shortDescription:
         "Estudo agregado de envolvimento orgânico e desempenho por formato.",
       referenceQuality: "high",
@@ -135,7 +136,8 @@ export const INSTAGRAM_BENCHMARK_CONTEXT = {
       uiDisplayAllowed: true,
       linksAllowedInReport: false,
       url: "https://buffer.com/insights/instagram-benchmarks",
-      publishedYear: 2025,
+      publishedYear: 2026,
+      lastUpdatedLabel: "Mai 2026",
       shortDescription:
         "Benchmarks por dimensão da conta — cadência, envolvimento e crescimento.",
       referenceQuality: "high",
@@ -147,7 +149,8 @@ export const INSTAGRAM_BENCHMARK_CONTEXT = {
       uiDisplayAllowed: true,
       linksAllowedInReport: false,
       url: "https://blog.hootsuite.com/social-media-benchmarks/",
-      publishedYear: 2025,
+      publishedYear: 2026,
+      lastUpdatedLabel: "Abr 2026",
       shortDescription:
         "Contexto cross-indústria e comparação entre plataformas.",
       referenceQuality: "medium",
