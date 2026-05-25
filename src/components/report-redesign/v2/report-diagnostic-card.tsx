@@ -181,7 +181,7 @@ export function ReportDiagnosticCard({
           <div className="flex flex-col gap-3 sm:gap-4 max-w-2xl">
             <h3
               className={cn(
-                "font-display text-[1.1rem] sm:text-[1.25rem] md:text-[1.375rem] font-semibold leading-snug tracking-tight text-content-primary break-words",
+                "font-display text-[1.25rem] md:text-[1.5rem] font-semibold leading-snug tracking-tight text-content-primary break-words",
                 "min-w-0",
               )}
             >
@@ -217,7 +217,7 @@ export function ReportDiagnosticCard({
         <>
           <h3
             className={cn(
-              "font-display text-[1rem] sm:text-[1.125rem] md:text-[1.25rem] font-semibold leading-snug tracking-tight text-content-primary break-words",
+              "font-display text-[1.25rem] md:text-[1.5rem] font-semibold leading-snug tracking-tight text-content-primary break-words",
               "min-w-0",
             )}
           >

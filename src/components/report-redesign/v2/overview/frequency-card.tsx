@@ -437,7 +437,7 @@ export function FrequencyCard({
       {/* Header */}
       <div className="px-4 sm:px-5 md:px-6 pt-5 sm:pt-6 md:pt-8 space-y-2.5">
         <div className="flex items-start gap-3">
-          <h3 className="font-display text-[1.25rem] sm:text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight break-words">
+          <h3 className="font-display text-[1.25rem] md:text-[1.5rem] font-semibold tracking-tight text-content-primary leading-snug break-words">
             {t("frequency.title")}{" "}
             {!isInsufficient ? (
             <span
