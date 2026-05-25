@@ -1,81 +1,56 @@
 ## Objetivo
 
-Criar uma página pública `/precos` (PT/EN) que comunique de forma clara o modelo MVP simplificado (1 relatório 7€ / pack 5 × 28€), reaproveitando tokens, copy e padrões já existentes — em particular o estilo dos dois cartões definidos no `PremiumInterestDialog` recém-redesenhado.
+Garantir que o `EditorialIdentityCard` (Block 1) **nunca** renderiza `ai_insights_v2.sections.hero.text` como o parágrafo editorial principal. Snapshots legados (têm `hero.text` mas não têm `editorial_verdict`) passam a usar o veredicto determinístico do fallback, evitando contradições com o cálculo corrigido de cadência (caso `robs.cortez`: hero antigo "0,1 posts/semana" vs cadence real ~2,3/semana).
 
-## Rota
+## Causa-raiz
 
-- **Path:** `/precos` (PT-first, em linha com `/privacidade`, `/termos`, `/cookies`).
-- Ficheiro: **`src/routes/precos.tsx`**, com `createFileRoute` + `head()` (title, description, og:* em PT — string única; o conteúdo da página é traduzido em runtime via i18n, como o resto do site).
-- Indexável (sem noindex) — site público.
+Em `src/components/report-redesign/v2/overview/editorial-identity-card.tsx`, linhas 435-438:
 
-## Checkout
+```
+const copy: EditorialCopy =
+  resolution.source === "fallback" && !aiVerdict && aiHeroText
+    ? deriveCopyFromAi(aiHeroText, fallback, aiHeroEmphasis ?? null)
+    : { title: resolved.title, paragraph: resolved.paragraph };
+```
 
-Não existe endpoint real de checkout (sem Stripe, sem EuPago, sem `/api/public/checkout`). Logo:
-- CTAs ficam visualmente presentes e clicáveis, mas **não navegam** para um checkout falso.
-- Ao clicar, emitem o evento já existente `pricing_option_clicked` (em `src/lib/tracking.functions.ts`) com `pricing_option: "single_report" | "pack_5_reports"`, `source_component: "pricing_page"`.
-- Microcopy honesto por baixo das CTAs: "Pagamento brevemente disponível — os botões registam o teu interesse." / "Payments coming soon — buttons register your interest."
-- Wiring real fica pendente, reportado no output final.
+Quando o snapshot tem `ai_insights_v2.sections.hero.text` mas não tem `editorial_verdict`, este ramo activa-se e injecta texto IA stale como parágrafo principal. É exactamente o bug reportado.
 
-## Ficheiros alterados/criados
+## Mudanças (read-only sobre dados; apenas render)
 
-1. **`src/routes/precos.tsx`** (novo) — rota + componente `PrecosPage`.
-2. **`src/components/pricing/pricing-page.tsx`** (novo) — UI da página (hero + 2 cartões + secção "Como funciona o acesso" + trust note). Reaproveita estilo do `PremiumInterestDialog`.
-3. **`src/i18n/locales/pt/pricing.json`** e **`src/i18n/locales/en/pricing.json`** (novos) — todo o copy da página.
-4. **`src/i18n/index.ts`** — registar o novo namespace `pricing` (import + entrada em ambas as linguagens).
-5. **`src/components/layout/footer.tsx`** (se existir e for não-locked) — adicionar link "Preços" / "Pricing" na coluna apropriada. Header está locked — não tocar.
+### 1. `src/components/report-redesign/v2/overview/editorial-identity-card.tsx`
 
-(Não toca em `PremiumInterestDialog`, modelo de dados, geração de relatório, admin, legais, Apify/OpenAI/DataForSEO.)
+- **Remover por completo o ramo `deriveCopyFromAi`.** `copy` passa a ser sempre `{ title: resolved.title, paragraph: resolved.paragraph }`. Quando não há `editorial_verdict` válido, `resolution.source === "fallback"` e `resolved` é o `buildFallbackVerdict(...)` — determinístico, diagnóstico, sem verbos prescritivos.
+- **Remover as props `aiHeroText` e `aiHeroEmphasis`** (e o respectivo bloco no `interface EditorialIdentityCardProps`). Já não há consumidor.
+- **Remover utilitários mortos:** `deriveCopyFromAi`, `synthesizeTitleFromEmphasis`, `FORBIDDEN_PREFIX`, `splitFirstSentence`, `countWords`, `trimParagraphToSentence`. Reduz superfície e evita re-uso futuro acidental do hero legado.
+- Manter `buildFallbackCopy` (`identity.fallback.*`) caso o resolver precise dele no futuro — não usado actualmente após a mudança; remover se ficar realmente órfão (verificar import e remover juntamente com `fallback` local se não for usado).
+- **Badge "Leitura provisória" — sem alteração.** A regra actual já cobre o caso: `isProvisional = resolution.source !== "ai" || hasProvisionalWarning`. Aparece exactamente uma vez quando se cai em fallback ou se a IA foi parcialmente descartada.
 
-## Estrutura visual
+### 2. `src/components/report-redesign/v2/report-overview-block.tsx`
 
-- Hero centrado, max-w-3xl: H1 (Fraunces, editorial), subtítulo (Inter, content-secondary).
-- 2 cartões `grid-cols-1 md:grid-cols-2 gap-4` com o mesmo template visual do dialog (Inter SemiBold título, preço grande tabular-nums, bullets com `Check`, CTA full-width). Pack com `ring-1 ring-accent-secondary/30` + badge "Poupa 20%".
-- Trust note (`ShieldCheck` + texto) por baixo dos cartões.
-- Secção "Como funciona o acesso" — lista ordenada com 3 itens, fundo `surface-muted`, padding generoso.
-- Mobile-first; sem dark navy; só tokens semânticos.
+- **Remover a linha 115** `aiHeroText={enriched.aiInsightsV2?.sections.hero?.text ?? null}` (e qualquer `aiHeroEmphasis={...}` correspondente — confirmar no ficheiro). Mantém todos os outros props (`aiVerdict`, métricas, cadência, etc.) intactos.
 
-## Copy final
+## Fora de âmbito (não tocar)
 
-**PT**
-- H1: "Preços simples, sem complicação"
-- Subtítulo: "Começa com uma visão gratuita do perfil. Se quiseres aprofundar, existem duas opções simples para desbloquear acesso premium."
-- Cartão 1: "1 relatório" · "7€" · "1 perfil" · "1 desbloqueio premium" · "Ideal para análise pontual" · CTA "Comprar 1 relatório"
-- Cartão 2: "Pack 5 relatórios" · "28€" · "5 relatórios" · "5,60€/relatório" · badge "Poupa 20%" · CTA "Comprar pack de 5"
-- Trust: "Sem subscrição. Sem renovação automática."
-- Pending: "Pagamento brevemente disponível — os botões registam o teu interesse."
-- Como funciona o acesso: 1) "A Visão geral é gratuita." 2) "O Diagnóstico editorial está temporariamente incluído como oferta de lançamento." 3) "As secções premium permitem aprofundar desempenho, conteúdo, procura e comparação."
-- SEO title: "Preços — InstaBench"
-- SEO description: "Preços simples e transparentes do InstaBench: 1 relatório por 7€ ou pack de 5 por 28€. Sem subscrição."
+- Geração de relatórios, providers (Apify / OpenAI / DataForSEO), cache, prompts, schemas, validação `validate-v2`.
+- Pricing, lead magnet, gates, modal premium, sidebar, i18n de pricing.
+- `ai_insights_v2.sections.hero` continua a ser persistido na BD; apenas deixa de ser **lido** pelo Block 1. Não há regeneração de snapshots.
+- `editorial-verdict-fallback.ts`: `priority` continua a conter texto no infinitivo ("reforçar…") mas **não é renderizado** no Block 1 — verificar (já verifiquei: o card só usa `resolved.title` e `resolved.paragraph`).
 
-**EN**
-- H1: "Simple pricing, no complications"
-- Subtitle: "Start with a free profile overview. If you want to go deeper, there are two simple options to unlock premium access."
-- Card 1: "1 report" · "€7" · "1 profile" · "1 premium unlock" · "Ideal for a one-off analysis" · CTA "Buy 1 report"
-- Card 2: "Pack of 5 reports" · "€28" · "5 reports" · "€5.60/report" · badge "Save 20%" · CTA "Buy pack of 5"
-- Trust: "No subscription. No automatic renewal."
-- Pending: "Payments coming soon — buttons register your interest."
-- How access works: 1) "The Overview is free." 2) "The Editorial diagnosis is temporarily included as a launch offer." 3) "Premium sections help you go deeper into performance, content, search demand and comparison."
+## Por que respeita o requisito de "sem verbos prescritivos"
 
-(SEO `head()` mantém-se em PT — alinhado com o padrão das outras rotas legais.)
-
-## Fora de âmbito
-
-- Header (locked), checkout real, integração de pagamento, edição do dialog premium, alterações em report/admin/legais.
+Os 6 parágrafos em `identity.fallback.*.paragraph` (PT + EN) já são diagnósticos: descrevem o que os dados sugerem ("A leitura principal é…", "A tensão observada está…", "O sinal mais evidente está em…") sem "reforçar", "testar", "publicar mais", "aumentar volume" ou "fazer CTA". Confirmação por grep das chaves alteradas.
 
 ## Validação
 
-- `bunx tsc --noEmit`
-- `bunx vitest run`
+- `bunx tsc --noEmit` — passa após remoção das props.
+- `bunx vitest run` — não existem testes que toquem em `EditorialIdentityCard` / `deriveCopyFromAi` (grep confirmou); deve ficar verde sem alterações.
 - Manual:
-  - Visitar `/precos` → ver 2 cartões + secção de acesso.
-  - Trocar PT↔EN → todo o copy muda.
-  - Mobile 375px → cartões empilhados, legíveis.
-  - Clicar CTA → emite `pricing_option_clicked` (consola dev) sem navegar.
-  - Sem qualquer referência a mensal, agência, "em estudo", "talk to us", subscrição.
+  - Snapshot antigo com `ai_insights_v2.sections.hero.text` e sem `editorial_verdict` → Block 1 mostra título + parágrafo de `identity.fallback.*` + badge "Leitura provisória" uma vez. Sem hero legado.
+  - `robs.cortez` → desaparece o texto "0,1 posts/semana".
+  - Snapshot moderno com `editorial_verdict` válido → comportamento inalterado, sem badge provisional.
 
 ## Output (após implementação)
 
-- Rota usada: `/precos`.
-- Ficheiros alterados/criados.
-- Copy PT/EN final.
-- Estado de checkout: não wired (pendente), CTAs apenas registam intenção via `pricing_option_clicked`.
+- Ficheiros alterados (apenas 2).
+- Confirmação grep: zero referências a `aiHeroText` / `aiHeroEmphasis` / `deriveCopyFromAi` em `src/`.
+- Confirmação de que não foram tocados providers, schemas, pricing, modal nem sidebar.
