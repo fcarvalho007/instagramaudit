@@ -160,6 +160,7 @@ function FrequencyRow({
   sharePct,
   barPct,
   isTop3,
+  t,
 }: {
   rank: number;
   tag: string;
@@ -167,6 +168,7 @@ function FrequencyRow({
   sharePct: number;
   barPct: number;
   isTop3: boolean;
+  t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
   return (
     <div className="flex items-center gap-3 py-2.5">
@@ -196,10 +198,10 @@ function FrequencyRow({
 
       {/* stats */}
       <span className="shrink-0 text-[13px] text-content-secondary tabular-nums tabular-nums w-[56px] text-right">
-        {uses} usos
+        {t("hashtag.uses_suffix", { count: uses })}
       </span>
       <span className="shrink-0 text-[13px] text-content-tertiary tabular-nums tabular-nums w-[64px] text-right">
-        {sharePct}% posts
+        {t("hashtag.posts_suffix", { pct: sharePct })}
       </span>
     </div>
   );
