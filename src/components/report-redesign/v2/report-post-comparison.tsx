@@ -111,7 +111,7 @@ export function PostComparisonBlock({
                     tone="best"
                     mirror={false}
                   />
-                  <PostCard post={post} tone="best" t={t} />
+                  <PostCard post={post} tone="best" t={t} language={language} />
                 </div>
               ))}
             </div>
@@ -132,7 +132,7 @@ export function PostComparisonBlock({
                     tone="worst"
                     mirror={true}
                   />
-                  <PostCard post={post} tone="worst" mirror t={t} />
+                  <PostCard post={post} tone="worst" mirror t={t} language={language} />
                 </div>
               ))}
             </div>
@@ -145,7 +145,7 @@ export function PostComparisonBlock({
         <div className="px-5 md:px-6 pb-5 md:pb-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {best2.map((post) => (
-              <PostCard key={post.id} post={post} tone="best" t={t} />
+              <PostCard key={post.id} post={post} tone="best" t={t} language={language} />
             ))}
           </div>
         </div>
@@ -338,11 +338,13 @@ function PostCard({
   tone,
   mirror = false,
   t,
+  language,
 }: {
   post: EnrichedPost;
   tone: "best" | "worst";
   mirror?: boolean;
   t: TR;
+  language: SupportedLanguage;
 }) {
   const [imgError, setImgError] = useState(false);
 
@@ -392,7 +394,7 @@ function PostCard({
       <div className="flex-1 min-w-0 flex flex-col justify-between gap-0.5">
         {/* Engagement — hero metric */}
         <span className={cn("tabular-nums text-[15px] font-bold tabular-nums leading-none", engColor)}>
-          {post.engagementPct.toFixed(2).replace(".", ",")}%
+          {formatNumber(post.engagementPct, language, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
         </span>
 
         {/* Caption */}
@@ -405,12 +407,12 @@ function PostCard({
           <span className="inline-flex items-center gap-1 text-[10px] text-content-secondary">
             <Heart className="size-2.5" aria-hidden="true" />
             <span className="tabular-nums tabular-nums">
-              {post.likes.toLocaleString("pt-PT")}
+              {formatNumber(post.likes, language)}
             </span>
           </span>
           <span className="inline-flex items-center gap-1 text-[10px] text-content-secondary">
             <MessageCircle className="size-2.5" aria-hidden="true" />
-            <span className="tabular-nums tabular-nums">{post.comments}</span>
+            <span className="tabular-nums tabular-nums">{formatNumber(post.comments, language)}</span>
           </span>
           <span className="ml-auto text-[9px] text-content-tertiary uppercase tracking-wide">
             {post.date}
