@@ -156,7 +156,7 @@ export function PostComparisonBlock({
 
 // ─── VS Bar ─────────────────────────────────────────────────────────
 
-function VsBar({ bestEng, worstEng, t }: { bestEng: number; worstEng: number; t: TR }) {
+function VsBar({ bestEng, worstEng, t, language }: { bestEng: number; worstEng: number; t: TR; language: SupportedLanguage }) {
   const worstBarPct = bestEng > 0 ? Math.max(8, (worstEng / bestEng) * 100) : 50;
 
   return (
@@ -174,7 +174,7 @@ function VsBar({ bestEng, worstEng, t }: { bestEng: number; worstEng: number; t:
           <span className="text-[9px] font-bold uppercase tracking-widest text-accent-primary">{t("posts.vs.best")}</span>
         </div>
         <span className="tabular-nums text-[18px] md:text-[22px] font-bold tabular-nums text-accent-primary leading-none">
-          {bestEng.toString().replace(".", ",")}%
+          {formatNumber(bestEng, language, { maximumFractionDigits: 2 })}%
         </span>
         <div className="w-full h-1.5 rounded-full bg-accent-primary/10 mt-0.5">
           <div className="h-full rounded-full bg-accent-primary" style={{ width: "100%" }} />
@@ -195,7 +195,7 @@ function VsBar({ bestEng, worstEng, t }: { bestEng: number; worstEng: number; t:
           <TrendingDown className="size-3 text-signal-warning" aria-hidden="true" />
         </div>
         <span className="tabular-nums text-[18px] md:text-[22px] font-bold tabular-nums text-signal-warning leading-none">
-          {worstEng.toString().replace(".", ",")}%
+          {formatNumber(worstEng, language, { maximumFractionDigits: 2 })}%
         </span>
         <div className="w-full h-1.5 rounded-full bg-signal-warning/10 mt-0.5">
           <div
