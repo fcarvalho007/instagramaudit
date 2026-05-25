@@ -181,12 +181,6 @@ function computeOverall(
   return Math.max(0, Math.min(100, Math.round(0.5 * e + 0.3 * f + 0.2 * i)));
 }
 
-function bandFor(score: number): Band {
-  if (score >= 70) return "solid";
-  if (score >= 40) return "developing";
-  return "warning";
-}
-
 function verdictLabelToBand(label: EditorialVerdict["verdict_label"]): Band {
   if (label === "strong") return "solid";
   if (label === "promising") return "developing";
