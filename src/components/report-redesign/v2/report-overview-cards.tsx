@@ -337,6 +337,33 @@ const POSTING_FREQ_BENCHMARK: Record<AccountTier, number> = {
 /** Buffer general recommended range (posts/week), 2025 data. */
 const BUFFER_GENERAL_RANGE = { min: 3, max: 5 };
 
+// ─── Cadence copy helpers (pure, exported for tests) ────────────────
+
+export function getCadenceHeaderPt(method: CadenceResult["method"]): string {
+  if (method === "window_30d") return "Ritmo observado nos últimos 30 dias";
+  if (method === "window_90d") return "Ritmo observado nos últimos 90 dias";
+  if (method === "sample_span") return "Ritmo observado na amostra recente";
+  return "Ritmo de publicação";
+}
+
+export function getCadenceSummaryPt(
+  method: CadenceResult["method"],
+  sampleSize: number,
+  windowDays: number,
+): string | null {
+  if (method === "window_30d") return `${sampleSize} publicações nos últimos 30 dias`;
+  if (method === "window_90d") return `${sampleSize} publicações nos últimos 90 dias`;
+  if (method === "sample_span") return `${sampleSize} publicações em ${windowDays} dias (amostra reduzida)`;
+  return null;
+}
+
+export function getCadenceFormulaNotePt(method: CadenceResult["method"]): string | null {
+  if (method === "window_30d") return "Cadência estimada = publicações na janela ÷ 4,345 semanas";
+  if (method === "window_90d") return "Cadência estimada = publicações na janela ÷ 12,857 semanas";
+  if (method === "sample_span") return "Cadência estimada = publicações na amostra ÷ semanas da amostra";
+  return null;
+}
+
 // ─── Card 2 — Ritmo de publicação ────────────────────────────────────
 
 function PostingRhythmCard({
@@ -353,28 +380,9 @@ function PostingRhythmCard({
   const weekly = cadence.weekly;
   const provisional = sufficient && cadence.reliability === "low";
 
-  const header =
-    method === "window_30d" ? "Ritmo observado nos últimos 30 dias"
-    : method === "window_90d" ? "Ritmo observado nos últimos 90 dias"
-    : method === "sample_span" ? "Ritmo observado na amostra recente"
-    : "Ritmo de publicação";
-
-  const summaryLine = !sufficient
-    ? null
-    : method === "window_30d"
-      ? `${sampleSize} publicações nos últimos 30 dias`
-      : method === "window_90d"
-        ? `${sampleSize} publicações nos últimos 90 dias`
-        : `${sampleSize} publicações em ${windowDays} dias (amostra reduzida)`;
-
-  const formulaNote =
-    method === "window_30d"
-      ? "Cadência estimada = publicações na janela ÷ 4,345 semanas"
-      : method === "window_90d"
-        ? "Cadência estimada = publicações na janela ÷ 12,857 semanas"
-        : method === "sample_span"
-          ? "Cadência estimada = publicações na amostra ÷ semanas da amostra"
-          : null;
+  const header = getCadenceHeaderPt(method);
+  const summaryLine = sufficient ? getCadenceSummaryPt(method, sampleSize, windowDays) : null;
+  const formulaNote = getCadenceFormulaNotePt(method);
 
   const tier = getTierForFollowers(followers);
   const tierLabel = getTierLabel(tier);
