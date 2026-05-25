@@ -1,129 +1,99 @@
-## Avaliação visual — /analyze/$username
 
-Foco exclusivo em refinamentos de **design** (hierarquia, densidade, ritmo, tipografia, cor, tokens). Sem alterações a lógica de dados, providers ou copy estrutural.
+# Refinamentos UX & Interacção — /analyze
 
-Auditei `report-shell-v2.tsx`, `report-overview-block.tsx`, `editorial-identity-card.tsx`, `report-block-section.tsx`, `report-hero-v2.tsx` e os tokens (`tokens-light.css`, `report-tokens`). Identifiquei 8 áreas com retorno visual alto e baixo risco.
+Escopo restrito a UX/interacção (sem alterar lógica de dados, sem tocar em `/report.example`, sem alterar ficheiros bloqueados). Trabalho 100 % frontend, em componentes existentes.
 
----
+## Problemas identificados
 
-### 1. Hero do relatório — densidade e hierarquia
+1. **Navegação entre blocos sem feedback claro**
+   - Sidebar tem item activo mas sem progress visual de scroll dentro do bloco.
+   - Em mobile, as top tabs scrolling não centram o item activo.
+2. **Botão "Voltar ao topo" inexistente** em scroll longo.
+3. **Acções do hero (PDF, Partilhar) sem feedback de sucesso/erro consistente** — usam apenas `pdfBusy`/`shareBusy`, sem toast confirmando.
+4. **Sidebar cofre + CTA de unlock não persistem visualmente** — quando o utilizador rola muito, perde o gancho.
+5. **Insight boxes** abrem/fecham sem transição e não têm "copiar insight" — utilizadores frequentemente querem partilhar uma frase.
+6. **Erro/retry** (`AnalysisErrorState`) — retry sem indicação visual; se falhar de novo, fica igual.
+7. **Skeleton de loading** mostra fases mas não há `aria-live` adequado nem possibilidade de cancelar.
+8. **Atalhos de teclado** inexistentes (`g 1`…`g 6` para saltar entre blocos, `?` para mostrar atalhos).
+9. **Deep-link a um bloco** (`/analyze/x#performance`) não faz scroll suave na primeira carga depois de pronto.
+10. **Acessibilidade**: alguns botões icon-only sem `aria-label` evidente; foco visível inconsistente entre sidebar e tabs.
 
-**Problema:** Hero acumula avatar, handle, métricas, fonte, datas, ações e badges no mesmo plano visual. KPIs grandes competem com o nome do perfil.
+## O que vai ser implementado
 
-**Refinamento:**
-- Reduzir KPI font-size em ~10% e aumentar peso do nome/handle (Fraunces 600 → 700).
-- Separar metadata (fonte, snapshot date, expires) numa linha terciária com `.text-eyebrow-sm` + `text-content-tertiary`.
-- Espaço vertical entre identidade e KPIs: `gap-8 → gap-10` em desktop.
-- Botões de ação alinhados à direita com `gap-2` em vez de empilhados.
+### A · Navegação e orientação
 
----
+1. **Indicador de progresso de leitura no bloco activo**
+   - Adicionar barra fina (`h-0.5`) no topo da `ReportBlockSection` activa, mostrando % de scroll dentro daquele bloco. Tokens semânticos (`bg-accent-primary/60`).
+2. **Top tabs mobile com auto-center**
+   - Em `ReportBlockTopTabs`, no `useActiveBlock`, fazer `scrollIntoView({ inline: "center", behavior: "smooth" })` no item activo.
+3. **Botão flutuante "Voltar ao topo"**
+   - Aparece após scroll > 800 px, canto inferior-direito acima da bottom nav mobile (`bottom-24 lg:bottom-6`). Foco visível, `aria-label`, animação `transition-opacity`.
+4. **Deep-link por hash**
+   - Em `ReportShellV2`, no mount + quando `status === "ready"`, ler `location.hash` (ex. `#performance`) e chamar `scrollToBlock(id)` com offset do sticky header.
 
-### 2. Bloco 01 · Editorial Identity Card
+### B · Feedback de acções
 
-**Problema:** Após restauro, o card tem 3 zonas (gauge, métricas, sinais) com pesos visuais semelhantes. Falta hierarquia clara entre "pontuação" (verdict) e "evidência" (métricas/sinais).
+5. **Toasts consistentes nas acções do hero**
+   - Em `AnalyzeReady`, envolver `shareActions.exportPdf` e `shareActions.share` com `sonner` (`toast.success("PDF pronto")`, `toast.error(...)`). Mantém comportamento, só adiciona feedback.
+6. **Copiar insight**
+   - Em `AIInsightBox` (componente em `src/components/report/`), botão `Copy` discreto top-right que copia o texto sanitizado para clipboard + `toast.success("Insight copiado")`.
 
-**Refinamento:**
-- `ScoreGauge` ganha mais respiração: card lateral próprio com `bg-surface-muted/40` em vez de inline.
-- `MetricsStrip` em grid 3-col com divisores verticais `border-r border-border-default/40` em vez de gap puro — leitura de "tabela" em vez de "cartões soltos".
-- `BulletColumn` strengths/limits com ícone alinhado ao topo (não centrado), bullets com `leading-relaxed` e padding interno reduzido `p-5 → p-4`.
-- Tom: trocar `bg-tint-success`/`bg-tint-warning` por `border-l-2` colorida + fundo branco — coerente com estética Iconosquare clean.
+### C · Cofre e CTA
 
----
+7. **CTA "Desbloquear" sticky em mobile**
+   - Quando `lockBoundary === "engagement"` e `!unlocked`, mostrar barra fina sticky no fundo em mobile (`lg:hidden`) com botão a abrir `UnlockModal`. Reaproveita `onUnlockClick`.
 
-### 3. Section frames — ritmo entre blocos
+### D · Estados de loading e erro
 
-**Problema:** `ReportFramedBlock` repete o mesmo cartão branco em todos os blocos. Sem variação tonal, os 6 blocos viram uma parede uniforme.
+8. **Skeleton acessível**
+   - Adicionar `role="status"` + `aria-live="polite"` no wrapper raiz do `AnalysisSkeleton`, com texto SR-only "A analisar @{handle}, fase X de 5".
+9. **Erro com tentativas**
+   - Em `AnalysisErrorState`, contar tentativas locais; após 2 falhas mostrar dica adicional ("O perfil pode ser privado ou inexistente. Verifica o nome.").
 
-**Refinamento:**
-- Aplicar `tone` alternada já existente (canvas / soft-blue) mas com diferença mais percetível: `soft-blue` ganha border `border-accent-primary/15` + tint de fundo `#F4F7FE`.
-- Espaçamento entre `ReportBlockSection`: aumentar `pt-12 → pt-16` em desktop.
-- Cada section ganha um divisor horizontal subtil `border-t border-border-default/60` no topo, com o número/título do bloco "encavalitado".
+### E · Atalhos de teclado
 
----
+10. **Atalhos globais na página**
+    - `g` seguido de `1`-`6` → scroll para o bloco N (`scrollToBlock`).
+    - `t` → topo. `?` → abre um pequeno `Dialog` shadcn listando os atalhos.
+    - Hook `useReportKeyboardShortcuts` em `src/components/report-redesign/v2/`. Ignorar quando o foco está em `input`/`textarea`/`contenteditable`.
 
-### 4. Sidebar de navegação dos blocos
+### F · Acessibilidade fina
 
-**Problema:** Sidebar tem boa estrutura mas estados ativo/inativo são pouco distintos.
+11. Auditoria rápida:
+    - `aria-label` em botões icon-only do hero (`Comparar`, `PDF`, `Partilhar`) — confirmar/ajustar.
+    - Ring de foco unificado: `focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base` nos botões da sidebar, tabs, e novos botões.
 
-**Refinamento:**
-- Item ativo: barra lateral esquerda `border-l-2 border-accent-primary` + `bg-accent-primary/5` + `text-content-primary font-semibold`.
-- Item inativo: `text-content-secondary` sem fundo.
-- Avatar+handle no topo da sidebar: aumentar avatar para 48px, handle em Fraunces 18px.
-- Sticky offset: garantir `top-24` para não colar ao header.
+## Fora de scope
 
----
+- Alterações visuais profundas (já cobertas em Fase A/B do plano de design anterior).
+- Lógica de dados, fetch, snapshot, gating, billing.
+- `/report.example`, ficheiros em `LOCKED_FILES.md`.
+- i18n novo (reaproveitar `report.json`/`analyze.json` existentes; adicionar apenas as 4-6 chaves novas estritamente necessárias em pt + en).
 
-### 5. Tipografia de métricas e KPIs
+## Ficheiros a tocar
 
-**Problema:** Algumas métricas usam tamanhos próximos demais; valores e labels misturam-se.
+- `src/components/report-redesign/v2/report-shell-v2.tsx` — deep-link hash, integração de atalhos, sticky CTA mobile.
+- `src/components/report-redesign/v2/report-block-section.tsx` — barra de progresso interna do bloco.
+- `src/components/report-redesign/v2/report-block-nav.tsx` — auto-center das top tabs.
+- `src/components/report-redesign/v2/` (novo) `use-report-keyboard-shortcuts.ts`, `report-shortcut-dialog.tsx`, `back-to-top-button.tsx`, `sticky-unlock-bar.tsx`.
+- `src/components/report/ai-insight-box.tsx` — botão copiar.
+- `src/components/product/analysis-skeleton.tsx` — `aria-live` + texto SR.
+- `src/components/product/analysis-error-state.tsx` — contador de tentativas + dica.
+- `src/routes/analyze.$username.tsx` — toasts nas acções share/PDF, passar contador de retry.
+- `src/i18n/locales/{pt,en}/report.json` + `analyze.json` — novas chaves (atalhos, copiar, "voltar ao topo", dica de retry).
 
-**Refinamento (sem tocar em tokens globais, só uso):**
-- Valor da métrica: `text-2xl md:text-3xl font-semibold tabular-nums`.
-- Label: `.text-eyebrow-sm text-content-tertiary mt-1` (uppercase, tracking).
-- Variação contextual (∆ vs benchmark): `text-xs font-medium` com cor `signal-success` ou `signal-warning`, nunca neon.
-- Garantir `tabular-nums` em **todos** os números públicos (auditar `MetricsStrip`, `report-kpi-grid-v2`, `report-overview-cards`).
+## Regras
 
----
+- Apenas tokens semânticos (`content-*`, `surface-*`, `border-*`, `accent-*`, `signal-*`).
+- Sem novas dependências (usar `sonner` já presente, `Dialog` shadcn existente).
+- Mobile-first, testado a 375 px.
+- Copy em pt-PT correcto (Acordo 1990).
+- Não tocar em componentes/ficheiros listados em `LOCKED_FILES.md` sem confirmação.
 
-### 6. Insight boxes (AIInsightBox)
+## Faseamento sugerido
 
-**Problema:** Insights aparecem após cada chart com o mesmo peso visual que o chart — competem pela atenção.
+- **Fase 1 (rápida, alto impacto)**: A1, A2, A3, B5, D8 — navegação + feedback básico.
+- **Fase 2**: A4, B6, C7, D9 — deep-link, copiar insight, CTA sticky, retry inteligente.
+- **Fase 3**: E10, F11 — atalhos e polish a11y.
 
-**Refinamento:**
-- `AIInsightBox` ganha tratamento "anotação editorial": fundo `surface-muted/60`, border-left 2px na cor de ênfase, ícone discreto, padding `p-4` em vez de `p-6`.
-- Tipografia: `text-sm leading-relaxed text-content-secondary` (não primary).
-- Margem superior reduzida `mt-4 → mt-3` para colar mais ao chart que comenta.
-
----
-
-### 7. Methodology / footer pós-blocos
-
-**Problema:** `ReportMethodology` aparece sem separação clara dos 6 blocos.
-
-**Refinamento:**
-- Wrap em `bg-surface-muted` full-bleed com `py-16`.
-- Heading em Fraunces, body em Inter `text-sm text-content-secondary`.
-- Disclaimers e fontes em grid 2-col em desktop.
-
----
-
-### 8. Mobile (375–414px)
-
-**Problema:** Tabs sticky no mobile + hero geram muito chrome antes do primeiro conteúdo.
-
-**Refinamento:**
-- `ReportBlockTopTabs`: reduzir altura para `h-12`, fontes `text-xs`, scroll horizontal com fade nos lados.
-- Hero mobile: empilhar KPIs em grid 2x2 com `gap-3`, esconder metadata terciária atrás de um disclosure.
-- `ReportFramedBlock`: padding lateral `px-4` em mobile (atualmente `px-5/6`).
-
----
-
-### Detalhes técnicos (para a fase build)
-
-Ficheiros a tocar (apenas presentation):
-- `src/components/report-redesign/v2/report-hero-v2.tsx`
-- `src/components/report-redesign/v2/overview/editorial-identity-card.tsx`
-- `src/components/report-redesign/v2/report-block-section.tsx`
-- `src/components/report-redesign/v2/report-block-nav.tsx`
-- `src/components/report-redesign/v2/report-overview-cards.tsx` / `report-kpi-grid-v2.tsx`
-- `src/components/report/ai-insight-box.tsx`
-- `src/components/report-redesign/report-framed-block.tsx`
-- `src/components/report-redesign/report-methodology.tsx`
-
-Regras a respeitar:
-- Tokens semânticos apenas (`content-*`, `surface-*`, `border-*`, `accent-*`, `signal-*`). Sem hex inline.
-- Fonts: Fraunces (H1/H2 editoriais) + Inter (tudo o resto). Nada de JetBrains Mono em UI pública.
-- Sem mexer em `/report.example` (locked).
-- Sem alterar componentes locked nem lógica de `snapshot-to-report-data`.
-- Mobile-first; testar 375px e 1366px.
-
----
-
-### Como queres avançar?
-
-Posso aplicar os 8 refinamentos numa única passagem, ou **fasear por prioridade**:
-- **Fase A (alto impacto):** 1 (Hero) + 2 (Bloco 01) + 3 (Ritmo entre blocos).
-- **Fase B (polimento):** 4 (Sidebar) + 5 (Tipografia métricas) + 6 (Insights).
-- **Fase C (responsivo + fecho):** 7 (Methodology) + 8 (Mobile).
-
-Recomendo **faseado A → B → C** para conseguires validar visualmente entre fases. Diz-me se aprovas tudo, só a Fase A, ou se queres ajustar prioridades.
+Posso entregar tudo de seguida ou faseado — recomendo **tudo de uma vez** dada a baixa interdependência. Aprovo?
