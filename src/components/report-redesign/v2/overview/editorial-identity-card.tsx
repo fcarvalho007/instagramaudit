@@ -288,8 +288,6 @@ export function deriveSignals(
 
 export function EditorialIdentityCard({
   scores,
-  aiHeroText,
-  aiHeroEmphasis,
   aiVerdict,
   keyMetrics,
   dominantFormat,
@@ -304,7 +302,6 @@ export function EditorialIdentityCard({
   competitorsCount,
 }: EditorialIdentityCardProps) {
   const { t, i18n } = useTranslation("report");
-  const fallback = buildFallbackCopy(scores, t);
 
   // ── Resolução do veredicto: corre o guard determinístico ──────────
   // Constrói as métricas mínimas. Quando a IA não devolveu veredicto, o
@@ -345,13 +342,13 @@ export function EditorialIdentityCard({
     );
   const isProvisional = resolution.source !== "ai" || hasProvisionalWarning;
 
-  // Quando o resolver descartou completamente a IA e não havia hero
-  // text, mantemos o pipeline antigo (`deriveCopyFromAi`) como segunda
-  // hipótese visual; quando a IA está disponível usamos sempre `resolved`.
-  const copy: EditorialCopy =
-    resolution.source === "fallback" && !aiVerdict && aiHeroText
-      ? deriveCopyFromAi(aiHeroText, fallback, aiHeroEmphasis ?? null)
-      : { title: resolved.title, paragraph: resolved.paragraph };
+  // Nunca renderizamos `ai_insights_v2.sections.hero.text`. Quando a IA
+  // não tem `editorial_verdict` válido, `resolved` é o fallback
+  // determinístico (diagnóstico, sem verbos prescritivos).
+  const copy: EditorialCopy = {
+    title: resolved.title,
+    paragraph: resolved.paragraph,
+  };
 
   const overall = computeOverall(scores);
   const band: Band = verdictLabelToBand(resolved.verdict_label);
