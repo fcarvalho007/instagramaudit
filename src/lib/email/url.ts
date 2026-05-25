@@ -6,6 +6,8 @@
  * o report_snapshot ainda não foi persistido.
  */
 
+import { signUnsubscribeToken } from "./unsubscribe-token.server";
+
 const DEFAULT_BASE_URL = "https://instagramaudit.lovable.app";
 
 function resolveBaseUrl(): string {
@@ -37,10 +39,6 @@ export function resolveReportUrl(
  * personal-area-saved, request-received).
  */
 export function buildUnsubscribeUrl(leadId: string): string {
-  // Late-import to keep node:crypto out of any client bundles that might
-  // statically reach this module via the resolveReportUrl path.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { signUnsubscribeToken } = require("./unsubscribe-token.server") as typeof import("./unsubscribe-token.server");
   const token = signUnsubscribeToken(leadId);
   const base = resolveBaseUrl();
   return `${base}/unsubscribe?token=${encodeURIComponent(token)}`;
