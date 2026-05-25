@@ -17,9 +17,12 @@ import { z } from "zod";
 import { detectTechnicalLeak } from "./validate";
 import {
   AI_INSIGHT_V2_SECTIONS,
+  EDITORIAL_VERDICT_EVIDENCE_ALLOWLIST,
   type AiInsightV2Item,
   type AiInsightV2Section,
   type AiPriorityItem,
+  type EditorialVerdict,
+  type EditorialVerdictEvidence,
 } from "./types";
 import { INSIGHT_V2_TEXT_MAX } from "./prompt-v2";
 
