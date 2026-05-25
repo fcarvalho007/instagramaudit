@@ -1,81 +1,106 @@
 
-# Finalize Public Analysis Mode (Apify outside allowlist)
+# Verify Lead Magnet Sequence — Operational DB Audit
 
-## Diagnosis
+## Goal
+Confirm with live data (read-only) whether the lead magnet email sequence is working, and whether recent zero-send periods are explained by returning leads with pre-existing `report_requests` (expected) vs. a real blocker (unexpected).
 
-`nasa` test returned `PROFILE_NOT_ALLOWED`, which means at runtime `APIFY_TESTING_MODE` is being treated as truthy (likely `"true"`, empty/undefined, or any non-`"false"` string). The allowlist gate only opens when the env var is exactly the string `"false"`. Other guards (`APIFY_ENABLED`, caps, rate limits) are already in place.
+## Approach
+All work happens through `supabase--read_query`. No writes, no Brevo calls, no emails, no code changes.
 
-## Plan
+## Queries
 
-### Step 1 — Reapply secrets (Lovable Cloud)
-Update via `secrets--update_secret` for the 6 keys, with these exact string values:
+### Q1 — Lead magnet skips (last 30 records)
+```sql
+SELECT created_at, lead_id, handle, metadata
+FROM product_events
+WHERE event_type = 'lead_magnet_sequence_skipped'
+ORDER BY created_at DESC
+LIMIT 30;
+```
+Extract: reason flag from `metadata` (e.g. `NO_MARKETING_CONSENT`, `RETURNING_LEAD`, `ALREADY_HAS_REQUEST`). Date-bucket to see if `NO_MARKETING_CONSENT` skips stopped after the audit cutoff.
 
-| Secret | Value |
+### Q2 — Report summary email outcomes (last 30 each)
+```sql
+SELECT created_at, event_type, lead_id, snapshot_id, metadata
+FROM product_events
+WHERE event_type IN (
+  'report_summary_email_sent',
+  'report_summary_email_failed',
+  'report_summary_skipped_no_data'
+)
+ORDER BY created_at DESC
+LIMIT 60;
+```
+Extract: ratio sent / failed / skipped over last 7d and 24h. Inspect `metadata` of failures for error codes.
+
+### Q3 — Unlocks vs report_request creation
+```sql
+SELECT created_at, event_type, lead_id, snapshot_id, metadata
+FROM product_events
+WHERE event_type IN ('unlock_completed', 'report_saved_to_account')
+ORDER BY created_at DESC
+LIMIT 60;
+```
+Plus, for each unlock_completed lead in the last 7d:
+```sql
+SELECT lead_id, COUNT(*) AS rr_count, MIN(created_at) AS first_rr, MAX(created_at) AS last_rr
+FROM report_requests
+WHERE lead_id IN (<recent unlock lead_ids>)
+GROUP BY lead_id;
+```
+Determine for each recent unlock: was a new `report_request` created at/after the unlock, or did the lead already have one? Cross-reference to Q1/Q2.
+
+### Q4 — Brevo sync outcomes (last 30 each)
+```sql
+SELECT created_at, event_type, lead_id, metadata
+FROM product_events
+WHERE event_type IN (
+  'brevo_contact_synced',
+  'brevo_contact_sync_failed',
+  'brevo_contact_sync_skipped'
+)
+ORDER BY created_at DESC
+LIMIT 60;
+```
+Extract: whether `metadata.marketing_consent` is being sent as `false` for non-consenting leads (proves the audit claim), and any failure error codes.
+
+### Q5 — Sanity check on event_type vocabulary
+```sql
+SELECT event_type, COUNT(*) AS n, MAX(created_at) AS last_seen
+FROM product_events
+WHERE created_at > now() - interval '14 days'
+GROUP BY event_type
+ORDER BY last_seen DESC;
+```
+Confirms exact event names exist (catches typos like `report_summary_email_sent` vs `report_summary_sent`).
+
+## Decision matrix
+
+For each question, derive a YES/NO from Q1-Q5:
+
+| Question | Signal |
 |---|---|
-| APIFY_TESTING_MODE | `false` |
-| APIFY_ENABLED | `true` |
-| APIFY_HARD_CAP_USD | `10` |
-| APIFY_DAILY_CAP_USD | `5` |
-| PUBLIC_MAX_FRESH_PER_IP_DAY | `10` |
-| PUBLIC_MAX_FRESH_PER_HANDLE_DAY | `5` |
+| NO_MARKETING_CONSENT skips historical only? | Q1 — latest `NO_MARKETING_CONSENT` timestamp vs audit cutoff |
+| Recent unlocks = returning leads with existing RR? | Q3 — share of unlocks where lead already had ≥1 RR before unlock |
+| report-summary sent for new RRs? | Q2 — recent `report_summary_email_sent` count > 0 |
+| Brevo sync happens with consent=false? | Q4 — recent `brevo_contact_synced` rows with `marketing_consent=false` |
+| Any current blocker? | Q2 failures + Q4 failures + any unexpected skip reason |
 
-All already exist in the project — this is a re-set, not a new secret. The user will be prompted by the secrets form; they must confirm exact values (no spaces, no quotes, lowercase `false`/`true`).
+## Output
 
-### Step 2 — Wait for runtime
-After secrets update, wait briefly (poll readiness) so the Worker picks up new env values before the test.
-
-### Step 3 — Single controlled paid test
-One call only:
-
-```
-POST /api/analyze-public-v1
-Body: { "username": "natgeo" }
-```
-
-Captured: HTTP status, full JSON response body.
-
-### Step 4 — Read-only DB verification
-Three `supabase--read_query` reads scoped to handle `natgeo`, ordered by `created_at desc limit 1`:
-
-1. `analysis_events` → outcome, data_source, error_code, estimated_cost_usd, analysis_snapshot_id, provider_call_log_id
-2. `provider_call_logs` → status, http_status, actual_cost_usd, estimated_cost_usd, posts_returned, duration_ms, error_excerpt (truncated)
-3. `analysis_snapshots` → existence + id matching event
-
-### Step 5 — Sanitization audit on response body
-Grep response JSON for forbidden leaks:
-- raw Apify error strings
-- stack traces (`at `, file paths)
-- `run_id` / `apify_run_id`
-- token-like strings (`apify_api_`, `Bearer `, `sk-`)
-- internal error codes beyond the documented public set
-
-### Step 6 — GO/NO-GO report
-Single table with:
-- HTTP status
-- `data_source` (expect `fresh`)
-- Apify called? (Y/N)
-- estimated / actual cost USD
-- `analysis_events.outcome`
-- `provider_call_logs.status`
-- Sanitization: PASS/FAIL with details
-- Final verdict: GO or NO-GO
+A single GO/NO-GO table:
+- 5 question answers (YES/NO + 1-line evidence)
+- Verdict: GO (sequence healthy, recent zero sends explained by returning-lead pattern) **or** NO-GO with exact cause (e.g. "all `report_summary_email_failed` since X with reason Y") and the next fix to apply.
 
 ## Constraints respected
-- No UI changes
-- No analysis logic changes
-- No OpenAI / DataForSEO manual calls
-- Exactly 1 paid Apify run
-- All budget + rate-limit guards remain active (not touched)
-
-## Risks / Stop conditions
-- If `APIFY_HARD_CAP_USD` or `APIFY_DAILY_CAP_USD` already consumed → expect `provider_disabled` outcome, abort and report NO-GO with cost-cap reason.
-- If response leaks any forbidden field → NO-GO, list offending keys, recommend sanitization fix as separate task.
-- If `data_source` returns `cache` (snapshot for `natgeo` already exists) → still valid test, but reported as inconclusive for "fresh path"; suggest using a different handle for confirmation.
+- Read-only (`supabase--read_query` only)
+- No code edits, no Brevo calls, no email sends, no mutations
+- 5 queries total, no provider calls
 
 ## Checkpoint
-☐ Secrets reapplied with exact values
-☐ Runtime restarted / env propagated
-☐ One POST `/api/analyze-public-v1` with `natgeo`
-☐ DB verified read-only (events + provider logs + snapshot)
-☐ Response sanitization audited
-☐ GO/NO-GO delivered
+☐ Q1 skips collected and date-bucketed
+☐ Q2 summary email outcomes counted
+☐ Q3 unlocks correlated with report_requests
+☐ Q4 Brevo sync outcomes verified (incl. consent=false)
+☐ Q5 vocabulary confirmed
+☐ GO/NO-GO delivered with evidence
