@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 /**
  * Subset de fontes activas no relatório público. Databox fica fora deste
@@ -24,9 +25,6 @@ interface Props {
   className?: string;
 }
 
-const PLATFORM_LABEL: Record<Props["platform"], string> = {
-  instagram: "Instagram",
-};
 
 /**
  * Linha discreta de proveniência do benchmark, posicionada junto ao
@@ -49,22 +47,26 @@ export function ReportBenchmarkEvidence({
   aboveBufferRangeHint,
   className,
 }: Props) {
-  const segments: string[] = ["Referência de mercado", PLATFORM_LABEL[platform]];
+  const { t } = useTranslation("report");
+  const platformLabel = platform === "instagram"
+    ? t("benchmarkEvidence.platform_instagram")
+    : platform;
+  const segments: string[] = [t("benchmarkEvidence.market_reference"), platformLabel];
 
   if (industry && industry.trim().length > 0) {
-    segments.push(`setor ${industry.trim().toLowerCase()}`);
+    segments.push(t("benchmarkEvidence.sector_prefix", { name: industry.trim().toLowerCase() }));
   } else if (followerTier && followerTier.trim().length > 0) {
-    segments.push(`contas ${followerTier.trim()}`);
+    segments.push(t("benchmarkEvidence.tier_prefix", { tier: followerTier.trim() }));
   } else {
-    segments.push("contexto geral");
+    segments.push(t("benchmarkEvidence.general_context"));
   }
 
   const sources = sourceNames.slice(0, 3) as ActiveBenchmarkSourceName[];
 
   const SOURCE_CONTEXT: Record<ActiveBenchmarkSourceName, string> = {
-    Socialinsider: "engagement por formato",
-    Buffer: "referência por dimensão da conta",
-    Hootsuite: "contexto cross-indústria",
+    Socialinsider: t("benchmarkEvidence.ctx_socialinsider"),
+    Buffer: t("benchmarkEvidence.ctx_buffer"),
+    Hootsuite: t("benchmarkEvidence.ctx_hootsuite"),
   };
 
   return (
@@ -85,7 +87,7 @@ export function ReportBenchmarkEvidence({
           <>
             <span className="mx-1.5 text-slate-300">·</span>
             <span className="text-slate-400 normal-case tracking-normal">
-              fontes:
+              {t("benchmarkEvidence.sources_label")}
             </span>{" "}
             {sources.map((name, i) => (
               <span key={name}>
