@@ -56,7 +56,7 @@ const EVIDENCE_SET: ReadonlySet<string> = new Set(
 const editorialVerdictSchema = z.object({
   verdict_label: z.enum(["strong", "promising", "needs_work", "limited_data"]),
   title: z.string().min(1).max(80),
-  paragraph: z.string().min(1).max(520),
+  paragraph: z.string().min(1).max(1400),
   priority: z.string().min(1).max(220),
   strengths: z.array(z.string().min(1).max(120)).length(2),
   limitations: z.array(z.string().min(1).max(120)).length(2),
@@ -218,34 +218,52 @@ export function validateInsightsV2(raw: unknown): ValidateV2Result {
       return fail("EMPTY_FIELD", `verdict (strengths/limitations)`);
     }
 
-    // Title: ≤ 7 palavras, sem ponto final.
+    // Title: 4–8 palavras, sem ponto final, sem dígitos.
     const titleWords = title.split(/\s+/).filter(Boolean).length;
-    if (titleWords > 7) {
+    if (titleWords < 4) {
+      return fail(
+        "TITLE_TOO_SHORT",
+        `verdict.title words=${titleWords} min=4`,
+      );
+    }
+    if (titleWords > 8) {
       return fail(
         "TITLE_TOO_LONG",
-        `verdict.title words=${titleWords} max=7`,
+        `verdict.title words=${titleWords} max=8`,
       );
     }
     if (/[.!?]$/.test(title)) {
       return fail("TITLE_HAS_PUNCT", `verdict.title ends with punctuation`);
     }
+    if (/\d/.test(title)) {
+      return fail("TITLE_HAS_NUMBER", `verdict.title contains digit`);
+    }
 
-    // Paragraph: 30–75 palavras + ≥ 1 dígito (grounding).
+    // Paragraph: 80–220 palavras + ≥ 1 dígito (grounding) + sem verbos
+    // prescritivos. Sentence count fica livre para o modelo poder usar
+    // 2–6 frases distribuídas em 1–4 parágrafos curtos.
     const paraWords = paragraph.split(/\s+/).filter(Boolean).length;
-    if (paraWords < 30) {
+    if (paraWords < 80) {
       return fail(
         "PARAGRAPH_TOO_SHORT",
-        `verdict.paragraph words=${paraWords} min=30`,
+        `verdict.paragraph words=${paraWords} min=80`,
       );
     }
-    if (paraWords > 75) {
+    if (paraWords > 220) {
       return fail(
         "PARAGRAPH_TOO_LONG",
-        `verdict.paragraph words=${paraWords} max=75`,
+        `verdict.paragraph words=${paraWords} max=220`,
       );
     }
     if (!/\d/.test(paragraph)) {
       return fail("GENERIC_OUTPUT", `verdict.paragraph (missing number)`);
+    }
+    const presc = RECOMMENDATION_VERBS.exec(paragraph);
+    if (presc) {
+      return fail(
+        "RECOMMENDATION_VERB",
+        `verdict.paragraph token="${presc[0]}"`,
+      );
     }
 
     // PT-BR + technical leak em todos os campos textuais.
