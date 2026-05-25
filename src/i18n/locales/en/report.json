@@ -606,8 +606,16 @@
     "registered": "Registered",
     "dialog": {
       "title": "Unlock premium access",
-      "subtitle": "The first block remains free. During the launch phase, the Editorial diagnosis is included as a launch offer. The remaining premium sections are available with a paid unlock.",
+      "subtitle": "The first block remains free. Editorial Diagnosis is included during this launch phase. The remaining premium sections become available after unlock.",
+      "free": {
+        "label": "Included",
+        "title": "Initial profile overview",
+        "bullet_block": "Block 1 always available",
+        "bullet_diag": "Editorial Diagnosis open right now",
+        "cta": "Keep exploring"
+      },
       "single": {
+        "label": "Premium",
         "title": "1 report",
         "price": "€7",
         "bullet_profile": "1 profile",
@@ -616,6 +624,7 @@
         "cta": "Choose 1 report"
       },
       "pack": {
+        "label": "Best value",
         "title": "Pack of 5 reports",
         "price": "€28",
         "bullet_reports": "5 reports",
@@ -623,7 +632,8 @@
         "savings_badge": "Save 20%",
         "cta": "Choose pack of 5"
       },
-      "trust_note": "No subscription. No automatic renewal."
+      "trust_note": "No subscription. No automatic renewal.",
+      "pending_note": "Payment coming soon — the button registers your interest."
     }
   },
   "engagement": {
