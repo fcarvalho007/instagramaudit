@@ -231,7 +231,8 @@
       "daily": "About 1 post per day",
       "every_1_2": "1 post every 1–2 days",
       "every_2_3": "1 post every 2–3 days",
-      "weekly_low": "Less than 1 post per week"
+      "weekly_low": "Less than 1 post per week",
+      "insufficient": "Not enough recent data to measure rhythm"
     },
     "subtitle": "{{headline}} · {{posts}} {{postsLabel}} in {{days}} {{daysLabel}}",
     "posts_one": "post",
