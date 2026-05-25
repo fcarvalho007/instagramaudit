@@ -37,6 +37,14 @@ const PTBR_TOKENS: RegExp[] = [
   /\bmídia\b/i,
 ];
 
+/**
+ * Lista negra de verbos prescritivos (imperativos e perifrásticos) no
+ * `paragraph` do veredicto. O primeiro cartão é uma camada diagnóstica;
+ * recomendações vivem no Bloco 02. Cobre as formas mais comuns em pt-PT.
+ */
+const RECOMMENDATION_VERBS =
+  /\b(deve(s|m)?|deveria(m|s)?|recomenda[- ]se|a\s+prioridade\s+é|publique(m)?|teste(m)?|use(m)?\s+mais|aposte(m)?|publicar\s+mais|cria(r)?\s+mais|apostar\s+em|focar\s+em\s+publicar)\b/i;
+
 const itemSchema = z.object({
   emphasis: z.enum(["positive", "negative", "default", "neutral"]),
   text: z.string().min(1).max(INSIGHT_V2_TEXT_MAX + 40), // tolerância para trim posterior
