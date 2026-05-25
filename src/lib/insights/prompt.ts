@@ -145,6 +145,21 @@ export interface InsightsUserPayload {
     average_engagement_rate: number;
     estimated_posts_per_week: number;
   };
+  /**
+   * Posting cadence computed from real post timestamps. Source of truth
+   * for the model — overrides the cruder
+   * `content_summary.estimated_posts_per_week`. See
+   * `src/lib/report/cadence.ts` for the cascade rules.
+   */
+  cadence: {
+    weekly: number | null;
+    method: "window_30d" | "window_90d" | "sample_span" | "insufficient";
+    sampleSize: number;
+    windowDays: number | null;
+    sufficient: boolean;
+    pinnedExcluded?: number;
+    note?: string;
+  };
   top_posts: PromptTopPost[];
   benchmark:
     | {
