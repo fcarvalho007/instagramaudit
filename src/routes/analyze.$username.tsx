@@ -210,6 +210,17 @@ function AnalyzePage() {
     setState({ status: "loading" });
     const loadStart = Date.now();
 
+    // Defensive: se o param da URL não corresponde a um handle válido após
+    // normalização, falha imediatamente sem chamar a API.
+    if (!cleaned) {
+      setState({
+        status: "error",
+        message: resolveErrorMessage("INVALID_USERNAME"),
+        errorCode: "INVALID_USERNAME",
+      });
+      return;
+    }
+
     // Minimum skeleton display: 3s — gives the user a sense of structured
     // progress and lets the layout settle. Fresh Apify runs take 7-20s, so
     // the floor only affects cache hits (~200-700ms).
