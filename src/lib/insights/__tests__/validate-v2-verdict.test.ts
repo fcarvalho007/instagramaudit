@@ -62,8 +62,10 @@ describe("validateInsightsV2 — editorial_verdict", () => {
   });
 
   it("rejects paragraph above 220 words", () => {
+    // 225 palavras curtas — fica abaixo do limite de chars (1400)
+    // mas acima do limite de palavras.
     const huge =
-      Array.from({ length: 225 }, () => "palavra").join(" ") + " 1";
+      Array.from({ length: 225 }, () => "ab").join(" ") + " 1";
     const r = validateInsightsV2(payload({ paragraph: huge }));
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.reason).toBe("PARAGRAPH_TOO_LONG");
