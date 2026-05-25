@@ -15,7 +15,10 @@ import { createHash } from "crypto";
 
 import { buildInsightsUserPayload, type InsightsUserPayload } from "./prompt";
 import type { AiInsightV2Section, InsightsContext } from "./types";
-import { AI_INSIGHT_V2_SECTIONS } from "./types";
+import {
+  AI_INSIGHT_V2_SECTIONS,
+  EDITORIAL_VERDICT_EVIDENCE_ALLOWLIST,
+} from "./types";
 import type { KnowledgeContext } from "@/lib/knowledge/types";
 import { formatKnowledgeContextForPrompt } from "@/lib/knowledge/context.server";
 import {
