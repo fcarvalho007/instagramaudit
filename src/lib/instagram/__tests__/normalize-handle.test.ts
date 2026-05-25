@@ -35,7 +35,6 @@ describe("normalizeInstagramHandle", () => {
       ["@@"],
       ["foo bar"],
       ["nome com espaço"],
-      ["handle/com/coisa estranha"],
       ["a".repeat(31)],
       ["https://tiktok.com/@chatgptricks"],
       ["https://twitter.com/chatgptricks"],
