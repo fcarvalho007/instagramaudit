@@ -31,7 +31,7 @@
     "competitor2Aria": "Second competitor username",
     "errors": {
       "empty": "Enter a valid username to continue",
-      "invalid": "Invalid username. Only letters, numbers, dot and underscore.",
+      "invalid": "Enter a public Instagram profile, e.g. @brand or instagram.com/brand.",
       "competitorInvalid": "Invalid competitor. Only letters, numbers, dot and underscore."
     }
   },
