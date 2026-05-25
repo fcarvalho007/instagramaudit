@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { LegalLayout } from "@/components/legal/legal-layout";
+import { LEGAL } from "@/lib/brand/legal";
 
 export const Route = createFileRoute("/privacidade")({
   head: () => ({
@@ -50,16 +51,16 @@ function PrivacidadePage() {
         <h2>1. Responsável pelo tratamento</h2>
         <p>A entidade responsável pelo tratamento dos dados pessoais é:</p>
         <p>
-          <strong>Fomentar Sonhos, Lda.</strong>
+          <strong>{LEGAL.companyName}</strong>
           <br />
-          Rua da Carvalha n.º 570 · 2400-441 Leiria · Portugal
+          {LEGAL.address.full}
           <br />
           Email de contacto:{" "}
-          <a href="mailto:frederico.carvalho@digitalfc.pt">frederico.carvalho@digitalfc.pt</a>
+          <a href={`mailto:${LEGAL.privacyEmail}`}>{LEGAL.privacyEmail}</a>
         </p>
         <p>
-          O InstaBench é um serviço operado pela Fomentar Sonhos, Lda. através do domínio{" "}
-          <code>instabench.pt</code>. Todos os pedidos relacionados com privacidade — incluindo
+          O {LEGAL.productName} é um serviço operado pela {LEGAL.companyName} através do domínio{" "}
+          <code>{LEGAL.domain}</code>. Todos os pedidos relacionados com privacidade — incluindo
           exercício de direitos previstos no RGPD — devem ser dirigidos ao email acima.
         </p>
       </section>
@@ -140,7 +141,7 @@ function PrivacidadePage() {
           ou entidades terceiras para fins próprios destas.
         </p>
         <p>
-          Para prestar o serviço, a Fomentar Sonhos, Lda. recorre a subcontratantes técnicos que
+          Para prestar o serviço, a {LEGAL.companyName} recorre a subcontratantes técnicos que
           actuam exclusivamente em nome do responsável pelo tratamento, ao abrigo de contratos ou
           termos de tratamento de dados em vigor:
         </p>
@@ -227,7 +228,7 @@ function PrivacidadePage() {
         </ul>
         <p>
           Os direitos podem ser exercidos por email para{" "}
-          <a href="mailto:frederico.carvalho@digitalfc.pt">frederico.carvalho@digitalfc.pt</a>. A
+          <a href={`mailto:${LEGAL.privacyEmail}`}>{LEGAL.privacyEmail}</a>. A
           resposta é prestada no prazo máximo de 30 dias, podendo este ser prorrogado por mais
           dois meses em casos de especial complexidade, com notificação prévia ao titular.
         </p>
@@ -236,7 +237,7 @@ function PrivacidadePage() {
       <section id="seguranca">
         <h2>8. Segurança</h2>
         <p>
-          A Fomentar Sonhos, Lda. aplica medidas técnicas e organizativas adequadas para proteger
+          A {LEGAL.companyName} aplica medidas técnicas e organizativas adequadas para proteger
           os dados pessoais, designadamente: cifragem de ligações em trânsito (HTTPS/TLS),
           separação de privilégios entre ambientes, armazenamento privado dos relatórios PDF com
           acesso por ligação assinada, e restrição do acesso administrativo a sessões
@@ -300,9 +301,9 @@ function PrivacidadePage() {
           esclarecimento, o contacto é feito através do email:
         </p>
         <p>
-          <a href="mailto:frederico.carvalho@digitalfc.pt">frederico.carvalho@digitalfc.pt</a>
+          <a href={`mailto:${LEGAL.privacyEmail}`}>{LEGAL.privacyEmail}</a>
           <br />
-          Fomentar Sonhos, Lda. · Rua da Carvalha n.º 570 · 2400-441 Leiria · Portugal
+          {LEGAL.companyName} · {LEGAL.address.full}
         </p>
       </section>
     </LegalLayout>

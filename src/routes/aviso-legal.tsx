@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { LegalLayout } from "@/components/legal/legal-layout";
+import { LEGAL } from "@/lib/brand/legal";
 
 export const Route = createFileRoute("/aviso-legal")({
   head: () => ({
@@ -45,14 +46,14 @@ function AvisoLegalPage() {
       <section id="identificacao">
         <h2>1. Identificação do operador</h2>
         <p>
-          <strong>Fomentar Sonhos, Lda.</strong>
+          <strong>{LEGAL.companyName}</strong>
           <br />
-          Sede: Rua da Carvalha n.º 570 · 2400-441 Leiria · Portugal
+          Sede: {LEGAL.address.full}
           <br />
           Contacto único para comunicações de utilizadores e autoridades:{" "}
-          <a href="mailto:frederico.carvalho@digitalfc.pt">frederico.carvalho@digitalfc.pt</a>
+          <a href={`mailto:${LEGAL.privacyEmail}`}>{LEGAL.privacyEmail}</a>
           <br />
-          Responsável pelo serviço InstaBench: Frederico Carvalho
+          Responsável pelo serviço {LEGAL.productName}: {LEGAL.responsibleName}
         </p>
       </section>
 
@@ -71,7 +72,7 @@ function AvisoLegalPage() {
         <p>
           Qualquer utilizador, pessoa singular ou colectiva — incluindo titulares de perfis
           analisados — pode contactar o operador através do email{" "}
-          <a href="mailto:frederico.carvalho@digitalfc.pt">frederico.carvalho@digitalfc.pt</a>,
+          <a href={`mailto:${LEGAL.privacyEmail}`}>{LEGAL.privacyEmail}</a>,
           designadamente para:
         </p>
         <ul>
