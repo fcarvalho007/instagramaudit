@@ -18,7 +18,8 @@ export const REDESIGN_TOKENS = {
   /** Banda canvas (transparente — herda fundo da página). */
   bandCanvas: "bg-transparent",
   /** Banda azul muito suave para secções analíticas alternadas. */
-  bandSoftBlue: "bg-[linear-gradient(180deg,#F8FAFF_0%,#F3F6FF_100%)]",
+  bandSoftBlue:
+    "bg-[linear-gradient(180deg,#F4F7FE_0%,#EEF3FC_100%)] border-y border-accent-primary/10",
 
   // ── Cards ───────────────────────────────────────────────────────────
   /** Card analítico padrão (L2). */
