@@ -476,7 +476,13 @@ export async function processReportUnlock(
       const firstName =
         data.name ?? (existingLead?.name as string | null | undefined) ?? null;
 
-      void (async () => {
+      // Awaited (não fire-and-forget): Cloudflare Workers matam o trabalho
+      // assíncrono em background assim que a resposta volta (sem
+      // `waitUntil`), o que estava a engolir o email `report-summary` —
+      // mesmo padrão que o passo 7 (Brevo sync). `sendLeadMagnetSequence`
+      // já tem try/catch por cada email e nunca propaga exceções, por
+      // isso não pode bloquear o unlock.
+      try {
         const { sendLeadMagnetSequence } = await import(
           "@/lib/email/lead-magnet-sequence.server"
         );
@@ -490,9 +496,9 @@ export async function processReportUnlock(
           instagramHandle: data.instagram_username,
           sendWelcome: !returningLead,
         });
-      })().catch((err) => {
+      } catch (err) {
         console.error("[unlock] lead-magnet sequence error:", err);
-      });
+      }
     }
 
     // 7. Brevo contact mirror — awaited.
