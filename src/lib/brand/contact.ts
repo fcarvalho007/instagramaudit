@@ -13,16 +13,17 @@ export function mailtoLink(email: string): string {
   return `mailto:${email}`;
 }
 
-/** Encoded mailto for the Pro plan inquiry CTA. */
-export function mailtoPro(email: string): string {
-  const subject = encodeURIComponent("Acesso Pro — InstaBench");
-  const body = encodeURIComponent("Pretendo saber mais sobre o plano Pro.");
+/** Encoded mailto for the generic professional access inquiry CTA. */
+export function mailtoProfessionalAccess(email: string): string {
+  const subject = encodeURIComponent("Acesso profissional — InstaBench");
+  const body = encodeURIComponent(
+    "Gostaria de saber mais sobre acesso profissional ao InstaBench.",
+  );
   return `mailto:${email}?subject=${subject}&body=${body}`;
 }
 
-/** Encoded mailto for the Agency plan inquiry CTA. */
-export function mailtoAgency(email: string): string {
-  const subject = encodeURIComponent("Acesso Agency — InstaBench");
-  const body = encodeURIComponent("Pretendo saber mais sobre o plano Agency.");
-  return `mailto:${email}?subject=${subject}&body=${body}`;
-}
+/** @deprecated Use {@link mailtoProfessionalAccess}. Retained for back-compat. */
+export const mailtoPro = mailtoProfessionalAccess;
+
+/** @deprecated Use {@link mailtoProfessionalAccess}. Retained for back-compat. */
+export const mailtoAgency = mailtoProfessionalAccess;
