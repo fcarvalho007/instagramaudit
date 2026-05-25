@@ -66,18 +66,35 @@ export function ReportLockGate({
             "pointer-events-auto sticky self-start",
             "top-24 mt-24 md:mt-32",
             "w-[calc(100%-32px)] max-w-lg",
-            "rounded-2xl border border-border-default bg-surface-card",
-            "shadow-[0_20px_60px_-20px_rgba(15,23,42,0.25)]",
+            "relative isolate",
+            "rounded-2xl border border-border-default bg-surface-card/95 backdrop-blur-xl",
+            "shadow-[0_24px_70px_-24px_rgba(15,23,42,0.28),inset_0_1px_0_0_rgba(255,255,255,0.7)]",
             "p-6 md:p-7",
+            "animate-in fade-in slide-in-from-bottom-2 duration-500",
           )}
         >
+          {/* Prismatic halo (decorative, behind the card) */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -inset-10 -z-10 overflow-hidden rounded-[2rem]"
+          >
+            <div className="absolute -top-10 -left-10 size-[320px] rounded-full blur-3xl opacity-60 bg-[radial-gradient(circle_at_30%_30%,color-mix(in_oklab,var(--accent-primary)_22%,transparent),transparent_70%)]" />
+            <div className="absolute -bottom-12 -right-8 size-[280px] rounded-full blur-3xl opacity-50 bg-[radial-gradient(circle_at_70%_70%,color-mix(in_oklab,var(--accent-secondary)_20%,transparent),transparent_70%)]" />
+          </div>
+
+          {/* Prism chip — decorative glass motif */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-3 -right-3 size-14 rounded-2xl bg-prism-chip rotate-[12deg] shadow-[0_8px_20px_-8px_color-mix(in_oklab,var(--accent-primary)_40%,transparent)] ring-1 ring-white/60"
+          />
+
           {/* Badge */}
           <span
             className={cn(
               "inline-flex items-center gap-2 rounded-full",
-              "border border-border-default/60 bg-white px-3 py-1",
+              "border border-emerald-200/60 bg-emerald-50 px-3 py-1",
               "text-[11px] font-semibold uppercase tracking-wide leading-none",
-              "text-content-secondary",
+              "text-emerald-700",
             )}
           >
             <span className="relative inline-flex size-2">
@@ -89,12 +106,20 @@ export function ReportLockGate({
 
           {/* Title */}
           <h2 className="mt-5 font-display text-[28px] md:text-[32px] leading-[1.1] tracking-[-0.01em] text-content-primary">
-            {t("lockGate.titleLine1")}
-            <br />
-            {t("lockGate.titleLine2Prefix")}{" "}
-            <em className="not-italic font-display italic text-accent-primary">
-              @{cleanedHandle}
-            </em>
+            <Trans
+              i18nKey="lockGate.title"
+              ns="gate"
+              values={{ handle: cleanedHandle }}
+              components={{
+                free: (
+                  <span className="font-semibold text-content-primary underline decoration-2 underline-offset-4 decoration-accent-primary/70" />
+                ),
+                accent: (
+                  <em className="not-italic font-display italic text-accent-primary" />
+                ),
+                br: <br />,
+              }}
+            />
           </h2>
 
           {/* Subtitle */}

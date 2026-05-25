@@ -154,3 +154,12 @@
 [data-report-view="true"] [data-header-cta] {
   display: none;
 }
+
+/* Decorative prism chip used in ReportLockGate (clean prism glass motif). */
+.bg-prism-chip {
+  background:
+    conic-gradient(from 140deg at 50% 50%,
+      color-mix(in oklab, var(--accent-primary) 35%, transparent),
+      color-mix(in oklab, var(--accent-secondary) 30%, transparent),
+      color-mix(in oklab, var(--accent-primary) 25%, transparent));
+}
