@@ -28,7 +28,11 @@ import {
 } from "@/lib/insights/types";
 
 import { resolveReportTier } from "./tiers";
-import { computeCadence, type CadenceResult } from "./cadence";
+import {
+  computeCadence,
+  normalizePostTimestamp,
+  type CadenceResult,
+} from "./cadence";
 import {
   extractTopHashtags,
   extractTopKeywords,
