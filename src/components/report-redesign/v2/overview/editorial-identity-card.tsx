@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { formatCompactNumber } from "@/lib/i18n/format";
 import type { ScoreKey } from "./score-utils";
+import type { EditorialVerdict } from "@/lib/insights/types";
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 
@@ -33,6 +34,9 @@ interface EditorialIdentityCardProps {
   scores: Record<ScoreKey, { value: number; subtitle: string }>;
   aiHeroText?: string | null;
   aiHeroEmphasis?: "positive" | "negative" | "default" | "neutral" | null;
+  /** Veredicto editorial estruturado. Quando presente, tem prioridade
+   *  sobre `aiHeroText` (que continua a servir de fallback editorial). */
+  aiVerdict?: EditorialVerdict | null;
   keyMetrics?: {
     engagementRate: number;
     engagementBenchmark: number;
