@@ -27,19 +27,19 @@ describe("interpretFeedback", () => {
     expect(r.accent).toBe("revenue");
   });
 
-  it("alto + pricing one_off_3 → relatório único", () => {
-    const r = interpretFeedback(fb({ pricing_preference: "one_off_3" }));
+  it("alto + single_report_7 → relatório único", () => {
+    const r = interpretFeedback(fb({ pricing_preference: "single_report_7" }));
     expect(r.nextAction).toMatch(/relatório único/i);
   });
 
-  it("alto + bundle_5_13 → bundle 5", () => {
-    const r = interpretFeedback(fb({ pricing_preference: "bundle_5_13" }));
-    expect(r.nextAction).toMatch(/bundle 5/i);
+  it("alto + pack_5_reports_28 → pack 5", () => {
+    const r = interpretFeedback(fb({ pricing_preference: "pack_5_reports_28" }));
+    expect(r.nextAction).toMatch(/pack de 5/i);
   });
 
-  it("alto + plano_mensal → plano mensal", () => {
-    const r = interpretFeedback(fb({ pricing_preference: "plano_mensal" }));
-    expect(r.nextAction).toMatch(/plano mensal/i);
+  it("alto + not_ready_to_pay → nutrir", () => {
+    const r = interpretFeedback(fb({ pricing_preference: "not_ready_to_pay" }));
+    expect(r.nextAction).toMatch(/nutrir/i);
   });
 
   it("medio: sim sem consentimento", () => {
