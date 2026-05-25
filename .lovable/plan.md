@@ -1,99 +1,79 @@
-## Diagnóstico
+# Plano — Garantir entrega transacional do report-summary
 
-`/admin/beta-leads` (Tabela) hoje só permite abrir o detalhe por clique na linha — não há selecção nem eliminação. O endpoint `PATCH /api/admin/leads-kanban/$id` só faz update; não existe DELETE. Os filtros são bons (chips por estado + atenção + pesquisa) mas falta limpar, ordenar e ver o que está activo.
+## 1. Resultado da auditoria (o código JÁ cumpre o spec)
 
-A tabela `leads` não declara FKs explícitas, mas há tabelas que referenciam `lead_id`: `report_requests`, `report_snapshots`, `beta_feedback`, `profiles`, `product_events`. Apagar só `leads` deixa órfãos. A eliminação tem de ser feita em ordem segura no servidor.
+Após ler `src/lib/email/lead-magnet-sequence.server.ts`, `src/lib/brevo/sync.server.ts`, `src/components/product/unlock-modal.tsx`, `src/i18n/locales/pt/gate.json` e testes existentes:
 
-## Plano
+- **Orquestrador** (`lead-magnet-sequence.server.ts`): NÃO bloqueia em `marketing_consent`. O único `lead_magnet_sequence_skipped` emitido tem `flag: "LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED"` (kill-switch). **Não existe `NO_MARKETING_CONSENT` em código** — esses eventos no DB são históricos, de uma versão anterior.
+- **Metadata** já emite `{ transactional_delivery: true, marketing_consent: <bool> }` tanto em `beta_welcome_email_sent` como em `report_summary_email_sent`.
+- **Brevo sync** (`sync.server.ts`): corre após GDPR (precondição do unlock), envia o contacto com `MARKETING_CONSENT: false` quando o utilizador não opta in, e regista `marketing_consent` em `brevo_contact_synced`.
+- **Unlock modal copy** (i18n pt) já é exactamente a pedida:
+  - obrig.: "Aceito o tratamento dos meus dados para gerar, guardar e enviar este relatório, e li a política de privacidade."
+  - opcional: "Quero receber novidades e dicas sobre relatórios, benchmarks e funcionalidades futuras."
+- **Testes** (`lead-magnet-sequence.test.ts`) já cobrem os 4 cenários do spec, incluindo `transactional delivery: sends both emails even when marketing_consent=false`.
 
-### A. Selecção (1 ou múltiplos) — `LeadsTable`
+**Conclusão**: o spec já está satisfeito ao nível do código. Os 0 sends observados em produção têm outra causa.
 
-- Adicionar coluna de checkbox à esquerda usando `@/components/ui/checkbox`.
-- Header: checkbox tri-state que selecciona/desselecciona **apenas as linhas actualmente filtradas** (não a base inteira).
-- Por linha: checkbox com `onClick: stopPropagation` para não abrir o `LeadDetailSheet`.
-- Estado local `selectedIds: Set<string>`; quando os filtros mudam, intersectar com `filtered` para não manter selecções fantasma fora do viewport actual.
-- Linha seleccionada ganha tint subtil (`bg-[var(--admin-board-column-bg)]`) + indicador visual.
+## 2. Hipóteses para os 0 sends observados
 
-### B. Barra de acções em massa (bulk bar)
+Ordenadas por probabilidade:
 
-- Componente novo `BulkActionsBar` montado no topo da tabela (dentro do toolbar existente) quando `selectedIds.size > 0`.
-- Conteúdo: `"X seleccionado(s)"` · botão ghost `Limpar selecção` · botão destrutivo `Apagar (X)` (vermelho, `variant="destructive"`).
-- Aparece com transição leve (slide-down) para não saltar layout.
+1. **Lead "returning"** — `sendLeadMagnetSequence` só é invocado quando `createdReportRequest === true` (`unlock.server.ts:454`). Se o teste foi feito com um lead que já tinha um `report_request` para o mesmo handle, nenhum email é tentado. **Esta é a explicação mais provável** dado o histórico de testes repetidos.
+2. **Eventos antigos no dashboard** — `lead_magnet_sequence_skipped` com `reason: NO_MARKETING_CONSENT` ficaram em `product_events` de uma versão anterior; o dashboard mostra-os como recentes mas não correspondem a código actual.
+3. **Snapshot sem KPIs** — `sendReportSummaryEmail` retorna `NO_DATA`/`NO_SNAPSHOT_ID` ⇒ emite `report_summary_skipped_no_data` (não `_sent`). Possível para handles com cache muito pobre.
+4. **Brevo sync** — não há `brevo_contact_synced` recente ⇒ pode ter falhado silenciosamente (regista `brevo_contact_sync_failed`). Vale a pena confirmar via logs.
 
-### C. Confirmação "hard-confirm" (c.1)
+## 3. Acções (mínimas, sem alterar lógica nem schema)
 
-- `AlertDialog` (shadcn já existe) ao clicar em "Apagar (X)".
-- Conteúdo:
-  - Título: `Apagar X contacto(s) permanentemente?`
-  - Lista os primeiros 5 (nome · email), com `+N mais` se aplicável.
-  - Aviso `Esta acção é permanente. Vão ser removidos:`
-    - relatórios pedidos (`report_requests`)
-    - snapshots de relatório (`report_snapshots`)
-    - feedback beta (`beta_feedback`)
-    - eventos de produto (`product_events`)
-    - ligações ao perfil (`profiles.lead_id` ← null)
-  - Input de texto: tem de escrever exactamente **`APAGAR`** para activar o botão `Apagar definitivamente`.
-- Botão fica disabled enquanto a request está em flight; mostra spinner.
+### A. Validação automática
+- `bunx tsc --noEmit`
+- `bunx vitest run src/lib/email/__tests__/lead-magnet-sequence.test.ts src/lib/brevo/__tests__/sync.test.ts`
 
-### D. Endpoint novo — `DELETE /api/admin/leads-bulk`
+### B. Verificação operacional (read-only no DB)
+Correr 4 consultas para confirmar a hipótese 1/2/3/4:
 
-Ficheiro: `src/routes/api/admin/leads-bulk.ts` (server route, `requireAdminSession`).
+```sql
+-- (1) últimos lead_magnet_sequence_skipped — confirmar que o reason é histórico
+select created_at, metadata
+from product_events
+where event_type = 'lead_magnet_sequence_skipped'
+order by created_at desc limit 20;
 
+-- (2) report_summary_skipped_no_data recentes
+select created_at, lead_id, metadata
+from product_events
+where event_type in ('report_summary_skipped_no_data','report_summary_email_failed')
+order by created_at desc limit 20;
+
+-- (3) últimos unlocks: createdReportRequest=true vs false
+select created_at, metadata
+from product_events
+where event_type in ('unlock_completed','report_saved_to_account')
+order by created_at desc limit 20;
+
+-- (4) brevo sync recentes
+select created_at, event_type, metadata
+from product_events
+where event_type like 'brevo_contact_sync%'
+order by created_at desc limit 20;
 ```
-DELETE /api/admin/leads-bulk
-Body: { "ids": ["uuid", ...] }   // Zod: 1..200 UUIDs únicos
-```
 
-Ordem de eliminação (não há transação cross-table no PostgREST; fazemos sequencial, abortando em erro):
+### C. Pequena melhoria defensiva (opcional, decisão do utilizador)
+**Não altera o spec funcional**; só melhora observabilidade:
 
-1. `update profiles set lead_id=null where lead_id in (ids)`
-2. `delete from beta_feedback where lead_id in (ids)`
-3. `delete from report_snapshots where lead_id in (ids)`
-4. `delete from report_requests where lead_id in (ids)`
-5. `delete from product_events where lead_id in (ids)`
-6. `delete from leads where id in (ids)`
+- Em `unlock.server.ts`, no ramo `if (createdReportRequest)`, registar um `product_events` com `event_type='lead_magnet_sequence_not_invoked'` (ou metadata em `unlock_completed`) quando `createdReportRequest === false`, indicando `reason: 'returning_lead_existing_report_request'`. Isto explicaria visualmente porque é que o "summary" não foi enviado num re-unlock.
+- Esta acção fica **fora deste plano** se o utilizador preferir não tocar; espero confirmação.
 
-Resposta: `{ success: true, deleted: number, details: { profiles_unlinked, feedback, snapshots, requests, events, leads } }`.
+## 4. Constraints respeitadas
+- Sem chamadas reais a Brevo nem envios reais (apenas tsc + vitest local).
+- Sem migrations nem mudanças de schema.
+- GDPR continua obrigatório (`unlock-flow.ts` mantém `z.literal(true)`).
+- Copy pt-PT mantida tal como já existe.
 
-Auditoria: 1 insert em `product_events` com `event_type="leads_bulk_deleted"`, `metadata={ count, ids_sample: ids.slice(0,10) }`.
+## 5. Checkpoint
+☐ Confirmar via tsc que nada partiu (regressão).
+☐ Confirmar via vitest que os 4 cenários do spec passam.
+☐ Decidir se queres que execute as 4 consultas read-only no DB para confirmar a hipótese 1 (lead "returning").
+☐ Decidir se queres a melhoria defensiva opcional (event `lead_magnet_sequence_not_invoked`).
 
-### E. Wiring no front
-
-- `LeadsTable` recebe novo prop `onBulkDelete(ids: string[]) => Promise<void>` ou faz `useMutation` próprio com `adminFetch`.
-- Após sucesso: `queryClient.invalidateQueries({ queryKey: ["admin", "beta-leads"] })` + `toast.success("X contactos apagados")` via sonner já existente.
-- Em erro: `toast.error(...)` com mensagem do servidor sanitizada (sem stack), mantém selecção.
-
-### F. Melhorias de filtros e UX (alínea d/e)
-
-Dentro da toolbar existente (não muda layout global):
-
-1. **Pill "Limpar tudo"** aparece à direita das chips quando há filtros activos (já existe `clearFilters`, falta expô-lo).
-2. **Indicador visual de filtros activos**: contador `"3 filtros activos"` ao lado do `counterLabel`.
-3. **Ordenação**: novo `Select` simples (shadcn `select` se existir, senão `<select>` nativo estilizado): `Mais recentes` (default), `Mais antigos`, `Nome A→Z`, `Estado`.
-4. **Pesquisa** já cobre nome/email/handle via `matchesQuery` — confirmar e adicionar placeholder mais claro: `Pesquisar nome, email ou @handle…`.
-5. **Empty states**: ajustar mensagem quando há selecção + filtro vazio para não confundir.
-6. **Sticky header da tabela** dentro do scroll horizontal para não perder colunas em listas longas.
-
-### G. Acessibilidade
-
-- Checkbox header tem `aria-label="Seleccionar contactos filtrados"`.
-- AlertDialog tem foco inicial no input de confirmação.
-- Keyboard: `Esc` fecha o dialog; `Enter` no input dispara delete se válido.
-
-## Checkpoint
-
-- ☐ `LeadsTable` com coluna de checkbox + estado de selecção
-- ☐ `BulkActionsBar` na toolbar com contador, limpar e apagar
-- ☐ `AlertDialog` de confirmação com input `APAGAR`
-- ☐ Novo endpoint `DELETE /api/admin/leads-bulk` com Zod + ordem de cascata + auditoria
-- ☐ Mutation no client + invalidate + toast
-- ☐ Filtros: limpar tudo, contador de filtros activos, ordenação
-- ☐ Sticky header + tint de linha seleccionada
-- ☐ Tests rápidos: confirmar que `frederico.carvalho@digitalfc.pt` (lead com snapshot e profile) consegue ser apagado sem erro
-
-## Restrições
-
-- Sem mexer em `KanbanBoard`, `LeadDetailSheet` nem na vista Pipeline.
-- Sem alterar lógica de leads existente fora do endpoint novo.
-- Sem migrations (estrutura já suporta).
-- Sem expor secrets nem detalhes Supabase ao cliente.
+Aguardo aprovação para passar a Build Mode e correr as validações.
