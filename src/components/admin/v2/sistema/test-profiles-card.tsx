@@ -9,11 +9,12 @@ import { useMutation } from "@tanstack/react-query";
 import {
   getTestProfileStatuses,
   getExecutionMode,
+  setExecutionMode,
   type TestProfileStatus,
 } from "@/server/admin/execution-mode.functions";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ExternalLink, RefreshCw, Clock, Plus, DollarSign, Zap, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { ExternalLink, RefreshCw, Clock, Plus, DollarSign, Zap, CheckCircle2, XCircle, AlertTriangle, Lock, Database } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
