@@ -37,7 +37,6 @@ export const TIER_COPY = {
           "Keywords de oportunidade e SERP do Google",
           "Cruzamento Instagram × Pesquisa",
           "Recomendações prioritárias e plano de 30 dias",
-          "Exportação em PDF (em breve)",
         ],
       },
     },
