@@ -16,7 +16,6 @@ import { cn } from "@/lib/utils";
 import { Target } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { formatCompactNumber } from "@/lib/i18n/format";
 import type { ScoreKey } from "./score-utils";
 
 /* ── Types ─────────────────────────────────────────────────────────── */
@@ -271,16 +270,23 @@ export function EditorialIdentityCard({
   const lowConfidence =
     typeof postsAnalyzed === "number" && postsAnalyzed > 0 && postsAnalyzed < 5;
 
-  const { strengths, limits } = deriveSignals(
-    scores,
+  const anchor = selectAnchor(
     keyMetrics,
-    dominantFormat,
-    dominantFormatShare,
+    averageComments,
     postingFrequencyWeekly,
-    followers,
     t,
     i18n.language,
   );
+  const whyKind = selectWhy(
+    band,
+    keyMetrics,
+    postingFrequencyWeekly,
+    dominantFormatShare,
+  );
+  // Reserved for future enrichment (avatar density / etc.)
+  void averageLikes;
+  void dominantFormat;
+  void followers;
 
   return (
     <article
@@ -327,35 +333,21 @@ export function EditorialIdentityCard({
         </div>
       </div>
 
-      {/* Zona métrica — gostos / comentários / ritmo */}
-      {(typeof averageLikes === "number" ||
-        typeof averageComments === "number" ||
-        typeof postingFrequencyWeekly === "number") && (
-        <div className="px-6 pb-6">
-          <MetricsStrip
-            averageLikes={averageLikes}
-            averageComments={averageComments}
-            postingFrequencyWeekly={postingFrequencyWeekly}
-            followers={followers}
-            t={t}
-            locale={i18n.language}
-          />
+      {/* Zona âncora — uma única métrica que enquadra o veredicto */}
+      {anchor.kind !== null && (
+        <div className="px-6 pb-5">
+          <AnchorMetric anchor={anchor} t={t} />
         </div>
       )}
 
-      {/* Zona accionável */}
-      <div className="border-t border-border-default grid grid-cols-1 md:grid-cols-2">
-        <BulletColumn
-          tone="success"
-          title={t("identity.columns.strengths")}
-          items={strengths}
-        />
-        <BulletColumn
-          tone="warning"
-          title={t("identity.columns.limits")}
-          items={limits}
-          className="border-t md:border-t-0 md:border-l border-border-default"
-        />
+      {/* Zona "porque importa" — nota interpretativa, sem bullets */}
+      <div className="border-t border-border-default bg-surface-muted px-6 py-5">
+        <p className="text-eyebrow-sm text-content-tertiary mb-1.5">
+          {t("identity.why.eyebrow")}
+        </p>
+        <p className="text-[15px] leading-relaxed text-content-secondary max-w-2xl">
+          {t(`identity.why.${whyKind}`)}
+        </p>
       </div>
     </article>
   );
