@@ -52,12 +52,12 @@ function TermosPage() {
         <h2>1. Identificação do prestador</h2>
         <p>O Serviço é prestado por:</p>
         <p>
-          <strong>Fomentar Sonhos, Lda.</strong>
+          <strong>{LEGAL.companyName}</strong>
           <br />
-          Rua da Carvalha n.º 570 · 2400-441 Leiria · Portugal
+          {LEGAL.address.full}
           <br />
           Contacto:{" "}
-          <a href="mailto:frederico.carvalho@digitalfc.pt">frederico.carvalho@digitalfc.pt</a>
+          <a href={`mailto:${LEGAL.privacyEmail}`}>{LEGAL.privacyEmail}</a>
         </p>
         <p>
           Esta identificação cumpre o disposto no Decreto-Lei n.º 7/2004 (comércio electrónico) e
@@ -191,7 +191,7 @@ function TermosPage() {
         <p>
           O utilizador pode cancelar a conta e solicitar a eliminação de dados a qualquer momento,
           por email para{" "}
-          <a href="mailto:frederico.carvalho@digitalfc.pt">frederico.carvalho@digitalfc.pt</a>. A
+          <a href={`mailto:${LEGAL.privacyEmail}`}>{LEGAL.privacyEmail}</a>. A
           eliminação é processada em até 30 dias, podendo subsistir registos mínimos exigidos por
           obrigação legal (designadamente facturação).
         </p>
@@ -223,9 +223,9 @@ function TermosPage() {
         <h2>12. Contacto</h2>
         <p>Para qualquer questão relacionada com estes Termos:</p>
         <p>
-          <a href="mailto:frederico.carvalho@digitalfc.pt">frederico.carvalho@digitalfc.pt</a>
+          <a href={`mailto:${LEGAL.privacyEmail}`}>{LEGAL.privacyEmail}</a>
           <br />
-          Fomentar Sonhos, Lda. · Rua da Carvalha n.º 570 · 2400-441 Leiria · Portugal
+          {LEGAL.companyName} · {LEGAL.address.full}
         </p>
       </section>
     </LegalLayout>
