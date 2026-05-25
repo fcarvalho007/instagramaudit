@@ -410,24 +410,20 @@ export function BetaRequestForm() {
           >
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="h-4 w-4 text-accent-gold" />
-              <span className="text-eyebrow-sm text-accent-gold">Preços indicativos</span>
+              <span className="text-eyebrow-sm text-accent-gold">Preços</span>
             </div>
             <div className="space-y-1.5 text-sm text-text-secondary">
               <div className="flex justify-between">
-                <span>Relatório único</span>
-                <span className="text-text-primary font-medium">€9,90</span>
+                <span>1 relatório</span>
+                <span className="text-text-primary font-medium">7€</span>
               </div>
               <div className="flex justify-between">
-                <span>Pack 10 análises</span>
-                <span className="text-text-primary font-medium">€49,90</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Plano Pro mensal</span>
-                <span className="text-text-primary font-medium">€29,90/mês</span>
+                <span>Pack de 5 relatórios</span>
+                <span className="text-text-primary font-medium">28€ <span className="text-text-muted font-normal">(5,60€/relatório)</span></span>
               </div>
             </div>
             <p className="text-xs text-text-muted mt-2">
-              Preços provisórios. Testadores beta terão condições especiais.
+              Sem subscrição. Sem renovação automática. Pagamento brevemente disponível — o pedido beta apenas regista o teu interesse.
             </p>
           </div>
 
