@@ -355,6 +355,7 @@ export function deriveSignals(
 export function EditorialIdentityCard({
   scores,
   aiHeroText,
+  aiHeroEmphasis,
   keyMetrics,
   dominantFormat,
   dominantFormatShare,
@@ -366,7 +367,9 @@ export function EditorialIdentityCard({
 }: EditorialIdentityCardProps) {
   const { t, i18n } = useTranslation("report");
   const fallback = buildFallbackCopy(scores, t);
-  const copy = aiHeroText ? deriveCopyFromAi(aiHeroText, fallback) : fallback;
+  const copy = aiHeroText
+    ? deriveCopyFromAi(aiHeroText, fallback, aiHeroEmphasis ?? null)
+    : fallback;
   const overall = computeOverall(scores);
   const band = bandFor(overall);
   const lowConfidence =
