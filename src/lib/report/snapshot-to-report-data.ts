@@ -968,7 +968,36 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   const cadencePostsRaw = posts.filter((p) => !p.is_pinned);
   // Fallback: if every post is pinned, use the full set so we still emit
   // something instead of an empty cadence/timeline.
-  const cadencePosts = cadencePostsRaw.length > 0 ? cadencePostsRaw : posts;
+  let cadencePosts = cadencePostsRaw.length > 0 ? cadencePostsRaw : posts;
+
+  // Defense-in-depth: even after filtering pinned, a profile may have an
+  // archived/unmarked-pinned outlier that inflates the window (e.g. one post
+  // from 2 years ago + 10 from this week → 1100-day window). If the gap
+  // between consecutive posts (sorted desc) exceeds 90 days and we still
+  // have ≥3 recent posts, drop the older tail. This is conservative: it
+  // only trims when the gap is dramatic, never inside a normal hiatus.
+  if (cadencePosts.length >= 3) {
+    const sorted = [...cadencePosts]
+      .filter((p) => p.taken_at_iso)
+      .sort(
+        (a, b) =>
+          new Date(b.taken_at_iso!).getTime() -
+          new Date(a.taken_at_iso!).getTime(),
+      );
+    const GAP_MS = 90 * 86_400_000;
+    let cutIndex = sorted.length;
+    for (let i = 1; i < sorted.length; i++) {
+      const prev = new Date(sorted[i - 1].taken_at_iso!).getTime();
+      const cur = new Date(sorted[i].taken_at_iso!).getTime();
+      if (prev - cur > GAP_MS && i >= 3) {
+        cutIndex = i;
+        break;
+      }
+    }
+    if (cutIndex < sorted.length) {
+      cadencePosts = sorted.slice(0, cutIndex);
+    }
+  }
   const temporalSeries = buildTemporalSeries(cadencePosts);
   const postingHeatmap = buildPostingHeatmap(cadencePosts);
   const bestDays = buildBestDays(cadencePosts);
