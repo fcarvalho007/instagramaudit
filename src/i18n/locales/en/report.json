@@ -1,4 +1,19 @@
 {
+  "a11y": {
+    "back_to_top": "Back to top"
+  },
+  "sticky_unlock": {
+    "body": "3 premium sections still locked",
+    "cta": "Unlock",
+    "cta_aria": "Open unlock options"
+  },
+  "shortcuts": {
+    "title": "Keyboard shortcuts",
+    "subtitle": "Move through the report without leaving the keyboard.",
+    "go_block": "Jump to block N",
+    "top": "Back to top",
+    "help": "Show shortcuts"
+  },
   "hero": {
     "verified": "Verified account",
     "metric_followers": "followers",
