@@ -387,15 +387,22 @@ function PostingRhythmCard({
       {/* Main metric */}
       <div className="flex items-end gap-3 flex-wrap">
         <span className="tabular-nums text-[1.85rem] md:text-[2.1rem] font-semibold tracking-[-0.015em] text-slate-900 leading-none tabular-nums">
-          {weekly.toFixed(1).replace(".", ",")}
+          {hasWindow ? weekly.toFixed(1).replace(".", ",") : "—"}
         </span>
         <span className="text-eyebrow text-slate-500 pb-1">
           /semana
         </span>
-        <span className="text-[13px] text-slate-400 pb-1">
-          ≈ {daily.toFixed(1).replace(".", ",")} /dia
-        </span>
+        {hasWindow ? (
+          <span className="text-[13px] text-slate-400 pb-1">
+            ≈ {daily.toFixed(1).replace(".", ",")} /dia
+          </span>
+        ) : null}
       </div>
+      {!hasWindow ? (
+        <p className="text-[13px] text-slate-600 leading-relaxed">
+          A amostra recente é insuficiente para medir a cadência com segurança.
+        </p>
+      ) : null}
 
       {/* Window context */}
       {postsAnalyzed > 0 || windowDays > 0 ? (
