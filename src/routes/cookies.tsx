@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { LegalLayout } from "@/components/legal/legal-layout";
+import { LEGAL } from "@/lib/brand/legal";
 
 export const Route = createFileRoute("/cookies")({
   head: () => ({
@@ -88,8 +89,8 @@ function CookiesPage() {
         <h2>4. Contacto</h2>
         <p>
           Para questões sobre esta política:{" "}
-          <a href="mailto:frederico.carvalho@digitalfc.pt">frederico.carvalho@digitalfc.pt</a> ·
-          Fomentar Sonhos, Lda.
+          <a href={`mailto:${LEGAL.privacyEmail}`}>{LEGAL.privacyEmail}</a> ·
+          {" "}{LEGAL.companyName}
         </p>
       </section>
     </LegalLayout>
