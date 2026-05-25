@@ -398,7 +398,7 @@ export function EditorialIdentityCard({
             ) : null}
           </div>
 
-          <h2 className="font-display text-xl sm:text-2xl font-semibold leading-[1.25] tracking-[-0.015em] text-content-primary max-w-2xl">
+          <h2 className="font-display text-[1.25rem] md:text-[1.5rem] font-semibold leading-snug tracking-tight text-content-primary max-w-2xl">
             {copy.title}
           </h2>
 

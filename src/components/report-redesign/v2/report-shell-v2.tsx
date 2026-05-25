@@ -233,7 +233,7 @@ export function ReportShellV2({
                       <ReportDiagnosticBlock result={result} payload={payload} />
                     </ReportBlockSection>
                   )}
-                  {features.blockPerformance !== "hidden" && (
+              {features.blockPerformance === "full" && (
                     <ReportBlockSection block={performance} tone="canvas">
                       <ReportFramedBlock
                         tone="canvas"
@@ -321,8 +321,10 @@ export function ReportShellV2({
               </ReportBlockSection>
               )}
 
-              {/* 03 · Performance */}
-              {!gated && features.blockPerformance !== "hidden" && (
+              {/* 03 · Performance — só renderiza em variantes premium (`full`).
+                  Em public_mvp (`lightweight`) a sidebar continua a mostrar o
+                  bloco como locked, mas a secção de conteúdo não aparece. */}
+              {!gated && features.blockPerformance === "full" && (
               <ReportBlockSection block={performance} tone="canvas">
                 <ReportFramedBlock
                   tone="canvas"

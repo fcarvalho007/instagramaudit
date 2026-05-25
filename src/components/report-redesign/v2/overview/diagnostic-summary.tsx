@@ -147,7 +147,7 @@ export function DiagnosticCard({ card: c }: { card: SummaryCardData }) {
         {c.label}
       </p>
 
-      <h3 className="font-display text-[0.95rem] sm:text-base font-semibold leading-snug tracking-tight text-content-primary">
+      <h3 className="font-display text-[1.25rem] md:text-[1.5rem] font-semibold leading-snug tracking-tight text-content-primary">
         {c.headline}
       </h3>
 
