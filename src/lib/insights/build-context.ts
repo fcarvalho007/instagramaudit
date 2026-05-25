@@ -35,6 +35,8 @@ type PostInput = {
   comments: number;
   engagement_pct: number;
   caption?: string | null;
+  /** Unix seconds (matches EnrichedPost.taken_at). Optional. */
+  taken_at?: number | null;
 };
 
 export interface BuildInsightsCtxInput {
@@ -103,6 +105,19 @@ export function buildInsightsCtx(
       caption_excerpt: p.caption ?? "",
     }));
 
+  // Most recent post timestamp (seconds) → days since last post. Used by
+  // the editorial-verdict post-processor to flag `stale_data`. Defensive:
+  // ignore posts without a valid timestamp.
+  const nowSec = Math.floor(Date.now() / 1000);
+  const validTimestamps = posts
+    .map((p) => p.taken_at)
+    .filter(
+      (t): t is number => typeof t === "number" && Number.isFinite(t) && t > 0,
+    );
+  const daysSinceLastPost = validTimestamps.length
+    ? Math.floor((nowSec - Math.max(...validTimestamps)) / 86_400)
+    : null;
+
   // R5: derive editorial_patterns once and pass into the OpenAI ctx so
   // insights can explain WHY, not just WHAT. Helper returns undefined when
   // nothing useful is available.
@@ -134,6 +149,7 @@ export function buildInsightsCtx(
       median_engagement_pct: medianEngagement,
     },
     market_signals: marketSignals,
+    days_since_last_post: daysSinceLastPost,
     ...(editorialPatternsForAi
       ? { editorial_patterns: editorialPatternsForAi }
       : {}),

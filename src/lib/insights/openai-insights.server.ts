@@ -378,6 +378,11 @@ export function finalizeEditorialVerdict(
   const weekly = ctx.content_summary.estimated_posts_per_week ?? 0;
   if (weekly < 0.25 && postsAnalyzed < 8) warnings.push("cadence_uncertain");
 
+  const daysSinceLastPost = ctx.days_since_last_post ?? null;
+  if (daysSinceLastPost !== null && daysSinceLastPost > 60) {
+    warnings.push("stale_data");
+  }
+
   if (!ctx.market_signals.has_free) warnings.push("no_market_signals");
   if (!ctx.benchmark) warnings.push("benchmark_missing");
 

@@ -177,6 +177,13 @@ export interface InsightsContext {
       delta_pct: number;
     };
   };
+  /**
+   * Days since the most recent post with a valid timestamp. Used by the
+   * deterministic post-processor (`finalizeEditorialVerdict`) to emit the
+   * `stale_data` warning when content is older than 60 days. Null when no
+   * post has a usable timestamp.
+   */
+  days_since_last_post?: number | null;
 }
 
 /** Result envelope returned by the (future) generator. */
