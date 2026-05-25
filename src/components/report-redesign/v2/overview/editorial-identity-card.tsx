@@ -57,6 +57,9 @@ interface EditorialIdentityCardProps {
   /** Cadência considerada suficiente pelo módulo de cadence. Usado pelo
    *  guard determinístico para rejeitar veredictos que contradigam o ritmo. */
   cadenceSufficient?: boolean;
+  /** Fiabilidade do cálculo de cadência ("high" | "medium" | "low"). Quando
+   *  "low" o guard rejeita qualquer afirmação positiva sobre o ritmo. */
+  cadenceReliability?: "high" | "medium" | "low";
   /** Quantidade de concorrentes com dados reais. Usado pelo guard para
    *  rejeitar menções a concorrentes inexistentes. */
   competitorsCount?: number;
@@ -381,6 +384,7 @@ export function EditorialIdentityCard({
   averageLikes,
   averageComments,
   cadenceSufficient,
+  cadenceReliability,
   competitorsCount,
 }: EditorialIdentityCardProps) {
   const { t, i18n } = useTranslation("report");
@@ -394,6 +398,7 @@ export function EditorialIdentityCard({
     postsPerWeek30d:
       typeof postingFrequencyWeekly === "number" ? postingFrequencyWeekly : null,
     cadenceSufficient: cadenceSufficient ?? true,
+    cadenceReliability: cadenceReliability ?? "high",
     engagementPct: keyMetrics?.engagementRate ?? 0,
     benchmarkEngagementPct:
       keyMetrics && keyMetrics.engagementBenchmark > 0

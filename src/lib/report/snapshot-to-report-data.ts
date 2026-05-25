@@ -28,7 +28,11 @@ import {
 } from "@/lib/insights/types";
 
 import { resolveReportTier } from "./tiers";
-import { computeCadence, type CadenceResult } from "./cadence";
+import {
+  computeCadence,
+  normalizePostTimestamp,
+  type CadenceResult,
+} from "./cadence";
 import {
   extractTopHashtags,
   extractTopKeywords,
@@ -293,6 +297,9 @@ export interface ReportEnriched {
     date: string;
     mentions: string[];
     thumbnailUrl?: string;
+    /** True quando o post foi fixado no perfil — usado pela UI para
+     *  sinalizar conteúdo que beneficia de tempo extra no grid. */
+    isPinned?: boolean;
   }>;
   /** Bottom 2 posts by engagement — empty if fewer than 4 posts available. */
   bottomPosts: Array<{
@@ -716,6 +723,7 @@ function buildTopPosts(posts: SnapshotPost[]): ReportData["topPosts"] {
       engagementPct: round2(num(p.engagement_pct, 0)),
       caption: (p.caption ?? "").slice(0, 200),
       permalink,
+      isPinned: p.is_pinned === true,
     };
     // Cast: `thumbnailUrl` will be added to the locked `ReportData` topPosts
     // type once the unlock for `report-mock-data.ts` is granted. Emitting it
@@ -778,6 +786,39 @@ function buildTemporalSeries(
     });
   }
   return out;
+}
+
+/**
+ * Mirror of `dropDateOutliers` from `cadence.ts`, applied to
+ * `SnapshotPost[]` so the temporal series / heatmap / best-days don't get
+ * skewed by a stale post that the Apify actor failed to flag as pinned.
+ *
+ * Threshold mirrors the cadence module: > 180 days older than the median
+ * timestamp of the top-10 most recent posts is dropped.
+ */
+function pruneDateOutliers(posts: SnapshotPost[]): SnapshotPost[] {
+  const withTs = posts
+    .map((p) => ({ post: p, ts: normalizePostTimestamp(p) }))
+    .filter(({ ts }) => Number.isFinite(ts));
+  if (withTs.length < 3) return posts;
+  const sortedDesc = [...withTs].sort((a, b) => b.ts - a.ts);
+  const cluster = sortedDesc.slice(0, Math.min(10, sortedDesc.length));
+  const clusterSorted = [...cluster].map((x) => x.ts).sort((a, b) => a - b);
+  const mid = Math.floor(clusterSorted.length / 2);
+  const med =
+    clusterSorted.length % 2 === 0
+      ? (clusterSorted[mid - 1] + clusterSorted[mid]) / 2
+      : clusterSorted[mid];
+  const cutoff = med - 180 * 86_400_000;
+  const keptIds = new Set(
+    sortedDesc.filter((x) => x.ts >= cutoff).map((x) => x.post),
+  );
+  // Preserve original order; only drop the outliers.
+  return posts.filter((p) => {
+    const ts = normalizePostTimestamp(p);
+    if (!Number.isFinite(ts)) return true; // keep invalid-date posts as-is
+    return keptIds.has(p);
+  });
 }
 
 function buildPostingHeatmap(
@@ -1078,9 +1119,15 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   // Fallback: if every post is pinned, use the full set so we still emit
   // something instead of an empty cadence/timeline.
   const cadencePosts = cadencePostsRaw.length > 0 ? cadencePostsRaw : posts;
-  const temporalSeries = buildTemporalSeries(cadencePosts);
-  const postingHeatmap = buildPostingHeatmap(cadencePosts);
-  const bestDays = buildBestDays(cadencePosts);
+  // Apply the same defensive outlier guard the cadence module uses, so the
+  // heatmap / best-days / timeline don't get skewed by a single stale post
+  // that the actor failed to flag as pinned. We compute the cutoff from the
+  // 10 most-recent valid timestamps and drop anything > 180d older than the
+  // median of that cluster.
+  const cadencePostsClean = pruneDateOutliers(cadencePosts);
+  const temporalSeries = buildTemporalSeries(cadencePostsClean);
+  const postingHeatmap = buildPostingHeatmap(cadencePostsClean);
+  const bestDays = buildBestDays(cadencePostsClean);
 
   const postsForText: PostForText[] = posts.map((p) => ({
     caption: p.caption,
@@ -1205,15 +1252,17 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   const windowLabel = isInsufficient
     ? "amostra recente insuficiente"
     : cadence.method === "sample_span"
-      ? `amostra de ${windowDays} dias`
+      ? `últimas ${sampleSize} publicações`
       : `últimos ${windowDays} dias`;
   const windowShortLabel = isInsufficient
     ? "amostra insuficiente"
-    : `${windowDays} dias`;
+    : cadence.method === "sample_span"
+      ? `${sampleSize} publicações`
+      : `${windowDays} dias`;
   const kpiSubtitle = isInsufficient
     ? cadence.notePt ?? "amostra recente insuficiente"
     : cadence.method === "sample_span"
-      ? `amostra de ${sampleSize} publicações · ${windowDays} dias`
+      ? `ritmo observado nas últimas ${sampleSize} publicações`
       : `${sampleSize} publicações nos últimos ${windowDays} dias`;
   const sampleCaption = isInsufficient
     ? "Análise baseada na amostra recolhida (cadência não calculada)."
@@ -1333,6 +1382,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
         engagementPct: round2(num(p.engagement_pct, 0)),
         date: formatPtDateShort(p.taken_at_iso ?? null),
         mentions,
+        isPinned: p.is_pinned === true,
         ...(typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
           ? { thumbnailUrl: `/api/public/ig-thumb?url=${encodeURIComponent(p.thumbnail_url)}` }
           : {}),

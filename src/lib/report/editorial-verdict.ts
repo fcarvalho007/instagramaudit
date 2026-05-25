@@ -19,6 +19,9 @@ export interface EditorialVerdictMetrics {
   postsPerWeek30d: number | null;
   /** Flag do módulo cadence: amostra suficiente para uma leitura defensável. */
   cadenceSufficient: boolean;
+  /** Fiabilidade do cálculo de cadência (high/medium/low). Quando ausente
+   *  assume "high" para retro-compatibilidade com chamadas antigas. */
+  cadenceReliability?: "high" | "medium" | "low";
   /** Envolvimento médio do perfil em %. */
   engagementPct: number;
   /** Envolvimento de referência do tier em %. Null = sem benchmark. */
@@ -71,6 +74,11 @@ const RE_CONVERSATION_HEALTHY =
 const RE_COMPETITORS =
   /\b(concorrent(e|es)|competidor(es)?|benchmark\s+do\s+s[ée]ctor|concorr[êe]ncia)\b/i;
 
+// "ritmo (consistente|saudável|estável|forte|sólido)", "cadência consistente/sólida/forte",
+// "publica de forma consistente", "publicações regulares".
+const RE_CADENCE_STRONG =
+  /\b(ritmo\s+(consistente|saud[áa]vel|est[áa]vel|forte|s[óo]lido|regular)|cad[êe]ncia\s+(consistente|saud[áa]vel|est[áa]vel|forte|s[óo]lida|regular)|publica(r)?\s+de\s+forma\s+consistente|publica[çc][õo]es\s+regulares)\b/i;
+
 const CADENCE_HEALTHY_THRESHOLD = 2.5; // posts/semana
 const ENGAGEMENT_ABOVE_RATIO = 1.1; // >10% acima da referência
 const ENGAGEMENT_BELOW_RATIO = 0.7; // <70% da referência
@@ -104,6 +112,15 @@ export function detectVerdictContradictions(
     typeof m.postsPerWeek30d === "number" &&
     m.postsPerWeek30d >= CADENCE_HEALTHY_THRESHOLD;
   if (cadenceHealthy && RE_CADENCE_WEAK.test(text)) {
+    reasons.push("cadence_contradiction");
+  }
+
+  // 1b. fiabilidade baixa + IA afirma "ritmo consistente/forte" → contradição.
+  // Inclui o caso "cadenceSufficient: false" (insuficiente) para bloquear
+  // qualquer afirmação positiva sobre cadência quando a amostra não suporta.
+  const reliability = m.cadenceReliability ?? "high";
+  const cadenceUnreliable = reliability === "low" || !m.cadenceSufficient;
+  if (cadenceUnreliable && RE_CADENCE_STRONG.test(text)) {
     reasons.push("cadence_contradiction");
   }
 

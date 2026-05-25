@@ -132,6 +132,7 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
             payload?.content_summary?.average_comments ?? avgComments
           }
           cadenceSufficient={enriched.cadence.sufficient}
+          cadenceReliability={enriched.cadence.reliability}
           competitorsCount={result.data.competitors.length}
         />
       )}
