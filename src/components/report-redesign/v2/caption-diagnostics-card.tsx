@@ -886,20 +886,22 @@ function BoldableParagraph({ text }: { text: string }) {
 function SectionEditorialReading({
   data,
   semantic,
+  t,
 }: {
   data: CaptionIntelligence;
   semantic?: CaptionSemanticAnalysis | null;
+  t: TR;
 }) {
   const hasSemantic = semantic != null;
 
   return (
     <div className="space-y-4">
       <SectionHeader
-        letter="C"
-        label="LEITURA EDITORIAL"
+        letter={t("caption.section_c.letter").split(" · ")[0] ?? "C"}
+        label={t("caption.section_c.letter").split(" · ").slice(1).join(" · ") || "LEITURA EDITORIAL"}
         badge={
           <span className="text-xs text-content-tertiary italic">
-            síntese gerada por IA
+            {t("caption.section_c.ai_subtitle")}
           </span>
         }
       />
@@ -907,34 +909,34 @@ function SectionEditorialReading({
       <div className="rounded-xl bg-[rgb(var(--tint-primary))] ring-1 ring-accent-primary/20 p-5 md:p-6 space-y-5">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-accent-primary" />
-          <p className="text-eyebrow-sm text-accent-primary">SÍNTESE EDITORIAL · IA</p>
+          <p className="text-eyebrow-sm text-accent-primary">{t("caption.section_c.ai_badge")}</p>
         </div>
 
         <p className="text-[15px] md:text-[17px] text-content-primary leading-[1.7] font-sans">
           <BoldableParagraph
             text={hasSemantic && semantic.diagnostic
               ? semantic.diagnostic.main
-              : buildDiagnosticStatement(data)}
+              : buildDiagnosticStatement(data, t)}
           />
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-accent-primary/20">
           <DiagnosticColumn
             symbol="✓"
-            label="PADRÃO FORTE"
-            text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.works : buildWhatWorks(data)}
+            label={t("caption.section_c.strong")}
+            text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.works : buildWhatWorks(data, t)}
             toneClass="text-signal-success"
           />
           <DiagnosticColumn
             symbol="✕"
-            label="RISCO EDITORIAL"
-            text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.critical : buildCriticalPoint(data)}
+            label={t("caption.section_c.risk")}
+            text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.critical : buildCriticalPoint(data, t)}
             toneClass="text-signal-danger"
           />
           <DiagnosticColumn
             symbol="◎"
-            label="SINAL A ACOMPANHAR"
-            text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.watch : buildToWatch(data)}
+            label={t("caption.section_c.watch")}
+            text={hasSemantic && semantic.diagnostic ? semantic.diagnostic.watch : buildToWatch(data, t)}
             toneClass="text-signal-warning"
           />
         </div>
@@ -946,9 +948,13 @@ function SectionEditorialReading({
           {semantic.hookQuality && (
             <SemanticPill
               icon={Sparkles}
-              label="Qualidade do hook"
+              label={t("caption.quality.hook_label")}
               rating={semantic.hookQuality.rating}
-              ratingLabels={{ strong: "Forte", moderate: "Moderado", weak: "Fraco" }}
+              ratingLabels={{
+                strong: t("caption.quality.hook_strong"),
+                moderate: t("caption.quality.hook_moderate"),
+                weak: t("caption.quality.hook_weak"),
+              }}
               explanation={semantic.hookQuality.explanation}
               tone={semantic.hookQuality.rating === "strong" ? "success" : semantic.hookQuality.rating === "weak" ? "danger" : "neutral"}
             />
@@ -956,9 +962,13 @@ function SectionEditorialReading({
           {semantic.brandVoice && (
             <SemanticPill
               icon={Mic}
-              label="Voz da marca"
+              label={t("caption.quality.voice_label")}
               rating={semantic.brandVoice.rating}
-              ratingLabels={{ consistent: "Consistente", mixed: "Mista", inconsistent: "Inconsistente" }}
+              ratingLabels={{
+                consistent: t("caption.quality.voice_consistent"),
+                mixed: t("caption.quality.voice_mixed"),
+                inconsistent: t("caption.quality.voice_inconsistent"),
+              }}
               explanation={semantic.brandVoice.explanation}
               tone={semantic.brandVoice.rating === "consistent" ? "success" : semantic.brandVoice.rating === "inconsistent" ? "danger" : "neutral"}
             />
@@ -966,9 +976,12 @@ function SectionEditorialReading({
           {semantic.formulaicPatterns && (
             <SemanticPill
               icon={Repeat}
-              label="Padrões repetitivos"
+              label={t("caption.quality.patterns_label")}
               rating={semantic.formulaicPatterns.hasFormulas ? "alert" : "ok"}
-              ratingLabels={{ alert: "Detetados", ok: "Sem repetição" }}
+              ratingLabels={{
+                alert: t("caption.quality.patterns_alert"),
+                ok: t("caption.quality.patterns_ok"),
+              }}
               explanation={semantic.formulaicPatterns.explanation}
               tone={semantic.formulaicPatterns.hasFormulas ? "danger" : "success"}
               examples={semantic.formulaicPatterns.hasFormulas ? semantic.formulaicPatterns.examples : undefined}
@@ -981,7 +994,7 @@ function SectionEditorialReading({
       <div className="flex items-start gap-2 text-xs text-content-tertiary leading-relaxed">
         <span className="shrink-0 mt-px">ⓘ</span>
         <span>
-          Análise apenas a legendas públicas. Hashtags em P03. Boas práticas:{" "}
+          {t("caption.section_c.footer_note")}{" "}
           {KB_SOURCES.map((src, i) => (
             <span key={src.name}>
               {i > 0 && " · "}
