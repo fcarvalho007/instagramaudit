@@ -1,26 +1,28 @@
-## Estado actual
+## Contexto
 
-A implementação requerida **já foi aplicada na ronda anterior**. Verificação read-only confirma:
+`header.tsx` e `footer.tsx` estão em `LOCKED_FILES.md`. O prompt do utilizador é permissão explícita para editar ambos no âmbito restrito de ligar `/precos`. Não há outras alterações.
 
-- `rg "aiHeroText|aiHeroEmphasis|deriveCopyFromAi|synthesizeTitleFromEmphasis|FORBIDDEN_PREFIX|splitFirstSentence|trimParagraphToSentence" src/` → **zero ocorrências**.
-- `editorial-identity-card.tsx`: `copy` deriva sempre de `resolved.title` / `resolved.paragraph` (resolver determinístico via `deriveEditorialVerdict` + `buildFallbackVerdict`). Sem ramo legado.
-- Props `aiHeroText` / `aiHeroEmphasis` removidas da interface e da chamada em `report-overview-block.tsx`.
-- Helpers mortos removidos.
-- "Leitura provisória" aparece **uma única vez** (chip na linha 386–395, guardado por `isProvisional = resolution.source !== "ai" || hasProvisionalWarning`). Não há aviso duplicado em texto separado.
+## Mudanças
 
-## Plano
+### 1. `src/i18n/locales/pt/header.json` + `en/header.json`
+- Adicionar `nav.pricing`: "Preços" / "Pricing".
 
-Como todos os requisitos do prompt já estão satisfeitos no código, o plano de implementação é apenas **validação final, sem alterações de ficheiros**:
+### 2. `src/i18n/locales/pt/footer.json` + `en/footer.json`
+- Adicionar `links.pricing`: "Preços" / "Pricing".
 
-1. Correr `bunx tsc --noEmit`.
-2. Correr `bunx vitest run`.
-3. Re-confirmar grep `aiHeroText|aiHeroEmphasis|deriveCopyFromAi` em `src/` → 0.
-4. Reportar resultado.
+### 3. `src/components/layout/header.tsx`
+- Inserir `{ labelKey: "nav.pricing", href: "/precos", match: (p) => p.startsWith("/precos") }` no array `navItems`, posicionado a seguir a `examples`. Aparece automaticamente na nav desktop (pill) e no drawer mobile — o render já mapeia `navItems`. Mantém language switcher, login/account e CTA "Analisar agora" intactos.
+- Usar `<a href="/precos">` igual aos restantes itens (consistência com os atuais `#como-funciona` / `#exemplos` que usam `<a>`); navegação SPA não é crítica neste contexto e mantém o padrão visual existente. Alternativa considerada: usar `<Link to="/precos">` apenas para este item — rejeitada para não introduzir branch condicional no map.
+
+### 4. `src/components/layout/footer.tsx`
+- Inserir `{ label: t("links.pricing"), href: "/precos" }` no início do array `links` (antes de `contact`), agrupando como item de produto vs. itens institucionais.
 
 ## Fora de âmbito
 
-OpenAI, Apify, DataForSEO, cache, `report_snapshots`, pricing, lead magnet, gates, schemas, i18n fora das chaves já existentes em `identity.*`. Nenhuma chamada a providers.
+Admin sidebar, report sidebar, lógica de pricing, providers, checkout, páginas legais, `LOCKED_FILES.md` (não atualizar — esta é uma edição autorizada pontual, igual à nota de 2026-05-24 já existente para o header).
 
-## Nota
+## Validação
 
-Se ao validar encontrar qualquer regressão (ex.: TS error residual ou teste partido por causa de prop removida), corrijo cirurgicamente apenas nesse ponto e reporto. Caso contrário, não há ficheiros a alterar.
+- `bunx tsc --noEmit` verde.
+- `bunx vitest run` verde (testes existentes não tocam estes ficheiros).
+- Manual: PT mostra "Preços" no header e footer; EN mostra "Pricing"; clique navega para `/precos`; drawer mobile inclui o item sem partir layout (375px).

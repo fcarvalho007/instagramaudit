@@ -9,6 +9,7 @@ function Footer() {
   const { t } = useTranslation("footer");
   const { contactEmail } = usePublicAppConfig();
   const links = [
+    { label: t("links.pricing"), href: "/precos" },
     { label: t("links.contact"), href: `mailto:${contactEmail}` },
     { label: t("links.privacy"), href: "/privacidade" },
     { label: t("links.terms"), href: "/termos" },
