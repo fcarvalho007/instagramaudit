@@ -360,6 +360,7 @@ export function EditorialIdentityCard({
   scores,
   aiHeroText,
   aiHeroEmphasis,
+  aiVerdict,
   keyMetrics,
   dominantFormat,
   dominantFormatShare,
@@ -371,15 +372,19 @@ export function EditorialIdentityCard({
 }: EditorialIdentityCardProps) {
   const { t, i18n } = useTranslation("report");
   const fallback = buildFallbackCopy(scores, t);
-  const copy = aiHeroText
-    ? deriveCopyFromAi(aiHeroText, fallback, aiHeroEmphasis ?? null)
-    : fallback;
+  const copy: EditorialCopy = aiVerdict
+    ? { title: aiVerdict.title, paragraph: aiVerdict.paragraph }
+    : aiHeroText
+      ? deriveCopyFromAi(aiHeroText, fallback, aiHeroEmphasis ?? null)
+      : fallback;
   const overall = computeOverall(scores);
-  const band = bandFor(overall);
+  const band: Band = aiVerdict
+    ? verdictLabelToBand(aiVerdict.verdict_label)
+    : bandFor(overall);
   const lowConfidence =
     typeof postsAnalyzed === "number" && postsAnalyzed > 0 && postsAnalyzed < 5;
 
-  const { strengths, limits } = deriveSignals(
+  const derived = deriveSignals(
     scores,
     keyMetrics,
     dominantFormat,
@@ -389,6 +394,12 @@ export function EditorialIdentityCard({
     t,
     i18n.language,
   );
+  const strengths: Bullet[] = aiVerdict
+    ? aiVerdict.strengths.map((s) => ({ destaque: s, detalhe: "" }))
+    : derived.strengths;
+  const limits: Bullet[] = aiVerdict
+    ? aiVerdict.limitations.map((s) => ({ destaque: s, detalhe: "" }))
+    : derived.limits;
 
   const hasAnyMetric =
     typeof averageLikes === "number" ||
