@@ -785,6 +785,39 @@ function buildTemporalSeries(
   return out;
 }
 
+/**
+ * Mirror of `dropDateOutliers` from `cadence.ts`, applied to
+ * `SnapshotPost[]` so the temporal series / heatmap / best-days don't get
+ * skewed by a stale post that the Apify actor failed to flag as pinned.
+ *
+ * Threshold mirrors the cadence module: > 180 days older than the median
+ * timestamp of the top-10 most recent posts is dropped.
+ */
+function pruneDateOutliers(posts: SnapshotPost[]): SnapshotPost[] {
+  const withTs = posts
+    .map((p) => ({ post: p, ts: normalizePostTimestamp(p) }))
+    .filter(({ ts }) => Number.isFinite(ts));
+  if (withTs.length < 3) return posts;
+  const sortedDesc = [...withTs].sort((a, b) => b.ts - a.ts);
+  const cluster = sortedDesc.slice(0, Math.min(10, sortedDesc.length));
+  const clusterSorted = [...cluster].map((x) => x.ts).sort((a, b) => a - b);
+  const mid = Math.floor(clusterSorted.length / 2);
+  const med =
+    clusterSorted.length % 2 === 0
+      ? (clusterSorted[mid - 1] + clusterSorted[mid]) / 2
+      : clusterSorted[mid];
+  const cutoff = med - 180 * 86_400_000;
+  const keptIds = new Set(
+    sortedDesc.filter((x) => x.ts >= cutoff).map((x) => x.post),
+  );
+  // Preserve original order; only drop the outliers.
+  return posts.filter((p) => {
+    const ts = normalizePostTimestamp(p);
+    if (!Number.isFinite(ts)) return true; // keep invalid-date posts as-is
+    return keptIds.has(p);
+  });
+}
+
 function buildPostingHeatmap(
   posts: SnapshotPost[],
 ): ReportData["postingHeatmap"] {
