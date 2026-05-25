@@ -402,7 +402,7 @@ export function EditorialIdentityCard({
             {copy.title}
           </h2>
 
-          <p className="text-[15px] leading-relaxed text-content-secondary max-w-2xl whitespace-pre-line">
+          <p className="text-[17px] leading-[1.65] text-content-primary max-w-2xl whitespace-pre-line">
             {copy.paragraph}
           </p>
 
