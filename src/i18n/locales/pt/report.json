@@ -454,17 +454,14 @@
     "lab": "Laboratório interno",
     "pro_active": "Pro ativo",
     "avatar_alt": "Avatar de {{handle}}",
-    "cofre": {
-      "title": "Abrir o cofre",
-      "subtitle": "3 secções premium · análise completa",
-      "single_eyebrow": "Uma vez",
-      "single_detail": "só esta análise",
-      "bundle_eyebrow": "Bundle 5",
-      "bundle_detail": "5 análises · €2,60/cada",
-      "save_badge": "POUPA €2",
-      "unlock": "Desbloquear",
-      "unlock_aria": "Abrir opções de desbloqueio",
-      "vat": "+IVA"
+    "access": {
+      "badge_free": "Grátis",
+      "badge_launch": "Oferta de lançamento",
+      "badge_premium": "Premium",
+      "beta_note": "O Diagnóstico editorial faz parte da experiência premium, mas está aberto nesta fase beta.",
+      "cta": "Ver opções de acesso",
+      "cta_aria": "Ver opções de acesso premium",
+      "trust": "1 relatório ou pack de 5. Sem subscrição."
     }
   },
   "shell": {

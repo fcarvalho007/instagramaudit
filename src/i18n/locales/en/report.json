@@ -454,17 +454,14 @@
     "lab": "Internal lab",
     "pro_active": "Pro active",
     "avatar_alt": "Avatar of {{handle}}",
-    "cofre": {
-      "title": "Open the vault",
-      "subtitle": "3 premium sections · full analysis",
-      "single_eyebrow": "One-off",
-      "single_detail": "just this report",
-      "bundle_eyebrow": "Bundle of 5",
-      "bundle_detail": "5 reports · €2.60 each",
-      "save_badge": "SAVE €2",
-      "unlock": "Unlock",
-      "unlock_aria": "Open unlock options",
-      "vat": "+VAT"
+    "access": {
+      "badge_free": "Free",
+      "badge_launch": "Launch offer",
+      "badge_premium": "Premium",
+      "beta_note": "Editorial diagnosis is part of the premium experience, but it is open during this beta phase.",
+      "cta": "View access options",
+      "cta_aria": "View premium access options",
+      "trust": "1 report or pack of 5. No subscription."
     }
   },
   "shell": {

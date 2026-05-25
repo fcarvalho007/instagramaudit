@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Menu, Lock, ArrowRight, Star, Check } from "lucide-react";
+import { Menu, Lock, ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
@@ -15,7 +15,7 @@ import {
 } from "@/lib/report/report-variant";
 import { useBlocks, type BlockConfig } from "./block-config";
 import { scrollToBlock, useActiveBlock } from "./use-active-block";
-import { PremiumInterestDialog, type PricingOption } from "./premium-interest-dialog";
+import { PremiumInterestDialog } from "./premium-interest-dialog";
 import { useReportTracking } from "./report-tracking-context";
 import { trackEvent } from "@/lib/tracking.functions";
 
@@ -23,12 +23,13 @@ import { trackEvent } from "@/lib/tracking.functions";
 
 type AccessState = "accessible" | "partial" | "locked";
 type Group = "incluido" | "premium";
+type AccessBadge = "free" | "launch" | "premium";
 
 interface SidebarItem {
   block: BlockConfig;
   group: Group;
   access: AccessState;
-  partialBadge?: string;
+  accessBadge: AccessBadge;
 }
 
 interface SidebarProfile {
@@ -43,43 +44,41 @@ interface SidebarProps {
   profile: SidebarProfile;
 }
 
-const COFRE_ANCHOR_ID = "report-cofre";
-
 // ── Item builder ─────────────────────────────────────────────────────
 
 function buildSidebarItems(
   blocks: readonly BlockConfig[],
   variant: ReportVariant,
   features: VariantFeatures,
-  partialLabel: string,
 ): SidebarItem[] {
   return blocks.map((block) => {
+    const accessBadge: AccessBadge =
+      block.id === "overview"
+        ? "free"
+        : block.id === "diagnostico"
+          ? "launch"
+          : "premium";
     const fv = features[block.featureKey];
     if (variant === "internal_lab" || variant === "pro_preview") {
-      return { block, group: "incluido" as Group, access: "accessible" as AccessState };
+      return { block, group: "incluido", access: "accessible", accessBadge };
     }
     // public_mvp
     if (fv === "hidden") {
-      return { block, group: "premium" as Group, access: "locked" as AccessState };
+      return { block, group: "premium", access: "locked", accessBadge };
     }
     if (fv === "lightweight" || fv === "teaser") {
       return {
         block,
-        group: "incluido" as Group,
-        access: "partial" as AccessState,
-        partialBadge: block.id === "performance" ? "3/5" : partialLabel,
+        group: "incluido",
+        access: "partial",
+        accessBadge,
       };
     }
-    return { block, group: "incluido" as Group, access: "accessible" as AccessState };
+    return { block, group: "incluido", access: "accessible", accessBadge };
   });
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
-
-function scrollToCofre() {
-  const el = document.getElementById(COFRE_ANCHOR_ID);
-  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-}
 
 function initialOf(handle: string) {
   return handle.replace(/^@/, "").charAt(0).toUpperCase() || "?";
@@ -179,8 +178,21 @@ function ItemRow({
   isActive: boolean;
   onClick: () => void;
 }) {
+  const { t } = useTranslation("report");
   const isLocked = item.access === "locked";
-  const isPartial = item.access === "partial";
+  const badgeKey =
+    item.accessBadge === "free"
+      ? "nav.access.badge_free"
+      : item.accessBadge === "launch"
+        ? "nav.access.badge_launch"
+        : "nav.access.badge_premium";
+  const badgeLabel = t(badgeKey);
+  const badgeClass =
+    item.accessBadge === "free"
+      ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+      : item.accessBadge === "launch"
+        ? "bg-amber-50 text-amber-800 ring-amber-200"
+        : "bg-surface-muted text-content-secondary ring-border-default";
   return (
     <button
       type="button"
@@ -232,13 +244,14 @@ function ItemRow({
       >
         {item.block.shortLabel}
       </span>
-      {isPartial && item.partialBadge ? (
-        <span className="ml-auto inline-flex items-center rounded-full bg-signal-warning/15 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-accent-gold">
-          {item.partialBadge}
-        </span>
-      ) : isActive ? (
-        <span aria-hidden="true" className="ml-auto size-1.5 rounded-full bg-blue-500" />
-      ) : null}
+      <span
+        className={cn(
+          "ml-auto inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] ring-1",
+          badgeClass,
+        )}
+      >
+        {badgeLabel}
+      </span>
     </button>
   );
 }
@@ -272,141 +285,39 @@ function GroupHeader({
   );
 }
 
-function CofreCard() {
+function AccessSummaryCard({
+  showBetaNote,
+  onOpenDialog,
+}: {
+  showBetaNote: boolean;
+  onOpenDialog: () => void;
+}) {
   const { t } = useTranslation("report");
-  const { snapshotId, handle, variant } = useReportTracking();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [registered, setRegistered] = useState<Set<PricingOption>>(new Set());
-
-  const openDialog = () => setDialogOpen(true);
-
-  const handleUnlock = () => {
-    trackEvent({
-      data: {
-        eventType: "unlock_clicked",
-        snapshotId: snapshotId ?? undefined,
-        handle: handle ?? undefined,
-        metadata: { variant, source_component: "sidebar_cofre" },
-      },
-    }).catch(() => {});
-    openDialog();
-  };
-
-  const handlePricing = (option: PricingOption) => {
-    if (!registered.has(option)) {
-      setRegistered((prev) => {
-        const next = new Set(prev);
-        next.add(option);
-        return next;
-      });
-      trackEvent({
-        data: {
-          eventType: "pricing_option_clicked",
-          snapshotId: snapshotId ?? undefined,
-          handle: handle ?? undefined,
-          metadata: {
-            pricing_option: option,
-            variant,
-            source_component: "sidebar_cofre",
-          },
-        },
-      }).catch(() => {});
-    }
-    openDialog();
-  };
-
   return (
-    <div
-      id={COFRE_ANCHOR_ID}
-      className="relative mt-4 overflow-hidden rounded-2xl bg-content-primary p-4 text-white shadow-[0_18px_40px_-24px_rgba(15,23,42,0.4)]"
-    >
-      {/* Glow radial subtil — âmbar + indigo */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(120% 80% at 100% 100%, rgba(186,117,23,0.22) 0%, transparent 55%), radial-gradient(100% 70% at 0% 0%, rgba(118,100,228,0.18) 0%, transparent 60%)",
-        }}
-      />
-      <div className="relative z-10">
-      <div className="flex items-center gap-2">
-        <span aria-hidden="true" className="text-amber-300">✦</span>
-        <h3 className="text-sm font-semibold">{t("nav.cofre.title")}</h3>
-      </div>
-      <p className="mt-1 text-xs text-white/70">
-        {t("nav.cofre.subtitle")}
-      </p>
-
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={() => handlePricing("single_report")}
-          aria-pressed={registered.has("single_report")}
-          className="relative text-left rounded-lg bg-white/5 p-2.5 ring-1 ring-white/10 hover:bg-white/10 hover:ring-white/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-        >
-          {registered.has("single_report") && (
-            <Check
-              aria-hidden="true"
-              className="absolute top-1.5 right-1.5 size-3 text-emerald-400"
-            />
-          )}
-          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-white/60">
-            {t("nav.cofre.single_eyebrow")}
-          </p>
-          <p className="mt-1 text-base font-bold tabular-nums">
-            €3 <span className="text-[10px] font-medium text-white/60">{t("nav.cofre.vat")}</span>
-          </p>
-          <p className="mt-1 text-[10px] text-white/60 leading-tight">
-            {t("nav.cofre.single_detail")}
-          </p>
-        </button>
-        <button
-          type="button"
-          onClick={() => handlePricing("pack_5_reports")}
-          aria-pressed={registered.has("pack_5_reports")}
-          className="relative text-left rounded-lg bg-amber-500 p-2.5 text-content-primary ring-1 ring-amber-300/50 shadow-[0_8px_24px_-12px_rgba(186,117,23,0.6)] hover:bg-amber-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200"
-        >
-          <span className="absolute -top-2 left-1/2 -translate-x-1/2 inline-flex items-center gap-0.5 rounded-full bg-content-primary px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300">
-            <Star className="size-2.5 fill-amber-300" aria-hidden="true" />
-            {t("nav.cofre.save_badge")}
-          </span>
-          {registered.has("pack_5_reports") && (
-            <Check
-              aria-hidden="true"
-              className="absolute top-1.5 right-1.5 size-3 text-content-primary"
-            />
-          )}
-          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] opacity-80">
-            {t("nav.cofre.bundle_eyebrow")}
-          </p>
-          <p className="mt-1 text-base font-bold tabular-nums">
-            €13 <span className="text-[10px] font-medium opacity-70">{t("nav.cofre.vat")}</span>
-          </p>
-          <p className="mt-1 text-[10px] opacity-80 leading-tight">
-            {t("nav.cofre.bundle_detail")}
-          </p>
-        </button>
-      </div>
-
+    <div className="mt-4 rounded-2xl border border-border-default bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      {showBetaNote && (
+        <p className="text-xs leading-relaxed text-content-secondary">
+          {t("nav.access.beta_note")}
+        </p>
+      )}
       <button
         type="button"
-        onClick={handleUnlock}
-        aria-label={t("nav.cofre.unlock_aria")}
-        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-white px-3 py-2.5 text-xs font-bold uppercase tracking-[0.08em] text-content-primary hover:bg-white/90 transition-colors"
+        onClick={onOpenDialog}
+        aria-label={t("nav.access.cta_aria")}
+        className={cn(
+          "inline-flex w-full items-center justify-center gap-2 rounded-lg",
+          "bg-content-primary px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] text-white",
+          "hover:bg-content-primary/90 transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1",
+          showBetaNote ? "mt-3" : "",
+        )}
       >
-        {t("nav.cofre.unlock")}
+        {t("nav.access.cta")}
         <ArrowRight className="size-3.5" aria-hidden="true" />
       </button>
-      </div>
-      <PremiumInterestDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        snapshotId={snapshotId}
-        handle={handle}
-        variant={variant}
-        sourceComponent="sidebar_cofre"
-      />
+      <p className="mt-2 text-center text-[11px] text-content-tertiary">
+        {t("nav.access.trust")}
+      </p>
     </div>
   );
 }
@@ -418,18 +329,31 @@ function SidebarList({
   active,
   variant,
   onAccessibleClick,
-  onLockedClick,
 }: {
   items: SidebarItem[];
   active: string | null;
   variant: ReportVariant;
   onAccessibleClick: (id: string) => void;
-  onLockedClick: () => void;
 }) {
   const { t } = useTranslation("report");
+  const { snapshotId, handle, variant: trackingVariant } = useReportTracking();
+  const [dialogOpen, setDialogOpen] = useState(false);
   const incluidos = items.filter((i) => i.group === "incluido");
   const premium = items.filter((i) => i.group === "premium");
   const isPublic = variant === "public_mvp";
+  const hasDiagnostico = items.some((i) => i.block.id === "diagnostico");
+
+  const openDialog = () => {
+    trackEvent({
+      data: {
+        eventType: "unlock_clicked",
+        snapshotId: snapshotId ?? undefined,
+        handle: handle ?? undefined,
+        metadata: { variant: trackingVariant, source_component: "sidebar_access" },
+      },
+    }).catch(() => {});
+    setDialogOpen(true);
+  };
 
   return (
     <div className="space-y-3">
@@ -457,7 +381,7 @@ function SidebarList({
                 <ItemRow
                   item={item}
                   isActive={false}
-                  onClick={onLockedClick}
+                  onClick={openDialog}
                 />
               </li>
             ))}
@@ -466,7 +390,22 @@ function SidebarList({
       )}
 
       {isPublic && <ProgressBar items={items} />}
-      {isPublic && <CofreCard />}
+      {isPublic && (
+        <>
+          <AccessSummaryCard
+            showBetaNote={hasDiagnostico}
+            onOpenDialog={openDialog}
+          />
+          <PremiumInterestDialog
+            open={dialogOpen}
+            onOpenChange={setDialogOpen}
+            snapshotId={snapshotId}
+            handle={handle}
+            variant={trackingVariant}
+            sourceComponent="sidebar_access"
+          />
+        </>
+      )}
     </div>
   );
 }
@@ -476,10 +415,9 @@ function SidebarList({
 export function ReportBlockSidebar({ variant, features, profile }: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
-  const partialLabel = t("nav.partial");
   const items = useMemo(
-    () => buildSidebarItems(blocks, variant, features, partialLabel),
-    [blocks, variant, features, partialLabel],
+    () => buildSidebarItems(blocks, variant, features),
+    [blocks, variant, features],
   );
   const accessibleIds = items.filter((i) => i.access !== "locked").map((i) => i.block.id);
   const active = useActiveBlock(accessibleIds);
@@ -507,7 +445,6 @@ export function ReportBlockSidebar({ variant, features, profile }: SidebarProps)
         active={active}
         variant={variant}
         onAccessibleClick={scrollToBlock}
-        onLockedClick={scrollToCofre}
       />
     </nav>
   );
@@ -518,10 +455,9 @@ export function ReportBlockSidebar({ variant, features, profile }: SidebarProps)
 export function ReportBlockTopTabs({ variant, features, profile }: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
-  const partialLabel = t("nav.partial");
   const items = useMemo(
-    () => buildSidebarItems(blocks, variant, features, partialLabel),
-    [blocks, variant, features, partialLabel],
+    () => buildSidebarItems(blocks, variant, features),
+    [blocks, variant, features],
   );
   const accessible = items.filter((i) => i.access !== "locked");
   const accessibleIds = accessible.map((i) => i.block.id);
@@ -604,11 +540,6 @@ export function ReportBlockTopTabs({ variant, features, profile }: SidebarProps)
                   )}
                 >
                   {item.block.shortLabel}
-                  {item.access === "partial" && item.partialBadge ? (
-                    <span className="ml-1 text-accent-gold tabular-nums">
-                      {item.partialBadge}
-                    </span>
-                  ) : null}
                 </span>
               </button>
             );
@@ -653,10 +584,6 @@ export function ReportBlockTopTabs({ variant, features, profile }: SidebarProps)
                 onAccessibleClick={(id) => {
                   setSheetOpen(false);
                   setTimeout(() => scrollToBlock(id), 180);
-                }}
-                onLockedClick={() => {
-                  setSheetOpen(false);
-                  setTimeout(() => scrollToCofre(), 180);
                 }}
               />
             </div>
