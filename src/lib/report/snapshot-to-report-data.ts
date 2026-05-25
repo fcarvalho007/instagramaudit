@@ -959,9 +959,19 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   const keyMetrics = buildKeyMetrics(payload, input.benchmark);
   const formatBreakdown = buildFormatBreakdown(payload, input.benchmark);
   const topPosts = buildTopPosts(posts);
-  const temporalSeries = buildTemporalSeries(posts);
-  const postingHeatmap = buildPostingHeatmap(posts);
-  const bestDays = buildBestDays(posts);
+  // Exclude pinned posts from any time-based statistic: Instagram allows up
+  // to 3 pinned posts that stay at the top of the grid independently of
+  // their date, so they distort window/cadence/heatmap/best-days when the
+  // pinned content is months or years older than the live feed. They are
+  // kept for content extraction (topPosts, hashtags, themes) since they
+  // remain legitimate content the profile chose to highlight.
+  const cadencePostsRaw = posts.filter((p) => !p.is_pinned);
+  // Fallback: if every post is pinned, use the full set so we still emit
+  // something instead of an empty cadence/timeline.
+  const cadencePosts = cadencePostsRaw.length > 0 ? cadencePostsRaw : posts;
+  const temporalSeries = buildTemporalSeries(cadencePosts);
+  const postingHeatmap = buildPostingHeatmap(cadencePosts);
+  const bestDays = buildBestDays(cadencePosts);
 
   const postsForText: PostForText[] = posts.map((p) => ({
     caption: p.caption,
@@ -976,7 +986,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   let windowDays = 0;
   let minTs = Infinity;
   let maxTs = -Infinity;
-  for (const p of posts) {
+  for (const p of cadencePosts) {
     if (!p.taken_at_iso) continue;
     const t = new Date(p.taken_at_iso).getTime();
     if (!Number.isFinite(t)) continue;
@@ -996,9 +1006,12 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   // Recalculate posting frequency from windowDays so every consumer
   // (overview card, attention row, share message, KPI grids) uses the
   // same value that matches the visible "X publicações em Y dias".
-  if (windowDays > 0 && keyMetrics.postsAnalyzed > 0) {
+  // Use cadencePosts.length (excludes pinned) so a profile with 2 pinned
+  // posts from 2 years ago + 10 recent posts reads as "10 / 12 dias", not
+  // "12 / 1111 dias".
+  if (windowDays > 0 && cadencePosts.length > 0) {
     keyMetrics.postingFrequencyWeekly = round1(
-      (keyMetrics.postsAnalyzed / windowDays) * 7,
+      (cadencePosts.length / windowDays) * 7,
     );
   }
 
