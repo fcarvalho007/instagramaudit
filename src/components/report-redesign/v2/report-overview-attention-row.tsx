@@ -5,6 +5,8 @@ import {
   TrendingDown,
   type LucideIcon,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
 import { cn } from "@/lib/utils";
@@ -45,12 +47,13 @@ interface Signal {
  * placeholders, sem inventar valores.
  */
 export function ReportOverviewAttentionRow({ result }: Props) {
-  const signals = computeSignals(result).slice(0, 3);
+  const { t } = useTranslation("report");
+  const signals = computeSignals(result, t).slice(0, 3);
   if (signals.length === 0) return null;
 
   return (
     <section
-      aria-label="O que merece atenção primeiro"
+      aria-label={t("attention.title")}
       className="space-y-4"
     >
       <div className="flex items-center gap-2">
@@ -59,7 +62,7 @@ export function ReportOverviewAttentionRow({ result }: Props) {
           aria-hidden="true"
         />
         <h3 className={REDESIGN_TOKENS.eyebrow}>
-          O que merece atenção primeiro
+          {t("attention.title")}
         </h3>
       </div>
 
@@ -137,7 +140,7 @@ function SignalCard({ signal }: { signal: Signal }) {
 
 // ─── Signal computation ──────────────────────────────────────────────
 
-function computeSignals(result: AdapterResult): Signal[] {
+function computeSignals(result: AdapterResult, t: TFunction<"report", undefined>): Signal[] {
   const k = result.data.keyMetrics;
   const benchmarkOk =
     result.coverage.benchmark === "real" && k.engagementBenchmark > 0;
@@ -150,8 +153,11 @@ function computeSignals(result: AdapterResult): Signal[] {
     out.push({
       key: "engagement-gap",
       icon: TrendingDown,
-      title: "Engagement abaixo da referência",
-      body: `O perfil está em ${formatPct(k.engagementRate)}, abaixo da referência de ${formatPct(k.engagementBenchmark)}.`,
+      title: t("attention.engagement_gap_title"),
+      body: t("attention.engagement_gap_body", {
+        rate: formatPct(k.engagementRate),
+        benchmark: formatPct(k.engagementBenchmark),
+      }),
       tone,
     });
   }
@@ -165,8 +171,10 @@ function computeSignals(result: AdapterResult): Signal[] {
     out.push({
       key: "cadence-vs-response",
       icon: Gauge,
-      title: "Ritmo elevado, resposta baixa",
-      body: `Há cerca de ${formatRhythm(k.postingFrequencyWeekly)} publicações por semana, mas a resposta média ainda é fraca.`,
+      title: t("attention.cadence_vs_response_title"),
+      body: t("attention.cadence_vs_response_body", {
+        rhythm: formatRhythm(k.postingFrequencyWeekly),
+      }),
       tone: "warn",
     });
   }
@@ -182,8 +190,11 @@ function computeSignals(result: AdapterResult): Signal[] {
     out.push({
       key: "format-concentration",
       icon: Layers,
-      title: "Dependência de um formato",
-      body: `A amostra está muito concentrada em ${formatLabel} (${k.dominantFormatShare}% das publicações analisadas).`,
+      title: t("attention.format_concentration_title"),
+      body: t("attention.format_concentration_body", {
+        format: formatLabel,
+        share: k.dominantFormatShare,
+      }),
       tone: "warn",
     });
   }
