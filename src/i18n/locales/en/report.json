@@ -28,7 +28,7 @@
     "actions": {
       "new_report": "New report",
       "compare": "Compare competitor",
-      "pro": "Pro",
+      "pro": "Premium",
       "pdf": "PDF",
       "share": "Share",
       "coming_soon": "Coming soon",
@@ -452,7 +452,7 @@
     "sections": "Report sections",
     "menu_aria": "Sections menu",
     "lab": "Internal lab",
-    "pro_active": "Pro active",
+    "pro_active": "Premium active",
     "avatar_alt": "Avatar of {{handle}}",
     "access": {
       "badge_free": "Free",
@@ -488,7 +488,7 @@
     "mercado": "External market benchmark",
     "auto": "Automatic calculation or classification",
     "ia": "Editorial reading by AI",
-    "pro": "Feature available on the PRO plan"
+    "pro": "Feature available in the premium section"
   },
   "cache": {
     "fresh": "Up-to-date data",
@@ -975,11 +975,11 @@
     "critical_label": "CRITICAL POINT",
     "watch_label": "TO WATCH",
     "fallback": {
-      "public_title": "Visual analysis available in the Pro version.",
+      "public_title": "Visual analysis available in the premium section.",
       "public_body": "Post covers are evaluated by AI for visual consistency, text presence and format diversity.",
       "dev_title": "Visual analysis unavailable — awaiting AI processing.",
       "dev_body": "The thumbnails above will be analyzed by computer vision in an upcoming update.",
-      "score_public_title": "Visual score · Pro",
+      "score_public_title": "Visual score · Premium",
       "score_public_body": "Available in the full version of the report.",
       "score_dev_title": "Visual score unavailable",
       "score_dev_body": "It will be calculated automatically once computer vision analysis is active."
