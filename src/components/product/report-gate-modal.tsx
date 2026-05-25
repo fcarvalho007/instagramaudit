@@ -235,10 +235,10 @@ export function ReportGateModal({
               A geração do PDF demora normalmente 1 a 3 minutos. Caso o email
               não chegue em 15 minutos, verificar a pasta de spam ou contactar{" "}
               <a
-                href="mailto:hello@instabench.pt"
+                href={`mailto:${contactEmail}`}
                 className="underline hover:text-content-secondary transition-colors"
               >
-                hello@instabench.pt
+                {contactEmail}
               </a>
               .
             </p>
@@ -273,10 +273,10 @@ export function ReportGateModal({
               A geração demora normalmente 1 a 3 minutos. Caso não chegue em 15
               minutos, verificar a pasta de spam ou contactar{" "}
               <a
-                href="mailto:hello@instabench.pt"
+                href={`mailto:${contactEmail}`}
                 className="underline hover:text-content-secondary transition-colors"
               >
-                hello@instabench.pt
+                {contactEmail}
               </a>
               .
             </p>
@@ -392,7 +392,7 @@ export function ReportGateModal({
             </div>
 
             <p className="text-eyebrow-sm text-[0.625rem] text-content-tertiary text-center">
-              Durante a fase beta, contacta-nos em hello@instabench.pt para mais relatórios.
+              Durante a fase beta, contacta-nos em {contactEmail} para mais relatórios.
             </p>
 
             <DialogClose asChild>
