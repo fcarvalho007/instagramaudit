@@ -416,7 +416,18 @@ export function EditorialIdentityCard({
     fallbackVerdict,
   );
   const resolved = resolution.verdict;
-  const isProvisional = resolution.source !== "ai";
+  const hasProvisionalWarning =
+    Array.isArray(resolved.warnings) &&
+    resolved.warnings.some((w) =>
+      [
+        "low_sample",
+        "stale_data",
+        "cadence_uncertain",
+        "benchmark_missing",
+        "no_market_signals",
+      ].includes(w),
+    );
+  const isProvisional = resolution.source !== "ai" || hasProvisionalWarning;
 
   // Quando o resolver descartou completamente a IA e não havia hero
   // text, mantemos o pipeline antigo (`deriveCopyFromAi`) como segunda
@@ -499,17 +510,34 @@ export function EditorialIdentityCard({
             {copy.title}
           </h2>
 
-          <p className="text-[15px] leading-relaxed text-content-secondary max-w-2xl">
+          <p className="text-[15px] leading-relaxed text-content-secondary max-w-2xl whitespace-pre-line">
             {copy.paragraph}
           </p>
 
-          {resolved.priority ? (
-            <p className="text-sm text-content-primary font-medium max-w-2xl pt-1">
-              <span className="text-eyebrow-sm text-content-tertiary mr-2">
-                {t("identity.priority_label", { defaultValue: "Próximo passo" })}:
-              </span>
-              {resolved.priority}
-            </p>
+          {resolution.source !== "fallback" && resolved.evidence_used.length >= 2 ? (
+            <div className="pt-1 max-w-2xl">
+              <p className="text-eyebrow-sm text-content-tertiary mb-1.5">
+                {t("identity.evidence_title", {
+                  defaultValue: "Sinais usados nesta leitura",
+                })}
+              </p>
+              <ul className="space-y-1">
+                {resolved.evidence_used.slice(0, 3).map((ev) => (
+                  <li
+                    key={ev}
+                    className="text-sm text-content-secondary flex gap-2 items-start"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="mt-2 inline-block w-1 h-1 rounded-full bg-content-tertiary/70 shrink-0"
+                    />
+                    <span>
+                      {t(`identity.evidence.${ev}`, { defaultValue: ev })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ) : null}
 
           {resolved.warnings && resolved.warnings.length > 0 ? (
