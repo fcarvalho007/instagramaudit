@@ -415,10 +415,9 @@ function SidebarList({
 export function ReportBlockSidebar({ variant, features, profile }: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
-  const partialLabel = t("nav.partial");
   const items = useMemo(
-    () => buildSidebarItems(blocks, variant, features, partialLabel),
-    [blocks, variant, features, partialLabel],
+    () => buildSidebarItems(blocks, variant, features),
+    [blocks, variant, features],
   );
   const accessibleIds = items.filter((i) => i.access !== "locked").map((i) => i.block.id);
   const active = useActiveBlock(accessibleIds);
@@ -446,7 +445,6 @@ export function ReportBlockSidebar({ variant, features, profile }: SidebarProps)
         active={active}
         variant={variant}
         onAccessibleClick={scrollToBlock}
-        onLockedClick={scrollToCofre}
       />
     </nav>
   );
@@ -457,10 +455,9 @@ export function ReportBlockSidebar({ variant, features, profile }: SidebarProps)
 export function ReportBlockTopTabs({ variant, features, profile }: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
-  const partialLabel = t("nav.partial");
   const items = useMemo(
-    () => buildSidebarItems(blocks, variant, features, partialLabel),
-    [blocks, variant, features, partialLabel],
+    () => buildSidebarItems(blocks, variant, features),
+    [blocks, variant, features],
   );
   const accessible = items.filter((i) => i.access !== "locked");
   const accessibleIds = accessible.map((i) => i.block.id);
