@@ -1,85 +1,99 @@
 ## Diagnóstico
 
-O facto de `nasa` ter devolvido `PROFILE_NOT_ALLOWED` prova que `APIFY_TESTING_MODE` **não está** com o valor literal `"false"` em runtime — é a única condição que dispara esse `errorCode` (`src/routes/api/analyze-public-v1.ts:527-543` via `isTestingModeActive()` em `src/lib/security/apify-allowlist.ts:27-30`, regra `process.env.APIFY_TESTING_MODE !== "false"`).
+`/admin/beta-leads` (Tabela) hoje só permite abrir o detalhe por clique na linha — não há selecção nem eliminação. O endpoint `PATCH /api/admin/leads-kanban/$id` só faz update; não existe DELETE. Os filtros são bons (chips por estado + atenção + pesquisa) mas falta limpar, ordenar e ver o que está activo.
 
-Os restantes secrets pedidos (`APIFY_ENABLED`, `APIFY_HARD_CAP_USD`, `APIFY_DAILY_CAP_USD`, `PUBLIC_MAX_FRESH_PER_IP_DAY`, `PUBLIC_MAX_FRESH_PER_HANDLE_DAY`) existem em Lovable Cloud mas os valores actuais não são visíveis (são secrets, não env vars expostas). Para garantir runtime ≡ contracto, reaplico todos com o valor pretendido.
+A tabela `leads` não declara FKs explícitas, mas há tabelas que referenciam `lead_id`: `report_requests`, `report_snapshots`, `beta_feedback`, `profiles`, `product_events`. Apagar só `leads` deixa órfãos. A eliminação tem de ser feita em ordem segura no servidor.
 
 ## Plano
 
-### 1. Atualizar secrets (Lovable Cloud)
+### A. Selecção (1 ou múltiplos) — `LeadsTable`
 
-Via `secrets--update_secret` (uma única interação para o utilizador colar os 6 valores num formulário seguro):
+- Adicionar coluna de checkbox à esquerda usando `@/components/ui/checkbox`.
+- Header: checkbox tri-state que selecciona/desselecciona **apenas as linhas actualmente filtradas** (não a base inteira).
+- Por linha: checkbox com `onClick: stopPropagation` para não abrir o `LeadDetailSheet`.
+- Estado local `selectedIds: Set<string>`; quando os filtros mudam, intersectar com `filtered` para não manter selecções fantasma fora do viewport actual.
+- Linha seleccionada ganha tint subtil (`bg-[var(--admin-board-column-bg)]`) + indicador visual.
 
-| Secret | Valor a aplicar |
-|---|---|
-| `APIFY_TESTING_MODE` | `false` (literal, lowercase, sem aspas/espaços) |
-| `APIFY_ENABLED` | `true` |
-| `APIFY_HARD_CAP_USD` | `10` |
-| `APIFY_DAILY_CAP_USD` | `5` |
-| `PUBLIC_MAX_FRESH_PER_IP_DAY` | `10` |
-| `PUBLIC_MAX_FRESH_PER_HANDLE_DAY` | `5` |
+### B. Barra de acções em massa (bulk bar)
 
-⚠️ `APIFY_TESTING_MODE` é case-sensitive e exact-match. Qualquer outro valor (`False`, `0`, vazio, espaços à volta) mantém o modo allowlist activo.
+- Componente novo `BulkActionsBar` montado no topo da tabela (dentro do toolbar existente) quando `selectedIds.size > 0`.
+- Conteúdo: `"X seleccionado(s)"` · botão ghost `Limpar selecção` · botão destrutivo `Apagar (X)` (vermelho, `variant="destructive"`).
+- Aparece com transição leve (slide-down) para não saltar layout.
 
-Sem alterações a código, sem migrações, sem mexer em UI / lógica de análise.
+### C. Confirmação "hard-confirm" (c.1)
 
-### 2. Aguardar redeploy automático
+- `AlertDialog` (shadcn já existe) ao clicar em "Apagar (X)".
+- Conteúdo:
+  - Título: `Apagar X contacto(s) permanentemente?`
+  - Lista os primeiros 5 (nome · email), com `+N mais` se aplicável.
+  - Aviso `Esta acção é permanente. Vão ser removidos:`
+    - relatórios pedidos (`report_requests`)
+    - snapshots de relatório (`report_snapshots`)
+    - feedback beta (`beta_feedback`)
+    - eventos de produto (`product_events`)
+    - ligações ao perfil (`profiles.lead_id` ← null)
+  - Input de texto: tem de escrever exactamente **`APAGAR`** para activar o botão `Apagar definitivamente`.
+- Botão fica disabled enquanto a request está em flight; mostra spinner.
 
-A actualização de secrets em Lovable Cloud reinicia o worker. Não é necessário comando manual.
+### D. Endpoint novo — `DELETE /api/admin/leads-bulk`
 
-### 3. Teste controlado único
-
-Após confirmação do redeploy, **uma só** chamada via `stack_modern--invoke-server-function`:
+Ficheiro: `src/routes/api/admin/leads-bulk.ts` (server route, `requireAdminSession`).
 
 ```
-POST /api/analyze-public-v1
-Body: { "username": "natgeo" }
+DELETE /api/admin/leads-bulk
+Body: { "ids": ["uuid", ...] }   // Zod: 1..200 UUIDs únicos
 ```
 
-Escolha de handle: `natgeo` — conta institucional, fora de allowlist, baixo risco editorial, tráfego previsível. `nasa` é viável mas mantemo-lo de reserva caso `natgeo` falhe upstream.
+Ordem de eliminação (não há transação cross-table no PostgREST; fazemos sequencial, abortando em erro):
 
-Custo previsto: 1 corrida Apify (1 perfil + 12 posts) ≈ **$0.01–0.03** — bem abaixo do `APIFY_DAILY_CAP_USD=5`.
+1. `update profiles set lead_id=null where lead_id in (ids)`
+2. `delete from beta_feedback where lead_id in (ids)`
+3. `delete from report_snapshots where lead_id in (ids)`
+4. `delete from report_requests where lead_id in (ids)`
+5. `delete from product_events where lead_id in (ids)`
+6. `delete from leads where id in (ids)`
 
-### 4. Verificação no DB (read-only)
+Resposta: `{ success: true, deleted: number, details: { profiles_unlinked, feedback, snapshots, requests, events, leads } }`.
 
-Logo após a chamada, queries via `supabase--read_query`:
+Auditoria: 1 insert em `product_events` com `event_type="leads_bulk_deleted"`, `metadata={ count, ids_sample: ids.slice(0,10) }`.
 
-- `analysis_events` → `outcome`, `data_source`, `estimated_cost_usd`, `error_code` para o handle/created_at recente
-- `provider_call_logs` → `status`, `actor`, `posts_returned`, `duration_ms`, `estimated_cost_usd`, `error_excerpt` (não exposto à response pública)
-- `analysis_snapshots` → existe linha nova com `provider=apify`?
+### E. Wiring no front
 
-### 5. Verificar sanitização da resposta pública
+- `LeadsTable` recebe novo prop `onBulkDelete(ids: string[]) => Promise<void>` ou faz `useMutation` próprio com `adminFetch`.
+- Após sucesso: `queryClient.invalidateQueries({ queryKey: ["admin", "beta-leads"] })` + `toast.success("X contactos apagados")` via sonner já existente.
+- Em erro: `toast.error(...)` com mensagem do servidor sanitizada (sem stack), mantém selecção.
 
-Confirmar que o JSON devolvido pelo endpoint **não contém**:
-- `APIFY_TOKEN`, `Authorization`, `Bearer`
-- mensagens raw do upstream (`ApifyUpstreamError.message`)
-- `error_excerpt` ou stack traces
+### F. Melhorias de filtros e UX (alínea d/e)
 
-### 6. Relatório final (GO / NO-GO)
+Dentro da toolbar existente (não muda layout global):
 
-Tabela compacta com:
-- HTTP status
-- `data_source` retornado (`fresh` esperado)
-- Apify foi chamado (sim/não — via `provider_call_logs`)
-- custo estimado vs actual
-- `analysis_event` id criado
-- `provider_call_log` id criado
-- sinal de fuga sensível (esperado: nenhum)
+1. **Pill "Limpar tudo"** aparece à direita das chips quando há filtros activos (já existe `clearFilters`, falta expô-lo).
+2. **Indicador visual de filtros activos**: contador `"3 filtros activos"` ao lado do `counterLabel`.
+3. **Ordenação**: novo `Select` simples (shadcn `select` se existir, senão `<select>` nativo estilizado): `Mais recentes` (default), `Mais antigos`, `Nome A→Z`, `Estado`.
+4. **Pesquisa** já cobre nome/email/handle via `matchesQuery` — confirmar e adicionar placeholder mais claro: `Pesquisar nome, email ou @handle…`.
+5. **Empty states**: ajustar mensagem quando há selecção + filtro vazio para não confundir.
+6. **Sticky header da tabela** dentro do scroll horizontal para não perder colunas em listas longas.
 
-Decisão: **GO** se `data_source=fresh`, sem `PROFILE_NOT_ALLOWED`/`CACHE_ONLY_NO_DATA`, custo logado e response sanitizada. Caso contrário **NO-GO** com causa-raiz e próximo passo.
+### G. Acessibilidade
 
-## Restrições respeitadas
-
-- Sem alterações a UI, sem alterações à lógica de análise.
-- Sem chamadas manuais a OpenAI/DataForSEO.
-- Apenas **1** chamada Apify paga.
-- Rate-limit e budgets continuam activos (caps mantidos, allowlist desactivada mas restantes guardas ficam — `apify-budget`, `public-rate-limit` continuam a contar).
+- Checkbox header tem `aria-label="Seleccionar contactos filtrados"`.
+- AlertDialog tem foco inicial no input de confirmação.
+- Keyboard: `Esc` fecha o dialog; `Enter` no input dispara delete se válido.
 
 ## Checkpoint
 
-- ☐ Secrets reaplicados (6 valores)
-- ☐ Worker reiniciado
-- ☐ 1 POST a `/api/analyze-public-v1` com `natgeo`
-- ☐ Verificação `analysis_events` + `provider_call_logs` + `analysis_snapshots`
-- ☐ Confirmação de sanitização da resposta
-- ☐ Relatório GO/NO-GO ao utilizador
+- ☐ `LeadsTable` com coluna de checkbox + estado de selecção
+- ☐ `BulkActionsBar` na toolbar com contador, limpar e apagar
+- ☐ `AlertDialog` de confirmação com input `APAGAR`
+- ☐ Novo endpoint `DELETE /api/admin/leads-bulk` com Zod + ordem de cascata + auditoria
+- ☐ Mutation no client + invalidate + toast
+- ☐ Filtros: limpar tudo, contador de filtros activos, ordenação
+- ☐ Sticky header + tint de linha seleccionada
+- ☐ Tests rápidos: confirmar que `frederico.carvalho@digitalfc.pt` (lead com snapshot e profile) consegue ser apagado sem erro
+
+## Restrições
+
+- Sem mexer em `KanbanBoard`, `LeadDetailSheet` nem na vista Pipeline.
+- Sem alterar lógica de leads existente fora do endpoint novo.
+- Sem migrations (estrutura já suporta).
+- Sem expor secrets nem detalhes Supabase ao cliente.
