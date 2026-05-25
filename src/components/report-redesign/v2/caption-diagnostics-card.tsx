@@ -418,17 +418,17 @@ function SectionThemes({
         </div>
 
         <div className="space-y-2">
-          {themes.map((t, i) => {
-            const conf = CONFIDENCE_STYLE[t.confidence];
+          {themes.map((theme, i) => {
+            const conf = CONFIDENCE_STYLE[theme.confidence];
             const isOpen = openTheme === i;
             const evidenceArr = hasSemantic
-              ? (t as typeof semanticThemes[number]).evidence
-              : [(t as typeof deterministicThemes[number]).evidence].filter(Boolean) as string[];
-            const matched = isOpen ? matchPostsByTheme(posts, t.label, evidenceArr) : [];
+              ? (theme as typeof semanticThemes[number]).evidence
+              : [(theme as typeof deterministicThemes[number]).evidence].filter(Boolean) as string[];
+            const matched = isOpen ? matchPostsByTheme(posts, theme.label, evidenceArr) : [];
 
             return (
               <Collapsible
-                key={`${t.label}-${i}`}
+                key={`${theme.label}-${i}`}
                 open={isOpen}
                 onOpenChange={(open) => setOpenTheme(open ? i : null)}
               >
@@ -443,13 +443,12 @@ function SectionThemes({
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="text-[15px] font-semibold text-content-primary leading-snug">
-                          {t.label}
+                          {theme.label}
                         </p>
                         <p className="text-[12px] text-content-tertiary mt-0.5">
-                          {/* @ts-expect-error shadowing: outer t is i18n, theme.postsCount handled via direct interpolation */}
-                          {""}
-                          <RawIdentified count={t.postsCount} />
-                          {i === 0 && t.confidence === "high" ? "" : ""}
+                          {t("caption.section_a.identified_in", { count: theme.postsCount })}
+                          {i === 0 && theme.confidence === "high" ? t("caption.section_a.strongest_signal") : ""}
+                          {isOpen ? t("caption.section_a.evidence_below") : ""}
                         </p>
                       </div>
                     </div>
@@ -464,7 +463,7 @@ function SectionThemes({
                             ? "bg-accent-primary text-white"
                             : "bg-surface-muted text-content-secondary hover:bg-surface-muted/80",
                         )}>
-                          {isOpen ? "Ocultar" : "Ver evidência"}
+                          {isOpen ? t("caption.section_a.hide") : t("caption.section_a.show")}
                           {isOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                         </button>
                       </CollapsibleTrigger>
@@ -484,7 +483,7 @@ function SectionThemes({
                               className="flex items-center gap-1 hover:text-accent-primary transition-colors"
                             >
                               <Download className="w-3 h-3" />
-                              Ver os {matched.length} posts · descarregar CSV com excertos
+                              {t("caption.section_a.see_csv", { count: matched.length })}
                             </button>
                           </div>
                         </>
