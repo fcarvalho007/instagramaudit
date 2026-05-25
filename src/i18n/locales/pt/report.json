@@ -607,23 +607,25 @@
     "interest_registered_aria": "Interesse registado",
     "registered": "Registado",
     "dialog": {
-      "title": "Desbloquear relatório completo",
-      "description": "Estamos a recolher interesse para definir os preços finais. Escolhe a opção que faz sentido — sem pagamento agora.",
-      "footer": "Sem pagamento agora. Voltamos a falar contigo.",
-      "single_title": "Relatório único",
-      "single_price": "Em estudo",
-      "single_description": "Um perfil, um relatório completo.",
-      "bundle_title": "Bundle 5 relatórios",
-      "bundle_price": "Em estudo",
-      "bundle_description": "Cinco perfis. Poupa face ao avulso.",
-      "monthly_title": "Plano mensal",
-      "monthly_price": "Em estudo",
-      "monthly_description": "Análises recorrentes do mesmo perfil.",
-      "monthly_badge": "Em breve",
-      "agency_title": "Agência",
-      "agency_price": "Sob proposta",
-      "agency_description": "Múltiplas marcas, dashboards e exportações.",
-      "agency_badge": "Falamos contigo"
+      "title": "Desbloquear acesso premium",
+      "subtitle": "O primeiro bloco continua gratuito. Nesta fase de lançamento, o Diagnóstico editorial está incluído como oferta. As restantes secções premium ficam disponíveis com um desbloqueio pago.",
+      "single": {
+        "title": "1 relatório",
+        "price": "7€",
+        "bullet_profile": "1 perfil",
+        "bullet_unlock": "1 desbloqueio premium",
+        "note": "Ideal para uma análise pontual",
+        "cta": "Escolher 1 relatório"
+      },
+      "pack": {
+        "title": "Pack 5 relatórios",
+        "price": "28€",
+        "bullet_reports": "5 relatórios",
+        "bullet_unit": "5,60€/relatório",
+        "savings_badge": "Poupa 20%",
+        "cta": "Escolher pack de 5"
+      },
+      "trust_note": "Sem subscrição. Sem renovação automática."
     }
   },
   "engagement": {

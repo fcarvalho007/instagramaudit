@@ -341,11 +341,11 @@ function CofreCard() {
       <div className="mt-3 grid grid-cols-2 gap-2">
         <button
           type="button"
-          onClick={() => handlePricing("single_3_eur")}
-          aria-pressed={registered.has("single_3_eur")}
+          onClick={() => handlePricing("single_report")}
+          aria-pressed={registered.has("single_report")}
           className="relative text-left rounded-lg bg-white/5 p-2.5 ring-1 ring-white/10 hover:bg-white/10 hover:ring-white/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
         >
-          {registered.has("single_3_eur") && (
+          {registered.has("single_report") && (
             <Check
               aria-hidden="true"
               className="absolute top-1.5 right-1.5 size-3 text-emerald-400"
@@ -363,15 +363,15 @@ function CofreCard() {
         </button>
         <button
           type="button"
-          onClick={() => handlePricing("bundle_13_eur")}
-          aria-pressed={registered.has("bundle_13_eur")}
+          onClick={() => handlePricing("pack_5_reports")}
+          aria-pressed={registered.has("pack_5_reports")}
           className="relative text-left rounded-lg bg-amber-500 p-2.5 text-content-primary ring-1 ring-amber-300/50 shadow-[0_8px_24px_-12px_rgba(186,117,23,0.6)] hover:bg-amber-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200"
         >
           <span className="absolute -top-2 left-1/2 -translate-x-1/2 inline-flex items-center gap-0.5 rounded-full bg-content-primary px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300">
             <Star className="size-2.5 fill-amber-300" aria-hidden="true" />
             {t("nav.cofre.save_badge")}
           </span>
-          {registered.has("bundle_13_eur") && (
+          {registered.has("pack_5_reports") && (
             <Check
               aria-hidden="true"
               className="absolute top-1.5 right-1.5 size-3 text-content-primary"
