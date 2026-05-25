@@ -46,6 +46,11 @@ export interface BenchmarkSource {
   url: string;
   /** Ano da publicação/versão de referência mais recente que usamos. */
   publishedYear: number;
+  /**
+   * Etiqueta editorial pt-PT da última actualização da fonte (ex.: "Mai 2026").
+   * Quando presente, substitui `publishedYear` na chip da metodologia.
+   */
+  lastUpdatedLabel?: string;
   /** Descrição curta pt-PT (≤80 chars) para a lista da metodologia. */
   shortDescription: string;
   /**
