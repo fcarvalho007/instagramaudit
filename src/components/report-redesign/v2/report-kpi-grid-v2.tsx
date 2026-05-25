@@ -35,9 +35,20 @@ const FORMAT_PT: Record<string, string> = {
 export function ReportKpiGridV2({ result }: Props) {
   const { t } = useTranslation("report");
   const k = result.data.keyMetrics;
+  const cadence = result.enriched.cadence;
   const formatPt = FORMAT_PT[k.dominantFormat] ?? k.dominantFormat;
   const formatLabel = t(`kpi.format_names.${formatPt}`, { defaultValue: formatPt });
   const formatTone = formatChipTone(formatPt);
+
+  const rhythmHelpKey =
+    cadence.method === "window_30d" ? "kpi.rhythm.help_window_30d"
+    : cadence.method === "window_90d" ? "kpi.rhythm.help_window_90d"
+    : cadence.method === "sample_span" ? "kpi.rhythm.help_sample_span"
+    : "kpi.rhythm.help_insufficient";
+  const rhythmHelp =
+    cadence.method === "insufficient"
+      ? t(rhythmHelpKey)
+      : t(rhythmHelpKey, { n: cadence.weekly.toFixed(1).replace(".", ",") });
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -61,7 +72,7 @@ export function ReportKpiGridV2({ result }: Props) {
             ? k.postingFrequencyWeekly.toFixed(1).replace(".", ",")
             : "—"
         }
-        help={t("kpi.rhythm.help")}
+        help={rhythmHelp}
         sourceBadge={<ReportSourceLabel type="auto" detail={t("kpi.rhythm.source")} />}
       />
 

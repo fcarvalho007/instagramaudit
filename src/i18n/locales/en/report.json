@@ -231,7 +231,8 @@
       "daily": "About 1 post per day",
       "every_1_2": "1 post every 1–2 days",
       "every_2_3": "1 post every 2–3 days",
-      "weekly_low": "Less than 1 post per week"
+      "weekly_low": "Less than 1 post per week",
+      "insufficient": "Not enough recent data to measure rhythm"
     },
     "subtitle": "{{headline}} · {{posts}} {{postsLabel}} in {{days}} {{daysLabel}}",
     "posts_one": "post",
@@ -408,7 +409,11 @@
     "rhythm": {
       "label": "Weekly rhythm",
       "source": "Posting dates",
-      "help": "posts per week"
+      "help": "posts per week",
+      "help_window_30d": "≈ {{n}} posts/wk over the last 30 days",
+      "help_window_90d": "≈ {{n}} posts/wk over the last 90 days",
+      "help_sample_span": "≈ {{n}} posts/wk in the recent sample",
+      "help_insufficient": "Not enough recent data"
     },
     "format": {
       "label": "Dominant format",
@@ -420,6 +425,20 @@
       "Reels": "Reels",
       "Imagens": "Images",
       "Vídeos": "Videos"
+    },
+    "cadence": {
+      "header_window_30d": "Rhythm observed over the last 30 days",
+      "header_window_90d": "Rhythm observed over the last 90 days",
+      "header_sample_span": "Rhythm observed in the recent sample",
+      "header_insufficient": "Posting rhythm",
+      "window_summary_30d": "{{count}} posts in the last 30 days",
+      "window_summary_90d": "{{count}} posts in the last 90 days",
+      "sample_summary": "{{count}} posts in {{days}} days (small sample)",
+      "insufficient_label": "Not enough recent data to estimate rhythm",
+      "provisional_badge": "Provisional reading",
+      "note_window_30d": "Estimated cadence = posts in window ÷ 4.345 weeks",
+      "note_window_90d": "Estimated cadence = posts in window ÷ 12.857 weeks",
+      "note_sample_span": "Estimated cadence = posts in sample ÷ sample weeks"
     }
   },
   "nav": {

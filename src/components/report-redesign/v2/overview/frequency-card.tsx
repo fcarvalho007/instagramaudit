@@ -83,6 +83,10 @@ export interface FrequencyCardProps {
   windowDays: number;
   postingFrequencyWeekly: number;
   calendarDays: DayEntry[];
+  /** Cadence cascade result — drives copy gating when sample is insufficient. */
+  cadenceSufficient?: boolean;
+  cadenceSampleSize?: number;
+  cadenceWindowDays?: number;
 }
 
 // ─── Weekly summary helpers ─────────────────────────────────────────
@@ -361,15 +365,31 @@ export function FrequencyCard({
   windowDays,
   postingFrequencyWeekly,
   calendarDays,
+  cadenceSufficient,
+  cadenceSampleSize,
+  cadenceWindowDays,
 }: FrequencyCardProps) {
   const { t, i18n } = useTranslation("report");
-  // Source-of-truth for "Y dias" is the calendar itself when present.
-  // Falls back to the windowDays prop (matches now, defensive for future).
+  // Prefer cadence-derived sample (pinned-excluded) for subtitle counts.
+  const effectiveSampleSize =
+    typeof cadenceSampleSize === "number" && cadenceSampleSize > 0
+      ? cadenceSampleSize
+      : postsAnalyzed;
   const effectiveWindowDays =
-    calendarDays.length > 0 ? calendarDays.length : windowDays;
+    typeof cadenceWindowDays === "number" && cadenceWindowDays > 0
+      ? cadenceWindowDays
+      : calendarDays.length > 0
+        ? calendarDays.length
+        : windowDays;
+  // When cadence is explicitly insufficient, do NOT derive headline from
+  // a fabricated postsPerDay (would yield "Less than 1 post per week" on
+  // empty samples). Use the neutral insufficient headline.
+  const isInsufficient = cadenceSufficient === false;
   const postsPerDay =
-    effectiveWindowDays > 0 ? postsAnalyzed / effectiveWindowDays : 0;
-  const headline = t(getFrequencyHeadlineKey(postsPerDay));
+    effectiveWindowDays > 0 ? effectiveSampleSize / effectiveWindowDays : 0;
+  const headline = isInsufficient
+    ? t("frequency.headline.insufficient")
+    : t(getFrequencyHeadlineKey(postsPerDay));
   const score = computeFrequencia(postingFrequencyWeekly);
   const statusKey = getFrequencyStatusKey(score);
   const verdictKey = statusKey === "high" ? "high" : statusKey === "medium" ? "medium" : "low";
@@ -390,13 +410,14 @@ export function FrequencyCard({
   const weekdayShort = (t("frequency.weekday_short", { returnObjects: true }) as string[]) ?? [];
 
   // Dynamic subtitle: "1 post a cada 1–2 dias · 12 publicações em 18 dias"
-  const hasUsableData = postsAnalyzed > 0 && effectiveWindowDays > 0;
+  const hasUsableData =
+    !isInsufficient && effectiveSampleSize > 0 && effectiveWindowDays > 0;
   const subtitleLine = hasUsableData
     ? t("frequency.subtitle", {
         headline,
-        posts: postsAnalyzed,
+        posts: effectiveSampleSize,
         postsLabel: t(
-          postsAnalyzed === 1 ? "frequency.posts_one" : "frequency.posts_other",
+          effectiveSampleSize === 1 ? "frequency.posts_one" : "frequency.posts_other",
         ),
         days: effectiveWindowDays,
         daysLabel: t(
@@ -418,6 +439,7 @@ export function FrequencyCard({
         <div className="flex items-start gap-3">
           <h3 className="font-display text-[1.25rem] sm:text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight break-words">
             {t("frequency.title")}{" "}
+            {!isInsufficient ? (
             <span
               className="font-semibold"
               style={{
@@ -433,17 +455,22 @@ export function FrequencyCard({
             >
               {frequencyStatus}
             </span>
+            ) : null}
           </h3>
         </div>
-        {subtitleLine && (
+        {subtitleLine ? (
           <p className="text-[15px] text-content-secondary leading-relaxed">
             {subtitleLine}
           </p>
-        )}
+        ) : isInsufficient ? (
+          <p className="text-[15px] text-content-secondary leading-relaxed">
+            {headline}
+          </p>
+        ) : null}
       </div>
 
-      {/* Resumo da semana */}
-      <WeeklySummary days={calendarDays} t={t} />
+      {/* Resumo da semana — hidden when cadence is insufficient */}
+      {!isInsufficient && <WeeklySummary days={calendarDays} t={t} />}
 
       {/* Calendar grid */}
       {weeks.length > 0 && (
@@ -547,13 +574,15 @@ export function FrequencyCard({
         </div>
       )}
 
-      {/* Verdict */}
+      {/* Verdict — suppressed when cadence is insufficient (no strong claims). */}
+      {!isInsufficient && (
       <InsightCallout tone={verdictTone} label={verdictLabel} className="mt-auto mx-4 sm:mx-5 md:mx-6 mb-5 sm:mb-6 md:mb-8">
         <p>
           <span className="font-semibold">{verdict.strong}</span>{" "}
           {verdict.rest}
         </p>
       </InsightCallout>
+      )}
     </article>
   );
 }

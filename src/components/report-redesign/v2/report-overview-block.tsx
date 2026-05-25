@@ -149,6 +149,9 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
               windowDays={result.coverage.windowDays}
               postingFrequencyWeekly={k.postingFrequencyWeekly}
               calendarDays={enriched.postingTimeline}
+              cadenceSufficient={enriched.cadence.sufficient}
+              cadenceSampleSize={enriched.cadence.sampleSize}
+              cadenceWindowDays={enriched.cadence.windowDays}
             />
             <FormatCard
               postsAnalyzed={k.postsAnalyzed}
