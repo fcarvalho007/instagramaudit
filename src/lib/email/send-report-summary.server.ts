@@ -14,7 +14,7 @@
 import { buildReportSummaryEmailData } from "./build-report-summary-data.server";
 import { renderReportSummary } from "./templates/report-summary";
 import { sendTransactionalEmail } from "./transactional-email.server";
-import { resolveReportUrl } from "./url";
+import { resolveReportUrl, buildUnsubscribeUrl } from "./url";
 
 export interface SendReportSummaryArgs {
   toEmail: string;
@@ -60,6 +60,7 @@ export async function sendReportSummaryEmail(
       ),
       kpis: summary.kpis,
       topPost: summary.topPost,
+      unsubscribeUrl: args.leadId ? buildUnsubscribeUrl(args.leadId) : null,
     });
   } catch (err) {
     return {
