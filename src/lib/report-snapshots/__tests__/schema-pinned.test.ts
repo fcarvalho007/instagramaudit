@@ -69,9 +69,7 @@ describe("ReportPayloadV1Schema — preserves is_pinned", () => {
 
   it("yields realistic cadence after pinned filter", () => {
     const parsed = ReportPayloadV1Schema.parse(payload);
-    // Adapter expects SnapshotPayload shape; the persisted payload is a
-    // close superset for the fields the adapter actually reads.
-    const data = snapshotToReportData({
+    const { data } = snapshotToReportData({
       payload: parsed as unknown as Parameters<typeof snapshotToReportData>[0]["payload"],
     });
     expect(data.profile.windowDays).toBeLessThanOrEqual(20);
