@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Menu, Lock, ArrowRight, Star, Check } from "lucide-react";
+import { Menu, Lock, ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
@@ -15,7 +15,7 @@ import {
 } from "@/lib/report/report-variant";
 import { useBlocks, type BlockConfig } from "./block-config";
 import { scrollToBlock, useActiveBlock } from "./use-active-block";
-import { PremiumInterestDialog, type PricingOption } from "./premium-interest-dialog";
+import { PremiumInterestDialog } from "./premium-interest-dialog";
 import { useReportTracking } from "./report-tracking-context";
 import { trackEvent } from "@/lib/tracking.functions";
 
@@ -23,12 +23,13 @@ import { trackEvent } from "@/lib/tracking.functions";
 
 type AccessState = "accessible" | "partial" | "locked";
 type Group = "incluido" | "premium";
+type AccessBadge = "free" | "launch" | "premium";
 
 interface SidebarItem {
   block: BlockConfig;
   group: Group;
   access: AccessState;
-  partialBadge?: string;
+  accessBadge: AccessBadge;
 }
 
 interface SidebarProfile {
@@ -43,43 +44,41 @@ interface SidebarProps {
   profile: SidebarProfile;
 }
 
-const COFRE_ANCHOR_ID = "report-cofre";
-
 // ── Item builder ─────────────────────────────────────────────────────
 
 function buildSidebarItems(
   blocks: readonly BlockConfig[],
   variant: ReportVariant,
   features: VariantFeatures,
-  partialLabel: string,
 ): SidebarItem[] {
   return blocks.map((block) => {
+    const accessBadge: AccessBadge =
+      block.id === "overview"
+        ? "free"
+        : block.id === "diagnostico"
+          ? "launch"
+          : "premium";
     const fv = features[block.featureKey];
     if (variant === "internal_lab" || variant === "pro_preview") {
-      return { block, group: "incluido" as Group, access: "accessible" as AccessState };
+      return { block, group: "incluido", access: "accessible", accessBadge };
     }
     // public_mvp
     if (fv === "hidden") {
-      return { block, group: "premium" as Group, access: "locked" as AccessState };
+      return { block, group: "premium", access: "locked", accessBadge };
     }
     if (fv === "lightweight" || fv === "teaser") {
       return {
         block,
-        group: "incluido" as Group,
-        access: "partial" as AccessState,
-        partialBadge: block.id === "performance" ? "3/5" : partialLabel,
+        group: "incluido",
+        access: "partial",
+        accessBadge,
       };
     }
-    return { block, group: "incluido" as Group, access: "accessible" as AccessState };
+    return { block, group: "incluido", access: "accessible", accessBadge };
   });
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
-
-function scrollToCofre() {
-  const el = document.getElementById(COFRE_ANCHOR_ID);
-  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-}
 
 function initialOf(handle: string) {
   return handle.replace(/^@/, "").charAt(0).toUpperCase() || "?";
