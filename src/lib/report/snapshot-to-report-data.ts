@@ -1252,15 +1252,17 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   const windowLabel = isInsufficient
     ? "amostra recente insuficiente"
     : cadence.method === "sample_span"
-      ? `amostra de ${windowDays} dias`
+      ? `últimas ${sampleSize} publicações`
       : `últimos ${windowDays} dias`;
   const windowShortLabel = isInsufficient
     ? "amostra insuficiente"
-    : `${windowDays} dias`;
+    : cadence.method === "sample_span"
+      ? `${sampleSize} publicações`
+      : `${windowDays} dias`;
   const kpiSubtitle = isInsufficient
     ? cadence.notePt ?? "amostra recente insuficiente"
     : cadence.method === "sample_span"
-      ? `amostra de ${sampleSize} publicações · ${windowDays} dias`
+      ? `ritmo observado nas últimas ${sampleSize} publicações`
       : `${sampleSize} publicações nos últimos ${windowDays} dias`;
   const sampleCaption = isInsufficient
     ? "Análise baseada na amostra recolhida (cadência não calculada)."
