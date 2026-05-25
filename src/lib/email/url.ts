@@ -29,3 +29,19 @@ export function resolveReportUrl(
   const safeHandle = encodeURIComponent(handle.replace(/^@/, ""));
   return `${base}/analyze/${safeHandle}`;
 }
+
+/**
+ * Server-only: returns the absolute URL for the public unsubscribe page,
+ * carrying a signed token bound to a single lead. Safe to embed in
+ * marketing emails; never include in transactional emails (report-ready,
+ * personal-area-saved, request-received).
+ */
+export function buildUnsubscribeUrl(leadId: string): string {
+  // Late-import to keep node:crypto out of any client bundles that might
+  // statically reach this module via the resolveReportUrl path.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { signUnsubscribeToken } = require("./unsubscribe-token.server") as typeof import("./unsubscribe-token.server");
+  const token = signUnsubscribeToken(leadId);
+  const base = resolveBaseUrl();
+  return `${base}/unsubscribe?token=${encodeURIComponent(token)}`;
+}
