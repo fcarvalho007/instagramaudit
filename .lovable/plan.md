@@ -1,93 +1,70 @@
-## Status of P0 items
-Items 1–4 were already fixed in prior turns of this session:
-- ReportBlockNav: no €3/€13, AccessSummaryCard in place with Free / Launch offer / Premium badges.
-- `/app/plan` → redirects to `/precos`.
-- `pro-tracking-teaser` is now neutral.
-- `app.account` shows "Conta ativa".
+Read-only audit — no code changes proposed.
 
-This plan ships the **remaining 3 deltas**:
-A. Add the pending-payment note to the sidebar AccessSummaryCard (item 1 sub-task).
-B. Rewrite `feedback-schema` enum + downstream consumers (item 5).
-C. Rewrite `commercial-followup` email to €7/€28, no IVA, no checkout claim (item 6).
+## Verdict: **GO** for public sharing
 
-## Files touched
-- `src/i18n/locales/pt/report.json`, `src/i18n/locales/en/report.json` — add `nav.access.pending_note`.
-- `src/components/report-redesign/v2/report-block-nav.tsx` — render `pending_note` line in AccessSummaryCard.
-- `src/lib/feedback/feedback-schema.ts` — new enum + labels.
-- `src/lib/feedback/__tests__/feedback-schema.test.ts` — update enum test.
-- `src/lib/admin/feedback-intent.ts` — map new enum values to actions; drop monthly/agency branches.
-- `src/lib/admin/__tests__/feedback-intent.test.ts` — update test cases.
-- `src/lib/email/templates/commercial-followup.ts` — €7 / €28, no IVA, "Sem subscrição. Sem renovação automática.", neutralize checkout claim.
-- `src/lib/email/__tests__/templates.test.ts` — update assertions.
+All P0 commercial surfaces are aligned with the simplified €7 / €28 model. Residuals are internal/back-compat only.
 
-Not touched: `src/components/feedback/feedback-form.tsx` (renders from constants — auto-updates), `src/lib/brevo/enum-mappers.ts` (existing fallbacks already cover the new values: digits → `one_off`, `other` → `unsure`), brevo tests, brevo sync, `unlock-flow.ts`, `pricing-feedback.ts`, providers, RLS.
+## Surface-by-surface
 
-## Detailed changes
+| Surface | Status | Evidence |
+|---|---|---|
+| `/precos` (pt/en pricing.json + route) | PASS | Only `7€` / `28€` / `5,60€`, `trust_note` "Sem subscrição. Sem renovação automática.", `pending_note` present. No Pro/Agency. |
+| PremiumInterestDialog | PASS | Two cards bound to `premium.dialog.single.price` (`7€`) and `premium.dialog.pack.price` (`28€`). Header comment confirms "Real checkout endpoint is not yet wired. CTAs only emit a typed event." |
+| ReportBlockNav (public sidebar) | PASS | No €, no Pro/Agency. Badges Free / Launch offer / Premium. AccessSummaryCard renders `nav.access.pending_note` + `nav.access.trust`. CTA opens PremiumInterestDialog. |
+| `/app/plan` | PASS | Reduced to `beforeLoad → redirect('/precos')`. No Pro/Agency tiers. |
+| `/app/account` | PASS | Renders fixed "Conta ativa" badge; no `planLabels`. |
+| `pro-tracking-teaser` | PASS | Copy = "Acompanhamento recorrente ficará disponível numa fase futura.". No Pro/Agency, no plan link. (Component export symbol `ProTrackingTeaser` is internal — not user-visible.) |
+| `feedback-schema` | PASS | Enum = `single_report_7` / `pack_5_reports_28` / `not_ready_to_pay` / `other`. Labels in 7€/28€. Consumers (`feedback-intent.ts`, `feedback-form.tsx`, tests) aligned. |
+| `commercial-followup` email | PASS | "1 relatório — 7€", "Pack 5 relatórios — 28€ (5,60€ por relatório, poupas 20%)", "Sem subscrição. Sem renovação automática.". No IVA. Preheader updated. |
+| Header / Footer | PASS | Both link to `/precos` only. No `/app/plan` references. |
+| PT / EN i18n | PASS | `pricing.json`, `report.json.nav.access` and `gate.json` parity verified. EN uses `€` prefix; PT uses `€` suffix per locale convention. |
 
-### A. Sidebar pending-payment note
-Add i18n key:
-- PT `nav.access.pending_note` = "Pagamento brevemente disponível — os botões registam o teu interesse."
-- EN `nav.access.pending_note` = "Payment coming soon — buttons register your interest."
+## Confirmation checklist
 
-In `AccessSummaryCard`, render the pending note as a discreet line between the CTA and the existing trust microcopy. Keep the trust line ("1 relatório ou pack de 5. Sem subscrição.") — it complements the pending note.
+1. **No visible €3 / €13** in any commercial surface — `rg "€3\b|€13\b" src/` returns 0 hits. ✓ (`€312/€319/€348` in `admin/mock-data.ts` and `€72` in admin waterfall are internal admin-only mock revenue, not pricing.)
+2. **No Pro/Agency/monthly plan as purchasable** — none in `/precos`, dialog, sidebar, account, plan, teaser, followup, header, footer. ✓
+3. **Only €7 and €28 visible** as pricing options. ✓
+4. **Checkout pending is clearly stated** — `pending_note` on `/precos` + sidebar; dialog comment + no payment redirect. ✓
+5. **CTAs do not pretend to process payment** — dialog buttons emit `pricing_option_clicked`; sidebar CTA opens the dialog; followup email "Desbloquear" only renders when caller passes a real `checkoutUrl` (none in production code paths today). ✓
+6. **PT/EN aligned** — same keys, same semantics. ✓
+7. **No report data / providers / cache / unlock logic touched** — changes confined to i18n, copy, schema enum, email template, redirect route. Apify/OpenAI/DataForSEO/Brevo/Resend/snapshots/RLS untouched. ✓
 
-### B. feedback-schema
+## Remaining issues
 
-`PRICING_PREFERENCE_VALUES`:
-```ts
-["single_report_7", "pack_5_reports_28", "not_ready_to_pay", "other"]
-```
+**P0**: none.
 
-`PRICING_PREFERENCE_LABELS` (PT, matching the current Portuguese-only form copy):
-- `single_report_7` → "1 relatório — 7€"
-- `pack_5_reports_28` → "Pack 5 relatórios — 28€"
-- `not_ready_to_pay` → "Ainda não estou pronto/a para pagar"
-- `other` → "Outra opção"
+**P1**: none.
 
-DB column `lead_feedback.pricing_preference` is free text (no enum constraint) — no migration required; old values remain readable but won't be produced going forward.
+**P2 (cosmetic / hygiene, optional, not blocking launch):**
+- `src/components/app/pro-tracking-teaser.tsx` — file name and exported symbol `ProTrackingTeaser` retain the "Pro" word. Internal-only; no user-visible surface. *Recommendation: rename to `RecurringTrackingTeaser` in a future refactor sweep.*
+- `src/lib/admin/mock-data.ts`, `src/routes/design-system.tsx`, `src/routes/admin.report-lab.tsx`, `src/routes/admin.report-preview.$username.tsx`, `src/lib/report/report-variant.ts` — references to "Pro" / "Pro candidate" / "pro_preview" / "Plano Pro". All admin/internal or design-system playground; not reachable from public navigation.
+- `src/components/beta/beta-request-form.tsx` line 425 ("Plano Pro mensal") and line 26 (`{value: "agency"}`) — beta-program audience-segmentation field, not a pricing option. Classified as *segmentation, not pricing*.
+- `src/components/report-tier/tier-copy.ts` line 13 — "A versão Pro aprofundará concorrentes…" — future-tense marketing copy inside report tier teaser. Not a purchasable Pro plan, but reads as one. *Recommendation: soften to "Uma versão futura aprofundará…" before public launch if you want zero "Pro" mentions in the report itself.*
+- `src/i18n/locales/{pt,en}/report.json` keys `tier.pro`, `tier.pro_active`, `chart.public_title` ("disponível na versão Pro"), `score_public_title` ("Score visual · Pro") — same situation as above; surfaced only in `report-comment-intelligence.tsx` public_mvp teaser. *Recommendation: optional rename pass.*
+- `src/lib/brevo/enum-mappers.ts` still recognises legacy `nao_sei` as `unsure` — intentional back-compat, no action.
+- `src/lib/feedback/feedback-schema.ts` keeps `PricingPreference` type re-exported alongside `src/lib/unlock-flow.ts` PRICING_PREFERENCES (different enum, different feature). Both are internal — no conflict.
 
-`src/lib/admin/feedback-intent.ts` `actionByPricing`:
-- `single_report_7` → "Responder com proposta de relatório único"
-- `pack_5_reports_28` → "Sugerir pack de 5 relatórios"
-- `not_ready_to_pay` → "Nutrir mais tarde"
-- `other` → fallback
-- Remove `plano_mensal` / `plano_agencia` cases. Also remove the mid-intent "Explorar plano mensal" fallback strings — replace with "Sugerir pack de 5 relatórios".
+## Files still containing commercial legacy references (classification)
 
-Tests:
-- `feedback-schema.test.ts`: replace enum array with new 4 values.
-- `feedback-intent.test.ts`: replace the three pricing-specific cases with `single_report_7`, `pack_5_reports_28`, `not_ready_to_pay`; assert new action strings; drop the `plano_mensal` test.
+| File | Reference | Classification |
+|---|---|---|
+| `src/components/app/pro-tracking-teaser.tsx` | symbol `ProTrackingTeaser` | internal-only, cosmetic rename |
+| `src/components/beta/beta-request-form.tsx` | "Plano Pro mensal", `value: "agency"` | segmentation, not pricing |
+| `src/components/report-tier/tier-copy.ts` | "versão Pro" copy | obsolete copy (P2) |
+| `src/i18n/locales/{pt,en}/report.json` | tier.pro / "versão Pro" | obsolete copy (P2) |
+| `src/components/report-redesign/report-tier-teaser.tsx`, `src/components/report-redesign/v2/report-comment-intelligence.tsx` | comments + uses tier copy | downstream of above (P2) |
+| `src/routes/design-system.tsx` | "Plano Pro", "Upgrade Pro", "Agency" badges | internal design-system playground |
+| `src/routes/admin.report-lab.tsx`, `admin.report-preview.$username.tsx`, `src/lib/report/report-variant.ts` | "pro_preview", "Pro candidate" | admin-internal naming |
+| `src/lib/admin/mock-data.ts`, `src/components/admin/v2/receita/waterfall-section.tsx` | "€72", "€312", "MRR €789", "4 clientes · €312 MRR" | admin mock metrics |
+| `src/lib/brevo/enum-mappers.ts` | `nao_sei`, `subscription` | back-compat mapper |
+| `src/lib/brand/contact.ts` | `mailtoPro`, `mailtoAgency` (deprecated aliases) | back-compat, JSDoc-marked |
 
-### C. commercial-followup email
+## Recommendation before public sharing
 
-Subject/preheader: keep subject; update preheader to "Duas opções para desbloquear o relatório completo. Sem subscrição."
+Ship as-is. The public-facing pricing surface is consistent and safe.
 
-Body text + HTML, replacing the two pricing lines with:
-- PT text:
-  - "· 1 relatório — 7€"
-  - "· Pack 5 relatórios — 28€ (5,60€ por relatório, poupas 20%)"
-  - new line: "Sem subscrição. Sem renovação automática."
-- HTML mirrors the same.
+Optional pre-launch polish (≤ 1 prompt of work, all P2):
+1. Soften "versão Pro" mentions in `report-tier/tier-copy.ts` + report.json `tier.*` keys to neutral future-tense copy, so the report itself stops hinting at a "Pro plan".
+2. Rename `pro-tracking-teaser` → `recurring-tracking-teaser` for code hygiene.
 
-Checkout claim: when no `checkoutUrl` is present, the current code shows a "Falar connosco" mailto or muted text. Keep that. When `checkoutUrl` IS supplied, retain the existing "Desbloquear" button — it's only rendered if the caller provides a URL, so it cannot imply checkout exists by default. (Per constraint "do not imply checkout is active": current behaviour is already gated by caller, no extra change needed.)
-
-Remove "+ IVA" everywhere; `/precos` does not mention IVA.
-
-Tests in `templates.test.ts` (lines 132–137):
-- Replace `expect(out.text).toContain("€3 + IVA")` with `expect(out.text).toContain("7€")`.
-- Replace `expect(out.text).toContain("€13 + IVA")` with `expect(out.text).toContain("28€")`.
-- Update preheader assertion line 108–110 to match the new preheader text.
-- Keep "docentes" assertion — academic line stays.
-
-## Validation
-- `bunx tsc --noEmit`
-- `bunx vitest run`
-- Grep classification report (residuals expected):
-  - `Pro` / `Agency`: only in `post-analysis-conversion-layer.tsx` (out-of-scope public component flagged previously) and `mailtoPro`/`mailtoAgency` deprecated aliases in `contact.ts`. Both reported as **obsolete-out-of-scope**.
-  - `€3`/`€13`: should be 0 in `src/`. Any remaining are bugs.
-  - `plano mensal` / `monthly plan` / `agency plan`: 0 expected.
-  - Internal-only matches in `gate.json`, `mock-data.ts`, brevo type names (e.g. `subscription` enum), `unlock-flow.ts` legacy enum: classified as **internal/segmentation, not pricing**.
-
-## Out of scope (not in this prompt)
-- `post-analysis-conversion-layer.tsx` Pro/Agency cards.
-- PremiumInterestDialog pending note (audit noted as missing; not in this prompt's task list).
-- Removing the deprecated `mailtoPro`/`mailtoAgency` aliases.
+Skip if you want to launch immediately — neither blocks the commercial story.
