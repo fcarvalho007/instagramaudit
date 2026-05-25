@@ -1,36 +1,66 @@
-## Mudanças
+## Goal
+Replace the old price-card "cofre" area in the public report sidebar with a clean access summary that matches the simplified pricing model (€7 single / €28 pack, no subscription). Remove all €3/€13 pricing and "Abrir o cofre" wording from the sidebar.
 
-### 1. `src/components/report-tier/tier-copy.ts`
-Remover o item `"Exportação em PDF (em breve)"` da lista `comparison.columns.complete.items`. A exportação PDF não é parte estável da oferta paga; promete uma feature que não existe. Os restantes 5 itens da coluna mantêm-se.
+## Scope (touched files)
+- `src/components/report-redesign/v2/report-block-nav.tsx` — sidebar component
+- `src/i18n/locales/pt/report.json` — PT strings under `nav`
+- `src/i18n/locales/en/report.json` — EN strings under `nav`
 
-### 2. `src/components/report-redesign/v2/overview/comparison-header.tsx`
-Remover o badge "EM BREVE" do card "Adicionar outra rede" (linhas 93–96 — `<span>` decorativo roxo). O título continua a ler "Adicionar outra rede" + subtítulo "Facebook · TikTok · YouTube"; o `RoadmapInfoDialog` já explica o contexto ao clicar. Não substituir por outro badge — neste card o "em breve" não acrescenta valor e cria ruído na zona acima do gate. As chaves i18n `comparison.roadmap_card_badge` ficam órfãs mas são inofensivas; deixá-las (fora de âmbito limpar i18n não consumido).
+Not touched: block-config, premium-interest-dialog, report-shell-v2, pricing logic, providers, snapshots, unlock flow, `/precos`.
 
-Nota: este card **não** está no Block 1 público — está na barra auxiliar abaixo do `EditorialIdentityCard`. O badge a remover é apenas o "Em breve / Coming soon" do card de roadmap multi-rede. Não há outro "EM BREVE" no Block 1.
+## Changes
 
-### 3. `src/components/report-enriched/report-enriched-competitors-cta.tsx`
-- `title="Disponível em breve"` → `title="Disponível nas secções premium."`
-- Texto do botão: `{ENRICHED_COPY.competitorsCta.cta} · em breve` → apenas `{ENRICHED_COPY.competitorsCta.cta}`.
-- Adicionar um pequeno `<span>` neutro à direita / abaixo do CTA com `Disponível nas secções premium.` (texto, não badge promocional) para manter o sinal de "premium" sem prometer datas.
-- Sem alterações em `ENRICHED_COPY` (campo `cta` continua "Adicionar concorrentes").
-- Componente é renderizado em `report-shell.tsx` e `report-shell-v2.tsx` em variantes públicas — confirmado por grep.
+### 1. `report-block-nav.tsx`
+- **Delete** `CofreCard` component entirely (lines ~275–412) and the `COFRE_ANCHOR_ID` / `scrollToCofre` helper.
+- **Add** new `AccessSummaryCard` component rendered in the same slot inside `SidebarList`. It contains:
+  - Short note (only shown when `variant === "public_mvp"` and Block 2 is in the list): `t("nav.access.beta_note")`.
+  - Single CTA button `t("nav.access.cta")` that opens `PremiumInterestDialog` (reuses existing `useReportTracking` + `trackEvent({ eventType: "unlock_clicked", source_component: "sidebar_access" })`).
+  - Trust microcopy below CTA: `t("nav.access.trust")`.
+  - Clean, low-visual-weight styling using existing tokens (white surface, `border-border-default`, no gold gradient, no price cards, no star badge).
+- **Remove** the locked-row scroll-to-cofre behavior: rename `onLockedClick` to open the same dialog. Simplest path — lift dialog state into `SidebarList` (or pass a single `onLockedClick={openDialog}` from the parent components). To keep the diff small, keep `AccessSummaryCard` owning the dialog and expose its `openDialog` via a ref-less pattern: move dialog state up into `SidebarList` and pass `openDialog` to both `AccessSummaryCard` and the locked `ItemRow` via `onLockedClick`. Desktop + mobile-drawer parents simply call the same opener.
+- **Add per-item access badges in `ItemRow`** (replaces partial "3/5" and active dot semantics for the access label slot):
+  - `overview` → `t("nav.access.badge_free")` (emerald)
+  - `diagnostico` → `t("nav.access.badge_launch")` (amber)
+  - all others → `t("nav.access.badge_premium")` (gold)
+  - Determined via a new `accessBadge` field set inside `buildSidebarItems` based on `block.id`. Existing "partial 3/5" badge dropped from the public sidebar (no longer needed, since access is now communicated by the per-block badge).
 
-### 4. `src/routes/app.reports.$id.tsx` (linhas 312–322)
-- `aria-label="Regenerar PDF — funcionalidade disponível em breve"` → `aria-label="PDF indisponível neste momento"`.
-- Texto do botão `Regenerar PDF — em breve` → `PDF indisponível neste momento`.
-- Botão permanece `disabled` / `aria-disabled`. Sem outras mudanças (mensagens de `pdf_status` ficam como estão — descrevem estado real do snapshot, não promessa).
+### 2. i18n — `nav.access` namespace (PT/EN), replace the old `nav.cofre` block
 
-## Fora de âmbito
+PT:
+```
+"access": {
+  "badge_free": "Grátis",
+  "badge_launch": "Oferta de lançamento",
+  "badge_premium": "Premium",
+  "beta_note": "O Diagnóstico editorial faz parte da experiência premium, mas está aberto nesta fase beta.",
+  "cta": "Ver opções de acesso",
+  "trust": "1 relatório ou pack de 5. Sem subscrição."
+}
+```
 
-OpenAI, Apify, DataForSEO, cache, schemas, pricing logic, lead magnet, gates, checkout, sidebar admin, sidebar report, páginas legais, Block 2 (mantém-se como launch offer), Blocks 3–6 (mantêm-se premium/locked).
+EN:
+```
+"access": {
+  "badge_free": "Free",
+  "badge_launch": "Launch offer",
+  "badge_premium": "Premium",
+  "beta_note": "Editorial diagnosis is part of the premium experience, but it is open during this beta phase.",
+  "cta": "View access options",
+  "trust": "1 report or pack of 5. No subscription."
+}
+```
 
-## i18n
+The `nav.cofre.*` keys are removed (no other consumer — grep confirms only `report-block-nav.tsx` reads them).
 
-Apenas o componente já internacionalizado (`comparison-header.tsx`) usa i18n; nada a mudar lá (apenas removo o JSX do badge). Os outros 3 ficheiros tocados são PT-only no estado actual — não introduzo i18n nova.
+## Layout / mobile
+- Card stays inside `SidebarList`, so it renders on desktop (sticky sidebar) and inside the mobile sheet drawer — same as today. No new fixed positioning.
+- Compact: one note paragraph + one full-width CTA + one microcopy line. No grid of cards, no decorative glow.
 
-## Validação
+## Validation
+- `bunx tsc --noEmit`
+- `bunx vitest run`
+- `rg "€3|€13|Abrir o cofre|cofre" src/components/report-redesign/v2/report-block-nav.tsx` → empty.
+- Manual: public report sidebar shows "Grátis" on Block 1, "Oferta de lançamento" on Block 2 with note, "Premium" badge on Blocks 3–6, single CTA opens existing PremiumInterestDialog. PT/EN both.
 
-- `bunx tsc --noEmit` verde.
-- `bunx vitest run` verde.
-- `rg -n "em breve|Em breve|EM BREVE|Coming soon|Regenerar PDF"` nos 4 ficheiros alterados → 0 ocorrências.
-- Manual: report público sem badge "Em breve" no Block 1; CTA de concorrentes diz "Disponível nas secções premium"; coluna "Leitura completa" sem PDF; `/app/reports/$id` mostra "PDF indisponível neste momento".
+## Out of scope
+Feedback form, commercial email templates, `app.plan.tsx`, `app.account.tsx`, brand contact helpers — these P0 items from the prior audit are NOT part of this prompt and will be addressed in separate prompts.
