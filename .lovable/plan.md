@@ -1,108 +1,143 @@
-## Cadência v3 — fórmula em janelas (30d → 90d → amostra)
+## Auditoria — Texto editorial do Card 1 (Block 1) do relatório público
 
-### Old vs new formula
+Auditoria read-only. Nenhuma alteração efectuada. Sem chamadas a OpenAI/Apify, sem mutações em Supabase.
 
-| | Atual | Nova |
+---
+
+### 1. Qual chamada OpenAI alimenta o card
+
+O texto do primeiro card vem **exclusivamente** do bloco `ai_insights_v2`, secção `hero`.
+
+- Gerador: `generateInsightsV2()` em `src/lib/insights/openai-insights.server.ts:468`.
+- Pipeline: `src/lib/enrichment/run-enrichment.server.ts:400` chama `generateInsightsV2` e persiste o resultado em `analysis_snapshots.normalized_payload.ai_insights_v2`.
+- Modelo: `OPENAI_INSIGHTS_MODEL` (default `DEFAULT_OPENAI_MODEL`), `temperature: 0.4`, `response_format: json_schema strict`, schema `RESPONSE_JSON_SCHEMA_V2` (`src/lib/insights/prompt-v2.ts:168`).
+- Persistência: campo `sections.hero = { emphasis, text }`, com `text` ≤ 240 chars.
+
+O bloco `ai_insights_v1` (`generateInsights`) ainda é gerado em paralelo (linha 352 do enrichment) mas alimenta um sítio diferente ("Leitura estratégica" / cartões longos), **não** o card 1.
+
+### 2. Caminho até ao componente
+
+```
+analysis_snapshots.normalized_payload.ai_insights_v2.sections.hero
+  → buildAiInsightsV2()                 src/lib/report/snapshot-to-report-data.ts:868
+  → ReportEnriched.aiInsightsV2.sections.hero
+  → ReportOverviewBlock                  src/components/report-redesign/v2/report-overview-block.tsx:113
+        aiHeroText      = enriched.aiInsightsV2?.sections.hero?.text
+        aiHeroEmphasis  = enriched.aiInsightsV2?.sections.hero?.emphasis
+  → EditorialIdentityCard                src/components/report-redesign/v2/overview/editorial-identity-card.tsx
+        deriveCopyFromAi() (linha 98)    título + parágrafo
+```
+
+`report_snapshots.report_payload_jsonb` é construído por `build-report-snapshot-payload.server.ts` a partir do mesmo `normalized_payload`, pelo que o card lê sempre o `hero.text` produzido pela v2.
+
+### 3. Fallback determinístico
+
+Em `editorial-identity-card.tsx`:
+
+- Se `aiHeroText` está ausente/nulo → `buildFallbackCopy()` (linha 57) escolhe uma de 5 cópias estáticas, **com base apenas nos scores `envolvimento/frequencia/interaccao`** (i18n key `identity.fallback.*`). É daqui que sai literalmente "Audiência existe, falta direção" / "no_direction" / "cadence_no_signal" — não vem da IA, vem de templates estáticos quando a IA falha, está em cache antiga sem secção hero, ou o handle não está na allowlist.
+- Os bullets "O que funciona / O que limita" (`deriveSignals`, linha 228) são **100% determinísticos** e usam `postingFrequencyWeekly`, `dominantFormatShare`, `engagementDeltaPct`, etc. — não veem o texto da IA.
+
+### 4. Input enviado à OpenAI para o hero
+
+`buildInsightsV2UserPayload` reutiliza `buildInsightsUserPayload` (`src/lib/insights/prompt.ts:~380`). Payload que o modelo vê:
+
+| Eixo | Recebido | Detalhe |
 |---|---|---|
-| Janela | `(max - min) / 7 dias` da amostra inteira | **30 dias rolling** (`posts_30d / 4.345`) → fallback **90 dias** (`posts_90d / 12.857`) → fallback **sample span** (`posts / span_weeks`) |
-| Pinned | Filtrados antes do cálculo | Igual |
-| Sample inválida | Mostra número distorcido | Mostra copy neutra "amostra recente insuficiente…" e `postingFrequencyWeekly = 0` |
-| Sort | Não explícito | Sempre desc por ts antes de tudo |
-| Timestamps | Só `taken_at_iso` | `taken_at_iso` OR `taken_at` (auto-detect s vs ms) |
+| Engagement rate vs benchmark | Sim | `content_summary.average_engagement_rate`, `benchmark.{benchmark_value_pct, profile_value_pct, difference_pct, position, tier_label}` |
+| Follower tier | Sim | `profile.followers_count` + bloco KB (tier resolvido em `tierFromFollowers`) + `REFERÊNCIAS DE BENCHMARK` injectado no system prompt |
+| Cadência recente | **Parcial** | Apenas `content_summary.estimated_posts_per_week` (média global do sample, não janela 30d/90d). A v3 da cadência (`computeCadence`) corre só no adapter de report — o modelo não recebe `method`, `windowDays`, `sufficient` |
+| Sample quality | **Parcial** | `content_summary.posts_analyzed` enviado; mas não sufficient flag nem o aviso "amostra recente insuficiente" |
+| Comments per post | Sim | `content_summary.average_comments` |
+| Likes per post | Sim | `content_summary.average_likes` |
+| Best/worst posts | Parcial | `top_posts[0..2]` (cap 3), só os top por engagement — não recebe worst |
+| Format mix | Parcial | Só `dominant_format` (sem percentagens por formato) |
+| Caption semantic | **Não** | Só `caption_excerpt` truncado a 240 chars no top_posts; sem análise temática/tom |
+| Visual cover | **Não** | Inexistente no pipeline |
+| Competitor context | Parcial | `competitors_summary.count` + `median_engagement_pct` + `editorial_patterns.format_vs_competitors` quando presente |
+| Market/search signals | Sim | `market_signals.*` (free/paid, keywords, trend) |
+| Knowledge Base | Sim | `formatKnowledgeContextForPrompt` + `formatBenchmarkContextForPrompt` no system prompt |
+| Editorial patterns (R5) | Sim | `engagement_trend`, `caption_length`, `hashtag_count`, `collaboration_lift`, `comments_to_likes_ratio`, `market_demand_content_fit`, `format_vs_competitors` |
 
-### Plano cirúrgico
+### 5. Prompt para o hero (estado actual)
 
-**1. Novo módulo puro `src/lib/report/cadence.ts`**
-Função exportada `computeCadence(posts, { now? })` que devolve:
-```ts
-{
-  method: "window_30d" | "window_90d" | "sample_span" | "insufficient",
-  weekly: number,           // 0 se insufficient
-  sampleSize: number,       // posts considerados na janela final
-  windowDays: number,       // 30, 90, ou span real
-  sufficient: boolean,
-  notePt: string | null,    // copy neutra se !sufficient
-  noteEn: string | null,
+Em `prompt-v2.ts:67` o slot `"hero"` pede:
+
+> «leitura editorial de abertura … combinar OBRIGATORIAMENTE três sinais: (1) envolvimento médio + posição face ao tier, (2) ritmo semanal real (`estimated_posts_per_week`), (3) formato dominante OU tema recorrente das captions. … Máx. 240 chars.»
+
+Limitações:
+
+1. Texto único `≤ 240 chars` numa só string — não há título separado, nem síntese, nem campos accionáveis. O componente tenta dividir a primeira frase como "hook/título" (`deriveCopyFromAi`, regra ≤10 palavras sem dígito) — frágil e dependente do modelo escrever uma abertura curta.
+2. Sem campo `verdict_band` ou `confidence` → o card tem de inferir banda pelo score determinístico (`bandFor`) que pode contradizer o texto da IA.
+3. O ritmo enviado é `estimated_posts_per_week` calculado **upstream** (média geral do sample) — não a cadência v3 (`window_30d`, `sufficient`). Se a cadência v3 disser "insuficiente" mas o sample-span antigo der 0,2/semana, o modelo recebe 0,2 e pode escrever "ritmo fraco" mesmo quando há actividade recente.
+4. Nenhuma guardrail no validador (`validate-v2.ts`) que impeça a IA de contradizer métricas — só verifica forma, comprimento e blacklist linguística.
+
+### 6. Output do hero — está estruturado?
+
+Estruturado em forma (`{ emphasis, text }`) mas **não em conteúdo editorial**: tudo (diagnóstico + recomendação + número + ângulo) vive numa única string ≤240 chars. O `EditorialIdentityCard` ainda re-parte essa string para extrair título e parágrafo via regex.
+
+### 7. Resposta directa às perguntas
+
+1. **Que chamada?** `generateInsightsV2()` → `sections.hero`.
+2. **Que input?** payload de `buildInsightsUserPayload` (perfil, content_summary, top_posts até 3, benchmark, competitors_summary, market_signals, editorial_patterns) + system prompt v2 com KB + benchmark contextual.
+3. **A IA vê o quê?** Ver tabela §4. Lacunas: cadência v3 real, format mix com %, worst posts, análise semântica de captions, visuals.
+4. **Pede veredicto estratégico?** Pede uma frase editorial + recomendação, mas em 240 chars e sem campos separados — funciona como micro-insight, não como veredicto executivo.
+5. **Output estruturado?** Estruturado mínimo (`emphasis`, `text`); o card faz parsing heurístico para separar título de parágrafo.
+6. **Guardrails contra contradizer métricas?** Não. `validate-v2.ts` valida forma, comprimento, AO90, blacklist — mas não cruza o texto com os números do payload.
+7. **Card usa IA directa ou fallback?** Híbrido: usa `aiHeroText` para título+parágrafo via `deriveCopyFromAi`; se ausente, cai em `buildFallbackCopy` (5 templates). Os bullets, score, banda e MetricsStrip são **sempre determinísticos**.
+8. **Duplica KPIs visíveis?** O texto da IA pode duplicar (likes/comments/cadência são visíveis no MetricsStrip logo abaixo). A IA não recebe instrução para evitar duplicar.
+9. **Onde deve viver o novo veredicto?** Recomendação: novo campo `ai_insights_v2.editorial_verdict` (objecto estruturado), paralelo a `sections` e `priorities`, persistido no mesmo blob (mesma chamada OpenAI).
+10. **Conseguimos sem nova chamada paga?** Sim. Basta estender `RESPONSE_JSON_SCHEMA_V2` com o objecto `editorial_verdict` e ajustar o system prompt para o devolver no mesmo turno. Custo marginal: ~100-200 completion tokens extra (~$0.0005 por relatório). Sem segunda chamada.
+
+### 8. Gaps identificados
+
+- **Cadência**: a IA recebe `estimated_posts_per_week` calculado upstream com a lógica antiga. Deve receber também `cadence.weekly`, `cadence.method` (`window_30d`/`window_90d`/`sample_span`/`insufficient`) e `cadence.sufficient` para escrever sobre o ritmo sem alucinar quando o sample é fraco.
+- **Format mix**: o modelo só vê `dominant_format`. Falta `dominant_format_share`, distribuição completa.
+- **Worst posts / outliers**: só top 3 por engagement.
+- **Title vs paragraph**: não há separação no schema → parsing heurístico no componente.
+- **Verdict band / confidence**: não há campo dedicado → discrepância potencial entre texto da IA e badge calculada por scores.
+- **Anti-duplicação**: sem instrução para não repetir likes/comments/cadência já mostrados no MetricsStrip.
+- **Fallback**: 5 templates estáticos baseados só em scores → produz frases como "Audiência existe, falta direção" sempre que IA falha ou cache está stale sem `ai_insights_v2`.
+
+### 9. Recomendação (apenas plano — não implementar agora)
+
+**Novo campo estruturado em `ai_insights_v2.editorial_verdict`:**
+
+```jsonc
+"editorial_verdict": {
+  "headline": "≤ 60 chars, sem ponto final, hook editorial",
+  "diagnosis": "1 frase ≤ 220 chars: o quê + porquê com números",
+  "recommendation": "1 frase ≤ 180 chars, infinitivo impessoal",
+  "band": "solid" | "developing" | "warning",
+  "confidence": "alta" | "media" | "baixa",
+  "evidence": ["content_summary.average_engagement_rate", "cadence.method", ...]
 }
 ```
-Lógica:
-- normaliza ts: prefere `taken_at_iso`, fallback `taken_at` (heurística s/ms: valor < 1e12 → segundos × 1000)
-- filtra `is_pinned === true`
-- filtra ts inválido/NaN/futuro
-- ordena desc
-- count em <30d / <90d a partir de `now`
-- se `count_30 >= 3` → `weekly = count_30 / 4.345`, method window_30d
-- senão se `count_90 >= 3` → `weekly = count_90 / 12.857`, method window_90d
-- senão se `posts.length >= 2` e span entre max e min ≤ 180 dias → sample_span
-- senão → insufficient (weekly=0, notePt/EN preenchidos)
 
-**2. Substituir bloco em `src/lib/report/snapshot-to-report-data.ts:968-1044`**
-- continuar a filtrar pinned para `temporalSeries`/`heatmap`/`bestDays` (igual ao atual — não mexer)
-- chamar `computeCadence(posts)` para `keyMetrics.postingFrequencyWeekly` e `windowDays`
-- remover o "defense-in-depth gap filter" introduzido na volta anterior (a nova função substitui)
-- labels: `kpiSubtitle` / `windowLabel` / `temporalLabel` / `sampleCaption` passam a usar o `method` retornado:
-  - `window_30d` → "últimos 30 dias · N publicações"
-  - `window_90d` → "últimos 90 dias · N publicações"
-  - `sample_span` → "amostra de N publicações · X dias"
-  - `insufficient` → "amostra recente insuficiente para medir cadência"
-- expor `cadence` no `ReportEnriched` para componentes que queiram method/note
+**Implementação proposta (próximo prompt, Build Mode):**
 
-**3. Componentes consumidores — só copy, sem mudança estrutural**
-- `report-overview-block.tsx` → `frequenciaSubtitle` passa a aceitar `cadence` e mostrar a copy neutra quando `!sufficient`
-- `editorial-identity-card.tsx` → `rhythmBand` só corre se `cadence.sufficient`; senão a linha "Frequência" passa a "—" + nota
-- `frequency-card.tsx` → `computeFrequencia` recebe `cadence.weekly` (já está), mas se `!sufficient` mostra estado vazio
-- `report-kpi-grid.tsx` / `report-kpi-grid-v2.tsx` → quando `!sufficient`, render "—" em vez de `0,0`
-- `share-message.ts` → omite frase de cadência quando `!sufficient`
-- `report-overview-attention-row.tsx` → linha "alta cadência" só dispara se `sufficient`
+1. Adicionar `cadence` (weekly/method/sufficient/windowDays) ao `InsightsContext` e ao `buildInsightsUserPayload`.
+2. Adicionar `dominant_format_share` + distribuição por formato ao `content_summary` enviado.
+3. Estender `RESPONSE_JSON_SCHEMA_V2` com `editorial_verdict` (required) — mesma chamada, +~150 tokens completion.
+4. Estender system prompt: secção "Veredicto editorial" com regras de não-duplicação de KPIs e mapeamento `band` ↔ envolvimento real.
+5. Estender `validate-v2.ts` com guardrails cruzados (band coerente com `engagement_delta_pct`; recommendation distinta de qualquer `priorities[].title`).
+6. `EditorialIdentityCard` passa a consumir `editorial_verdict.headline` + `.diagnosis` + `.recommendation` + `.band` (deprecar parsing heurístico). Fallback determinístico mantém-se apenas como rede de segurança.
+7. Invalidação: bump `kb_version` ou adicionar contador ao `inputs_hash` para forçar regenerar v2 em snapshots existentes na próxima request.
 
-**4. Scoring**
-`computeFrequencia` em `frequency-card.tsx` é uma função pura sobre `weekly`. Não muda — recebe um `weekly` mais fiável. Confirmar via grep que nenhum scoring usa `windowDays` directo.
+### 10. Riscos e casos de teste
 
-**5. Tests novos — `src/lib/report/__tests__/cadence.test.ts`**
-- recent active (10 posts nos últimos 13 dias) → window_30d, weekly ≈ 5.4
-- pinned antigo + recentes (caso robs.cortez) → window_30d, weekly ≈ 5.4, ignora pinned
-- timestamps em segundos (`taken_at = 1716623400`) → normalizado, weekly calculado
-- timestamps em milissegundos (`taken_at = 1716623400000`) → normalizado, weekly calculado
-- timestamps em falta → ignorados, restantes contam
-- stale (último post há 200 dias) → insufficient + notePt
-- empty posts → insufficient + notePt
-- exactly 2 posts em 30 dias → cai para window_90d se 3+; senão sample_span
-- post futuro (ts > now) → descartado
+**Riscos**
+- Snapshots existentes não têm `editorial_verdict` → necessário fallback gracioso ou regeneração on-demand (sem regerar todos hoje).
+- Aumento de tokens completion (~$0.0005/relatório) — dentro do daily cap actual de $5.
+- Schema strict pode rejeitar respostas → manter fallback determinístico até observar 50+ runs limpos.
 
-**6. Backfill — não necessário desta vez**
-O snapshot do robs.cortez já tem `is_pinned` correto (backfill anterior). A nova fórmula vai recalcular na próxima leitura sem tocar na DB.
+**Casos de teste a adicionar (sem chamar IA — fixtures)**
+- `validate-v2` aceita verdict bem-formado.
+- `validate-v2` rejeita: `band=solid` quando `engagement_delta_pct < -30`.
+- `validate-v2` rejeita: `recommendation` que duplica `priorities[0].title`.
+- `snapshot-to-report-data` mapeia `editorial_verdict` para `ReportEnriched`.
+- `EditorialIdentityCard`: render com verdict completo, sem verdict (fallback), verdict parcial.
+- `cadence.method = insufficient` → IA recebe flag e fixture verifica que o validador rejeita texto com "ritmo fraco/forte" sem `sufficient=true`.
 
-**7. Validação final**
-- `bunx tsc --noEmit`
-- `bunx vitest run` (444 → 444 + ~10 novos)
-- query SQL para confirmar que o report do robs.cortez, ao ser lido, devolveria `method=window_30d, weekly≈5.4` (verificado via test fixture com os ts reais)
+---
 
-### Ficheiros a tocar
-
-| Tipo | Caminho |
-|---|---|
-| novo | `src/lib/report/cadence.ts` |
-| novo | `src/lib/report/__tests__/cadence.test.ts` |
-| edit | `src/lib/report/snapshot-to-report-data.ts` (substituir bloco cadence ~970-1050, adicionar `cadence` ao enriched) |
-| edit | `src/components/report-redesign/v2/report-overview-block.tsx` (subtitle neutra) |
-| edit | `src/components/report-redesign/v2/overview/editorial-identity-card.tsx` (rhythmBand opt-out) |
-| edit | `src/components/report-redesign/v2/overview/frequency-card.tsx` (empty state) |
-| edit | `src/components/report-redesign/v2/report-overview-cards.tsx` (render "—") |
-| edit | `src/components/report-redesign/report-kpi-grid.tsx` (render "—") |
-| edit | `src/components/report-redesign/v2/report-kpi-grid-v2.tsx` (render "—") |
-| edit | `src/components/report-share/share-message.ts` (omitir frase) |
-| edit | `src/components/report-redesign/v2/report-overview-attention-row.tsx` (guarda sufficient) |
-
-### Fora de scope
-
-- Re-fetch Apify · prompt v2 · UI layout · novos benchmarks · backfill de snapshots históricos.
-
-### Checkpoint
-
-- ☐ Novo `cadence.ts` puro e testado
-- ☐ `snapshot-to-report-data.ts` usa-o e remove o gap-filter de defesa
-- ☐ Todos os consumidores tratam `!sufficient` com copy neutra (sem `0,0` enganador)
-- ☐ Copy PT/EN da fallback aplicada
-- ☐ `tsc --noEmit` verde
-- ☐ `vitest run` verde com tests novos
-- ☐ Snapshot do robs.cortez deixa de produzir "12 / 1111 dias"; passa a "últimos 30 dias · 10 publicações · 5,4/sem"
+**Próximo passo sugerido:** abrir um novo prompt em Build Mode com escopo restrito: extensão do schema v2 com `editorial_verdict`, sem tocar UI ainda — só pipeline e validação. UI muda num terceiro prompt depois de confirmarmos a qualidade do verdict gerado.
