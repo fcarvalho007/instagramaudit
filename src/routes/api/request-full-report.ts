@@ -21,6 +21,10 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { FREE_MONTHLY_LIMIT } from "@/lib/quota";
 import {
+  parseConfigInt,
+  readAppConfigValue,
+} from "@/lib/config/app-config.server";
+import {
   runInBackground,
   runReportPipeline,
 } from "@/lib/orchestration/run-report-pipeline";
@@ -251,15 +255,26 @@ export const Route = createFileRoute("/api/request-full-report")({
 
         const used = count ?? 0;
 
+        // Limit lives in `app_config.free_monthly_report_limit` so it can be
+        // tuned without a deploy. Falls back to the compile-time constant if
+        // the row is missing or unreadable.
+        const limit = parseConfigInt(
+          await readAppConfigValue(
+            "free_monthly_report_limit",
+            String(FREE_MONTHLY_LIMIT),
+          ),
+          FREE_MONTHLY_LIMIT,
+        );
+
         // 3) Quota gate — block before insert if limit reached.
-        if (used >= FREE_MONTHLY_LIMIT) {
+        if (used >= limit) {
           return json(
             {
               success: false,
               quota_status: "limit_reached",
               remaining_free_reports: 0,
               error_code: "QUOTA_REACHED",
-              message: `Foi atingido o limite de ${FREE_MONTHLY_LIMIT} relatórios gratuitos este mês.`,
+              message: `Foi atingido o limite de ${limit} relatórios gratuitos este mês.`,
             },
             // 200 — business outcome, not a transport-level error
             200,
@@ -297,8 +312,9 @@ export const Route = createFileRoute("/api/request-full-report")({
         }
 
         // 5) Successful outcome — derive quota status from pre-insert count.
-        const remaining = Math.max(0, FREE_MONTHLY_LIMIT - (used + 1));
-        const quota_status: "first_free" | "last_free" = used === 0 ? "first_free" : "last_free";
+        const remaining = Math.max(0, limit - (used + 1));
+        const quota_status: "first_free" | "last_free" =
+          remaining > 0 ? "first_free" : "last_free";
 
         // Phase 2 — persist immutable report_snapshot before pipeline kicks off.
         // Fail-soft: never blocks the user-facing response.

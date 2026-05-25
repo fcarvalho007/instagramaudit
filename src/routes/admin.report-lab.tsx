@@ -417,7 +417,7 @@ function ReportLabPage() {
           onToggle={() => setShowModules(!showModules)}
         >
           <ModuleVisibilityMatrix
-            adminEmail={readAdminEmail() ?? "admin@instabench.pt"}
+            adminEmail={readAdminEmail() ?? ""}
             onPreviewDraft={(v) =>
               window.open(
                 `/admin/report-preview/${activeProfile}?variant=${v}&draft=true`,

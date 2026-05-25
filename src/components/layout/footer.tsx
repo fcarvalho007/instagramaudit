@@ -3,11 +3,13 @@ import { useTranslation } from "react-i18next";
 import { Container } from "@/components/layout/container";
 import { BrandMark } from "@/components/layout/brand-mark";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
+import { usePublicAppConfig } from "@/lib/config/use-app-config";
 
 function Footer() {
   const { t } = useTranslation("footer");
+  const { contactEmail } = usePublicAppConfig();
   const links = [
-    { label: t("links.contact"), href: "mailto:hello@instabench.pt" },
+    { label: t("links.contact"), href: `mailto:${contactEmail}` },
     { label: t("links.privacy"), href: "/privacidade" },
     { label: t("links.terms"), href: "/termos" },
     { label: t("links.legal_notice"), href: "/aviso-legal" },

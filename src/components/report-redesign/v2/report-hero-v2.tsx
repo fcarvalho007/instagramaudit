@@ -13,6 +13,7 @@ import { CompetitorModal } from "./overview/competitor-modal";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/hooks/use-language";
 import { formatCompactNumber } from "@/lib/i18n/format";
+import { usePublicAppConfig } from "@/lib/config/use-app-config";
 
 interface ReportHeroV2Props {
   result: AdapterResult;
@@ -35,6 +36,7 @@ export function ReportHeroV2({
 }: ReportHeroV2Props) {
   const { t } = useTranslation("report");
   const { language } = useLanguage();
+  const { compareEnabled } = usePublicAppConfig();
   const profile = result.data.profile;
   const enriched: ReportEnriched = result.enriched;
 
@@ -111,7 +113,7 @@ export function ReportHeroV2({
               <button
                 type="button"
                 onClick={() => setCompareOpen(true)}
-                title={t("hero.actions.coming_soon_tooltip")}
+                title={compareEnabled ? t("hero.actions.compare") : t("hero.actions.coming_soon_tooltip")}
                 className={cn(
                   "inline-flex items-center justify-center gap-2 rounded-xl h-12 px-4 whitespace-nowrap",
                   "border border-border-default bg-white text-content-primary text-[15px] font-semibold",
@@ -121,10 +123,12 @@ export function ReportHeroV2({
               >
                 <Users className="size-4" aria-hidden="true" />
                 {t("hero.actions.compare")}
-                <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-content-secondary border border-border-default">
-                  <span>{t("hero.actions.coming_soon")}</span>
-                  <span className="text-content-tertiary normal-case font-medium">· {t("hero.actions.coming_soon_detail")}</span>
-                </span>
+                {!compareEnabled && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-content-secondary border border-border-default">
+                    <span>{t("hero.actions.coming_soon")}</span>
+                    <span className="text-content-tertiary normal-case font-medium">· {t("hero.actions.coming_soon_detail")}</span>
+                  </span>
+                )}
               </button>
 
               <div className="mt-1 grid grid-cols-2 gap-2.5">

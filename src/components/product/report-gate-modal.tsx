@@ -18,7 +18,8 @@ import { cn } from "@/lib/utils";
  * no longer pre-checks usage — it submits and maps the server's `quota_status`
  * verdict (`first_free` / `last_free` / `limit_reached`) onto UI state.
  */
-import { FREE_MONTHLY_LIMIT, normalizeEmail } from "@/lib/quota";
+import { normalizeEmail } from "@/lib/quota";
+import { usePublicAppConfig } from "@/lib/config/use-app-config";
 import { requestFullReport } from "@/integrations/supabase/queries/report-requests";
 
 export interface GateFormData {
@@ -82,6 +83,7 @@ export function ReportGateModal({
   onSubmit,
   onRequestOutcome,
 }: ReportGateModalProps) {
+  const { freeMonthlyReportLimit: freeLimit, contactEmail } = usePublicAppConfig();
   const [state, setState] = useState<ModalState>("idle");
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
@@ -193,13 +195,13 @@ export function ReportGateModal({
   // (e.g. parent-provided onSubmit path).
   const usedFromServer =
     remainingFree !== null
-      ? Math.max(0, FREE_MONTHLY_LIMIT - remainingFree)
+      ? Math.max(0, freeLimit - remainingFree)
       : state === "success-last"
-        ? FREE_MONTHLY_LIMIT
+        ? freeLimit
         : 1;
   const renderQuotaLine = () => (
     <p className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
-      {usedFromServer} de {FREE_MONTHLY_LIMIT} relatórios utilizados este mês
+      {usedFromServer} de {freeLimit} relatórios utilizados este mês
     </p>
   );
 
@@ -233,10 +235,10 @@ export function ReportGateModal({
               A geração do PDF demora normalmente 1 a 3 minutos. Caso o email
               não chegue em 15 minutos, verificar a pasta de spam ou contactar{" "}
               <a
-                href="mailto:hello@instabench.pt"
+                href={`mailto:${contactEmail}`}
                 className="underline hover:text-content-secondary transition-colors"
               >
-                hello@instabench.pt
+                {contactEmail}
               </a>
               .
             </p>
@@ -271,10 +273,10 @@ export function ReportGateModal({
               A geração demora normalmente 1 a 3 minutos. Caso não chegue em 15
               minutos, verificar a pasta de spam ou contactar{" "}
               <a
-                href="mailto:hello@instabench.pt"
+                href={`mailto:${contactEmail}`}
                 className="underline hover:text-content-secondary transition-colors"
               >
-                hello@instabench.pt
+                {contactEmail}
               </a>
               .
             </p>
@@ -390,7 +392,7 @@ export function ReportGateModal({
             </div>
 
             <p className="text-eyebrow-sm text-[0.625rem] text-content-tertiary text-center">
-              Durante a fase beta, contacta-nos em hello@instabench.pt para mais relatórios.
+              Durante a fase beta, contacta-nos em {contactEmail} para mais relatórios.
             </p>
 
             <DialogClose asChild>
