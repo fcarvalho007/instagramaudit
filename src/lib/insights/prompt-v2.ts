@@ -87,11 +87,23 @@ Prioridades de ação (obrigatório · campo "priorities"):
 - Distintas entre si — sem repetir a mesma recomendação. Sem citar fontes externas. Sem snake_case.
 
 Veredicto editorial (obrigatório · campo "editorial_verdict"):
-- É a primeira leitura estratégica do relatório. Diagnóstico interpretativo — NÃO repetir literalmente envolvimento, médias de gostos/comentários ou ritmo (esses números já aparecem na faixa de métricas).
-- "verdict_label": "strong" (perfil sólido, alavanca clara) | "promising" (sinais positivos parciais) | "needs_work" (gap relevante face ao tier) | "limited_data" (amostra insuficiente — usar quando posts analisados < 5 ou cadência inconclusiva).
-- "title": gancho editorial ≤ 7 palavras, ≤ 60 chars, sem ponto final, sem números. Ex.: "Audiência fiel mas silenciosa", "Ritmo forte sem tração", "Sinal ainda parcial".
-- "paragraph": 35–65 palavras, máximo 2 frases. 1ª frase = diagnóstico com PELO MENOS um número concreto do payload (ex.: delta vs tier, share do formato dominante). 2ª frase = interpretação editorial do que isso significa para o perfil. Sem repetir literalmente os 3 KPIs principais.
-- "priority": 1 frase no infinitivo impessoal com a próxima alavanca prática. ≤ 160 chars.
+- É a primeira leitura estratégica do relatório. Camada DIAGNÓSTICA — descreve o que os dados sugerem, NÃO prescreve soluções. Recomendações vivem nas "priorities" e no Bloco 02.
+- "verdict_label": "strong" (perfil sólido, alavanca clara) | "promising" (sinais positivos parciais) | "needs_work" (gap relevante face ao tier) | "limited_data" (amostra insuficiente — OBRIGATÓRIO quando posts analisados < 5, cadência inconclusiva ou benchmark em falta).
+- "title": gancho editorial 4–8 palavras, ≤ 60 chars, sem ponto final, SEM dígitos, sem clichés ("Bom perfil", "Precisa melhorar", "Resultado positivo"). Ex.: "Audiência fiel mas silenciosa", "Ritmo forte sem tração", "Sinal ainda parcial".
+- "paragraph": diagnóstico editorial de 120–180 palavras (limite absoluto 220). Pode ser 1–4 parágrafos curtos separados por quebras de linha (\\n\\n). Deve:
+    1. Citar PELO MENOS 3 sinais concretos do payload (delta vs tier, share do formato dominante, comentários/like, cadência corrigida, etc.).
+    2. Articular a tensão observada — o que é forte, o que é fraco, o que fica por confirmar.
+    3. Usar linguagem editorial pragmática e impessoal.
+  PROIBIDO no "paragraph":
+    - Verbos de recomendação directa: "deve…", "deveria…", "recomenda-se…", "a prioridade é…", "publique…", "teste…", "use mais…", "aposte em…", "publicar mais", "criar mais", "focar em publicar".
+    - Repetir os KPIs principais sem interpretação (a faixa de métricas já os mostra).
+    - Causas ou intenções de negócio que não estão no payload.
+  Frases diagnósticas preferidas: "Os dados sugerem…", "O padrão observado indica…", "A leitura principal é…", "O sinal mais evidente está em…", "A amostra ainda não permite concluir…".
+  Regras especiais:
+    - Likes saudáveis (≥ 90% do benchmark) com média de comentários < 2 → enquadrar como "atenção sem conversa" / "audiência silenciosa", nunca como "conversa ativa".
+    - Cadência saudável (≥ 2,5 publicações/semana corrigidas) com envolvimento abaixo do benchmark → focar em ângulo editorial, hook ou formato (descrever, sem prescrever).
+    - Amostra < 5 posts, cadência inconclusiva, posts maioritariamente fixados ou benchmark/sinais de mercado ausentes → tom provisional, "verdict_label: limited_data" e "confidence: low".
+- "priority": 1 frase no infinitivo impessoal com a próxima alavanca prática. ≤ 160 chars. (Renderizada noutras secções do relatório, NÃO no primeiro cartão.)
 - "strengths": exactamente 2 leituras interpretativas (NÃO listas de KPIs crus). Cada uma ≤ 80 chars. Ex.: "Audiência fiel e recorrente" ✓ — "0,3% de comentários por like" ✗.
 - "limitations": exactamente 2 limitações editoriais. Mesmas regras de "strengths".
 - "confidence": "high" | "medium" | "low" — auto-avaliação do quanto o diagnóstico é defensável. Se a amostra é pequena ou os benchmarks faltam, baixar para "low" / "medium".
@@ -234,7 +246,7 @@ export const RESPONSE_JSON_SCHEMA_V2 = {
             enum: ["strong", "promising", "needs_work", "limited_data"],
           },
           title: { type: "string", minLength: 1, maxLength: 70 },
-          paragraph: { type: "string", minLength: 1, maxLength: 480 },
+          paragraph: { type: "string", minLength: 1, maxLength: 1400 },
           priority: { type: "string", minLength: 1, maxLength: 200 },
           strengths: {
             type: "array",

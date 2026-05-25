@@ -23,6 +23,7 @@ type FallbackKey =
   | "irregular_reach"
   | "cadence_no_signal"
   | "no_direction"
+  | "attention_no_conversation"
   | "opportunity";
 
 function pickKey(m: EditorialVerdictMetrics): {
@@ -33,8 +34,13 @@ function pickKey(m: EditorialVerdictMetrics): {
   const engRatio = bench > 0 ? m.engagementPct / bench : 1;
   const ppw = m.postsPerWeek30d ?? 0;
 
-  if (m.postsAnalyzed < 5) {
+  if (m.postsAnalyzed < 4) {
     return { key: "opportunity", band: "limited_data" };
+  }
+  // Atenção sem conversa: likes saudáveis face ao benchmark mas
+  // comentários quase nulos. Sinal típico de consumo passivo.
+  if (engRatio >= 0.9 && m.avgComments < 2) {
+    return { key: "attention_no_conversation", band: "promising" };
   }
   if (engRatio >= 1 && ppw >= 2.5) {
     return { key: "solid_consistent", band: "strong" };

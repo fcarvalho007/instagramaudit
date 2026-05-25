@@ -10,12 +10,16 @@ function baseSections() {
   return out;
 }
 
+const VALID_PARAGRAPH =
+  "O envolvimento médio fica nos 1,2%, abaixo dos 1,8% do tier observado, com 5 publicações por semana dominadas por Reels e poucas variações de formato ao longo das últimas semanas.\n\n" +
+  "A leitura principal é de uma audiência atenta mas silenciosa: o conteúdo é visto e ganha gostos, mas raramente provoca conversa articulada nos comentários, num padrão típico de consumo passivo.\n\n" +
+  "A tensão observada está entre o sinal positivo das visualizações e a ausência de discussão real associada às peças mais recentes. A amostra ainda não permite concluir se o silêncio resulta do formato dominante ou da relação editorial com a audiência.";
+
 const VALID_VERDICT = {
   verdict_label: "promising",
   title: "Audiência fiel mas silenciosa",
-  paragraph:
-    "O envolvimento médio fica nos 1,2%, abaixo dos 1,8% do tier, com 5 publicações por semana dominadas por Reels. A audiência responde, mas conversa pouco, sugerindo um padrão de consumo passivo que limita o alcance orgânico futuro.",
-  priority: "Testar 2 carrosséis editoriais por semana durante 4 semanas.",
+  paragraph: VALID_PARAGRAPH,
+  priority: "Manter a regularidade e explorar formatos durante 30 dias.",
   strengths: ["Audiência fiel e recorrente", "Cadência semanal consistente"],
   limitations: ["Pouca conversa nos comentários", "Formato muito repetitivo"],
   confidence: "medium",
@@ -50,15 +54,53 @@ describe("validateInsightsV2 — editorial_verdict", () => {
   });
 
   it("rejects paragraph without digits", () => {
-    const long = Array.from({ length: 40 }, () => "palavra").join(" ");
+    // 100 palavras sem dígito → falha por GENERIC_OUTPUT (já passa o min).
+    const long = Array.from({ length: 100 }, () => "palavra").join(" ");
     const r = validateInsightsV2(payload({ paragraph: long }));
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.reason).toBe("GENERIC_OUTPUT");
   });
 
-  it("rejects title longer than 7 words", () => {
+  it("rejects paragraph above 220 words", () => {
+    // 225 palavras curtas — fica abaixo do limite de chars (1400)
+    // mas acima do limite de palavras.
+    const huge =
+      Array.from({ length: 225 }, () => "ab").join(" ") + " 1";
+    const r = validateInsightsV2(payload({ paragraph: huge }));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("PARAGRAPH_TOO_LONG");
+  });
+
+  it("rejects paragraph with prescriptive verbs", () => {
+    const presc = VALID_PARAGRAPH.replace(
+      "A leitura principal é",
+      "Deve publicar mais carrosséis e a leitura principal é",
+    );
+    const r = validateInsightsV2(payload({ paragraph: presc }));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("RECOMMENDATION_VERB");
+  });
+
+  it("rejects title shorter than 4 words", () => {
+    const r = validateInsightsV2(payload({ title: "Audiência silenciosa" }));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("TITLE_TOO_SHORT");
+  });
+
+  it("rejects title with digits", () => {
     const r = validateInsightsV2(
-      payload({ title: "Um titulo demasiado longo que ultrapassa o limite editorial" }),
+      payload({ title: "Audiência com 3 sinais fortes" }),
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("TITLE_HAS_NUMBER");
+  });
+
+  it("rejects title longer than 8 words", () => {
+    const r = validateInsightsV2(
+      payload({
+        title:
+          "Um titulo demasiado longo que ultrapassa claramente o limite editorial permitido",
+      }),
     );
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.reason).toBe("TITLE_TOO_LONG");

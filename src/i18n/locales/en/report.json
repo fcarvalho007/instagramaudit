@@ -57,23 +57,27 @@
     "fallback": {
       "solid_consistent": {
         "title": "Solid, consistent presence",
-        "paragraph": "Content gets a steady response and the cadence is reliable. The next lever is to diversify formats and open more conversation in the comments."
+        "paragraph": "The data suggests a profile that has found its rhythm: content earns a steady response, weekly cadence has stabilised, and engagement is close to or above the tier reference.\n\nThe main reading is one of consolidation — the profile no longer depends on isolated spikes and now benefits from a recurring base. The observed tension is in diversification: the dominant format absorbs most of the attention, leaving room to explore in other pieces. The clearest signal is a content pattern that already feels mature, with editorial space to open new conversation fronts."
       },
       "irregular_reach": {
         "title": "Strong reach, irregular rhythm",
-        "paragraph": "Content works when it ships, but publishing is uneven. Stabilising the weekly cadence is the step with the highest immediate return."
+        "paragraph": "The data points to a profile capable of strong responses when it publishes, but the frequency is uneven and the gap between pieces varies significantly over recent weeks.\n\nThe main reading is one of underused potential: average engagement tracks the tier reference, yet a pace below 1 weekly post limits editorial learning and narrative continuity. The observed tension sits between the perceived quality of each piece and the missing cadence that would allow hypotheses to be tested. The clearest signal is 2 or 3 isolated peaks without a visible editorial thread."
       },
       "cadence_no_signal": {
         "title": "Strong cadence, weak signal",
-        "paragraph": "There is publishing discipline, but content isn't converting into interaction. Focus should shift to the editorial concept and opening hook of each post."
+        "paragraph": "The data shows publishing discipline above the tier reference, yet average engagement sits clearly below expectation and the interaction curve does not keep up with volume.\n\nThe main reading is editorial efficiency in deficit: the profile publishes regularly, with more than 2 pieces per week, but content is not turning attention into meaningful response. The observed tension sits between production effort and the clarity of the editorial angle; the clearest signal is repeated formats without variation in hook or framing. The sample does not yet allow a conclusion on whether the issue is topic, narrative rhythm, or connection with the audience."
       },
       "no_direction": {
         "title": "Audience exists, direction missing",
-        "paragraph": "The follower base isn't reacting or commenting meaningfully. The priority is to redefine editorial angle and formats before increasing volume."
+        "paragraph": "The data suggests an installed follower base but consistent disengagement signals: average engagement falls below 70% of the tier reference and comments per post approach zero.\n\nThe main reading is editorial misalignment — what is being published no longer triggers a visible reaction in the current audience. The observed tension sits between the size of the base and the absence of organic conversation; the clearest signal is pieces that keep residual likes but have lost the ability to provoke a response. The sample does not yet allow a conclusion on whether the disconnect is topic, tone, or format."
+      },
+      "attention_no_conversation": {
+        "title": "Attention without conversation",
+        "paragraph": "The data points to an attentive but silent audience: average engagement tracks the tier reference through likes, while the average of comments per post sits below 2, a pattern typical of passive consumption.\n\nThe main reading is that attention exists without conversation — the content is seen and earns surface approval, but rarely sparks an articulated response. The observed tension sits between the positive signal from likes and the absence of richer comments; the clearest signal is pieces with strong reach and almost no discussion attached. The sample does not yet allow a conclusion on whether the silence stems from the dominant format, the hook style, or the relationship with the audience."
       },
       "opportunity": {
         "title": "Active profile, clear opportunity",
-        "paragraph": "Indicators are close to the tier reference. There is room to lift engagement by adjusting dominant formats and reinforcing conversation in the comments."
+        "paragraph": "The data describes a profile in an intermediate stage: the main indicators sit close to the tier reference, with neither a clear deficit nor a relevant competitive advantage standing out.\n\nThe main reading is one of open editorial opportunity — there are partial traction signals, but a dominant angle that sets the pieces apart is missing. The observed tension sits between a consistent presence and the absence of a recognisable narrative signature. The clearest signal is 1 balanced but unremarkable format mix. The sample does not yet allow a conclusion on whether the next step will come from topic, format, or audience relationship."
       }
     },
     "fallback_priority": {
@@ -94,6 +98,24 @@
       "benchmark_missing": "No comparable benchmark for this tier."
     },
     "priority_label": "Next step",
+    "evidence_title": "Signals used in this reading",
+    "evidence": {
+      "cadence.window_30d": "Cadence over the last 30 days",
+      "cadence.window_90d": "Cadence over the last 90 days",
+      "cadence.sample_span": "Rhythm observed in the recent sample",
+      "benchmark.tier_delta": "Gap to the tier reference",
+      "benchmark.tier_label": "Comparable tier reference",
+      "format_mix.dominant_share": "Share of the dominant format",
+      "format_mix.dominant_format": "Dominant format type",
+      "top_posts.top1": "Best-performing post",
+      "caption_intelligence.topics": "Recurring caption topics",
+      "caption_intelligence.length": "Average caption length",
+      "editorial_patterns.collaboration_lift": "Lift associated with collaborations",
+      "editorial_patterns.comments_to_likes_ratio": "Comments-to-likes ratio",
+      "editorial_patterns.engagement_trend": "Engagement trend",
+      "market_signals.strongest_keyword": "Demand for the dominant topic",
+      "market_signals.trend_direction": "Market demand direction"
+    },
     "signals": {
       "freq_consistent": {
         "title": "Consistent publishing",

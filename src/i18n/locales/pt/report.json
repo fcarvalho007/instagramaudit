@@ -57,23 +57,27 @@
     "fallback": {
       "solid_consistent": {
         "title": "Presença sólida e consistente",
-        "paragraph": "O conteúdo gera resposta de forma regular e a cadência é estável. A próxima alavanca está em diversificar formatos e abrir mais conversa nos comentários."
+        "paragraph": "Os dados sugerem uma presença que já encontrou o seu ritmo: o conteúdo gera resposta de forma regular, a cadência semanal estabilizou e o envolvimento aproxima-se ou supera a referência do escalão.\n\nA leitura principal é de consolidação — o perfil deixou de depender de picos isolados e passou a beneficiar de uma base recorrente. A tensão observada está na diversificação: o formato dominante absorve a maior parte da atenção, deixando margem por explorar noutras peças. O sinal mais evidente está em 1 padrão de consumo já maduro, com espaço editorial para abrir novas frentes de conversa."
       },
       "irregular_reach": {
         "title": "Bom alcance, ritmo irregular",
-        "paragraph": "O conteúdo funciona quando sai, mas o ritmo de publicação é descontínuo. Estabilizar a cadência semanal é o passo com maior retorno imediato."
+        "paragraph": "Os dados indicam um perfil capaz de gerar boa resposta quando publica, mas a frequência é descontínua e o intervalo entre peças varia de forma significativa ao longo das últimas semanas.\n\nA leitura principal é de potencial subaproveitado: o envolvimento médio acompanha a referência do escalão, mas o ritmo abaixo de 1 publicação semanal limita a aprendizagem editorial e a continuidade narrativa. A tensão observada está entre a qualidade percepcionada por cada peça e a ausência de cadência que permita medir hipóteses. O sinal mais evidente está em 2 ou 3 picos isolados sem encadeamento editorial visível."
       },
       "cadence_no_signal": {
         "title": "Cadência forte, sinal fraco",
-        "paragraph": "Existe disciplina de publicação, mas o conteúdo não está a converter em interação. O foco deve ir para o conceito editorial e o gancho inicial de cada peça."
+        "paragraph": "Os dados sugerem disciplina de publicação acima da referência do escalão, mas o envolvimento médio fica claramente abaixo do esperado e a curva de interações não acompanha o volume.\n\nA leitura principal é de eficiência editorial em défice: o perfil publica de forma regular, com mais de 2 peças por semana, mas o conteúdo não está a transformar atenção em resposta significativa. A tensão observada está entre o esforço de produção e a clareza do ângulo editorial; o sinal mais evidente está em formatos repetidos sem variação de gancho ou de enquadramento. A amostra ainda não permite concluir se o problema é de tema, de ritmo narrativo ou de conexão com a audiência."
       },
       "no_direction": {
         "title": "Audiência existe, falta direção",
-        "paragraph": "A base de seguidores não está a reagir nem a comentar de forma significativa. A prioridade é redefinir ângulo editorial e formatos antes de aumentar volume."
+        "paragraph": "Os dados sugerem um perfil com base de seguidores instalada mas com sinais consistentes de desligamento: o envolvimento médio fica abaixo de 70% da referência do escalão e os comentários por publicação aproximam-se de zero.\n\nA leitura principal é de desalinhamento editorial — o que é publicado deixou de gerar reacção observável na audiência actual. A tensão observada está entre o tamanho da base e a ausência de conversa orgânica; o sinal mais evidente está em peças que mantêm gostos residuais mas perderam capacidade de provocar resposta. A amostra ainda não permite concluir se a desconexão é de tema, de tom ou de formato."
+      },
+      "attention_no_conversation": {
+        "title": "Atenção sem conversa",
+        "paragraph": "Os dados sugerem uma audiência atenta mas silenciosa: o envolvimento médio aproxima-se da referência do escalão graças aos gostos, mas a média de comentários por publicação fica abaixo de 2, num padrão típico de consumo passivo.\n\nA leitura principal é que existe atenção sem conversa — o conteúdo é visto e ganha aprovação superficial, mas raramente provoca resposta articulada. A tensão observada está entre o sinal positivo dos gostos e a ausência de comentários ricos; o sinal mais evidente está em peças com bom alcance e quase nenhuma discussão associada. A amostra ainda não permite concluir se o silêncio resulta do formato dominante, do tipo de gancho ou da relação com a audiência."
       },
       "opportunity": {
         "title": "Perfil ativo, oportunidade clara",
-        "paragraph": "Os indicadores estão próximos da referência do escalão. Há espaço para subir engagement ajustando formatos dominantes e reforçando a conversa nos comentários."
+        "paragraph": "Os dados sugerem um perfil em fase intermédia: os indicadores principais aproximam-se da referência do escalão, sem destacar nem um défice claro nem uma vantagem competitiva relevante face ao tier.\n\nA leitura principal é de oportunidade editorial em aberto — existem sinais de tracção parcial, mas falta um ângulo dominante que diferencie as publicações entre si. A tensão observada está entre uma presença consistente e a ausência de uma assinatura narrativa reconhecível. O sinal mais evidente está em 1 mix de formatos equilibrado mas pouco distintivo. A amostra ainda não permite concluir se o próximo salto virá de tema, de formato ou de relação com a audiência."
       }
     },
     "fallback_priority": {
@@ -94,6 +98,24 @@
       "benchmark_missing": "Sem benchmark comparável para este escalão."
     },
     "priority_label": "Próximo passo",
+    "evidence_title": "Sinais usados nesta leitura",
+    "evidence": {
+      "cadence.window_30d": "Cadência observada nos últimos 30 dias",
+      "cadence.window_90d": "Cadência observada nos últimos 90 dias",
+      "cadence.sample_span": "Ritmo observado na amostra recente",
+      "benchmark.tier_delta": "Diferença face ao escalão do tier",
+      "benchmark.tier_label": "Referência do tier comparável",
+      "format_mix.dominant_share": "Peso do formato dominante",
+      "format_mix.dominant_format": "Tipo de formato dominante",
+      "top_posts.top1": "Publicação com melhor desempenho",
+      "caption_intelligence.topics": "Temas recorrentes nas legendas",
+      "caption_intelligence.length": "Comprimento médio das legendas",
+      "editorial_patterns.collaboration_lift": "Ganho associado a colaborações",
+      "editorial_patterns.comments_to_likes_ratio": "Rácio de comentários por gosto",
+      "editorial_patterns.engagement_trend": "Tendência do envolvimento",
+      "market_signals.strongest_keyword": "Procura associada ao tema dominante",
+      "market_signals.trend_direction": "Direcção da procura de mercado"
+    },
     "signals": {
       "freq_consistent": {
         "title": "Publicação consistente",
