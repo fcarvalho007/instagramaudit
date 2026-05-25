@@ -1,75 +1,93 @@
-## Goal
-Remove Pro / Agency / "Em breve" copy from authenticated app surfaces so they match the simplified pricing model (€7 single / €28 pack, no subscription).
+## Status of P0 items
+Items 1–4 were already fixed in prior turns of this session:
+- ReportBlockNav: no €3/€13, AccessSummaryCard in place with Free / Launch offer / Premium badges.
+- `/app/plan` → redirects to `/precos`.
+- `pro-tracking-teaser` is now neutral.
+- `app.account` shows "Conta ativa".
+
+This plan ships the **remaining 3 deltas**:
+A. Add the pending-payment note to the sidebar AccessSummaryCard (item 1 sub-task).
+B. Rewrite `feedback-schema` enum + downstream consumers (item 5).
+C. Rewrite `commercial-followup` email to €7/€28, no IVA, no checkout claim (item 6).
 
 ## Files touched
-- `src/routes/app.plan.tsx` — replace with a redirect to `/precos`
-- `src/components/app/pro-tracking-teaser.tsx` — neutral copy + remove plan CTA
-- `src/routes/app.account.tsx` — replace `planLabels` with a single "Conta ativa" status
-- `src/lib/brand/contact.ts` — add `mailtoProfessionalAccess`; deprecate `mailtoPro`/`mailtoAgency` as thin aliases
+- `src/i18n/locales/pt/report.json`, `src/i18n/locales/en/report.json` — add `nav.access.pending_note`.
+- `src/components/report-redesign/v2/report-block-nav.tsx` — render `pending_note` line in AccessSummaryCard.
+- `src/lib/feedback/feedback-schema.ts` — new enum + labels.
+- `src/lib/feedback/__tests__/feedback-schema.test.ts` — update enum test.
+- `src/lib/admin/feedback-intent.ts` — map new enum values to actions; drop monthly/agency branches.
+- `src/lib/admin/__tests__/feedback-intent.test.ts` — update test cases.
+- `src/lib/email/templates/commercial-followup.ts` — €7 / €28, no IVA, "Sem subscrição. Sem renovação automática.", neutralize checkout claim.
+- `src/lib/email/__tests__/templates.test.ts` — update assertions.
 
-Not touched (per scope): `post-analysis-conversion-layer.tsx`, public report sidebar, premium modal, `/precos`, feedback/email templates, subscriptions/checkout, RLS, providers.
+Not touched: `src/components/feedback/feedback-form.tsx` (renders from constants — auto-updates), `src/lib/brevo/enum-mappers.ts` (existing fallbacks already cover the new values: digits → `one_off`, `other` → `unsure`), brevo tests, brevo sync, `unlock-flow.ts`, `pricing-feedback.ts`, providers, RLS.
 
-## Changes
+## Detailed changes
 
-### 1. `src/routes/app.plan.tsx`
-Rewrite as a thin redirect using `beforeLoad`:
+### A. Sidebar pending-payment note
+Add i18n key:
+- PT `nav.access.pending_note` = "Pagamento brevemente disponível — os botões registam o teu interesse."
+- EN `nav.access.pending_note` = "Payment coming soon — buttons register your interest."
+
+In `AccessSummaryCard`, render the pending note as a discreet line between the CTA and the existing trust microcopy. Keep the trust line ("1 relatório ou pack de 5. Sem subscrição.") — it complements the pending note.
+
+### B. feedback-schema
+
+`PRICING_PREFERENCE_VALUES`:
 ```ts
-import { createFileRoute, redirect } from "@tanstack/react-router";
-export const Route = createFileRoute("/app/plan")({
-  beforeLoad: () => { throw redirect({ to: "/precos" }); },
-});
+["single_report_7", "pack_5_reports_28", "not_ready_to_pay", "other"]
 ```
-Removes all Pro/Agency tiers, manifesto card, Supabase profile fetch, and "Em breve" badges in one shot. Any deep link or stale bookmark to `/app/plan` lands on `/precos` (which holds the canonical €7/€28 copy).
 
-### 2. `src/components/app/pro-tracking-teaser.tsx`
-- Remove the violet "PRO" pill, the `<Lock>` "Disponível em breve" overlay, and the "Saber mais sobre os planos →" `Link` to `/app/plan`.
-- Header label changes from "Tracking diário" to neutral "Acompanhamento recorrente".
-- Replace the body paragraph with the supplied neutral copy:
-  - PT: "Acompanhamento recorrente ficará disponível numa fase futura."
-  - EN: "Recurring tracking will be available in a future phase."
-- Component currently has no i18n wiring (hardcoded PT). Add `useTranslation("app")` and use `app.tracking_teaser.title` / `app.tracking_teaser.note` keys (added to both `pt/app.json` and `en/app.json`). If `app` namespace does not exist, fall back to hardcoded PT only and note it — quick check during implementation will confirm. The mini-chart visual stays as a non-interactive placeholder with a neutral inline label instead of the "Em breve" pill.
-- Drop the `Link`, `to="/app/plan"` import.
+`PRICING_PREFERENCE_LABELS` (PT, matching the current Portuguese-only form copy):
+- `single_report_7` → "1 relatório — 7€"
+- `pack_5_reports_28` → "Pack 5 relatórios — 28€"
+- `not_ready_to_pay` → "Ainda não estou pronto/a para pagar"
+- `other` → "Outra opção"
 
-### 3. `src/routes/app.account.tsx`
-- Delete `planLabels` constant.
-- Change the rendered block from `{planLabels[account.plan] ?? account.plan}` to a fixed string:
-  - PT: "Conta ativa"
-- The page is currently hardcoded PT; keep that pattern.
-- Keep the `plan` field in `AccountData` (DB still has it) — just don't render its value.
-- Optionally relabel the field caption from "Plano" to "Estado da conta".
+DB column `lead_feedback.pricing_preference` is free text (no enum constraint) — no migration required; old values remain readable but won't be produced going forward.
 
-### 4. `src/lib/brand/contact.ts`
-- Add new generic helper:
-  ```ts
-  export function mailtoProfessionalAccess(email: string): string {
-    const subject = encodeURIComponent("Acesso profissional — InstaBench");
-    const body = encodeURIComponent("Gostaria de saber mais sobre acesso profissional ao InstaBench.");
-    return `mailto:${email}?subject=${subject}&body=${body}`;
-  }
-  ```
-- Mark `mailtoPro` and `mailtoAgency` as `@deprecated` with a JSDoc note pointing to `mailtoProfessionalAccess`, and have them delegate internally:
-  ```ts
-  /** @deprecated Use mailtoProfessionalAccess. */
-  export const mailtoPro = mailtoProfessionalAccess;
-  /** @deprecated Use mailtoProfessionalAccess. */
-  export const mailtoAgency = mailtoProfessionalAccess;
-  ```
-- This avoids touching `post-analysis-conversion-layer.tsx` (out of scope) while ensuring both CTAs already in the wild now open the same generic subject line.
+`src/lib/admin/feedback-intent.ts` `actionByPricing`:
+- `single_report_7` → "Responder com proposta de relatório único"
+- `pack_5_reports_28` → "Sugerir pack de 5 relatórios"
+- `not_ready_to_pay` → "Nutrir mais tarde"
+- `other` → fallback
+- Remove `plano_mensal` / `plano_agencia` cases. Also remove the mid-intent "Explorar plano mensal" fallback strings — replace with "Sugerir pack de 5 relatórios".
+
+Tests:
+- `feedback-schema.test.ts`: replace enum array with new 4 values.
+- `feedback-intent.test.ts`: replace the three pricing-specific cases with `single_report_7`, `pack_5_reports_28`, `not_ready_to_pay`; assert new action strings; drop the `plano_mensal` test.
+
+### C. commercial-followup email
+
+Subject/preheader: keep subject; update preheader to "Duas opções para desbloquear o relatório completo. Sem subscrição."
+
+Body text + HTML, replacing the two pricing lines with:
+- PT text:
+  - "· 1 relatório — 7€"
+  - "· Pack 5 relatórios — 28€ (5,60€ por relatório, poupas 20%)"
+  - new line: "Sem subscrição. Sem renovação automática."
+- HTML mirrors the same.
+
+Checkout claim: when no `checkoutUrl` is present, the current code shows a "Falar connosco" mailto or muted text. Keep that. When `checkoutUrl` IS supplied, retain the existing "Desbloquear" button — it's only rendered if the caller provides a URL, so it cannot imply checkout exists by default. (Per constraint "do not imply checkout is active": current behaviour is already gated by caller, no extra change needed.)
+
+Remove "+ IVA" everywhere; `/precos` does not mention IVA.
+
+Tests in `templates.test.ts` (lines 132–137):
+- Replace `expect(out.text).toContain("€3 + IVA")` with `expect(out.text).toContain("7€")`.
+- Replace `expect(out.text).toContain("€13 + IVA")` with `expect(out.text).toContain("28€")`.
+- Update preheader assertion line 108–110 to match the new preheader text.
+- Keep "docentes" assertion — academic line stays.
 
 ## Validation
 - `bunx tsc --noEmit`
 - `bunx vitest run`
-- `rg -n "\\bPro\\b|\\bAgency\\b|plano mensal|monthly plan|subscription|subscrição|€3|€13" src/` and classify residuals.
+- Grep classification report (residuals expected):
+  - `Pro` / `Agency`: only in `post-analysis-conversion-layer.tsx` (out-of-scope public component flagged previously) and `mailtoPro`/`mailtoAgency` deprecated aliases in `contact.ts`. Both reported as **obsolete-out-of-scope**.
+  - `€3`/`€13`: should be 0 in `src/`. Any remaining are bugs.
+  - `plano mensal` / `monthly plan` / `agency plan`: 0 expected.
+  - Internal-only matches in `gate.json`, `mock-data.ts`, brevo type names (e.g. `subscription` enum), `unlock-flow.ts` legacy enum: classified as **internal/segmentation, not pricing**.
 
-### Expected residual matches (acceptable, to be reported back, not removed in this prompt)
-- `src/components/product/post-analysis-conversion-layer.tsx` — Pro/Agency tier cards (out-of-scope public marketing component; flagged as obsolete, to be addressed in a follow-up prompt).
-- `src/lib/feedback/feedback-schema.ts`, `src/lib/email/templates/commercial-followup.ts`, related tests — already identified P0s, explicitly excluded by user scope.
-- `src/lib/admin/mock-data.ts`, `src/lib/__tests__/unlock-flow.test.ts`, `gate.json` — internal/admin/tests; not user-facing.
-- `src/i18n/locales/*/report.json` premium copy keys (e.g. `premium.*`) — segmentation labels, not pricing.
-- `mailtoPro` / `mailtoAgency` symbol names in `contact.ts` — kept as deprecated aliases for back-compat.
-
-## Out of scope (will be separate prompts)
-- `post-analysis-conversion-layer.tsx` (Pro/Agency cards in public analysis dashboard)
-- Feedback form options €3/€13
-- Commercial follow-up email templates with €3/€13
-- Brand contact helpers being fully removed
+## Out of scope (not in this prompt)
+- `post-analysis-conversion-layer.tsx` Pro/Agency cards.
+- PremiumInterestDialog pending note (audit noted as missing; not in this prompt's task list).
+- Removing the deprecated `mailtoPro`/`mailtoAgency` aliases.

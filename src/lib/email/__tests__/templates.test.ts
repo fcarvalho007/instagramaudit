@@ -106,7 +106,7 @@ describe("renderCommercialFollowup", () => {
     const out = renderCommercialFollowup({ instagramHandle: "x" });
     expect(out.subject).toBe("Próximos passos para o relatório completo");
     expect(out.html).toContain(
-      "Acesso vitalício, bundle de 5 análises e condições para docentes.",
+      "Duas opções para desbloquear o relatório completo. Sem subscrição.",
     );
   });
 
@@ -131,8 +131,9 @@ describe("renderCommercialFollowup", () => {
 
   it("mentions the two pricing options and academic use", () => {
     const out = renderCommercialFollowup({ instagramHandle: "x" });
-    expect(out.text).toContain("€3 + IVA");
-    expect(out.text).toContain("€13 + IVA");
+    expect(out.text).toContain("7€");
+    expect(out.text).toContain("28€");
+    expect(out.text).not.toContain("IVA");
     expect(out.text).toContain("docentes");
   });
 });

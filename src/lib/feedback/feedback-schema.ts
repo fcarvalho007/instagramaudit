@@ -9,20 +9,18 @@ export const PURCHASE_INTENT_VALUES = ["sim", "talvez", "nao"] as const;
 export type PurchaseIntent = (typeof PURCHASE_INTENT_VALUES)[number];
 
 export const PRICING_PREFERENCE_VALUES = [
-  "one_off_3",
-  "bundle_5_13",
-  "plano_mensal",
-  "plano_agencia",
-  "nao_sei",
+  "single_report_7",
+  "pack_5_reports_28",
+  "not_ready_to_pay",
+  "other",
 ] as const;
 export type PricingPreference = (typeof PRICING_PREFERENCE_VALUES)[number];
 
 export const PRICING_PREFERENCE_LABELS: Record<PricingPreference, string> = {
-  one_off_3: "€3 — relatório único",
-  bundle_5_13: "Bundle 5 relatórios por €13",
-  plano_mensal: "Plano mensal",
-  plano_agencia: "Plano de agência",
-  nao_sei: "Ainda não sei",
+  single_report_7: "1 relatório — 7€",
+  pack_5_reports_28: "Pack 5 relatórios — 28€",
+  not_ready_to_pay: "Ainda não estou pronto/a para pagar",
+  other: "Outra opção",
 };
 
 export const PURCHASE_INTENT_LABELS: Record<PurchaseIntent, string> = {

@@ -26,7 +26,7 @@ export interface CommercialFollowupInput {
 
 const SUBJECT = "Próximos passos para o relatório completo";
 const HEADLINE = "Próximos passos";
-const PREHEADER = "Acesso vitalício, bundle de 5 análises e condições para docentes.";
+const PREHEADER = "Duas opções para desbloquear o relatório completo. Sem subscrição.";
 
 export function renderCommercialFollowup(input: CommercialFollowupInput): RenderedEmail {
   const handle = input.instagramHandle ? `@${input.instagramHandle}` : "o teu perfil";
@@ -42,8 +42,10 @@ export function renderCommercialFollowup(input: CommercialFollowupInput): Render
     "Obrigado pelo interesse em desbloquear o relatório completo. Os próximos passos:",
     "",
     "Duas opções:",
-    `· Esta análise — €3 + IVA, acesso vitalício às 6 secções de ${handle}`,
-    "· Bundle 5 análises — €13 + IVA, poupas €2, ideal para comparar várias contas (clientes, concorrentes ou hipóteses)",
+    `· 1 relatório — 7€, acesso vitalício às 6 secções de ${handle}`,
+    "· Pack 5 relatórios — 28€ (5,60€ por relatório, poupas 20%), ideal para comparar várias contas (clientes, concorrentes ou hipóteses)",
+    "",
+    "Sem subscrição. Sem renovação automática.",
     "",
     ...(checkoutUrl ? ["Desbloquear:", checkoutUrl, ""] : []),
     `Se a tua dúvida é sobre uso académico — para alunos, turmas ou investigação — responde a este email${replyTo ? ` ou escreve para ${replyTo}` : ""}. Há condições específicas para docentes.`,
@@ -67,8 +69,9 @@ export function renderCommercialFollowup(input: CommercialFollowupInput): Render
       `Obrigado pelo interesse em desbloquear o relatório completo de <strong style="color:#0a0e1a;">${safeHandle}</strong>. Os próximos passos:`,
     ),
     p(
-      `Duas opções:<br/>· <strong style="color:#0a0e1a;">Esta análise</strong> — €3 + IVA, acesso vitalício às 6 secções de ${safeHandle}<br/>· <strong style="color:#0a0e1a;">Bundle 5 análises</strong> — €13 + IVA, poupas €2, ideal para comparar várias contas (clientes, concorrentes ou hipóteses)`,
+      `Duas opções:<br/>· <strong style="color:#0a0e1a;">1 relatório</strong> — 7€, acesso vitalício às 6 secções de ${safeHandle}<br/>· <strong style="color:#0a0e1a;">Pack 5 relatórios</strong> — 28€ (5,60€ por relatório, poupas 20%), ideal para comparar várias contas (clientes, concorrentes ou hipóteses)`,
     ),
+    pMuted("Sem subscrição. Sem renovação automática."),
     ctaHtml,
     `<div style="height:20px;"></div>`,
     pMuted(

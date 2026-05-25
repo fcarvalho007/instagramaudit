@@ -461,7 +461,8 @@
       "beta_note": "Editorial diagnosis is part of the premium experience, but it is open during this beta phase.",
       "cta": "View access options",
       "cta_aria": "View premium access options",
-      "trust": "1 report or pack of 5. No subscription."
+      "trust": "1 report or pack of 5. No subscription.",
+      "pending_note": "Payment coming soon — buttons register your interest."
     }
   },
   "shell": {
