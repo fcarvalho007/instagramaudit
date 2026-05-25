@@ -149,6 +149,13 @@ describe("deriveEditorialVerdict", () => {
     const ai = makeAi({
       paragraph:
         "A cadência fraca, com apenas 0,5 publicações por semana, limita a aprendizagem editorial do perfil.",
+      // Override strengths so the AI doesn't simultaneously claim "Cadência
+      // regular" while admitting the cadence is weak — that would (correctly)
+      // trip the new cadence_reliability guard.
+      strengths: ["Audiência fiel", "Histórico consistente"] as readonly [
+        string,
+        string,
+      ],
     });
     const res = deriveEditorialVerdict(
       ai,
