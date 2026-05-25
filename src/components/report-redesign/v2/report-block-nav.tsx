@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Menu, Lock, ArrowRight } from "lucide-react";
+import { Menu, Lock, ArrowRight, Gift } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
@@ -21,9 +21,9 @@ import { trackEvent } from "@/lib/tracking.functions";
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type AccessState = "accessible" | "partial" | "locked";
+type AccessState = "accessible" | "locked";
 type Group = "incluido" | "premium";
-type AccessBadge = "free" | "launch" | "premium";
+type AccessBadge = "free" | "included" | "premium";
 
 interface SidebarItem {
   block: BlockConfig;
@@ -56,25 +56,17 @@ function buildSidebarItems(
       block.id === "overview"
         ? "free"
         : block.id === "diagnostico"
-          ? "launch"
+          ? "included"
           : "premium";
-    const fv = features[block.featureKey];
     if (variant === "internal_lab" || variant === "pro_preview") {
       return { block, group: "incluido", access: "accessible", accessBadge };
     }
-    // public_mvp
-    if (fv === "hidden") {
-      return { block, group: "premium", access: "locked", accessBadge };
+    // public_mvp: somente overview + diagnostico ficam acessíveis na sidebar.
+    // O corpo do relatório continua a respeitar features[block.featureKey].
+    if (block.id === "overview" || block.id === "diagnostico") {
+      return { block, group: "incluido", access: "accessible", accessBadge };
     }
-    if (fv === "lightweight" || fv === "teaser") {
-      return {
-        block,
-        group: "incluido",
-        access: "partial",
-        accessBadge,
-      };
-    }
-    return { block, group: "incluido", access: "accessible", accessBadge };
+    return { block, group: "premium", access: "locked", accessBadge };
   });
 }
 
