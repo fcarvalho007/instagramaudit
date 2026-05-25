@@ -6,50 +6,14 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InstagramGlyph } from "./instagram-glyph";
-
-// Instagram username spec: 1-30 chars, letters/numbers/dots/underscores only
-const USERNAME_REGEX = /^[A-Za-z0-9._]{1,30}$/;
-
-// Path segments do Instagram que não são usernames de perfil.
-const RESERVED_IG_SEGMENTS = new Set([
-  "p", "reel", "reels", "tv", "stories", "explore", "accounts", "directory",
-]);
+import { normalizeInstagramHandle } from "@/lib/instagram/normalize-handle";
 
 /**
- * Normaliza inputs do utilizador para um handle do Instagram.
- *
- * Aceita:
- *  - "chatgptricks"
- *  - "/chatgptricks/"
- *  - "@chatgptricks"
- *  - "https://www.instagram.com/chatgptricks/"
- *  - "instagram.com/chatgptricks/?igsh=..."
- *
- * Devolve string vazia para inputs que claramente não são perfis
- * (ex.: URL de reel/post), deixando o caller mostrar erro de input.
+ * Re-export do helper canónico em `@/lib/instagram/normalize-handle`,
+ * mantido por compatibilidade com call-sites e testes existentes.
  */
 export function extractUsername(raw: string): string {
-  if (!raw) return "";
-  let s = raw.replace(/^[\s\u200B-\u200D\uFEFF]+|[\s\u200B-\u200D\uFEFF]+$/g, "");
-  if (!s) return "";
-
-  // 1) URL com instagram.com → primeiro segmento de path.
-  const urlMatch = s.match(/instagram\.com\/+([^/?#\s]+)/i);
-  if (urlMatch) {
-    const seg = urlMatch[1].toLowerCase();
-    if (RESERVED_IG_SEGMENTS.has(seg)) return "";
-    return seg;
-  }
-
-  // 2) Normaliza prefixos @, barras à volta e baixa caixa.
-  s = s
-    .replace(/^@+/, "")
-    .replace(/^\/+/, "")
-    .replace(/\/+$/, "")
-    .toLowerCase();
-
-  // 3) Se ainda tiver `/` no meio, fica com o primeiro segmento.
-  return s.split("/")[0] ?? "";
+  return normalizeInstagramHandle(raw);
 }
 
 export function HeroActionBar() {
@@ -66,11 +30,7 @@ export function HeroActionBar() {
     e.preventDefault();
     const username = extractUsername(value);
     if (!username) {
-      setError(t("actionBar.errors.empty"));
-      return;
-    }
-    if (!USERNAME_REGEX.test(username)) {
-      setError(t("actionBar.errors.invalid"));
+      setError(value.trim() ? t("actionBar.errors.invalid") : t("actionBar.errors.empty"));
       return;
     }
     setError(null);
@@ -80,10 +40,12 @@ export function HeroActionBar() {
     const competitors: string[] = [];
     for (const raw of rawCompetitors) {
       const c = extractUsername(raw);
-      if (!c) continue;
-      if (!USERNAME_REGEX.test(c)) {
+      if (!c) {
+        if (raw.trim()) {
         setCompetitorError(t("actionBar.errors.competitorInvalid"));
         return;
+      }
+        continue;
       }
       if (c === username) continue; // skip duplicate of primary
       if (competitors.includes(c)) continue; // dedupe
