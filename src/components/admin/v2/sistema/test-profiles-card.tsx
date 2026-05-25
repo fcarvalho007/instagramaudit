@@ -311,6 +311,14 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
   });
   const isCacheOnlyMode = (modeData?.mode ?? "cache_only") === "cache_only";
 
+  // Mutation to switch mode → fresh (used by the "Mudar e atualizar" shortcut).
+  const switchModeMutation = useMutation({
+    mutationFn: () => setExecutionMode({ data: { mode: "fresh" } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "execution-mode"] });
+    },
+  });
+
   // Preflight query — only runs when modal opens
   const {
     data: preflight,
