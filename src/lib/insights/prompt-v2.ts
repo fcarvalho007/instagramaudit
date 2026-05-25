@@ -186,7 +186,7 @@ export const RESPONSE_JSON_SCHEMA_V2 = {
   schema: {
     type: "object",
     additionalProperties: false,
-    required: ["sections", "priorities"],
+    required: ["sections", "priorities", "editorial_verdict"],
     properties: {
       sections: {
         type: "object",
@@ -212,6 +212,54 @@ export const RESPONSE_JSON_SCHEMA_V2 = {
             title: { type: "string", minLength: 1, maxLength: 80 },
             body: { type: "string", minLength: 1, maxLength: 220 },
             resolves: { type: "string", minLength: 1, maxLength: 120 },
+          },
+        },
+      },
+      editorial_verdict: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "verdict_label",
+          "title",
+          "paragraph",
+          "priority",
+          "strengths",
+          "limitations",
+          "confidence",
+          "evidence_used",
+        ],
+        properties: {
+          verdict_label: {
+            type: "string",
+            enum: ["strong", "promising", "needs_work", "limited_data"],
+          },
+          title: { type: "string", minLength: 1, maxLength: 70 },
+          paragraph: { type: "string", minLength: 1, maxLength: 480 },
+          priority: { type: "string", minLength: 1, maxLength: 200 },
+          strengths: {
+            type: "array",
+            minItems: 2,
+            maxItems: 2,
+            items: { type: "string", minLength: 1, maxLength: 100 },
+          },
+          limitations: {
+            type: "array",
+            minItems: 2,
+            maxItems: 2,
+            items: { type: "string", minLength: 1, maxLength: 100 },
+          },
+          confidence: {
+            type: "string",
+            enum: ["high", "medium", "low"],
+          },
+          evidence_used: {
+            type: "array",
+            minItems: 1,
+            maxItems: 6,
+            items: {
+              type: "string",
+              enum: [...EDITORIAL_VERDICT_EVIDENCE_ALLOWLIST],
+            },
           },
         },
       },
