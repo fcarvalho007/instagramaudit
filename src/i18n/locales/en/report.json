@@ -1003,5 +1003,9 @@
     "ctx_socialinsider": "engagement by format",
     "ctx_buffer": "reference by account size",
     "ctx_hootsuite": "cross-industry context"
+  },
+  "snapshot": {
+    "metaTitle": "Report · InstaBench",
+    "retentionMessage": "Reports remain available for {{days}} days after generation."
   }
 }
