@@ -1,123 +1,74 @@
 ## Objetivo
 
-Validação controlada do `editorial_verdict` (Bloco 1) em 3 perfis reais, com custo mínimo e sem mexer em leads/emails.
+Simplificar o modal premium para mostrar apenas as 2 opções comerciais finais (1 relatório 7€ / pack 5 × 28€), removendo planos exploratórios (mensal, agência, "em estudo", "em breve", "sob proposta", "sem pagamento agora").
 
-## Estado atual confirmado
+## Estado de checkout
 
-Snapshot DB:
-- `robs.cortez` — snapshot de 25/05 16:00, **sem `ai_insights_v2`** → sem `editorial_verdict`.
-- `frederico.m.carvalho` — snapshot de 25/05 13:58, **sem `ai_insights_v2`** → sem `editorial_verdict`.
-- `martimsilvai` — sem snapshot.
+**Não existe endpoint de checkout real** (sem Stripe, sem EuPago, sem rota `/api/public/checkout`). Conforme as instruções, não vou criar checkout falso nem links partidos. Já existe o evento de tracking `pricing_option_clicked` (em `src/lib/tracking.functions.ts`, usado em `premium-interest-dialog.tsx`). Os 2 CTAs vão continuar a emitir esse evento, agora com os identificadores tipados `single_report` e `pack_5_reports`, e o modal sinaliza visualmente o estado (cartão "selecionado" após clique). **Wiring real de pagamento fica pendente** — reportado no output final.
 
-Implicação: nenhum dos snapshots existentes carrega o novo verdict. A UI mostrará o fallback determinístico (`editorial-verdict-fallback.ts`). Para validar o verdict **real gerado por OpenAI v2** é obrigatório forçar pelo menos 1 geração fresca por perfil. Sem isso, a validação é apenas do fallback.
+## Ficheiros alterados
 
-## Estratégia (respeita o limite "máx. 3 fresh")
+1. **`src/components/report-redesign/v2/premium-interest-dialog.tsx`** — reescrita do conteúdo:
+   - `PricingOption` passa a `"single_report" | "pack_5_reports"`.
+   - Remove `monthly`, `agency` e respetivos badges.
+   - Layout: 2 cartões, `grid-cols-1 sm:grid-cols-2`, dialog `sm:max-w-[560px]`.
+   - Cada cartão: título (Inter SemiBold), preço grande (Inter Bold, `tabular-nums`), 2 bullets com ícone `Check`, descrição/secundário curto, `Button` full-width como CTA.
+   - Pack recomendado de forma subtil: `ring-1 ring-accent-secondary/30` + badge pequeno "Poupa 20%" / "Save 20%" no canto, cor `accent-secondary` indigo. Sem agressividade.
+   - Trust note no rodapé substitui o footer antigo.
+   - `handleSelect` mantém a emissão de `pricing_option_clicked` (com os novos IDs), marca o cartão como selecionado, e não navega. Comentário inline indica que wiring de pagamento está pendente.
+   - Props públicos mantêm-se → call-sites (`premium-callout.tsx`, `report-block-nav.tsx`) ficam intactos.
 
-Plano em 2 fases, ambas read-only do lado do operador.
+2. **`src/i18n/locales/pt/report.json`** e **`src/i18n/locales/en/report.json`** — bloco `premium.dialog`:
+   - Substituir `title`, `description` (renomear para `subtitle` para clareza, ou manter `description`).
+   - Remover `single_price`, `bundle_*`, `monthly_*`, `agency_*`, `footer`.
+   - Adicionar:
+     - `single.title`, `single.price`, `single.bullet_profile`, `single.bullet_unlock`, `single.note`, `single.cta`
+     - `pack.title`, `pack.price`, `pack.bullet_reports`, `pack.bullet_unit`, `pack.savings_badge`, `pack.cta`
+     - `trust_note`
+   - Copy exatamente como abaixo.
 
-### Fase A — validar fallback nos snapshots existentes (custo 0 €)
+## Copy final
 
-1. Carregar `/analyze/robs.cortez` e `/analyze/frederico.m.carvalho` no preview.
-2. Inspecionar Bloco 1 e confirmar:
-   - Hero renderiza via `editorial-verdict-fallback.ts` (sem AI verdict).
-   - KPI strip não é duplicada no Hero.
-   - Cadência usa cópia método-específica (já validada).
-3. Capturar screenshot do estado fallback (baseline visual).
+**PT**
+- Título: "Desbloquear acesso premium"
+- Subtítulo: "O primeiro bloco continua gratuito. Nesta fase de lançamento, o Diagnóstico editorial está incluído como oferta. As restantes secções premium ficam disponíveis com um desbloqueio pago."
+- Cartão 1: "1 relatório" · "7€" · "1 perfil" · "1 desbloqueio premium" · "Ideal para uma análise pontual" · CTA "Escolher 1 relatório"
+- Cartão 2: "Pack 5 relatórios" · "28€" · "5 relatórios" · "5,60€/relatório" · badge "Poupa 20%" · CTA "Escolher pack de 5"
+- Trust: "Sem subscrição. Sem renovação automática."
 
-Sem chamada Apify/OpenAI, sem mutação.
+**EN**
+- Title: "Unlock premium access"
+- Subtitle: "The first block remains free. During the launch phase, the Editorial diagnosis is included as a launch offer. The remaining premium sections are available with a paid unlock."
+- Card 1: "1 report" · "€7" · "1 profile" · "1 premium unlock" · "Ideal for a one-off analysis" · CTA "Choose 1 report"
+- Card 2: "Pack of 5 reports" · "€28" · "5 reports" · "€5.60/report" · badge "Save 20%" · CTA "Choose pack of 5"
+- Trust: "No subscription. No automatic renewal."
 
-### Fase B — gerar 3 verdicts reais (1 por perfil, custo controlado)
+## Design
 
-Forçar `force_refresh=true` (ou equivalente do enrichment) para os 3 perfis, **uma vez cada**:
+- Tokens existentes apenas: `surface-base`, `surface-muted`, `border-default`, `content-primary/secondary/tertiary`, `accent-primary`, `accent-secondary`. Sem hardcoded colors.
+- Inter para tudo (Fraunces fica para H1/H2 editoriais, não para títulos de modal). `tabular-nums` para preços.
+- Sem JetBrains Mono. Sem amber. Sem ring agressivo.
+- Mobile-first, testar em 375px.
 
-1. `robs.cortez` — alvo principal: validar que o verdict não cita "pinned" e respeita cadência `window_30d` (`sufficient=true`, `pinnedExcluded=2`).
-2. `frederico.m.carvalho` — perfil interno conhecido, sample baseline.
-3. Terceiro perfil — **só executar se** `APIFY_TESTING_MODE=false` confirmado em `app_config`. Verificar antes da execução; se `true`, fica em 2 perfis e regista-se a razão.
+## Fora de âmbito
 
-Para cada execução, recolher do snapshot recém-criado:
+- Não toca `report-block-nav.tsx`, `premium-callout.tsx`, `report-shell-v2.tsx` (apenas o conteúdo do dialog muda).
+- Não cria pricing source-of-truth central (plano anterior, ainda por aprovar). Valores ficam no i18n por agora.
+- Não mexe em geração de relatório, Apify/OpenAI/DataForSEO, lead magnet, Block 1–6, Supabase, autenticação.
+- Não cria integração de pagamento.
 
-```sql
-SELECT
-  instagram_username,
-  report_payload_jsonb->'data_source' AS data_source,
-  (report_payload_jsonb->'ai_insights_v2') IS NOT NULL AS openai_v2_ran,
-  report_payload_jsonb->'ai_insights_v2'->'editorial_verdict' AS verdict,
-  report_payload_jsonb->'ai_insights_v2'->'editorial_verdict'->>'title' AS title,
-  report_payload_jsonb->'ai_insights_v2'->'editorial_verdict'->>'priority' AS priority,
-  report_payload_jsonb->'ai_insights_v2'->'editorial_verdict'->>'confidence' AS confidence,
-  report_payload_jsonb->'ai_insights_v2'->'editorial_verdict'->'warnings' AS warnings
-FROM report_snapshots
-WHERE lower(instagram_username) = $1
-ORDER BY created_at DESC LIMIT 1;
-```
+## Validação
 
-Cruzar com `provider_call_logs` (mesmo `report_request_id` ou janela temporal) para custo OpenAI estimado:
+- `bunx tsc --noEmit`
+- `bunx vitest run`
+- Manual em `/analyze/frederico.m.carvalho`:
+  - Abrir modal via `PremiumCallout` → ver 2 cartões, sem mensal/agência/"em estudo".
+  - PT↔EN → copy correto em ambos.
+  - 375px → cartões empilhados e legíveis.
+  - Clicar CTA → evento `pricing_option_clicked` emitido, sem navegação/checkout.
 
-```sql
-SELECT provider, model, cost_usd, total_tokens, created_at
-FROM provider_call_logs
-WHERE created_at > now() - interval '10 minutes'
-ORDER BY created_at DESC;
-```
+## Output (após implementação)
 
-### Pré-checks antes da Fase B (obrigatórios)
-
-- `SELECT key, value FROM app_config WHERE key IN ('APIFY_ENABLED','APIFY_TESTING_MODE','APIFY_ALLOWLIST')` — confirmar kill-switch ligado e allowlist contém os 3 usernames; se perfil externo não estiver na allowlist e `APIFY_TESTING_MODE=true`, abortar esse perfil.
-- Confirmar saldo Apify + créditos OpenAI suficientes (`cost_daily` últimas 24h).
-- Confirmar `editorial_verdict` está mesmo no schema validado por `validate-v2.ts` (já está, verificado em iteração anterior).
-
-## Matriz de avaliação por perfil
-
-Para cada perfil produzir tabela:
-
-| Campo | Valor |
-|---|---|
-| data_source | cache \| fresh |
-| openai_v2_ran | sim/não |
-| editorial_verdict presente | sim/não |
-| title | … |
-| paragraph (80–220 palavras) | … |
-| word_count | n |
-| priority | … |
-| strengths[] | … |
-| limitations[] | … |
-| confidence | low/medium/high |
-| warnings[] | … |
-| contradiz KPI visível? | sim/não + qual |
-| custo OpenAI estimado (USD) | … |
-| Bloco 1 evita repetir KPI strip? | sim/não |
-
-## Critérios de qualidade (score 1–5)
-
-1. **Linguagem diagnóstica, não prescritiva** (sem "deve", "precisa", "tem de").
-2. **Paragraph 80–220 palavras** e não duplica números já visíveis no KPI strip.
-3. **Coerência com cadência corrigida** (sem afirmar "baixa cadência" se `sufficient=true, weekly≥1`; sem mencionar pinned se `pinnedExcluded>0`).
-4. **strengths/limitations** específicos e ancorados em sinais reais.
-5. **confidence/warnings** condizentes com `reliability` da cadência e sample size.
-
-GO se ≥4/5 nos 3 perfis e zero contradições factuais. NO-GO se houver qualquer alucinação de KPI ou violação das regras de cadência.
-
-## Entregáveis
-
-1. Tabela por perfil (3×).
-2. Texto integral do `editorial_verdict` por perfil.
-3. Quality score 1–5 com justificação.
-4. Lista de issues encontrados.
-5. Recomendações concretas de refinamento de prompt/schema (se aplicável).
-6. Decisão GO/NO-GO com condições.
-
-## Restrições honradas
-
-- Máx. 3 análises frescas (1 por perfil; perfil externo só com `APIFY_TESTING_MODE=false`).
-- Snapshots cache reutilizados na Fase A.
-- Sem envio de emails (não toco em Resend nem em fluxos transacionais).
-- Sem mutação de `leads`.
-- Sem alteração de prompts/schema nesta tarefa (só recomendações).
-
-## Ficheiros tocados
-
-Nenhum. Tarefa é puramente de execução/observação + relatório final em chat.
-
-## Próximo passo
-
-Aguardo aprovação para mudar para Build Mode e executar Fase A → pré-checks → Fase B → relatório.
+- Lista de ficheiros alterados.
+- Confirmação: checkout não wired, integração de pagamento pendente.
+- Outras referências a pricing exploratório fora do modal, se restarem.
