@@ -19,6 +19,7 @@ import {
   buildEditorialPatternsForInsights,
   type EditorialPatternsForInsights,
 } from "@/lib/report/editorial-patterns";
+import { computeCadence } from "@/lib/report/cadence";
 import type {
   CompetitorAnalysis,
   PublicAnalysisContentSummary,
@@ -37,6 +38,10 @@ type PostInput = {
   caption?: string | null;
   /** Unix seconds (matches EnrichedPost.taken_at). Optional. */
   taken_at?: number | null;
+  /** ISO timestamp (matches EnrichedPost.taken_at_iso). Optional. */
+  taken_at_iso?: string | null;
+  /** Pinned-post flag (matches EnrichedPost.is_pinned). Optional. */
+  is_pinned?: boolean | null;
 };
 
 export interface BuildInsightsCtxInput {
@@ -142,6 +147,26 @@ export function buildInsightsCtx(
   const ctx: InsightsContext = {
     profile,
     content_summary: summary,
+    cadence: (() => {
+      const c = computeCadence(
+        posts.map((p) => ({
+          taken_at_iso: p.taken_at_iso ?? null,
+          taken_at: p.taken_at ?? null,
+          is_pinned: p.is_pinned ?? false,
+        })),
+      );
+      return {
+        method: c.method,
+        sampleSize: c.sampleSize,
+        sufficient: c.sufficient,
+        weekly: c.sufficient ? c.weekly : null,
+        windowDays: c.sufficient ? c.windowDays : null,
+        pinnedExcluded: c.excludedPinned,
+        reliability: c.reliability,
+        note:
+          !c.sufficient || c.reliability === "low" ? c.notePt : null,
+      };
+    })(),
     top_posts: topPosts,
     benchmark,
     competitors_summary: {

@@ -54,6 +54,17 @@ Comparação com referências (obrigatório):
 - Não atribuir números a fontes externas, mesmo que apareçam no contexto.
 - Não escrever nomes de empresas ou ferramentas (Socialinsider, Buffer, Hootsuite, Databox).
 
+Cadência de publicação (regras obrigatórias):
+- O ritmo de publicação tem UMA fonte de verdade: o objecto "cadence" do payload. NÃO usar "content_summary.estimated_posts_per_week" — esse campo é cru, inclui posts fixados antigos e pode estar errado.
+- Quando "cadence.sufficient" for false (método "insufficient"), é TERMINANTEMENTE PROIBIDO afirmar que o perfil "publica pouco", "tem cadência fraca", "ritmo forte" ou "ritmo irregular". Usar formulações neutras como "a amostra recente não permite concluir sobre o ritmo" ou "dados recentes insuficientes para medir a cadência".
+- Quando "cadence.method" for "window_30d", pode referir explicitamente "nos últimos 30 dias" (ex.: "cerca de 2,3 publicações por semana nos últimos 30 dias").
+- Quando "cadence.method" for "window_90d", pode referir "nos últimos 90 dias".
+- Quando "cadence.method" for "sample_span", descrever como "ritmo observado na amostra recente" — NUNCA dizer "X por semana" sem qualificador temporal, porque a amostra cobre mais do que um mês.
+- Quando "cadence.pinnedExcluded" estiver presente (> 0), NÃO mencionar publicações fixadas no texto público a menos que seja essencial ao diagnóstico — o número já as exclui.
+- NÃO afirmar "cadência baixa" se "cadence.sufficient" for true e "cadence.weekly" >= 1.
+- Se o KPI strip já mostrar o número da cadência, não o repetir no texto a menos que seja essencial para sustentar o diagnóstico.
+- Sempre que citar o ritmo no texto público, usar "cadence.weekly" como número (formato pt-PT, vírgula decimal). Nunca "estimated_posts_per_week".
+
 Linguagem visível (proibido em "text"):
 - Sufixos snake_case: "_pct", "_count", "_rate", "_per_week".
 - Caminhos com pontos: "content_summary.…", "benchmark.…", "market_signals.…".
@@ -67,7 +78,7 @@ Tom por "emphasis":
 - "neutral": contexto sem julgamento (ex.: dados insuficientes). Tom factual.
 
 Mapeamento das 9 secções (uma observação dirigida a cada uma):
-- "hero": leitura editorial de abertura do relatório. Combinar OBRIGATORIAMENTE três sinais: (1) envolvimento médio com posição face ao tier, (2) ritmo semanal real (estimated_posts_per_week), (3) formato dominante OU tema recorrente das captions. Estrutura: 1 frase de diagnóstico com os números que o sustentam + 1 frase com a alavanca prioritária no infinitivo impessoal. Evitar abertura factual fria — preferir uma abertura editorial curta de ≤ 6 palavras antes dos dois pontos ("Audiência fiel mas silenciosa:", "Ritmo curto, sinal forte:", "Conteúdo regular sem tração:"). Máx. 240 chars. Tom directo, sem alarmismo nem condescendência. CORRECTO: "Audiência fiel mas silenciosa: 0,5% de envolvimento médio, abaixo dos 1,8% do tier micro, com 5 publicações por semana dominadas por Reels. Testar 2 carrosséis editoriais por semana durante 4 semanas e medir a conversa." PROIBIDO (factual, sem ângulo): "Este perfil tem 0,5% de envolvimento e publica 5 vezes por semana."
+- "hero": leitura editorial de abertura do relatório. Combinar OBRIGATORIAMENTE três sinais: (1) envolvimento médio com posição face ao tier, (2) ritmo de publicação real (objecto "cadence" — respeitar as regras de cadência acima; quando "cadence.sufficient" for false, omitir o eixo do ritmo no hero ou descrevê-lo como amostra insuficiente), (3) formato dominante OU tema recorrente das captions. Estrutura: 1 frase de diagnóstico com os números que o sustentam + 1 frase com a alavanca prioritária no infinitivo impessoal. Evitar abertura factual fria — preferir uma abertura editorial curta de ≤ 6 palavras antes dos dois pontos ("Audiência fiel mas silenciosa:", "Ritmo curto, sinal forte:", "Conteúdo regular sem tração:"). Máx. 240 chars. Tom directo, sem alarmismo nem condescendência. CORRECTO: "Audiência fiel mas silenciosa: 0,5% de envolvimento médio, abaixo dos 1,8% do tier micro, com 2,3 publicações por semana nos últimos 30 dias dominadas por Reels. Testar 2 carrosséis editoriais por semana durante 4 semanas e medir a conversa." PROIBIDO (factual, sem ângulo): "Este perfil tem 0,5% de envolvimento e publica 5 vezes por semana."
 - "marketSignals": procura de mercado vs temas do perfil (se "market_signals.has_free" for false, escrever um texto neutro a explicar que não há sinais de pesquisa para cruzar; nunca inventar tendências).
 - "evolutionChart": evolução temporal de likes/comentários ao longo dos posts analisados.
 - "benchmark": posicionamento face ao benchmark do tier + formato dominante.

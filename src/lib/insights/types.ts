@@ -76,6 +76,27 @@ export interface InsightsContext {
   profile: PublicAnalysisProfile;
   content_summary: PublicAnalysisContentSummary;
   /**
+   * Posting cadence computed from real post timestamps via
+   * `computeCadence()`. Replaces the cruder
+   * `content_summary.estimated_posts_per_week` as the source of truth for
+   * the model. The model is forbidden (via system prompt) from claiming
+   * weak or strong cadence when `sufficient === false`.
+   */
+  cadence: {
+    weekly: number | null;
+    method:
+      | "window_30d"
+      | "window_90d"
+      | "sample_span"
+      | "insufficient";
+    sampleSize: number;
+    windowDays: number | null;
+    sufficient: boolean;
+    pinnedExcluded: number;
+    reliability: "high" | "medium" | "low";
+    note: string | null;
+  };
+  /**
    * Top posts (already sorted by engagement desc upstream). Capped to a
    * small number by the prompt builder to keep token usage low.
    */

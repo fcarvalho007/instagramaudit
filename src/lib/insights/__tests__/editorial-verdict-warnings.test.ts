@@ -30,6 +30,16 @@ function makeCtx(overrides: {
       estimated_posts_per_week: overrides.estimated_posts_per_week ?? 3,
     },
     top_posts: [],
+    cadence: {
+      method: "window_30d",
+      weekly: overrides.estimated_posts_per_week ?? 3,
+      sampleSize: overrides.posts_analyzed ?? 12,
+      windowDays: 30,
+      sufficient: true,
+      pinnedExcluded: 0,
+      reliability: "high",
+      note: null,
+    },
     benchmark:
       overrides.benchmark === undefined
         ? ({ tier: "micro" } as unknown as InsightsContext["benchmark"])

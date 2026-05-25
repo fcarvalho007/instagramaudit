@@ -41,6 +41,16 @@ function makeCtx(): InsightsContext {
     ],
     benchmark: null,
     competitors_summary: { count: 0, median_engagement_pct: null },
+    cadence: {
+      method: "window_30d",
+      weekly: 1.5,
+      sampleSize: 6,
+      windowDays: 30,
+      sufficient: true,
+      pinnedExcluded: 0,
+      reliability: "medium",
+      note: null,
+    },
     market_signals: { has_free: false, has_paid: false },
     editorial_patterns: {
       engagement_trend: { direction: "up", confidence: "média", sample_size: 8 },
