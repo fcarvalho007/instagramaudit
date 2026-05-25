@@ -637,7 +637,14 @@
         "Comunicação dispersa": "Os sinais de atrair, educar, converter e fidelizar misturam-se sem uma fase claramente dominante."
       },
       "callout_label": "O que isto sugere",
-      "callout_body": "Sem uma fase dominante, o conteúdo pode não estar a conduzir a audiência numa direção clara. Definir uma intenção por bloco de publicações pode melhorar a coerência editorial."
+      "callout_body": "Sem uma fase dominante, o conteúdo pode não estar a conduzir a audiência numa direção clara. Definir uma intenção por bloco de publicações pode melhorar a coerência editorial.",
+      "stage_labels": {
+        "Topo do funil": "Topo do funil",
+        "Meio do funil": "Meio do funil",
+        "Fundo do funil": "Fundo do funil",
+        "Pós-venda / fidelização": "Pós-venda / fidelização",
+        "Comunicação dispersa": "Comunicação dispersa"
+      }
     },
     "audience": {
       "label": "Conversa",
@@ -661,6 +668,11 @@
         "mentions": "Menções a site/newsletter",
         "mentions_hint": "{{count}} posts",
         "cta": "CTAs explícitos no fim de posts"
+      },
+      "labels": {
+        "Integração clara": "Integração clara",
+        "Integração parcial": "Integração parcial",
+        "Sem integração": "Sem integração"
       }
     }
   },

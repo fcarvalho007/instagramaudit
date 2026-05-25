@@ -637,7 +637,14 @@
         "Comunicação dispersa": "Attract, educate, convert and retain signals mix without a clearly dominant stage."
       },
       "callout_label": "What this suggests",
-      "callout_body": "Without a dominant stage, content may not be steering the audience in a clear direction. Defining intent per block of posts can improve editorial coherence."
+      "callout_body": "Without a dominant stage, content may not be steering the audience in a clear direction. Defining intent per block of posts can improve editorial coherence.",
+      "stage_labels": {
+        "Topo do funil": "Top of funnel",
+        "Meio do funil": "Middle of funnel",
+        "Fundo do funil": "Bottom of funnel",
+        "Pós-venda / fidelização": "Post-sale / retention",
+        "Comunicação dispersa": "Scattered communication"
+      }
     },
     "audience": {
       "label": "Conversation",
@@ -661,6 +668,11 @@
         "mentions": "Mentions of website/newsletter",
         "mentions_hint": "{{count}} posts",
         "cta": "Explicit CTAs at the end of posts"
+      },
+      "labels": {
+        "Integração clara": "Clear integration",
+        "Integração parcial": "Partial integration",
+        "Sem integração": "No integration"
       }
     }
   },
