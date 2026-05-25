@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { Check, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -8,10 +9,16 @@ import { cn } from "@/lib/utils";
 
 // Checkout is not yet wired. CTAs only emit a typed `pricing_option_clicked`
 // event so we can measure intent without faking a payment flow.
-type PricingOption = "single_report" | "pack_5_reports";
+type PricingOption = "free" | "single_report" | "pack_5_reports";
+
+interface AccessStep {
+  title: string;
+  body: string;
+}
 
 export function PricingPage() {
   const { t } = useTranslation("pricing");
+  const navigate = useNavigate();
   const [selected, setSelected] = useState<PricingOption | null>(null);
 
   const handleSelect = (option: PricingOption) => {
@@ -25,13 +32,31 @@ export function PricingPage() {
         },
       },
     }).catch(() => {});
+    if (option === "free") {
+      navigate({ to: "/" }).catch(() => {});
+    }
   };
 
-  const accessItems = t("access.items", { returnObjects: true }) as string[];
+  const accessSteps = t("access.steps", {
+    returnObjects: true,
+  }) as AccessStep[];
+  const freeBullets = t("free.bullets", { returnObjects: true }) as string[];
+  const singleBullets = t("single.bullets", { returnObjects: true }) as string[];
+  const packBullets = t("pack.bullets", { returnObjects: true }) as string[];
 
   return (
-    <main className="min-h-screen bg-surface-base">
-      <section className="mx-auto max-w-3xl px-4 pt-16 pb-10 sm:pt-24 sm:pb-12 text-center">
+    <main className="relative min-h-screen overflow-hidden bg-surface-base">
+      {/* Decorative prism shapes — subtle depth, hidden on mobile */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 -z-0 hidden md:block"
+      >
+        <div className="absolute left-[8%] top-[140px] size-[320px] rounded-full bg-gradient-to-br from-accent-primary/20 via-accent-secondary/10 to-transparent blur-3xl opacity-60" />
+        <div className="absolute right-[6%] top-[260px] size-[380px] rounded-full bg-gradient-to-tr from-accent-secondary/20 via-accent-primary/10 to-transparent blur-3xl opacity-50" />
+        <div className="absolute left-1/2 top-[520px] size-[260px] -translate-x-1/2 rounded-full bg-gradient-to-b from-accent-primary/10 to-transparent blur-3xl opacity-50" />
+      </div>
+
+      <section className="relative mx-auto max-w-3xl px-4 pt-16 pb-10 sm:pt-24 sm:pb-12 text-center">
         <h1 className="font-fraunces text-4xl sm:text-5xl font-medium tracking-tight text-content-primary">
           {t("hero.title")}
         </h1>
@@ -40,32 +65,45 @@ export function PricingPage() {
         </p>
       </section>
 
-      <section className="mx-auto max-w-3xl px-4 pb-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <section className="relative mx-auto max-w-5xl px-4 pb-10">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-5 md:items-stretch">
+          <PricingCard
+            id="free"
+            tone="free"
+            label={t("free.label")}
+            title={t("free.title")}
+            bullets={freeBullets}
+            cta={t("free.cta")}
+            selected={selected === "free"}
+            onSelect={handleSelect}
+          />
           <PricingCard
             id="single_report"
+            tone="premium"
+            label={t("single.label")}
             title={t("single.title")}
             price={t("single.price")}
-            bullets={[t("single.bullet_profile"), t("single.bullet_unlock")]}
-            note={t("single.note")}
+            bullets={singleBullets}
             cta={t("single.cta")}
             selected={selected === "single_report"}
             onSelect={handleSelect}
           />
           <PricingCard
             id="pack_5_reports"
+            tone="best-value"
+            label={t("pack.label")}
             title={t("pack.title")}
             price={t("pack.price")}
-            bullets={[t("pack.bullet_reports"), t("pack.bullet_unit")]}
-            cta={t("pack.cta")}
+            unit={t("pack.unit")}
             badge={t("pack.savings_badge")}
-            recommended
+            bullets={packBullets}
+            cta={t("pack.cta")}
             selected={selected === "pack_5_reports"}
             onSelect={handleSelect}
           />
         </div>
 
-        <p className="mt-5 flex items-center justify-center gap-1.5 text-xs text-content-tertiary">
+        <p className="mt-6 flex items-center justify-center gap-1.5 text-xs text-content-tertiary">
           <ShieldCheck className="size-3.5" aria-hidden="true" />
           {t("trust_note")}
         </p>
@@ -74,115 +112,177 @@ export function PricingPage() {
         </p>
       </section>
 
-      <section className="mx-auto max-w-3xl px-4 pb-24">
-        <div className="rounded-2xl bg-surface-muted border border-border-default px-6 py-8 sm:px-10 sm:py-10">
-          <h2 className="font-fraunces text-2xl sm:text-3xl font-medium tracking-tight text-content-primary">
-            {t("access.title")}
-          </h2>
-          <ol className="mt-5 space-y-3">
-            {accessItems.map((item, idx) => (
-              <li
-                key={item}
-                className="flex items-start gap-3 text-sm sm:text-base text-content-secondary leading-relaxed"
+      <section className="relative mx-auto max-w-5xl px-4 pb-24">
+        <h2 className="font-fraunces text-2xl sm:text-3xl font-medium tracking-tight text-content-primary text-center">
+          {t("access.title")}
+        </h2>
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-5">
+          {accessSteps.map((step, idx) => (
+            <div
+              key={step.title}
+              className="relative overflow-hidden rounded-2xl border border-border-default bg-white/80 backdrop-blur-sm p-6 shadow-[0_18px_48px_-32px_rgba(15,23,42,0.18)]"
+            >
+              <div
+                aria-hidden="true"
+                className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent-primary/30 to-transparent"
+              />
+              <span
+                aria-hidden="true"
+                className="font-fraunces text-3xl text-accent-primary tabular-nums"
               >
-                <span
-                  aria-hidden="true"
-                  className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-accent-primary/10 text-xs font-semibold text-accent-primary tabular-nums"
-                >
-                  {idx + 1}
-                </span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ol>
+                {idx + 1}
+              </span>
+              <h3 className="mt-2 text-base font-semibold text-content-primary">
+                {step.title}
+              </h3>
+              <p className="mt-1 text-sm text-content-secondary leading-relaxed">
+                {step.body}
+              </p>
+            </div>
+          ))}
         </div>
       </section>
     </main>
   );
 }
 
+type PricingTone = "free" | "premium" | "best-value";
+
 interface PricingCardProps {
   id: PricingOption;
+  tone: PricingTone;
+  label: string;
   title: string;
-  price: string;
+  price?: string;
+  unit?: string;
   bullets: string[];
-  note?: string;
   cta: string;
   badge?: string;
-  recommended?: boolean;
   selected: boolean;
   onSelect: (id: PricingOption) => void;
 }
 
 function PricingCard({
   id,
+  tone,
+  label,
   title,
   price,
+  unit,
   bullets,
-  note,
   cta,
   badge,
-  recommended = false,
   selected,
   onSelect,
 }: PricingCardProps) {
+  const isBest = tone === "best-value";
+  const isFree = tone === "free";
+
   return (
-    <div
-      className={cn(
-        "relative flex flex-col rounded-xl border bg-surface-base p-5 sm:p-6",
-        "border-border-default transition-colors",
-        recommended && "ring-1 ring-accent-secondary/30",
-        selected && "border-accent-primary/50",
-      )}
-    >
-      {badge ? (
+    <div className="relative">
+      {isBest ? (
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 hidden md:block translate-x-2 translate-y-2 rounded-2xl border border-border-default bg-white/40 opacity-60"
+        />
+      ) : null}
+
+      <div
+        className={cn(
+          "relative flex h-full flex-col overflow-hidden rounded-2xl border p-6 backdrop-blur-sm",
+          "transition-shadow",
+          isFree
+            ? "bg-surface-muted/70 border-border-default"
+            : "bg-white/85 border-border-default shadow-[0_24px_60px_-32px_rgba(15,23,42,0.18)]",
+          isBest && "md:-translate-y-1 ring-1 ring-accent-secondary/30",
+          selected && "ring-2 ring-accent-primary/40",
+        )}
+      >
+        {/* Prism reflection line */}
+        <div
+          aria-hidden="true"
+          className={cn(
+            "absolute inset-x-0 top-0 h-px",
+            isFree
+              ? "bg-gradient-to-r from-transparent via-border-default to-transparent"
+              : "bg-gradient-to-r from-transparent via-accent-primary/40 to-transparent",
+          )}
+        />
+
+        {badge ? (
+          <span
+            className={cn(
+              "absolute right-4 top-4 inline-flex items-center rounded-full",
+              "px-2 py-0.5 text-eyebrow-sm",
+              "bg-accent-secondary/10 text-accent-secondary ring-1 ring-accent-secondary/20",
+            )}
+          >
+            {badge}
+          </span>
+        ) : null}
+
         <span
           className={cn(
-            "absolute -top-2 right-4 inline-flex items-center rounded-full",
-            "px-2 py-0.5 text-eyebrow-sm",
-            "bg-accent-secondary/10 text-accent-secondary ring-1 ring-accent-secondary/20",
+            "inline-flex w-fit items-center rounded-full px-2 py-0.5 text-eyebrow-sm",
+            isFree && "bg-surface-base text-content-tertiary ring-1 ring-border-default",
+            tone === "premium" &&
+              "bg-accent-primary/10 text-accent-primary ring-1 ring-accent-primary/20",
+            isBest &&
+              "bg-accent-secondary/10 text-accent-secondary ring-1 ring-accent-secondary/20",
           )}
         >
-          {badge}
+          {label}
         </span>
-      ) : null}
 
-      <p className="text-sm font-semibold text-content-primary">{title}</p>
-      <p className="mt-1 text-3xl font-bold text-content-primary tabular-nums">
-        {price}
-      </p>
+        <h3 className="mt-3 text-base font-semibold text-content-primary">
+          {title}
+        </h3>
 
-      <ul className="mt-4 space-y-2">
-        {bullets.map((b) => (
-          <li
-            key={b}
-            className="flex items-start gap-2 text-sm text-content-secondary"
+        {price ? (
+          <p className="mt-2 text-4xl font-bold text-content-primary tabular-nums">
+            {price}
+          </p>
+        ) : (
+          <p className="mt-2 text-4xl font-bold text-content-primary tabular-nums">
+            0€
+          </p>
+        )}
+
+        {unit ? (
+          <p className="mt-1 text-xs text-content-tertiary tabular-nums">
+            {unit}
+          </p>
+        ) : null}
+
+        <ul className="mt-5 space-y-2.5">
+          {bullets.map((b) => (
+            <li
+              key={b}
+              className="flex items-start gap-2 text-sm text-content-secondary"
+            >
+              <Check
+                aria-hidden="true"
+                className={cn(
+                  "mt-0.5 size-4 shrink-0",
+                  isFree ? "text-content-tertiary" : "text-accent-primary",
+                )}
+              />
+              <span>{b}</span>
+            </li>
+          ))}
+        </ul>
+
+        <div className="mt-6 sm:mt-auto pt-2">
+          <Button
+            type="button"
+            onClick={() => onSelect(id)}
+            variant={isBest ? "primary" : isFree ? "ghost" : "outline"}
+            className="w-full"
+            aria-pressed={selected}
           >
-            <Check
-              aria-hidden="true"
-              className="mt-0.5 size-4 shrink-0 text-accent-primary"
-            />
-            <span className="tabular-nums">{b}</span>
-          </li>
-        ))}
-      </ul>
-
-      {note ? (
-        <p className="mt-3 text-xs text-content-tertiary leading-relaxed">
-          {note}
-        </p>
-      ) : null}
-
-      <div className="mt-5 sm:mt-auto pt-2">
-        <Button
-          type="button"
-          onClick={() => onSelect(id)}
-          variant={recommended ? "primary" : "outline"}
-          className="w-full"
-          aria-pressed={selected}
-        >
-          {cta}
-        </Button>
+            {cta}
+          </Button>
+        </div>
       </div>
     </div>
   );
