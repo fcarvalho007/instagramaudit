@@ -89,10 +89,8 @@ export function PremiumInterestDialog({
             label={t("premium.dialog.single.label")}
             title={t("premium.dialog.single.title")}
             price={t("premium.dialog.single.price")}
-            bullets={[
-              t("premium.dialog.single.bullet_profile"),
-              t("premium.dialog.single.bullet_unlock"),
-            ]}
+            launchPriceLabel={t("premium.dialog.single.launch_price")}
+            bullets={[t("premium.dialog.single.bullet_combined")]}
             note={t("premium.dialog.single.note")}
             cta={t("premium.dialog.single.cta")}
             selected={selected === "single_report"}
@@ -134,6 +132,7 @@ interface PricingCardProps {
   title: string;
   price?: string;
   unit?: string;
+  launchPriceLabel?: string;
   bullets: string[];
   note?: string;
   cta: string;
@@ -149,6 +148,7 @@ function PricingCard({
   title,
   price,
   unit,
+  launchPriceLabel,
   bullets,
   note,
   cta,
@@ -210,6 +210,9 @@ function PricingCard({
       </p>
       {unit ? (
         <p className="text-xs text-content-tertiary tabular-nums">{unit}</p>
+      ) : null}
+      {launchPriceLabel ? (
+        <p className="mt-0.5 text-[11px] text-content-tertiary">{launchPriceLabel}</p>
       ) : null}
 
       <ul className="mt-3 space-y-1.5">

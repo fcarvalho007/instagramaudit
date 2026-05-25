@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Menu, Lock, ArrowRight } from "lucide-react";
+import { Menu, Lock, ArrowRight, Gift } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
@@ -21,9 +21,9 @@ import { trackEvent } from "@/lib/tracking.functions";
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type AccessState = "accessible" | "partial" | "locked";
+type AccessState = "accessible" | "locked";
 type Group = "incluido" | "premium";
-type AccessBadge = "free" | "launch" | "premium";
+type AccessBadge = "free" | "included" | "premium";
 
 interface SidebarItem {
   block: BlockConfig;
@@ -56,25 +56,17 @@ function buildSidebarItems(
       block.id === "overview"
         ? "free"
         : block.id === "diagnostico"
-          ? "launch"
+          ? "included"
           : "premium";
-    const fv = features[block.featureKey];
     if (variant === "internal_lab" || variant === "pro_preview") {
       return { block, group: "incluido", access: "accessible", accessBadge };
     }
-    // public_mvp
-    if (fv === "hidden") {
-      return { block, group: "premium", access: "locked", accessBadge };
+    // public_mvp: somente overview + diagnostico ficam acessíveis na sidebar.
+    // O corpo do relatório continua a respeitar features[block.featureKey].
+    if (block.id === "overview" || block.id === "diagnostico") {
+      return { block, group: "incluido", access: "accessible", accessBadge };
     }
-    if (fv === "lightweight" || fv === "teaser") {
-      return {
-        block,
-        group: "incluido",
-        access: "partial",
-        accessBadge,
-      };
-    }
-    return { block, group: "incluido", access: "accessible", accessBadge };
+    return { block, group: "premium", access: "locked", accessBadge };
   });
 }
 
@@ -139,31 +131,27 @@ function ProfileHeader({ profile }: { profile: SidebarProfile }) {
   );
 }
 
-function ProgressBar({ items }: { items: SidebarItem[] }) {
+function ProgressSummary({ items }: { items: SidebarItem[] }) {
   const { t } = useTranslation("report");
   const accessible = items.filter((i) => i.access === "accessible").length;
-  const partial = items.filter((i) => i.access === "partial").length;
-  const locked = items.filter((i) => i.access === "locked").length;
+  const total = items.length;
   return (
     <div className="px-1 pt-3 pb-1">
+      <p className="mb-2 text-[11px] font-medium text-content-secondary">
+        {t("nav.access.progress", { accessible, total })}
+      </p>
       <div className="flex w-full gap-1" aria-hidden="true">
         {items.map((item, i) => (
           <div
             key={i}
             className={cn(
-              "h-1.5 flex-1 rounded-sm",
-              item.access === "accessible" && "bg-emerald-500",
-              item.access === "partial" && "bg-signal-warning",
-              item.access === "locked" && "bg-signal-warning/25",
+              "h-[5px] flex-1 rounded-sm",
+              item.accessBadge === "free" && "bg-emerald-500",
+              item.accessBadge === "included" && "bg-blue-500",
+              item.access === "locked" && "bg-border-default",
             )}
           />
         ))}
-      </div>
-      <div className="mt-2 flex items-center justify-between text-[11px] font-medium">
-        <span className="text-emerald-600">
-          {t("nav.accessible", { count: accessible + partial })}
-        </span>
-        <span className="text-accent-gold">{t("nav.locked", { count: locked })}</span>
       </div>
     </div>
   );
@@ -179,26 +167,23 @@ function ItemRow({
   onClick: () => void;
 }) {
   const { t } = useTranslation("report");
-  const isLocked = item.access === "locked";
-  const badgeKey =
-    item.accessBadge === "free"
-      ? "nav.access.badge_free"
-      : item.accessBadge === "launch"
-        ? "nav.access.badge_launch"
-        : "nav.access.badge_premium";
-  const badgeLabel = t(badgeKey);
-  const badgeClass =
-    item.accessBadge === "free"
-      ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-      : item.accessBadge === "launch"
-        ? "bg-amber-50 text-amber-800 ring-amber-200"
-        : "bg-surface-muted text-content-secondary ring-border-default";
+  const isFree = item.accessBadge === "free";
+  const isIncluded = item.accessBadge === "included";
+  const badgeLabel = isFree
+    ? t("nav.access.badge_free")
+    : isIncluded
+      ? t("nav.access.badge_included")
+      : t("nav.access.badge_premium");
+  const badgeClass = isFree
+    ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+    : isIncluded
+      ? "bg-blue-50 text-blue-700 ring-blue-200"
+      : "bg-surface-muted text-content-secondary ring-border-default";
   return (
     <button
       type="button"
       onClick={onClick}
       aria-current={isActive ? "true" : undefined}
-      aria-disabled={isLocked || undefined}
       className={cn(
         "group relative w-full flex items-center gap-3",
         "rounded-lg pl-3 pr-2.5 py-2.5 text-left",
@@ -207,99 +192,79 @@ function ItemRow({
         "focus-visible:ring-blue-400 focus-visible:ring-offset-1",
         "focus-visible:ring-offset-white",
         isActive
-          ? "bg-blue-50/80 text-blue-700"
-          : isLocked
-            ? "text-content-tertiary hover:bg-surface-muted/70"
-            : "text-content-secondary hover:bg-surface-muted/70 hover:text-content-primary",
+          ? "bg-surface-muted/70 text-content-primary"
+          : "text-content-secondary hover:bg-surface-muted/70 hover:text-content-primary",
       )}
     >
       <span
         aria-hidden="true"
         className={cn(
           "absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-r-full transition-colors",
-          isActive ? "bg-blue-500" : "bg-transparent group-hover:bg-border-default",
+          isActive ? "bg-border-strong" : "bg-transparent group-hover:bg-border-default",
         )}
       />
       <span
         className={cn(
           "font-display italic tabular-nums text-sm",
-          isActive
-            ? "text-blue-600"
-            : isLocked
-              ? "text-accent-gold/70"
-              : "text-content-tertiary",
+          isActive ? "text-content-primary" : "text-content-tertiary",
         )}
       >
         {item.block.number}
       </span>
-      {isLocked ? (
-        <Lock className="size-3.5 text-accent-gold" aria-hidden="true" />
-      ) : null}
       <span
         className={cn(
           "text-sm truncate",
           isActive ? "font-semibold" : "font-medium",
-          isLocked && "font-display italic text-accent-gold/90",
         )}
       >
         {item.block.shortLabel}
       </span>
       <span
         className={cn(
-          "ml-auto inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] ring-1",
+          "ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] ring-1",
           badgeClass,
         )}
       >
+        {isIncluded ? <Gift className="size-3" aria-hidden="true" /> : null}
         {badgeLabel}
       </span>
     </button>
   );
 }
 
-function GroupHeader({
-  label,
-  count,
-  variant,
-}: {
-  label: string;
-  count: number;
-  variant: "incluido" | "premium";
-}) {
-  return (
-    <div className="flex items-center justify-between px-2 mb-1.5">
-      <div className="flex items-center gap-1.5">
-        <span
-          className={cn(
-            "text-[11px] font-semibold uppercase tracking-[0.12em]",
-            variant === "incluido" ? "text-emerald-600" : "text-accent-gold",
-          )}
-        >
-          <span aria-hidden="true" className="mr-1">
-            {variant === "incluido" ? "•" : "✦"}
-          </span>
-          {label}
-        </span>
-      </div>
-      <span className="text-xs tabular-nums text-content-tertiary">{count}</span>
-    </div>
-  );
-}
-
-function AccessSummaryCard({
-  showBetaNote,
+function PremiumBlockCard({
+  items,
   onOpenDialog,
 }: {
-  showBetaNote: boolean;
+  items: SidebarItem[];
   onOpenDialog: () => void;
 }) {
   const { t } = useTranslation("report");
   return (
-    <div className="mt-4 rounded-2xl border border-border-default bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-      {showBetaNote && (
-        <p className="text-xs leading-relaxed text-content-secondary">
-          {t("nav.access.beta_note")}
-        </p>
-      )}
+    <div className="rounded-lg border border-border-default bg-surface-muted/40 p-3">
+      <div className="flex items-center gap-2 border-b border-border-default/60 pb-2 mb-2">
+        <Lock className="size-3.5 text-content-secondary" aria-hidden="true" />
+        <span className="text-sm font-semibold text-content-primary">
+          {t("nav.premium")}
+        </span>
+        <span className="ml-auto text-[11px] text-content-tertiary tabular-nums">
+          {t("nav.access.premium_count", { count: items.length })}
+        </span>
+      </div>
+      <ul className="space-y-0.5 mb-3">
+        {items.map((item) => (
+          <li
+            key={item.block.id}
+            aria-disabled="true"
+            className="flex items-center gap-3 px-1 py-1.5 text-sm text-content-tertiary"
+          >
+            <span className="font-display italic tabular-nums text-content-tertiary">
+              {item.block.number}
+            </span>
+            <span className="truncate">{item.block.shortLabel}</span>
+          </li>
+        ))}
+      </ul>
       <button
         type="button"
         onClick={onOpenDialog}
@@ -309,16 +274,12 @@ function AccessSummaryCard({
           "bg-content-primary px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] text-white",
           "hover:bg-content-primary/90 transition-colors",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1",
-          showBetaNote ? "mt-3" : "",
         )}
       >
         {t("nav.access.cta")}
         <ArrowRight className="size-3.5" aria-hidden="true" />
       </button>
       <p className="mt-2 text-center text-[11px] leading-relaxed text-content-tertiary">
-        {t("nav.access.pending_note")}
-      </p>
-      <p className="mt-2 text-center text-[11px] text-content-tertiary">
         {t("nav.access.trust")}
       </p>
     </div>
@@ -358,10 +319,30 @@ function SidebarList({
     setDialogOpen(true);
   };
 
+  if (!isPublic) {
+    return (
+      <ul className="space-y-0.5">
+        {items.map((item) => (
+          <li key={item.block.id}>
+            <ItemRow
+              item={item}
+              isActive={item.block.id === active}
+              onClick={() => onAccessibleClick(item.block.id)}
+            />
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
   return (
     <div className="space-y-3">
-      <section>
-        <GroupHeader label={t("nav.included")} count={incluidos.length} variant="incluido" />
+      <ProgressSummary items={items} />
+
+      <section className="space-y-1">
+        <p className="px-2 text-eyebrow-sm text-content-tertiary">
+          {t("nav.access.available_now")}
+        </p>
         <ul className="space-y-0.5">
           {incluidos.map((item) => (
             <li key={item.block.id}>
@@ -375,40 +356,24 @@ function SidebarList({
         </ul>
       </section>
 
-      {premium.length > 0 && (
-        <section className="rounded-xl border border-signal-warning/20 bg-signal-warning/[0.04] p-2">
-          <GroupHeader label={t("nav.premium")} count={premium.length} variant="premium" />
-          <ul className="space-y-0.5">
-            {premium.map((item) => (
-              <li key={item.block.id}>
-                <ItemRow
-                  item={item}
-                  isActive={false}
-                  onClick={openDialog}
-                />
-              </li>
-            ))}
-          </ul>
-        </section>
+      {hasDiagnostico && (
+        <p className="px-2 text-xs leading-relaxed text-content-secondary">
+          {t("nav.access.beta_note")}
+        </p>
       )}
 
-      {isPublic && <ProgressBar items={items} />}
-      {isPublic && (
-        <>
-          <AccessSummaryCard
-            showBetaNote={hasDiagnostico}
-            onOpenDialog={openDialog}
-          />
-          <PremiumInterestDialog
-            open={dialogOpen}
-            onOpenChange={setDialogOpen}
-            snapshotId={snapshotId}
-            handle={handle}
-            variant={trackingVariant}
-            sourceComponent="sidebar_access"
-          />
-        </>
+      {premium.length > 0 && (
+        <PremiumBlockCard items={premium} onOpenDialog={openDialog} />
       )}
+
+      <PremiumInterestDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        snapshotId={snapshotId}
+        handle={handle}
+        variant={trackingVariant}
+        sourceComponent="sidebar_access"
+      />
     </div>
   );
 }

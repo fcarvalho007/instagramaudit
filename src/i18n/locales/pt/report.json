@@ -456,13 +456,15 @@
     "avatar_alt": "Avatar de {{handle}}",
     "access": {
       "badge_free": "Grátis",
-      "badge_launch": "Oferta de lançamento",
+      "badge_included": "Incluído",
       "badge_premium": "Premium",
-      "beta_note": "O Diagnóstico editorial faz parte da experiência premium, mas está aberto nesta fase beta.",
+      "beta_note": "O Diagnóstico está incluído nesta fase beta.",
+      "available_now": "Disponível agora",
+      "progress": "{{accessible}} de {{total}} secções acessíveis",
+      "premium_count": "{{count}} por desbloquear",
       "cta": "Ver opções de acesso",
       "cta_aria": "Ver opções de acesso premium",
-      "trust": "1 relatório ou pack de 5. Sem subscrição.",
-      "pending_note": "Pagamento brevemente disponível — os botões registam o teu interesse."
+      "trust": "1 relatório ou pack de 5. Sem subscrição."
     }
   },
   "shell": {
@@ -618,8 +620,8 @@
         "label": "Premium",
         "title": "1 relatório",
         "price": "7€",
-        "bullet_profile": "1 perfil",
-        "bullet_unlock": "1 desbloqueio premium",
+        "launch_price": "Preço de lançamento",
+        "bullet_combined": "1 perfil · todas as secções premium",
         "note": "Ideal para uma análise pontual",
         "cta": "Escolher 1 relatório"
       },
@@ -627,7 +629,7 @@
         "label": "Melhor valor",
         "title": "Pack 5 relatórios",
         "price": "28€",
-        "bullet_reports": "5 relatórios",
+        "bullet_reports": "5 perfis",
         "bullet_unit": "5,60€/relatório",
         "savings_badge": "Poupa 20%",
         "cta": "Escolher pack de 5"

@@ -456,13 +456,15 @@
     "avatar_alt": "Avatar of {{handle}}",
     "access": {
       "badge_free": "Free",
-      "badge_launch": "Launch offer",
+      "badge_included": "Included",
       "badge_premium": "Premium",
-      "beta_note": "Editorial diagnosis is part of the premium experience, but it is open during this beta phase.",
+      "beta_note": "Diagnosis is included during this beta phase.",
+      "available_now": "Available now",
+      "progress": "{{accessible}} of {{total}} sections accessible",
+      "premium_count": "{{count}} locked",
       "cta": "View access options",
       "cta_aria": "View premium access options",
-      "trust": "1 report or pack of 5. No subscription.",
-      "pending_note": "Payment coming soon — buttons register your interest."
+      "trust": "1 report or pack of 5. No subscription."
     }
   },
   "shell": {
@@ -618,8 +620,8 @@
         "label": "Premium",
         "title": "1 report",
         "price": "€7",
-        "bullet_profile": "1 profile",
-        "bullet_unlock": "1 premium unlock",
+        "launch_price": "Launch price",
+        "bullet_combined": "1 profile · all premium sections",
         "note": "Ideal for a one-off analysis",
         "cta": "Choose 1 report"
       },
@@ -627,7 +629,7 @@
         "label": "Best value",
         "title": "Pack of 5 reports",
         "price": "€28",
-        "bullet_reports": "5 reports",
+        "bullet_reports": "5 profiles",
         "bullet_unit": "€5.60/report",
         "savings_badge": "Save 20%",
         "cta": "Choose pack of 5"
