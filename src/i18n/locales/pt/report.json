@@ -620,8 +620,8 @@
         "label": "Premium",
         "title": "1 relatório",
         "price": "7€",
-        "bullet_profile": "1 perfil",
-        "bullet_unlock": "1 desbloqueio premium",
+        "launch_price": "Preço de lançamento",
+        "bullet_combined": "1 perfil · todas as secções premium",
         "note": "Ideal para uma análise pontual",
         "cta": "Escolher 1 relatório"
       },
@@ -629,7 +629,7 @@
         "label": "Melhor valor",
         "title": "Pack 5 relatórios",
         "price": "28€",
-        "bullet_reports": "5 relatórios",
+        "bullet_reports": "5 perfis",
         "bullet_unit": "5,60€/relatório",
         "savings_badge": "Poupa 20%",
         "cta": "Escolher pack de 5"
