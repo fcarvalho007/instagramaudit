@@ -21,7 +21,7 @@ vi.mock("@/lib/admin/lead-events.server", () => ({
 vi.mock("@/lib/brevo/sync.server", () => ({
   syncLeadToBrevo: vi.fn(async () => undefined),
 }));
-const sendLeadMagnetSequence = vi.fn(async () => ({
+const sendLeadMagnetSequence = vi.fn(async (..._a: any[]) => ({
   welcome: "sent",
   summary: "sent",
 }));
