@@ -498,17 +498,27 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
           <button
             type="button"
             onClick={() => {
+              if (isCacheOnlyMode) {
+                toast.warning(
+                  "Modo \u201cUsar dados guardados\u201d ativo \u2014 muda para \u201cBuscar dados novos\u201d para permitir chamadas pagas.",
+                );
+                return;
+              }
               setRefreshConfirmOpen(true);
               refetchPreflight();
             }}
-            disabled={refreshMutation.isPending}
+            disabled={refreshMutation.isPending || isCacheOnlyMode}
             className="inline-flex items-center justify-center gap-1.5 rounded-lg border px-3.5 py-2 text-[12px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed w-full sm:w-auto whitespace-nowrap"
             style={{
               borderColor: "rgba(55,114,229,0.3)",
               color: "#3772E5",
               backgroundColor: "rgba(55,114,229,0.05)",
             }}
-            title="Busca dados novos ao fornecedor e volta a cache_only automaticamente."
+            title={
+              isCacheOnlyMode
+                ? "Bloqueado pelo modo \u201cUsar dados guardados\u201d. Muda o modo no painel acima para permitir chamadas pagas."
+                : "Busca dados novos ao fornecedor e volta a cache_only automaticamente."
+            }
           >
             <Zap size={12} className={refreshMutation.isPending ? "animate-pulse" : ""} />
             {refreshMutation.isPending ? "A atualizar…" : "Atualizar agora"}
