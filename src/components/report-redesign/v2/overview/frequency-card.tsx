@@ -582,6 +582,7 @@ export function FrequencyCard({
           {verdict.rest}
         </p>
       </InsightCallout>
+      )}
     </article>
   );
 }
