@@ -9,6 +9,7 @@
 
 import type { CommentIntelligence } from "@/lib/analysis/types";
 import { useVariantFeatures } from "@/lib/report/report-variant";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { InsightCallout } from "./insight-callout";
 import {
@@ -43,7 +44,10 @@ interface StatusConfig {
   editorial: string;
 }
 
-function classifyBrandReply(ci: CommentIntelligence): {
+function classifyBrandReply(
+  ci: CommentIntelligence,
+  t: (key: string) => string,
+): {
   status: BrandReplyStatus;
   config: StatusConfig;
 } {
@@ -51,10 +55,9 @@ function classifyBrandReply(ci: CommentIntelligence): {
     return {
       status: "insufficient",
       config: {
-        label: "Sem dados suficientes",
+        label: t("comments.status.insufficient_label"),
         tone: "slate",
-        editorial:
-          "A amostra de comentários analisados é demasiado pequena para determinar se a marca participa na conversa.",
+        editorial: t("comments.status.insufficient_body"),
       },
     };
   }
@@ -62,10 +65,9 @@ function classifyBrandReply(ci: CommentIntelligence): {
     return {
       status: "active",
       config: {
-        label: "Responde ativamente",
+        label: t("comments.status.active_label"),
         tone: "emerald",
-        editorial:
-          "A marca mantém presença consistente nos comentários — responde a uma parte significativa da audiência.",
+        editorial: t("comments.status.active_body"),
       },
     };
   }
@@ -73,10 +75,9 @@ function classifyBrandReply(ci: CommentIntelligence): {
     return {
       status: "occasional",
       config: {
-        label: "Responde pontualmente",
+        label: t("comments.status.occasional_label"),
         tone: "amber",
-        editorial:
-          "Há respostas esporádicas, mas sem consistência que sinalize uma política ativa de community management.",
+        editorial: t("comments.status.occasional_body"),
       },
     };
   }
@@ -84,20 +85,18 @@ function classifyBrandReply(ci: CommentIntelligence): {
     return {
       status: "minimal",
       config: {
-        label: "Quase não responde",
+        label: t("comments.status.minimal_label"),
         tone: "amber",
-        editorial:
-          "Foram detetadas respostas pontuais, mas em volume insuficiente para indicar participação ativa na conversa.",
+        editorial: t("comments.status.minimal_body"),
       },
     };
   }
   return {
     status: "absent",
     config: {
-      label: "Sem respostas detetadas",
+      label: t("comments.status.absent_label"),
       tone: "rose",
-      editorial:
-        "Não foram encontradas respostas da marca nos comentários analisados. A audiência comenta, mas não recebe retorno público.",
+      editorial: t("comments.status.absent_body"),
     },
   };
 }
@@ -122,16 +121,11 @@ const BADGE_ICON_CLASSES: Record<StatusConfig["tone"], string> = {
 // Scope note — shared
 // ─────────────────────────────────────────────────────────────────────
 
-const SCOPE_NOTE =
-  "Esta leitura usa comentários públicos acessíveis nos posts analisados. Não inclui DMs, comentários apagados, respostas privadas ou comentários não visíveis sem login.";
-
-const METHODOLOGY_NOTE =
-  "Leitura baseada em comentários públicos visíveis nos posts analisados. Não inclui DMs, comentários apagados ou comentários apenas visíveis após login.";
-
 function ScopeNote() {
+  const { t } = useTranslation("report");
   return (
     <p className="text-[11px] leading-relaxed text-content-tertiary italic">
-      {SCOPE_NOTE}
+      {t("comments.scope_note")}
     </p>
   );
 }
@@ -141,24 +135,26 @@ function ScopeNote() {
 // ─────────────────────────────────────────────────────────────────────
 
 function TransparencyStrip({ data }: { data: CommentIntelligence }) {
+  const { t, i18n } = useTranslation("report");
+  const lng = i18n.language?.startsWith("en") ? "en-US" : "pt-PT";
   const items: { label: string; value: string }[] = [
-    { label: "Publicações analisadas", value: `${data.samplePosts} / 12` },
-    { label: "Comentários públicos recolhidos", value: data.sampleComments.toLocaleString("pt-PT") },
+    { label: t("comments.sample.posts"), value: `${data.samplePosts} / 12` },
+    { label: t("comments.sample.public_comments"), value: data.sampleComments.toLocaleString(lng) },
   ];
   if (data.sampleReplies > 0) {
-    items.push({ label: "Respostas em thread", value: data.sampleReplies.toLocaleString("pt-PT") });
+    items.push({ label: t("comments.sample.thread_replies"), value: data.sampleReplies.toLocaleString(lng) });
   }
   items.push(
-    { label: "Comentários da audiência", value: data.audienceCommentsCount.toLocaleString("pt-PT") },
-    { label: "Respostas da marca", value: String(data.ownerRepliesCount) },
-    { label: "Taxa de resposta da marca", value: `${data.ownerReplyRatePct}%` },
+    { label: t("comments.sample.audience_comments"), value: data.audienceCommentsCount.toLocaleString(lng) },
+    { label: t("comments.sample.brand_replies"), value: String(data.ownerRepliesCount) },
+    { label: t("comments.sample.brand_reply_rate"), value: `${data.ownerReplyRatePct}%` },
   );
 
   return (
     <div className="rounded-lg border border-border-subtle bg-surface-muted/40 p-3 space-y-2.5">
       <div className="flex items-center gap-1.5">
         <BarChart3 className="h-3.5 w-3.5 shrink-0 text-content-tertiary" aria-hidden="true" />
-        <p className="text-eyebrow-sm text-content-tertiary">Amostra analisada</p>
+        <p className="text-eyebrow-sm text-content-tertiary">{t("comments.sample_title")}</p>
       </div>
       <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3">
         {items.map((item) => (
@@ -173,7 +169,7 @@ function TransparencyStrip({ data }: { data: CommentIntelligence }) {
         ))}
       </div>
       <p className="text-[10.5px] leading-relaxed text-content-tertiary">
-        {METHODOLOGY_NOTE}
+        {t("comments.methodology_note")}
       </p>
     </div>
   );
@@ -191,12 +187,15 @@ interface SignalChip {
   className: string;
 }
 
-function buildSignalChips(ci: CommentIntelligence): SignalChip[] {
+function buildSignalChips(
+  ci: CommentIntelligence,
+  t: (key: string) => string,
+): SignalChip[] {
   const chips: SignalChip[] = [];
   if (ci.questionsFromAudienceCount > 0) {
     chips.push({
       key: "questions",
-      label: "Perguntas",
+      label: t("comments.signals.questions"),
       count: ci.questionsFromAudienceCount,
       Icon: HelpCircle,
       className: "border-accent-primary/20 bg-tint-primary text-accent-primary",
@@ -205,7 +204,7 @@ function buildSignalChips(ci: CommentIntelligence): SignalChip[] {
   if (ci.praiseCount > 0) {
     chips.push({
       key: "praise",
-      label: "Elogios",
+      label: t("comments.signals.praise"),
       count: ci.praiseCount,
       Icon: ThumbsUp,
       className: "border-signal-success/20 bg-tint-success text-signal-success",
@@ -214,7 +213,7 @@ function buildSignalChips(ci: CommentIntelligence): SignalChip[] {
   if (ci.complaintOrIssueCount > 0) {
     chips.push({
       key: "complaint",
-      label: "Problemas ou queixas",
+      label: t("comments.signals.complaint"),
       count: ci.complaintOrIssueCount,
       Icon: AlertTriangle,
       className: "border-signal-warning/20 bg-tint-warning text-signal-warning",
@@ -223,7 +222,7 @@ function buildSignalChips(ci: CommentIntelligence): SignalChip[] {
   if (ci.buyingIntentCount > 0) {
     chips.push({
       key: "buying",
-      label: "Intenção de compra",
+      label: t("comments.signals.buying"),
       count: ci.buyingIntentCount,
       Icon: ShoppingCart,
       /* No semantic violet token — using accent-primary as closest match */
@@ -233,7 +232,7 @@ function buildSignalChips(ci: CommentIntelligence): SignalChip[] {
   if (ci.spamOrLowQualityCount > 0) {
     chips.push({
       key: "spam",
-      label: "Ruído ou spam",
+      label: t("comments.signals.spam"),
       count: ci.spamOrLowQualityCount,
       Icon: Ban,
       className: "border-border-default bg-surface-muted text-content-tertiary",
@@ -246,36 +245,11 @@ function buildSignalChips(ci: CommentIntelligence): SignalChip[] {
 // Unavailable state
 // ─────────────────────────────────────────────────────────────────────
 
-const UNAVAILABLE_REASONS: Record<string, { title: string; body: string }> = {
-  processing: {
-    title: "A aguardar análise de comentários",
-    body: "Análise de comentários em processamento. Atualiza o relatório dentro de alguns instantes.",
-  },
-  budget_blocked: {
-    title: "Análise não executada",
-    body: "Análise de comentários não executada para manter o custo dentro do limite operacional.",
-  },
-  comment_scraper_failed: {
-    title: "Análise indisponível",
-    body: "Não foi possível analisar comentários nesta execução.",
-  },
-  comment_scraper_disabled: {
-    title: "Análise detalhada de comentários não incluída",
-    body: "Análise detalhada de comentários não incluída neste relatório beta. A leitura abaixo usa sinais públicos dos posts, como volume de comentários e rácio de conversa.",
-  },
-  no_posts_with_comments: {
-    title: "Sem comentários acessíveis",
-    body: "As publicações analisadas não contêm comentários públicos acessíveis.",
-  },
-  no_valid_post_urls: {
-    title: "URLs insuficientes",
-    body: "Não havia URLs públicos suficientes para analisar comentários.",
-  },
-  comment_scraper_timeout: {
-    title: "Análise excedeu o tempo limite",
-    body: "A análise de comentários excedeu o tempo disponível. Tenta novamente mais tarde.",
-  },
-};
+const UNAVAILABLE_REASON_KEYS = new Set([
+  "processing", "budget_blocked", "comment_scraper_failed",
+  "comment_scraper_disabled", "no_posts_with_comments",
+  "no_valid_post_urls", "comment_scraper_timeout",
+]);
 
 const TECHNICAL_REASONS = new Set([
   "processing", "budget_blocked", "comment_scraper_failed",
@@ -284,6 +258,7 @@ const TECHNICAL_REASONS = new Set([
 
 export function CommentIntelligenceUnavailable({ data }: { data?: CommentIntelligence | null }) {
   const features = useVariantFeatures();
+  const { t } = useTranslation("report");
   const isPublic = features.debugLabels === "hidden";
   const reason = data?.reason;
 
@@ -295,12 +270,11 @@ export function CommentIntelligenceUnavailable({ data }: { data?: CommentIntelli
           <div className="flex items-center gap-2">
             <Sparkles className="h-3.5 w-3.5 shrink-0 text-accent-gold" aria-hidden="true" />
             <p className="text-[12.5px] font-semibold text-content-secondary">
-              Análise aprofundada de comentários
+              {t("comments.unavailable.pro_title")}
             </p>
           </div>
           <p className="text-[12px] leading-relaxed text-content-tertiary">
-            Disponível em relatórios avançados. Analisa perguntas, objeções,
-            elogios e sinais reais da audiência.
+            {t("comments.unavailable.pro_body")}
           </p>
         </div>
       </div>
@@ -311,9 +285,15 @@ export function CommentIntelligenceUnavailable({ data }: { data?: CommentIntelli
   const effectiveReason = (reason && TECHNICAL_REASONS.has(reason))
     ? undefined
     : reason;
-  const info = effectiveReason ? UNAVAILABLE_REASONS[effectiveReason] : undefined;
-  const title = info?.title ?? "Análise detalhada de comentários não incluída";
-  const body = info?.body ?? "Análise detalhada de comentários não incluída neste relatório beta. A leitura abaixo usa sinais públicos dos posts, como volume de comentários e rácio de conversa.";
+  const validReason = effectiveReason && UNAVAILABLE_REASON_KEYS.has(effectiveReason)
+    ? effectiveReason
+    : null;
+  const title = validReason
+    ? t(`comments.unavailable.reasons.${validReason}.title`)
+    : t("comments.unavailable.default_title");
+  const body = validReason
+    ? t(`comments.unavailable.reasons.${validReason}.body`)
+    : t("comments.unavailable.default_body");
   const isProcessing = reason === "processing";
 
   return (
@@ -324,7 +304,7 @@ export function CommentIntelligenceUnavailable({ data }: { data?: CommentIntelli
           aria-hidden="true"
         />
         <h4 className="text-[13px] font-semibold text-content-secondary">
-          A marca participa na conversa?
+          {t("comments.subtitle")}
         </h4>
       </div>
 
@@ -358,8 +338,9 @@ interface Props {
 }
 
 export function CommentIntelligenceSection({ data }: Props) {
-  const { config } = classifyBrandReply(data);
-  const signalChips = buildSignalChips(data);
+  const { t } = useTranslation("report");
+  const { config } = classifyBrandReply(data, t);
+  const signalChips = buildSignalChips(data, t);
 
   return (
     <div className="mt-5 space-y-4">
@@ -370,7 +351,7 @@ export function CommentIntelligenceSection({ data }: Props) {
           aria-hidden="true"
         />
         <h4 className="text-[13px] font-semibold text-content-secondary">
-          A marca participa na conversa?
+          {t("comments.subtitle")}
         </h4>
       </div>
 
@@ -393,7 +374,13 @@ export function CommentIntelligenceSection({ data }: Props) {
       {/* Editorial interpretation */}
       <InsightCallout
         tone={config.tone === "emerald" ? "editorial" : config.tone === "rose" ? "warning" : "suggestion"}
-        label={config.tone === "emerald" ? "Leitura editorial" : config.tone === "rose" ? "Atenção" : "O que isto sugere"}
+        label={
+          config.tone === "emerald"
+            ? t("comments.callout.editorial")
+            : config.tone === "rose"
+              ? t("comments.callout.warning")
+              : t("comments.callout.suggestion")
+        }
       >
         {config.editorial}
       </InsightCallout>
@@ -401,27 +388,27 @@ export function CommentIntelligenceSection({ data }: Props) {
       {/* 6-metric grid */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <MetricCell
-          label="Respostas da marca"
+          label={t("comments.metrics.brand_replies")}
           value={String(data.ownerRepliesCount)}
         />
         <MetricCell
-          label="Taxa de resposta"
+          label={t("comments.metrics.reply_rate")}
           value={`${data.ownerReplyRatePct}%`}
         />
         <MetricCell
-          label="Posts com resposta"
+          label={t("comments.metrics.posts_with_reply")}
           value={`${data.postsWithOwnerReplyPct}%`}
         />
         <MetricCell
-          label="Perguntas do público"
+          label={t("comments.metrics.audience_questions")}
           value={String(data.questionsFromAudienceCount)}
         />
         <MetricCell
-          label="Intenção de compra"
+          label={t("comments.metrics.buying_intent")}
           value={String(data.buyingIntentCount)}
         />
         <MetricCell
-          label="Queixas detetadas"
+          label={t("comments.metrics.complaints")}
           value={String(data.complaintOrIssueCount)}
         />
       </div>
@@ -429,7 +416,7 @@ export function CommentIntelligenceSection({ data }: Props) {
       {/* Conversation quality signals */}
       {signalChips.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-eyebrow-sm text-content-tertiary">Sinais de conversa</p>
+          <p className="text-eyebrow-sm text-content-tertiary">{t("comments.signals.title")}</p>
           <div className="flex flex-wrap gap-1.5">
             {signalChips.map((chip) => (
               <div
@@ -446,14 +433,14 @@ export function CommentIntelligenceSection({ data }: Props) {
             ))}
           </div>
           <p className="text-[10.5px] text-content-tertiary">
-            Leitura automática — classificação heurística dos comentários públicos.
+            {t("comments.signals.hint")}
           </p>
         </div>
       )}
 
       {/* Recommended action */}
       {data.recommendedConversationAction && (
-        <InsightCallout tone="suggestion" label="Ação recomendada">
+        <InsightCallout tone="suggestion" label={t("comments.callout.action_label")}>
           {data.recommendedConversationAction}
         </InsightCallout>
       )}
@@ -467,7 +454,7 @@ export function CommentIntelligenceSection({ data }: Props) {
               aria-hidden="true"
             />
             <p className="text-eyebrow-sm text-content-tertiary">
-              Publicação com mais interação da marca
+              {t("comments.top.label")}
             </p>
           </div>
           <p className="text-[13px] text-content-secondary">
@@ -475,13 +462,13 @@ export function CommentIntelligenceSection({ data }: Props) {
               {data.topConversationPost.ownerRepliesCount}
             </span>{" "}
             {data.topConversationPost.ownerRepliesCount === 1
-              ? "resposta"
-              : "respostas"}{" "}
-            em{" "}
+              ? t("comments.top.reply_one")
+              : t("comments.top.reply_other")}{" "}
+            {t("comments.top.in")}{" "}
             <span className="tabular-nums">
               {data.topConversationPost.commentsCount}
             </span>{" "}
-            comentários
+            {t("comments.top.comments")}
           </p>
         </div>
       )}
