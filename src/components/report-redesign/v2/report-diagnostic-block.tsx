@@ -181,7 +181,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
           {groupA.length > 0 ? (
             <ReportDiagnosticGroup
               letter="A"
-              label="Identidade editorial"
+              label={t("diagnostic_groups.A")}
               questionsCount={groupA.length}
             >
               {groupA}
@@ -190,7 +190,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
 
           <ReportDiagnosticGroup
             letter="B"
-            label="Como comunica"
+            label={t("diagnostic_groups.B")}
             questionsCount={groupB.length + 1}
           >
             {groupB}
@@ -200,7 +200,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
           {/* E · Análise visual */}
           <ReportDiagnosticGroup
             letter="E"
-            label="Análise visual"
+            label={t("diagnostic_groups.E")}
             questionsCount={1}
           >
             <VisualCoverAnalysisCard
@@ -212,7 +212,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
           {groupC.length > 0 ? (
             <ReportDiagnosticGroup
               letter="C"
-              label="Resposta do público"
+              label={t("diagnostic_groups.C")}
               questionsCount={groupC.length}
             >
               {groupC}
@@ -222,7 +222,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
           {groupD.length > 0 ? (
             <ReportDiagnosticGroup
               letter="D"
-              label="Contexto estratégico"
+              label={t("diagnostic_groups.D")}
               questionsCount={groupD.length}
             >
               {groupD}
@@ -239,9 +239,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
         </>
       ) : (
         <p className="text-sm text-content-secondary leading-relaxed max-w-2xl">
-          A amostra de publicações é demasiado pequena para sustentar um
-          diagnóstico editorial detalhado. À medida que houver mais
-          atividade, este bloco passa a abrir até oito perguntas de leitura.
+          {t("diagnostic_groups.small_sample")}
         </p>
       )}
 
