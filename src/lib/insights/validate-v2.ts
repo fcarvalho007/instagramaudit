@@ -49,6 +49,21 @@ const priorityItemSchema = z.object({
   resolves: z.string().min(1).max(120),
 });
 
+const EVIDENCE_SET: ReadonlySet<string> = new Set(
+  EDITORIAL_VERDICT_EVIDENCE_ALLOWLIST,
+);
+
+const editorialVerdictSchema = z.object({
+  verdict_label: z.enum(["strong", "promising", "needs_work", "limited_data"]),
+  title: z.string().min(1).max(80),
+  paragraph: z.string().min(1).max(520),
+  priority: z.string().min(1).max(220),
+  strengths: z.array(z.string().min(1).max(120)).length(2),
+  limitations: z.array(z.string().min(1).max(120)).length(2),
+  confidence: z.enum(["high", "medium", "low"]),
+  evidence_used: z.array(z.string().min(1)).min(1).max(6),
+});
+
 export const aiInsightsV2ResponseSchema = z.object({
   sections: z.object(
     AI_INSIGHT_V2_SECTIONS.reduce<Record<AiInsightV2Section, typeof itemSchema>>(
@@ -60,6 +75,7 @@ export const aiInsightsV2ResponseSchema = z.object({
     ),
   ),
   priorities: z.array(priorityItemSchema).length(3).optional(),
+  editorial_verdict: editorialVerdictSchema.optional(),
 });
 
 export type ValidateV2Result =
@@ -67,6 +83,7 @@ export type ValidateV2Result =
       ok: true;
       sections: Record<AiInsightV2Section, AiInsightV2Item>;
       priorities: ReadonlyArray<AiPriorityItem> | null;
+      editorialVerdict: EditorialVerdict | null;
     }
   | { ok: false; reason: string; detail: string };
 
