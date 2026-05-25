@@ -350,8 +350,8 @@ export function EditorialIdentityCard({
       className="rounded-2xl border border-border-default bg-white shadow-card overflow-hidden"
     >
       {/* Zona macro */}
-      <div className="px-6 py-7 flex flex-col sm:flex-row sm:items-start gap-6 sm:gap-8">
-        <div className="self-center sm:self-start shrink-0">
+      <div className="px-6 py-7 sm:px-7 sm:py-8 flex flex-col sm:flex-row sm:items-stretch gap-6 sm:gap-8">
+        <div className="self-center sm:self-stretch shrink-0 flex items-center justify-center rounded-2xl bg-surface-muted/60 px-6 py-5 sm:py-6">
           <ScoreGauge value={overall} band={band} t={t} />
         </div>
 
@@ -391,7 +391,7 @@ export function EditorialIdentityCard({
 
       {/* Zona métrica — gostos / comentários / ritmo */}
       {hasAnyMetric && (
-        <div className="px-6 pb-6">
+        <div className="px-6 pb-7 sm:px-7">
           <MetricsStrip
             averageLikes={averageLikes}
             averageComments={averageComments}
@@ -523,15 +523,16 @@ function BulletColumn({
   items: Bullet[];
   className?: string;
 }) {
-  const bg = tone === "success" ? "bg-tint-success" : "bg-tint-warning";
   const accent = tone === "success" ? "text-signal-success" : "text-signal-warning";
   const dot = tone === "success" ? "bg-signal-success" : "bg-signal-warning";
+  const borderLeft =
+    tone === "success" ? "border-l-2 border-signal-success" : "border-l-2 border-signal-warning";
   const Icon = tone === "success" ? ArrowUpRight : ArrowDownRight;
 
   return (
-    <div className={cn("px-5 py-5 sm:px-7 sm:py-6", bg, className)}>
-      <div className="flex items-center gap-2 mb-3">
-        <Icon className={cn("h-3.5 w-3.5", accent)} aria-hidden="true" />
+    <div className={cn("bg-white px-5 py-4 sm:px-6 sm:py-5", borderLeft, className)}>
+      <div className="flex items-start gap-2 mb-3">
+        <Icon className={cn("h-3.5 w-3.5 mt-0.5", accent)} aria-hidden="true" />
         <span className={cn("text-eyebrow-sm", accent)}>{title}</span>
       </div>
       <ul className="space-y-2.5">
@@ -582,6 +583,7 @@ function MetricsStrip({
   t: TFunction;
   locale: string;
 }) {
+  const lang: "en" | "pt" = locale.startsWith("pt") ? "pt" : "en";
   const items: Array<{
     key: string;
     icon: typeof Heart;
@@ -602,7 +604,7 @@ function MetricsStrip({
       key: "likes",
       icon: Heart,
       label: t("identity.metrics.likes_label"),
-      value: formatCompactNumber(Math.round(averageLikes), locale),
+      value: formatCompactNumber(Math.round(averageLikes), lang),
       unit: t("identity.metrics.per_post"),
       subtitle,
     });
@@ -614,7 +616,7 @@ function MetricsStrip({
       key: "comments",
       icon: MessageCircle,
       label: t("identity.metrics.comments_label"),
-      value: formatCompactNumber(Math.round(averageComments), locale),
+      value: formatCompactNumber(Math.round(averageComments), lang),
       unit: t("identity.metrics.per_post"),
       subtitle: t(`identity.metrics.comments_${band}`),
     });
@@ -635,25 +637,29 @@ function MetricsStrip({
   if (items.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      {items.map((it) => {
+    <div className="rounded-xl border border-border-default bg-white grid grid-cols-1 sm:grid-cols-3 overflow-hidden">
+      {items.map((it, idx) => {
         const Icon = it.icon;
+        const isFirst = idx === 0;
         return (
           <div
             key={it.key}
-            className="rounded-xl border border-border-default bg-surface-muted px-4 py-3.5"
+            className={cn(
+              "px-5 py-4 sm:px-6 sm:py-5",
+              !isFirst && "border-t border-border-default sm:border-t-0 sm:border-l sm:border-border-default/60",
+            )}
           >
-            <div className="flex items-center gap-1.5 mb-1.5">
+            <div className="flex items-center gap-1.5 mb-2">
               <Icon className="h-3.5 w-3.5 text-accent-primary" aria-hidden="true" />
               <span className="text-eyebrow-sm text-content-tertiary">{it.label}</span>
             </div>
             <div className="flex items-baseline gap-1.5">
-              <span className="font-sans text-xl font-semibold tabular-nums text-content-primary leading-none">
+              <span className="font-sans text-[1.625rem] font-semibold tabular-nums text-content-primary leading-none">
                 {it.value}
               </span>
               <span className="text-sm text-content-secondary">{it.unit}</span>
             </div>
-            <p className="mt-1 text-xs text-content-tertiary">{it.subtitle}</p>
+            <p className="mt-1.5 text-xs text-content-tertiary leading-snug">{it.subtitle}</p>
           </div>
         );
       })}

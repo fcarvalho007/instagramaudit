@@ -42,7 +42,7 @@ export function ReportBlockSection({ block, tone = "canvas", first, children }: 
       aria-label={question}
       className={cn("w-full scroll-mt-20 lg:scroll-mt-6", band)}
     >
-      <div className={cn(first ? "pt-0 pb-14 md:pt-0 md:pb-20" : "py-14 md:py-20")}>
+      <div className={cn(first ? "pt-0 pb-14 md:pt-0 md:pb-24" : "py-14 md:py-24")}>
         <header className="mb-0 pb-8 md:pb-10 border-t border-border-subtle pt-8 md:pt-10">
           <div className="flex flex-col md:flex-row md:items-start gap-5 md:gap-8">
             {/* Large chapter number */}

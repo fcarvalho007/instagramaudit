@@ -63,7 +63,7 @@ export function ReportHeroV2({
           {/* Prism glass decoration — desktop only */}
           <PrismDecoration />
 
-          <div className="relative px-6 py-7 sm:px-8 sm:py-8 lg:px-10 lg:py-10 flex flex-col lg:flex-row lg:items-center gap-8 lg:gap-12">
+          <div className="relative px-6 py-7 sm:px-8 sm:py-8 lg:px-10 lg:py-10 flex flex-col lg:flex-row lg:items-center gap-10 lg:gap-14">
 
             {/* ── Identity ─────────────────────────────────────────── */}
             <div className="flex-1 min-w-0 flex items-center gap-5 lg:gap-7">
@@ -75,11 +75,11 @@ export function ReportHeroV2({
                 t={t}
               />
               <div className="min-w-0 flex-1 space-y-1">
-                <h1 className="font-display text-[2rem] lg:text-[2.5rem] font-semibold tracking-[-0.025em] text-content-primary leading-[1.05] break-words">
+                <h1 className="font-display text-[1.875rem] lg:text-[2.25rem] font-bold tracking-[-0.025em] text-content-primary leading-[1.05] break-words">
                   {handle}
                 </h1>
                 {fullName && (
-                  <p className="text-sm font-medium text-content-secondary leading-snug">
+                  <p className="text-[15px] font-medium text-content-secondary leading-snug">
                     {fullName}
                   </p>
                 )}

@@ -1,61 +1,129 @@
-# Plano · Restaurar pontos fortes, limite de crescimento e os 3 blocos de métricas (Bloco 1)
+## Avaliação visual — /analyze/$username
 
-## Contexto
-O primeiro card do Bloco 1 (`EditorialIdentityCard`, `src/components/report-redesign/v2/overview/editorial-identity-card.tsx`) já teve três zonas que foram removidas:
+Foco exclusivo em refinamentos de **design** (hierarquia, densidade, ritmo, tipografia, cor, tokens). Sem alterações a lógica de dados, providers ou copy estrutural.
 
-1. **Strip métrica horizontal** com 3 blocos: média de likes/post, média de comentários/post e frequência semanal de publicação.
-2. **Coluna "O que já funciona"** (pontos fortes, success).
-3. **Coluna "O que limita o crescimento"** (warning).
+Auditei `report-shell-v2.tsx`, `report-overview-block.tsx`, `editorial-identity-card.tsx`, `report-block-section.tsx`, `report-hero-v2.tsx` e os tokens (`tokens-light.css`, `report-tokens`). Identifiquei 8 áreas com retorno visual alto e baixo risco.
 
-Foram substituídas por uma "Anchor Metric" + uma nota "Porquê importa". O utilizador quer as 3 zonas antigas de volta.
+---
 
-Todas as chaves i18n necessárias **continuam presentes** em `src/i18n/locales/{pt,en}/report.json` (subárvores `identity.metrics`, `identity.signals`, `identity.columns`, `identity.format_singular`) — não é preciso mexer nos JSONs.
+### 1. Hero do relatório — densidade e hierarquia
 
-O call-site (`report-overview-block.tsx`) já passa `averageLikes`, `averageComments`, `postingFrequencyWeekly`, `dominantFormat`, `dominantFormatShare`, `followers` ao card — não é preciso mexer.
+**Problema:** Hero acumula avatar, handle, métricas, fonte, datas, ações e badges no mesmo plano visual. KPIs grandes competem com o nome do perfil.
 
-## Alterações (1 ficheiro)
+**Refinamento:**
+- Reduzir KPI font-size em ~10% e aumentar peso do nome/handle (Fraunces 600 → 700).
+- Separar metadata (fonte, snapshot date, expires) numa linha terciária com `.text-eyebrow-sm` + `text-content-tertiary`.
+- Espaço vertical entre identidade e KPIs: `gap-8 → gap-10` em desktop.
+- Botões de ação alinhados à direita com `gap-2` em vez de empilhados.
 
-### `src/components/report-redesign/v2/overview/editorial-identity-card.tsx`
+---
 
-1. **Imports:** trocar `Target` por `ArrowUpRight`, `ArrowDownRight`, `Heart`, `MessageCircle`, `CalendarDays` (lucide-react). Adicionar `formatCompactNumber` (de `@/lib/format` — confirmar import existente no projeto, fallback para Intl.NumberFormat se não houver).
+### 2. Bloco 01 · Editorial Identity Card
 
-2. **Tipos:** adicionar `type Tone = "success" | "warning"` e `interface Bullet { destaque: string; detalhe: string }`.
+**Problema:** Após restauro, o card tem 3 zonas (gauge, métricas, sinais) com pesos visuais semelhantes. Falta hierarquia clara entre "pontuação" (verdict) e "evidência" (métricas/sinais).
 
-3. **Restaurar `deriveSignals(...)`**: função pura que devolve `{ strengths, limits }`, ambos com até 2 bullets, baseada em frequência semanal, tier de seguidores, delta de engagement vs benchmark, score de interação e concentração de formato. Garante 2+2 com fallbacks neutros já existentes em i18n.
+**Refinamento:**
+- `ScoreGauge` ganha mais respiração: card lateral próprio com `bg-surface-muted/40` em vez de inline.
+- `MetricsStrip` em grid 3-col com divisores verticais `border-r border-border-default/40` em vez de gap puro — leitura de "tabela" em vez de "cartões soltos".
+- `BulletColumn` strengths/limits com ícone alinhado ao topo (não centrado), bullets com `leading-relaxed` e padding interno reduzido `p-5 → p-4`.
+- Tom: trocar `bg-tint-success`/`bg-tint-warning` por `border-l-2` colorida + fundo branco — coerente com estética Iconosquare clean.
 
-4. **Restaurar `MetricsStrip`**: grelha `sm:grid-cols-3` com 3 cards, cada um com ícone (Heart/MessageCircle/CalendarDays), valor compacto + unidade + subtítulo derivado de bandas (`commentsBand`, `rhythmBand`). Renderiza só os blocos com dados.
+---
 
-5. **Restaurar `BulletColumn`**: duas colunas (success/warning) com fundo `bg-tint-success` / `bg-tint-warning` e bullets coloridos. Empilham em mobile, lado a lado em `md:`.
+### 3. Section frames — ritmo entre blocos
 
-6. **Layout do `article`** (substitui a Anchor + Porque-importa actuais):
-   ```
-   ┌────────────────────────────────────────────┐
-   │ Macro: gauge + título + parágrafo + ref bar│
-   ├────────────────────────────────────────────┤
-   │ MetricsStrip (likes / comments / ritmo)    │  ← se houver ≥1 métrica
-   ├──────────────────────┬─────────────────────┤
-   │ O que já funciona    │ O que limita        │  ← 2 colunas, sempre 2+2 bullets
-   └──────────────────────┴─────────────────────┘
-   ```
+**Problema:** `ReportFramedBlock` repete o mesmo cartão branco em todos os blocos. Sem variação tonal, os 6 blocos viram uma parede uniforme.
 
-7. **Remover** `AnchorMetric`, `selectAnchor`, `selectWhy`, exports `AnchorKind`/`AnchorSelection`/`WhyKind` e os `void averageLikes; void dominantFormat; void followers;` (passam a ser usados). Manter `ScoreGauge`, `ReferenceBar`, `buildFallbackCopy`, `deriveCopyFromAi`, `computeOverall`, `bandFor`, `bandLabel`, `bandTextClass`, `bandFillClass`, `bandBadgeClass`, `formatDecimal`.
+**Refinamento:**
+- Aplicar `tone` alternada já existente (canvas / soft-blue) mas com diferença mais percetível: `soft-blue` ganha border `border-accent-primary/15` + tint de fundo `#F4F7FE`.
+- Espaçamento entre `ReportBlockSection`: aumentar `pt-12 → pt-16` em desktop.
+- Cada section ganha um divisor horizontal subtil `border-t border-border-default/60` no topo, com o número/título do bloco "encavalitado".
 
-8. **Testes:** correr `src/components/report-redesign/v2/overview/__tests__/` — se houver testes que importam `selectAnchor`/`selectWhy`, atualizar/remover (manterei `deriveSignals` testável). Substituir por testes mínimos de `deriveSignals` (2 cenários: forte vs fraco). Decisão final depois de ler `__tests__`.
+---
 
-## Fora de scope
-- Sem mexer em JSONs i18n (chaves antigas já existem).
-- Sem mexer no call-site (`report-overview-block.tsx`).
-- Sem mudanças noutros cards / blocos.
-- Sem alterar pipeline de dados nem snapshot adapter.
+### 4. Sidebar de navegação dos blocos
 
-## Validação
-- `bunx tsc --noEmit`
-- `bunx vitest run src/components/report-redesign/v2/overview`
-- Inspecionar preview do Bloco 1 num relatório real (ex. `/analyze/frederico.m.carvalho`) para confirmar as 3 zonas restauradas.
+**Problema:** Sidebar tem boa estrutura mas estados ativo/inativo são pouco distintos.
 
-## Checkpoint
+**Refinamento:**
+- Item ativo: barra lateral esquerda `border-l-2 border-accent-primary` + `bg-accent-primary/5` + `text-content-primary font-semibold`.
+- Item inativo: `text-content-secondary` sem fundo.
+- Avatar+handle no topo da sidebar: aumentar avatar para 48px, handle em Fraunces 18px.
+- Sticky offset: garantir `top-24` para não colar ao header.
 
-- ☐ `MetricsStrip` com 3 blocos (likes, comments, ritmo) renderizado abaixo da zona macro
-- ☐ Duas colunas "O que já funciona" / "O que limita o crescimento" com 2 bullets cada
-- ☐ Zonas "âncora" e "porque importa" removidas (substituídas pelas anteriores)
-- ☐ `tsc --noEmit` e `vitest run` verdes
+---
+
+### 5. Tipografia de métricas e KPIs
+
+**Problema:** Algumas métricas usam tamanhos próximos demais; valores e labels misturam-se.
+
+**Refinamento (sem tocar em tokens globais, só uso):**
+- Valor da métrica: `text-2xl md:text-3xl font-semibold tabular-nums`.
+- Label: `.text-eyebrow-sm text-content-tertiary mt-1` (uppercase, tracking).
+- Variação contextual (∆ vs benchmark): `text-xs font-medium` com cor `signal-success` ou `signal-warning`, nunca neon.
+- Garantir `tabular-nums` em **todos** os números públicos (auditar `MetricsStrip`, `report-kpi-grid-v2`, `report-overview-cards`).
+
+---
+
+### 6. Insight boxes (AIInsightBox)
+
+**Problema:** Insights aparecem após cada chart com o mesmo peso visual que o chart — competem pela atenção.
+
+**Refinamento:**
+- `AIInsightBox` ganha tratamento "anotação editorial": fundo `surface-muted/60`, border-left 2px na cor de ênfase, ícone discreto, padding `p-4` em vez de `p-6`.
+- Tipografia: `text-sm leading-relaxed text-content-secondary` (não primary).
+- Margem superior reduzida `mt-4 → mt-3` para colar mais ao chart que comenta.
+
+---
+
+### 7. Methodology / footer pós-blocos
+
+**Problema:** `ReportMethodology` aparece sem separação clara dos 6 blocos.
+
+**Refinamento:**
+- Wrap em `bg-surface-muted` full-bleed com `py-16`.
+- Heading em Fraunces, body em Inter `text-sm text-content-secondary`.
+- Disclaimers e fontes em grid 2-col em desktop.
+
+---
+
+### 8. Mobile (375–414px)
+
+**Problema:** Tabs sticky no mobile + hero geram muito chrome antes do primeiro conteúdo.
+
+**Refinamento:**
+- `ReportBlockTopTabs`: reduzir altura para `h-12`, fontes `text-xs`, scroll horizontal com fade nos lados.
+- Hero mobile: empilhar KPIs em grid 2x2 com `gap-3`, esconder metadata terciária atrás de um disclosure.
+- `ReportFramedBlock`: padding lateral `px-4` em mobile (atualmente `px-5/6`).
+
+---
+
+### Detalhes técnicos (para a fase build)
+
+Ficheiros a tocar (apenas presentation):
+- `src/components/report-redesign/v2/report-hero-v2.tsx`
+- `src/components/report-redesign/v2/overview/editorial-identity-card.tsx`
+- `src/components/report-redesign/v2/report-block-section.tsx`
+- `src/components/report-redesign/v2/report-block-nav.tsx`
+- `src/components/report-redesign/v2/report-overview-cards.tsx` / `report-kpi-grid-v2.tsx`
+- `src/components/report/ai-insight-box.tsx`
+- `src/components/report-redesign/report-framed-block.tsx`
+- `src/components/report-redesign/report-methodology.tsx`
+
+Regras a respeitar:
+- Tokens semânticos apenas (`content-*`, `surface-*`, `border-*`, `accent-*`, `signal-*`). Sem hex inline.
+- Fonts: Fraunces (H1/H2 editoriais) + Inter (tudo o resto). Nada de JetBrains Mono em UI pública.
+- Sem mexer em `/report.example` (locked).
+- Sem alterar componentes locked nem lógica de `snapshot-to-report-data`.
+- Mobile-first; testar 375px e 1366px.
+
+---
+
+### Como queres avançar?
+
+Posso aplicar os 8 refinamentos numa única passagem, ou **fasear por prioridade**:
+- **Fase A (alto impacto):** 1 (Hero) + 2 (Bloco 01) + 3 (Ritmo entre blocos).
+- **Fase B (polimento):** 4 (Sidebar) + 5 (Tipografia métricas) + 6 (Insights).
+- **Fase C (responsivo + fecho):** 7 (Methodology) + 8 (Mobile).
+
+Recomendo **faseado A → B → C** para conseguires validar visualmente entre fases. Diz-me se aprovas tudo, só a Fase A, ou se queres ajustar prioridades.
