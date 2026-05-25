@@ -8,6 +8,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "@tanstack/react-query";
 import {
   getTestProfileStatuses,
+  getExecutionMode,
   type TestProfileStatus,
 } from "@/server/admin/execution-mode.functions";
 import { Link } from "@tanstack/react-router";
@@ -300,6 +301,14 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
   const [refreshConfirmOpen, setRefreshConfirmOpen] = useState(false);
   const [lastAttempt, setLastAttempt] = useState<LastAttempt | null>(null);
   const now = useNow();
+
+  // Read current execution mode — block "Atualizar agora" in cache_only.
+  const { data: modeData } = useQuery({
+    queryKey: ["admin", "execution-mode"],
+    queryFn: () => getExecutionMode(),
+    staleTime: 10_000,
+  });
+  const isCacheOnlyMode = (modeData?.mode ?? "cache_only") === "cache_only";
 
   // Preflight query — only runs when modal opens
   const {
