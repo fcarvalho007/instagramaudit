@@ -144,6 +144,24 @@
       "rhythm_excess": "above recommended",
       "rhythm_good": "healthy cadence",
       "rhythm_low": "below minimum"
+    },
+    "anchor": {
+      "eyebrow": "Anchor metric",
+      "engagement_above": "engagement {{delta}}% above the segment benchmark",
+      "engagement_below": "engagement {{delta}}% below the segment benchmark",
+      "comments": "{{value}} comments per post",
+      "comments_caption": "active conversation signal",
+      "rhythm": "{{value}} posts per week",
+      "rhythm_caption": "sustainable cadence"
+    },
+    "why": {
+      "eyebrow": "Why it matters",
+      "solid_above": "Engagement above the benchmark suggests the content is calibrated to its audience. The next step is to protect this rhythm without losing identity.",
+      "developing": "The profile is in a learning zone: there are positive signals but still inconsistent. Small tweaks to format and cadence decide the next curve.",
+      "warning_below": "Engagement is clearly below the benchmark for profiles of similar size. The editorial analysis pinpoints where the content loses traction.",
+      "weak_cadence": "Current cadence limits reach: the algorithm needs a minimum frequency to distribute content consistently.",
+      "format_concentrated": "Concentrating on a single format reduces editorial testing. Diversifying opens new traction hypotheses without abandoning what works.",
+      "neutral": "Current signals do not define a clear direction — the editorial analysis completes the picture with content type, captions and audience response."
     }
   },
   "frequency": {
