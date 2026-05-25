@@ -14,7 +14,8 @@
       "5": "Preparing the visual report…"
     },
     "stepCounter": "Step {{current}} of {{total}}",
-    "footnote": "Don't close this window — the diagnosis is being prepared."
+    "footnote": "Don't close this window — the diagnosis is being prepared.",
+    "sr_progress": "Analyzing {{handle}} — step {{current}} of {{total}}"
   },
   "error": {
     "eyebrow": "Analysis unavailable",
@@ -22,6 +23,7 @@
     "fallback": "We couldn't analyse this profile right now. Please try again in a moment.",
     "retry": "Try again",
     "back": "Back to home",
+    "retry_hint": "The profile may be private, non-existent or temporarily unavailable. Check the username and try again.",
     "cacheOnly": {
       "title": "This report doesn't have public data available yet.",
       "body": "The data for this profile hasn't been generated yet or the saved version has expired. Try again later or request a new analysis."

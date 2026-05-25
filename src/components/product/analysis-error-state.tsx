@@ -1,4 +1,5 @@
 import { AlertCircle, ArrowLeft, RotateCcw } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
@@ -11,10 +12,21 @@ interface AnalysisErrorStateProps {
   onRetry: () => void;
 }
 
-const CACHE_ONLY_HEADING =
-  "Este relatório ainda não tem dados públicos disponíveis.";
-const CACHE_ONLY_BODY =
-  "Os dados deste perfil ainda não foram gerados ou a versão guardada expirou. Tenta novamente mais tarde ou solicita uma nova análise.";
+// Persists a retry counter across remounts within the same tab so we can
+// surface an extra hint after repeated failures without touching the
+// (locked) route component.
+const ERROR_MOUNT_KEY = "ib_analyze_error_mounts";
+function bumpErrorMounts(): number {
+  if (typeof window === "undefined") return 1;
+  try {
+    const current = Number(window.sessionStorage.getItem(ERROR_MOUNT_KEY) ?? "0");
+    const next = (Number.isFinite(current) ? current : 0) + 1;
+    window.sessionStorage.setItem(ERROR_MOUNT_KEY, String(next));
+    return next;
+  } catch {
+    return 1;
+  }
+}
 
 export function AnalysisErrorState({
   message,
@@ -23,6 +35,18 @@ export function AnalysisErrorState({
 }: AnalysisErrorStateProps) {
   const { t } = useTranslation("analyze");
   const isCacheOnly = errorCode?.toUpperCase() === "CACHE_ONLY_NO_DATA";
+  const mountsRef = useRef<number>(0);
+  if (mountsRef.current === 0) {
+    mountsRef.current = bumpErrorMounts();
+  }
+  const showHint = mountsRef.current >= 2 && !isCacheOnly;
+
+  // Clear the counter once the user navigates away successfully.
+  useEffect(() => {
+    return () => {
+      // Do nothing on unmount — the counter is intentionally sticky per tab.
+    };
+  }, []);
 
   return (
     <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #F6FAFF 0%, #FFFFFF 100%)" }}>
@@ -43,6 +67,14 @@ export function AnalysisErrorState({
                 ? t("error.cacheOnly.body")
                 : (message ?? t("error.fallback"))}
             </p>
+            {showHint && (
+              <p className="font-sans text-xs text-content-tertiary leading-relaxed pt-1">
+                {t("error.retry_hint", {
+                  defaultValue:
+                    "O perfil pode ser privado, inexistente ou estar temporariamente indisponível. Verifica o nome e tenta novamente.",
+                })}
+              </p>
+            )}
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-3">
             <Button

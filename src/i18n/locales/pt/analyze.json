@@ -14,7 +14,8 @@
       "5": "A preparar o relatório visual…"
     },
     "stepCounter": "Passo {{current}} de {{total}}",
-    "footnote": "Não feches esta janela — o diagnóstico está a ser preparado."
+    "footnote": "Não feches esta janela — o diagnóstico está a ser preparado.",
+    "sr_progress": "A analisar {{handle}} — passo {{current}} de {{total}}"
   },
   "error": {
     "eyebrow": "Análise indisponível",
@@ -22,6 +23,7 @@
     "fallback": "Não foi possível analisar este perfil neste momento. Tentar novamente dentro de instantes.",
     "retry": "Tentar novamente",
     "back": "Voltar ao início",
+    "retry_hint": "O perfil pode ser privado, inexistente ou estar temporariamente indisponível. Verifica o nome e tenta novamente.",
     "cacheOnly": {
       "title": "Este relatório ainda não tem dados públicos disponíveis.",
       "body": "Os dados deste perfil ainda não foram gerados ou a versão guardada expirou. Tenta novamente mais tarde ou solicita uma nova análise."

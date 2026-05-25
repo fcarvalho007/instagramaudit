@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
@@ -36,12 +37,63 @@ export function ReportBlockSection({ block, tone = "canvas", first, children }: 
     ? t(`blocks.${block.id}.eyebrow`, { defaultValue: block.eyebrowOverride })
     : shortLabel;
 
+  // Reading-progress for the current block. Computes how much of the
+  // section has scrolled past the viewport top. Stays at 0 while the
+  // block is below the fold, animates 0→100 as the user reads through.
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const compute = () => {
+      const el = sectionRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const vh = window.innerHeight;
+      const total = rect.height;
+      if (total <= 0) {
+        setProgress(0);
+        return;
+      }
+      // Scrolled = how far past the top (clamped). When the bottom is
+      // above the viewport bottom we treat as fully read.
+      const scrolled = Math.min(total, Math.max(0, -rect.top + vh * 0.15));
+      const pct = Math.max(0, Math.min(100, (scrolled / total) * 100));
+      setProgress(pct);
+    };
+    compute();
+    window.addEventListener("scroll", compute, { passive: true });
+    window.addEventListener("resize", compute);
+    return () => {
+      window.removeEventListener("scroll", compute);
+      window.removeEventListener("resize", compute);
+    };
+  }, []);
+
+  const showProgress = progress > 0 && progress < 100;
+
   return (
     <section
+      ref={sectionRef}
       id={block.id}
       aria-label={question}
       className={cn("w-full scroll-mt-20 lg:scroll-mt-6", band)}
     >
+      {/* Reading-progress bar — visible only while the user is reading
+          this block. Decorative, non-interactive. */}
+      <div
+        className="relative h-0.5 w-full overflow-hidden"
+        aria-hidden="true"
+      >
+        <div
+          className={cn(
+            "h-full bg-accent-primary/60 transition-[width,opacity] duration-150 ease-out",
+            showProgress ? "opacity-100" : "opacity-0",
+          )}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
       <div className={cn(first ? "pt-0 pb-14 md:pt-0 md:pb-24" : "py-14 md:py-24")}>
         <header className="mb-0 pb-8 md:pb-10 border-t border-border-subtle pt-8 md:pt-10">
           <div className="flex flex-col md:flex-row md:items-start gap-5 md:gap-8">

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Menu, Lock, ArrowRight, Star, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
@@ -540,6 +540,17 @@ export function ReportBlockTopTabs({ variant, features, profile }: SidebarProps)
     return Array.from({ length: max }, (_, i) => start + i);
   }, [activeIndex, accessible.length]);
 
+  // Auto-center the active tab inside the scrolling rail. Useful when the
+  // visible window shifts as the user scrolls between blocks.
+  const railRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const rail = railRef.current;
+    if (!rail) return;
+    const btn = rail.querySelector<HTMLElement>('button[aria-current="true"]');
+    if (!btn) return;
+    btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  }, [active]);
+
   return (
     <nav
       aria-label={t("nav.aria")}
@@ -552,7 +563,7 @@ export function ReportBlockTopTabs({ variant, features, profile }: SidebarProps)
       )}
     >
       <div className="flex w-full items-stretch">
-        <div className="flex flex-1">
+        <div ref={railRef} className="flex flex-1">
           {visibleIndices.map((idx) => {
             const item = accessible[idx];
             const isActive = item.block.id === active;

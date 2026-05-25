@@ -43,6 +43,13 @@ import { ReportOverviewBlock } from "./report-overview-block";
 import { ReportDiagnosticBlock } from "./report-diagnostic-block";
 import { ReportLockGate } from "@/components/product/report-lock-gate";
 import { useTranslation } from "react-i18next";
+import { useEffect, useMemo, useState } from "react";
+
+import { BackToTopButton } from "./back-to-top-button";
+import { StickyUnlockBar } from "./sticky-unlock-bar";
+import { ReportShortcutDialog } from "./report-shortcut-dialog";
+import { useReportKeyboardShortcuts } from "./use-report-keyboard-shortcuts";
+import { scrollToBlock } from "./use-active-block";
 
 interface ReportShellV2Props {
   result: AdapterResult;
@@ -116,6 +123,28 @@ export function ReportShellV2({
 
   const gated = lockBoundary === "engagement" && !unlocked;
   const handleUnlockClick = onUnlockClick ?? (() => {});
+
+  // Deep-link via URL hash (`#performance` etc.). Runs once on mount;
+  // small delay lets the layout settle so scrollIntoView lands accurately.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.location.hash.replace(/^#/, "");
+    if (!raw) return;
+    const id = decodeURIComponent(raw);
+    const t = window.setTimeout(() => scrollToBlock(id), 250);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  // Keyboard shortcuts (g+1..6, t, ?).
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const blockIds = useMemo(
+    () => [overview, diagnostico, performance, conteudo, procura, benchmark].map((b) => b.id),
+    [overview, diagnostico, performance, conteudo, procura, benchmark],
+  );
+  useReportKeyboardShortcuts({
+    blockIds,
+    onShowHelp: () => setShortcutsOpen(true),
+  });
 
   return (
     <ReportVariantProvider value={variant}>
@@ -401,6 +430,16 @@ export function ReportShellV2({
 
         {/* Espaço inferior mobile para a bottom nav bar não tapar conteúdo */}
         <div className="h-20 lg:hidden" aria-hidden="true" />
+
+        {/* UX helpers — back to top, shortcut help, mobile unlock CTA */}
+        <BackToTopButton />
+        {gated && (
+          <StickyUnlockBar onClick={handleUnlockClick} />
+        )}
+        <ReportShortcutDialog
+          open={shortcutsOpen}
+          onOpenChange={setShortcutsOpen}
+        />
       </div>
     </ReportTrackingProvider>
     </ReportDataProvider>
