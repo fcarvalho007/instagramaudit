@@ -1088,24 +1088,34 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   // Sample size for cadence-related labels excludes pinned posts (same
   // reason as `cadencePosts` above). topPosts/themes still see all posts,
   // but "X publicações em Y dias" must match the cadence window.
-  const sampleSize = cadencePosts.length;
-  const windowLabel =
-    windowDays > 0 ? `últimos ${windowDays} dias` : "amostra recolhida";
-  const windowShortLabel =
-    windowDays > 0 ? `${windowDays} dias` : "amostra";
-  const kpiSubtitle =
-    windowDays > 0
+  // Labels derive from the cadence cascade so they always match the
+  // weekly value rendered on KPI cards. When the sample is insufficient
+  // (`cadence.method === "insufficient"`) we emit a neutral message
+  // instead of a misleading "amostra de 0 publicações · 0 dias".
+  const sampleSize = cadence.sampleSize;
+  const isInsufficient = !cadence.sufficient;
+  const windowLabel = isInsufficient
+    ? "amostra recente insuficiente"
+    : cadence.method === "sample_span"
+      ? `amostra de ${windowDays} dias`
+      : `últimos ${windowDays} dias`;
+  const windowShortLabel = isInsufficient
+    ? "amostra insuficiente"
+    : `${windowDays} dias`;
+  const kpiSubtitle = isInsufficient
+    ? cadence.notePt ?? "amostra recente insuficiente"
+    : cadence.method === "sample_span"
       ? `amostra de ${sampleSize} publicações · ${windowDays} dias`
-      : `amostra de ${sampleSize} publicações`;
-  const sampleCaption = `Análise baseada nas últimas ${sampleSize} publicações recolhidas.`;
-  const temporalLabel =
-    windowDays > 0
-      ? `Evolução temporal · janela de ${windowDays} dias`
-      : `Evolução temporal · amostra de ${sampleSize} publicações`;
-  const topPostsSubtitle =
-    windowDays > 0
-      ? `Ordenadas por envolvimento. Janela observada: ${windowDays} dias.`
-      : `Ordenadas por envolvimento na amostra recolhida.`;
+      : `${sampleSize} publicações nos últimos ${windowDays} dias`;
+  const sampleCaption = isInsufficient
+    ? "Análise baseada na amostra recolhida (cadência não calculada)."
+    : `Análise baseada nas últimas ${sampleSize} publicações recolhidas.`;
+  const temporalLabel = isInsufficient
+    ? "Evolução temporal · amostra recolhida"
+    : `Evolução temporal · janela de ${windowDays} dias`;
+  const topPostsSubtitle = isInsufficient
+    ? "Ordenadas por envolvimento na amostra recolhida."
+    : `Ordenadas por envolvimento. Janela observada: ${windowDays} dias.`;
 
   // Views are only populated for Reels; if every post has 0 views, hide the
   // series in the temporal chart.
