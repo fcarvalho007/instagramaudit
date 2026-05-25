@@ -1,89 +1,66 @@
-## Final validation — GO/NO-GO
+## Auditoria — cadência errada em `robs.cortez`
 
-**Veredicto: NO-GO para beta público** até resolver os dois bloqueadores abaixo. Tudo o resto está saudável.
+### Causa raiz (1 linha)
 
----
+`ReportPayloadV1Schema` em `src/lib/report-snapshots/schema.ts` **não inclui `is_pinned`** no `PostSchema`. Quando o Zod valida o payload antes de gravar em `report_snapshots`, a flag `is_pinned` é silenciosamente removida. O filtro de pinned em `snapshot-to-report-data.ts:968` torna-se um no-op para reports históricos, e os 2 posts fixos de 2023 voltam a inflar a janela para 1111 dias.
 
-### 1. Análise fresh pública (natgeo / chatgptricks) — ❌ BLOQUEADOR
+### Evidência
 
-A flag `APIFY_TESTING_MODE` não está a desativar o allowlist em produção. Evidência em `analysis_events`:
+Snapshot `cdec97d1-…` (robs.cortez, persistido 16:00 hoje):
 
-- `natgeo` 2026-05-25 10:52 → `blocked_allowlist` / `PROFILE_NOT_ALLOWED`
-- `chatgptricks` 2026-05-25 09:40 → `blocked_allowlist` / `PROFILE_NOT_ALLOWED`
+| Camada | `posts[*].is_pinned` presente? | Cadência calculada |
+|---|---|---|
+| `analysis_snapshots.normalized_payload.posts` | ✅ `true`/`false` | 10 posts / 13 dias ≈ **5,4/sem** ✔ |
+| `report_snapshots.report_payload_jsonb.posts` | ❌ `null` em todos | 12 posts / 1111 dias ≈ **0,08/sem** ✘ |
 
-`robs.cortez` correu fresh em 15:53 (12 posts, custo $0.011, duração 7.6s) — mas apenas porque foi adicionado ao `APIFY_ALLOWLIST`, não porque o testing-mode foi desativado.
+A página `/analyze/$username` (lê de `analysis_snapshots`) mostra cadência correta. Qualquer leitor que use `report_snapshots` (link partilhado, email summary, dashboard pessoal, PDF) mostra "12 publicações em 1111 dias".
 
-Causa em `src/lib/security/apify-allowlist.ts`:
-```ts
-return process.env.APIFY_TESTING_MODE !== "false"; // default ON
-```
-O valor atual da secret não é a string literal `"false"`, então o allowlist continua a bloquear todos os handles fora da lista.
+Bónus: `report_payload_jsonb.content_summary.estimated_posts_per_week = 0.1` vem já errado do upstream (calculado em `content_summary` antes do filtro de pinned). A reescrita em `snapshot-to-report-data.ts:1012` corrige isto, mas só funciona quando `is_pinned` chega ao adapter — daí o bug ficar invisível para `/analyze` e visível para `/report`.
 
-**Ação necessária (operacional, sem código):** definir `APIFY_TESTING_MODE=false` (literal) nas secrets e republicar. Validar com 1 fresh a `natgeo` ou `chatgptricks`.
+### Resumo das respostas
 
----
+1. **Onde:** `src/lib/report/snapshot-to-report-data.ts:968-1016`. Override de `postingFrequencyWeekly` em `:1012-1015` a partir de `cadencePosts.length / windowDays * 7`.
+2. **Fonte de dados:** janela entre `min` e `max` `taken_at_iso` da amostra retornada pelo Apify, **excluindo pinned**. Não usa janelas fixas 30/60/90 dias nem `profile.posts_count`.
+3. **Ordenação:** `temporalSeries`/`heatmap` ordenam internamente; o cálculo da janela é min/max, não depende de ordem.
+4. **Pinned a distorcer:** sim — para reports gravados em `report_snapshots` (causa do bug). Não para `/analyze` direto.
+5. **Timestamps:** `taken_at_iso` (string ISO) parseado com `new Date(...).getTime()` em ms. Sem mistura s/ms.
+6. **Amostra suficiente:** 12 posts (`apify/instagram-scraper`), inclui ~10 recentes + 2 pinned antigos. Suficiente para janela 12-15 dias.
+7. **Fresh vs stale:** UI atual lê dependendo da rota. `/analyze/$username` = `analysis_snapshots` (correto). `/report/$id` partilhado/email = `report_snapshots` (estragado).
+8. **Cache velha?:** não — só existe 1 snapshot para este handle, criado hoje 15:53/16:00. Bug é estrutural, não de cache.
+9. **Campos relevantes:** `posts[].taken_at_iso`, `posts[].is_pinned`. Cálculo final em `snapshot-to-report-data.ts` (`cadencePosts`, `windowDays`, `keyMetrics.postingFrequencyWeekly`).
 
-### 2. Email `report-summary` perdido — ❌ BLOQUEADOR
+### Plano de correção (cirúrgico)
 
-`product_events` não contém `report_summary_email_sent` nem `report_summary_email_failed` para os 2 unlocks mais recentes (frederico.m.carvalho 13:58; robs.cortez 16:00). Só `beta_welcome_email_sent` aparece (e só para o frederico).
+**Edit 1 — `src/lib/report-snapshots/schema.ts`**
+Adicionar `is_pinned: z.boolean().nullable().optional()` ao `PostSchema`. Single line. Sem migration, sem novo campo na base de dados.
 
-Causa em `src/lib/unlock.server.ts` linhas 475-496: `sendLeadMagnetSequence` é invocada dentro de `void (async () => {...})()` fire-and-forget. O comentário do passo 7 (Brevo sync) já reconhece que "Cloudflare Workers terminate background async work as soon as the response is returned (no `waitUntil` is registered here)" — e na sequência lead-magnet o welcome (~300ms) por vezes passa, mas o summary que vem a seguir é morto pelo runtime.
+**Edit 2 — backfill leve (opcional, sem code change na primeira volta)**
+O snapshot `cdec97d1-…` ficou gravado sem `is_pinned`. Opções:
+- (a) **não fazer nada** — quando o utilizador voltar a desbloquear ou o pipeline reescrever o report (re-publish/re-analyze), o novo schema preserva o flag. Custo zero.
+- (b) **regenerar 1 snapshot** chamando `persistReportSnapshotInternal(reportRequestId, source)` para o request id do robs.cortez. Custo $0 (não bate no Apify, só relê `analysis_snapshots`).
 
-**Fix proposto:** alinhar com o passo 7 — `await sendLeadMagnetSequence(...)` em vez de fire-and-forget. A função internamente já tem try/catch por cada email, não throwa e não bloqueia o utilizador (unlock continua a responder). Custo: +500–1500 ms de latência no unlock, aceitável.
+Recomendo (b) só para o robs.cortez (1 row), para que a tua próxima visita ao report partilhado mostre já o número certo. Faço isto via `psql` num script one-off, sem mutar mais nada.
 
----
+**Edit 3 — defesa em profundidade em `snapshot-to-report-data.ts`**
+Acrescentar fallback: se `windowDays > 365` E `cadencePosts.length >= 3`, descartar os outliers mais antigos (posts isolados a > 90 dias do segundo-mais-recente) e recalcular. Isto protege contra pinned não marcados, posts arquivados, ou perfis que voltam após hiato. Comentado claramente como guarda secundária.
 
-### 3. Cache — ✅ OK
+**Edit 4 — teste de regressão**
+Novo teste `src/lib/report-snapshots/__tests__/schema-pinned.test.ts`:
+- payload com 2 posts `is_pinned: true` antigos + 10 recentes
+- `ReportPayloadV1Schema.parse(payload)` mantém `is_pinned: true` em ambos
+- `snapshotToReportData` aplicado ao parsed payload devolve `windowDays <= 20`, `postingFrequencyWeekly >= 3`
 
-`robs.cortez` após fresh às 15:53:
-- 15:59:11 → `data_source=cache` (130 ms)
-- 15:59:32 → `data_source=cache` (86 ms)
+### Fora de scopo (não tocar nesta volta)
 
-Nenhum hit adicional ao Apify. `analysis_execution_mode = fresh` em `app_config`. Toggle `cache_only` validado em sessões anteriores (handles `chatgptrick`, `martimsilvai`, `nonexistent_*` ficam `blocked_cache_only`).
+- Copy do card "Identidade Editorial" — só voltar a olhar depois do número estar certo.
+- `content_summary.estimated_posts_per_week` upstream — fica a ser sobrescrito pelo adapter, não vale a pena tocar agora.
+- Scoring / benchmark engagement — não depende de `postingFrequencyWeekly`.
+- UI/copy/locales — sem mudanças.
 
----
+### Checkpoint
 
-### 4. UX pública — ✅ OK (sem teste manual no browser)
-
-`bunx vitest run normalize-handle.test.ts` → 31/31 passa, cobrindo `@handle`, `/handle/`, `instagram.com/handle`, `https://www.instagram.com/handle/?hl=en` e variantes inválidas. Não há indício de regressão; sem teste de browser nesta volta (regra do prompt: 1 fresh paid no máximo).
-
----
-
-### 5. Custo observado
-
-| item | valor |
-|---|---|
-| Apify fresh `robs.cortez` (estimado) | $0.011 |
-| Apify fresh `robs.cortez` (actual) | $0.000 (ainda não importado do billing) |
-| OpenAI insights/visual/caption (enrichment) | ~$0.039 |
-| **Total real desta volta de validação** | ~$0.05 |
-
-Dentro do `APIFY_HARD_CAP_USD` e `OPENAI_DAILY_CAP_USD`. Cache evitou cobranças repetidas no mesmo handle.
-
----
-
-### Resumo executivo
-
-- **Cache evita custo repetido:** sim
-- **Custo provider observado:** ~$0.05 nesta volta
-- **Lead magnet entrega:** parcial — welcome chega às vezes, summary nunca chegou nos 2 unlocks recentes
-- **Pronto para partilhar publicamente:** não, antes dos 2 fixes acima
-
----
-
-### Plano de correção (a executar após aprovação)
-
-1. **Secret operacional** (sem código): definir `APIFY_TESTING_MODE=false` nas secrets do projeto. Validar com 1 fresh `natgeo` ou `chatgptricks`. Esperado: `data_source=fresh`, `provider_call_logs` com nova entrada Apify, `analysis_events.outcome=success`.
-
-2. **Code edit cirúrgico** em `src/lib/unlock.server.ts` (passo 6, linhas 475-496): trocar o `void (async () => {...})().catch(...)` por um `await sendLeadMagnetSequence(...)` envolvido em try/catch igual ao passo 7. Manter o `import()` dinâmico. Não tocar em mais nada.
-
-3. **Re-validação:** novo unlock com email não-conhecido para um handle já em cache (evita gastar Apify); confirmar em `product_events` a sequência: `beta_welcome_email_sent` + `report_summary_email_sent` (ou `_failed`/`_skipped_no_data` com razão visível).
-
-Sem alterações de UI. Sem alterações de schema. Sem alterações nos prompts AI. Sem novo email enviado para leads existentes.
-
-**Checkpoint final antes de partilhar publicamente:**
-- ☐ `APIFY_TESTING_MODE=false` aplicado e republicado
-- ☐ Fresh em handle fora do allowlist → `outcome=success`
-- ☐ `unlock.server.ts` passa a aguardar `sendLeadMagnetSequence`
-- ☐ Novo unlock produz `report_summary_email_sent` em `product_events`
-- ☐ Cache continua a servir o 2º pedido do mesmo handle
+- ☐ `PostSchema` aceita e preserva `is_pinned`
+- ☐ Snapshot do robs.cortez regenerado (opcional, mas recomendado)
+- ☐ Novo teste verde
+- ☐ `bunx vitest run` global verde (sem regressão nos 90 testes existentes)
+- ☐ Confirmação por query SQL: `report_payload_jsonb->'posts'->0->>'is_pinned'` deixa de ser `null` para snapshots novos
