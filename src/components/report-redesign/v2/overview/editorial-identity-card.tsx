@@ -759,14 +759,14 @@ function IndexBlock({
 
       {/* "Como foi calculado" colapsável */}
       <details
-        className="group mt-auto -mx-6 sm:-mx-7 -mb-7 sm:-mb-8 border-t border-border-default"
+        className="group mt-auto border-t border-border-default sm:-mx-7 sm:-mb-8"
         onToggle={(e) => setMethodOpen((e.target as HTMLDetailsElement).open)}
       >
         <summary
           aria-expanded={methodOpen}
           className={cn(
             "flex items-center gap-2 cursor-pointer list-none",
-            "px-6 sm:px-7 py-3.5 text-[13px] font-medium text-content-secondary",
+            "py-3 sm:px-7 sm:py-3.5 text-[13px] font-medium text-content-secondary",
             "hover:text-content-primary hover:bg-surface-muted/60 transition-colors",
           )}
         >
@@ -782,7 +782,7 @@ function IndexBlock({
             aria-hidden="true"
           />
         </summary>
-        <div className="px-6 sm:px-7 pt-2 pb-4 space-y-2.5 text-[13px] leading-snug text-content-secondary">
+        <div className="pt-2 pb-4 sm:px-7 space-y-2.5 text-[13px] leading-snug text-content-secondary">
           <p>
             {t("identity.method.signals_line", {
               defaultValue:
