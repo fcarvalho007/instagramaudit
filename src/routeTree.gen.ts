@@ -130,6 +130,7 @@ import { Route as ApiAdminKnowledgeExportRouteImport } from './routes/api/admin/
 import { Route as ApiAdminKnowledgeBenchmarksRouteImport } from './routes/api/admin/knowledge.benchmarks'
 import { Route as ApiAdminEmailTemplatesKeyRouteImport } from './routes/api/admin/email-templates.$key'
 import { Route as AdminReportPreviewSnapshotSnapshotIdRouteImport } from './routes/admin.report-preview.snapshot.$snapshotId'
+import { Route as AdminAutomacoesTemplatesKeyRouteImport } from './routes/admin.automacoes.templates.$key'
 import { Route as ApiPublicReportSnapshotByIdSnapshotIdRouteImport } from './routes/api/public/report-snapshot.by-id.$snapshotId'
 import { Route as ApiPublicAnalysisSnapshotByIdSnapshotIdRouteImport } from './routes/api/public/analysis-snapshot.by-id.$snapshotId'
 import { Route as ApiAdminKnowledgeSuggestionsIdRouteImport } from './routes/api/admin/knowledge.suggestions.$id'
@@ -783,6 +784,12 @@ const AdminReportPreviewSnapshotSnapshotIdRoute =
     path: '/report-preview/snapshot/$snapshotId',
     getParentRoute: () => AdminRoute,
   } as any)
+const AdminAutomacoesTemplatesKeyRoute =
+  AdminAutomacoesTemplatesKeyRouteImport.update({
+    id: '/templates/$key',
+    path: '/templates/$key',
+    getParentRoute: () => AdminAutomacoesRoute,
+  } as any)
 const ApiPublicReportSnapshotByIdSnapshotIdRoute =
   ApiPublicReportSnapshotByIdSnapshotIdRouteImport.update({
     id: '/api/public/report-snapshot/by-id/$snapshotId',
@@ -848,7 +855,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/termos': typeof TermosRoute
   '/unsubscribe': typeof UnsubscribeRoute
-  '/admin/automacoes': typeof AdminAutomacoesRoute
+  '/admin/automacoes': typeof AdminAutomacoesRouteWithChildren
   '/admin/beta-leads': typeof AdminBetaLeadsRoute
   '/admin/beta-requests': typeof AdminBetaRequestsRoute
   '/admin/clientes': typeof AdminClientesRoute
@@ -916,6 +923,7 @@ export interface FileRoutesByFullPath {
   '/app/reports/$id': typeof AppReportsIdRoute
   '/beta/submitted/$requestId': typeof BetaSubmittedRequestIdRoute
   '/report/print/$snapshotId': typeof ReportPrintSnapshotIdRoute
+  '/admin/automacoes/templates/$key': typeof AdminAutomacoesTemplatesKeyRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/email-templates/$key': typeof ApiAdminEmailTemplatesKeyRouteWithChildren
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
@@ -978,7 +986,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/termos': typeof TermosRoute
   '/unsubscribe': typeof UnsubscribeRoute
-  '/admin/automacoes': typeof AdminAutomacoesRoute
+  '/admin/automacoes': typeof AdminAutomacoesRouteWithChildren
   '/admin/beta-leads': typeof AdminBetaLeadsRoute
   '/admin/beta-requests': typeof AdminBetaRequestsRoute
   '/admin/clientes': typeof AdminClientesRoute
@@ -1046,6 +1054,7 @@ export interface FileRoutesByTo {
   '/app/reports/$id': typeof AppReportsIdRoute
   '/beta/submitted/$requestId': typeof BetaSubmittedRequestIdRoute
   '/report/print/$snapshotId': typeof ReportPrintSnapshotIdRoute
+  '/admin/automacoes/templates/$key': typeof AdminAutomacoesTemplatesKeyRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/email-templates/$key': typeof ApiAdminEmailTemplatesKeyRouteWithChildren
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
@@ -1110,7 +1119,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/termos': typeof TermosRoute
   '/unsubscribe': typeof UnsubscribeRoute
-  '/admin/automacoes': typeof AdminAutomacoesRoute
+  '/admin/automacoes': typeof AdminAutomacoesRouteWithChildren
   '/admin/beta-leads': typeof AdminBetaLeadsRoute
   '/admin/beta-requests': typeof AdminBetaRequestsRoute
   '/admin/clientes': typeof AdminClientesRoute
@@ -1178,6 +1187,7 @@ export interface FileRoutesById {
   '/app/reports/$id': typeof AppReportsIdRoute
   '/beta/submitted/$requestId': typeof BetaSubmittedRequestIdRoute
   '/report/print/$snapshotId': typeof ReportPrintSnapshotIdRoute
+  '/admin/automacoes/templates/$key': typeof AdminAutomacoesTemplatesKeyRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/email-templates/$key': typeof ApiAdminEmailTemplatesKeyRouteWithChildren
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
@@ -1311,6 +1321,7 @@ export interface FileRouteTypes {
     | '/app/reports/$id'
     | '/beta/submitted/$requestId'
     | '/report/print/$snapshotId'
+    | '/admin/automacoes/templates/$key'
     | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/email-templates/$key'
     | '/api/admin/knowledge/benchmarks'
@@ -1441,6 +1452,7 @@ export interface FileRouteTypes {
     | '/app/reports/$id'
     | '/beta/submitted/$requestId'
     | '/report/print/$snapshotId'
+    | '/admin/automacoes/templates/$key'
     | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/email-templates/$key'
     | '/api/admin/knowledge/benchmarks'
@@ -1572,6 +1584,7 @@ export interface FileRouteTypes {
     | '/app/reports/$id'
     | '/beta/submitted/$requestId'
     | '/report/print/$snapshotId'
+    | '/admin/automacoes/templates/$key'
     | '/admin/report-preview/snapshot/$snapshotId'
     | '/api/admin/email-templates/$key'
     | '/api/admin/knowledge/benchmarks'
@@ -2568,6 +2581,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminReportPreviewSnapshotSnapshotIdRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/automacoes/templates/$key': {
+      id: '/admin/automacoes/templates/$key'
+      path: '/templates/$key'
+      fullPath: '/admin/automacoes/templates/$key'
+      preLoaderRoute: typeof AdminAutomacoesTemplatesKeyRouteImport
+      parentRoute: typeof AdminAutomacoesRoute
+    }
     '/api/public/report-snapshot/by-id/$snapshotId': {
       id: '/api/public/report-snapshot/by-id/$snapshotId'
       path: '/api/public/report-snapshot/by-id/$snapshotId'
@@ -2627,6 +2647,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminAutomacoesRouteChildren {
+  AdminAutomacoesTemplatesKeyRoute: typeof AdminAutomacoesTemplatesKeyRoute
+}
+
+const AdminAutomacoesRouteChildren: AdminAutomacoesRouteChildren = {
+  AdminAutomacoesTemplatesKeyRoute: AdminAutomacoesTemplatesKeyRoute,
+}
+
+const AdminAutomacoesRouteWithChildren = AdminAutomacoesRoute._addFileChildren(
+  AdminAutomacoesRouteChildren,
+)
+
 interface AdminSistemaRouteChildren {
   AdminSistemaCockpitLegadoRoute: typeof AdminSistemaCockpitLegadoRoute
 }
@@ -2640,7 +2672,7 @@ const AdminSistemaRouteWithChildren = AdminSistemaRoute._addFileChildren(
 )
 
 interface AdminRouteChildren {
-  AdminAutomacoesRoute: typeof AdminAutomacoesRoute
+  AdminAutomacoesRoute: typeof AdminAutomacoesRouteWithChildren
   AdminBetaLeadsRoute: typeof AdminBetaLeadsRoute
   AdminBetaRequestsRoute: typeof AdminBetaRequestsRoute
   AdminClientesRoute: typeof AdminClientesRoute
@@ -2659,7 +2691,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
-  AdminAutomacoesRoute: AdminAutomacoesRoute,
+  AdminAutomacoesRoute: AdminAutomacoesRouteWithChildren,
   AdminBetaLeadsRoute: AdminBetaLeadsRoute,
   AdminBetaRequestsRoute: AdminBetaRequestsRoute,
   AdminClientesRoute: AdminClientesRoute,
