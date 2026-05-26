@@ -330,8 +330,11 @@
       "Sábado",
       "Domingo"
     ],
-    "source_socialinsider_ig": "Fonte: Socialinsider, Out 2025 – Mar 2026 — referência de mercado: ≈10 Reels, 8 imagens ou 5 carrosséis por mês. Consistência pesa mais do que volume.",
-    "source_link_label": "Socialinsider"
+    "external_ref": {
+      "intro": "Referência externa Socialinsider é por formato (Reels ≈{{reel}}/mês, Carrosséis ≈{{carousel}}/mês, Imagens ≈{{image}}/mês — {{range}}). Não é uma regra fixa nem um total prescrito.",
+      "opportunity_mix": "A oportunidade pode estar no mix de formatos, não no volume.",
+      "profile_line": "Cadência atual: {{cadence}} · {{posts}} em {{days}} dias."
+    }
   },
   "format": {
     "title": "Formato",
@@ -399,8 +402,26 @@
       "improve": "A MELHORAR",
       "neutral": "DIAGNÓSTICO"
     },
-    "source_socialinsider_ig": "Fonte: Socialinsider, Out 2025 – Mar 2026 — carrosséis lideram engagement (0,52%), Reels seguem com 0,50% a dobro do volume, imagens ficam em 0,35%.",
-    "source_link_label": "Socialinsider"
+    "external_ref": {
+      "title": "Referência externa · Socialinsider",
+      "subtitle": "Dados {{range}}",
+      "col_format": "Formato",
+      "col_profile": "Este perfil",
+      "col_reference": "Referência externa",
+      "col_reading": "Leitura",
+      "absent": "ausente na amostra",
+      "provisional": "Leitura provisória — amostra pequena.",
+      "ref_cell": "{{posts}}/mês · {{eng}}% ER",
+      "ref_cell_no_eng": "{{posts}}/mês",
+      "ref_cell_no_freq": "{{eng}}% ER",
+      "reading_above_freq": "Acima na frequência",
+      "reading_below_freq": "Abaixo na frequência",
+      "reading_near_freq": "Frequência próxima",
+      "reading_dash": "—"
+    }
+  },
+  "external_source_note": {
+    "template": "Fonte externa: {{source}}, dados {{range}}."
   },
   "blocks": {
     "overview": {

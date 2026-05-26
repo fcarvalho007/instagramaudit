@@ -14,6 +14,7 @@ import {
 import { loadBenchmarkReferences } from "@/lib/benchmark/reference-data.server";
 import { getReferenceFromData } from "@/lib/benchmark/reference-data";
 import { getTierForFollowers, getTierLabel } from "@/lib/benchmark/tiers";
+import { loadSocialinsiderInstagramContext } from "@/lib/knowledge/socialinsider-context.server";
 import type {
   BenchmarkFormat,
   BenchmarkPositioning,
@@ -48,7 +49,13 @@ const ADAPTER_TO_ENGINE: Record<
 export async function buildReportBenchmarkInput(
   payload: SnapshotPayload | null | undefined,
 ): Promise<ReportBenchmarkInput> {
-  const data = await loadBenchmarkReferences();
+  const [data, externalIg] = await Promise.all([
+    loadBenchmarkReferences(),
+    loadSocialinsiderInstagramContext().catch((e) => {
+      console.error("[benchmark-input] socialinsider load failed:", e);
+      return null;
+    }),
+  ]);
 
   const profile = payload?.profile ?? {};
   const cs = payload?.content_summary ?? {};
@@ -89,6 +96,7 @@ export async function buildReportBenchmarkInput(
     perFormatReference,
     tierLabel,
     datasetVersion: data.datasetVersion,
+    externalReferences: { instagramByFormat: externalIg },
   };
 }
 

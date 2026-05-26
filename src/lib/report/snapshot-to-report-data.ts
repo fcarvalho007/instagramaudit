@@ -15,6 +15,7 @@
 
 import type { ReportData } from "@/components/report/report-mock-data";
 import type { BenchmarkPositioning } from "@/lib/benchmark/types";
+import type { SocialinsiderInstagramContext } from "@/lib/knowledge/socialinsider-context";
 import type {
   AiInsightV2Item,
   AiInsightV2Section,
@@ -232,6 +233,14 @@ export interface ReportBenchmarkInput {
   };
   tierLabel: string;
   datasetVersion: string;
+  /**
+   * Optional external market reference (Socialinsider Instagram dataset).
+   * Pure passthrough: the adapter exposes it via `result.externalReferences`
+   * for the public report UI to render an honest format-level comparison.
+   */
+  externalReferences?: {
+    instagramByFormat: SocialinsiderInstagramContext | null;
+  };
 }
 
 // ============================================================================
@@ -266,6 +275,11 @@ export interface AdapterResult {
   data: ReportData;
   coverage: ReportCoverage;
   enriched: ReportEnriched;
+  /**
+   * External market references (currently Socialinsider Instagram per
+   * format). `null` when the dataset could not be read.
+   */
+  externalReferences: SocialinsiderInstagramContext | null;
 }
 
 /**
@@ -1533,5 +1547,11 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     windowDays,
   };
 
-  return { data, coverage, enriched };
+  return {
+    data,
+    coverage,
+    enriched,
+    externalReferences:
+      input.benchmark?.externalReferences?.instagramByFormat ?? null,
+  };
 }

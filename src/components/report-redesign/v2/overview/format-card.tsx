@@ -13,6 +13,11 @@ import { Play, Image, GalleryHorizontalEnd } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { InsightCallout, type InsightTone } from "./insight-callout";
+import type {
+  SocialinsiderFormatRef,
+  SocialinsiderInstagramContext,
+} from "@/lib/knowledge/socialinsider-context";
+import { ExternalSourceNote, formatDateRange } from "./external-source-note";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -36,6 +41,8 @@ export interface FormatCardProps {
   dominantFormatShare: number;
   formats: FormatEntry[];
   analysedPostFormats: AnalysedPostFormat[];
+  /** External market reference (Socialinsider IG per format). Optional. */
+  socialinsiderRef?: SocialinsiderInstagramContext | null;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -174,6 +181,7 @@ export function FormatCard({
   dominantFormatShare,
   formats,
   analysedPostFormats,
+  socialinsiderRef,
 }: FormatCardProps) {
   const { t } = useTranslation("report");
   // Headline kept for legacy reasons (export) but render uses t() version.
@@ -327,17 +335,19 @@ export function FormatCard({
           {verdict.rest}
         </p>
       </InsightCallout>
-      <p className="px-5 md:px-6 pb-6 md:pb-8 -mt-2 text-xs text-content-tertiary leading-relaxed">
-        {t("format.source_socialinsider_ig")}{" "}
-        <a
-          href="https://www.socialinsider.io/blog/social-media-posting-frequency/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline decoration-dotted underline-offset-2 hover:text-content-secondary"
-        >
-          {t("format.source_link_label")}
-        </a>
-      </p>
+      <ExternalReferenceTable
+        refs={socialinsiderRef ?? null}
+        formats={formats}
+        postsAnalyzed={postsAnalyzed}
+      />
+      <ExternalSourceNote
+        refData={
+          socialinsiderRef?.reel ??
+          socialinsiderRef?.carousel ??
+          socialinsiderRef?.image ??
+          null
+        }
+      />
     </article>
   );
 }
@@ -510,6 +520,150 @@ function FormatBreakdown({
               </Fragment>
             );
           })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Compact 3-row comparison vs Socialinsider Instagram reference. Factual
+ * only; never imperative. Hidden when no external reference is available.
+ */
+function ExternalReferenceTable({
+  refs,
+  formats,
+  postsAnalyzed,
+}: {
+  refs: SocialinsiderInstagramContext | null;
+  formats: FormatEntry[];
+  postsAnalyzed: number;
+}) {
+  const { t, i18n } = useTranslation("report");
+  if (!refs) return null;
+  const rows: Array<{
+    key: "Carousels" | "Reels" | "Imagens";
+    refData: SocialinsiderFormatRef | null;
+  }> = [
+    { key: "Carousels", refData: refs.carousel },
+    { key: "Reels", refData: refs.reel },
+    { key: "Imagens", refData: refs.image },
+  ];
+  const anyRef = rows.find((r) => r.refData);
+  if (!anyRef) return null;
+
+  const provisional = postsAnalyzed > 0 && postsAnalyzed < 8;
+  const range = anyRef.refData
+    ? formatDateRange(
+        anyRef.refData.dataRange.from,
+        anyRef.refData.dataRange.to,
+        i18n.language,
+      )
+    : "";
+
+  const byKey = new Map<string, FormatEntry>();
+  formats.forEach((f) => byKey.set(f.format, f));
+
+  // Profile monthly frequency by format (very rough — based on share × cadence
+  // would require window; we only present count + share, and use share to
+  // decide above/below the reference qualitatively).
+  function readingFor(
+    key: "Carousels" | "Reels" | "Imagens",
+    refData: SocialinsiderFormatRef | null,
+  ): string {
+    if (!refData) return t("format.external_ref.reading_dash");
+    const entry = byKey.get(key);
+    if (!entry || entry.count === 0) return t("format.external_ref.reading_dash");
+    // Compare profile share vs reference share within the 3 formats.
+    const refTotal =
+      (refs?.carousel?.postsPerMonth ?? 0) +
+      (refs?.reel?.postsPerMonth ?? 0) +
+      (refs?.image?.postsPerMonth ?? 0);
+    const refShare =
+      refTotal > 0 && refData.postsPerMonth
+        ? (refData.postsPerMonth / refTotal) * 100
+        : null;
+    if (refShare === null) return t("format.external_ref.reading_dash");
+    const delta = entry.sharePct - refShare;
+    if (delta > 10) return t("format.external_ref.reading_above_freq");
+    if (delta < -10) return t("format.external_ref.reading_below_freq");
+    return t("format.external_ref.reading_near_freq");
+  }
+
+  function refCell(refData: SocialinsiderFormatRef | null): string {
+    if (!refData) return "—";
+    const eng = refData.engagementPct;
+    const posts = refData.postsPerMonth;
+    if (posts !== null && eng !== null) {
+      return t("format.external_ref.ref_cell", {
+        posts,
+        eng: eng.toFixed(2),
+      });
+    }
+    if (posts !== null) {
+      return t("format.external_ref.ref_cell_no_eng", { posts });
+    }
+    if (eng !== null) {
+      return t("format.external_ref.ref_cell_no_freq", { eng: eng.toFixed(2) });
+    }
+    return "—";
+  }
+
+  function profileCell(key: "Carousels" | "Reels" | "Imagens"): string {
+    const entry = byKey.get(key);
+    if (!entry || entry.count === 0) {
+      return t("format.external_ref.absent");
+    }
+    return `${entry.count} · ${Math.round(entry.sharePct)}%`;
+  }
+
+  return (
+    <div className="px-5 md:px-6 mt-4">
+      <div className="rounded-xl border border-border-default bg-surface-muted/60 p-3.5 sm:p-4">
+        <div className="flex items-baseline justify-between gap-3 mb-2">
+          <span className="text-eyebrow-sm text-content-tertiary">
+            {t("format.external_ref.title")}
+          </span>
+          {range ? (
+            <span className="text-[11px] text-content-tertiary tabular-nums">
+              {t("format.external_ref.subtitle", { range })}
+            </span>
+          ) : null}
+        </div>
+        {provisional ? (
+          <p className="text-[12px] text-content-tertiary mb-2 italic">
+            {t("format.external_ref.provisional")}
+          </p>
+        ) : null}
+        <div className="grid grid-cols-[1fr_1.1fr_1.2fr_1fr] gap-x-3 gap-y-1.5 text-[12px]">
+          <span className="text-content-tertiary uppercase tracking-[0.04em]">
+            {t("format.external_ref.col_format")}
+          </span>
+          <span className="text-content-tertiary uppercase tracking-[0.04em]">
+            {t("format.external_ref.col_profile")}
+          </span>
+          <span className="text-content-tertiary uppercase tracking-[0.04em]">
+            {t("format.external_ref.col_reference")}
+          </span>
+          <span className="text-content-tertiary uppercase tracking-[0.04em]">
+            {t("format.external_ref.col_reading")}
+          </span>
+          {rows.map(({ key, refData }) => (
+            <Fragment key={key}>
+              <span className="text-[13px] text-content-primary">
+                {tFormatLegend(t, key)}
+              </span>
+              <span className="text-[13px] text-content-secondary tabular-nums">
+                {profileCell(key)}
+              </span>
+              <span className="text-[13px] text-content-secondary tabular-nums">
+                {refCell(refData)}
+              </span>
+              <span className="text-[13px] text-content-secondary">
+                {readingFor(key, refData)}
+              </span>
+            </Fragment>
+          ))}
         </div>
       </div>
     </div>

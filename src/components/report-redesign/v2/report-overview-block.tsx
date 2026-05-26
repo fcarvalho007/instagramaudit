@@ -177,6 +177,7 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
               cadenceSufficient={enriched.cadence.sufficient}
               cadenceSampleSize={enriched.cadence.sampleSize}
               cadenceWindowDays={enriched.cadence.windowDays}
+              socialinsiderRef={result.externalReferences}
             />
             <FormatCard
               postsAnalyzed={k.postsAnalyzed}
@@ -184,6 +185,7 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
               dominantFormatShare={k.dominantFormatShare}
               formats={formatEntries}
               analysedPostFormats={enriched.analysedPostFormats}
+              socialinsiderRef={result.externalReferences}
             />
           </div>
 
