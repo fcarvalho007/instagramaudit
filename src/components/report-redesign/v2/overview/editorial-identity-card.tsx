@@ -139,7 +139,7 @@ function formatDecimal(value: number, locale: string, digits = 1): string {
  * Bloco 2 (`formatAvg` in report-diagnostic-card.tsx): keeps 1 decimal when
  * < 10 so 0,4 doesn't get rounded to 0; compacts when >= 10.
  */
-function formatAvgMetric(value: number, lang: string): string {
+function formatAvgMetric(value: number, lang: "en" | "pt"): string {
   if (value === 0) return "0";
   if (value > 0 && value < 0.1) return "<0,1";
   if (value < 10) {
