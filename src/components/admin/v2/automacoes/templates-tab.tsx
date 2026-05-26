@@ -71,17 +71,14 @@ export function TemplatesTab() {
               >
                 Pré-visualizar →
               </Link>
-              <button
-                type="button"
-                disabled
-                aria-disabled="true"
-                aria-label="Edição de template — em breve"
-                className="cursor-not-allowed rounded-md border px-2.5 py-1 text-[12px] font-medium text-admin-text-tertiary opacity-60"
+              <Link
+                to="/admin/automacoes/templates/$key"
+                params={{ key: t.key }}
+                className="rounded-md border px-2.5 py-1 text-[12px] font-medium text-admin-text-primary hover:bg-admin-surface-elevated"
                 style={{ borderColor: "rgb(var(--admin-border-default))" }}
-                title="Edição em breve"
               >
-                Editar (em breve)
-              </button>
+                Editar →
+              </Link>
             </div>
           </div>
                 </AdminCard>
