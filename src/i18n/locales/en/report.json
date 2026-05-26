@@ -295,7 +295,9 @@
       "Friday",
       "Saturday",
       "Sunday"
-    ]
+    ],
+    "source_socialinsider_ig": "Source: Socialinsider, Oct 2025 – Mar 2026 — market reference: ~10 Reels, 8 images or 5 carousels per month. Consistency beats volume.",
+    "source_link_label": "Socialinsider"
   },
   "format": {
     "title": "Format",
@@ -362,7 +364,9 @@
       "strong": "STRENGTH",
       "improve": "TO IMPROVE",
       "neutral": "DIAGNOSTIC"
-    }
+    },
+    "source_socialinsider_ig": "Source: Socialinsider, Oct 2025 – Mar 2026 — carousels lead engagement (0.52%), Reels follow at 0.50% with double the volume, images sit at 0.35%.",
+    "source_link_label": "Socialinsider"
   },
   "blocks": {
     "overview": {

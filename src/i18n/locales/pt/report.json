@@ -301,7 +301,9 @@
       "Sexta",
       "Sábado",
       "Domingo"
-    ]
+    ],
+    "source_socialinsider_ig": "Fonte: Socialinsider, Out 2025 – Mar 2026 — referência de mercado: ≈10 Reels, 8 imagens ou 5 carrosséis por mês. Consistência pesa mais do que volume.",
+    "source_link_label": "Socialinsider"
   },
   "format": {
     "title": "Formato",
@@ -368,7 +370,9 @@
       "strong": "PONTO FORTE",
       "improve": "A MELHORAR",
       "neutral": "DIAGNÓSTICO"
-    }
+    },
+    "source_socialinsider_ig": "Fonte: Socialinsider, Out 2025 – Mar 2026 — carrosséis lideram engagement (0,52%), Reels seguem com 0,50% a dobro do volume, imagens ficam em 0,35%.",
+    "source_link_label": "Socialinsider"
   },
   "blocks": {
     "overview": {
