@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { trackEvent } from "@/lib/tracking.functions";
 import { cn } from "@/lib/utils";
+import { usePricing } from "@/lib/pricing/use-pricing";
 import {
   PricingInterestModal,
   type PricingInterestOption,
