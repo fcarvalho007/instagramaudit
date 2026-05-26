@@ -478,7 +478,7 @@ export function FrequencyCard({
       </div>
 
       {/* Resumo da semana — hidden when cadence is insufficient */}
-      {!isInsufficient && <WeeklySummary days={calendarDays} t={t} />}
+      {!isInsufficient && <WeeklySummary days={windowedDays} t={t} />}
 
       {/* Calendar grid */}
       {weeks.length > 0 && (
@@ -576,7 +576,7 @@ export function FrequencyCard({
               </span>
             )}
             <span className="ml-auto text-sm font-medium tabular-nums text-content-secondary">
-              {t("frequency.calendar.ratio", { published: publishedCount, total: calendarDays.length })}
+              {t("frequency.calendar.ratio", { published: publishedCount, total: windowedDays.length })}
             </span>
           </div>
         </div>
