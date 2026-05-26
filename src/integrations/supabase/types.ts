@@ -350,6 +350,42 @@ export type Database = {
         }
         Relationships: []
       }
+      inline_report_feedback: {
+        Row: {
+          block: string
+          comment: string | null
+          created_at: string
+          handle: string
+          id: string
+          ip_hash: string | null
+          rating: number
+          snapshot_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          block: string
+          comment?: string | null
+          created_at?: string
+          handle: string
+          id?: string
+          ip_hash?: string | null
+          rating: number
+          snapshot_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          block?: string
+          comment?: string | null
+          created_at?: string
+          handle?: string
+          id?: string
+          ip_hash?: string | null
+          rating?: number
+          snapshot_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       knowledge_benchmarks: {
         Row: {
           created_at: string

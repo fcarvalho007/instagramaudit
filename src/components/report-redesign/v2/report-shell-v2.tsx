@@ -41,6 +41,7 @@ import { ReportBlockSection } from "./report-block-section";
 import { ReportHeroV2 } from "./report-hero-v2";
 import { ReportOverviewBlock } from "./report-overview-block";
 import { ReportDiagnosticBlock } from "./report-diagnostic-block";
+import { BlockFeedback } from "./feedback/block-feedback";
 import { ReportLockGate } from "@/components/product/report-lock-gate";
 import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useState } from "react";
@@ -230,6 +231,12 @@ export function ReportShellV2({
                   )}
                   {features.blockDiagnosis !== "hidden" && (
                     <ReportBlockSection block={diagnostico} tone="canvas">
+                      <BlockFeedback
+                        handle={result.data.profile.username}
+                        snapshotId={snapshotId ?? null}
+                        block="overview"
+                        className="mb-2"
+                      />
                       <ReportDiagnosticBlock result={result} payload={payload} />
                     </ReportBlockSection>
                   )}
@@ -317,6 +324,12 @@ export function ReportShellV2({
               {/* 02 · Diagnóstico editorial */}
               {!gated && features.blockDiagnosis !== "hidden" && (
               <ReportBlockSection block={diagnostico} tone="canvas">
+                <BlockFeedback
+                  handle={result.data.profile.username}
+                  snapshotId={snapshotId ?? null}
+                  block="overview"
+                  className="mb-2"
+                />
                 <ReportDiagnosticBlock result={result} payload={payload} />
               </ReportBlockSection>
               )}
