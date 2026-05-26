@@ -20,6 +20,11 @@ import {
   type EditorialPatternsForInsights,
 } from "@/lib/report/editorial-patterns";
 import { computeCadence } from "@/lib/report/cadence";
+import { extractTopHashtags } from "@/lib/report/text-extract";
+import {
+  buildCadenceLabelPt,
+  classifyHashtagsState,
+} from "@/lib/report/cadence-label";
 import type {
   CompetitorAnalysis,
   PublicAnalysisContentSummary,
@@ -36,6 +41,8 @@ type PostInput = {
   comments: number;
   engagement_pct: number;
   caption?: string | null;
+  /** Extracted hashtags (lowercased, no leading `#`). Optional. */
+  hashtags?: ReadonlyArray<string> | null;
   /** Unix seconds (matches EnrichedPost.taken_at). Optional. */
   taken_at?: number | null;
   /** ISO timestamp (matches EnrichedPost.taken_at_iso). Optional. */
@@ -144,6 +151,19 @@ export function buildInsightsCtx(
     },
   );
 
+  // Top recurring hashtags + diagnostic state. Reuses the existing
+  // deterministic extractor (lowercased, sorted by usage desc, ties
+  // broken alphabetically). Limit to 5 rows: the prompt only quotes 2,
+  // the rest is context for the model to reason about coverage.
+  const hashtagRows = extractTopHashtags(
+    posts.map((p) => ({
+      hashtags: Array.isArray(p.hashtags) ? [...p.hashtags] : [],
+      engagement_pct: p.engagement_pct,
+    })),
+    5,
+  ).map((r) => ({ tag: r.tag, uses: r.uses }));
+  const hashtagsState = classifyHashtagsState(hashtagRows);
+
   const ctx: InsightsContext = {
     profile,
     content_summary: summary,
@@ -175,10 +195,22 @@ export function buildInsightsCtx(
     },
     market_signals: marketSignals,
     days_since_last_post: daysSinceLastPost,
+    top_hashtags: hashtagRows,
+    hashtags_state: hashtagsState,
+    cadence_label_pt: buildCadenceLabelPt({
+      weekly: null,
+      sufficient: false,
+    }),
     ...(editorialPatternsForAi
       ? { editorial_patterns: editorialPatternsForAi }
       : {}),
   };
+
+  // Override with the real cadence label now that ctx.cadence is built.
+  ctx.cadence_label_pt = buildCadenceLabelPt({
+    weekly: ctx.cadence.weekly,
+    sufficient: ctx.cadence.sufficient,
+  });
 
   return { ctx, editorialPatternsForAi };
 }
