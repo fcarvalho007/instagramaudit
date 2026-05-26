@@ -1,8 +1,10 @@
 /**
  * GET /api/admin/repeated-searches?days=30&limit=6
  *
- * Top handles com 2+ análises na janela. Agrupa por handle e calcula:
- *   count, last_at, lead (se houver report_request com lead para esse handle).
+ * Top handles com 2+ ANÁLISES GERADAS (snapshots, NÃO cache hits) na janela.
+ * Usa `analysis_snapshots` como fonte — coerente com `profiles.metrics.ts` —
+ * para evitar inflar a contagem com leituras de cache que não representam
+ * intenção real.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -39,8 +41,8 @@ export const Route = createFileRoute("/api/admin/repeated-searches")({
         const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
         const { data, error } = await supabaseAdmin
-          .from("analysis_events")
-          .select("handle, created_at")
+          .from("analysis_snapshots")
+          .select("instagram_username, created_at")
           .gte("created_at", since)
           .order("created_at", { ascending: false })
           .limit(5000);
@@ -54,7 +56,7 @@ export const Route = createFileRoute("/api/admin/repeated-searches")({
 
         const counts = new Map<string, { count: number; last_at: string }>();
         for (const ev of data ?? []) {
-          const h = (ev as { handle: string }).handle;
+          const h = (ev as { instagram_username: string }).instagram_username.toLowerCase();
           const at = (ev as { created_at: string }).created_at;
           const cur = counts.get(h);
           if (cur) {
