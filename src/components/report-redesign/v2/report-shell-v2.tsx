@@ -324,6 +324,12 @@ export function ReportShellV2({
               {/* 02 · Diagnóstico editorial */}
               {!gated && features.blockDiagnosis !== "hidden" && (
               <ReportBlockSection block={diagnostico} tone="canvas">
+                <BlockFeedback
+                  handle={result.data.profile.username}
+                  snapshotId={snapshotId ?? null}
+                  block="overview"
+                  className="mb-2"
+                />
                 <ReportDiagnosticBlock result={result} payload={payload} />
               </ReportBlockSection>
               )}
