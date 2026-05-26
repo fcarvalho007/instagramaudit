@@ -18,6 +18,25 @@ import type {
 } from "@/lib/insights/types";
 import type { EditorialVerdictMetrics } from "./editorial-verdict";
 
+/**
+ * Optional extra qualifiers propagated from the snapshot to make the
+ * deterministic fallback more concrete:
+ *   - cadence method + window → "nos últimos 30 dias" / "na amostra recente"
+ *   - has_recurring_hashtags === false → "Sem hashtags recorrentes na amostra."
+ * All optional and additive — old snapshots without these fields render
+ * exactly as before.
+ */
+export interface FallbackQualifiers {
+  cadenceMethod?:
+    | "window_30d"
+    | "window_90d"
+    | "sample_span"
+    | "insufficient"
+    | null;
+  cadenceWindowDays?: number | null;
+  hasRecurringHashtags?: boolean | null;
+}
+
 type FallbackKey =
   | "solid_consistent"
   | "irregular_reach"
@@ -65,11 +84,31 @@ function pickKey(m: EditorialVerdictMetrics): {
 export function buildFallbackVerdict(
   metrics: EditorialVerdictMetrics,
   t: TFunction,
+  qualifiers: FallbackQualifiers = {},
 ): EditorialVerdict {
   const { key, band } = pickKey(metrics);
 
   const title = t(`identity.fallback.${key}.title`);
-  const paragraph = t(`identity.fallback.${key}.paragraph`);
+  const baseParagraph = t(`identity.fallback.${key}.paragraph`);
+
+  const qualifierSentences: string[] = [];
+  if (qualifiers.cadenceMethod && qualifiers.cadenceMethod !== "insufficient") {
+    const qKey = qualifiers.cadenceMethod;
+    const sentence = t(`identity.fallback_cadence_qualifier.${qKey}`, {
+      defaultValue: "",
+    });
+    if (sentence) qualifierSentences.push(sentence);
+  }
+  if (qualifiers.hasRecurringHashtags === false) {
+    const sentence = t("identity.fallback_hashtags_absent", {
+      defaultValue: "",
+    });
+    if (sentence) qualifierSentences.push(sentence);
+  }
+  const paragraph =
+    qualifierSentences.length > 0
+      ? `${baseParagraph}\n\n${qualifierSentences.join(" ")}`
+      : baseParagraph;
 
   // Prioridade prática derivada do band (1 frase no infinitivo).
   const priority = t(`identity.fallback_priority.${band}`, {
