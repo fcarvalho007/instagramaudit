@@ -49,21 +49,22 @@ export function EditorToolbar({
       <div className="h-10 rounded-t-md border border-b-0 bg-admin-surface-elevated/60" style={{ borderColor: "rgb(var(--admin-border-default))" }} />
     );
   }
+  const ed = editor;
 
   const is = (name: string, attrs?: Record<string, unknown>) =>
-    editor.isActive(name, attrs);
+    ed.isActive(name, attrs);
 
   function openLinkPopover() {
-    const existing = editor.getAttributes("link").href as string | undefined;
+    const existing = ed.getAttributes("link").href as string | undefined;
     setLinkUrl(existing ?? "https://");
     setLinkOpen(true);
   }
 
   function applyLink() {
     if (!linkUrl.trim()) {
-      editor.chain().focus().unsetLink().run();
+      ed.chain().focus().unsetLink().run();
     } else {
-      editor
+      ed
         .chain()
         .focus()
         .extendMarkRange("link")
