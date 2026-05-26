@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { AdminPeriod } from "@/components/admin/v2/period-select";
-import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Instagram } from "lucide-react";
 
 import { AdminCard } from "../admin-card";
 import { AdminBadge } from "../admin-badge";
@@ -56,17 +56,6 @@ function deriveStatus(r: ReportRow): "snapshot" | "delivered" | "processing" | "
 function formatDate(iso: string): string {
   const d = new Date(iso);
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
-const SOURCE_LABEL: Record<string, string> = {
-  public_dashboard: "Dashboard",
-  public_analysis: "Análise pública",
-  lead_magnet: "Lead magnet",
-  public_report_gate: "Report gate",
-};
-
-function sourceLabel(s: string): string {
-  return SOURCE_LABEL[s] ?? s;
 }
 
 export function ReportsTableSection({ period }: { period: AdminPeriod }) {
@@ -140,10 +129,9 @@ export function ReportsTableSection({ period }: { period: AdminPeriod }) {
           <table className="w-full border-collapse text-left text-[12px]">
             <thead>
               <tr className="text-admin-text-tertiary">
-                <Th>Registo</Th>
-                <Th>Perfil</Th>
-                <Th>Origem</Th>
-                <Th>Estado</Th>
+                <Th>Quem pediu</Th>
+                <Th>Perfil analisado</Th>
+                <Th>Rede</Th>
                 <Th>Início</Th>
                 <Th align="right">Acções</Th>
               </tr>
@@ -151,13 +139,13 @@ export function ReportsTableSection({ period }: { period: AdminPeriod }) {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-[12px] text-admin-text-tertiary">
+                  <td colSpan={5} className="px-6 py-8 text-center text-[12px] text-admin-text-tertiary">
                     A carregar…
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-[12px] text-admin-text-tertiary">
+                  <td colSpan={5} className="px-6 py-8 text-center text-[12px] text-admin-text-tertiary">
                     Sem relatórios para este filtro.
                   </td>
                 </tr>
@@ -169,8 +157,7 @@ export function ReportsTableSection({ period }: { period: AdminPeriod }) {
                   >
                     <td className="px-6 py-3.5 align-top">
                       {r.lead?.email ? (
-                        <div className="flex flex-col items-start gap-1">
-                          <AdminBadge variant="revenue">email submetido</AdminBadge>
+                        <div className="flex flex-col items-start gap-0.5">
                           {r.lead.name ? (
                             <p className="m-0 text-[13px] text-admin-text-primary">
                               {r.lead.name}
@@ -188,44 +175,45 @@ export function ReportsTableSection({ period }: { period: AdminPeriod }) {
                       @{r.instagram_username}
                     </td>
                     <td className="px-6 py-3.5 align-top">
-                      {r.kind === "snapshot" ? (
-                        <AdminBadge variant="info">análise pública</AdminBadge>
-                      ) : (
-                        <div className="flex flex-col items-start gap-1">
-                          <AdminBadge variant="neutral">{sourceLabel(r.request_source)}</AdminBadge>
-                          <AdminBadge variant={r.is_free_request ? "info" : "revenue"}>
-                            {r.is_free_request ? "grátis" : "pago"}
-                          </AdminBadge>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-3.5 align-top">
-                      <StatusBadge status={deriveStatus(r)} />
+                      <span className="inline-flex items-center gap-1.5 text-[12px] text-admin-text-secondary">
+                        <Instagram size={13} strokeWidth={1.75} />
+                        Instagram
+                      </span>
                     </td>
                     <td className="px-6 py-3.5 align-top admin-code text-admin-text-secondary">
                       {formatDate(r.created_at)}
                     </td>
                     <td className="px-6 py-3.5 align-top text-right">
-                      {r.kind === "request" ? (
-                        <AdminActionButton
-                          size="sm"
-                          aria-label="Ver detalhe do relatório"
-                          onClick={() => openReport(r.id)}
-                        >
-                          Ver
-                        </AdminActionButton>
-                      ) : (
+                      <div className="inline-flex items-center gap-1.5">
                         <a
                           href={`/analyze/${r.instagram_username}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          aria-label="Abrir análise pública"
-                          className="inline-flex items-center gap-1 text-[12px] text-admin-text-secondary hover:text-admin-text-primary"
+                          aria-label="Abrir análise pública do perfil"
+                          className="inline-flex h-7 items-center gap-1 rounded-[6px] border border-admin-border bg-admin-surface px-2.5 text-[12px] text-admin-text-secondary transition-colors hover:border-admin-border-strong hover:text-admin-text-primary"
                         >
-                          Ver análise
+                          Ver perfil
                           <ExternalLink size={12} strokeWidth={1.75} />
                         </a>
-                      )}
+                        <AdminActionButton
+                          size="sm"
+                          aria-label={
+                            r.kind === "request"
+                              ? "Ver relatório gerado"
+                              : "Sem relatório gerado — análise pública sem unlock"
+                          }
+                          title={
+                            r.kind === "request"
+                              ? undefined
+                              : "Sem relatório gerado — análise pública sem unlock"
+                          }
+                          disabled={r.kind !== "request"}
+                          onClick={() => openReport(r.id)}
+                          className={r.kind !== "request" ? "opacity-40 cursor-not-allowed" : ""}
+                        >
+                          Ver report
+                        </AdminActionButton>
+                      </div>
                     </td>
                   </tr>
                 ))
