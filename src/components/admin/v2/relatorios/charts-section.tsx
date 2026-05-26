@@ -7,8 +7,8 @@ import {
   Bar,
   CartesianGrid,
   ComposedChart,
+  Legend,
   Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -51,59 +51,94 @@ export function ChartsSection({ period }: { period: AdminPeriod }) {
     staleTime: 60_000,
   });
 
-  const volume = data?.volume ?? [];
-  const timing = data?.timing ?? [];
+  const rawVolume = data?.volume ?? [];
+  // Derive "in_progress" per day: with_unlock - delivered - failed (clamped ≥ 0).
+  const volume = rawVolume.map((d) => ({
+    ...d,
+    in_progress: Math.max(0, d.with_unlock - d.delivered - d.failed),
+  }));
+
+  const totalAnalyses = volume.reduce((s, d) => s + d.analyses, 0);
+  const totalDelivered = volume.reduce((s, d) => s + d.delivered, 0);
+  const days = volume.length || 1;
+  const avgPerDay = totalAnalyses / days;
+  const peak = volume.reduce(
+    (acc, d) => (d.analyses > acc.value ? { value: d.analyses, day: d.day } : acc),
+    { value: 0, day: "—" },
+  );
 
   return (
     <section className="flex flex-col gap-4">
       <AdminSectionHeader
-        title="Volume e timing diário"
+        title="Volume de relatórios gerados"
         subtitle={PERIOD_LABEL[period]}
         accent="signal"
-        info="Análises (linha) vs relatórios desbloqueados por email (barras entregue/falhado) e tempo médio de entrega."
+        info="Barras empilhadas: estado dos relatórios unlocked por email (entregues, em curso, falhados). Linha: total de análises geradas (com ou sem unlock)."
       />
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <AdminCard>
-          <p className="m-0 mb-3 text-[15px] font-medium text-admin-text-primary">
-            Volume diário
-          </p>
-          <div className="h-44 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={volume} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="2 4" stroke="rgba(136,135,128,0.18)" vertical={false} />
-                <XAxis dataKey="day" tick={{ fontSize: 11 }} tickLine={false} interval={2} />
-                <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={28} allowDecimals={false} />
-                <Tooltip />
-                <Bar dataKey="delivered" stackId="a" fill={ADMIN_LITERAL.chartDelivered} />
-                <Bar dataKey="failed" stackId="a" fill={ADMIN_LITERAL.chartFailed} />
-                <Line
-                  type="monotone"
-                  dataKey="analyses"
-                  stroke={ADMIN_LITERAL.chartTiming}
-                  strokeWidth={1.5}
-                  dot={false}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
+      <AdminCard>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[200px_1fr]">
+          <div className="flex flex-col gap-4 lg:border-r lg:border-admin-border lg:pr-6">
+            <MiniStat eyebrow="Total na janela" value={String(totalAnalyses)} sub="análises geradas" />
+            <MiniStat eyebrow="Reports entregues" value={String(totalDelivered)} sub="PDF + email enviado" />
+            <MiniStat
+              eyebrow="Média / dia"
+              value={avgPerDay.toFixed(1)}
+              sub={`${days} ${days === 1 ? "dia" : "dias"} na janela`}
+            />
+            <MiniStat eyebrow="Pico diário" value={String(peak.value)} sub={peak.day} />
           </div>
-        </AdminCard>
-        <AdminCard>
-          <p className="m-0 mb-3 text-[15px] font-medium text-admin-text-primary">
-            Tempo médio de entrega
-          </p>
-          <div className="h-44 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={timing} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="2 4" stroke="rgba(136,135,128,0.18)" vertical={false} />
-                <XAxis dataKey="day" tick={{ fontSize: 11 }} tickLine={false} interval={2} />
-                <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={36} />
-                <Tooltip formatter={(v: number) => `${v}s`} />
-                <Line type="monotone" dataKey="avgSeconds" stroke={ADMIN_LITERAL.chartTiming} strokeWidth={2} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
+          <div>
+            <p className="m-0 mb-3 text-[15px] font-medium text-admin-text-primary">
+              Volume diário
+            </p>
+            <div className="h-56 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={volume} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="2 4" stroke="rgba(136,135,128,0.18)" vertical={false} />
+                  <XAxis dataKey="day" tick={{ fontSize: 11 }} tickLine={false} interval={2} />
+                  <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={28} allowDecimals={false} />
+                  <Tooltip />
+                  <Legend wrapperStyle={{ fontSize: 11 }} iconSize={8} />
+                  <Bar dataKey="delivered" name="Entregues" stackId="a" fill={ADMIN_LITERAL.chartDelivered} />
+                  <Bar dataKey="in_progress" name="Em curso" stackId="a" fill="#7664E4" />
+                  <Bar dataKey="failed" name="Falhados" stackId="a" fill={ADMIN_LITERAL.chartFailed} />
+                  <Line
+                    type="monotone"
+                    dataKey="analyses"
+                    name="Análises geradas"
+                    stroke={ADMIN_LITERAL.chartTiming}
+                    strokeWidth={1.75}
+                    dot={false}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </AdminCard>
-      </div>
+        </div>
+      </AdminCard>
     </section>
+  );
+}
+
+function MiniStat({
+  eyebrow,
+  value,
+  sub,
+}: {
+  eyebrow: string;
+  value: string;
+  sub: string;
+}) {
+  return (
+    <div>
+      <p className="admin-eyebrow mb-1.5">{eyebrow}</p>
+      <p
+        className="m-0 font-mono font-medium leading-none text-admin-text-primary"
+        style={{ fontSize: "24px", letterSpacing: "-0.02em" }}
+      >
+        {value}
+      </p>
+      <p className="mt-1.5 text-[12px] text-admin-text-tertiary">{sub}</p>
+    </div>
   );
 }
