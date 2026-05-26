@@ -536,9 +536,7 @@ export function EditorialIdentityCard({
             <p className="text-xs text-content-tertiary pt-1">
               {t("identity.low_confidence", { count: postsAnalyzed })}
             </p>
-          ) : (
-            <ReferenceBar value={overall} reference={60} band={band} t={t} />
-          )}
+          ) : null}
         </div>
       </div>
 
