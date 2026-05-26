@@ -403,6 +403,8 @@ export const getMarketStudyModal = createServerFn({ method: "GET" })
     const consentTotal = safeRows.filter((r) => r.contact_consent === true).length;
     const consentRate = safeRows.length > 0 ? consentTotal / safeRows.length : null;
 
+    const leadMap = await resolveLeads(safeRows.map((r) => r.lead_id));
+
     const freeText = safeRows
       .map((r) => ({
         id: r.id,
@@ -413,6 +415,8 @@ export const getMarketStudyModal = createServerFn({ method: "GET" })
         score: r.usefulness_score,
         intent: r.purchase_intent,
         createdAt: r.created_at,
+        authorEmail: (r.lead_id ? leadMap.get(r.lead_id)?.email : null) ?? null,
+        authorName: (r.lead_id ? leadMap.get(r.lead_id)?.name : null) ?? null,
       }))
       .filter(
         (r) =>
@@ -420,6 +424,37 @@ export const getMarketStudyModal = createServerFn({ method: "GET" })
           (typeof r.missing === "string" && r.missing.trim().length > 0),
       )
       .slice(0, 50);
+
+    // Série diária
+    const days = daysBack(data.windowDays);
+    const idx = new Map<string, number>();
+    days.forEach((d, i) => idx.set(d, i));
+    const daily = days.map((day) => ({
+      day,
+      yes: 0, maybe: 0, no: 0, unsure: 0,
+      scoreSum: 0, scoreN: 0,
+    }));
+    for (const r of safeRows) {
+      const i = idx.get(dayKey(r.created_at));
+      if (i === undefined) continue;
+      const slot = daily[i];
+      if (r.purchase_intent === "yes") slot.yes++;
+      else if (r.purchase_intent === "maybe") slot.maybe++;
+      else if (r.purchase_intent === "no") slot.no++;
+      else if (r.purchase_intent === "unsure") slot.unsure++;
+      if (typeof r.usefulness_score === "number") {
+        slot.scoreSum += r.usefulness_score;
+        slot.scoreN++;
+      }
+    }
+    const dailySerialized = daily.map((d) => ({
+      day: d.day,
+      yes: d.yes,
+      maybe: d.maybe,
+      no: d.no,
+      unsure: d.unsure,
+      avgUsefulness: d.scoreN > 0 ? d.scoreSum / d.scoreN : null,
+    }));
 
     return {
       windowDays: data.windowDays,
@@ -429,6 +464,7 @@ export const getMarketStudyModal = createServerFn({ method: "GET" })
       pricingCounts,
       consent: { total: consentTotal, rate: consentRate },
       freeText,
+      daily: dailySerialized,
     };
   });
 
