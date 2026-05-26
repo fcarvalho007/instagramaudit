@@ -16,31 +16,39 @@ import { type AdminAccent, ACCENT_500 } from "../admin-tokens";
 import { AdminSectionHeader } from "../admin-section-header";
 import { useQuery } from "@tanstack/react-query";
 import { adminFetch } from "@/lib/admin/fetch";
+import type { AdminPeriod } from "../period-select";
 
 interface MetricsApi {
   success: boolean;
-  total_30d: number;
-  delivered_30d: number;
-  failed_30d: number;
-  in_progress_30d: number;
+  total_analyses: number;
+  with_unlock: number;
+  unlock_rate_pct: number | null;
+  delivered: number;
+  failed: number;
+  in_progress: number;
   success_rate_pct: number | null;
   avg_delivery_minutes: number | null;
   avg_cost_usd: number | null;
+  window_days: number;
 }
 
-export function MetricsSection() {
+export function MetricsSection({ period }: { period: AdminPeriod }) {
   const { data } = useQuery<MetricsApi>({
-    queryKey: ["admin", "report-requests", "metrics"],
+    queryKey: ["admin", "report-requests", "metrics", period],
     queryFn: async () => {
-      const res = await adminFetch("/api/admin/report-requests/metrics");
+      const res = await adminFetch(
+        `/api/admin/report-requests/metrics?period=${period}`,
+      );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
     },
     staleTime: 30_000,
   });
 
-  const delivered = data?.delivered_30d ?? 0;
-  const total = data?.total_30d ?? 0;
+  const delivered = data?.delivered ?? 0;
+  const total = data?.total_analyses ?? 0;
+  const withUnlock = data?.with_unlock ?? 0;
+  const unlockRate = data?.unlock_rate_pct;
   const avgMin = data?.avg_delivery_minutes;
   const successPct = data?.success_rate_pct;
   const avgCost = data?.avg_cost_usd;
@@ -57,36 +65,36 @@ export function MetricsSection() {
     <section className="flex flex-col gap-4">
       <AdminSectionHeader
         title="Métricas operacionais"
-        subtitle="últimos 30 dias"
+        subtitle={`janela ${period}`}
         accent="revenue"
-        info="Volume e desempenho do pipeline de relatórios nos últimos 30 dias."
+        info="Análises geradas, taxa de unlock por email e desempenho do pipeline na janela selecionada."
       />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <ReportKpi
           accent="revenue"
-          eyebrow="Entregues · 30d"
-          info="Pedidos com email entregue ao cliente nos últimos 30 dias."
-          value={String(delivered)}
-          sub={`${total} pedidos totais`}
+          eyebrow="Análises geradas"
+          info="Total de snapshots gerados na janela (cada análise = um relatório real)."
+          value={String(total)}
+          sub={`${delivered} com email entregue`}
         />
         <ReportKpi
           accent="info"
-          eyebrow="Tempo médio · entrega"
-          info="Tempo médio do pedido até email entregue (apenas pedidos entregues)."
-          value={fmtMinutes(avgMin)}
-          sub="pedido → email"
+          eyebrow="Unlock por email"
+          info="Análises onde o utilizador submeteu email para receber o PDF."
+          value={`${withUnlock}`}
+          sub={unlockRate != null ? `${unlockRate.toFixed(1)}% de conversão` : "—"}
         />
         <ReportKpi
           accent="revenue"
-          eyebrow="Taxa de sucesso"
-          info="Percentagem de pedidos entregues sobre o total na janela."
+          eyebrow="Entrega · sucesso"
+          info="% de análises com email entregue sobre o total."
           value={successPct != null ? `${successPct.toFixed(1)}%` : "—"}
-          sub={`${data?.failed_30d ?? 0} falhas`}
+          sub={`${data?.failed ?? 0} falhas · ${fmtMinutes(avgMin)} médio`}
         />
         <ReportKpi
           accent="revenue-alt"
-          eyebrow="Custo médio · pedido"
-          info="Soma de custos de providers (Apify+OpenAI) na janela ÷ nº pedidos."
+          eyebrow="Custo médio · análise"
+          info="Soma de custos de providers (Apify+OpenAI) na janela ÷ nº análises."
           value={avgCost != null ? `$${avgCost.toFixed(3)}` : "—"}
           sub="apify + openai"
         />
