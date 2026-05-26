@@ -5,7 +5,7 @@
  */
 
 import { useState, useMemo } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   BarChart, Bar, LineChart, Line, ResponsiveContainer,
@@ -18,6 +18,8 @@ import {
 } from "@/components/admin/v2/estudo-mercado/comment-mural";
 import { RatingRanking } from "@/components/admin/v2/estudo-mercado/rating-ranking";
 import { BlockHeatmap } from "@/components/admin/v2/estudo-mercado/block-heatmap";
+import { chartPalette, intentColor } from "@/components/admin/v2/estudo-mercado/chart-palette";
+import { ChartTooltip } from "@/components/admin/v2/estudo-mercado/chart-tooltip";
 import {
   getMarketStudyPulse,
   getMarketStudyBlocks,
