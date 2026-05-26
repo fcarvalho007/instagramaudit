@@ -387,6 +387,14 @@ export function FrequencyCard({
   const isInsufficient = cadenceSufficient === false;
   const postsPerDay =
     effectiveWindowDays > 0 ? effectiveSampleSize / effectiveWindowDays : 0;
+  // Single source of truth for the card window: clamp the raw timeline
+  // (which may span months from the oldest sample post) to the active
+  // cadence window so the calendar, weekly summary and legend all match
+  // the "X publicações em Y dias" subtitle.
+  const windowedDays =
+    effectiveWindowDays > 0
+      ? calendarDays.slice(-effectiveWindowDays)
+      : calendarDays;
   const headline = isInsufficient
     ? t("frequency.headline.insufficient")
     : t(getFrequencyHeadlineKey(postsPerDay));
@@ -426,11 +434,11 @@ export function FrequencyCard({
       })
     : null;
 
-  const publishedCount = calendarDays.filter((d) => d.published).length;
-  const pausedCount = calendarDays.length - publishedCount;
-  const maxPosts = Math.max(1, ...calendarDays.map((d) => d.postCount));
+  const publishedCount = windowedDays.filter((d) => d.published).length;
+  const pausedCount = windowedDays.length - publishedCount;
+  const maxPosts = Math.max(1, ...windowedDays.map((d) => d.postCount));
 
-  const weeks = buildWeekGrid(calendarDays);
+  const weeks = buildWeekGrid(windowedDays);
 
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden flex flex-col">
@@ -470,7 +478,7 @@ export function FrequencyCard({
       </div>
 
       {/* Resumo da semana — hidden when cadence is insufficient */}
-      {!isInsufficient && <WeeklySummary days={calendarDays} t={t} />}
+      {!isInsufficient && <WeeklySummary days={windowedDays} t={t} />}
 
       {/* Calendar grid */}
       {weeks.length > 0 && (
@@ -568,7 +576,7 @@ export function FrequencyCard({
               </span>
             )}
             <span className="ml-auto text-sm font-medium tabular-nums text-content-secondary">
-              {t("frequency.calendar.ratio", { published: publishedCount, total: calendarDays.length })}
+              {t("frequency.calendar.ratio", { published: publishedCount, total: windowedDays.length })}
             </span>
           </div>
         </div>

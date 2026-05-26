@@ -1,45 +1,57 @@
 ## Diagnóstico
 
-Os três cards editoriais do Bloco 1 usam três escalas de título diferentes:
+No card de Frequência, o "Resumo da semana" mostra **"Domingo · 159 dias s/ post"** mas o subtítulo afirma **"10 publicações em 30 dias"**. Os dois números pertencem a janelas diferentes.
 
-| Card | Classe actual | Md |
-|---|---|---|
-| Taxa de Engagement | `text-[1.25rem] sm:text-[1.5rem] md:text-[2rem]` | **32px** |
-| Frequência de publicação | `text-[1.25rem] md:text-[1.5rem]` | 24px |
-| Formato | `text-[1.25rem] md:text-[1.5rem]` | 24px |
+### Causa raiz
 
-No Bloco 2, `caption-diagnostics-card.tsx` já usa a escala grande (`md:text-[2rem]`). O `report-diagnostic-grid-v2.tsx` é a grelha pequena de KPIs (perguntas) — categoria diferente, deve ficar como está.
+`buildPostingTimeline` (`src/lib/report/snapshot-to-report-data.ts:427`) preenche o array dia a dia entre o **post mais antigo** da amostra e o **mais recente**. Para `robs.cortez`, a amostra normalizada (12 posts) inclui posts antigos, pelo que `postingTimeline` cobre ~160 dias.
 
-## Ação
+`FrequencyCard` recebe esse `calendarDays` integral e usa-o:
 
-Forçar a escala grande (referência: card Engagement) em **todos** os títulos editoriais dos cards Bloco 1+2 que partilham o mesmo padrão visual.
+- `WeeklySummary` → agrega "Mais ativo / Mais parado" sobre 160 dias → "Domingo · 159 dias s/ post".
+- Grelha `Quando publicou` → desenha 10+ semanas, a maioria vazia.
+- Legenda `X em Y dias` → conta sobre os 160 dias.
 
-### Escala unificada
+Tudo isto contradiz o subtítulo, que usa `effectiveWindowDays = 30` (vindo de `cadence.windowDays`).
 
-```
-font-display text-[1.25rem] sm:text-[1.5rem] md:text-[2rem]
-font-semibold tracking-tight text-content-primary leading-tight
-```
+## Correção
 
-### Ficheiros a editar (2)
+Uma única fonte de verdade para a janela do card: cortar `calendarDays` aos últimos `effectiveWindowDays` no topo de `FrequencyCard`, antes de qualquer cálculo derivado.
 
-1. **`src/components/report-redesign/v2/overview/frequency-card.tsx:440`**
-   - de: `text-[1.25rem] md:text-[1.5rem] ... leading-snug`
-   - para: `text-[1.25rem] sm:text-[1.5rem] md:text-[2rem] ... leading-tight`
+### Ficheiro
 
-2. **`src/components/report-redesign/v2/overview/format-card.tsx:238`**
-   - mesma substituição.
+`src/components/report-redesign/v2/overview/frequency-card.tsx`
 
-### Não tocar
+### Alterações
 
-- `report-overview-engagement.tsx` — já é a referência.
-- `caption-diagnostics-card.tsx` (Bloco 2) — já alinhado.
-- `report-diagnostic-grid-v2.tsx` — grelha KPI pequena (Bloco 2 perguntas), escala diferente é intencional.
-- Sublinhados coloridos do status word ("Alta", "Pouco variado", "BAIXA") — mantêm-se.
+1. Depois de calcular `effectiveWindowDays`, derivar:
+   ```ts
+   const windowedDays = effectiveWindowDays > 0
+     ? calendarDays.slice(-effectiveWindowDays)
+     : calendarDays;
+   ```
+2. Substituir todos os usos a jusante de `calendarDays` por `windowedDays`:
+   - `WeeklySummary days={windowedDays}`
+   - `publishedCount`, `pausedCount`, `maxPosts`
+   - `buildWeekGrid(windowedDays)`
+   - `t("frequency.calendar.ratio", { total: windowedDays.length })`
+3. Não alterar `buildPostingTimeline` (pode ser útil noutros consumidores futuros).
+
+### Efeito visual esperado em `robs.cortez`
+
+- "Mais ativo: Quinta · 4 posts" mantém-se (era já o weekday correto na janela curta).
+- "Mais parado" deixa de referir 159 dias; passa a refletir só os ~30 dias (provavelmente "Domingo · 4 dias s/ post" ou desaparece se nenhum dia elegível ficar acima do limiar).
+- Grelha "Quando publicou" passa a ter ~4–5 semanas (alinhado com "10 publicações em 30 dias").
+- Legenda "X em Y dias" coerente com o subtítulo.
+
+### Fora do âmbito
+
+- Headers dos dias da semana (`S T Q Q S S D`) já estão corretos.
+- `format-card`, `engagement-card` não são afetados.
+- Não mexer no `buildPostingTimeline` nem em business logic upstream.
 
 ### Validação
 
 - `bunx tsc --noEmit`
-- Inspecção visual em `/analyze/robs.cortez` (preview): 3 títulos do Bloco 1 com a mesma altura tipográfica a md.
-
-Sem mudanças de copy, tokens, layout ou business logic.
+- `bunx vitest run` (sanity geral)
+- Preview `/analyze/robs.cortez`: verificar que "Mais parado" deixa de mostrar números fora da janela e que a grelha encolhe para ~30 dias.
