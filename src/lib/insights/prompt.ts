@@ -563,6 +563,10 @@ export function buildInsightsUserPayload(
       : {}),
     ...(ctx.hashtags_state ? { hashtags_state: ctx.hashtags_state } : {}),
     ...(ctx.cadence_label_pt ? { cadence_label_pt: ctx.cadence_label_pt } : {}),
+    ...(ctx.caption_intelligence
+      ? { caption_intelligence: ctx.caption_intelligence }
+      : {}),
+    ...(ctx.visual_cover ? { visual_cover: ctx.visual_cover } : {}),
     available_signals: signals,
     allowed_evidence_paths: signals,
   };
