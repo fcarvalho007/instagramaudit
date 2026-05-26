@@ -21,7 +21,7 @@ const TITLES: Record<string, string> = {
   "/admin": "Visão geral",
   "/admin/visao-geral": "Visão geral",
   "/admin/receita": "Receita",
-  "/admin/beta-leads": "Contactos",
+  "/admin/leads": "Contactos",
   "/admin/beta-requests": "Pedidos de relatório",
   "/admin/automacoes": "Automações",
   "/admin/relatorios": "Relatórios",

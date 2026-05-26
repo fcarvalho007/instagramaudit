@@ -143,7 +143,7 @@ function FollowUpsList({ items, total }: { items: FollowUpItem[]; total: number 
               </p>
             </div>
             <Link
-              to="/admin/beta-leads"
+              to="/admin/leads"
               search={{ lead: it.leadId } as never}
               className="shrink-0 self-start rounded-md border border-admin-border px-2.5 py-1 text-[12px] font-medium text-admin-text-secondary hover:bg-admin-surface-elevated hover:text-admin-text-primary transition-colors sm:self-center"
             >

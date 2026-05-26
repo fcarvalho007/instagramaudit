@@ -2,7 +2,7 @@
  * PeopleTab — leads agrupados por fase do ciclo de vida.
  *
  * Read-only. Reusa `/api/admin/leads-kanban`. Mostra até 5 leads por fase
- * com link para `LeadDetailSheet` (`/admin/beta-leads?lead=<id>`).
+ * com link para `LeadDetailSheet` (`/admin/leads?lead=<id>`).
  */
 
 import { useQuery } from "@tanstack/react-query";
@@ -43,7 +43,7 @@ async function fetchLeads(): Promise<EnrichedLead[]> {
 
 export function PeopleTab() {
   const { data: leads = [], isLoading, error } = useQuery({
-    queryKey: ["admin", "beta-leads"],
+    queryKey: ["admin", "leads"],
     queryFn: fetchLeads,
     staleTime: 15_000,
     refetchInterval: 30_000,
