@@ -435,7 +435,7 @@ export function EditorialIdentityCard({
       className="rounded-2xl border border-border-default bg-white shadow-card overflow-hidden"
     >
       {/* Zona macro */}
-      <div className="px-6 py-7 sm:px-7 sm:py-8 flex flex-col sm:flex-row sm:items-stretch gap-6 sm:gap-8">
+      <div className="px-6 py-7 sm:px-7 sm:py-8 flex flex-col sm:flex-row sm:items-stretch gap-6 sm:gap-10">
         <IndexBlock
           value={overall}
           engagementRatePct={keyMetrics?.engagementRate ?? null}
@@ -451,7 +451,7 @@ export function EditorialIdentityCard({
           locale={i18n.language}
         />
 
-        <div className="flex-1 min-w-0 space-y-3">
+        <div className="flex-1 min-w-0 space-y-3.5 sm:pl-8 sm:border-l sm:border-border-default">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-eyebrow-sm text-content-tertiary">
               {t("identity.eyebrow_verdict")}
@@ -556,7 +556,7 @@ export function EditorialIdentityCard({
       )}
 
       {/* Zona accionável */}
-      <div className="border-t border-border-default grid grid-cols-1 md:grid-cols-2">
+      <div className="border-t border-border-default grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border-default/60">
         <BulletColumn
           tone="success"
           title={t("identity.columns.strengths")}
@@ -566,7 +566,6 @@ export function EditorialIdentityCard({
           tone="warning"
           title={t("identity.columns.limits")}
           items={limits}
-          className="border-t md:border-t-0 md:border-l border-border-default"
         />
       </div>
     </article>
