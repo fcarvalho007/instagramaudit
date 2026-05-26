@@ -55,20 +55,20 @@ export function MetricsSection({ period }: { period: AdminPeriod }) {
         accent="expense"
         info="Agregação de perfis Instagram com snapshot no período seleccionado (fonte: `analysis_snapshots`)."
       />
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <ProfileKpi
           accent="expense"
           eyebrow={`Perfis únicos · ${period}`}
-          info="Perfis distintos com pelo menos uma análise (snapshot) na janela."
+          info="Perfis com pelo menos 1 análise nova (snapshot) na janela. Não inclui pesquisas servidas via cache."
           value={String(unique)}
           sub={`${data?.total_profiles ?? 0} no histórico`}
         />
         <ProfileKpi
           accent="signal"
           eyebrow="Perfis repetidos"
-          info="Perfis com 2 ou mais análises totais (sinal de intenção)."
+          info="Perfis com ≥2 análises novas (snapshots) na janela seleccionada."
           value={String(repeated)}
-          sub="≥ 2 análises"
+          sub="≥ 2 snapshots na janela"
         />
         <ProfileKpi
           accent="revenue"
@@ -76,13 +76,6 @@ export function MetricsSection({ period }: { period: AdminPeriod }) {
           info="Perfis com snapshot na janela (fonte: `analysis_snapshots`)."
           value={String(withReport)}
           sub="origem analysis_snapshots"
-        />
-        <ProfileKpi
-          accent="revenue-alt"
-          eyebrow={`Conversão · ${period}`}
-          info="Perfis com relatório ÷ perfis únicos analisados."
-          value={conv != null ? `${conv.toFixed(1)}%` : "—"}
-          sub="análise → report"
         />
       </div>
     </section>
