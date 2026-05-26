@@ -20,6 +20,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useCmdK } from "@/hooks/use-cmd-k";
 import { ADMIN_LITERAL } from "../admin-tokens";
 import { adminFetch } from "@/lib/admin/fetch";
+import type { AdminPeriod } from "@/components/admin/v2/period-select";
 
 type ProfileFilter = "all" | "with_reports" | "repeated" | "no_conversion";
 
@@ -28,6 +29,8 @@ interface ProfileRow {
   network: string;
   display_name: string | null;
   analyses: number;
+  analyses_in_window: number;
+  analyses_lifetime: number;
   analyses_fresh: number;
   analyses_cache: number;
   followers_last_seen: number | null;
@@ -70,7 +73,7 @@ function formatRelative(iso: string | null): string {
   return `há ${d} d`;
 }
 
-export function ProfilesTableSection() {
+export function ProfilesTableSection({ period }: { period: AdminPeriod }) {
   const [filter, setFilter] = useState<ProfileFilter>("all");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -79,9 +82,9 @@ export function ProfilesTableSection() {
   useCmdK(() => searchRef.current?.focus());
 
   const { data, isLoading } = useQuery<ListApi>({
-    queryKey: ["admin", "profiles", "list"],
+    queryKey: ["admin", "profiles", "list", period],
     queryFn: async () => {
-      const res = await adminFetch("/api/admin/profiles/list");
+      const res = await adminFetch(`/api/admin/profiles/list?period=${period}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
     },
