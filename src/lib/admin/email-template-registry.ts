@@ -296,9 +296,10 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     internalName: "personal_area_saved",
     category: "conta",
     shortDescription: "Guardámos a análise na tua área pessoal.",
-    wired: true,
-    wiredAt: "src/lib/email/templates/send-personal-area-saved.server.ts",
-    wiredNote: "Disparado quando a lead cria conta e a análise é vinculada.",
+    wired: false,
+    wiredAt: null,
+    wiredNote:
+      "Função `sendPersonalAreaSavedEmail` existe mas sem trigger automático. Reservado para o fluxo de criação de conta (a ligar em handle_new_user / link_user_to_existing_reports).",
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
