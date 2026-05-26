@@ -1,54 +1,85 @@
-## Auditoria — `personal_area_saved`
+## Objectivo
 
-### Estado actual
-- Template existe: `src/lib/email/templates/personal-area-saved.ts` (assunto: "O relatório foi guardado na tua área pessoal", CTA → `/app/reports`).
-- Sender existe: `src/lib/email/send-personal-area-saved.server.ts` (transacional, Brevo→Resend, com `flowType: "personal-area-saved"`).
-- Registry: `wired: false`, nota explícita "Reservado para o fluxo de criação de conta (a ligar em `handle_new_user` / `link_user_to_existing_reports`)".
-- `unlock.server.ts` (linha 472) diz literalmente: *"The `personal-area-saved` email was deprecated (it duplicated report-summary without real KPIs)"*. Logo, no contexto **unlock** já foi conscientemente removido.
-- Existe `ensureReportAssociation` em `src/server/account.functions.ts` que chama `link_user_to_existing_reports` no signup — é aí que um lead que já tinha relatórios passa a ter uma "área pessoal" real.
+Aplicar 5 refinamentos à Visão Geral / Relatórios do admin + migração ao `app_config` para subir o limite mensal grátis para 3.
 
-### Respostas às 6 perguntas
+## Contexto verificado
 
-**1. Que evento deve disparar?**
-O único evento onde o email faz sentido conceptualmente é a **criação de conta autenticada** que reclama (link) relatórios pré-existentes do lead — i.e. quando `ensureReportAssociation` resulta em `linked: true` com ≥1 relatório associado. É a primeira vez que existe de facto uma "área pessoal" para o utilizador. Não deve disparar no unlock (o unlock já é coberto por `welcome-beta` + `report-summary`, e nessa fase ainda não há conta).
+- `app_config.free_monthly_report_limit` = "2" hoje (default + linha em DB). Usado em `src/lib/quota.ts` (`FREE_MONTHLY_LIMIT = 2`), `src/lib/config/app-config.functions.ts` (`PUBLIC_APP_CONFIG_DEFAULTS.freeMonthlyReportLimit = 2`) e em `src/routes/api/request-full-report.ts` via `readAppConfig`.
+- Funil público (`/api/admin/funnel`) conta `analysis_events` com `neq("data_source", "cache")` → "análises feitas · 30d".
+- Pipeline (`/api/admin/report-requests/pipeline`) devolve `total_window` (Fase 1) sem garantia de monotonia entre fases.
+- "Pesquisas repetidas" (`/api/admin/repeated-searches`) conta TODOS os `analysis_events` (inclui cache hits) → infla contagem; `profiles.metrics.ts` já passou a contar `analysis_snapshots` para coerência.
+- Strip "Cache-only / Fresh" em `admin.visao-geral.tsx` não tem chip de cache hit-rate nem botão de refresh do mode.
+- `IntentSection` já tem header "leads quentes" mas o card "Pesquisas repetidas" só tem o eyebrow textual; falta chip/badge visual consistente com o resto do admin.
 
-**2. É redundante com `welcome_beta` ou `report_summary`?**
-- Sobreposição com `report_summary`: **sim, se disparado no unlock** (foi por isso que se desligou — duplica sem KPIs).
-- Sobreposição com `welcome_beta`: parcial — ambos dão boas-vindas, mas `welcome_beta` é "bem-vindo à beta após pedires o teu primeiro relatório" (pré-conta), enquanto `personal_area_saved` seria "a tua conta está pronta e o relatório X já lá está" (pós-signup).
-- **Conclusão**: não é redundante **se e só se** o gatilho for signup com claim de relatórios. Em qualquer outro gatilho, é redundante.
+## Mudanças
 
-**3. Transacional ou marketing?**
-**Transacional.** É confirmação de um acto explícito do utilizador (criou conta / reclamou acesso). Não promocional, 1:1, esperado pelo destinatário. Não precisa de marketing consent, mas respeita suppression list como qualquer email transacional.
+### 1. Alinhar contagem do funil público com pipeline
+- `src/routes/api/admin/funnel.ts`: parametrizar `period` (consistente com `resolvePeriod`) e devolver dois campos:
+  - `analyses_fresh` (atual `analyses`, sem cache)
+  - `analyses_total` (todos os eventos, incluindo cache hits)
+- `src/components/admin/v2/visao-geral/funnel-section.tsx`: mostrar `analyses_total` como número principal (alinha com `total_window` do pipeline em `/admin/relatorios`) e `analyses_fresh` como sub-texto ("X com chamada paga").
+- Aceitar `period` da `PeriodSelect` (passar prop em vez de fixar 30d).
 
-**4. Uma vez por user ou por relatório?**
-**Uma vez por user** (não por relatório). A "área pessoal" é uma entidade única; mandar um email por cada relatório associado seria ruído. Se mais tarde o user adicionar mais relatórios (re-análise), isso fica para outro flow (ex.: `report_ready_for_user` ou simplesmente sem email, já que estará logado).
+### 2. Invariante cumulativa no pipeline
+- `src/routes/api/admin/report-requests/pipeline.ts` (handler já existente): garantir `phases.snapshot ≥ phases.email_submitted ≥ phases.pdf ≥ phases.email` aplicando `Math.min` em cascata antes de devolver.
+- Adicionar teste unitário em `src/routes/api/admin/__tests__/pipeline-invariant.test.ts` que verifica a monotonia.
+- `pipeline-section.tsx`: usar `phases.snapshot` (não `totalWindow`) em "Fase 1" para que a invariante seja visualmente honrada (Fase 1 = snapshot phase, ≥ todas as outras).
 
-**5. Que product event emitir?**
-Sugestão: `personal_area_saved_sent` (já reservado em `automation-flow-types.ts:234`). Em caso de falha: `personal_area_saved_failed`. Metadata mínima: `user_id`, `lead_id`, `linked_report_count`, `provider`, `message_id`.
+### 3. Contagem honesta de "pesquisas repetidas"
+- `src/routes/api/admin/repeated-searches.ts`: ler de `analysis_snapshots` em vez de `analysis_events` (mesma fonte que `profiles.metrics.ts`), agrupando por `instagram_username` lowercased. Mantém shape de resposta (`{handle, count, last_at, lead}`).
+- Actualizar `IntentSection` copy de subtitle: "Mesmo perfil com 2+ análises geradas (sem contar cache)".
 
-**6. Regra de deduplicação**
-Dedup contra `product_events` por **`user_id`** (não `lead_id` nem `report_request_id`) + `event_type = 'personal_area_saved_sent'`. Lookup único: se já existe ⇒ skip. Como fallback de defesa, manter `idempotencyKey = personal-area-saved:{user_id}` ao nível do `sendTransactionalEmail`. Pré-requisito adicional: só enviar se `link_user_to_existing_reports` devolver ≥1 relatório efectivamente associado (evita email vazio para signup sem relatórios prévios).
+### 4. Chips: "leads quentes" + cache hit-rate + refresh
+- **Chip "leads quentes"**: em `intent-section.tsx`, substituir o eyebrow textual "leads quentes" por `<AdminBadge variant="signal">leads quentes</AdminBadge>` ao lado do título do card "Pesquisas repetidas".
+- **Chip cache hit-rate + refresh**: em `admin.visao-geral.tsx`, dentro do `ExecutionModeStrip`:
+  - Adicionar segundo chip à direita com taxa de cache hits da janela actual (`cache_hits / analyses_total`), lido de um novo endpoint `/api/admin/cache-stats?period=...` que devolve `{cache_hits, analyses_total, hit_rate_pct}` agregando `analysis_events` por `data_source`.
+  - Substituir o link "Abrir Sistema" por um par: botão refresh `↻` (invalida queries `["admin", "execution-mode"]` e `["admin", "cache-stats"]`) + link "Sistema".
 
-### Recomendação
+### 5. Migração + defaults: limite grátis = 3
+- Nova migração `update app_config set value = '3' where key = 'free_monthly_report_limit'` (via insert tool, não migration tool, por ser data update).
+- `src/lib/quota.ts`: `FREE_MONTHLY_LIMIT = 3`.
+- `src/lib/config/app-config.functions.ts`: `PUBLIC_APP_CONFIG_DEFAULTS.freeMonthlyReportLimit = 3`.
+- Pesquisar e ajustar copy hardcoded "2 relatórios" / "2 grátis" se existir.
 
-**Opção A — Ligar a `ensureReportAssociation` (preferida)**
-Disparar `sendPersonalAreaSavedEmail` dentro de `ensureReportAssociation` quando:
-- `linked: true`
-- count de relatórios associados ≥ 1
-- não existe `personal_area_saved_sent` prévio para esse `user_id`
+## Detalhes técnicos
 
-Pressupõe pequena alteração à RPC `link_user_to_existing_reports` (devolver count) ou um `SELECT count(*) FROM report_requests WHERE user_id = ?` imediatamente a seguir.
+- Novo endpoint `src/routes/api/admin/cache-stats.ts`:
+  - GET, `requireAdminSession`, recebe `?period=`, usa `resolvePeriod`.
+  - `select data_source, count(*) from analysis_events where created_at >= since group by data_source` (via 2 queries `head: true, count: exact` filtradas).
+  - Devolve `{success, window_days, analyses_total, cache_hits, hit_rate_pct}`.
 
-**Opção B — Deprecar formalmente**
-Se o produto não vai exigir signup obrigatório a curto prazo, marcar template + sender como deprecated, remover do registry e do `automation-flow-types`. Hoje vive como código órfão a custar manutenção (testes, paridade, defaults).
+- `FunnelSection` passa a aceitar `period: AdminPeriod` e propaga ao endpoint. `VisaoGeralPage` passa `period` já existente em estado.
 
-**Recomendação final**: **Opção A**, porque o signup-com-claim já existe (`ensureReportAssociation`) e é o único momento em que o copy do template ("foi guardado na tua área pessoal") é verdadeiro e não duplica `report_summary`. Se em 2–3 semanas o signup continuar sem volume real, então Opção B.
+- A regra de paridade dos templates de email (parity test) não é afectada.
 
-### Fora de âmbito desta auditoria
-- Não alterar `unlock.server.ts` — está correcto a não disparar este email.
-- Não tocar em `welcome_beta` nem `report_summary`.
-- Não alterar copy do template (já está alinhado com o gatilho recomendado).
-- Não implementar a ligação agora — esta é uma recomendação, não um plano de execução.
+## Ficheiros tocados
 
-### Próximo passo sugerido
-Confirmar Opção A ou B. Se A, crio plano de implementação separado (alteração à RPC + hook em `ensureReportAssociation` + dedup + testes + flip de `wired: true`).
+Novos:
+- `src/routes/api/admin/cache-stats.ts`
+- `src/routes/api/admin/__tests__/pipeline-invariant.test.ts`
+
+Editados:
+- `src/routes/api/admin/funnel.ts`
+- `src/routes/api/admin/repeated-searches.ts`
+- `src/routes/api/admin/report-requests/pipeline.ts` (aplicar `Math.min` cascata)
+- `src/components/admin/v2/visao-geral/funnel-section.tsx`
+- `src/components/admin/v2/visao-geral/intent-section.tsx`
+- `src/components/admin/v2/relatorios/pipeline-section.tsx`
+- `src/routes/admin.visao-geral.tsx` (strip com chip + refresh, passa period)
+- `src/lib/quota.ts`
+- `src/lib/config/app-config.functions.ts`
+
+Data update (via insert tool):
+- `UPDATE app_config SET value='3', updated_at=now() WHERE key='free_monthly_report_limit';`
+
+## Validação
+
+- `bunx tsc --noEmit`
+- `bunx vitest run` (inclui novo teste de invariante)
+- Verificação manual em `/admin/visao-geral`: strip mostra chip de cache, refresh actualiza; funil mostra total alinhado com pipeline em `/admin/relatorios`; "Pesquisas repetidas" sem cache hits.
+
+## Fora de âmbito
+
+- Não tocar em `personal_area_saved` (auditoria parqueada como Opção A pendente).
+- Não tocar em `report.example`, `unlock.server.ts`, edge functions de email, ou copy dos templates.
+- Não alterar `welcome_beta` / `report_summary`.
