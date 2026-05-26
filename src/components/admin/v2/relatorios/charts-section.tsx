@@ -19,6 +19,7 @@ import { AdminCard } from "../admin-card";
 import { AdminSectionHeader } from "../admin-section-header";
 import { ADMIN_LITERAL } from "../admin-tokens";
 import { adminFetch } from "@/lib/admin/fetch";
+import type { AdminPeriod } from "@/components/admin/v2/period-select";
 
 interface DailyApi {
   success: boolean;
@@ -26,11 +27,11 @@ interface DailyApi {
   timing: Array<{ day: string; avgSeconds: number | null }>;
 }
 
-export function ChartsSection() {
+export function ChartsSection({ period }: { period: AdminPeriod }) {
   const { data } = useQuery<DailyApi>({
-    queryKey: ["admin", "report-requests", "daily"],
+    queryKey: ["admin", "report-requests", "daily", period],
     queryFn: async () => {
-      const res = await adminFetch("/api/admin/report-requests/daily");
+      const res = await adminFetch(`/api/admin/report-requests/daily?period=${period}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
     },
