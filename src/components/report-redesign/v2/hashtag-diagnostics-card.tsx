@@ -171,38 +171,53 @@ function FrequencyRow({
   t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
   return (
-    <div className="flex items-center gap-3 py-2.5">
-      {/* rank pill */}
-      <span
-        className={`shrink-0 w-9 h-8 rounded-md flex items-center justify-center text-[12px] font-semibold ${
-          isTop3
-            ? "bg-accent-primary/10 text-accent-primary"
-            : "bg-surface-muted text-content-tertiary"
-        }`}
-      >
-        #{rank}
-      </span>
+    <div className="py-2.5">
+      {/* Row 1: rank + tag + bar (always single line) */}
+      <div className="flex items-center gap-3">
+        <span
+          className={`shrink-0 w-9 h-8 rounded-md flex items-center justify-center text-xs font-semibold ${
+            isTop3
+              ? "bg-accent-primary/10 text-accent-primary"
+              : "bg-surface-muted text-content-tertiary"
+          }`}
+        >
+          #{rank}
+        </span>
 
-      {/* tag name */}
-      <span className="min-w-[120px] max-w-[200px] truncate text-[14px] font-medium text-content-primary">
-        {tag}
-      </span>
+        <span className="min-w-0 flex-1 sm:flex-none sm:min-w-[140px] sm:max-w-[220px] truncate text-sm font-medium text-content-primary">
+          {tag}
+        </span>
 
-      {/* bar */}
-      <div className="flex-1 h-2 rounded-full bg-surface-muted overflow-hidden">
-        <div
-          className={`h-full rounded-full ${isTop3 ? "bg-accent-primary" : "bg-accent-primary/30"}`}
-          style={{ width: `${Math.max(6, barPct)}%` }}
-        />
+        <div className="hidden sm:block flex-1 h-2 rounded-full bg-surface-muted overflow-hidden">
+          <div
+            className={`h-full rounded-full ${isTop3 ? "bg-accent-primary" : "bg-accent-primary/30"}`}
+            style={{ width: `${Math.max(6, barPct)}%` }}
+          />
+        </div>
+
+        <span className="hidden sm:inline-block shrink-0 text-[13px] text-content-secondary tabular-nums w-[56px] text-right">
+          {t("hashtag.uses_suffix", { count: uses })}
+        </span>
+        <span className="hidden sm:inline-block shrink-0 text-[13px] text-content-tertiary tabular-nums w-[64px] text-right">
+          {t("hashtag.posts_suffix", { pct: sharePct })}
+        </span>
       </div>
 
-      {/* stats */}
-      <span className="shrink-0 text-[13px] text-content-secondary tabular-nums tabular-nums w-[56px] text-right">
-        {t("hashtag.uses_suffix", { count: uses })}
-      </span>
-      <span className="shrink-0 text-[13px] text-content-tertiary tabular-nums tabular-nums w-[64px] text-right">
-        {t("hashtag.posts_suffix", { pct: sharePct })}
-      </span>
+      {/* Row 2 (mobile only): bar + stats inline below */}
+      <div className="sm:hidden mt-2 flex items-center gap-3 pl-12">
+        <div className="flex-1 h-2 rounded-full bg-surface-muted overflow-hidden">
+          <div
+            className={`h-full rounded-full ${isTop3 ? "bg-accent-primary" : "bg-accent-primary/30"}`}
+            style={{ width: `${Math.max(6, barPct)}%` }}
+          />
+        </div>
+        <span className="shrink-0 text-xs text-content-secondary tabular-nums">
+          {t("hashtag.uses_suffix", { count: uses })}
+        </span>
+        <span className="shrink-0 text-xs text-content-tertiary tabular-nums">
+          {t("hashtag.posts_suffix", { pct: sharePct })}
+        </span>
+      </div>
     </div>
   );
 }
