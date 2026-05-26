@@ -7,6 +7,7 @@
 
 import { useMemo, useState } from "react";
 import type { Lang } from "@/lib/admin/lang-detect";
+import { sourceColor as SOURCE_COLOR_MAP } from "./chart-palette";
 
 export type MuralSource = "inline" | "beta" | "pricing";
 
@@ -29,11 +30,7 @@ const SOURCE_LABEL: Record<MuralSource, string> = {
   beta: "Modal beta",
   pricing: "Modal preços",
 };
-const SOURCE_COLOR: Record<MuralSource, string> = {
-  inline: "#3772E5",
-  beta: "#7664E4",
-  pricing: "#BA7517",
-};
+const SOURCE_COLOR: Record<MuralSource, string> = SOURCE_COLOR_MAP;
 const LANG_LABEL: Record<Lang, string> = {
   pt: "PT",
   en: "EN",
@@ -55,6 +52,44 @@ function fmtDateTime(iso: string): string {
     hour: "2-digit", minute: "2-digit",
   });
   return `${day} · ${time}`;
+}
+
+function csvEscape(value: string | number | null): string {
+  if (value === null || value === undefined) return "";
+  const s = String(value);
+  if (/[",\n;]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function downloadCsv(rows: MuralComment[]): void {
+  const header = [
+    "created_at_iso", "source", "language", "author_email", "author_name",
+    "handle", "block", "rating", "intent", "text",
+  ];
+  const lines = [header.join(",")];
+  for (const r of rows) {
+    lines.push([
+      csvEscape(r.createdAt),
+      csvEscape(r.source),
+      csvEscape(r.language),
+      csvEscape(r.authorEmail),
+      csvEscape(r.authorName),
+      csvEscape(r.handle ?? null),
+      csvEscape(r.block),
+      csvEscape(r.rating),
+      csvEscape(r.intent),
+      csvEscape(r.text),
+    ].join(","));
+  }
+  const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `comentarios-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 export function CommentMural({
@@ -128,6 +163,15 @@ export function CommentMural({
         <span className="text-[12px] text-admin-text-secondary tabular-nums">
           {filtered.length}/{comments.length}
         </span>
+        <button
+          type="button"
+          onClick={() => downloadCsv(filtered)}
+          disabled={filtered.length === 0}
+          className="rounded-md border border-admin-border bg-white px-2.5 py-1.5 text-[12px] font-medium text-admin-text-primary transition-colors hover:bg-admin-surface-elevated disabled:cursor-not-allowed disabled:opacity-50"
+          title="Exportar comentários filtrados para CSV"
+        >
+          Exportar CSV
+        </button>
       </div>
 
       {filtered.length === 0 ? (

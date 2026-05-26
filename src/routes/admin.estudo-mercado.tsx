@@ -5,7 +5,7 @@
  */
 
 import { useState, useMemo } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   BarChart, Bar, LineChart, Line, ResponsiveContainer,
@@ -18,6 +18,8 @@ import {
 } from "@/components/admin/v2/estudo-mercado/comment-mural";
 import { RatingRanking } from "@/components/admin/v2/estudo-mercado/rating-ranking";
 import { BlockHeatmap } from "@/components/admin/v2/estudo-mercado/block-heatmap";
+import { chartPalette, intentColor } from "@/components/admin/v2/estudo-mercado/chart-palette";
+import { ChartTooltip } from "@/components/admin/v2/estudo-mercado/chart-tooltip";
 import {
   getMarketStudyPulse,
   getMarketStudyBlocks,
@@ -100,7 +102,10 @@ function EstudoMercadoPage() {
 function SignalCard({ tone, title, body }: {
   tone: "positive" | "neutral" | "warning"; title: string; body: string;
 }) {
-  const colour = tone === "positive" ? "#1D9E75" : tone === "warning" ? "#BA7517" : "#3772E5";
+  const colour =
+    tone === "positive" ? chartPalette.positive
+    : tone === "warning" ? chartPalette.warning
+    : chartPalette.accentPrimary;
   return (
     <div className="rounded-lg border bg-white px-4 py-3 flex items-start gap-3"
       style={{ borderColor: `${colour}40`, background: `${colour}0d` }}>
@@ -177,7 +182,7 @@ function PulseTab({ windowDays }: { windowDays: WindowDays }) {
           <Empty>Amostra ainda pequena para extrair tópicos recorrentes.</Empty>
         ) : (
           <div className="flex flex-wrap gap-2">
-            {topics.map((t) => (
+            {topics.slice(0, comments.length >= 30 ? 6 : 3).map((t) => (
               <span key={t.token}
                 className="inline-flex items-center gap-2 rounded-full border border-admin-border bg-admin-surface-elevated px-3 py-1 text-[13px] text-admin-text-primary">
                 <span className="font-medium">{t.token}</span>
@@ -300,6 +305,8 @@ function ModalTab({ windowDays }: { windowDays: WindowDays }) {
     Sim: d.yes, Talvez: d.maybe, Não: d.no, Indeciso: d.unsure,
     util: d.avgUsefulness,
   }));
+  const dailyHasIntent = dailyChart.some((d) => d.Sim + d.Talvez + d.Não + d.Indeciso > 0);
+  const dailyHasUtil = dailyChart.some((d) => d.util !== null && d.util !== undefined);
 
   return (
     <div className="space-y-5">
@@ -317,39 +324,47 @@ function ModalTab({ windowDays }: { windowDays: WindowDays }) {
           <h3 className="m-0 mb-3 text-[14px] font-semibold text-admin-text-primary">
             Respostas por dia (intenção)
           </h3>
+          {!dailyHasIntent ? (
+            <Empty>Sem respostas no período.</Empty>
+          ) : (
           <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={dailyChart} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--admin-border) / 0.5)" />
                 <XAxis dataKey="day" tick={{ fontSize: 10 }} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
-                <Tooltip />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgb(var(--admin-border) / 0.2)" }} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="Sim" stackId="a" fill="#1D9E75" />
-                <Bar dataKey="Talvez" stackId="a" fill="#3772E5" />
-                <Bar dataKey="Não" stackId="a" fill="#E24B4A" />
-                <Bar dataKey="Indeciso" stackId="a" fill="#888780" />
+                <Bar dataKey="Sim" stackId="a" fill={intentColor.yes} />
+                <Bar dataKey="Talvez" stackId="a" fill={intentColor.maybe} />
+                <Bar dataKey="Não" stackId="a" fill={intentColor.no} />
+                <Bar dataKey="Indeciso" stackId="a" fill={intentColor.unsure} />
               </BarChart>
             </ResponsiveContainer>
           </div>
+          )}
         </AdminCard>
 
         <AdminCard>
           <h3 className="m-0 mb-3 text-[14px] font-semibold text-admin-text-primary">
             Utilidade média por dia
           </h3>
+          {!dailyHasUtil ? (
+            <Empty>Sem utilidade média no período.</Empty>
+          ) : (
           <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={dailyChart} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--admin-border) / 0.5)" />
                 <XAxis dataKey="day" tick={{ fontSize: 10 }} />
                 <YAxis domain={[1, 5]} tick={{ fontSize: 10 }} />
-                <Tooltip />
-                <Line type="monotone" dataKey="util" stroke="#7664E4" strokeWidth={2}
+                <Tooltip content={<ChartTooltip />} />
+                <Line type="monotone" dataKey="util" stroke={chartPalette.accentSecondary} strokeWidth={2}
                   dot={{ r: 3 }} name="Utilidade" connectNulls />
               </LineChart>
             </ResponsiveContainer>
           </div>
+          )}
         </AdminCard>
       </div>
 
@@ -391,6 +406,8 @@ function InterestTab({ windowDays }: { windowDays: WindowDays }) {
     Sim: d.sim, Talvez: d.talvez, Não: d.nao,
     conviction: d.convictionRate !== null ? Math.round(d.convictionRate * 100) : null,
   }));
+  const dailyHasResponses = dailyChart.some((d) => d.Sim + d.Talvez + d.Não > 0);
+  const dailyHasConviction = dailyChart.some((d) => d.conviction !== null && d.conviction !== undefined);
 
   return (
     <div className="space-y-5">
@@ -408,38 +425,46 @@ function InterestTab({ windowDays }: { windowDays: WindowDays }) {
           <h3 className="m-0 mb-3 text-[14px] font-semibold text-admin-text-primary">
             Respostas por dia
           </h3>
+          {!dailyHasResponses ? (
+            <Empty>Sem respostas no período.</Empty>
+          ) : (
           <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={dailyChart} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--admin-border) / 0.5)" />
                 <XAxis dataKey="day" tick={{ fontSize: 10 }} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
-                <Tooltip />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgb(var(--admin-border) / 0.2)" }} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="Sim" stackId="a" fill="#1D9E75" />
-                <Bar dataKey="Talvez" stackId="a" fill="#3772E5" />
-                <Bar dataKey="Não" stackId="a" fill="#E24B4A" />
+                <Bar dataKey="Sim" stackId="a" fill={chartPalette.positive} />
+                <Bar dataKey="Talvez" stackId="a" fill={chartPalette.accentPrimary} />
+                <Bar dataKey="Não" stackId="a" fill={chartPalette.negative} />
               </BarChart>
             </ResponsiveContainer>
           </div>
+          )}
         </AdminCard>
 
         <AdminCard>
           <h3 className="m-0 mb-3 text-[14px] font-semibold text-admin-text-primary">
             % sim convicto por dia
           </h3>
+          {!dailyHasConviction ? (
+            <Empty>Sem amostra suficiente para % convicto.</Empty>
+          ) : (
           <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={dailyChart} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--admin-border) / 0.5)" />
                 <XAxis dataKey="day" tick={{ fontSize: 10 }} />
                 <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} unit="%" />
-                <Tooltip />
-                <Line type="monotone" dataKey="conviction" stroke="#1D9E75" strokeWidth={2}
+                <Tooltip content={<ChartTooltip valueSuffix="%" />} />
+                <Line type="monotone" dataKey="conviction" stroke={chartPalette.positive} strokeWidth={2}
                   dot={{ r: 3 }} name="% convicto" connectNulls />
               </LineChart>
             </ResponsiveContainer>
           </div>
+          )}
         </AdminCard>
       </div>
 
@@ -495,7 +520,17 @@ function InterestTab({ windowDays }: { windowDays: WindowDays }) {
                       <td className="py-2 pr-3 text-admin-text-primary">{PRICING_OPTION_LABEL[c.option] ?? c.option}</td>
                       <td className="py-2 pr-3 text-admin-text-primary">{WOULD_PAY_LABEL[c.wouldPay] ?? c.wouldPay}</td>
                       <td className="py-2 pr-3 text-admin-text-secondary">{c.fairness ? FAIRNESS_LABEL[c.fairness] : "—"}</td>
-                      <td className="py-2 pr-3 text-admin-text-primary">{c.email ?? "—"}</td>
+                      <td className="py-2 pr-3 text-admin-text-primary">
+                        {c.email ? (
+                          <Link
+                            to="/admin/clientes"
+                            search={{ email: c.email } as never}
+                            className="text-admin-text-primary underline-offset-2 hover:underline"
+                          >
+                            {c.email}
+                          </Link>
+                        ) : "—"}
+                      </td>
                       <td className="py-2 pr-3 text-admin-text-secondary tabular-nums whitespace-nowrap">
                         {d.toLocaleDateString("pt-PT")} · {d.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}
                       </td>
@@ -525,7 +560,7 @@ function SimpleBarList({ counts, total, labelMap }: {
           <li key={k} className="flex items-center gap-3 text-[13px]">
             <span className="min-w-[110px] text-admin-text-primary">{labelMap?.[k] ?? k}</span>
             <div className="flex-1 h-2 rounded-full bg-admin-surface-elevated overflow-hidden">
-              <div className="h-full" style={{ width: `${pct * 100}%`, background: "#3772E5" }} />
+              <div className="h-full" style={{ width: `${pct * 100}%`, background: chartPalette.accentPrimary }} />
             </div>
             <span className="tabular-nums text-admin-text-secondary min-w-[64px] text-right">
               {v} · {fmtPct(pct)}
