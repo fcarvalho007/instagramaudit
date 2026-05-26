@@ -135,6 +135,25 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
           hasRecurringHashtags={
             (result.data.topHashtags ?? []).some((h) => (h.uses ?? 0) >= 2)
           }
+          cadenceLabelPt={buildCadenceLabelPt({
+            weekly: enriched.cadence.sufficient
+              ? (enriched.cadence.weekly ?? null)
+              : null,
+            sufficient: enriched.cadence.sufficient,
+          })}
+          hashtagsState={classifyHashtagsState(
+            (result.data.topHashtags ?? []).map((h) => ({
+              tag: h.tag,
+              uses: h.uses,
+            })),
+          )}
+          topHashtags={pickHashtagsForVerdict(
+            (result.data.topHashtags ?? []).map((h) => ({
+              tag: h.tag,
+              uses: h.uses,
+            })),
+            2,
+          )}
         />
       )}
 
