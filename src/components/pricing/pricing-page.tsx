@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { trackEvent } from "@/lib/tracking.functions";
 import { cn } from "@/lib/utils";
+import { usePricing } from "@/lib/pricing/use-pricing";
 import {
   PricingInterestModal,
   type PricingInterestOption,
@@ -23,6 +24,7 @@ interface AccessStep {
 export function PricingPage() {
   const { t } = useTranslation("pricing");
   const navigate = useNavigate();
+  const { plans } = usePricing();
   const [selected, setSelected] = useState<PricingOption | null>(null);
   const [interestOption, setInterestOption] =
     useState<PricingInterestOption | null>(null);
@@ -55,8 +57,14 @@ export function PricingPage() {
   const packBullets = t("pack.bullets", { returnObjects: true }) as string[];
 
   const interestMeta: Record<PricingInterestOption, { label: string; price: string }> = {
-    single_report: { label: t("single.title"), price: t("single.price") },
-    pack_5_reports: { label: t("pack.title"), price: t("pack.price") },
+    single_report: {
+      label: plans.single_report.label,
+      price: plans.single_report.priceFormatted,
+    },
+    pack_5_reports: {
+      label: plans.pack_5_reports.label,
+      price: plans.pack_5_reports.priceFormatted,
+    },
   };
 
   return (
