@@ -10,62 +10,88 @@
  */
 
 import { type ReactNode } from "react";
-import { DemoOnlySection } from "../demo-only-section";
 import { AdminCard } from "../admin-card";
 import { AdminInfoTooltip } from "../admin-info-tooltip";
 import { type AdminAccent, ACCENT_500 } from "../admin-tokens";
-import { MOCK_REPORT_METRICS } from "@/lib/admin/mock-data";
+import { AdminSectionHeader } from "../admin-section-header";
+import { useQuery } from "@tanstack/react-query";
+import { adminFetch } from "@/lib/admin/fetch";
 
-type DeltaIntent = "good" | "bad";
-type DeltaDirection = "up" | "down" | "down-good";
+interface MetricsApi {
+  success: boolean;
+  total_30d: number;
+  delivered_30d: number;
+  failed_30d: number;
+  in_progress_30d: number;
+  success_rate_pct: number | null;
+  avg_delivery_minutes: number | null;
+  avg_cost_usd: number | null;
+}
 
 export function MetricsSection() {
-  const m = MOCK_REPORT_METRICS;
+  const { data } = useQuery<MetricsApi>({
+    queryKey: ["admin", "report-requests", "metrics"],
+    queryFn: async () => {
+      const res = await adminFetch("/api/admin/report-requests/metrics");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
+
+  const delivered = data?.delivered_30d ?? 0;
+  const total = data?.total_30d ?? 0;
+  const avgMin = data?.avg_delivery_minutes;
+  const successPct = data?.success_rate_pct;
+  const avgCost = data?.avg_cost_usd;
+
+  function fmtMinutes(v: number | null | undefined): string {
+    if (v == null) return "—";
+    if (v < 1) return `${Math.round(v * 60)}s`;
+    const m = Math.floor(v);
+    const s = Math.round((v - m) * 60);
+    return `${m}m ${String(s).padStart(2, "0")}s`;
+  }
 
   return (
-    <DemoOnlySection
-      title="Métricas operacionais"
-      subtitle="últimos 30 dias"
-      accent="revenue"
-      info={"Volume e desempenho do pipeline de relatórios nos últimos 30 dias."}
-      pendingReason={"KPIs operacionais (latência média, % entregues, falhas) são calculados sobre `report_requests`. Activam-se assim que houver volume real."}
-    >
-      <section>
+    <section className="flex flex-col gap-4">
+      <AdminSectionHeader
+        title="Métricas operacionais"
+        subtitle="últimos 30 dias"
+        accent="revenue"
+        info="Volume e desempenho do pipeline de relatórios nos últimos 30 dias."
+      />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <ReportKpi
           accent="revenue"
-          eyebrow={m.delivered.eyebrow}
-          info={m.delivered.info}
-          value={m.delivered.value}
-          delta={m.delivered.delta}
-          sub={m.delivered.sub}
+          eyebrow="Entregues · 30d"
+          info="Pedidos com email entregue ao cliente nos últimos 30 dias."
+          value={String(delivered)}
+          sub={`${total} pedidos totais`}
         />
         <ReportKpi
           accent="info"
-          eyebrow={m.avgTime.eyebrow}
-          info={m.avgTime.info}
-          value={m.avgTime.value}
-          sub={m.avgTime.sub}
+          eyebrow="Tempo médio · entrega"
+          info="Tempo médio do pedido até email entregue (apenas pedidos entregues)."
+          value={fmtMinutes(avgMin)}
+          sub="pedido → email"
         />
         <ReportKpi
           accent="revenue"
-          eyebrow={m.successRate.eyebrow}
-          info={m.successRate.info}
-          value={m.successRate.value}
-          delta={m.successRate.delta}
-          sub={m.successRate.sub}
+          eyebrow="Taxa de sucesso"
+          info="Percentagem de pedidos entregues sobre o total na janela."
+          value={successPct != null ? `${successPct.toFixed(1)}%` : "—"}
+          sub={`${data?.failed_30d ?? 0} falhas`}
         />
         <ReportKpi
           accent="revenue-alt"
-          eyebrow={m.avgCost.eyebrow}
-          info={m.avgCost.info}
-          value={m.avgCost.value}
-          delta={m.avgCost.delta}
-          sub={m.avgCost.sub}
+          eyebrow="Custo médio · pedido"
+          info="Soma de custos de providers (Apify+OpenAI) na janela ÷ nº pedidos."
+          value={avgCost != null ? `$${avgCost.toFixed(3)}` : "—"}
+          sub="apify + openai"
         />
       </div>
     </section>
-    </DemoOnlySection>
   );
 }
 
@@ -74,30 +100,10 @@ interface ReportKpiProps {
   eyebrow: string;
   info: string;
   value: ReactNode;
-  delta?: { text: string; direction: DeltaDirection };
   sub?: ReactNode;
 }
 
-function ReportKpi({ accent, eyebrow, info, value, delta, sub }: ReportKpiProps) {
-  const intent: DeltaIntent | null = delta
-    ? delta.direction === "down"
-      ? "bad"
-      : "good" // up e down-good ambos verdes
-    : null;
-
-  const deltaCls =
-    intent === "good"
-      ? "text-admin-revenue-700"
-      : intent === "bad"
-      ? "text-admin-danger-500"
-      : "";
-
-  const arrow = !delta
-    ? null
-    : delta.direction === "up"
-    ? "▲"
-    : "▼";
-
+function ReportKpi({ accent, eyebrow, info, value, sub }: ReportKpiProps) {
   return (
     <AdminCard
       variant="accent-left"
@@ -120,11 +126,6 @@ function ReportKpi({ accent, eyebrow, info, value, delta, sub }: ReportKpiProps)
         >
           {value}
         </span>
-        {delta ? (
-          <span className={`text-xs ${deltaCls}`}>
-            {arrow} {delta.text}
-          </span>
-        ) : null}
       </div>
       {sub ? (
         <p className="mt-2 text-[12px] text-admin-text-tertiary">{sub}</p>
