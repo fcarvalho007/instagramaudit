@@ -1,112 +1,54 @@
-## Objetivo
+## Auditoria — `personal_area_saved`
 
-Eliminar a duplicação entre `DEFAULTS` no registry admin e os renderers reais em `src/lib/email/templates/*`. Passar a derivar as predefinições do editor a partir dos mesmos renderers usados em produção, mantendo overrides em DB e o fluxo de envio intactos.
+### Estado actual
+- Template existe: `src/lib/email/templates/personal-area-saved.ts` (assunto: "O relatório foi guardado na tua área pessoal", CTA → `/app/reports`).
+- Sender existe: `src/lib/email/send-personal-area-saved.server.ts` (transacional, Brevo→Resend, com `flowType: "personal-area-saved"`).
+- Registry: `wired: false`, nota explícita "Reservado para o fluxo de criação de conta (a ligar em `handle_new_user` / `link_user_to_existing_reports`)".
+- `unlock.server.ts` (linha 472) diz literalmente: *"The `personal-area-saved` email was deprecated (it duplicated report-summary without real KPIs)"*. Logo, no contexto **unlock** já foi conscientemente removido.
+- Existe `ensureReportAssociation` em `src/server/account.functions.ts` que chama `link_user_to_existing_reports` no signup — é aí que um lead que já tinha relatórios passa a ter uma "área pessoal" real.
 
-## Diagnóstico
+### Respostas às 6 perguntas
 
-- `src/lib/admin/email-template-registry.ts` declara `DEFAULTS: Record<EmailTemplateKey, EmailTemplateParts>` (subject + preheader + headline + body_html + body_text por template) — esta é a cópia paralela.
-- Os renderers reais (`renderRequestReceived`, `renderReportReady`, etc.) compõem `bodyHtml` localmente, chamam `wrapHtml`, e expõem só `{ subject, text, html }`. Não expõem `headline`, `preheader` ou `bodyHtml` pré-wrap.
-- Quem consome `defaultParts`: `routes/api/admin/email-templates.$key.ts` (GET → `defaults`) → `template-editor.tsx` (`partsFromResponse`).
-- Envio real: `renderWithOverride(key, vars, renderXxx)` em `template-overrides.server.ts`. Quando não há override, devolve `renderXxx()` intacto. As `defaultParts` do registry **não são usadas** no envio — só na pré-popularização do editor. É por isso que podem divergir silenciosamente.
+**1. Que evento deve disparar?**
+O único evento onde o email faz sentido conceptualmente é a **criação de conta autenticada** que reclama (link) relatórios pré-existentes do lead — i.e. quando `ensureReportAssociation` resulta em `linked: true` com ≥1 relatório associado. É a primeira vez que existe de facto uma "área pessoal" para o utilizador. Não deve disparar no unlock (o unlock já é coberto por `welcome-beta` + `report-summary`, e nessa fase ainda não há conta).
 
-## Abordagem
+**2. É redundante com `welcome_beta` ou `report_summary`?**
+- Sobreposição com `report_summary`: **sim, se disparado no unlock** (foi por isso que se desligou — duplica sem KPIs).
+- Sobreposição com `welcome_beta`: parcial — ambos dão boas-vindas, mas `welcome_beta` é "bem-vindo à beta após pedires o teu primeiro relatório" (pré-conta), enquanto `personal_area_saved` seria "a tua conta está pronta e o relatório X já lá está" (pós-signup).
+- **Conclusão**: não é redundante **se e só se** o gatilho for signup com claim de relatórios. Em qualquer outro gatilho, é redundante.
 
-Adoptar o adaptador descrito no ponto 3 do pedido: cada template passa a expor explicitamente as suas *parts* internas (subject, preheader, headline, bodyHtml, bodyText) através de uma função pura `getXxxParts(vars)`. O `renderXxx` é refactorizado para compor `wrapHtml` a partir dessas parts — assim divergência fica estruturalmente impossível.
+**3. Transacional ou marketing?**
+**Transacional.** É confirmação de um acto explícito do utilizador (criou conta / reclamou acesso). Não promocional, 1:1, esperado pelo destinatário. Não precisa de marketing consent, mas respeita suppression list como qualquer email transacional.
 
-O registry deixa de declarar `DEFAULTS` e o endpoint `GET /api/admin/email-templates/$key` passa a chamar o adaptador com vars de placeholder (`{{firstName}}`, etc.) para gerar o estado inicial do editor.
+**4. Uma vez por user ou por relatório?**
+**Uma vez por user** (não por relatório). A "área pessoal" é uma entidade única; mandar um email por cada relatório associado seria ruído. Se mais tarde o user adicionar mais relatórios (re-análise), isso fica para outro flow (ex.: `report_ready_for_user` ou simplesmente sem email, já que estará logado).
 
-## Mudanças
+**5. Que product event emitir?**
+Sugestão: `personal_area_saved_sent` (já reservado em `automation-flow-types.ts:234`). Em caso de falha: `personal_area_saved_failed`. Metadata mínima: `user_id`, `lead_id`, `linked_report_count`, `provider`, `message_id`.
 
-### 1. Refactor de cada template em `src/lib/email/templates/*`
+**6. Regra de deduplicação**
+Dedup contra `product_events` por **`user_id`** (não `lead_id` nem `report_request_id`) + `event_type = 'personal_area_saved_sent'`. Lookup único: se já existe ⇒ skip. Como fallback de defesa, manter `idempotencyKey = personal-area-saved:{user_id}` ao nível do `sendTransactionalEmail`. Pré-requisito adicional: só enviar se `link_user_to_existing_reports` devolver ≥1 relatório efectivamente associado (evita email vazio para signup sem relatórios prévios).
 
-Para cada um dos 7 ficheiros (`request-received.ts`, `report-ready.ts`, `feedback-request.ts`, `personal-area-saved.ts`, `welcome-beta.ts`, `report-summary.ts`, `commercial-followup.ts`):
+### Recomendação
 
-- Extrair a construção de `bodyHtml` / `text` / `subject` para `getXxxParts(input): EmailTemplateParts` retornando `{ subject, preheader, headline, body_html, body_text }`.
-- `renderXxx(input)` passa a chamar `getXxxParts(input)` e a aplicar `wrapHtml({ title: subject, headline, bodyHtml: body_html, preheader })`. Output `{ subject, text: body_text, html }` mantém-se exactamente igual ao actual.
-- Exportar tanto `renderXxx` como `getXxxParts`.
+**Opção A — Ligar a `ensureReportAssociation` (preferida)**
+Disparar `sendPersonalAreaSavedEmail` dentro de `ensureReportAssociation` quando:
+- `linked: true`
+- count de relatórios associados ≥ 1
+- não existe `personal_area_saved_sent` prévio para esse `user_id`
 
-Risco de divergência visual: zero — o HTML produzido por `renderXxx` é literalmente o `wrapHtml(getXxxParts(...))`.
+Pressupõe pequena alteração à RPC `link_user_to_existing_reports` (devolver count) ou um `SELECT count(*) FROM report_requests WHERE user_id = ?` imediatamente a seguir.
 
-### 2. Adaptador central
+**Opção B — Deprecar formalmente**
+Se o produto não vai exigir signup obrigatório a curto prazo, marcar template + sender como deprecated, remover do registry e do `automation-flow-types`. Hoje vive como código órfão a custar manutenção (testes, paridade, defaults).
 
-Novo ficheiro `src/lib/email/templates/default-parts.ts`:
+**Recomendação final**: **Opção A**, porque o signup-com-claim já existe (`ensureReportAssociation`) e é o único momento em que o copy do template ("foi guardado na tua área pessoal") é verdadeiro e não duplica `report_summary`. Se em 2–3 semanas o signup continuar sem volume real, então Opção B.
 
-```text
-getTemplateDefaultParts(key, vars) -> EmailTemplateParts
-```
+### Fora de âmbito desta auditoria
+- Não alterar `unlock.server.ts` — está correcto a não disparar este email.
+- Não tocar em `welcome_beta` nem `report_summary`.
+- Não alterar copy do template (já está alinhado com o gatilho recomendado).
+- Não implementar a ligação agora — esta é uma recomendação, não um plano de execução.
 
-Faz dispatch para o `getXxxParts` correcto e devolve as parts. Aceita vars com placeholders (`{{firstName}}`, etc.) para o caso "preview do editor sem override".
-
-### 3. Registry sem `DEFAULTS`
-
-Em `src/lib/admin/email-template-registry.ts`:
-
-- Remover `const DEFAULTS` e o campo `defaultParts` de cada entrada.
-- Remover `defaultParts` de `EmailTemplateEntry`.
-- Manter `EmailTemplateParts` (continua a ser o contrato I/O do editor) — exportar como tipo partilhado.
-- Restante (variables, render com SAMPLE, wired, wiredAt, wiredNote) inalterado.
-
-### 4. Endpoint passa a chamar o adaptador
-
-Em `src/routes/api/admin/email-templates.$key.ts`, o `GET` calcula:
-
-```text
-defaults = getTemplateDefaultParts(key, PLACEHOLDER_VARS)
-```
-
-Onde `PLACEHOLDER_VARS = { firstName: "{{firstName}}", instagramHandle: "{{instagramHandle}}", reportUrl: "{{reportUrl}}", ... }` — restitui o comportamento actual em que o admin vê placeholders no editor.
-
-Para `report_summary` (que recebe `kpis` e `topPost` estruturados, não strings), o adaptador usa valores sample neutros (mesma estratégia que `EMAIL_TEMPLATES[].render` já usa) — não há placeholders úteis aqui porque o body não interpola esses campos como `{{var}}` (interpola-os como números formatados).
-
-### 5. Editor — banner explicativo
-
-Em `src/components/admin/v2/automacoes/template-editor.tsx`, na zona onde já existe o banner "Sem override", afinar copy para:
-
-> "Sem override guardado — o editor mostra a versão de produção. Qualquer alteração que guardes passa a sobrepor-se ao fallback."
-
-Sem mudanças de layout.
-
-### 6. Tests
-
-Actualizar `src/lib/email/__tests__/registry-parity.test.ts` (ou substituir):
-
-- `getXxxParts(SAMPLE).subject === renderXxx(SAMPLE).subject` (continua a validar paridade, mas agora sobre a mesma função composta).
-- `wrapHtml(getXxxParts(SAMPLE)).html === renderXxx(SAMPLE).html` — garante que o renderer e o adaptador não divergem.
-- Para cada `EMAIL_TEMPLATES[k]`, confirmar `typeof getTemplateDefaultParts(key, PLACEHOLDER_VARS) === EmailTemplateParts` (sem `undefined`).
-- `personal_area_saved`: `wired === false` e `wiredAt === null`.
-- `request_received`: grep do call-site existente em `src/lib/beta.functions.ts` para confirmar que continua a usar `sendTransactionalEmail` (não Resend directo).
-
-### 7. Fora de âmbito (não tocar)
-
-- `template-overrides.server.ts` (override behaviour mantém-se exactamente igual).
-- Triggers / call sites de envio.
-- Schema DB e tabela `email_template_overrides`.
-- Wiring de `personal_area_saved`.
-- UI além do micro-copy do banner.
-
-## Detalhes técnicos
-
-- `EmailTemplateParts` movido (ou re-exportado) para `src/lib/email/templates/index.ts` para evitar import circular admin → email.
-- `getXxxParts` é pura, sem I/O, testável isoladamente.
-- `renderXxx.subject = FALLBACK_SUBJECT` (propriedade estática que alguns ficheiros têm) mantém-se.
-- O `escapeHtml("{{instagramHandle}}")` devolve a string intacta (não tem caracteres reservados), por isso os placeholders sobrevivem ao caminho HTML.
-
-## Validação
-
-- `bunx tsc --noEmit`
-- `bunx vitest run`
-
-## Checkpoint
-
-- ☐ 7 templates refactored para `getXxxParts` + `renderXxx` composto sobre `wrapHtml`
-- ☐ `getTemplateDefaultParts(key, vars)` criado e usado pelo endpoint `GET`
-- ☐ `DEFAULTS` e `defaultParts` removidos do registry
-- ☐ Editor consome `defaults` vindos do adaptador, sem cópia paralela
-- ☐ Banner "Sem override" com copy explicativa
-- ☐ Override path (parcial e completo) inalterado em runtime
-- ☐ `personal_area_saved` continua `wired: false`
-- ☐ `request_received` continua via `sendTransactionalEmail`
-- ☐ Testes de paridade renderer ↔ parts a passar
-- ☐ `tsc` e `vitest` limpos
-
-Aprovas?
+### Próximo passo sugerido
+Confirmar Opção A ou B. Se A, crio plano de implementação separado (alteração à RPC + hook em `ensureReportAssociation` + dedup + testes + flip de `wired: true`).
