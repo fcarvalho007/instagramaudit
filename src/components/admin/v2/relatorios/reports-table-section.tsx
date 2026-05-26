@@ -6,6 +6,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import type { AdminPeriod } from "@/components/admin/v2/period-select";
 import { ChevronLeft, ChevronRight, Eye } from "lucide-react";
 
 import { AdminCard } from "../admin-card";
@@ -64,7 +65,7 @@ function formatDuration(r: ReportRow): string {
   return `${Math.floor(sec / 60)}m ${String(sec % 60).padStart(2, "0")}s`;
 }
 
-export function ReportsTableSection() {
+export function ReportsTableSection({ period }: { period: AdminPeriod }) {
   const [filter, setFilter] = useState<ReportFilter>("all");
   const [page, setPage] = useState(1);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -78,10 +79,10 @@ export function ReportsTableSection() {
   };
 
   const { data, isLoading } = useQuery<ListApi>({
-    queryKey: ["admin", "report-requests", "list", filter, page],
+    queryKey: ["admin", "report-requests", "list", filter, page, period],
     queryFn: async () => {
       const res = await adminFetch(
-        `/api/admin/report-requests?page=${page}&pageSize=25${filterParams[filter]}`,
+        `/api/admin/report-requests?page=${page}&pageSize=25&period=${period}${filterParams[filter]}`,
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
