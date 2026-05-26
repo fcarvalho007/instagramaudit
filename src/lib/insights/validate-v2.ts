@@ -45,6 +45,30 @@ const PTBR_TOKENS: RegExp[] = [
 const RECOMMENDATION_VERBS =
   /\b(deve(s|m)?|deveria(m|s)?|recomenda[- ]se|a\s+prioridade\s+é|publique(m)?|teste(m)?|use(m)?\s+mais|aposte(m)?|publicar\s+mais|cria(r)?\s+mais|apostar\s+em|focar\s+em\s+publicar)\b/i;
 
+/** Any digit followed by an optional decimal and a `%` sign — the verdict
+ *  must NOT print engagement / share percentages in the paragraph. */
+const PERCENT_LEAK = /\d+([.,]\d+)?\s*%/;
+
+/** Private Instagram metrics the public scrape never sees. Mentioning them
+ *  is hallucination by construction. */
+const PRIVATE_METRICS =
+  /\b(alcance|reach|impress(ões|oes|ions)|saves?|partilhas|shares|visitas\s+ao\s+perfil|profile\s+visits|visualiza(ções|coes)\s+de\s+stories|story\s+views)\b/i;
+
+/** Sentence-counter used by the verdict paragraph cap (max 4). Splits on
+ *  `.`, `!`, `?` and keeps non-empty fragments. */
+function countSentences(paragraph: string): number {
+  return paragraph
+    .split(/[.!?]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0).length;
+}
+
+/** Hashtag handling: the paragraph either quotes a `#tag` OR explicitly
+ *  acknowledges the absence/weakness of recurring hashtags. */
+const HASHTAG_TOKEN = /#[\p{L}\p{N}_]+/u;
+const HASHTAG_ABSENCE =
+  /\bhashtags?\b[^.!?]{0,160}?(n[ãa]o\s+h[áa]|n[ãa]o\s+criam|n[ãa]o\s+s[ãa]o\s+suficient|ainda\s+n[ãa]o\s+criam|sem\s+assinatura\s+tem[áa]tica|n[ãa]o\s+definem|n[ãa]o\s+chegam|n[ãa]o\s+formam)/i;
+
 const itemSchema = z.object({
   emphasis: z.enum(["positive", "negative", "default", "neutral"]),
   text: z.string().min(1).max(INSIGHT_V2_TEXT_MAX + 40), // tolerância para trim posterior
@@ -247,24 +271,48 @@ export function validateInsightsV2(raw: unknown): ValidateV2Result {
       return fail("TITLE_HAS_NUMBER", `verdict.title contains digit`);
     }
 
-    // Paragraph: 80–220 palavras + ≥ 1 dígito (grounding) + sem verbos
-    // prescritivos. Sentence count fica livre para o modelo poder usar
-    // 2–6 frases distribuídas em 1–4 parágrafos curtos.
+    // Paragraph: 90–140 palavras, máx. 4 frases, sem `%`, sem métricas
+    // privadas, sem verbos prescritivos. Hashtags têm de ser tratadas
+    // explicitamente (quotar `#tag` ou afirmar ausência).
     const paraWords = paragraph.split(/\s+/).filter(Boolean).length;
-    if (paraWords < 80) {
+    if (paraWords < 90) {
       return fail(
         "PARAGRAPH_TOO_SHORT",
-        `verdict.paragraph words=${paraWords} min=80`,
+        `verdict.paragraph words=${paraWords} min=90`,
       );
     }
-    if (paraWords > 220) {
+    if (paraWords > 140) {
       return fail(
         "PARAGRAPH_TOO_LONG",
-        `verdict.paragraph words=${paraWords} max=220`,
+        `verdict.paragraph words=${paraWords} max=140`,
       );
     }
-    if (!/\d/.test(paragraph)) {
-      return fail("GENERIC_OUTPUT", `verdict.paragraph (missing number)`);
+    const sentenceCount = countSentences(paragraph);
+    if (sentenceCount > 4) {
+      return fail(
+        "TOO_MANY_SENTENCES",
+        `verdict.paragraph sentences=${sentenceCount} max=4`,
+      );
+    }
+    const pct = PERCENT_LEAK.exec(paragraph);
+    if (pct) {
+      return fail(
+        "ENGAGEMENT_PERCENT_LEAK",
+        `verdict.paragraph token="${pct[0]}"`,
+      );
+    }
+    const priv = PRIVATE_METRICS.exec(paragraph);
+    if (priv) {
+      return fail(
+        "PRIVATE_METRIC_LEAK",
+        `verdict.paragraph token="${priv[0]}"`,
+      );
+    }
+    if (!HASHTAG_TOKEN.test(paragraph) && !HASHTAG_ABSENCE.test(paragraph)) {
+      return fail(
+        "HASHTAGS_NOT_HANDLED",
+        `verdict.paragraph missing #tag or absence phrase`,
+      );
     }
     const presc = RECOMMENDATION_VERBS.exec(paragraph);
     if (presc) {

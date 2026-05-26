@@ -20,6 +20,11 @@ import {
   type EditorialPatternsForInsights,
 } from "@/lib/report/editorial-patterns";
 import { computeCadence } from "@/lib/report/cadence";
+import { extractTopHashtags } from "@/lib/report/text-extract";
+import {
+  buildCadenceLabelPt,
+  classifyHashtagsState,
+} from "@/lib/report/cadence-label";
 import type {
   CompetitorAnalysis,
   PublicAnalysisContentSummary,
@@ -36,6 +41,8 @@ type PostInput = {
   comments: number;
   engagement_pct: number;
   caption?: string | null;
+  /** Extracted hashtags (lowercased, no leading `#`). Optional. */
+  hashtags?: ReadonlyArray<string> | null;
   /** Unix seconds (matches EnrichedPost.taken_at). Optional. */
   taken_at?: number | null;
   /** ISO timestamp (matches EnrichedPost.taken_at_iso). Optional. */
@@ -144,29 +151,45 @@ export function buildInsightsCtx(
     },
   );
 
+  // Top recurring hashtags + diagnostic state. Reuses the existing
+  // deterministic extractor (lowercased, sorted by usage desc, ties
+  // broken alphabetically). Limit to 5 rows: the prompt only quotes 2,
+  // the rest is context for the model to reason about coverage.
+  const hashtagRows = extractTopHashtags(
+    posts.map((p) => ({
+      hashtags: Array.isArray(p.hashtags) ? [...p.hashtags] : [],
+      engagement_pct: p.engagement_pct,
+    })),
+    5,
+  ).map((r) => ({ tag: r.tag, uses: r.uses }));
+  const hashtagsState = classifyHashtagsState(hashtagRows);
+
+  // Compute cadence once so the label can be derived from the same object.
+  const cadenceRaw = computeCadence(
+    posts.map((p) => ({
+      taken_at_iso: p.taken_at_iso ?? null,
+      taken_at: p.taken_at ?? null,
+      is_pinned: p.is_pinned ?? false,
+    })),
+  );
+  const cadence: InsightsContext["cadence"] = {
+    method: cadenceRaw.method,
+    sampleSize: cadenceRaw.sampleSize,
+    sufficient: cadenceRaw.sufficient,
+    weekly: cadenceRaw.sufficient ? cadenceRaw.weekly : null,
+    windowDays: cadenceRaw.sufficient ? cadenceRaw.windowDays : null,
+    pinnedExcluded: cadenceRaw.excludedPinned,
+    reliability: cadenceRaw.reliability,
+    note:
+      !cadenceRaw.sufficient || cadenceRaw.reliability === "low"
+        ? cadenceRaw.notePt
+        : null,
+  };
+
   const ctx: InsightsContext = {
     profile,
     content_summary: summary,
-    cadence: (() => {
-      const c = computeCadence(
-        posts.map((p) => ({
-          taken_at_iso: p.taken_at_iso ?? null,
-          taken_at: p.taken_at ?? null,
-          is_pinned: p.is_pinned ?? false,
-        })),
-      );
-      return {
-        method: c.method,
-        sampleSize: c.sampleSize,
-        sufficient: c.sufficient,
-        weekly: c.sufficient ? c.weekly : null,
-        windowDays: c.sufficient ? c.windowDays : null,
-        pinnedExcluded: c.excludedPinned,
-        reliability: c.reliability,
-        note:
-          !c.sufficient || c.reliability === "low" ? c.notePt : null,
-      };
-    })(),
+    cadence,
     top_posts: topPosts,
     benchmark,
     competitors_summary: {
@@ -175,6 +198,12 @@ export function buildInsightsCtx(
     },
     market_signals: marketSignals,
     days_since_last_post: daysSinceLastPost,
+    top_hashtags: hashtagRows,
+    hashtags_state: hashtagsState,
+    cadence_label_pt: buildCadenceLabelPt({
+      weekly: cadence.weekly,
+      sufficient: cadence.sufficient,
+    }),
     ...(editorialPatternsForAi
       ? { editorial_patterns: editorialPatternsForAi }
       : {}),

@@ -97,28 +97,37 @@ Prioridades de ação (obrigatório · campo "priorities"):
 - Hierarquia esperada: 1 "alta" (problema mais urgente), 1 "media" (correção estrutural), 1 "oportunidade" (alavanca de crescimento). Se não houver problema "alta", trocar por "media".
 - Distintas entre si — sem repetir a mesma recomendação. Sem citar fontes externas. Sem snake_case.
 
-Veredicto editorial (obrigatório · campo "editorial_verdict"):
-- É a primeira leitura estratégica do relatório. Camada DIAGNÓSTICA — descreve o que os dados sugerem, NÃO prescreve soluções. Recomendações vivem nas "priorities" e no Bloco 02.
-- "verdict_label": "strong" (perfil sólido, alavanca clara) | "promising" (sinais positivos parciais) | "needs_work" (gap relevante face ao tier) | "limited_data" (amostra insuficiente — OBRIGATÓRIO quando posts analisados < 5, cadência inconclusiva ou benchmark em falta).
-- "title": gancho editorial 4–8 palavras, ≤ 60 chars, sem ponto final, SEM dígitos, sem clichés ("Bom perfil", "Precisa melhorar", "Resultado positivo"). Ex.: "Audiência fiel mas silenciosa", "Ritmo forte sem tração", "Sinal ainda parcial".
-- "paragraph": diagnóstico editorial de 120–180 palavras (limite absoluto 220). Pode ser 1–4 parágrafos curtos separados por quebras de linha (\\n\\n). Deve:
-    1. Citar PELO MENOS 3 sinais concretos do payload (delta vs tier, share do formato dominante, comentários/like, cadência corrigida, etc.).
-    2. Articular a tensão observada — o que é forte, o que é fraco, o que fica por confirmar.
-    3. Usar linguagem editorial pragmática e impessoal.
+Veredicto editorial (obrigatório · campo "editorial_verdict") — DIAGNÓSTICO, não solução:
+- Primeira leitura do relatório. Camada interpretativa: descreve o que os dados sugerem, NÃO prescreve. Recomendações vivem nas "priorities" e no Bloco 02.
+- "verdict_label": "strong" | "promising" | "needs_work" | "limited_data" (OBRIGATÓRIO quando posts_analyzed < 5, cadência inconclusiva ou benchmark em falta).
+- "title": gancho editorial 4–8 palavras, ≤ 60 chars, SEM dígitos, sem ponto final, sem clichés. Ex.: "Audiência fiel mas silenciosa", "Ritmo forte sem tração", "O perfil aparece, mas não prende".
+- "paragraph": 90–140 palavras, MÁXIMO 4 frases curtas. Compreensível por leitor não técnico, útil para marketer. Tom claro, ligeiramente editorial, nunca vago.
+  DEVE cobrir, na ordem natural da leitura (não precisa numerar):
+    1. Presença/actividade: confirmar que o perfil já tem actividade visível.
+    2. Cadência fiável: usar a frase de "cadence_label_pt" do payload tal como vem (não inventar variantes). Quando "hashtags_state" e "cadence_label_pt" indicam amostra insuficiente, deixar claro.
+    3. Envolvimento: NÃO imprimir a percentagem. Explicar que o envolvimento se lê contra o benchmark do escalão e remeter para a comparação mais abaixo no relatório (ex.: "o envolvimento deve ser lido contra o benchmark do escalão, como se pode consultar mais abaixo neste relatório").
+    4. Resposta da audiência: distinguir consumo (gostos) de conversa (comentários). Likes saudáveis (≥ 90% do benchmark) com média de comentários < 2 → enquadrar como "atenção sem conversa" / "audiência silenciosa".
+    5. Hashtags — usar o campo "hashtags_state":
+         · "recurring": citar até 2 tags de "top_hashtags" no formato "#tag1 e #tag2" (sempre com o cardinal). Frase tipo: "As hashtags mais frequentes — como #marketing e #ia — ajudam a perceber o território editorial."
+         · "weak": dizer que as hashtags aparecem mas ainda não criam uma assinatura temática clara. Ex.: "As hashtags aparecem, mas ainda não criam uma assinatura temática clara."
+         · "absent": dizer explicitamente que não há hashtags suficientemente claras ou recorrentes para definir um território editorial. Ex.: "Nesta amostra, não há hashtags suficientemente claras ou recorrentes para ajudar a definir um território editorial."
+  Pode usar 1 metáfora simples ("montra", "vitrina", "porta de entrada") quando ajudar à clareza.
   PROIBIDO no "paragraph":
-    - Verbos de recomendação directa: "deve…", "deveria…", "recomenda-se…", "a prioridade é…", "publique…", "teste…", "use mais…", "aposte em…", "publicar mais", "criar mais", "focar em publicar".
-    - Repetir os KPIs principais sem interpretação (a faixa de métricas já os mostra).
-    - Causas ou intenções de negócio que não estão no payload.
-  Frases diagnósticas preferidas: "Os dados sugerem…", "O padrão observado indica…", "A leitura principal é…", "O sinal mais evidente está em…", "A amostra ainda não permite concluir…".
-  Regras especiais:
-    - Likes saudáveis (≥ 90% do benchmark) com média de comentários < 2 → enquadrar como "atenção sem conversa" / "audiência silenciosa", nunca como "conversa ativa".
-    - Cadência saudável (≥ 2,5 publicações/semana corrigidas) com envolvimento abaixo do benchmark → focar em ângulo editorial, hook ou formato (descrever, sem prescrever).
-    - Amostra < 5 posts, cadência inconclusiva, posts maioritariamente fixados ou benchmark/sinais de mercado ausentes → tom provisional, "verdict_label: limited_data" e "confidence: low".
+    - Qualquer percentagem numérica (regex N% / N,N%): a taxa de envolvimento NÃO entra no parágrafo.
+    - Inventar métricas privadas: alcance, reach, impressões, saves, partilhas, visitas ao perfil, visualizações de stories.
+    - Verbos prescritivos: "deve…", "deveria…", "recomenda-se…", "publique…", "teste…", "use mais…", "aposte em…", "publicar mais", "criar mais", "aumente", "reforce".
+    - Repetir KPIs do strip de métricas sem interpretação.
+    - Inventar hashtags fora de "top_hashtags".
+    - Citar concorrentes quando "competitors_summary.count" é 0.
+  Frases-modelo permitidas:
+    - "O envolvimento deve ser lido contra o benchmark do escalão…"
+    - "A comparação detalhada com perfis semelhantes aparece mais abaixo no relatório."
+    - "Há movimento na montra; falta perceber se o público está mesmo a entrar."
 - "priority": 1 frase no infinitivo impessoal com a próxima alavanca prática. ≤ 160 chars. (Renderizada noutras secções do relatório, NÃO no primeiro cartão.)
-- "strengths": exactamente 2 leituras interpretativas (NÃO listas de KPIs crus). Cada uma ≤ 80 chars. Ex.: "Audiência fiel e recorrente" ✓ — "0,3% de comentários por like" ✗.
-- "limitations": exactamente 2 limitações editoriais. Mesmas regras de "strengths".
-- "confidence": "high" | "medium" | "low" — auto-avaliação do quanto o diagnóstico é defensável. Se a amostra é pequena ou os benchmarks faltam, baixar para "low" / "medium".
-- "evidence_used": 3 a 6 rótulos internos das fontes citadas (mínimo 3 para garantir grounding). APENAS valores desta lista fechada: ${EDITORIAL_VERDICT_EVIDENCE_ALLOWLIST.join(", ")}. NÃO inventar rótulos.
+- "strengths": exactamente 2 leituras interpretativas (NÃO listas de KPIs crus). Cada uma ≤ 80 chars.
+- "limitations": exactamente 2 limitações editoriais.
+- "confidence": "high" | "medium" | "low" — auto-avaliação. Se a amostra é pequena ou faltam benchmarks, baixar para "low" / "medium".
+- "evidence_used": 3 a 6 rótulos internos das fontes citadas. APENAS valores desta lista fechada: ${EDITORIAL_VERDICT_EVIDENCE_ALLOWLIST.join(", ")}. Quando hashtags são citadas, incluir "caption_intelligence.hashtags". NÃO inventar rótulos.
 - NÃO incluir o campo "warnings" — é preenchido pelo backend.`;
 
 /**
