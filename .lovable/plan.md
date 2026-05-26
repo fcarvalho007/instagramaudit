@@ -1,93 +1,93 @@
-## Plano — Redesign do editor de templates de email + WYSIWYG
+## 1. Diagnóstico rápido (já validado no código)
 
-Ficheiro principal: `src/components/admin/v2/automacoes/template-editor.tsx`.
-Nada muda no backend, no `wrapHtml`, no `email_template_overrides`, nas variáveis disponíveis, nem nos restantes templates/UIs.
+**Fluxo de dados — está OK e a chegar a `/admin/estudo-mercado`:**
 
----
+```
+Modal "Estamos em fase de lançamento"  (src/components/pricing/pricing-interest-modal.tsx)
+        │  POST /api/public/pricing-interest
+        ▼
+public.pricing_interest  (option, would_pay, price_fairness, email, comment, referrer, ua, ip_hash)
+        │
+        ▼
+/admin/estudo-mercado  →  tab "Intenção de compra"
+   · KPIs: Respostas / % sim+talvez / % sim convicto / Emails deixados
+   · Gráficos diários (respostas + % convicto)
+   · Intenção de pagar + Perceção do preço por plano
+   · Tabela de comentários com Plano, Pagaria, Preço, Email (linka para /admin/clientes), Data·Hora, Comentário
+```
 
-### 1. Escolha técnica do WYSIWYG
+Conclusão: nenhuma alteração necessária ao fluxo nem ao admin. Os emails são contados (`emailsCount`) e aparecem como link na tabela. O preço escolhido (`pricing_option`) é guardado em cada resposta, e a perceção (`barato/justo/caro`) é segmentada por plano.
 
-Os templates atuais são **simples por design**: o cartão branco, header e footer são aplicados automaticamente pelo `wrapHtml`; o admin só edita o conteúdo interior. Um drag-and-drop block-builder estilo Unlayer/GrapesJS seria sobre-engenharia e quebraria a shell partilhada.
+## 2. Problemas reais a corrigir
 
-A solução certa é um **editor rich-text focado com toolbar** baseado em **Tiptap** (`@tiptap/react` + `@tiptap/starter-kit` + `@tiptap/extension-link`):
-- produz HTML limpo e compatível com email (`<p>`, `<h2>`, `<ul>`, `<a>`, `<strong>`, `<em>`, `<hr>`)
-- suporta inserção de variáveis no cursor (`{{firstName}}` etc.)
-- mantém retrocompatibilidade com o `body_html` já guardado (carrega via `editor.commands.setContent(html)`)
-- ~120 KB gzipped, peso aceitável numa página admin
+**a) O preço só aparece no eyebrow ("LANÇAMENTO · 1 RELATÓRIO · 7€") e nunca no corpo do texto.** O parágrafo introdutório fala de "este preço" mas nunca o cita, o que enfraquece a pergunta. Queremos o valor no próprio texto: "…se este formato e este preço — **7€ por 1 relatório** — fazem sentido para ti."
 
-### 2. Refazer o editor em 4 zonas
+**b) O valor "7€" / "28€" vive em `src/i18n/locales/pt/pricing.json` e `report.json`, em emails (`commercial-followup.ts`) e em vários módulos admin (`kanban-columns.ts`, `lead-lifecycle.ts`). Mudar o preço hoje obriga a editar ~8 ficheiros.** Solução: única fonte de verdade em DB.
 
-**A. Sticky toolbar** (topo do painel esquerdo, sempre visível ao fazer scroll):
-- Negrito · Itálico · H2 · H3 · Lista · Lista numerada · Link (popover com URL) · Linha horizontal · Limpar formatação · "Undo / Redo"
-- Botão dropdown "Inserir variável" → lista das `data.variables`; insere no cursor com background subtil para se ler como token, mesmo em modo HTML
+## 3. Mudanças propostas
 
-**B. Tabs por modo de edição** (acima do editor, abaixo da toolbar):
-- **Visual** (Tiptap) — modo principal
-- **HTML** (textarea mono, igual ao atual; útil para colar HTML pronto)
-- **Texto simples** (substitui o `body_text` atual)
-- Mudança entre tabs sincroniza o conteúdo (HTML <-> visual); texto simples é independente
+### 3.1 Tabela `pricing_plans` (DB, editável sem deploy)
 
-**C. Cabeçalho do template** (cartão acima da toolbar, agrupa metadados):
-- Assunto · Preheader · Headline em grelha 3 colunas (desktop) / stack (mobile)
-- Cada input com **contador de caracteres** e marca subtil quando o Gmail/Apple Mail vão truncar:
-  - Assunto: cinza até 60, âmbar 60–78, vermelho ≥78
-  - Preheader: cinza até 90, âmbar 90–120, vermelho ≥120
-- Headline mantém-se input simples
+```sql
+create table public.pricing_plans (
+  key text primary key,         -- 'single_report' | 'pack_5_reports'
+  label text not null,          -- '1 relatório'
+  price_cents int not null,     -- 700 / 2800
+  currency text not null default 'EUR',
+  unit_label text,              -- '5,60€/relatório' (opcional)
+  active boolean not null default true,
+  updated_at timestamptz not null default now()
+);
+```
+- GRANT SELECT a `anon` + `authenticated` (preço público); GRANT ALL a `service_role`.
+- RLS: leitura pública (`using (true)`), escrita só `service_role`.
+- Seed inicial com os valores atuais (700, 2800).
 
-**D. Painel de preview redesenhado** (lado direito, sticky a partir de `lg:`):
-- **Inbox card** no topo a simular a vista de inbox (linha "InstaBench • Assunto — Preheader") com avatar e timestamp fictício
-- Toggle **Desktop (600px) / Mobile (375px)** para o iframe
-- Iframe mantém-se com `srcDoc` + debounce 400ms já existente
-- Indicador de "atualizado há Xs" em vez do "a atualizar…" pulsante
+### 3.2 Server function `getPublicPricing()`
 
-### 3. Barra de ações fixa no fundo (sticky bottom bar)
+`src/lib/pricing.functions.ts` → devolve `{ single_report: {label, priceFormatted, priceCents}, pack_5_reports: {...} }`. Cacheado via TanStack Query com `staleTime: 5min`.
 
-Substitui os botões soltos no header. Sempre visível ao editar:
-- Esquerda: pill de estado (`● Não guardado` / `✓ Guardado` / `● Override ativo desde DD/MM`)
-- Direita: `Repor predefinido` (secundário, ghost) + `Guardar alterações` (primário, escuro)
-- `Repor` abre **modal de confirmação** com diff resumido (substitui `confirm()` nativo)
-- `Ctrl/Cmd+S` faz save quando dirty
+Formatação: `Intl.NumberFormat('pt-PT', { style:'currency', currency:'EUR', maximumFractionDigits:0 })` → "7 €" / "28 €".
 
-### 4. Hierarquia visual e espaçamento
+### 3.3 Consumidores que passam a usar a DB
 
-- Header da página passa a ter: breadcrumb pequeno + título + chip de categoria + chip "wired/unwired"; meta info (key, override, autor, data) move-se para um popover "Info do template" para reduzir ruído visual
-- Grid passa de 1:1 fixo para `lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]` (editor um pouco mais largo que preview, alinhado com a prática de tools tipo Stripe/Resend)
-- Padding interno dos `AdminCard` consistente a `p-5`
-- Bordas e cinzas usam tokens admin já existentes (`--admin-border-default`, `--admin-surface-elevated`, `--admin-text-*`)
-- Tipografia: títulos `text-[14px] font-semibold`, eyebrow `text-eyebrow-sm`, hints `text-[11px] text-admin-text-tertiary` — mantém-se a regra de pt-PT e o mínimo 11px só em hints/labels
+- `src/components/pricing/pricing-page.tsx` → cards de preço lêem do hook.
+- `src/components/pricing/pricing-interest-modal.tsx` → `planLabel` e `planPrice` vêm do hook; `intro` passa a usar i18n com interpolação `{{price}}` e `{{plan}}`.
+- `src/components/report-redesign/v2/premium-interest-dialog.tsx` → idem.
+- `src/components/beta/beta-request-form.tsx` linha 418 → idem.
+- `src/lib/email/templates/commercial-followup.ts` → recebe `pricing` como parâmetro (já é função server-side; injectamos no call site).
+- `src/routes/precos.tsx` (meta description) → continua a usar i18n com `{{single}}`/`{{pack}}` interpolados no server (mantemos i18n como template, valores vêm da DB).
 
-### 5. Variáveis disponíveis
+### 3.4 Textos a atualizar (i18n com interpolação, sem hardcode de valor)
 
-- Continuam visíveis como chips, **mas dentro de um popover** "Inserir variável" na toolbar — liberta espaço no formulário
-- Quando inseridas no editor visual, ficam com background `bg-accent-primary/10` e padding inline para distinguir do texto livre (apenas no editor; o HTML guardado mantém-se `{{var}}` literal)
+`pt/pricing.json` → `interest_modal.intro`:
+> "O pagamento ainda não está aberto. Estamos a recolher interesse para perceber se, considerando o que já viste, **{{plan}} por {{price}}** faz sentido para ti."
 
-### 6. O que vai mudar concretamente
+`would_pay_label`:
+> "Considerando o que já viste, pagarias **{{price}}** por **{{plan}}**?"
 
-Ficheiros:
-- **edit**: `src/components/admin/v2/automacoes/template-editor.tsx` (reescrito)
-- **novo**: `src/components/admin/v2/automacoes/template-editor/rich-text-editor.tsx` (wrapper Tiptap)
-- **novo**: `src/components/admin/v2/automacoes/template-editor/toolbar.tsx`
-- **novo**: `src/components/admin/v2/automacoes/template-editor/inbox-preview-card.tsx`
-- **novo**: `src/components/admin/v2/automacoes/template-editor/reset-confirm-dialog.tsx`
+(O componente injecta `price`/`plan` vindos da DB; em `en/pricing.json` espelhamos.)
 
-Deps a instalar: `@tiptap/react`, `@tiptap/pm`, `@tiptap/starter-kit`, `@tiptap/extension-link`, `@tiptap/extension-placeholder`.
+### 3.5 Admin: gestão dos preços
 
-### Fora de scope (não tocar)
+Pequeno cartão em `/admin/estudo-mercado` (topo do tab "Intenção de compra") com os preços atuais + link "Editar preços". Edição mínima inline (sem nova página): dois inputs numéricos (cents) + botão Guardar, server fn protegida por `requireSupabaseAuth` + check de admin allowlist (padrão já usado nas outras server fns admin).
 
-- Endpoints `/api/admin/email-templates/...`
-- `wrapHtml`, `email_template_overrides`, registo de history
-- Outros templates (`commercial-followup`, `feedback-request`, etc.)
-- A página `email-lab` (`src/components/admin/v2/email-lab/`)
-- Tokens globais, sidebar, navegação admin
+Assim, alterar 7 € → 9 € passa a ser um clique no admin; modal, cards de preços, emails e meta tags atualizam-se na próxima request, sem deploy.
 
-### Validação
+## 4. O que NÃO mudar
+- Esquema de `pricing_interest` (já guarda `pricing_option` certo; preço efetivo na altura da resposta pode ser inferido pela `created_at` + histórico se um dia precisarmos).
+- Fluxo do admin `/admin/estudo-mercado` (apenas adicionamos o cartão de edição de preços).
+- `/report.example`, kanban e lead-lifecycle (label "Pagou 1 report · 7€") — esses textos do funil são histórico e podem ser tratados num passo seguinte; fora do âmbito deste prompt para manter a regra de uma feature por prompt.
 
-- `bunx tsc --noEmit`
-- Smoke manual em `/admin/automacoes/templates/welcome_beta`:
-  - editar texto no modo visual → HTML atualizado e preview redesenhado renderiza
-  - alternar Visual ↔ HTML mantém conteúdo
-  - inserir `{{firstName}}` no cursor
-  - Cmd+S guarda
-  - Reset abre modal e remove override
+## 5. Checkpoint
 
-Aprovas?
+- [ ] Migração: tabela `pricing_plans` + GRANTs + RLS + seed (700/2800).
+- [ ] `src/lib/pricing.functions.ts` com `getPublicPricing` + hook `usePricing`.
+- [ ] `pricing-interest-modal.tsx`: intro e label usam `{{plan}}`/`{{price}}` interpolados, eyebrow continua a mostrar plano+preço.
+- [ ] `pricing-page.tsx` + `premium-interest-dialog.tsx` + `beta-request-form.tsx` consomem o hook.
+- [ ] `commercial-followup.ts` recebe `pricing` como parâmetro nos call sites.
+- [ ] i18n `pricing.json` (pt + en): tirar `"7€"`/`"28€"` literais dos textos onde podem ser interpolados; manter como fallback só onde o valor não vier (graceful degradation).
+- [ ] Cartão "Preços ativos" + edição inline em `/admin/estudo-mercado` (server fn `updatePricingPlan` com check admin).
+- [ ] Verificar no preview: modal mostra "7 € por 1 relatório" no texto; mudar para 9 € no admin reflete imediatamente no modal e cards.
+
+Aprovas para avançar?
