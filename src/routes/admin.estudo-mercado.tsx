@@ -182,7 +182,7 @@ function PulseTab({ windowDays }: { windowDays: WindowDays }) {
           <Empty>Amostra ainda pequena para extrair tópicos recorrentes.</Empty>
         ) : (
           <div className="flex flex-wrap gap-2">
-            {topics.map((t) => (
+            {topics.slice(0, comments.length >= 30 ? 6 : 3).map((t) => (
               <span key={t.token}
                 className="inline-flex items-center gap-2 rounded-full border border-admin-border bg-admin-surface-elevated px-3 py-1 text-[13px] text-admin-text-primary">
                 <span className="font-medium">{t.token}</span>
