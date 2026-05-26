@@ -45,6 +45,30 @@ const PTBR_TOKENS: RegExp[] = [
 const RECOMMENDATION_VERBS =
   /\b(deve(s|m)?|deveria(m|s)?|recomenda[- ]se|a\s+prioridade\s+é|publique(m)?|teste(m)?|use(m)?\s+mais|aposte(m)?|publicar\s+mais|cria(r)?\s+mais|apostar\s+em|focar\s+em\s+publicar)\b/i;
 
+/** Any digit followed by an optional decimal and a `%` sign — the verdict
+ *  must NOT print engagement / share percentages in the paragraph. */
+const PERCENT_LEAK = /\d+([.,]\d+)?\s*%/;
+
+/** Private Instagram metrics the public scrape never sees. Mentioning them
+ *  is hallucination by construction. */
+const PRIVATE_METRICS =
+  /\b(alcance|reach|impress(ões|oes|ions)|saves?|partilhas|shares|visitas\s+ao\s+perfil|profile\s+visits|visualiza(ções|coes)\s+de\s+stories|story\s+views)\b/i;
+
+/** Sentence-counter used by the verdict paragraph cap (max 4). Splits on
+ *  `.`, `!`, `?` and keeps non-empty fragments. */
+function countSentences(paragraph: string): number {
+  return paragraph
+    .split(/[.!?]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0).length;
+}
+
+/** Hashtag handling: the paragraph either quotes a `#tag` OR explicitly
+ *  acknowledges the absence/weakness of recurring hashtags. */
+const HASHTAG_TOKEN = /#[\p{L}\p{N}_]+/u;
+const HASHTAG_ABSENCE =
+  /\bhashtags?\b[^.!?]{0,160}?(n[ãa]o\s+h[áa]|n[ãa]o\s+criam|n[ãa]o\s+s[ãa]o\s+suficient|ainda\s+n[ãa]o\s+criam|sem\s+assinatura\s+tem[áa]tica|n[ãa]o\s+definem|n[ãa]o\s+chegam|n[ãa]o\s+formam)/i;
+
 const itemSchema = z.object({
   emphasis: z.enum(["positive", "negative", "default", "neutral"]),
   text: z.string().min(1).max(INSIGHT_V2_TEXT_MAX + 40), // tolerância para trim posterior
