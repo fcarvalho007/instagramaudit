@@ -529,9 +529,33 @@ export const getPricingInterest = createServerFn({ method: "GET" })
       (r) => typeof r.email === "string" && r.email.trim().length > 0,
     ).length;
 
+    // Série diária
+    const days = daysBack(data.windowDays);
+    const idx = new Map<string, number>();
+    days.forEach((d, i) => idx.set(d, i));
+    const daily = days.map((day) => ({
+      day, sim: 0, talvez: 0, nao: 0,
+    }));
+    for (const r of safe) {
+      const i = idx.get(dayKey(r.created_at));
+      if (i === undefined) continue;
+      const k = r.would_pay as WouldPayKey | null;
+      if (k && k in daily[i]) (daily[i] as unknown as Record<string, number>)[k]++;
+    }
+    const dailySerialized = daily.map((d) => {
+      const dayN = d.sim + d.talvez + d.nao;
+      return {
+        day: d.day,
+        sim: d.sim,
+        talvez: d.talvez,
+        nao: d.nao,
+        convictionRate: dayN > 0 ? d.sim / dayN : null,
+      };
+    });
+
     const comments = safe
       .filter((r) => typeof r.comment === "string" && r.comment.trim().length > 0)
-      .slice(0, 20)
+      .slice(0, 100)
       .map((r) => ({
         id: r.id,
         option: r.pricing_option as PricingOptionKey,
@@ -552,5 +576,6 @@ export const getPricingInterest = createServerFn({ method: "GET" })
       convictionRate,
       emailsCount,
       comments,
+      daily: dailySerialized,
     };
   });
