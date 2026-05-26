@@ -13,6 +13,7 @@ import {
   CalendarDays,
   ChevronDown,
   Heart,
+  Info,
   MessageCircle,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -702,7 +703,7 @@ function IndexBlock({
       {/* Régua vertical de estágios */}
       {hasValue ? (
         <div
-          className="flex gap-3 min-h-[168px]"
+          className="flex gap-3 flex-1 min-h-[200px]"
           role="img"
           aria-label={t("identity.index.rail_aria_full", {
             value: clamped,
@@ -758,26 +759,30 @@ function IndexBlock({
 
       {/* "Como foi calculado" colapsável */}
       <details
-        className="group mt-auto"
+        className="group mt-auto border-t border-border-default sm:-mx-7 sm:-mb-8"
         onToggle={(e) => setMethodOpen((e.target as HTMLDetailsElement).open)}
       >
         <summary
           aria-expanded={methodOpen}
           className={cn(
-            "flex items-center gap-1.5 cursor-pointer list-none",
-            "px-0 py-1.5 text-[10.5px] font-medium uppercase tracking-wide text-content-tertiary",
-            "hover:text-content-primary transition-colors",
+            "flex items-center gap-2 cursor-pointer list-none",
+            "py-3 sm:px-7 sm:py-3.5 text-[13px] font-medium text-content-secondary",
+            "hover:text-content-primary hover:bg-surface-muted/60 transition-colors",
           )}
         >
+          <Info
+            className="h-3.5 w-3.5 text-content-tertiary shrink-0"
+            aria-hidden="true"
+          />
           <span>
             {t("identity.method.toggle", { defaultValue: "Como foi calculado" })}
           </span>
           <ChevronDown
-            className="h-2.5 w-2.5 text-content-tertiary transition-transform duration-200 group-open:rotate-180"
+            className="h-3.5 w-3.5 text-content-tertiary ml-auto transition-transform duration-200 group-open:rotate-180"
             aria-hidden="true"
           />
         </summary>
-        <div className="px-0 pb-1 pt-2 space-y-2.5 text-xs leading-snug text-content-secondary">
+        <div className="pt-2 pb-4 sm:px-7 space-y-2.5 text-[13px] leading-snug text-content-secondary">
           <p>
             {t("identity.method.signals_line", {
               defaultValue:
