@@ -305,6 +305,8 @@ function ModalTab({ windowDays }: { windowDays: WindowDays }) {
     Sim: d.yes, Talvez: d.maybe, Não: d.no, Indeciso: d.unsure,
     util: d.avgUsefulness,
   }));
+  const dailyHasIntent = dailyChart.some((d) => d.Sim + d.Talvez + d.Não + d.Indeciso > 0);
+  const dailyHasUtil = dailyChart.some((d) => d.util !== null && d.util !== undefined);
 
   return (
     <div className="space-y-5">
@@ -322,39 +324,47 @@ function ModalTab({ windowDays }: { windowDays: WindowDays }) {
           <h3 className="m-0 mb-3 text-[14px] font-semibold text-admin-text-primary">
             Respostas por dia (intenção)
           </h3>
+          {!dailyHasIntent ? (
+            <Empty>Sem respostas no período.</Empty>
+          ) : (
           <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={dailyChart} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--admin-border) / 0.5)" />
                 <XAxis dataKey="day" tick={{ fontSize: 10 }} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
-                <Tooltip />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgb(var(--admin-border) / 0.2)" }} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="Sim" stackId="a" fill="#1D9E75" />
-                <Bar dataKey="Talvez" stackId="a" fill="#3772E5" />
-                <Bar dataKey="Não" stackId="a" fill="#E24B4A" />
-                <Bar dataKey="Indeciso" stackId="a" fill="#888780" />
+                <Bar dataKey="Sim" stackId="a" fill={intentColor.yes} />
+                <Bar dataKey="Talvez" stackId="a" fill={intentColor.maybe} />
+                <Bar dataKey="Não" stackId="a" fill={intentColor.no} />
+                <Bar dataKey="Indeciso" stackId="a" fill={intentColor.unsure} />
               </BarChart>
             </ResponsiveContainer>
           </div>
+          )}
         </AdminCard>
 
         <AdminCard>
           <h3 className="m-0 mb-3 text-[14px] font-semibold text-admin-text-primary">
             Utilidade média por dia
           </h3>
+          {!dailyHasUtil ? (
+            <Empty>Sem utilidade média no período.</Empty>
+          ) : (
           <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={dailyChart} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--admin-border) / 0.5)" />
                 <XAxis dataKey="day" tick={{ fontSize: 10 }} />
                 <YAxis domain={[1, 5]} tick={{ fontSize: 10 }} />
-                <Tooltip />
-                <Line type="monotone" dataKey="util" stroke="#7664E4" strokeWidth={2}
+                <Tooltip content={<ChartTooltip />} />
+                <Line type="monotone" dataKey="util" stroke={chartPalette.accentSecondary} strokeWidth={2}
                   dot={{ r: 3 }} name="Utilidade" connectNulls />
               </LineChart>
             </ResponsiveContainer>
           </div>
+          )}
         </AdminCard>
       </div>
 
