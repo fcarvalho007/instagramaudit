@@ -20,6 +20,7 @@ import { RatingRanking } from "@/components/admin/v2/estudo-mercado/rating-ranki
 import { BlockHeatmap } from "@/components/admin/v2/estudo-mercado/block-heatmap";
 import { chartPalette, intentColor } from "@/components/admin/v2/estudo-mercado/chart-palette";
 import { ChartTooltip } from "@/components/admin/v2/estudo-mercado/chart-tooltip";
+import { PricingEditorCard } from "@/components/admin/v2/estudo-mercado/pricing-editor-card";
 import {
   getMarketStudyPulse,
   getMarketStudyBlocks,
@@ -411,6 +412,7 @@ function InterestTab({ windowDays }: { windowDays: WindowDays }) {
 
   return (
     <div className="space-y-5">
+      <PricingEditorCard />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <StatTile label="Respostas" value={String(n)}
           hint={`Single ${optionCounts.single_report} · Pack ${optionCounts.pack_5_reports}`} />

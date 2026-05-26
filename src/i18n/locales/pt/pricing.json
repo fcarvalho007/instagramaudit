@@ -64,8 +64,8 @@
   "interest_modal": {
     "eyebrow": "Lançamento",
     "title": "Estamos em fase de lançamento",
-    "intro": "O pagamento ainda não está aberto. Estamos a recolher interesse para perceber se, considerando o que já viste nos relatórios, este formato e este preço fazem sentido para ti.",
-    "would_pay_label": "Considerando o que já viste, pagarias este valor?",
+    "intro": "O pagamento ainda não está aberto. Estamos a recolher interesse para perceber se, considerando o que já viste nos relatórios, <strong>{{plan}} por {{price}}</strong> faz sentido para ti.",
+    "would_pay_label": "Considerando o que já viste, pagarias {{price}} por {{plan}}?",
     "would_pay_options": {
       "sim": "Sim, pagaria",
       "talvez": "Talvez, depende",

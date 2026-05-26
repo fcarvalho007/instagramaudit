@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { trackEvent } from "@/lib/tracking.functions";
 import { cn } from "@/lib/utils";
+import { usePricing } from "@/lib/pricing/use-pricing";
 import {
   PricingInterestModal,
   type PricingInterestOption,
@@ -39,6 +40,7 @@ export function PremiumInterestDialog({
   sourceComponent,
 }: Props) {
   const { t } = useTranslation("report");
+  const { plans } = usePricing();
   const [selected, setSelected] = useState<PricingOption | null>(null);
   const [interestOption, setInterestOption] =
     useState<PricingInterestOption | null>(null);
@@ -73,12 +75,12 @@ export function PremiumInterestDialog({
 
   const interestMeta: Record<PricingInterestOption, { label: string; price: string }> = {
     single_report: {
-      label: t("premium.dialog.single.title"),
-      price: t("premium.dialog.single.price"),
+      label: plans.single_report.label,
+      price: plans.single_report.priceFormatted,
     },
     pack_5_reports: {
-      label: t("premium.dialog.pack.title"),
-      price: t("premium.dialog.pack.price"),
+      label: plans.pack_5_reports.label,
+      price: plans.pack_5_reports.priceFormatted,
     },
   };
 

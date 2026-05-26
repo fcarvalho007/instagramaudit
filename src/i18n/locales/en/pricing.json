@@ -64,8 +64,8 @@
   "interest_modal": {
     "eyebrow": "Launch",
     "title": "We are in launch mode",
-    "intro": "Payment is not open yet. We are gathering interest to understand whether, given what you saw in the reports, this format and price make sense for you.",
-    "would_pay_label": "Given what you have seen, would you pay this price?",
+    "intro": "Payment is not open yet. We are gathering interest to understand whether, given what you saw in the reports, <strong>{{plan}} for {{price}}</strong> makes sense for you.",
+    "would_pay_label": "Given what you have seen, would you pay {{price}} for {{plan}}?",
     "would_pay_options": {
       "sim": "Yes, I would",
       "talvez": "Maybe, depends",

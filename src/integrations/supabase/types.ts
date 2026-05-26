@@ -833,6 +833,42 @@ export type Database = {
         }
         Relationships: []
       }
+      pricing_plans: {
+        Row: {
+          active: boolean
+          currency: string
+          key: string
+          label: string
+          price_cents: number
+          sort_order: number
+          unit_label: string | null
+          updated_at: string
+          updated_by_email: string | null
+        }
+        Insert: {
+          active?: boolean
+          currency?: string
+          key: string
+          label: string
+          price_cents: number
+          sort_order?: number
+          unit_label?: string | null
+          updated_at?: string
+          updated_by_email?: string | null
+        }
+        Update: {
+          active?: boolean
+          currency?: string
+          key?: string
+          label?: string
+          price_cents?: number
+          sort_order?: number
+          unit_label?: string | null
+          updated_at?: string
+          updated_by_email?: string | null
+        }
+        Relationships: []
+      }
       product_events: {
         Row: {
           actor_hash: string | null

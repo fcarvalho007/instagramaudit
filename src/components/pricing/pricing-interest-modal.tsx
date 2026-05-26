@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { trackEvent } from "@/lib/tracking.functions";
 import { cn } from "@/lib/utils";
+import { usePricing } from "@/lib/pricing/use-pricing";
 
 export type PricingInterestOption = "single_report" | "pack_5_reports";
 type WouldPay = "sim" | "talvez" | "nao";
@@ -38,6 +39,12 @@ export function PricingInterestModal({
   planPrice,
 }: Props) {
   const { t } = useTranslation("pricing");
+  const { plans } = usePricing();
+  const planFromDb = option ? plans[option] : null;
+  // Preferimos sempre o valor vindo da DB; caímos para o prop apenas se ainda
+  // não temos resposta (placeholderData garante valor imediato).
+  const effectiveLabel = planFromDb?.label ?? planLabel;
+  const effectivePrice = planFromDb?.priceFormatted ?? planPrice;
   const [wouldPay, setWouldPay] = useState<WouldPay | "">("");
   const [fairness, setFairness] = useState<Fairness | "">("");
   const [email, setEmail] = useState("");
@@ -114,6 +121,13 @@ export function PricingInterestModal({
     returnObjects: true,
   }) as Record<Fairness, string>;
 
+  const interpolated = {
+    plan: effectiveLabel,
+    price: effectivePrice,
+  };
+  const introHtml = t("interest_modal.intro", interpolated);
+  const wouldPayLabel = t("interest_modal.would_pay_label", interpolated);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
@@ -128,19 +142,21 @@ export function PricingInterestModal({
           <form onSubmit={handleSubmit} className="space-y-5">
             <DialogHeader className="space-y-2 text-left">
               <span className="text-eyebrow-sm text-accent-primary">
-                {t("interest_modal.eyebrow")} · {planLabel} · {planPrice}
+                {t("interest_modal.eyebrow")} · {effectiveLabel} · {effectivePrice}
               </span>
               <DialogTitle className="font-fraunces text-2xl font-medium tracking-tight text-content-primary">
                 {t("interest_modal.title")}
               </DialogTitle>
-              <DialogDescription className="text-sm leading-relaxed text-content-secondary">
-                {t("interest_modal.intro")}
-              </DialogDescription>
+              <DialogDescription
+                className="text-sm leading-relaxed text-content-secondary"
+                // Permite o <strong> com o plano + preço a partir do i18n.
+                dangerouslySetInnerHTML={{ __html: introHtml }}
+              />
             </DialogHeader>
 
             <fieldset className="space-y-2">
               <legend className="text-sm font-semibold text-content-primary">
-                {t("interest_modal.would_pay_label")}
+                {wouldPayLabel}
               </legend>
               <RadioGroup
                 value={wouldPay}
