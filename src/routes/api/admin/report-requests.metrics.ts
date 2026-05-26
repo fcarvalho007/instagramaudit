@@ -121,23 +121,30 @@ export const Route = createFileRoute("/api/admin/report-requests/metrics")({
           deliveryN > 0 ? deliverySum / deliveryN / 60000 : null;
 
         let avgCostUsd: number | null = null;
-        if (totalAnalyses > 0) {
+        let totalCostUsd = 0;
+        let apifyCostUsd = 0;
+        {
           const { data: logs } = await supabaseAdmin
             .from("provider_call_logs")
-            .select("estimated_cost_usd, actual_cost_usd")
+            .select("actor, estimated_cost_usd, actual_cost_usd")
             .gte("created_at", sinceISO)
             .limit(5000);
-          const totalCost = (logs ?? []).reduce(
-            (acc, l) =>
-              acc +
-              Number(
-                (l as { actual_cost_usd?: number | null }).actual_cost_usd ??
-                  (l as { estimated_cost_usd?: number | null }).estimated_cost_usd ??
-                  0,
-              ),
-            0,
-          );
-          avgCostUsd = totalCost / totalAnalyses;
+          for (const l of logs ?? []) {
+            const row = l as {
+              actor?: string | null;
+              actual_cost_usd?: number | null;
+              estimated_cost_usd?: number | null;
+            };
+            const cost = Number(row.actual_cost_usd ?? row.estimated_cost_usd ?? 0);
+            if (!Number.isFinite(cost)) continue;
+            totalCostUsd += cost;
+            if (typeof row.actor === "string" && row.actor.startsWith("apify")) {
+              apifyCostUsd += cost;
+            }
+          }
+          if (totalAnalyses > 0) {
+            avgCostUsd = apifyCostUsd / totalAnalyses;
+          }
         }
 
         return jsonResponse({
@@ -152,6 +159,8 @@ export const Route = createFileRoute("/api/admin/report-requests/metrics")({
           success_rate_pct: successRate,
           avg_delivery_minutes: avgDeliveryMinutes,
           avg_cost_usd: avgCostUsd,
+          total_cost_usd: totalCostUsd,
+          apify_cost_usd: apifyCostUsd,
         });
       },
     },
