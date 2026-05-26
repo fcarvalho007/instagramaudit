@@ -1,4 +1,5 @@
 import {
+  type EmailTemplateParts,
   type RenderedEmail,
   escapeHtml,
   greetingHtml,
@@ -28,7 +29,7 @@ function buildSubject(handle: string | null | undefined): string {
   return handle ? `O teu relatório de @${handle} está disponível` : FALLBACK_SUBJECT;
 }
 
-export function renderReportReady(input: ReportReadyInput): RenderedEmail {
+export function getReportReadyParts(input: ReportReadyInput): EmailTemplateParts {
   if (!input.reportUrl || !input.reportUrl.trim()) {
     throw new Error("reportUrl is required for reportReady");
   }
@@ -77,8 +78,24 @@ export function renderReportReady(input: ReportReadyInput): RenderedEmail {
 
   return {
     subject,
-    text,
-    html: wrapHtml({ title: subject, headline: HEADLINE, bodyHtml, preheader: PREHEADER }),
+    preheader: PREHEADER,
+    headline: HEADLINE,
+    body_html: bodyHtml,
+    body_text: text,
+  };
+}
+
+export function renderReportReady(input: ReportReadyInput): RenderedEmail {
+  const parts = getReportReadyParts(input);
+  return {
+    subject: parts.subject,
+    text: parts.body_text,
+    html: wrapHtml({
+      title: parts.subject,
+      headline: parts.headline,
+      bodyHtml: parts.body_html,
+      preheader: parts.preheader,
+    }),
   };
 }
 

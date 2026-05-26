@@ -8,6 +8,7 @@ import {
   getTemplateByKey,
   type EmailTemplateKey,
 } from "@/lib/admin/email-template-registry";
+import { getTemplateDefaultParts } from "@/lib/email/templates";
 import {
   invalidateOverrideCache,
   loadOverride,
@@ -50,7 +51,7 @@ export const Route = createFileRoute("/api/admin/email-templates/$key")({
           wiredAt: entry.wiredAt,
           wiredNote: entry.wiredNote ?? null,
           variables: TEMPLATE_VARIABLES[key],
-          defaults: entry.defaultParts,
+          defaults: getTemplateDefaultParts(key),
           override,
         });
       },

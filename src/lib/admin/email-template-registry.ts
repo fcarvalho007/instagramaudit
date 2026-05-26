@@ -14,7 +14,10 @@ import {
   renderWelcomeBeta,
   renderReportSummary,
   type RenderedEmail,
+  type EmailTemplateParts,
 } from "@/lib/email/templates";
+
+export type { EmailTemplateParts };
 
 export const SAMPLE = {
   firstName: "Frederico",
@@ -60,20 +63,6 @@ export interface EmailTemplateEntry {
   variables: Array<{ key: string; value: string }>;
   render: () => RenderedEmail;
   preheader?: string;
-  /**
-   * Conteúdo editável de fábrica. Usado para pré-popular o editor de
-   * templates em `/admin/automacoes/templates/$key` quando ainda não
-   * existe um override em DB. Aceita placeholders `{{var}}`.
-   */
-  defaultParts: EmailTemplateParts;
-}
-
-export interface EmailTemplateParts {
-  subject: string;
-  preheader: string;
-  headline: string;
-  body_html: string;
-  body_text: string;
 }
 
 export const TEMPLATE_VARIABLES: Record<EmailTemplateKey, string[]> = {
