@@ -30,7 +30,7 @@ export function ReportAiInsights() {
               Análise preparada por
             </p>
             <p className="text-sm font-medium text-content-primary">
-              InstaBench AI · Modelo de leitura editorial
+              AuditProfiles AI · Modelo de leitura editorial
             </p>
           </div>
         </div>

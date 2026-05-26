@@ -8,7 +8,7 @@ export const Route = createFileRoute("/app/account")({
   component: AccountPage,
   head: () => ({
     meta: [
-      { title: "Conta — InstaBench" },
+      { title: "Conta — AuditProfiles" },
       { name: "robots", content: "noindex" },
     ],
   }),

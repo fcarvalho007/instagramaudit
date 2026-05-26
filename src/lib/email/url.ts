@@ -8,7 +8,7 @@
 
 import { signUnsubscribeToken } from "./unsubscribe-token.server";
 
-const DEFAULT_BASE_URL = "https://instagramaudit.lovable.app";
+const DEFAULT_BASE_URL = "https://auditprofiles.com";
 
 function resolveBaseUrl(): string {
   const base = (

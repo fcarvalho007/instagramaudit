@@ -126,7 +126,7 @@ function SidebarBody({ logout, onNavigate }: SidebarBodyProps) {
       >
         <BarChart2 size={20} className="text-[rgb(var(--admin-info-500))]" />
         <span className="text-[16px] md:text-[14px] font-semibold text-[rgb(var(--admin-neutral-900))]">
-          InstaBench
+          AuditProfiles
         </span>
       </div>
 

@@ -10,10 +10,10 @@ export const BETA_COPY = {
     eyebrow: "Feedback beta",
     title: "Este relatório foi útil?",
     subtitle:
-      "O InstaBench está em fase beta. Um email curto ajuda-nos a tornar a análise mais útil para marcas, criadores e equipas de marketing.",
+      "O AuditProfiles está em fase beta. Um email curto ajuda-nos a tornar a análise mais útil para marcas, criadores e equipas de marketing.",
     action: {
       label: "Enviar feedback por email",
-      href: "mailto:hello@instagramaudit.lovable.app?subject=Feedback%20InstaBench",
+      href: "mailto:hello@auditprofiles.com?subject=Feedback%20AuditProfiles",
     },
     note: "Sem compromisso. O objetivo é melhorar o produto com utilizadores reais.",
   },

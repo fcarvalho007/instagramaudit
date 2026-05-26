@@ -26,13 +26,13 @@ import { DSSection, DSExample } from "@/components/design-system/ds-section";
 export const Route = createFileRoute("/design-system")({
   head: () => ({
     meta: [
-      { title: "Design System · InstaBench" },
+      { title: "Design System · AuditProfiles" },
       {
         name: "description",
         content:
           "Documentação viva do sistema de design do Instagram Benchmark Analyzer: tokens, componentes atómicos e primitivas de layout.",
       },
-      { property: "og:title", content: "Design System · InstaBench" },
+      { property: "og:title", content: "Design System · AuditProfiles" },
       {
         property: "og:description",
         content:

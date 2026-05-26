@@ -16,4 +16,4 @@ Disallow: /login
 Disallow: /signup
 Disallow: /reset-password
 
-Sitemap: https://instagramaudit.lovable.app/sitemap.xml
+Sitemap: https://auditprofiles.com/sitemap.xml

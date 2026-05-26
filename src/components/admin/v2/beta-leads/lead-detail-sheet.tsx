@@ -1188,7 +1188,7 @@ function SendLinkDialog({
   const { subject, text: previewBody } = renderReportReady({
     firstName,
     instagramHandle: lead.handle ?? "",
-    reportUrl: publicUrl || "https://instabench.example/relatorio",
+    reportUrl: publicUrl || "https://auditprofiles.example/relatorio",
   });
   const isResend = lastSentAt != null;
   const lastSentLabel = lastSentAt

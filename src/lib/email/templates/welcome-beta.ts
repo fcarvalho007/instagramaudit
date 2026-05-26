@@ -46,7 +46,7 @@ export function getWelcomeBetaParts(input: WelcomeBetaInput): EmailTemplateParts
     "",
     "Obrigado por entrares na beta.",
     "",
-    "O InstaBench é uma ferramenta de análise editorial de perfis de Instagram — pensada para quem tem de tomar decisões rápidas sobre conteúdo, marca ou audiência. A ideia: cruzar os dados públicos do perfil com referências de mercado e devolver uma leitura clara, em vez de um dashboard de números.",
+    "O AuditProfiles é uma ferramenta de análise editorial de perfis de Instagram — pensada para quem tem de tomar decisões rápidas sobre conteúdo, marca ou audiência. A ideia: cruzar os dados públicos do perfil com referências de mercado e devolver uma leitura clara, em vez de um dashboard de números.",
     "",
     "O projeto nasceu da prática docente — Frederico Carvalho, com 20 anos em marketing digital, sentia falta de uma ferramenta que alunos e clientes pudessem usar em poucos minutos. Esta é a primeira tentativa de resolver isso.",
     "",
@@ -74,7 +74,7 @@ export function getWelcomeBetaParts(input: WelcomeBetaInput): EmailTemplateParts
     p(greetingHtml(input.firstName)),
     p("Obrigado por entrares na beta."),
     p(
-      `O <strong style="color:#0a0e1a;">InstaBench</strong> é uma ferramenta de análise editorial de perfis de Instagram — pensada para quem tem de tomar decisões rápidas sobre conteúdo, marca ou audiência. A ideia: cruzar os dados públicos do perfil com referências de mercado e devolver uma leitura clara, em vez de um <em>dashboard</em> de números.`,
+      `O <strong style="color:#0a0e1a;">AuditProfiles</strong> é uma ferramenta de análise editorial de perfis de Instagram — pensada para quem tem de tomar decisões rápidas sobre conteúdo, marca ou audiência. A ideia: cruzar os dados públicos do perfil com referências de mercado e devolver uma leitura clara, em vez de um <em>dashboard</em> de números.`,
     ),
     pMuted(
       "O projeto nasceu da prática docente — Frederico Carvalho, com 20 anos em marketing digital, sentia falta de uma ferramenta que alunos e clientes pudessem usar em poucos minutos. Esta é a primeira tentativa de resolver isso.",

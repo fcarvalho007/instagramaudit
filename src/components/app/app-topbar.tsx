@@ -32,7 +32,7 @@ export function AppTopbar({ userEmail }: AppTopbarProps) {
         <div className="flex items-center gap-2">
           <BrandMark size={22} />
           <span className="text-sm font-semibold tracking-tight text-slate-900">
-            InstaBench
+            AuditProfiles
           </span>
         </div>
         <button

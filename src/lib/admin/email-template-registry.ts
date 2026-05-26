@@ -231,7 +231,7 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
           permalink: null,
         },
       }),
-    preheader: "Os principais sinais do teu relatório InstaBench.",
+    preheader: "Os principais sinais do teu relatório AuditProfiles.",
   },
   {
     key: "commercial_followup",

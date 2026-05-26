@@ -25,7 +25,7 @@ export interface PublicAppConfig {
 
 export const PUBLIC_APP_CONFIG_DEFAULTS: PublicAppConfig = {
   freeMonthlyReportLimit: 3,
-  contactEmail: "hello@instabench.pt",
+  contactEmail: "hello@auditprofiles.com",
   compareEnabled: false,
 };
 

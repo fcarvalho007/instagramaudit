@@ -5,17 +5,17 @@ import { BetaRequestForm } from "@/components/beta/beta-request-form";
 export const Route = createFileRoute("/beta/request")({
   head: () => ({
     meta: [
-      { title: "Beta Privada · InstaBench" },
+      { title: "Beta Privada · AuditProfiles" },
       {
         name: "description",
         content:
-          "Pede acesso à beta privada do InstaBench e recebe uma análise gratuita do teu perfil de Instagram.",
+          "Pede acesso à beta privada do AuditProfiles e recebe uma análise gratuita do teu perfil de Instagram.",
       },
-      { property: "og:title", content: "Beta Privada · InstaBench" },
+      { property: "og:title", content: "Beta Privada · AuditProfiles" },
       {
         property: "og:description",
         content:
-          "Pede acesso à beta privada do InstaBench e recebe uma análise gratuita do teu perfil de Instagram.",
+          "Pede acesso à beta privada do AuditProfiles e recebe uma análise gratuita do teu perfil de Instagram.",
       },
     ],
   }),

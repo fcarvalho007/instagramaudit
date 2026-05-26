@@ -1,4 +1,4 @@
-# Runbook Operacional — Beta Privada InstaBench
+# Runbook Operacional — Beta Privada AuditProfiles
 
 Documento operacional. Para uso interno do operador durante a fase de beta privada.
 
@@ -18,7 +18,7 @@ Documento operacional. Para uso interno do operador durante a fase de beta priva
 
 1. Confirmar que o handle de teste está em `APIFY_ALLOWLIST` (admin → `/admin/sistema`).
 2. Enviar mensagem direta (WhatsApp/email pessoal) com:
-   - URL: `https://instagramaudit.lovable.app/`
+   - URL: `https://auditprofiles.com/`
    - 1 frase de contexto: "Estamos em beta privada de uma ferramenta de benchmark de Instagram. Demora ~1 minuto."
    - Aviso: "É beta — qualquer coisa estranha avisa-me."
 3. **Não usar** newsletter, ads, ou qualquer canal massa.
@@ -26,7 +26,7 @@ Documento operacional. Para uso interno do operador durante a fase de beta priva
 
 ## 2. URL a enviar
 
-- **Sempre**: `https://instagramaudit.lovable.app/` (homepage).
+- **Sempre**: `https://auditprofiles.com/` (homepage).
 - **Nunca** enviar `/admin/*`, `/report.example`, ou link direto a `/analyze/{handle}` (perde o contexto do unlock e o tracking de origem).
 
 ## 3. O que o utilizador deve experienciar

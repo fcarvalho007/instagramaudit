@@ -8,10 +8,10 @@ import { FeedbackForm } from "@/components/feedback/feedback-form";
 export const Route = createFileRoute("/feedback/$requestId")({
   head: () => ({
     meta: [
-      { title: "Feedback · InstaBench" },
+      { title: "Feedback · AuditProfiles" },
       {
         name: "description",
-        content: "Partilha o teu feedback sobre o relatório InstaBench.",
+        content: "Partilha o teu feedback sobre o relatório AuditProfiles.",
       },
       { name: "robots", content: "noindex, nofollow" },
     ],
@@ -112,7 +112,7 @@ function FeedbackPage() {
             {state.leadFirstName
               ? `Obrigado, ${state.leadFirstName}. `
               : "Obrigado. "}
-            Vamos usá-lo para melhorar o InstaBench.
+            Vamos usá-lo para melhorar o AuditProfiles.
           </p>
           <Link to="/">
             <Button variant="secondary">Voltar ao início</Button>

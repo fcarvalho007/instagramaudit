@@ -1,7 +1,7 @@
 /**
  * Resolve the Resend `From` header for transactional emails.
  *
- * Reads `RESEND_FROM` (e.g., `"InstaBench <relatorios@instagramaudit.pt>"`).
+ * Reads `RESEND_FROM` (e.g., `"AuditProfiles <relatorios@auditprofiles.com>"`).
  * No silent fallback: if `RESEND_FROM` is missing the caller must surface
  * a `RESEND_FROM_MISSING` error. We never fall back to Resend's sandbox
  * sender (`onboarding@resend.dev`) because that only delivers to the

@@ -31,7 +31,7 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
       <div className="flex h-14 items-center gap-2 border-b border-slate-100 px-5">
         <BrandMark size={24} />
         <span className="text-[15px] font-semibold tracking-tight text-slate-900">
-          InstaBench
+          AuditProfiles
         </span>
       </div>
 

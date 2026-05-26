@@ -27,7 +27,7 @@ export const Route = createFileRoute("/app/reports")({
   component: ReportsPage,
   head: () => ({
     meta: [
-      { title: "Relatórios — InstaBench" },
+      { title: "Relatórios — AuditProfiles" },
       { name: "robots", content: "noindex" },
     ],
   }),

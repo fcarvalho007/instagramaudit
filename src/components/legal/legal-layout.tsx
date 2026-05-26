@@ -76,7 +76,7 @@ export function LegalLayout({ eyebrow, title, lede, lastUpdated, toc, children }
           {/* Footer notes */}
           <footer className="max-w-3xl mt-16 md:mt-20 pt-8 border-t border-border-subtle space-y-4">
             <p className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
-              InstaBench não é afiliado, patrocinado nem operado pela Meta ou pelo Instagram. A
+              AuditProfiles não é afiliado, patrocinado nem operado pela Meta ou pelo Instagram. A
               análise incide sobre dados públicos disponíveis no Instagram.
             </p>
             <p className="font-sans text-xs text-content-tertiary leading-relaxed">

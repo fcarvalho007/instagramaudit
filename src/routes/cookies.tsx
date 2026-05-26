@@ -6,17 +6,17 @@ import { LEGAL } from "@/lib/brand/legal";
 export const Route = createFileRoute("/cookies")({
   head: () => ({
     meta: [
-      { title: "Política de Cookies — InstaBench" },
+      { title: "Política de Cookies — AuditProfiles" },
       {
         name: "description",
         content:
-          "Política de Cookies do InstaBench: utilizamos apenas cookies estritamente necessários ao funcionamento do serviço. Sem marketing, análise comportamental ou perfilamento.",
+          "Política de Cookies do AuditProfiles: utilizamos apenas cookies estritamente necessários ao funcionamento do serviço. Sem marketing, análise comportamental ou perfilamento.",
       },
-      { property: "og:title", content: "Política de Cookies — InstaBench" },
+      { property: "og:title", content: "Política de Cookies — AuditProfiles" },
       {
         property: "og:description",
         content:
-          "InstaBench utiliza apenas cookies estritamente necessários ao funcionamento do serviço.",
+          "AuditProfiles utiliza apenas cookies estritamente necessários ao funcionamento do serviço.",
       },
     ],
   }),
@@ -35,7 +35,7 @@ function CookiesPage() {
     <LegalLayout
       eyebrow="Documento legal"
       title="Política de Cookies"
-      lede="O InstaBench utiliza apenas cookies estritamente necessários ao funcionamento do serviço. Não utilizamos cookies de marketing, análise comportamental ou perfilamento publicitário."
+      lede="O AuditProfiles utiliza apenas cookies estritamente necessários ao funcionamento do serviço. Não utilizamos cookies de marketing, análise comportamental ou perfilamento publicitário."
       lastUpdated="11 de Maio de 2026"
       toc={TOC}
     >

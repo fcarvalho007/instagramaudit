@@ -34,7 +34,7 @@ export function ReportHero({ result, actions }: ReportHeroProps) {
     >
       <div className="mx-auto max-w-7xl px-5 md:px-6 pt-10 md:pt-14 pb-10 md:pb-12">
         <p className={cn(REDESIGN_TOKENS.eyebrowAccent, "mb-6")}>
-          InstaBench · Relatório editorial
+          AuditProfiles · Relatório editorial
         </p>
 
         <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">

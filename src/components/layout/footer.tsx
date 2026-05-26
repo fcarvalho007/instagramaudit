@@ -36,7 +36,7 @@ function Footer() {
             <BrandMark size={28} />
             <div className="min-w-0">
               <p className="font-display text-base font-semibold tracking-tight text-content-primary leading-tight">
-                InstaBench
+                AuditProfiles
               </p>
               <p
                 className="font-sans text-xs text-content-tertiary leading-snug"
@@ -68,7 +68,7 @@ function Footer() {
               className="font-sans text-xs text-content-tertiary text-center md:text-left"
               suppressHydrationWarning
             >
-              {t("copyright", { year, defaultValue: `© ${year} InstaBench. Todos os direitos reservados.` })}
+              {t("copyright", { year, defaultValue: `© ${year} AuditProfiles. Todos os direitos reservados.` })}
             </p>
             <LanguageSwitcher variant="full" />
           </div>

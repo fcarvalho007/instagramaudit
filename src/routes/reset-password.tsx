@@ -12,7 +12,7 @@ export const Route = createFileRoute("/reset-password")({
   component: ResetPasswordPage,
   head: () => ({
     meta: [
-      { title: "Recuperar palavra-passe — InstaBench" },
+      { title: "Recuperar palavra-passe — AuditProfiles" },
       { name: "robots", content: "noindex" },
     ],
   }),

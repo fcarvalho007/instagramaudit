@@ -16,8 +16,8 @@ export const Route = createFileRoute("/signup")({
   }),
   head: () => ({
     meta: [
-      { title: "Criar conta — InstaBench" },
-      { name: "description", content: "Cria uma conta InstaBench." },
+      { title: "Criar conta — AuditProfiles" },
+      { name: "description", content: "Cria uma conta AuditProfiles." },
       { name: "robots", content: "noindex" },
     ],
   }),

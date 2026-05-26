@@ -26,7 +26,7 @@ export const Route = createFileRoute("/admin")({
   component: AdminLayout,
   head: () => ({
     meta: [
-      { title: "Admin · InstaBench" },
+      { title: "Admin · AuditProfiles" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),

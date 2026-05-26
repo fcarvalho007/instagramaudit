@@ -1,5 +1,5 @@
 /**
- * React-PDF document for the v1 InstaBench report.
+ * React-PDF document for the v1 AuditProfiles report.
  *
  * Pure presentational component. All data must be pre-resolved upstream
  * (see `render.ts`) — no fetches, no DB calls, no AI here.
@@ -126,7 +126,7 @@ export interface ReportDocumentInput {
   generatedAt: string;
 }
 
-const FOOTER_BRAND = "InstaBench";
+const FOOTER_BRAND = "AuditProfiles";
 
 function PageFooter({ generatedAt }: { generatedAt: string }) {
   return (
@@ -146,7 +146,7 @@ function PageFooter({ generatedAt }: { generatedAt: string }) {
 function PageHeader({ kicker }: { kicker: string }) {
   return (
     <View style={styles.header} fixed>
-      <Text style={styles.brandMark}>INSTABENCH</Text>
+      <Text style={styles.brandMark}>AUDITPROFILES</Text>
       <Text style={styles.brandKicker}>{kicker}</Text>
     </View>
   );
@@ -797,11 +797,11 @@ function _ReportDocumentImpl(input: ReportDocumentInput) {
 
   return (
     <Document
-      title={`InstaBench · @${profile.username}`}
-      author="InstaBench"
+      title={`AuditProfiles · @${profile.username}`}
+      author="AuditProfiles"
       subject="Relatório de análise Instagram"
-      creator="InstaBench"
-      producer="InstaBench"
+      creator="AuditProfiles"
+      producer="AuditProfiles"
     >
       <CoverPage
         profile={profile}

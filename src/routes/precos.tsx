@@ -5,22 +5,22 @@ import { PricingPage } from "@/components/pricing/pricing-page";
 export const Route = createFileRoute("/precos")({
   head: () => ({
     meta: [
-      { title: "Preços — InstaBench" },
+      { title: "Preços — AuditProfiles" },
       {
         name: "description",
         content:
-          "Preços simples e transparentes do InstaBench: 1 relatório por 7€ ou pack de 5 por 28€. Sem subscrição.",
+          "Preços simples e transparentes do AuditProfiles: 1 relatório por 7€ ou pack de 5 por 28€. Sem subscrição.",
       },
-      { property: "og:title", content: "Preços — InstaBench" },
+      { property: "og:title", content: "Preços — AuditProfiles" },
       {
         property: "og:description",
         content:
-          "Preços simples e transparentes do InstaBench: 1 relatório por 7€ ou pack de 5 por 28€. Sem subscrição.",
+          "Preços simples e transparentes do AuditProfiles: 1 relatório por 7€ ou pack de 5 por 28€. Sem subscrição.",
       },
-      { property: "og:url", content: "https://instagramaudit.lovable.app/precos" },
+      { property: "og:url", content: "https://auditprofiles.com/precos" },
     ],
     links: [
-      { rel: "canonical", href: "https://instagramaudit.lovable.app/precos" },
+      { rel: "canonical", href: "https://auditprofiles.com/precos" },
     ],
   }),
   component: PrecosPage,

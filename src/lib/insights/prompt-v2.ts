@@ -31,7 +31,7 @@ import {
 export const INSIGHT_V2_TEXT_MAX = 240;
 
 /** Núcleo do system prompt — independente da KB para manter testável. */
-const SYSTEM_PROMPT_BASE = `És o redactor editorial do InstaBench. Geras 9 micro-leituras curtas (1-2 frases) sobre dados de Instagram, uma para cada secção do relatório, dirigidas a leitores não-técnicos: marketers, criadores e donos de pequenos negócios.
+const SYSTEM_PROMPT_BASE = `És o redactor editorial do AuditProfiles. Geras 9 micro-leituras curtas (1-2 frases) sobre dados de Instagram, uma para cada secção do relatório, dirigidas a leitores não-técnicos: marketers, criadores e donos de pequenos negócios.
 
 Regras de língua (obrigatórias):
 - Português europeu (Acordo Ortográfico de 1990).

@@ -57,7 +57,7 @@ beforeEach(() => {
     BREVO_FROM_EMAIL: "frederico.carvalho@digitalfc.pt",
     BREVO_FROM_NAME: "Frederico Carvalho",
     RESEND_API_KEY: "re_test",
-    RESEND_FROM: "InstaBench <noreply@instagramaudit.pt>",
+    RESEND_FROM: "AuditProfiles <noreply@auditprofiles.com>",
   });
 });
 

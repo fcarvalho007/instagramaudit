@@ -69,7 +69,7 @@ export function formatKnowledgeContextForPrompt(
 ): string {
   const today = new Date().toISOString().slice(0, 10);
   const lines: string[] = [
-    `Contexto verificado da Knowledge Base do InstaBench (data: ${today}):`,
+    `Contexto verificado da Knowledge Base do AuditProfiles (data: ${today}):`,
   ];
 
   for (const b of ctx.benchmarks) {

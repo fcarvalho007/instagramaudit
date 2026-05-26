@@ -6,7 +6,7 @@ export function ReportFooter() {
     <footer className="pt-6 mt-4 border-t border-border-subtle">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
         <p className="text-eyebrow text-content-tertiary">
-          Relatório gerado a {reportData.profile.analyzedAt} · InstaBench
+          Relatório gerado a {reportData.profile.analyzedAt} · AuditProfiles
         </p>
         <p className="text-eyebrow text-content-tertiary">
           Dados do Instagram público · RGPD compliant · Não afiliado com Meta

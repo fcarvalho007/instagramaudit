@@ -61,7 +61,7 @@ function Header() {
               <BrandMark size={32} />
             </span>
             <span className="font-display text-xl font-semibold tracking-tight text-content-primary">
-              InstaBench
+              AuditProfiles
             </span>
           </Link>
 

@@ -15,7 +15,7 @@ export const Route = createFileRoute("/unsubscribe")({
   component: UnsubscribePage,
   head: () => ({
     meta: [
-      { title: "Anular subscrição — InstaBench" },
+      { title: "Anular subscrição — AuditProfiles" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),

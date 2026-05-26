@@ -135,7 +135,7 @@ export function useReportShareActions(args: {
       if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
         try {
           await navigator.share({
-            title: document?.title ?? "Relatório InstaBench",
+            title: document?.title ?? "Relatório AuditProfiles",
             url: resolvedUrl,
           });
           return;

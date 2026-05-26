@@ -32,8 +32,8 @@ export interface BaseTemplateInput {
   feedbackUrl?: string | null;
 }
 
-export const BRAND = "InstaBench";
-export const SIGNATURE_NAME = "equipa InstaBench";
+export const BRAND = "AuditProfiles";
+export const SIGNATURE_NAME = "equipa AuditProfiles";
 
 export function escapeHtml(value: string): string {
   return value

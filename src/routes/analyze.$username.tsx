@@ -88,7 +88,7 @@ export const Route = createFileRoute("/analyze/$username")({
     return {
       meta: [
         {
-          title: `Análise de @${handle} · InstaBench`,
+          title: `Análise de @${handle} · AuditProfiles`,
         },
         {
           name: "description",
@@ -96,7 +96,7 @@ export const Route = createFileRoute("/analyze/$username")({
         },
         {
           property: "og:title",
-          content: `Análise de @${handle} · InstaBench`,
+          content: `Análise de @${handle} · AuditProfiles`,
         },
         {
           property: "og:description",

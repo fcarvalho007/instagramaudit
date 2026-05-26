@@ -13,7 +13,7 @@ interface InboxPreviewCardProps {
 export function InboxPreviewCard({
   subject,
   preheader,
-  senderName = "InstaBench",
+  senderName = "AuditProfiles",
 }: InboxPreviewCardProps) {
   const time = new Date().toLocaleTimeString("pt-PT", {
     hour: "2-digit",

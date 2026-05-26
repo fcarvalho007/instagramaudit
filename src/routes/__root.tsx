@@ -37,14 +37,14 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "InstaBench — Análise e benchmark de perfis Instagram" },
+      { title: "AuditProfiles — Análise e benchmark de perfis Instagram" },
       {
         name: "description",
         content:
           "Análise editorial e comparação com benchmarks de mercado para qualquer perfil público de Instagram. Relatório premium em menos de 30 segundos.",
       },
-      { name: "author", content: "InstaBench" },
-      { property: "og:title", content: "InstaBench — Análise e benchmark de perfis Instagram" },
+      { name: "author", content: "AuditProfiles" },
+      { property: "og:title", content: "AuditProfiles — Análise e benchmark de perfis Instagram" },
       {
         property: "og:description",
         content:
@@ -53,7 +53,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { property: "og:type", content: "website" },
       { property: "og:locale", content: "pt_PT" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "InstaBench — Análise e benchmark de perfis Instagram" },
+      { name: "twitter:title", content: "AuditProfiles — Análise e benchmark de perfis Instagram" },
       {
         name: "twitter:description",
         content:

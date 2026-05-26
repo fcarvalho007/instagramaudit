@@ -2,7 +2,7 @@
  * Instagram Benchmark Context — dataset editorial canónico.
  *
  * Fonte de verdade estática para o contexto de mercado usado pelo
- * relatório do InstaBench. Espelha (em forma de constantes) a política
+ * relatório do AuditProfiles. Espelha (em forma de constantes) a política
  * descrita em `KNOWLEDGE.md` e na `KnowledgeNote` "Política de fontes
  * de benchmark".
  *
