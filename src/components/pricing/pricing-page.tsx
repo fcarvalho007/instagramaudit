@@ -105,8 +105,8 @@ export function PricingPage() {
             id="single_report"
             tone="premium"
             label={t("single.label")}
-            title={t("single.title")}
-            price={t("single.price")}
+            title={plans.single_report.label}
+            price={plans.single_report.priceFormatted}
             bullets={singleBullets}
             cta={t("single.cta")}
             selected={selected === "single_report"}
@@ -116,9 +116,9 @@ export function PricingPage() {
             id="pack_5_reports"
             tone="best-value"
             label={t("pack.label")}
-            title={t("pack.title")}
-            price={t("pack.price")}
-            unit={t("pack.unit")}
+            title={plans.pack_5_reports.label}
+            price={plans.pack_5_reports.priceFormatted}
+            unit={plans.pack_5_reports.unitLabel ?? t("pack.unit")}
             badge={t("pack.savings_badge")}
             bullets={packBullets}
             cta={t("pack.cta")}
