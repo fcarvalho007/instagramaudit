@@ -454,6 +454,8 @@
     "lab": "Laboratório interno",
     "pro_active": "Premium ativo",
     "avatar_alt": "Avatar de {{handle}}",
+    "eyebrow_single": "Análise de perfil",
+    "eyebrow_multi": "A comparar {{count}} perfis",
     "access": {
       "badge_free": "Grátis",
       "badge_included": "Incluído",
