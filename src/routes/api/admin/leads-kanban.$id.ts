@@ -10,6 +10,13 @@ import { syncCustomerToBrevo } from "@/lib/brevo/customer-sync.server";
 import type { Json } from "@/integrations/supabase/types";
 
 const VALID_STATUSES = [
+  // Novos estados do funil de receita
+  "lead_magnet",
+  "checkout_iniciado",
+  "pago_report",
+  "pago_pack5",
+  "expirado",
+  // Estados legados (mantidos para retro-compatibilidade)
   "novo_pedido",
   "em_analise",
   "relatorio_gerado",
@@ -76,7 +83,10 @@ export const Route = createFileRoute("/api/admin/leads-kanban/$id")({
             );
           }
           updates.commercial_status = body.commercial_status;
-          if (body.commercial_status === "arquivado") {
+          if (
+            body.commercial_status === "arquivado" ||
+            body.commercial_status === "expirado"
+          ) {
             updates.archived_at = new Date().toISOString();
           }
         }
@@ -124,6 +134,44 @@ export const Route = createFileRoute("/api/admin/leads-kanban/$id")({
             { success: false, error: "Lead not found" },
             404
           );
+        }
+
+        // Side-effect: ao marcar manualmente como pago_report / pago_pack5
+        // cria um registo em `lead_payments` com provider='manual' para que
+        // o histórico financeiro seja consistente desde o dia 1.
+        if (
+          updates.commercial_status === "pago_report" ||
+          updates.commercial_status === "pago_pack5"
+        ) {
+          const isPack = updates.commercial_status === "pago_pack5";
+          const product = isPack ? "pack_5" : "report_single";
+          const amount = isPack ? 2800 : 700;
+          try {
+            // Não duplica se já existir um pagamento manual confirmado para
+            // este produto neste lead.
+            const { data: existing } = await supabaseAdmin
+              .from("lead_payments")
+              .select("id")
+              .eq("lead_id", params.id)
+              .eq("product", product)
+              .eq("status", "paid")
+              .eq("provider", "manual")
+              .maybeSingle();
+            if (!existing) {
+              await supabaseAdmin.from("lead_payments").insert([{
+                lead_id: params.id,
+                product,
+                amount_cents: amount,
+                currency: "EUR",
+                status: "paid",
+                provider: "manual",
+                paid_at: new Date().toISOString(),
+              }]);
+            }
+          } catch (err) {
+            console.error("[leads-kanban] manual payment insert failed", err);
+            // non-blocking
+          }
         }
 
         // Fire tracking event

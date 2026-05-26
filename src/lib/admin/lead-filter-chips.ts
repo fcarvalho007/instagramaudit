@@ -6,18 +6,18 @@
  */
 
 import type { EnrichedLead } from "./kanban-columns";
+import { deriveKanbanColumn } from "./kanban-columns";
 
 export type FilterChipKey =
   | "todos"
-  | "em_analise"
-  | "com_relatorio"
-  | "com_feedback"
-  | "potencial"
-  | "arquivados"
+  | "sem_pagar"
+  | "pagaram"
+  | "expirados"
   | "novos_hoje"
-  | "inativos_7d"
-  | "lead_magnet_ativo"
-  | "marketing_ok";
+  | "checkout_abandonado"
+  | "pagaram_semana"
+  | "lm_ativo_sem_ler"
+  | "candidato_pack";
 
 export type FilterChipGroup = "estado" | "atencao";
 
@@ -25,8 +25,8 @@ export interface FilterChip {
   key: FilterChipKey;
   label: string;
   group: FilterChipGroup;
-  /** Lista de `commercial_status` aceites; `null` = todos. */
-  statuses: string[] | null;
+  /** Colunas do board aceites; `null` = todas. */
+  columns: string[] | null;
   /** Predicado adicional aplicado depois da filtragem por `statuses`. */
   predicate?: (lead: EnrichedLead) => boolean;
 }
@@ -42,68 +42,87 @@ function daysAgoMs(days: number): number {
 }
 
 export const FILTER_CHIPS: FilterChip[] = [
-  { key: "todos", label: "Todos", group: "estado", statuses: null },
+  { key: "todos", label: "Todos", group: "estado", columns: null },
   {
-    key: "em_analise",
-    label: "Em análise",
+    key: "sem_pagar",
+    label: "Sem pagar",
     group: "estado",
-    statuses: ["novo_pedido", "em_analise"],
+    columns: ["lead_magnet", "checkout_iniciado"],
   },
   {
-    key: "com_relatorio",
-    label: "Com relatório",
+    key: "pagaram",
+    label: "Pagaram",
     group: "estado",
-    statuses: ["relatorio_gerado", "link_enviado", "relatorio_visto"],
+    columns: ["pago_report", "pago_pack5"],
   },
   {
-    key: "com_feedback",
-    label: "Com feedback",
+    key: "expirados",
+    label: "Expirados",
     group: "estado",
-    statuses: ["feedback_pedido", "feedback_recebido"],
+    columns: ["expirado"],
   },
-  {
-    key: "potencial",
-    label: "Potencial cliente",
-    group: "estado",
-    statuses: ["interessado", "potencial_cliente", "convertido"],
-  },
-  { key: "arquivados", label: "Arquivados", group: "estado", statuses: ["arquivado"] },
   {
     key: "novos_hoje",
     label: "Novos hoje",
     group: "atencao",
-    statuses: null,
+    columns: null,
     predicate: (l) => new Date(l.created_at).getTime() >= startOfTodayIso(),
   },
   {
-    key: "inativos_7d",
-    label: "Sem mexer · 7d",
+    key: "checkout_abandonado",
+    label: "Checkout abandonado · 24h",
     group: "atencao",
-    statuses: null,
+    columns: null,
+    predicate: (l) => {
+      const t = l.payment_summary?.pending_checkout_started_at;
+      return !!t && new Date(t).getTime() < daysAgoMs(1);
+    },
+  },
+  {
+    key: "pagaram_semana",
+    label: "Pagaram esta semana",
+    group: "atencao",
+    columns: null,
+    predicate: (l) => {
+      const t = l.payment_summary?.last_payment_at;
+      const paid = (l.payment_summary?.paid_products?.length ?? 0) > 0;
+      return paid && !!t && new Date(t).getTime() >= daysAgoMs(7);
+    },
+  },
+  {
+    key: "lm_ativo_sem_ler",
+    label: "LM activo · sem ler · 3d",
+    group: "atencao",
+    columns: null,
     predicate: (l) =>
-      l.commercial_status !== "arquivado" &&
-      new Date(l.last_interaction).getTime() < daysAgoMs(7),
+      l.is_lead_magnet_subscriber &&
+      l.report_views === 0 &&
+      new Date(l.last_interaction).getTime() < daysAgoMs(3),
   },
   {
-    key: "lead_magnet_ativo",
-    label: "Lead-magnet activo",
+    key: "candidato_pack",
+    label: "Candidato a Pack",
     group: "atencao",
-    statuses: null,
-    predicate: (l) => l.lead_magnet?.status === "active",
-  },
-  {
-    key: "marketing_ok",
-    label: "Aceitou marketing",
-    group: "atencao",
-    statuses: null,
-    predicate: (l) => l.marketing_consent === true,
+    columns: null,
+    predicate: (l) => {
+      const pay = l.payment_summary;
+      if (!pay) return false;
+      const hasReport = pay.paid_products.includes("report_single");
+      const hasPack = pay.paid_products.includes("pack_5");
+      if (!hasReport || hasPack) return false;
+      return !!pay.last_payment_at &&
+        new Date(pay.last_payment_at).getTime() < daysAgoMs(14);
+    },
   },
 ];
 
 export function matchesChip(lead: EnrichedLead, key: FilterChipKey): boolean {
   const chip = FILTER_CHIPS.find((c) => c.key === key);
   if (!chip) return true;
-  if (chip.statuses && !chip.statuses.includes(lead.commercial_status)) return false;
+  if (chip.columns) {
+    const col = deriveKanbanColumn(lead);
+    if (!col || !chip.columns.includes(col)) return false;
+  }
   if (chip.predicate && !chip.predicate(lead)) return false;
   return true;
 }

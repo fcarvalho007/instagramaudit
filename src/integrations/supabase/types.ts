@@ -594,6 +594,65 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_payments: {
+        Row: {
+          amount_cents: number
+          checkout_started_at: string | null
+          created_at: string
+          currency: string
+          expired_at: string | null
+          id: string
+          lead_id: string
+          metadata: Json
+          paid_at: string | null
+          product: string
+          provider: string | null
+          provider_reference: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          checkout_started_at?: string | null
+          created_at?: string
+          currency?: string
+          expired_at?: string | null
+          id?: string
+          lead_id: string
+          metadata?: Json
+          paid_at?: string | null
+          product: string
+          provider?: string | null
+          provider_reference?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          checkout_started_at?: string | null
+          created_at?: string
+          currency?: string
+          expired_at?: string | null
+          id?: string
+          lead_id?: string
+          metadata?: Json
+          paid_at?: string | null
+          product?: string
+          provider?: string | null
+          provider_reference?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_payments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           archived_at: string | null

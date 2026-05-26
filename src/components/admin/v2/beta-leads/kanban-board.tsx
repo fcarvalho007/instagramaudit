@@ -13,7 +13,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Search, ChevronDown, Inbox } from "lucide-react";
-import { KANBAN_COLUMNS, type EnrichedLead } from "@/lib/admin/kanban-columns";
+import {
+  KANBAN_COLUMNS,
+  deriveKanbanColumn,
+  type EnrichedLead,
+} from "@/lib/admin/kanban-columns";
 import {
   FILTER_CHIPS,
   matchesChip,
@@ -22,6 +26,14 @@ import {
 } from "@/lib/admin/lead-filter-chips";
 import { LeadCard } from "./lead-card";
 import { toast } from "sonner";
+
+/**
+ * Mapeia chave de coluna do board → valor a gravar em `leads.commercial_status`.
+ * Coincide 1:1 com as 5 colunas (todas valores válidos do schema).
+ */
+function mapColumnToStatus(columnKey: string): string {
+  return columnKey;
+}
 
 interface KanbanBoardProps {
   leads: EnrichedLead[];
@@ -47,12 +59,14 @@ export function KanbanBoard({
   const handleDrop = (targetKey: string, leadId: string) => {
     setDragOverColumn(null);
     const lead = leads.find((l) => l.id === leadId);
-    if (!lead || lead.commercial_status === targetKey) return;
+    if (!lead) return;
+    const currentCol = deriveKanbanColumn(lead);
+    if (currentCol === targetKey) return;
     const targetCol = KANBAN_COLUMNS.find((c) => c.key === targetKey);
     const label = targetCol?.label ?? targetKey;
     const previous = lead.commercial_status;
     const name = lead.name?.trim() || lead.email;
-    onUpdate(leadId, { commercial_status: targetKey });
+    onUpdate(leadId, { commercial_status: mapColumnToStatus(targetKey) });
     toast.success(`"${name}" movido para "${label}"`, {
       action: {
         label: "Anular",
@@ -75,8 +89,8 @@ export function KanbanBoard({
   };
 
   const activeChip = FILTER_CHIPS.find((c) => c.key === filterChip)!;
-  const visibleColumns = activeChip.statuses
-    ? KANBAN_COLUMNS.filter((c) => activeChip.statuses!.includes(c.key))
+  const visibleColumns = activeChip.columns
+    ? KANBAN_COLUMNS.filter((c) => activeChip.columns!.includes(c.key))
     : KANBAN_COLUMNS;
 
   const filteredLeads = useMemo(
@@ -226,7 +240,9 @@ export function KanbanBoard({
       {/* Mobile: accordion */}
       <div className="md:hidden flex flex-col gap-2">
         {visibleColumns.map((col) => {
-          const colLeads = filteredLeads.filter((l) => l.commercial_status === col.key);
+          const colLeads = filteredLeads.filter(
+            (l) => deriveKanbanColumn(l) === col.key,
+          );
           const isOpen = openMobileSection === col.key;
           return (
             <div
@@ -291,7 +307,7 @@ export function KanbanBoard({
         <div className="flex gap-3 pb-4" style={{ minWidth: "fit-content" }}>
           {visibleColumns.map((col) => {
             const colLeads = filteredLeads.filter(
-              (l) => l.commercial_status === col.key
+              (l) => deriveKanbanColumn(l) === col.key,
             );
             const isDragOver = dragOverColumn === col.key;
             return (
