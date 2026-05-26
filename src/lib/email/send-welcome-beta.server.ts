@@ -13,6 +13,7 @@
 import { renderWelcomeBeta } from "./templates/welcome-beta";
 import { sendTransactionalEmail } from "./transactional-email.server";
 import { resolveReportUrl, buildUnsubscribeUrl } from "./url";
+import { renderWithOverride } from "./template-overrides.server";
 
 export interface SendWelcomeBetaArgs {
   toEmail: string;
@@ -35,17 +36,29 @@ export async function sendWelcomeBetaEmail(
 ): Promise<SendWelcomeBetaResult> {
   let rendered;
   try {
-    rendered = renderWelcomeBeta({
-      firstName: args.firstName,
-      instagramHandle: args.instagramHandle,
-      reportUrl: resolveReportUrl(
-        args.instagramHandle,
-        args.reportSnapshotId ?? null,
-      ),
-      feedbackUrl:
-        args.feedbackUrl ?? (process.env.FEEDBACK_URL?.trim() || null),
-      unsubscribeUrl: args.leadId ? buildUnsubscribeUrl(args.leadId) : null,
-    });
+    const reportUrl = resolveReportUrl(
+      args.instagramHandle,
+      args.reportSnapshotId ?? null,
+    );
+    const feedbackUrl =
+      args.feedbackUrl ?? (process.env.FEEDBACK_URL?.trim() || null);
+    const unsubscribeUrl = args.leadId ? buildUnsubscribeUrl(args.leadId) : null;
+    rendered = await renderWithOverride(
+      "welcome_beta",
+      {
+        firstName: args.firstName ?? "",
+        instagramHandle: args.instagramHandle,
+        reportUrl,
+      },
+      () =>
+        renderWelcomeBeta({
+          firstName: args.firstName,
+          instagramHandle: args.instagramHandle,
+          reportUrl,
+          feedbackUrl,
+          unsubscribeUrl,
+        }),
+    );
   } catch (err) {
     return {
       ok: false,
