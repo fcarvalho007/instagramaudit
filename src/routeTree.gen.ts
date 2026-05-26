@@ -128,6 +128,7 @@ import { Route as ApiAdminKnowledgeOverviewRouteImport } from './routes/api/admi
 import { Route as ApiAdminKnowledgeNotesRouteImport } from './routes/api/admin/knowledge.notes'
 import { Route as ApiAdminKnowledgeExportRouteImport } from './routes/api/admin/knowledge.export'
 import { Route as ApiAdminKnowledgeBenchmarksRouteImport } from './routes/api/admin/knowledge.benchmarks'
+import { Route as ApiAdminEmailTemplatesKeyRouteImport } from './routes/api/admin/email-templates.$key'
 import { Route as AdminReportPreviewSnapshotSnapshotIdRouteImport } from './routes/admin.report-preview.snapshot.$snapshotId'
 import { Route as ApiPublicReportSnapshotByIdSnapshotIdRouteImport } from './routes/api/public/report-snapshot.by-id.$snapshotId'
 import { Route as ApiPublicAnalysisSnapshotByIdSnapshotIdRouteImport } from './routes/api/public/analysis-snapshot.by-id.$snapshotId'
@@ -769,6 +770,12 @@ const ApiAdminKnowledgeBenchmarksRoute =
     path: '/api/admin/knowledge/benchmarks',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAdminEmailTemplatesKeyRoute =
+  ApiAdminEmailTemplatesKeyRouteImport.update({
+    id: '/$key',
+    path: '/$key',
+    getParentRoute: () => ApiAdminEmailTemplatesRoute,
+  } as any)
 const AdminReportPreviewSnapshotSnapshotIdRoute =
   AdminReportPreviewSnapshotSnapshotIdRouteImport.update({
     id: '/report-preview/snapshot/$snapshotId',
@@ -869,7 +876,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
-  '/api/admin/email-templates': typeof ApiAdminEmailTemplatesRoute
+  '/api/admin/email-templates': typeof ApiAdminEmailTemplatesRouteWithChildren
   '/api/admin/follow-ups': typeof ApiAdminFollowUpsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
   '/api/admin/funnel': typeof ApiAdminFunnelRoute
@@ -903,6 +910,7 @@ export interface FileRoutesByFullPath {
   '/beta/submitted/$requestId': typeof BetaSubmittedRequestIdRoute
   '/report/print/$snapshotId': typeof ReportPrintSnapshotIdRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
+  '/api/admin/email-templates/$key': typeof ApiAdminEmailTemplatesKeyRoute
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
   '/api/admin/knowledge/export': typeof ApiAdminKnowledgeExportRoute
   '/api/admin/knowledge/notes': typeof ApiAdminKnowledgeNotesRouteWithChildren
@@ -997,7 +1005,7 @@ export interface FileRoutesByTo {
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
-  '/api/admin/email-templates': typeof ApiAdminEmailTemplatesRoute
+  '/api/admin/email-templates': typeof ApiAdminEmailTemplatesRouteWithChildren
   '/api/admin/follow-ups': typeof ApiAdminFollowUpsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
   '/api/admin/funnel': typeof ApiAdminFunnelRoute
@@ -1031,6 +1039,7 @@ export interface FileRoutesByTo {
   '/beta/submitted/$requestId': typeof BetaSubmittedRequestIdRoute
   '/report/print/$snapshotId': typeof ReportPrintSnapshotIdRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
+  '/api/admin/email-templates/$key': typeof ApiAdminEmailTemplatesKeyRoute
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
   '/api/admin/knowledge/export': typeof ApiAdminKnowledgeExportRoute
   '/api/admin/knowledge/notes': typeof ApiAdminKnowledgeNotesRouteWithChildren
@@ -1127,7 +1136,7 @@ export interface FileRoutesById {
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
-  '/api/admin/email-templates': typeof ApiAdminEmailTemplatesRoute
+  '/api/admin/email-templates': typeof ApiAdminEmailTemplatesRouteWithChildren
   '/api/admin/follow-ups': typeof ApiAdminFollowUpsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
   '/api/admin/funnel': typeof ApiAdminFunnelRoute
@@ -1161,6 +1170,7 @@ export interface FileRoutesById {
   '/beta/submitted/$requestId': typeof BetaSubmittedRequestIdRoute
   '/report/print/$snapshotId': typeof ReportPrintSnapshotIdRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
+  '/api/admin/email-templates/$key': typeof ApiAdminEmailTemplatesKeyRoute
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
   '/api/admin/knowledge/export': typeof ApiAdminKnowledgeExportRoute
   '/api/admin/knowledge/notes': typeof ApiAdminKnowledgeNotesRouteWithChildren
@@ -1292,6 +1302,7 @@ export interface FileRouteTypes {
     | '/beta/submitted/$requestId'
     | '/report/print/$snapshotId'
     | '/admin/report-preview/snapshot/$snapshotId'
+    | '/api/admin/email-templates/$key'
     | '/api/admin/knowledge/benchmarks'
     | '/api/admin/knowledge/export'
     | '/api/admin/knowledge/notes'
@@ -1420,6 +1431,7 @@ export interface FileRouteTypes {
     | '/beta/submitted/$requestId'
     | '/report/print/$snapshotId'
     | '/admin/report-preview/snapshot/$snapshotId'
+    | '/api/admin/email-templates/$key'
     | '/api/admin/knowledge/benchmarks'
     | '/api/admin/knowledge/export'
     | '/api/admin/knowledge/notes'
@@ -1549,6 +1561,7 @@ export interface FileRouteTypes {
     | '/beta/submitted/$requestId'
     | '/report/print/$snapshotId'
     | '/admin/report-preview/snapshot/$snapshotId'
+    | '/api/admin/email-templates/$key'
     | '/api/admin/knowledge/benchmarks'
     | '/api/admin/knowledge/export'
     | '/api/admin/knowledge/notes'
@@ -1626,7 +1639,7 @@ export interface RootRouteChildren {
   ApiAdminBillingReconciliationRoute: typeof ApiAdminBillingReconciliationRoute
   ApiAdminDataforseoDiagnosticsRoute: typeof ApiAdminDataforseoDiagnosticsRoute
   ApiAdminDiagnosticsRoute: typeof ApiAdminDiagnosticsRoute
-  ApiAdminEmailTemplatesRoute: typeof ApiAdminEmailTemplatesRoute
+  ApiAdminEmailTemplatesRoute: typeof ApiAdminEmailTemplatesRouteWithChildren
   ApiAdminFollowUpsRoute: typeof ApiAdminFollowUpsRoute
   ApiAdminForceRefreshRoute: typeof ApiAdminForceRefreshRoute
   ApiAdminFunnelRoute: typeof ApiAdminFunnelRoute
@@ -2528,6 +2541,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminKnowledgeBenchmarksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/email-templates/$key': {
+      id: '/api/admin/email-templates/$key'
+      path: '/$key'
+      fullPath: '/api/admin/email-templates/$key'
+      preLoaderRoute: typeof ApiAdminEmailTemplatesKeyRouteImport
+      parentRoute: typeof ApiAdminEmailTemplatesRoute
+    }
     '/admin/report-preview/snapshot/$snapshotId': {
       id: '/admin/report-preview/snapshot/$snapshotId'
       path: '/report-preview/snapshot/$snapshotId'
@@ -2666,6 +2686,20 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface ApiAdminEmailTemplatesRouteChildren {
+  ApiAdminEmailTemplatesKeyRoute: typeof ApiAdminEmailTemplatesKeyRoute
+}
+
+const ApiAdminEmailTemplatesRouteChildren: ApiAdminEmailTemplatesRouteChildren =
+  {
+    ApiAdminEmailTemplatesKeyRoute: ApiAdminEmailTemplatesKeyRoute,
+  }
+
+const ApiAdminEmailTemplatesRouteWithChildren =
+  ApiAdminEmailTemplatesRoute._addFileChildren(
+    ApiAdminEmailTemplatesRouteChildren,
+  )
+
 interface ApiAdminLeadsKanbanRouteChildren {
   ApiAdminLeadsKanbanIdRoute: typeof ApiAdminLeadsKanbanIdRoute
 }
@@ -2796,7 +2830,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminBillingReconciliationRoute: ApiAdminBillingReconciliationRoute,
   ApiAdminDataforseoDiagnosticsRoute: ApiAdminDataforseoDiagnosticsRoute,
   ApiAdminDiagnosticsRoute: ApiAdminDiagnosticsRoute,
-  ApiAdminEmailTemplatesRoute: ApiAdminEmailTemplatesRoute,
+  ApiAdminEmailTemplatesRoute: ApiAdminEmailTemplatesRouteWithChildren,
   ApiAdminFollowUpsRoute: ApiAdminFollowUpsRoute,
   ApiAdminForceRefreshRoute: ApiAdminForceRefreshRoute,
   ApiAdminFunnelRoute: ApiAdminFunnelRoute,
