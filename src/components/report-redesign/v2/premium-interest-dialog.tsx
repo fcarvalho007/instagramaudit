@@ -248,7 +248,7 @@ function PricingCard({
         <p className="text-xs text-content-tertiary tabular-nums">{unit}</p>
       ) : null}
       {launchPriceLabel ? (
-        <p className="mt-0.5 text-[11px] text-content-tertiary">{launchPriceLabel}</p>
+        <p className="mt-0.5 text-xs text-content-tertiary">{launchPriceLabel}</p>
       ) : null}
 
       <ul className="mt-3 space-y-1.5">

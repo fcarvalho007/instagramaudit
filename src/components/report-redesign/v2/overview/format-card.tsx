@@ -677,7 +677,7 @@ function ExternalReferenceTable({
             {t("format.external_ref.title")}
           </span>
           {range ? (
-            <span className="text-[11px] text-content-tertiary tabular-nums">
+            <span className="text-xs text-content-tertiary tabular-nums">
               {t("format.external_ref.subtitle", { range })}
             </span>
           ) : null}
@@ -714,7 +714,7 @@ function ExternalReferenceTable({
                 </span>
               </div>
               <div>
-                <span className="inline-block text-[11px] text-content-secondary bg-surface-muted px-2 py-0.5 rounded-full">
+                <span className="inline-block text-xs text-content-secondary bg-surface-muted px-2 py-0.5 rounded-full">
                   {readingFor(key, refData)}
                 </span>
               </div>

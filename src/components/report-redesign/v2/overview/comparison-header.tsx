@@ -50,7 +50,7 @@ export function ComparisonHeader() {
             <Plus className="size-3.5" aria-hidden="true" />
             <span>{t("comparison.cta_add")}</span>
             {/* PRO badge — local decorative amber/gold accent */}
-            <span className="ml-0.5 rounded bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold tracking-[0.04em] text-amber-500 leading-none">
+            <span className="ml-0.5 rounded bg-amber-400/20 px-1.5 py-0.5 text-[11px] font-bold tracking-[0.04em] text-amber-500 leading-none">
               PRO
             </span>
           </div>
@@ -116,7 +116,7 @@ function SocialCircle({ letter, bg }: { letter: string; bg: string }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center justify-center size-7 rounded-full text-white text-[11px] font-bold leading-none ring-2 ring-white",
+        "inline-flex items-center justify-center size-7 rounded-full text-white text-xs font-bold leading-none ring-2 ring-white",
         bg,
       )}
       aria-hidden="true"
