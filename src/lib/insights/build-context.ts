@@ -33,6 +33,8 @@ import type {
 import type { BenchmarkPositioning } from "@/lib/benchmark/types";
 import type { PersistedMarketSignals } from "@/lib/market-signals/cache";
 import type { InsightsContext } from "./types";
+import type { CaptionSemanticAnalysis } from "@/lib/report/caption-semantic-types";
+import type { VisualCoverAnalysis } from "@/lib/report/visual-cover-types";
 
 /** Subset of the `EnrichedPost` shape the helper actually reads. */
 type PostInput = {
@@ -66,6 +68,19 @@ export interface BuildInsightsCtxInput {
   benchmark: BenchmarkPositioning;
   /** Compact `market_signals` summary the prompt expects (already derived). */
   marketSignals: InsightsContext["market_signals"];
+  /**
+   * Optional caption-semantic OpenAI analysis already persisted on the
+   * snapshot. When `null/undefined`, the resulting ctx will NOT carry
+   * `caption_intelligence` and the verdict prompt will not mention topics.
+   */
+  captionSemantic?: CaptionSemanticAnalysis | null;
+  /**
+   * Optional visual-cover OpenAI analysis already persisted on the
+   * snapshot. When `null/undefined`, the resulting ctx will NOT carry
+   * `visual_cover` and the validator rejects any visual claim in the
+   * verdict paragraph.
+   */
+  visualCover?: VisualCoverAnalysis | null;
 }
 
 export interface BuildInsightsCtxResult {
@@ -96,6 +111,8 @@ export function buildInsightsCtx(
     competitorResults,
     benchmark,
     marketSignals,
+    captionSemantic,
+    visualCover,
   } = input;
 
   const successfulCompetitors = competitorResults.filter(
@@ -207,7 +224,83 @@ export function buildInsightsCtx(
     ...(editorialPatternsForAi
       ? { editorial_patterns: editorialPatternsForAi }
       : {}),
+    ...(captionSemantic
+      ? { caption_intelligence: deriveCaptionIntelligence(captionSemantic) }
+      : {}),
+    ...(visualCover
+      ? { visual_cover: deriveVisualCoverSummary(visualCover) }
+      : {}),
   };
 
   return { ctx, editorialPatternsForAi };
+}
+
+/**
+ * Compact, prompt-safe view of `caption_semantic_analysis`. Defensive:
+ * the upstream shape is OpenAI-generated and may have missing optional
+ * blocks (`brandVoice`, `hookQuality`, `formulaicPatterns`). Returns
+ * trimmed strings or `null`; the prompt is instructed to skip absent
+ * fields silently.
+ */
+function deriveCaptionIntelligence(
+  cs: CaptionSemanticAnalysis,
+): NonNullable<InsightsContext["caption_intelligence"]> {
+  const topics = Array.isArray(cs.dominantThemes)
+    ? cs.dominantThemes
+        .map((t) => (typeof t?.label === "string" ? t.label.trim() : ""))
+        .filter((s) => s.length > 0)
+        .slice(0, 3)
+    : [];
+  const hook =
+    cs.hookQuality && typeof cs.hookQuality.rating === "string"
+      ? `${cs.hookQuality.rating}${
+          cs.hookQuality.explanation
+            ? ` — ${cs.hookQuality.explanation.trim().slice(0, 120)}`
+            : ""
+        }`
+      : null;
+  const tone =
+    cs.brandVoice && typeof cs.brandVoice.rating === "string"
+      ? `${cs.brandVoice.rating}${
+          cs.brandVoice.explanation
+            ? ` — ${cs.brandVoice.explanation.trim().slice(0, 120)}`
+            : ""
+        }`
+      : null;
+  // Caption length pattern: prefer the formulaic pattern note when
+  // present; falls back to null so the prompt does not invent.
+  const lengthPattern =
+    cs.formulaicPatterns && cs.formulaicPatterns.hasFormulas
+      ? (cs.formulaicPatterns.explanation ?? "").trim().slice(0, 140) || null
+      : null;
+  return {
+    topics,
+    caption_length_pattern: lengthPattern,
+    tone_summary: tone,
+    hook_pattern: hook,
+  };
+}
+
+/**
+ * Compact view of `visual_cover_analysis`. Maps the `aggregate` +
+ * `status` fields into the editorial vocabulary used by the verdict
+ * prompt. `consistency` is derived from `repeatedTemplateCount`:
+ *  - >= 4   → "consistent" (a true visual signature)
+ *  - 1..3   → "mixed"
+ *  - 0      → "inconsistent"
+ */
+function deriveVisualCoverSummary(
+  v: VisualCoverAnalysis,
+): NonNullable<InsightsContext["visual_cover"]> {
+  const repeated = v.aggregate?.repeatedTemplateCount ?? 0;
+  const consistency: "consistent" | "mixed" | "inconsistent" | null =
+    repeated >= 4 ? "consistent" : repeated >= 1 ? "mixed" : "inconsistent";
+  return {
+    summary: (v.summary ?? "").trim().slice(0, 240),
+    consistency,
+    visual_clarity: v.status,
+    cover_pattern: v.aggregate?.repeatedTemplateNote
+      ? v.aggregate.repeatedTemplateNote.trim().slice(0, 200)
+      : null,
+  };
 }
