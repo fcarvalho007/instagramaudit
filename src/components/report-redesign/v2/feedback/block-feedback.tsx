@@ -232,7 +232,7 @@ export function BlockFeedback({
     >
       <div
         className={cn(
-          "mx-auto max-w-4xl bg-surface-primary border border-border-default",
+          "mx-auto max-w-4xl bg-surface-secondary border border-border-default rounded-2xl",
           "px-6 py-10 sm:px-12 sm:py-14 text-center",
           "shadow-[0_2px_15px_rgba(15,23,42,0.03)]",
         )}
@@ -243,7 +243,7 @@ export function BlockFeedback({
 
         <h3
           className={cn(
-            "mt-5 font-serif italic font-normal leading-tight",
+            "mt-5 font-display italic font-normal leading-tight",
             "text-content-primary text-3xl sm:text-4xl md:text-[2.75rem]",
           )}
         >
