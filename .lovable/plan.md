@@ -1,50 +1,152 @@
-## Diagnóstico
 
-A discrepância no perfil `@lg_portugal` (Card 1 = "0 por post"; Card P05 = "0,4 por post") tem causa identificada:
+# Plano — Refinamentos Socialinsider no relatório público
 
-- Os **12 posts** persistidos têm um total de **5 comentários** → média real = **0,42/post**.
-- O Card 1 (Visão geral · `EditorialIdentityCard`) lê `payload.content_summary.average_comments`.
-- O Card P05 (Resposta do público · `classifyAudienceResponse`) recalcula a partir de `payload.posts`.
+Cinco mudanças cirúrgicas. Sem alterar o pipeline de dados, schema, valores de benchmark, providers ou `/report.example`.
 
-No snapshot atual (`b1fe467a-…`) o campo persistido `content_summary.average_comments` vale **0** (inteiro), não `0.42`. Foi gerado antes da correção de `toFixed(2)` em `src/lib/analysis/normalize.ts` (linhas 264-268, cujo comentário descreve este mesmo bug histórico). Como o snapshot é cache imutável, qualquer arranjo só em `normalize.ts` não corrige relatórios já guardados — e o problema vai voltar sempre que houver um snapshot antigo em cache.
+---
 
-A única forma de garantir paridade entre o Card 1 e o P05 (e qualquer card futuro) é ter **uma única fonte de verdade em runtime**: derivar as médias do array `payload.posts` (que já é usado pelo P05), em vez de confiar no campo agregado `content_summary` que pode estar dessincronizado.
+## 1. FormatCard — layout mobile empilhado
 
-## Plano
+Ficheiro: `src/components/report-redesign/v2/overview/format-card.tsx` (função `ExternalReferenceTable`, linhas 533–670).
 
-**1. Centralizar o cálculo de médias num utilitário partilhado**
-- Criar `src/lib/report/post-aggregates.ts` com:
-  - `computePostAverages(posts)` → `{ averageLikes, averageComments, postsAnalyzed }`
-  - Usa `payload.posts` diretamente, ignorando `content_summary` quando há posts.
-  - Mantém precisão (sem `Math.round`), devolve `null` quando `posts.length === 0`.
+Hoje a grelha `grid-cols-[1fr_1.1fr_1.2fr_1fr]` é aplicada em todos os breakpoints, o que comprime as 4 colunas em mobile e quebra a leitura.
 
-**2. Card 1 (Visão geral) passa a usar o utilitário**
-- Em `src/components/report-redesign/v2/report-overview-block.tsx`:
-  - Substituir o `useMemo` de `avgComments` (que faz média apenas dos top-5 de `enriched.topPosts`) por `computePostAverages(payload?.posts)`.
-  - `averageLikes` e `averageComments` passados a `<EditorialIdentityCard>` vêm desse utilitário; só caem para `payload.content_summary.*` se `payload.posts` estiver vazio (snapshots antigos sem array de posts).
-- Resultado visível: `0,4 por post` aparece no Card 1, idêntico ao P05.
+Refactor:
 
-**3. P05 alinha-se ao mesmo utilitário (paridade explícita)**
-- Em `src/lib/report/block02-diagnostic.ts` → `classifyAudienceResponse`:
-  - Manter a assinatura `(posts)` (continua a receber `payload.posts`).
-  - Internamente continuar a usar o mesmo total/contagem; adicionar um teste curto que confirma que `avgComments` devolvido bate certo com `computePostAverages(posts).averageComments`.
+- **Mobile (< 640px / `sm`)**: render como lista vertical de mini-cards (uma entrada por formato), com a estrutura:
+  ```
+  ┌─────────────────────────────┐
+  │ Carrosséis                  │  ← format name (text-[14px], primary)
+  │ Este perfil      8 · 67%    │  ← label esquerda / valor direita
+  │ Referência ext.  6/mês · 1.34% ER
+  │ ▸ Acima da referência       │  ← reading badge (chip discreto)
+  └─────────────────────────────┘
+  ```
+  Cada mini-card: `rounded-lg border border-border-subtle/60 bg-surface-secondary p-3 space-y-1.5`. Reading badge como chip de fundo neutro (`bg-surface-muted text-content-secondary text-[11px] px-2 py-0.5 rounded-full`).
 
-**4. Testes**
-- `src/lib/report/__tests__/post-aggregates.test.ts`:
-  - Caso `lg_portugal` real (12 posts, 5 comentários) → `0.4` (não 0).
-  - Caso sem posts → devolve `null`.
-- `src/lib/report/__tests__/overview-vs-block02-parity.test.ts`:
-  - Dado o mesmo `payload.posts`, o valor exibido pelo Card 1 (via utilitário) é igual ao `avgComments` devolvido por `classifyAudienceResponse`.
+- **Desktop (`sm:` em diante)**: manter a grelha actual de 4 colunas como já está.
 
-## Fora de âmbito
+Implementação: dois blocos JSX paralelos com `className="sm:hidden"` e `className="hidden sm:grid ..."`, partilhando os mesmos helpers `profileCell` / `refCell` / `readingFor` (sem duplicação de lógica).
 
-- Não regerar snapshots antigos nem alterar a estrutura persistida (`content_summary` mantém-se como está; passa apenas a ser fallback).
-- Não tocar em copy, layout, tokens, ou no card P05 visualmente — só na fonte do número.
-- Não tocar em `normalize.ts` (já está correto para snapshots futuros).
+## 2. Copy neutra das leituras
 
-## Checkpoint
+As 3 chaves `format.external_ref.reading_*` em `src/i18n/locales/{pt,en}/report.json` passam de "frequência" → linguagem neutra de referência:
 
-- ☐ `post-aggregates.ts` criado e testado
-- ☐ Card 1 mostra `0,4 por post` para `@lg_portugal` (igual ao P05)
-- ☐ Snapshots antigos sem `posts` continuam a renderizar (fallback para `content_summary`)
-- ☐ Testes de paridade verdes
+| Chave | PT (novo) | EN (novo) |
+|---|---|---|
+| `reading_above_freq` | `Acima da referência` | `Above the reference` |
+| `reading_below_freq` | `Abaixo da referência` | `Below the reference` |
+| `reading_near_freq` | `Próximo da referência` | `Near the reference` |
+
+`absent` já é `ausente na amostra` (mantém). `provisional` já é `Leitura provisória — amostra pequena.` (mantém).
+
+## 3. Bridge entre verdict editorial e tabela
+
+Em `FormatCard` (depois do `InsightCallout`, antes do `<ExternalReferenceTable />`, linha ~338), adicionar:
+
+```tsx
+<p className="px-5 md:px-6 mt-2 text-[13px] text-content-secondary leading-relaxed">
+  {t("format.external_ref.bridge")}
+</p>
+```
+
+Novas chaves i18n:
+
+- PT: `"Usa esta leitura como enquadramento: abaixo comparas o mix do perfil com uma referência externa por formato."`
+- EN: `"Use this as context: below you compare this profile's format mix with an external format reference."`
+
+## 4. Metodologia — distinguir tier vs referência externa
+
+`ExternalSourceNote` é o único ponto onde a fonte é nomeada hoje. Vou estender o template i18n `external_source_note.template` para incluir a clarificação dos dois layers:
+
+Novas chaves em `src/i18n/locales/{pt,en}/report.json`:
+
+```jsonc
+"external_source_note": {
+  "template": "Fonte externa: {{source}}, dados {{range}}.",
+  "methodology": "Benchmark do escalão: compara o perfil com contas de dimensão semelhante. Referência externa: usa dados agregados da Socialinsider por formato no Instagram. Estas referências servem para enquadramento, não como meta fixa."
+}
+```
+
+EN:
+```jsonc
+"methodology": "Tier benchmark: compares the profile with accounts of a similar size. External reference: uses aggregated Socialinsider data by Instagram format. These references provide context, not a fixed target."
+```
+
+Em `external-source-note.tsx`, renderizar `methodology` numa linha adicional discreta abaixo do `template` (`text-[11px] text-content-tertiary mt-1`). Sem nova secção visual — fica no slot que já existe no fundo de `FormatCard` e `FrequencyCard`.
+
+## 5. FrequencyCard — auditoria de copy
+
+`frequency.external_ref.intro` já diz literalmente `"Não é uma regra fixa nem um total prescrito"`. ✔ Já não soma frequências num total — apenas lista por formato com `≈`. Sem mudanças de lógica.
+
+Single small tweak: trocar `"opportunity_mix"` de `"A oportunidade pode estar no mix de formatos, não no volume."` (mantém — é não-imperativo, OK). **Nenhuma mudança** necessária no FrequencyCard.
+
+## 6. Comentário no cálculo `refShare`
+
+Em `format-card.tsx` linhas 577–591 (função `readingFor`, dentro de `ExternalReferenceTable`), adicionar bloco de comentário:
+
+```ts
+// refShare: only used for DIRECTIONAL comparison of mix between this profile
+// and the Socialinsider per-format reference. It is NEVER displayed as a
+// total posting target and must NOT be interpreted as a recommended monthly
+// volume. Socialinsider data is an external reference for context only.
+```
+
+## 7. Testes
+
+Ficheiros novos/actualizados:
+
+### `src/lib/knowledge/__tests__/socialinsider-context.test.ts` (novo)
+- Mock de `supabaseAdmin` (vi.mock) devolvendo 3 linhas (reel/carousel/image) com `knowledge_sources.name = "Socialinsider"`.
+- Assert: `loadSocialinsiderInstagramContext()` devolve `{ reel, carousel, image }` todos preenchidos com `postsPerMonth`/`engagementPct` numéricos.
+- Assert: linhas sem source `Socialinsider` são ignoradas.
+- Assert: chama `__resetSocialinsiderCache()` entre testes.
+
+### `src/components/report-redesign/v2/overview/__tests__/format-card.test.tsx` (novo)
+- Render do `FormatCard` com `socialinsiderRef` e i18n stub:
+  - mostra `format.external_ref.title` (source note presente).
+  - reels com `count: 0` → célula mostra `"ausente na amostra"` e NÃO contém palavras imperativas (`/deve|tem de|ideal|meta|regra/i`).
+  - `postsAnalyzed = 5` → mostra `format.external_ref.provisional`.
+- Render do mini-card empilhado em viewport mobile (verificar pela presença de classes `sm:hidden` e que cada formato aparece como bloco distinto).
+
+### `src/components/report-redesign/v2/overview/__tests__/frequency-card.test.tsx` (novo, mínimo)
+- Render do `FrequencyCard` com 3 refs Socialinsider distintas (postsPerMonth 4/6/3).
+- Assert: o texto renderizado NÃO contém a soma `"13"` nem `"~13/mês"`. Só as 3 frequências separadas.
+
+### Copy assertions (`socialinsider-copy.test.ts`, novo em `src/i18n/__tests__/`)
+- Carregar `pt/report.json` + `en/report.json`.
+- Assert: `format.external_ref.reading_*` não contém `/deve|tem de|ideal|meta|regra|target|must|should/i`.
+- Assert: `external_source_note.methodology` existe em ambos e distingue "escalão"/"tier" de "referência externa"/"external reference".
+- Assert: nenhuma string fora de `format.external_ref.*` menciona literalmente "Socialinsider" (excepto `external_source_note` que é dinâmica) — confirma que valores Socialinsider não estão hardcoded em copy editorial.
+
+## 8. Ficheiros tocados
+
+| Ficheiro | Mudança |
+|---|---|
+| `src/components/report-redesign/v2/overview/format-card.tsx` | mobile stacked layout + bridge + comentário refShare |
+| `src/components/report-redesign/v2/overview/external-source-note.tsx` | render linha `methodology` |
+| `src/i18n/locales/pt/report.json` | bridge, reading_* neutras, methodology |
+| `src/i18n/locales/en/report.json` | idem |
+| `src/lib/knowledge/__tests__/socialinsider-context.test.ts` | novo |
+| `src/components/report-redesign/v2/overview/__tests__/format-card.test.tsx` | novo |
+| `src/components/report-redesign/v2/overview/__tests__/frequency-card.test.tsx` | novo |
+| `src/i18n/__tests__/socialinsider-copy.test.ts` | novo |
+
+## 9. Fora de âmbito
+
+- Apify, OpenAI, DataForSEO, pipeline, gates, pricing, admin CRM, schema, valores de benchmark, Block 1, `/report.example`.
+- Não toco em `frequency-card.tsx` (copy já é neutra e não soma totais).
+- Não mudo `socialinsider-context.server.ts` (lógica está correcta).
+
+## ☐ Checkpoint
+
+- ☐ Mobile: cada formato como mini-card empilhado; desktop mantém grelha 4-col
+- ☐ Reading labels neutras (`acima/abaixo/próximo da referência`)
+- ☐ Bridge editorial → tabela presente
+- ☐ Linha de metodologia render em FormatCard e FrequencyCard
+- ☐ Comentário sobre `refShare` adicionado
+- ☐ 4 ficheiros de testes novos a verde
+- ☐ `bunx tsc --noEmit` e `bunx vitest run` limpos
+- ☐ Confirmação: zero providers chamados (só leitura de `knowledge_benchmarks` via cache existente)
+
+Aprovas para implementar?
