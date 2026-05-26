@@ -88,12 +88,12 @@ import {
 } from "@/lib/enrichment/types";
 import { prefetchThumbnailsAsBase64 } from "@/lib/analysis/thumbnail-cache.server";
 import { setEnrichmentStatusAtomic } from "@/lib/analysis/cache";
+import { PUBLIC_INSTAGRAM_POSTS_LIMIT } from "@/lib/analysis/constants";
 
 // Unified Apify actor — returns profile details with `latestPosts[]` embedded
 // in a single call per handle. Replaces the previous two-actor split.
 const UNIFIED_ACTOR = "apify/instagram-scraper";
 const MAX_COMPETITORS = 2;
-import { PUBLIC_INSTAGRAM_POSTS_LIMIT } from "@/lib/analysis/constants";
 
 const usernameSchema = z
   .string()
