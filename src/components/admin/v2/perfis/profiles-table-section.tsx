@@ -16,6 +16,7 @@ import { AdminActionButton } from "../admin-action-button";
 import { AdminSectionHeader } from "../admin-section-header";
 import { FilterPills, type FilterOption } from "../filter-pills";
 import { AdminSearchInput, type AdminSearchInputHandle } from "../admin-search-input";
+import { AdminInfoTooltip } from "../admin-info-tooltip";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useCmdK } from "@/hooks/use-cmd-k";
 import { ADMIN_LITERAL } from "../admin-tokens";
@@ -158,8 +159,12 @@ export function ProfilesTableSection({ period }: { period: AdminPeriod }) {
               <tr className="text-admin-text-tertiary">
                 <Th>Perfil</Th>
                 <Th>Rede</Th>
-                <Th align="right">Análises</Th>
-                <Th align="right">Cache</Th>
+                <Th align="right" info="Snapshots gerados na janela seleccionada. 1 análise = 1 snapshot real.">
+                  Análises
+                </Th>
+                <Th align="right" info="Pesquisas servidas a partir de snapshot guardado (não geraram análise nova). Poupa custo de provider.">
+                  Cache hits
+                </Th>
                 <Th align="right">Reports</Th>
                 <Th align="right">Conversão</Th>
                 <Th>Última actividade</Th>
@@ -213,6 +218,10 @@ export function ProfilesTableSection({ period }: { period: AdminPeriod }) {
           </div>
         </div>
       </AdminCard>
+      <p className="mt-2 text-[12px] text-admin-text-tertiary">
+        <strong className="text-admin-text-secondary">Análise</strong> = snapshot novo gerado pelo provider.{" "}
+        <strong className="text-admin-text-secondary">Cache hits</strong> = pesquisa repetida servida do cache (sem custo de Apify).
+      </p>
     </section>
   );
 }
@@ -220,9 +229,11 @@ export function ProfilesTableSection({ period }: { period: AdminPeriod }) {
 function Th({
   children,
   align = "left",
+  info,
 }: {
   children: React.ReactNode;
   align?: "left" | "right";
+  info?: string;
 }) {
   return (
     <th
@@ -230,7 +241,14 @@ function Th({
         align === "right" ? "text-right" : "text-left"
       }`}
     >
-      {children}
+      {info ? (
+        <span className={`inline-flex items-center gap-1 ${align === "right" ? "flex-row-reverse" : ""}`}>
+          <span>{children}</span>
+          <AdminInfoTooltip label={info} />
+        </span>
+      ) : (
+        children
+      )}
     </th>
   );
 }
