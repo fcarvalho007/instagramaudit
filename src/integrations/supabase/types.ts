@@ -296,6 +296,69 @@ export type Database = {
         }
         Relationships: []
       }
+      email_template_history: {
+        Row: {
+          action: string
+          changed_at: string
+          changed_by_email: string | null
+          id: string
+          snapshot: Json
+          template_key: string
+        }
+        Insert: {
+          action: string
+          changed_at?: string
+          changed_by_email?: string | null
+          id?: string
+          snapshot: Json
+          template_key: string
+        }
+        Update: {
+          action?: string
+          changed_at?: string
+          changed_by_email?: string | null
+          id?: string
+          snapshot?: Json
+          template_key?: string
+        }
+        Relationships: []
+      }
+      email_template_overrides: {
+        Row: {
+          body_html: string | null
+          body_text: string | null
+          created_at: string
+          headline: string | null
+          preheader: string | null
+          subject: string | null
+          template_key: string
+          updated_at: string
+          updated_by_email: string | null
+        }
+        Insert: {
+          body_html?: string | null
+          body_text?: string | null
+          created_at?: string
+          headline?: string | null
+          preheader?: string | null
+          subject?: string | null
+          template_key: string
+          updated_at?: string
+          updated_by_email?: string | null
+        }
+        Update: {
+          body_html?: string | null
+          body_text?: string | null
+          created_at?: string
+          headline?: string | null
+          preheader?: string | null
+          subject?: string | null
+          template_key?: string
+          updated_at?: string
+          updated_by_email?: string | null
+        }
+        Relationships: []
+      }
       enrichment_jobs: {
         Row: {
           analysis_event_id: string | null
