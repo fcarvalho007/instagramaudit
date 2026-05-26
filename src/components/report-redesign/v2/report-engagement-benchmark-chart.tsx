@@ -160,12 +160,12 @@ export function ReportEngagementBenchmarkChart({
               >
                 <div className="flex items-center gap-2 sm:gap-3">
                   {/* Label — no numbering */}
-                  <div className="flex flex-col leading-tight min-w-[64px] sm:min-w-[100px] shrink-0">
+                  <div className="flex flex-col leading-tight min-w-[56px] sm:min-w-[100px] shrink-0">
                     <span className="text-[13px] font-bold text-content-primary">
                       {tier.tierLabel}
                     </span>
                     {sub && (
-                      <span className="flex items-center gap-1.5">
+                      <span className="flex flex-wrap items-center gap-1.5">
                         <span
                           className="text-xs font-semibold tracking-[0.06em]"
                           style={{ color: isPositive ? "rgb(29,158,117)" : "rgb(163,45,45)" }}
@@ -173,7 +173,7 @@ export function ReportEngagementBenchmarkChart({
                           {sub}
                         </span>
                         <span
-                          className="text-[11px] font-medium text-content-secondary/60"
+                          className="text-[11px] font-medium text-content-secondary/60 whitespace-nowrap"
                         >
                           ← ESTÁS AQUI
                         </span>
@@ -235,7 +235,7 @@ export function ReportEngagementBenchmarkChart({
                   {/* Value — tier reference (consistent with inactive rows) */}
                   <span
                     className={cn(
-                      "tabular-nums text-[14px] sm:text-[15px] font-bold shrink-0 min-w-[60px] sm:min-w-[64px] text-right",
+                      "tabular-nums text-[14px] sm:text-[15px] font-bold shrink-0 min-w-[48px] sm:min-w-[64px] text-right",
                       isPositive ? "text-signal-success" : "text-signal-danger"
                     )}
                   >
@@ -256,7 +256,7 @@ export function ReportEngagementBenchmarkChart({
             >
               <div className="flex items-center gap-2 sm:gap-3">
                 {/* Label — no numbering */}
-                <div className="flex flex-col leading-tight min-w-[64px] sm:min-w-[100px] shrink-0">
+                <div className="flex flex-col leading-tight min-w-[56px] sm:min-w-[100px] shrink-0">
                   <span className="text-[13px] sm:text-[14px] font-semibold text-content-secondary">
                     {tier.tierLabel}
                   </span>
@@ -279,7 +279,7 @@ export function ReportEngagementBenchmarkChart({
                 </div>
 
                 {/* Value */}
-                <span className="text-[14px] sm:text-[15px] tabular-nums font-semibold shrink-0 min-w-[60px] sm:min-w-[64px] text-right text-content-secondary">
+                <span className="text-[14px] sm:text-[15px] tabular-nums font-semibold shrink-0 min-w-[48px] sm:min-w-[64px] text-right text-content-secondary">
                   {fmtRate(tier.engagementRatePct)}
                 </span>
               </div>
