@@ -190,11 +190,22 @@ export const submitBetaRequest = createServerFn({ method: "POST" })
       if (resendApiKey && data.email) {
         const { renderRequestReceived } = await import("./email/templates");
         const { resolveSender } = await import("./email/sender");
+        const { renderWithOverride } = await import(
+          "./email/template-overrides.server"
+        );
         const firstName = data.name?.trim().split(/\s+/)[0] ?? null;
-        const { subject, html, text } = renderRequestReceived({
-          firstName,
-          instagramHandle: data.instagramHandle,
-        });
+        const { subject, html, text } = await renderWithOverride(
+          "request_received",
+          {
+            firstName: firstName ?? "",
+            instagramHandle: data.instagramHandle,
+          },
+          () =>
+            renderRequestReceived({
+              firstName,
+              instagramHandle: data.instagramHandle,
+            }),
+        );
         const controller = new AbortController();
         const t = setTimeout(() => controller.abort(), 10_000);
         try {
