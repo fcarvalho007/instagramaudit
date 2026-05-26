@@ -1,41 +1,71 @@
-## Estado actual (já implementado)
+## Resposta directa
 
-A maior parte do trabalho do passo anterior já está no código:
+**Modal de feedback beta** (`beta_feedback`): grava na BD e é parcialmente consumido pelo admin — aparece como contexto em **Pipeline / Beta-leads / Follow-ups** (anexado a cada lead). NÃO existe vista agregada (intenção de compra, pricing preference, score de utilidade, texto livre) consolidada.
 
-- `src/lib/report/editorial-verdict-fallback.ts` aceita `FallbackQualifiers` com `cadenceLabelPt`, `hashtagsState`, `topHashtags`, `hasRecurringHashtags`, `cadenceMethod`. As regras descritas no pedido (recurring/weak/absent, cita até 2 tags com `#`, sem `%`, prioridade do `cadenceLabelPt`, frase cautelosa quando insuficiente) já estão implementadas.
-- `src/lib/insights/build-context.ts` já deriva `top_hashtags`, `hashtags_state`, `cadence_label_pt` e injecta `caption_intelligence` + `visual_cover` quando há análise persistida.
-- `snapshot-to-report-data.ts` → `report-overview-block.tsx` → `EditorialIdentityCard` já propagam `cadenceLabelPt`, `hashtagsState`, `topHashtags` para o fallback.
-- `EditorialIdentityCard` nunca renderiza `ai_insights_v2.sections.hero.text` (comentário explícito + `copy` vem só de `resolved.title/paragraph`). Não existe `deriveCopyFromAi` no caminho activo (a única referência a `AI_INSIGHTS_MOCK.hero.text` é a página de exemplo `report-page.tsx`, mock isolado).
-- Testes existentes: `validate-v2-verdict.test.ts` (cobre 90–140 palavras, máx 4 frases, sem `%`, sem métricas privadas, `HASHTAGS_NOT_HANDLED`, `VISUAL_CLAIM_UNSUPPORTED`, `PTBR_LEAK`, evidências), `build-context-hashtags.test.ts` (recurring/weak/absent + cadence label), `editorial-verdict-fallback.test.ts` (retrocompat, recurring, weak, absent, prioridade `cadenceLabelPt`, sem `%`).
+**Emojis inline** (`inline_report_feedback`, 5 ratings por bloco): grava na BD via `/api/public/inline-feedback`, **mas nenhuma rota admin lê esta tabela**. Hoje é dado opaco. Volume actual: 0 registos (tabela criada agora).
 
-## Gaps a fechar
+Conclusão: a informação está dispersa e crua. Justifica-se uma nova secção dedicada.
 
-1. **Falta o ficheiro `src/lib/insights/__tests__/build-context-caption-visual.test.ts`** com 4 casos: caption presente / caption ausente / visual presente / visual ausente — assegurando que `ctx.caption_intelligence` e `ctx.visual_cover` são incluídos/omissos de forma segura.
+## Proposta — `/admin/estudo-mercado`
 
-2. **Reforçar `editorial-verdict-fallback.test.ts`** com 2 cenários ainda não cobertos:
-   - fallback sem `cadenceLabelPt` nem `cadenceMethod` (apenas hashtags absent) — confirma linguagem cautelosa, sem frase de cadência.
-   - fallback é diagnóstico, não prescritivo — paragraph não contém verbos prescritivos no imperativo (`publica`, `usa`, `aposta`, `cria`, `evita`, `reduz`, `aumenta`, `começa`, `deves`, `tens de`).
-   - (legacy hero text): assert directo de que o paragraph não contém marcadores conhecidos do hero mock (`AI_INSIGHTS_MOCK.hero.text`). A função não importa nada do hero, mas o teste serve de guarda contra regressões.
+Nova entrada na sidebar dentro de um novo grupo **"Estudo de mercado"** (acima de "Sistema") com 1 item agora e espaço para crescer.
 
-3. **Confirmação de segurança legacy**: nenhuma alteração de código — só validação por `rg` que `sections.hero.text` continua sem ser consumido pelo card e que `deriveCopyFromAi` continua inexistente. Já confirmado durante a exploração; será re-executado e reportado.
+### Estrutura da página (3 separadores internos)
 
-4. **Validação final**:
-   - `bunx tsc --noEmit`
-   - `bunx vitest run`
-   - Reporte estruturado conforme os 10 pontos pedidos.
+```
+┌─ Pulso do produto ────────────────────────────────────────────┐
+│  Resumo executivo (últimos 30 dias)                           │
+│  • NPS-like médio dos emojis (1–5) + variação vs 30d ant.    │
+│  • Total respostas modal + taxa de resposta (modal/relatórios)│
+│  • Intenção de compra agregada (modal): % sim/talvez/não      │
+│  • Top 3 frases recorrentes (clarity_text + missing_text)     │
+└───────────────────────────────────────────────────────────────┘
 
-## Out of scope (explicitamente não tocar)
+┌─ Emojis por bloco (inline_report_feedback) ───────────────────┐
+│  Tabela por `block`: overview / diagnostic / performance /    │
+│  content → média, distribuição 1–5, nº respostas, %           │
+│  positivas (4–5), tendência semanal (sparkline).              │
+│  Drill-down: lista dos últimos 50 comentários livres com      │
+│  rating + handle + timestamp + link p/ snapshot.              │
+└───────────────────────────────────────────────────────────────┘
 
-- Pricing, sidebar, modal, gates, admin, blocos 3–6.
-- Apify, OpenAI, DataForSEO, Brevo, Resend.
-- Schema/migrations.
-- Qualquer redesign visual além do prop-wiring já existente.
-- `report-page.tsx` / `report.example` (mock isolado).
+┌─ Modal beta (beta_feedback) ──────────────────────────────────┐
+│  • Distribuição usefulness_score (1–5)                        │
+│  • Intenção de compra (purchase_intent) — donut               │
+│  • Preferência de pricing (pricing_preference) — barras       │
+│  • Contact_consent — % opt-in                                 │
+│  • Stream das respostas livres (clarity_text / missing_text)  │
+│    com mini-pesquisa por texto e link para o lead/relatório.  │
+└───────────────────────────────────────────────────────────────┘
+```
+
+### Tradução **dados → informação → insights**
+
+Cada bloco terá um cartão "Sinal editorial" no topo (regra determinística, sem IA): por exemplo
+- "Pulso ≥ 4.2 e n ≥ 20 → leitores estão a validar o produto."
+- "Bloco *diagnostic* com média < 3.5 → ponto crítico para iterar."
+- "Intenção de compra ≥ 40% sim/talvez → sinal de validação comercial."
+
+Frases curtas, neutras, pt-PT, em consistência com o tom do resto do admin.
+
+### Implementação técnica (resumida)
+
+- **Rota:** `src/routes/admin.estudo-mercado.tsx` (createFileRoute `/admin/estudo-mercado`).
+- **Server fn:** `src/lib/admin/market-study.functions.ts` com `requireSupabaseAuth` + check admin email (mesmo padrão das outras rotas admin). Lê via `supabaseAdmin` agregações de `inline_report_feedback` e `beta_feedback` (group by, contagens, percentis), filtros por janela 7/30/90 dias.
+- **Sidebar:** novo grupo "Estudo de mercado" em `src/components/admin/v2/admin-sidebar.tsx`, ícone `BarChart3` ou `LineChart`, item único `/admin/estudo-mercado`.
+- **UI:** mesmo design system v2 do admin (cards brancos, tokens semânticos, sem `slate-*`, Inter, métricas com `tabular-nums`). Recharts já está no projecto para sparklines.
+- **Performance:** queries leves agregadas (não puxa rows individuais excepto na lista paginada de comentários, limit 50).
+- **Sem migrations.** Tabelas já existem.
+
+### Out of scope
+
+- Não tocar em `beta_feedback` consumo existente no pipeline (continua a aparecer no lead detail).
+- Não alterar o widget público nem o modal.
+- Não criar email/relatório derivado destes dados (futuro).
 
 ## Checkpoint
 
-☐ Criar `src/lib/insights/__tests__/build-context-caption-visual.test.ts` (4 cenários)
-☐ Adicionar 2–3 casos a `src/lib/report/__tests__/editorial-verdict-fallback.test.ts` (sem cadência, não prescritivo, sem hero legacy)
-☐ Correr `bunx tsc --noEmit`
-☐ Correr `bunx vitest run`
-☐ Reportar: ficheiros alterados, testes, comportamento final do fallback, hashtags (recurring/weak/absent), cadence label, caption/visual, confirmação no-legacy-hero, resultado tsc, resultado vitest, gaps restantes
+☐ Criar `src/lib/admin/market-study.functions.ts` (3 server fns: pulse, emoji-blocks, modal-aggregate)
+☐ Criar `src/routes/admin.estudo-mercado.tsx` com 3 separadores e cartões de insight determinísticos
+☐ Acrescentar grupo "Estudo de mercado" à `AdminSidebar`
+☐ `bunx tsc --noEmit` + `bunx vitest run` para garantir que nada parte
