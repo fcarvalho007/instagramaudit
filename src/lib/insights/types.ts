@@ -380,6 +380,7 @@ export const EDITORIAL_VERDICT_EVIDENCE_ALLOWLIST = [
   "top_posts.top1",
   "caption_intelligence.topics",
   "caption_intelligence.length",
+  "caption_intelligence.hashtags",
   "editorial_patterns.collaboration_lift",
   "editorial_patterns.comments_to_likes_ratio",
   "editorial_patterns.engagement_trend",
