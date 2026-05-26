@@ -102,7 +102,10 @@ function EstudoMercadoPage() {
 function SignalCard({ tone, title, body }: {
   tone: "positive" | "neutral" | "warning"; title: string; body: string;
 }) {
-  const colour = tone === "positive" ? "#1D9E75" : tone === "warning" ? "#BA7517" : "#3772E5";
+  const colour =
+    tone === "positive" ? chartPalette.positive
+    : tone === "warning" ? chartPalette.warning
+    : chartPalette.accentPrimary;
   return (
     <div className="rounded-lg border bg-white px-4 py-3 flex items-start gap-3"
       style={{ borderColor: `${colour}40`, background: `${colour}0d` }}>
