@@ -422,7 +422,7 @@ export function CommentIntelligenceSection({ data }: Props) {
               <div
                 key={chip.key}
                 className={cn(
-                  "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium",
+                  "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium",
                   chip.className,
                 )}
               >
@@ -432,7 +432,7 @@ export function CommentIntelligenceSection({ data }: Props) {
               </div>
             ))}
           </div>
-          <p className="text-[10.5px] text-content-tertiary">
+          <p className="text-xs text-content-tertiary">
             {t("comments.signals.hint")}
           </p>
         </div>
@@ -484,7 +484,7 @@ export function CommentIntelligenceSection({ data }: Props) {
           .map((l, i) => (
             <p
               key={i}
-              className="text-[11px] leading-relaxed text-content-tertiary"
+              className="text-xs leading-relaxed text-content-tertiary"
             >
               {l}
             </p>
@@ -507,7 +507,7 @@ function MetricCell({
 }) {
   return (
     <div className="rounded-lg border border-border-subtle bg-surface-secondary px-3 py-2.5">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-content-tertiary break-words leading-tight">
+      <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-content-tertiary break-words leading-tight">
         {label}
       </p>
       <p className="mt-0.5 text-[14px] font-semibold tabular-nums text-content-primary">
