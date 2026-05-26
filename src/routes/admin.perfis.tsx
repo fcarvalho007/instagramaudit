@@ -52,7 +52,7 @@ function PerfisPage() {
       />
       <div className="flex flex-col gap-14">
         <MetricsSection period={period} />
-        <TopProfilesSection />
+        <TopProfilesSection period={period} />
         <IntentOpportunitiesSection period={period} />
         <ProfilesTableSection period={period} />
       </div>
