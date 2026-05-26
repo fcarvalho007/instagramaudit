@@ -402,17 +402,17 @@ function PostCard({
 
         {/* Likes + Comments */}
         <div className="flex items-center gap-2.5 pt-1 mt-auto border-t border-border-subtle/60">
-          <span className="inline-flex items-center gap-1 text-[10px] text-content-secondary">
+          <span className="inline-flex items-center gap-1 text-xs text-content-secondary">
             <Heart className="size-2.5" aria-hidden="true" />
             <span className="tabular-nums tabular-nums">
               {formatNumber(post.likes, language)}
             </span>
           </span>
-          <span className="inline-flex items-center gap-1 text-[10px] text-content-secondary">
+          <span className="inline-flex items-center gap-1 text-xs text-content-secondary">
             <MessageCircle className="size-2.5" aria-hidden="true" />
             <span className="tabular-nums tabular-nums">{formatNumber(post.comments, language)}</span>
           </span>
-          <span className="ml-auto text-[9px] text-content-tertiary uppercase tracking-wide">
+          <span className="ml-auto text-[11px] text-content-tertiary uppercase tracking-wide">
             {post.date}
           </span>
         </div>
