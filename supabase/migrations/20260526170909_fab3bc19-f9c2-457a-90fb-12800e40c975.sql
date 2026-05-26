@@ -1,0 +1,1 @@
+UPDATE public.app_config SET value = '"hello@auditprofiles.com"'::jsonb, updated_at = now() WHERE key = 'contact_email';
