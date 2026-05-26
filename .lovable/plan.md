@@ -1,72 +1,45 @@
-# Plano — Fechar refinamento do Editorial Verdict (Bloco 1)
+## Diagnóstico
 
-Continuação do trabalho já feito. Esta fase é só fallback determinístico + testes + validação. Sem novas chamadas a providers, sem mexer no gate/sidebar, sem regenerar relatórios antigos, sem tocar nos blocos 3–6.
+Os três cards editoriais do Bloco 1 usam três escalas de título diferentes:
 
-## 1. Atualizar `buildFallbackVerdict`
+| Card | Classe actual | Md |
+|---|---|---|
+| Taxa de Engagement | `text-[1.25rem] sm:text-[1.5rem] md:text-[2rem]` | **32px** |
+| Frequência de publicação | `text-[1.25rem] md:text-[1.5rem]` | 24px |
+| Formato | `text-[1.25rem] md:text-[1.5rem]` | 24px |
 
-Ficheiro: `src/lib/report/editorial-verdict-fallback.ts`
+No Bloco 2, `caption-diagnostics-card.tsx` já usa a escala grande (`md:text-[2rem]`). O `report-diagnostic-grid-v2.tsx` é a grelha pequena de KPIs (perguntas) — categoria diferente, deve ficar como está.
 
-- Aceitar novos parâmetros opcionais:
-  - `cadenceLabelPt?: string` (ex.: "cerca de 3 publicações por semana nos últimos 30 dias")
-  - `hashtagsState?: 'recurring' | 'weak' | 'absent'`
-  - `topHashtags?: string[]` (máx. 3)
-- Construir parágrafo determinístico em pt-PT respeitando:
-  - 90–140 palavras, máx. 4 frases
-  - sem `%` nem números privados
-  - cadência expressa via `cadenceLabelPt` quando existir
-  - hashtags:
-    - `recurring` → citar 1–2 (`#tag`) com qualificador "recorrentes"
-    - `weak` → "uso pontual de hashtags"
-    - `absent` → "sem hashtags relevantes"
-  - envolvimento remetido para o benchmark/secções inferiores (sem valor numérico)
-- Manter assinatura retrocompatível (todos os novos params opcionais; comportamento legado quando ausentes — snapshots antigos).
+## Ação
 
-## 2. Propagar props até ao card
+Forçar a escala grande (referência: card Engagement) em **todos** os títulos editoriais dos cards Bloco 1+2 que partilham o mesmo padrão visual.
 
-- `src/lib/report/snapshot-to-report-data.ts`: derivar `cadenceLabelPt`, `hashtagsState`, `topHashtags` do `InsightsContext`/snapshot e incluir no payload do overview.
-- `src/components/report-redesign/v2/report-overview-block.tsx`: passar as novas props ao `EditorialIdentityCard`.
-- `EditorialIdentityCard`: aceitar e encaminhar para o fallback quando `ai_insights_v2.editorial_verdict` estiver ausente/inválido.
-- Fallback para snapshots antigos: se props ausentes, comportamento atual mantém-se (texto legado determinístico sem hashtags/cadence label).
+### Escala unificada
 
-## 3. Testes
+```
+font-display text-[1.25rem] sm:text-[1.5rem] md:text-[2rem]
+font-semibold tracking-tight text-content-primary leading-tight
+```
 
-### 3.1 Atualizar existente
-- `src/lib/insights/__tests__/validate-v2-verdict.test.ts`:
-  - Ajustar limites para 90/140 palavras e máx. 4 frases.
-  - Cobrir `ENGAGEMENT_PERCENT_LEAK`, `PRIVATE_METRIC_LEAK`, `HASHTAGS_NOT_HANDLED`, `TOO_MANY_SENTENCES`.
+### Ficheiros a editar (2)
 
-### 3.2 Novos
-- `src/lib/insights/__tests__/build-context-hashtags.test.ts`:
-  - 3 cenários: recurring (≥2 hashtags em ≥30% dos posts), weak (presença esporádica), absent.
-  - Verifica `top_hashtags`, `hashtags_state`, `cadence_label_pt`.
-- `src/lib/report/__tests__/editorial-verdict-fallback.test.ts`:
-  - Casos: com cadence label + recurring hashtags; com weak; com absent; sem props (legado).
-  - Asserções: 90–140 palavras, ≤4 frases, sem `%`, hashtags tratadas conforme estado, cadence label embebida quando presente.
+1. **`src/components/report-redesign/v2/overview/frequency-card.tsx:440`**
+   - de: `text-[1.25rem] md:text-[1.5rem] ... leading-snug`
+   - para: `text-[1.25rem] sm:text-[1.5rem] md:text-[2rem] ... leading-tight`
 
-## 4. Validação final
+2. **`src/components/report-redesign/v2/overview/format-card.tsx:238`**
+   - mesma substituição.
+
+### Não tocar
+
+- `report-overview-engagement.tsx` — já é a referência.
+- `caption-diagnostics-card.tsx` (Bloco 2) — já alinhado.
+- `report-diagnostic-grid-v2.tsx` — grelha KPI pequena (Bloco 2 perguntas), escala diferente é intencional.
+- Sublinhados coloridos do status word ("Alta", "Pouco variado", "BAIXA") — mantêm-se.
+
+### Validação
 
 - `bunx tsc --noEmit`
-- `bunx vitest run`
+- Inspecção visual em `/analyze/robs.cortez` (preview): 3 títulos do Bloco 1 com a mesma altura tipográfica a md.
 
-## Contrato editorial final (recap)
-
-- 90–140 palavras, máx. 4 frases, pt-PT.
-- Sem `%`, sem métricas privadas, sem repetir KPIs do header.
-- Cadência → frase humana via `cadence_label_pt`.
-- Hashtags tratadas explicitamente (recurring/weak/absent).
-- Análise visual usada só se `visual_cover` existir no contexto.
-- Envolvimento remetido para benchmark/secções inferiores.
-
-## Output esperado (após implementação)
-
-Reporto: ficheiros alterados, contrato editorial, tratamento de hashtags, frase de cadência, confirmação de ausência de `%`, fallback para snapshots antigos, resultado de `tsc` + `vitest`.
-
-## Checkpoint
-
-- ☐ `buildFallbackVerdict` aceita cadence/hashtags e respeita contrato
-- ☐ Props propagadas via overview → card
-- ☐ `validate-v2-verdict.test.ts` atualizado e a passar
-- ☐ `build-context-hashtags.test.ts` criado e a passar
-- ☐ `editorial-verdict-fallback.test.ts` criado e a passar
-- ☐ `bunx tsc --noEmit` limpo
-- ☐ `bunx vitest run` verde
+Sem mudanças de copy, tokens, layout ou business logic.
