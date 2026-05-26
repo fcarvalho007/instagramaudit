@@ -1,33 +1,45 @@
 
-# Fase 4 — Substituir mocks de receita por `EmptyStateCard`
+# Refinamento — `ReportMethodology` lê fontes da KB editável
 
-Última fase do desmantelamento dos mocks em `/admin`. Tudo o que depende de subscrições, MRR, faturas ou kanban de clientes — dados que só existem quando o checkout estiver ligado — passa a mostrar `EmptyStateCard` em vez de números fictícios.
+Recomendação #1 da auditoria anterior: o que escreves em `/admin/conhecimento` (tabela `knowledge_sources`) deixa de ser invisível e passa a aparecer na lista "Fontes de referência" no rodapé do relatório.
 
-## Substituições (6 secções)
+Hoje essa lista é um array estático em `src/lib/knowledge/benchmark-context.ts` (Socialinsider/Buffer/Hootsuite/Databox). Já existem 5 fontes na DB (Socialinsider Mai 2026, Phlanx Q1 2026, Iconosquare 2026, InstaBench interno, Meta Business API) que **não chegam ao relatório**.
 
-Cada ficheiro é reduzido a um wrapper fino sobre `EmptyStateCard` (mesmo padrão já usado em `kanban-section.tsx`). Imports a `MOCK_*` e `DemoOnlySection` são removidos.
+## Escopo (cirúrgico)
 
-### `/admin/visao-geral`
-- `src/components/admin/v2/visao-geral/revenue-section.tsx`  
-  → "Receita" · accent `revenue` · reason: receita a zero porque o checkout (EuPago/Stripe) ainda não está ligado.
+1. **Novo server function** `getReportMethodologySources` em `src/lib/knowledge/methodology.functions.ts`  
+   - SELECT em `knowledge_sources` onde `url IS NOT NULL`, ordenado por `published_at DESC NULLS LAST`, limit 6.
+   - Devolve `{ name, url, publishedYear, lastUpdatedLabel, shortDescription, type }`.
+   - `lastUpdatedLabel` formatado em pt-PT a partir de `published_at` ("Mai 2026").
+   - `shortDescription` vem de `notes` (truncado a 80 chars) — quando vazio, usa o `name` sem prefixo.
 
-### `/admin/receita` (5 secções)
-- `metrics-section.tsx` → "Métricas principais" · accent `revenue` · MRR/ARR/ARPU/Churn dependem de subscrições.
-- `waterfall-section.tsx` → "Anatomia do MRR" · accent `revenue` · waterfall só faz sentido com movimentos reais de MRR.
-- `plans-section.tsx` → "MRR por plano" · accent `revenue` · distribuição por plano exige subscrições activas.
-- `cohort-section.tsx` → "Cohort de retenção" · accent `leads` · cohort retention exige histórico de subscrições.
-- `invoices-section.tsx` → "Últimas faturas" · accent `revenue` · faturas vêm do gateway de pagamento.
+2. **`ReportMethodology` (componente)** passa a usar `useQuery`:
+   - `queryKey: ["report", "methodology-sources"]`
+   - `placeholderData`: lista estática actual (mantém SSR/render imediato sem flash).
+   - `staleTime: 5 min`.
+   - O resto do componente (grid de 4 ícones "Como este relatório foi feito") fica intacto — só a sub-lista "Fontes de referência" é dinâmica.
 
-## Mantém-se intacto
-- `ExpenseSection` (já liga a dados reais via `adminFetch` / `provider_call_logs`).
-- `BillingImportForm` e `ReconciliationSection` em `/admin/receita` (operacionais para Apify/OpenAI/DFS).
-- `admin.receita.tsx` página — só carrega as mesmas 6 secções; nada a alterar lá.
+3. **`benchmark-context.ts`** mantém-se inalterado — continua a ser fonte de verdade para:
+   - `INSTAGRAM_BENCHMARK_CONTEXT.engagement` (bandas do gráfico de benchmark, política editorial do prompt)
+   - Fallback estático quando a query falha ou retorna vazio.
 
-## Limpeza opcional (não-bloqueante)
-- Os MOCK_* (MOCK_MRR_METRICS, MOCK_MRR_WATERFALL, MOCK_INVOICES, etc.) deixam de ser referenciados. **Não vou removê-los** de `src/lib/admin/mock-data.ts` neste passo — outros ficheiros (ex.: tests) podem importá-los. Avalio depois numa passagem de limpeza separada se confirmar zero referências.
+## Fora do escopo (próximos passos, não agora)
+
+- Footnotes dinâmicas em FormatCard/FrequencyCard.
+- Substituir bandas de benchmark do gráfico por `knowledge_benchmarks`.
+- Cartão novo "O que diz o mercado".
+- Levantar a proibição de citar fontes no prompt v2.
+
+## Detalhe técnico
+
+- O serverFn é público (sem `requireSupabaseAuth`) — usa `supabaseAdmin` para ler sources. A tabela `knowledge_sources` não tem RLS, mas o serverFn devolve apenas campos seguros (sem `created_by_email`, sem `id`).
+- `useQuery` em vez de loader: o report é renderizado sob `_authenticated` e `/r/$token`, com loaders próprios; injectar no loader exigia tocar em ambos os shells e adapters — desnecessário para uma lista de ≤6 fontes.
+- Fallback robusto: se o query falhar ou devolver `[]`, o `placeholderData` mantém a lista actual visível.
 
 ## Checkpoint
-- ☐ 6 ficheiros agora renderizam `EmptyStateCard` em vez de mocks
-- ☐ `/admin/visao-geral` e `/admin/receita` sem números fictícios visíveis
-- ☐ `ExpenseSection` continua a mostrar custos reais
-- ☐ Build sem erros de import
+
+- ☐ `getReportMethodologySources` criado, devolve as 5 fontes actuais ordenadas por data
+- ☐ `ReportMethodology` mostra Phlanx, Iconosquare e Socialinsider (em vez de Buffer/Hootsuite estáticos)
+- ☐ Fontes sem `url` (InstaBench interno, Meta Business) **não** aparecem (filtro `url IS NOT NULL`)
+- ☐ Sem flash de loading — SSR/primeiro paint mantém a lista estática
+- ☐ Build sem erros, testes a verde
