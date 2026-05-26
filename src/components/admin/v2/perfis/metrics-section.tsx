@@ -44,7 +44,6 @@ export function MetricsSection({ period }: { period: AdminPeriod }) {
   const unique = data?.unique_profiles ?? 0;
   const repeated = data?.repeated_profiles ?? 0;
   const withReport = data?.profiles_with_report ?? 0;
-  const conv = data?.conversion_pct;
   const label = PERIOD_LABEL[period];
 
   return (
