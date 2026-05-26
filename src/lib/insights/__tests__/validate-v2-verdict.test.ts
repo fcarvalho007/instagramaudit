@@ -11,9 +11,10 @@ function baseSections() {
 }
 
 const VALID_PARAGRAPH =
-  "O envolvimento médio fica nos 1,2%, abaixo dos 1,8% do tier observado, com 5 publicações por semana dominadas por Reels e poucas variações de formato ao longo das últimas semanas.\n\n" +
-  "A leitura principal é de uma audiência atenta mas silenciosa: o conteúdo é visto e ganha gostos, mas raramente provoca conversa articulada nos comentários, num padrão típico de consumo passivo.\n\n" +
-  "A tensão observada está entre o sinal positivo das visualizações e a ausência de discussão real associada às peças mais recentes. A amostra ainda não permite concluir se o silêncio resulta do formato dominante ou da relação editorial com a audiência.";
+  "O perfil mantém actividade visível com cerca de 5 publicações por semana, dominadas por Reels e centradas em poucos temas recorrentes. " +
+  "O envolvimento deve ser lido contra o benchmark do escalão, como se pode consultar mais abaixo neste relatório. " +
+  "A audiência reage com gostos mas raramente entra em conversa, num padrão típico de consumo silencioso. " +
+  "Nesta amostra, não há hashtags suficientemente claras ou recorrentes para definir um território editorial estável.";
 
 const VALID_VERDICT = {
   verdict_label: "promising",
