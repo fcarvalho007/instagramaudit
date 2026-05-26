@@ -262,3 +262,90 @@ export const getMarketStudyModal = createServerFn({ method: "GET" })
       freeText,
     };
   });
+
+/* -------------------------------------------------------------------------- */
+/*  Pricing interest (modal de intenção em /precos)                           */
+/* -------------------------------------------------------------------------- */
+
+type PricingOptionKey = "single_report" | "pack_5_reports";
+type WouldPayKey = "sim" | "talvez" | "nao";
+type FairnessKey = "barato" | "justo" | "caro";
+
+export const getPricingInterest = createServerFn({ method: "GET" })
+  .inputValidator((input: { windowDays?: 7 | 30 | 90 }) =>
+    WindowSchema.parse(input ?? {}),
+  )
+  .handler(async ({ data }) => {
+    const since = sinceIso(data.windowDays);
+
+    const { data: rows = [] } = await supabaseAdmin
+      .from("pricing_interest")
+      .select(
+        "id, pricing_option, would_pay, price_fairness, email, comment, referrer, user_agent, created_at",
+      )
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(500);
+
+    const safe = rows ?? [];
+    const n = safe.length;
+
+    const wouldPayCounts: Record<WouldPayKey, number> = { sim: 0, talvez: 0, nao: 0 };
+    for (const r of safe) {
+      const k = r.would_pay as WouldPayKey | null;
+      if (k && k in wouldPayCounts) wouldPayCounts[k]++;
+    }
+
+    const fairnessByOption: Record<
+      PricingOptionKey,
+      Record<FairnessKey, number>
+    > = {
+      single_report: { barato: 0, justo: 0, caro: 0 },
+      pack_5_reports: { barato: 0, justo: 0, caro: 0 },
+    };
+    const optionCounts: Record<PricingOptionKey, number> = {
+      single_report: 0,
+      pack_5_reports: 0,
+    };
+    for (const r of safe) {
+      const opt = r.pricing_option as PricingOptionKey | null;
+      if (opt && opt in optionCounts) {
+        optionCounts[opt]++;
+        const f = r.price_fairness as FairnessKey | null;
+        if (f && f in fairnessByOption[opt]) fairnessByOption[opt][f]++;
+      }
+    }
+
+    const positive = wouldPayCounts.sim + wouldPayCounts.talvez;
+    const positiveRate = n > 0 ? positive / n : null;
+    const convictionRate = n > 0 ? wouldPayCounts.sim / n : null;
+
+    const emailsCount = safe.filter(
+      (r) => typeof r.email === "string" && r.email.trim().length > 0,
+    ).length;
+
+    const comments = safe
+      .filter((r) => typeof r.comment === "string" && r.comment.trim().length > 0)
+      .slice(0, 20)
+      .map((r) => ({
+        id: r.id,
+        option: r.pricing_option as PricingOptionKey,
+        wouldPay: r.would_pay as WouldPayKey,
+        fairness: (r.price_fairness as FairnessKey | null) ?? null,
+        email: (r.email as string | null) ?? null,
+        comment: r.comment as string,
+        createdAt: r.created_at,
+      }));
+
+    return {
+      windowDays: data.windowDays,
+      n,
+      wouldPayCounts,
+      optionCounts,
+      fairnessByOption,
+      positiveRate,
+      convictionRate,
+      emailsCount,
+      comments,
+    };
+  });
