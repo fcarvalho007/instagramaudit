@@ -327,6 +327,17 @@ export function FormatCard({
           {verdict.rest}
         </p>
       </InsightCallout>
+      <p className="px-5 md:px-6 pb-6 md:pb-8 -mt-2 text-xs text-content-tertiary leading-relaxed">
+        {t("format.source_socialinsider_ig")}{" "}
+        <a
+          href="https://www.socialinsider.io/blog/social-media-posting-frequency/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline decoration-dotted underline-offset-2 hover:text-content-secondary"
+        >
+          {t("format.source_link_label")}
+        </a>
+      </p>
     </article>
   );
 }
