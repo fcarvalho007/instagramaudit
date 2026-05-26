@@ -88,11 +88,11 @@ import {
 } from "@/lib/enrichment/types";
 import { prefetchThumbnailsAsBase64 } from "@/lib/analysis/thumbnail-cache.server";
 import { setEnrichmentStatusAtomic } from "@/lib/analysis/cache";
+import { PUBLIC_INSTAGRAM_POSTS_LIMIT } from "@/lib/analysis/constants";
 
 // Unified Apify actor — returns profile details with `latestPosts[]` embedded
 // in a single call per handle. Replaces the previous two-actor split.
 const UNIFIED_ACTOR = "apify/instagram-scraper";
-const POSTS_LIMIT = 12;
 const MAX_COMPETITORS = 2;
 
 const usernameSchema = z
@@ -220,15 +220,25 @@ async function fetchProfileWithPosts(
     {
       directUrls: [`https://www.instagram.com/${username}/`],
       resultsType: "details",
-      resultsLimit: POSTS_LIMIT,
+      // `resultsLimit` controls the size of `latestPosts[]` inside the
+      // single profile row returned by the actor. It is NOT the number of
+      // profiles per run (see `maxItems` below).
+      resultsLimit: PUBLIC_INSTAGRAM_POSTS_LIMIT,
       addParentData: false,
     },
     {
       timeoutMs: 60_000,
       apifyTimeoutSecs: 55,
-      // Cost guards for the smoke-test phase. The unified actor returns one
-      // profile row per `directUrls` entry, so maxItems=1 is the natural
-      // ceiling. maxTotalChargeUsd=0.10 is a hard USD cap per call.
+      // Cost guards for the smoke-test phase.
+      //
+      // Apify input contract (do not confuse the two limits):
+      //   - `directUrls`: 1 URL  → 1 Instagram profile per run.
+      //   - `maxItems: 1`        → at most 1 profile ROW returned per run.
+      //   - `resultsLimit: 12`   → up to 12 POSTS inside that profile's
+      //                            `latestPosts[]` array.
+      // This call therefore returns ONE profile with UP TO 12 recent
+      // posts — never 12 profiles. `maxTotalChargeUsd` is a hard USD cap
+      // per call as a final safety net.
       maxItems: 1,
       maxTotalChargeUsd: 0.10,
     },
