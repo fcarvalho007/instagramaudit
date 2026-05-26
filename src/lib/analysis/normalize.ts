@@ -2,6 +2,27 @@
  * Pure normalization layer.
  * Converts raw Apify rows into the stable PublicAnalysis* shapes.
  * No I/O, fully testable.
+ *
+ * ── Data contract (see also src/lib/analysis/constants.ts) ───────────────
+ * From Apify (`apify/instagram-scraper`):
+ *   - Profile: username, display name, bio, avatar, followers/following/
+ *     post counts, verified/business flags, category, external URLs.
+ *   - Latest posts (up to PUBLIC_INSTAGRAM_POSTS_LIMIT): id/shortcode/
+ *     permalink, caption, likes, comments, timestamp, format, thumbnail,
+ *     video views/duration, pinned flag, coauthors, tagged users,
+ *     location, music.
+ *
+ * Derived internally (NOT from Apify):
+ *   - Engagement rate, average likes/comments, weekly posting cadence,
+ *     format distribution, hashtags/mentions (regex on caption),
+ *     benchmark positioning, AI editorial verdict, market signals.
+ *
+ * Not available publicly (Instagram does not expose these to Apify):
+ *   - Reach, impressions, saves, profile visits, stories metrics.
+ *
+ * Gating: `followers_count` is mandatory. If Apify returns it as null,
+ * `normalizeProfile` returns null and the upstream pipeline fails safely
+ * with `POSTS_UNAVAILABLE` — the profile cannot be reliably benchmarked.
  */
 
 import type { BenchmarkFormat } from "@/lib/benchmark/types";
@@ -9,6 +30,7 @@ import type {
   PublicAnalysisContentSummary,
   PublicAnalysisProfile,
 } from "./types";
+import { PUBLIC_INSTAGRAM_POSTS_LIMIT } from "./constants";
 
 // Loose shape — Apify schemas evolve; we only read what we need.
 type RawProfile = {
