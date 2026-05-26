@@ -83,6 +83,7 @@ interface ReconciliationData {
 /* ── Helpers ───────────────────────────────────────────────────────── */
 
 const PERIOD_DAYS: Record<AdminPeriod, number> = {
+  "7d": 7,
   "30d": 30,
   "90d": 90,
   ytd: 365,
