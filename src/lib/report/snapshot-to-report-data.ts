@@ -1547,5 +1547,11 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     windowDays,
   };
 
-  return { data, coverage, enriched };
+  return {
+    data,
+    coverage,
+    enriched,
+    externalReferences:
+      input.benchmark?.externalReferences?.instagramByFormat ?? null,
+  };
 }
