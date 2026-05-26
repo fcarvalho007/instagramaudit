@@ -7,9 +7,10 @@
 
 import { useId } from "react";
 
-export type AdminPeriod = "30d" | "90d" | "ytd";
+export type AdminPeriod = "7d" | "30d" | "90d" | "ytd";
 
 const LABELS: Record<AdminPeriod, string> = {
+  "7d": "Últimos 7 dias",
   "30d": "Últimos 30 dias",
   "90d": "Últimos 90 dias",
   ytd: "Este ano",
