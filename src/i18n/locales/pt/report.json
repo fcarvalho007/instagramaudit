@@ -223,6 +223,32 @@
       "weak_cadence": "A cadência actual limita o alcance: o algoritmo precisa de frequência mínima para distribuir consistentemente o conteúdo.",
       "format_concentrated": "A concentração num único formato reduz o teste editorial. Diversificar abre novas hipóteses de tracção sem abandonar o que já funciona.",
       "neutral": "Os sinais actuais não definem uma direcção clara — a análise editorial completa o quadro com tipo de conteúdo, captions e resposta da audiência."
+    },
+    "index": {
+      "eyebrow": "Índice do perfil",
+      "subtitle_above": "{{pp}} pp acima da referência de envolvimento do escalão",
+      "subtitle_below": "{{pp}} pp abaixo da referência de envolvimento do escalão",
+      "subtitle_no_benchmark": "Índice de atividade do perfil",
+      "microline": "Índice comparativo, construído a partir de 3 sinais do perfil.",
+      "rail_aria": "Índice {{value}} de 100",
+      "this_brand": "▸ esta marca · {{value}}",
+      "stage": {
+        "leader": "Líder",
+        "competitive": "Competitivo",
+        "progress": "Em progresso",
+        "emerging": "Emergente"
+      }
+    },
+    "method": {
+      "toggle": "Como foi calculado",
+      "signals_line": "Construído a partir de 3 indicadores do perfil: envolvimento, ritmo de publicação e conversa nas legendas.",
+      "benchmark_line": "Comparado com o benchmark de envolvimento do escalão de referência (Nano · Micro · Mid · Macro · Mega), com base na atividade recente observada.",
+      "sample": {
+        "tier": "Escalão: {{tier}}",
+        "posts": "Posts analisados: {{count}}",
+        "window": "Janela: {{days}} dias"
+      },
+      "disclaimer": "Leitura comparativa — não é uma métrica oficial do Instagram."
     }
   },
   "frequency": {

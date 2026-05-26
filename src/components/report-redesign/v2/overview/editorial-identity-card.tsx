@@ -11,6 +11,7 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   CalendarDays,
+  ChevronDown,
   Heart,
   MessageCircle,
 } from "lucide-react";
@@ -18,6 +19,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { formatCompactNumber } from "@/lib/i18n/format";
 import type { ScoreKey } from "./score-utils";
+import { computeGlobalScore } from "./score-utils";
 import type { EditorialVerdict } from "@/lib/insights/types";
 import {
   deriveEditorialVerdict,
@@ -29,6 +31,16 @@ import { buildFallbackVerdict } from "@/lib/report/editorial-verdict-fallback";
 
 type Band = "warning" | "developing" | "solid";
 type Tone = "success" | "warning";
+
+/** Stage rail (4 níveis discretos, apenas leitura visual). */
+type Stage = "leader" | "competitive" | "progress" | "emerging";
+
+function stageFromScore(value: number): Stage {
+  if (value >= 80) return "leader";
+  if (value >= 60) return "competitive";
+  if (value >= 40) return "progress";
+  return "emerging";
+}
 
 interface Bullet {
   destaque: string;
@@ -90,13 +102,20 @@ interface EditorialCopy {
 
 /* ── Pontuação + bandas ────────────────────────────────────────────── */
 
+/**
+ * Índice agregado do perfil. Usa `computeGlobalScore` de `score-utils` para
+ * garantir consistência com os scores individuais documentados nos tooltips
+ * (pesos: envolvimento 45%, ritmo 25%, conversa 30%).
+ */
 function computeOverall(
   scores: Record<ScoreKey, { value: number; subtitle: string }>,
 ): number {
-  const e = scores.envolvimento.value;
-  const f = scores.frequencia.value;
-  const i = scores.interaccao.value;
-  return Math.max(0, Math.min(100, Math.round(0.5 * e + 0.3 * f + 0.2 * i)));
+  const raw = computeGlobalScore(
+    scores.envolvimento.value,
+    scores.frequencia.value,
+    scores.interaccao.value,
+  );
+  return Math.max(0, Math.min(100, raw));
 }
 
 function verdictLabelToBand(label: EditorialVerdict["verdict_label"]): Band {
@@ -416,9 +435,20 @@ export function EditorialIdentityCard({
     >
       {/* Zona macro */}
       <div className="px-6 py-7 sm:px-7 sm:py-8 flex flex-col sm:flex-row sm:items-stretch gap-6 sm:gap-8">
-        <div className="self-center sm:self-stretch shrink-0 flex items-center justify-center rounded-2xl bg-surface-muted/60 px-6 py-5 sm:py-6">
-          <ScoreGauge value={overall} band={band} t={t} />
-        </div>
+        <IndexBlock
+          value={overall}
+          engagementRatePct={keyMetrics?.engagementRate ?? null}
+          engagementBenchmarkPct={
+            keyMetrics && keyMetrics.engagementBenchmark > 0
+              ? keyMetrics.engagementBenchmark
+              : null
+          }
+          followers={followers}
+          postsAnalyzed={postsAnalyzed}
+          cadenceWindowDays={cadenceWindowDays ?? null}
+          t={t}
+          locale={i18n.language}
+        />
 
         <div className="flex-1 min-w-0 space-y-3">
           <div className="flex items-center gap-2 flex-wrap">
@@ -506,9 +536,7 @@ export function EditorialIdentityCard({
             <p className="text-xs text-content-tertiary pt-1">
               {t("identity.low_confidence", { count: postsAnalyzed })}
             </p>
-          ) : (
-            <ReferenceBar value={overall} reference={60} band={band} t={t} />
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -544,91 +572,218 @@ export function EditorialIdentityCard({
   );
 }
 
-/* ── Score Gauge ───────────────────────────────────────────────────── */
+/* ── Index Block (header esquerdo) ─────────────────────────────────── */
 
-function ScoreGauge({ value, band, t }: { value: number; band: Band; t: TFunction }) {
-  const clamped = Math.max(0, Math.min(100, value));
-  const size = 124;
-  const stroke = 9;
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  const offset = c - (clamped / 100) * c;
-
-  return (
-    <div
-      className="relative"
-      style={{ width: size, height: size }}
-      role="img"
-      aria-label={t("identity.gauge_aria", { value: clamped })}
-    >
-      <svg width={size} height={size} className="-rotate-90">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          strokeWidth={stroke}
-          className="text-border-default/40"
-          stroke="currentColor"
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          strokeDasharray={c}
-          strokeDashoffset={offset}
-          className={cn(bandTextClass(band), "transition-[stroke-dashoffset] duration-700")}
-          stroke="currentColor"
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-display text-[2.5rem] leading-none font-semibold tabular-nums text-content-primary">
-          {clamped}
-        </span>
-        <span className="text-eyebrow-sm text-content-tertiary mt-1">
-          {t("identity.gauge_caption")}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-/* ── Reference Bar ─────────────────────────────────────────────────── */
-
-function ReferenceBar({
+/**
+ * Bloco do índice do perfil. Mostra apenas dados reais:
+ *   • número agregado (0–100) calculado a partir de 3 sinais do perfil
+ *   • subtítulo dinâmico — só compara quando existe benchmark real
+ *   • régua vertical com 4 estágios discretos (sem mediana inventada)
+ *   • "Como foi calculado" colapsável com a fórmula real e a amostra
+ *
+ * Não inventa "mediana · 60" nem "4 sinais". Quando um dado falta,
+ * a linha correspondente simplesmente não é renderizada.
+ */
+function IndexBlock({
   value,
-  reference,
-  band,
+  engagementRatePct,
+  engagementBenchmarkPct,
+  followers,
+  postsAnalyzed,
+  cadenceWindowDays,
   t,
+  locale,
 }: {
   value: number;
-  reference: number;
-  band: Band;
+  engagementRatePct: number | null;
+  engagementBenchmarkPct: number | null;
+  followers?: number;
+  postsAnalyzed?: number;
+  cadenceWindowDays: number | null;
   t: TFunction;
+  locale: string;
 }) {
-  const v = Math.max(0, Math.min(100, value));
-  const ref = Math.max(0, Math.min(100, reference));
+  const clamped = Math.max(0, Math.min(100, value));
+  const stage = stageFromScore(clamped);
+  const tier =
+    typeof followers === "number" && followers > 0
+      ? tierLabelFromFollowers(followers)
+      : null;
+
+  // Subtítulo: só compara quando há benchmark real.
+  const hasBenchmark =
+    engagementBenchmarkPct !== null &&
+    engagementBenchmarkPct > 0 &&
+    engagementRatePct !== null;
+  const deltaPp = hasBenchmark
+    ? (engagementRatePct as number) - (engagementBenchmarkPct as number)
+    : null;
+  const subtitle = (() => {
+    if (deltaPp === null) {
+      return t("identity.index.subtitle_no_benchmark", {
+        defaultValue: "Índice de atividade do perfil",
+      });
+    }
+    const abs = Math.abs(deltaPp);
+    const ppFormatted = formatDecimal(abs, locale, abs < 1 ? 2 : 1);
+    const dirKey = deltaPp >= 0 ? "above" : "below";
+    return t(`identity.index.subtitle_${dirKey}`, {
+      pp: ppFormatted,
+      defaultValue:
+        deltaPp >= 0
+          ? `${ppFormatted} pp acima da referência de envolvimento do escalão`
+          : `${ppFormatted} pp abaixo da referência de envolvimento do escalão`,
+    });
+  })();
+
+  const stages: Array<{ key: Stage; label: string }> = [
+    { key: "leader", label: t("identity.index.stage.leader", { defaultValue: "Líder" }) },
+    { key: "competitive", label: t("identity.index.stage.competitive", { defaultValue: "Competitivo" }) },
+    { key: "progress", label: t("identity.index.stage.progress", { defaultValue: "Em progresso" }) },
+    { key: "emerging", label: t("identity.index.stage.emerging", { defaultValue: "Emergente" }) },
+  ];
 
   return (
-    <div className="pt-2" aria-hidden="true">
-      <div className="relative h-1.5 rounded-full bg-surface-muted overflow-visible">
-        <div
-          className={cn("h-full rounded-full transition-all duration-700", bandFillClass(band))}
-          style={{ width: `${v}%` }}
-        />
-        <div
-          className="absolute top-1/2 -translate-y-1/2 w-px h-3 bg-content-tertiary/70"
-          style={{ left: `${ref}%` }}
-        />
+    <div className="shrink-0 sm:w-[280px] flex flex-col gap-5">
+      {/* Eyebrow + número + subtítulo + micro-linha */}
+      <div className="space-y-2">
+        <span className="text-eyebrow-sm text-content-tertiary">
+          {t("identity.index.eyebrow", { defaultValue: "Índice do perfil" })}
+        </span>
+        <div className="flex items-baseline gap-1.5">
+          <span className="font-display text-[3rem] leading-none font-semibold tabular-nums text-content-primary">
+            {clamped}
+          </span>
+          <span className="text-[15px] text-content-secondary tabular-nums">
+            / 100
+          </span>
+        </div>
+        <p className="text-[14px] leading-snug text-content-primary max-w-[260px]">
+          {subtitle}
+        </p>
+        <p className="text-xs leading-snug text-content-tertiary max-w-[260px]">
+          {t("identity.index.microline", {
+            defaultValue:
+              "Índice comparativo, construído a partir de 3 sinais do perfil.",
+          })}
+        </p>
       </div>
-      <div className="mt-1.5 flex items-center justify-between text-xs text-content-tertiary tabular-nums">
-        <span>0</span>
-        <span>{t("identity.reference_caption", { ref })}</span>
-        <span>100</span>
+
+      {/* Régua vertical de estágios */}
+      <div
+        className="flex gap-3"
+        role="img"
+        aria-label={t("identity.index.rail_aria", {
+          value: clamped,
+          defaultValue: `Índice ${clamped} de 100, estágio ${stage}`,
+        })}
+      >
+        <div className="flex flex-col w-1.5 rounded-full overflow-hidden bg-surface-muted">
+          {stages.map((s) => {
+            const isCurrent = s.key === stage;
+            return (
+              <div
+                key={s.key}
+                className={cn(
+                  "flex-1",
+                  isCurrent ? "bg-accent-primary" : "bg-transparent",
+                )}
+              />
+            );
+          })}
+        </div>
+        <ul className="flex flex-col justify-between text-xs leading-tight">
+          {stages.map((s) => {
+            const isCurrent = s.key === stage;
+            return (
+              <li
+                key={s.key}
+                className={cn(
+                  "flex flex-col",
+                  isCurrent ? "text-content-primary" : "text-content-tertiary",
+                )}
+              >
+                <span className={cn(isCurrent && "font-medium")}>
+                  {s.label}
+                </span>
+                {isCurrent ? (
+                  <span className="text-accent-primary font-medium tabular-nums mt-0.5">
+                    {t("identity.index.this_brand", {
+                      value: clamped,
+                      defaultValue: `▸ esta marca · ${clamped}`,
+                    })}
+                  </span>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
       </div>
+
+      {/* "Como foi calculado" colapsável */}
+      <details className="group rounded-lg border border-border-default bg-white">
+        <summary
+          className={cn(
+            "flex items-center justify-between gap-2 cursor-pointer list-none",
+            "px-3 py-2 text-xs font-medium text-content-secondary",
+            "hover:text-content-primary transition-colors",
+          )}
+        >
+          <span>
+            {t("identity.method.toggle", { defaultValue: "Como foi calculado" })}
+          </span>
+          <ChevronDown
+            className="h-3.5 w-3.5 text-content-tertiary transition-transform group-open:rotate-180"
+            aria-hidden="true"
+          />
+        </summary>
+        <div className="px-3 pb-3 pt-1 space-y-2.5 text-xs leading-snug text-content-secondary">
+          <p>
+            {t("identity.method.signals_line", {
+              defaultValue:
+                "Construído a partir de 3 indicadores do perfil: envolvimento, ritmo de publicação e conversa nas legendas.",
+            })}
+          </p>
+          <p>
+            {t("identity.method.benchmark_line", {
+              defaultValue:
+                "Comparado com o benchmark de envolvimento do escalão de referência (Nano · Micro · Mid · Macro · Mega), com base na atividade recente observada.",
+            })}
+          </p>
+          {tier || typeof postsAnalyzed === "number" || cadenceWindowDays ? (
+            <p className="text-content-tertiary">
+              {[
+                tier
+                  ? t("identity.method.sample.tier", {
+                      tier,
+                      defaultValue: `Escalão: ${tier}`,
+                    })
+                  : null,
+                typeof postsAnalyzed === "number" && postsAnalyzed > 0
+                  ? t("identity.method.sample.posts", {
+                      count: postsAnalyzed,
+                      defaultValue: `Posts analisados: ${postsAnalyzed}`,
+                    })
+                  : null,
+                typeof cadenceWindowDays === "number" && cadenceWindowDays > 0
+                  ? t("identity.method.sample.window", {
+                      days: cadenceWindowDays,
+                      defaultValue: `Janela: ${cadenceWindowDays} dias`,
+                    })
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          ) : null}
+          <p className="text-content-tertiary italic">
+            {t("identity.method.disclaimer", {
+              defaultValue:
+                "Leitura comparativa — não é uma métrica oficial do Instagram.",
+            })}
+          </p>
+        </div>
+      </details>
     </div>
   );
 }
