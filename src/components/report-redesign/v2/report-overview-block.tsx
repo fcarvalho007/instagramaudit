@@ -17,6 +17,11 @@ import { EngagementCardRefined } from "./report-overview-engagement";
 import { FrequencyCard } from "./overview/frequency-card";
 import { FormatCard, type FormatEntry } from "./overview/format-card";
 import { PostComparisonBlock } from "./report-post-comparison";
+import {
+  buildCadenceLabelPt,
+  classifyHashtagsState,
+  pickHashtagsForVerdict,
+} from "@/lib/report/cadence-label";
 
 export interface Props {
   result: AdapterResult;
