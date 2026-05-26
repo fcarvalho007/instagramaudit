@@ -67,7 +67,11 @@ import {
 } from "lucide-react";
 import { Zap } from "lucide-react";
 import { toast } from "sonner";
-import { KANBAN_COLUMNS, type EnrichedLead } from "@/lib/admin/kanban-columns";
+import {
+  KANBAN_COLUMNS,
+  COMMERCIAL_STATUS_OPTIONS,
+  type EnrichedLead,
+} from "@/lib/admin/kanban-columns";
 import { suggestNextLeadAction } from "@/lib/admin/lead-lifecycle";
 import { USER_TYPE_LABELS, type UserType } from "@/lib/unlock-flow";
 import { getEventLabel } from "@/lib/admin/event-labels";
@@ -575,9 +579,9 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {KANBAN_COLUMNS.map((col) => (
-                      <SelectItem key={col.key} value={col.key} className="text-[13px]">
-                        {col.label}
+                    {COMMERCIAL_STATUS_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.key} value={opt.key} className="text-[13px]">
+                        {opt.label}
                       </SelectItem>
                     ))}
                   </SelectContent>

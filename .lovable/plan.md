@@ -1,57 +1,85 @@
-
 ## Objetivo
 
-Concluir o Bloco 1 com refinamentos pontuais de UX/visual no novo `IndexBlock`. Sem novas features, sem dados inventados, sem mexer no resto do card.
+Concluir os 5 itens pendentes da checklist anterior: renomear a rota `/admin/beta-leads` para `/admin/leads`, atualizar todas as referências internas, adicionar um banner de conversão e completar o suporte aos 5 estados novos do lifecycle no detail sheet.
 
-## Refinamentos
+---
 
-### 1. Visual do "Como foi calculado"
-- Trocar o `<details>` com border discreto por uma versão com **fundo `bg-surface-muted/50`** quando aberto (alinha com o estilo do mockup, que mostra o painel num bloco visualmente destacado).
-- Ícone chevron passa a rodar com `transition-transform duration-200` (já está, mas confirmar timing).
-- Padding interno mais generoso (`px-3.5 py-3` em vez de `px-3 py-2`) para respirar.
+## Fase 1 — Renomear rota (sem partir links existentes)
 
-### 2. Régua de estágios — micro-polish
-- Alinhamento vertical das labels com os segmentos da barra: usar `justify-around` em vez de `justify-between` para centrar cada label no segmento correspondente (atualmente as duas pontas tocam o topo/fundo, criando desalinhamento visual com a barra).
-- Aumentar altura mínima da barra para 96–112px (atualmente herda altura do conteúdo das labels) para dar peso visual.
-- Marcador "esta marca · 41" passa a usar o glyph `▸` separado por classe para não quebrar com fontes sem esse caractere — usar `<span aria-hidden>▸</span>` + texto, e cair para `›` em ambientes sem suporte.
+**1.1 Criar `src/routes/admin.leads.tsx`**
+- Cópia exata de `admin.beta-leads.tsx`.
+- Atualizar o path em `createFileRoute("/admin/leads")`.
+- Manter o mesmo loader, queryKey, search schema (`lead`, `view`).
 
-### 3. Microcopy pt-PT — afinar tom
-- Subtítulo "abaixo": passar de "{pp} pp abaixo da referência de envolvimento do escalão" para **"{pp} pp abaixo do envolvimento típico do escalão"** (menos jargão, mais legível).
-- Subtítulo "acima": idem, "acima do envolvimento típico do escalão".
-- Micro-linha: passa de "Índice comparativo, construído a partir de 3 sinais do perfil." para **"Índice comparativo, calculado a partir de 3 sinais observados no perfil."** (verbo mais preciso — não "construído"; reforça "observados", que casa com a postura editorial honesta).
-- Espelhar em en.
+**1.2 Transformar `admin.beta-leads.tsx` em redirect permanente**
+- Substituir o conteúdo por um `beforeLoad` que faz `throw redirect({ to: "/admin/leads", search: prev, replace: true })`, preservando `?lead=` e `?view=`.
+- Manter o ficheiro para não partir bookmarks/emails antigos.
 
-### 4. Estados-limite
-- Se `value === 0` ou se faltam scores válidos (e.g. perfil sem posts): mostrar `—` em vez de `0` e ocultar a régua. Hoje renderiza `0` o que sugere falsamente "pior leitura possível".
-- Se `tier === null` E `postsAnalyzed` ausente E `cadenceWindowDays` ausente: ocultar a linha de "amostra" no painel de método (em vez de mostrar um separador vazio com `· · ·`).
+---
 
-### 5. Acessibilidade
-- Adicionar `aria-expanded` controlado ao `<summary>` via `useState` (o `<details>` nativo não expõe `aria-expanded` aos screen readers em alguns motores).
-- `aria-label` da régua passa a incluir o estágio em pt/en, não a chave técnica (`progress`).
+## Fase 2 — Atualizar referências internas (6 ficheiros + queryKey)
 
-### 6. QA visual
-- Capturar screenshot do card em desktop (1280px) e mobile (375px) via browser tools.
-- Verificar que a coluna esquerda não rebenta com `min-w-0` do `<div className="flex-1 ...">` à direita.
-- Confirmar que o `<details>` colapsa/expande corretamente sem layout shift no veredicto à direita.
+Substituir `"/admin/beta-leads"` por `"/admin/leads"` e `["admin","beta-leads"]` por `["admin","leads"]` em:
 
-## Ficheiros tocados
+1. `src/components/admin/v2/admin-sidebar.tsx` (linhas 35, 66, 68, 160 + label "Pipeline" mantém-se)
+2. `src/components/admin/v2/admin-topbar.tsx` (linha 24 — chave do mapa de títulos)
+3. `src/components/admin/v2/admin-command-palette.tsx` (linhas 72, 79, 139 queryKey, 157)
+4. `src/components/admin/v2/automacoes/people-tab.tsx` (linhas 46 queryKey, 150, 164 + comentário do topo)
+5. `src/components/admin/v2/visao-geral/priority-followups.tsx` (linha 146)
+6. `src/routes/admin.clientes.tsx` (linhas 2, 5, 12 — redirect target e comentários)
 
-- `src/components/report-redesign/v2/overview/editorial-identity-card.tsx` (só `IndexBlock`)
-- `src/i18n/locales/pt/report.json` e `.../en/report.json` (ajustar microcopy)
+Também atualizar a queryKey `["admin", "beta-leads"]` para `["admin", "leads"]` no próprio `admin.leads.tsx` e nos hooks internos do beta-leads que façam `invalidateQueries` com essa key (vou fazer `rg "beta-leads"` final para confirmar zero ocorrências fora do ficheiro de redirect).
+
+---
+
+## Fase 3 — Banner de conversão
+
+**3.1 Endpoint** `src/routes/api/admin/leads-funnel.ts`
+- GET handler protegido por `requireAdmin`.
+- Calcula 3 taxas a partir de `beta_leads` / `report_requests` / pagamentos:
+  - **Reports → LM** (`reports_count` → leads com `commercial_status` em fase de Liaison Manager / qualified)
+  - **LM → Checkout** (qualified → `checkout_sent` ou equivalente)
+  - **Checkout → Pago** (checkout → `paid`)
+- Devolve `{ reportsToLm: { rate, numerator, denominator }, lmToCheckout: {...}, checkoutToPaid: {...}, windowDays: 30 }`.
+
+**3.2 Componente** `src/components/admin/v2/beta-leads/leads-conversion-banner.tsx`
+- 3 KPI cards horizontais, design tokens do admin (sem cores hardcoded).
+- Cada card: label + taxa grande + `numerator/denominator` em micro-linha.
+- Skeleton state + empty state ("Sem dados nos últimos 30 dias").
+- Mostrar no topo de `admin.leads.tsx`, acima da pipeline.
+
+---
+
+## Fase 4 — Lifecycle: 5 estados novos
+
+**4.1 `src/lib/admin/lead-lifecycle.ts`**
+- Adicionar os 5 estados novos ao `LIFECYCLE_STATUSES` (a confirmar nomes exatos durante a implementação — provavelmente `lm_contacted`, `lm_meeting_booked`, `checkout_sent`, `checkout_abandoned`, `paid` ou subset equivalente).
+- Estender `suggestNextLeadAction` para devolver a próxima ação recomendada em cada um.
+- Adicionar metadados (label pt-PT, descrição curta, ícone/tom) consumíveis pelo detail sheet.
+
+**4.2 `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`**
+- Linha 578: trocar `KANBAN_COLUMNS.map(...)` no `<Select>` por `COMMERCIAL_STATUS_OPTIONS.map(...)` — KANBAN_COLUMNS só tem as colunas visíveis do board, COMMERCIAL_STATUS_OPTIONS inclui estados legados/transitórios.
+- Linha 334: manter `KANBAN_COLUMNS.find` para o `columnDef` visual (cor da coluna), com fallback caso o estado não exista em colunas.
+- Verificar que `suggestedStep` (linha 327) continua a funcionar com os novos estados.
+
+---
 
 ## Fora de scope
 
-- Sinal de consistência (Fase 3).
-- Mediana de escalão real (Fase 3).
-- Veredicto, MetricsStrip, bullets.
-- Backend.
+- Migração de dados em `beta_leads` (estados legados continuam suportados).
+- Renomear a tabela `beta_leads` (apenas a rota muda).
+- Alterações ao kanban board / colunas visíveis.
+- Análise da Socialinsider (outra thread).
 
-## Checkpoint
+---
 
-☐ Painel "Como foi calculado" com `bg-surface-muted/50` quando aberto
-☐ Régua com `justify-around` e altura mínima 96–112px
-☐ Microcopy "envolvimento típico do escalão" em pt + en
-☐ `value === 0` → renderiza `—` e oculta régua
-☐ Linha de amostra ausente quando os três campos faltam
-☐ `aria-expanded` controlado no toggle do método
-☐ Screenshots desktop + 375px verificados
+## Checkpoint final ☐
+
+- [ ] `/admin/leads` carrega tudo o que `/admin/beta-leads` carregava
+- [ ] `/admin/beta-leads?lead=xxx` redireciona para `/admin/leads?lead=xxx`
+- [ ] `rg "beta-leads" src/` só devolve `admin.beta-leads.tsx` (redirect)
+- [ ] Sidebar, topbar, command palette, people-tab, priority-followups e clientes apontam para `/admin/leads`
+- [ ] Banner de 3 taxas renderiza no topo da página com dados reais do endpoint
+- [ ] Select de status no detail sheet mostra todos os estados (incluindo legados)
+- [ ] `suggestNextLeadAction` devolve sugestão coerente para os 5 novos estados
+- [ ] Build passa sem erros TypeScript

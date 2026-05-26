@@ -266,7 +266,7 @@ export function LeadsTable({ leads, onOpenDetail }: LeadsTableProps) {
       clearSelection();
       setConfirmOpen(false);
       setConfirmText("");
-      queryClient.invalidateQueries({ queryKey: ["admin", "beta-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "leads"] });
     },
     onError: (err: Error) => {
       toast.error(err.message || "Falha ao apagar contactos");

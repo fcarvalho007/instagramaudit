@@ -44,6 +44,7 @@ import { Route as AdminReportLabRouteImport } from './routes/admin.report-lab'
 import { Route as AdminRelatoriosRouteImport } from './routes/admin.relatorios'
 import { Route as AdminReceitaRouteImport } from './routes/admin.receita'
 import { Route as AdminPerfisRouteImport } from './routes/admin.perfis'
+import { Route as AdminLeadsRouteImport } from './routes/admin.leads'
 import { Route as AdminEstudoMercadoRouteImport } from './routes/admin.estudo-mercado'
 import { Route as AdminEmailLabRouteImport } from './routes/admin.email-lab'
 import { Route as AdminConhecimentoRouteImport } from './routes/admin.conhecimento'
@@ -78,6 +79,7 @@ import { Route as ApiAdminRefreshProfilePreflightRouteImport } from './routes/ap
 import { Route as ApiAdminRefreshProfileRouteImport } from './routes/api/admin/refresh-profile'
 import { Route as ApiAdminRecentReportsRouteImport } from './routes/api/admin/recent-reports'
 import { Route as ApiAdminLeadsKanbanRouteImport } from './routes/api/admin/leads-kanban'
+import { Route as ApiAdminLeadsFunnelRouteImport } from './routes/api/admin/leads-funnel'
 import { Route as ApiAdminLeadsBulkRouteImport } from './routes/api/admin/leads-bulk'
 import { Route as ApiAdminGenerateBetaReportRouteImport } from './routes/api/admin/generate-beta-report'
 import { Route as ApiAdminFunnelRouteImport } from './routes/api/admin/funnel'
@@ -315,6 +317,11 @@ const AdminPerfisRoute = AdminPerfisRouteImport.update({
   path: '/perfis',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminLeadsRoute = AdminLeadsRouteImport.update({
+  id: '/leads',
+  path: '/leads',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminEstudoMercadoRoute = AdminEstudoMercadoRouteImport.update({
   id: '/estudo-mercado',
   path: '/estudo-mercado',
@@ -490,6 +497,11 @@ const ApiAdminRecentReportsRoute = ApiAdminRecentReportsRouteImport.update({
 const ApiAdminLeadsKanbanRoute = ApiAdminLeadsKanbanRouteImport.update({
   id: '/api/admin/leads-kanban',
   path: '/api/admin/leads-kanban',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminLeadsFunnelRoute = ApiAdminLeadsFunnelRouteImport.update({
+  id: '/api/admin/leads-funnel',
+  path: '/api/admin/leads-funnel',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdminLeadsBulkRoute = ApiAdminLeadsBulkRouteImport.update({
@@ -862,6 +874,7 @@ export interface FileRoutesByFullPath {
   '/admin/conhecimento': typeof AdminConhecimentoRoute
   '/admin/email-lab': typeof AdminEmailLabRoute
   '/admin/estudo-mercado': typeof AdminEstudoMercadoRoute
+  '/admin/leads': typeof AdminLeadsRoute
   '/admin/perfis': typeof AdminPerfisRoute
   '/admin/receita': typeof AdminReceitaRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
@@ -896,6 +909,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/funnel': typeof ApiAdminFunnelRoute
   '/api/admin/generate-beta-report': typeof ApiAdminGenerateBetaReportRoute
   '/api/admin/leads-bulk': typeof ApiAdminLeadsBulkRoute
+  '/api/admin/leads-funnel': typeof ApiAdminLeadsFunnelRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
   '/api/admin/recent-reports': typeof ApiAdminRecentReportsRoute
   '/api/admin/refresh-profile': typeof ApiAdminRefreshProfileRoute
@@ -993,6 +1007,7 @@ export interface FileRoutesByTo {
   '/admin/conhecimento': typeof AdminConhecimentoRoute
   '/admin/email-lab': typeof AdminEmailLabRoute
   '/admin/estudo-mercado': typeof AdminEstudoMercadoRoute
+  '/admin/leads': typeof AdminLeadsRoute
   '/admin/perfis': typeof AdminPerfisRoute
   '/admin/receita': typeof AdminReceitaRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
@@ -1027,6 +1042,7 @@ export interface FileRoutesByTo {
   '/api/admin/funnel': typeof ApiAdminFunnelRoute
   '/api/admin/generate-beta-report': typeof ApiAdminGenerateBetaReportRoute
   '/api/admin/leads-bulk': typeof ApiAdminLeadsBulkRoute
+  '/api/admin/leads-funnel': typeof ApiAdminLeadsFunnelRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
   '/api/admin/recent-reports': typeof ApiAdminRecentReportsRoute
   '/api/admin/refresh-profile': typeof ApiAdminRefreshProfileRoute
@@ -1126,6 +1142,7 @@ export interface FileRoutesById {
   '/admin/conhecimento': typeof AdminConhecimentoRoute
   '/admin/email-lab': typeof AdminEmailLabRoute
   '/admin/estudo-mercado': typeof AdminEstudoMercadoRoute
+  '/admin/leads': typeof AdminLeadsRoute
   '/admin/perfis': typeof AdminPerfisRoute
   '/admin/receita': typeof AdminReceitaRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
@@ -1160,6 +1177,7 @@ export interface FileRoutesById {
   '/api/admin/funnel': typeof ApiAdminFunnelRoute
   '/api/admin/generate-beta-report': typeof ApiAdminGenerateBetaReportRoute
   '/api/admin/leads-bulk': typeof ApiAdminLeadsBulkRoute
+  '/api/admin/leads-funnel': typeof ApiAdminLeadsFunnelRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
   '/api/admin/recent-reports': typeof ApiAdminRecentReportsRoute
   '/api/admin/refresh-profile': typeof ApiAdminRefreshProfileRoute
@@ -1260,6 +1278,7 @@ export interface FileRouteTypes {
     | '/admin/conhecimento'
     | '/admin/email-lab'
     | '/admin/estudo-mercado'
+    | '/admin/leads'
     | '/admin/perfis'
     | '/admin/receita'
     | '/admin/relatorios'
@@ -1294,6 +1313,7 @@ export interface FileRouteTypes {
     | '/api/admin/funnel'
     | '/api/admin/generate-beta-report'
     | '/api/admin/leads-bulk'
+    | '/api/admin/leads-funnel'
     | '/api/admin/leads-kanban'
     | '/api/admin/recent-reports'
     | '/api/admin/refresh-profile'
@@ -1391,6 +1411,7 @@ export interface FileRouteTypes {
     | '/admin/conhecimento'
     | '/admin/email-lab'
     | '/admin/estudo-mercado'
+    | '/admin/leads'
     | '/admin/perfis'
     | '/admin/receita'
     | '/admin/relatorios'
@@ -1425,6 +1446,7 @@ export interface FileRouteTypes {
     | '/api/admin/funnel'
     | '/api/admin/generate-beta-report'
     | '/api/admin/leads-bulk'
+    | '/api/admin/leads-funnel'
     | '/api/admin/leads-kanban'
     | '/api/admin/recent-reports'
     | '/api/admin/refresh-profile'
@@ -1523,6 +1545,7 @@ export interface FileRouteTypes {
     | '/admin/conhecimento'
     | '/admin/email-lab'
     | '/admin/estudo-mercado'
+    | '/admin/leads'
     | '/admin/perfis'
     | '/admin/receita'
     | '/admin/relatorios'
@@ -1557,6 +1580,7 @@ export interface FileRouteTypes {
     | '/api/admin/funnel'
     | '/api/admin/generate-beta-report'
     | '/api/admin/leads-bulk'
+    | '/api/admin/leads-funnel'
     | '/api/admin/leads-kanban'
     | '/api/admin/recent-reports'
     | '/api/admin/refresh-profile'
@@ -1671,6 +1695,7 @@ export interface RootRouteChildren {
   ApiAdminFunnelRoute: typeof ApiAdminFunnelRoute
   ApiAdminGenerateBetaReportRoute: typeof ApiAdminGenerateBetaReportRoute
   ApiAdminLeadsBulkRoute: typeof ApiAdminLeadsBulkRoute
+  ApiAdminLeadsFunnelRoute: typeof ApiAdminLeadsFunnelRoute
   ApiAdminLeadsKanbanRoute: typeof ApiAdminLeadsKanbanRouteWithChildren
   ApiAdminRecentReportsRoute: typeof ApiAdminRecentReportsRoute
   ApiAdminRefreshProfileRoute: typeof ApiAdminRefreshProfileRoute
@@ -1979,6 +2004,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPerfisRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/leads': {
+      id: '/admin/leads'
+      path: '/leads'
+      fullPath: '/admin/leads'
+      preLoaderRoute: typeof AdminLeadsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/estudo-mercado': {
       id: '/admin/estudo-mercado'
       path: '/estudo-mercado'
@@ -2215,6 +2247,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/leads-kanban'
       fullPath: '/api/admin/leads-kanban'
       preLoaderRoute: typeof ApiAdminLeadsKanbanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/leads-funnel': {
+      id: '/api/admin/leads-funnel'
+      path: '/api/admin/leads-funnel'
+      fullPath: '/api/admin/leads-funnel'
+      preLoaderRoute: typeof ApiAdminLeadsFunnelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/leads-bulk': {
@@ -2679,6 +2718,7 @@ interface AdminRouteChildren {
   AdminConhecimentoRoute: typeof AdminConhecimentoRoute
   AdminEmailLabRoute: typeof AdminEmailLabRoute
   AdminEstudoMercadoRoute: typeof AdminEstudoMercadoRoute
+  AdminLeadsRoute: typeof AdminLeadsRoute
   AdminPerfisRoute: typeof AdminPerfisRoute
   AdminReceitaRoute: typeof AdminReceitaRoute
   AdminRelatoriosRoute: typeof AdminRelatoriosRoute
@@ -2698,6 +2738,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminConhecimentoRoute: AdminConhecimentoRoute,
   AdminEmailLabRoute: AdminEmailLabRoute,
   AdminEstudoMercadoRoute: AdminEstudoMercadoRoute,
+  AdminLeadsRoute: AdminLeadsRoute,
   AdminPerfisRoute: AdminPerfisRoute,
   AdminReceitaRoute: AdminReceitaRoute,
   AdminRelatoriosRoute: AdminRelatoriosRoute,
@@ -2903,6 +2944,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminFunnelRoute: ApiAdminFunnelRoute,
   ApiAdminGenerateBetaReportRoute: ApiAdminGenerateBetaReportRoute,
   ApiAdminLeadsBulkRoute: ApiAdminLeadsBulkRoute,
+  ApiAdminLeadsFunnelRoute: ApiAdminLeadsFunnelRoute,
   ApiAdminLeadsKanbanRoute: ApiAdminLeadsKanbanRouteWithChildren,
   ApiAdminRecentReportsRoute: ApiAdminRecentReportsRoute,
   ApiAdminRefreshProfileRoute: ApiAdminRefreshProfileRoute,

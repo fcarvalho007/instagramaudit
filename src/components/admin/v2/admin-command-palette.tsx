@@ -2,9 +2,9 @@
  * AdminCommandPalette — pesquisa rápida de leads beta + atalhos para páginas
  * principais do admin, em qualquer rota /admin/*.
  *
- * Atalho ⌘K / Ctrl+K. Reutiliza a mesma query (`['admin','beta-leads']`) que o
+ * Atalho ⌘K / Ctrl+K. Reutiliza a mesma query (`['admin','leads']`) que o
  * Kanban usa para evitar um endpoint dedicado. Selecionar uma lead navega para
- * `/admin/beta-leads?lead=<id>` e a `KanbanBoard` abre a `LeadDetailSheet`.
+ * `/admin/leads?lead=<id>` e a `KanbanBoard` abre a `LeadDetailSheet`.
  *
  * Grupo "Páginas" lista atalhos de navegação para as páginas principais do
  * admin (Visão geral, Receita, Pipeline/Tabela de contactos, Automações,
@@ -69,14 +69,14 @@ const PAGE_SHORTCUTS: PageShortcut[] = [
   },
   {
     label: "Contactos · Pipeline",
-    to: "/admin/beta-leads",
+    to: "/admin/leads",
     search: { view: "pipeline" },
     icon: Columns,
     keywords: "contactos crm pipeline kanban leads beta",
   },
   {
     label: "Contactos · Tabela",
-    to: "/admin/beta-leads",
+    to: "/admin/leads",
     search: { view: "tabela" },
     icon: TableIcon,
     keywords: "contactos crm tabela lista leads beta",
@@ -136,7 +136,7 @@ export function AdminCommandPalette() {
   }, []);
 
   const { data: leads = [], isLoading, error } = useQuery({
-    queryKey: ["admin", "beta-leads"],
+    queryKey: ["admin", "leads"],
     queryFn: fetchLeads,
     enabled: open,
     staleTime: 30_000,
@@ -154,7 +154,7 @@ export function AdminCommandPalette() {
 
   const handleSelect = (id: string) => {
     setOpen(false);
-    navigate({ to: "/admin/beta-leads", search: { lead: id } });
+    navigate({ to: "/admin/leads", search: { lead: id } });
   };
 
   const handleNavigate = (shortcut: PageShortcut) => {

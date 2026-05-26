@@ -32,7 +32,7 @@ interface NavItem {
   to:
     | "/admin/visao-geral"
     | "/admin/receita"
-    | "/admin/beta-leads"
+    | "/admin/leads"
     | "/admin/automacoes"
     | "/admin/relatorios"
     | "/admin/perfis"
@@ -63,9 +63,9 @@ const GROUPS: NavGroup[] = [
   {
     label: "Contactos",
     items: [
-      { to: "/admin/beta-leads", label: "Pipeline", icon: Columns },
+      { to: "/admin/leads", label: "Pipeline", icon: Columns },
       {
-        to: "/admin/beta-leads",
+        to: "/admin/leads",
         label: "Tabela",
         icon: TableIcon,
         search: { view: "tabela" },
@@ -157,7 +157,7 @@ function SidebarBody({ logout, onNavigate }: SidebarBodyProps) {
                 if (isOnPath) {
                   if (item.matchView) {
                     isActive = currentView === item.matchView;
-                  } else if (item.to === "/admin/beta-leads") {
+                  } else if (item.to === "/admin/leads") {
                     // Pipeline = default (no view param or "pipeline")
                     isActive = !currentView || currentView === "pipeline";
                   } else {

@@ -6,6 +6,13 @@
 import type { EnrichedLead } from "./kanban-columns";
 
 export const LIFECYCLE_STATUSES = [
+  // Funil de receita (novos — alinhado com KANBAN_COLUMNS)
+  "lead_magnet",
+  "checkout_iniciado",
+  "pago_report",
+  "pago_pack5",
+  "expirado",
+  // Legado (mantido para retrocompatibilidade com leads antigos)
   "novo_pedido",
   "em_analise",
   "relatorio_gerado",
@@ -26,6 +33,7 @@ export type LifecycleGroup =
   | "entrega"
   | "qualificacao"
   | "comercial"
+  | "receita"
   | "arquivado";
 
 export interface LifecycleMeta {
@@ -35,6 +43,11 @@ export interface LifecycleMeta {
 }
 
 const LIFECYCLE_META: Record<LifecycleStatus, LifecycleMeta> = {
+  lead_magnet: { label: "Subscreveu Lead Magnet", color: "#3772E5", group: "aquisicao" },
+  checkout_iniciado: { label: "Checkout iniciado · €", color: "#7664E4", group: "comercial" },
+  pago_report: { label: "Pagou 1 report · 7€", color: "#1D9E75", group: "receita" },
+  pago_pack5: { label: "Pagou Pack 5 · 28€", color: "#059669", group: "receita" },
+  expirado: { label: "Expirado / Cancelado", color: "#888780", group: "arquivado" },
   novo_pedido: { label: "Novo pedido", color: "#534AB7", group: "aquisicao" },
   em_analise: { label: "Em análise", color: "#BA7517", group: "aquisicao" },
   relatorio_gerado: { label: "Relatório gerado", color: "#185FA5", group: "entrega" },
@@ -70,6 +83,16 @@ export function suggestNextLeadAction(
   lead: Pick<EnrichedLead, "commercial_status" | "report_status" | "report_views">
 ): SuggestedAction {
   switch (lead.commercial_status) {
+    case "lead_magnet":
+      return { label: "Contactar (LM) — propor checkout", severity: "action" };
+    case "checkout_iniciado":
+      return { label: "Recuperar checkout abandonado", severity: "action" };
+    case "pago_report":
+      return { label: "Upsell para Pack 5 (28€)", severity: "action" };
+    case "pago_pack5":
+      return { label: "Onboarding e acompanhar uso", severity: "done" };
+    case "expirado":
+      return { label: "Sem ação — checkout/lead expirado", severity: "info" };
     case "novo_pedido":
       return { label: "Aprovar pedido e gerar relatório", severity: "action" };
     case "em_analise":
