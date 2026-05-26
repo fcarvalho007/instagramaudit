@@ -6,17 +6,17 @@ import { LEGAL } from "@/lib/brand/legal";
 export const Route = createFileRoute("/aviso-legal")({
   head: () => ({
     meta: [
-      { title: "Aviso Legal — InstaBench" },
+      { title: "Aviso Legal — AuditProfiles" },
       {
         name: "description",
         content:
-          "Aviso Legal do InstaBench ao abrigo do Digital Services Act e do Decreto-Lei 7/2004: identificação do operador, contacto, transparência e autoridades de supervisão.",
+          "Aviso Legal do AuditProfiles ao abrigo do Digital Services Act e do Decreto-Lei 7/2004: identificação do operador, contacto, transparência e autoridades de supervisão.",
       },
-      { property: "og:title", content: "Aviso Legal — InstaBench" },
+      { property: "og:title", content: "Aviso Legal — AuditProfiles" },
       {
         property: "og:description",
         content:
-          "Documento de transparência do InstaBench ao abrigo do Digital Services Act (UE 2022/2065).",
+          "Documento de transparência do AuditProfiles ao abrigo do Digital Services Act (UE 2022/2065).",
       },
     ],
   }),
@@ -60,7 +60,7 @@ function AvisoLegalPage() {
       <section id="natureza">
         <h2>2. Natureza do serviço</h2>
         <p>
-          O InstaBench é uma plataforma de análise de perfis públicos de Instagram. Não é uma
+          O AuditProfiles é uma plataforma de análise de perfis públicos de Instagram. Não é uma
           rede social, marketplace, motor de busca ou intermediário de conteúdo de terceiros nos
           termos definidos pelo DSA. O serviço analisa exclusivamente dados públicos disponíveis
           no Instagram, gerando relatórios editoriais para o utilizador que solicita a análise.
@@ -115,7 +115,7 @@ function AvisoLegalPage() {
 
       <section id="publicidade">
         <h2>6. Transparência publicitária</h2>
-        <p>O InstaBench:</p>
+        <p>O AuditProfiles:</p>
         <ul>
           <li>Não exibe publicidade de terceiros;</li>
           <li>Não comercializa dados dos utilizadores;</li>

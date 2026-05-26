@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/beta/submitted/$requestId")({
   head: () => ({
     meta: [
-      { title: "Pedido Registado · InstaBench" },
+      { title: "Pedido Registado · AuditProfiles" },
       { name: "description", content: "O teu pedido de análise beta foi registado com sucesso." },
     ],
   }),

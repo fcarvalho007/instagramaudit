@@ -38,7 +38,7 @@ export const Route = createFileRoute("/reports/$snapshotId")({
   },
   head: () => ({
     meta: [
-      { title: "Relatório · InstaBench" },
+      { title: "Relatório · AuditProfiles" },
       { name: "robots", content: "noindex, nofollow" },
     ],
     scripts: [

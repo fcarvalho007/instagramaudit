@@ -8,7 +8,7 @@ import {
 } from "../templates";
 
 const REPORT_URL = "https://example.com/analyze/frederico.m.carvalho";
-const APP_URL = "https://instagramaudit.lovable.app/app/reports";
+const APP_URL = "https://auditprofiles.com/app/reports";
 
 describe("renderRequestReceived", () => {
   it("renders subject with handle, greeting and brand sign-off", () => {
@@ -20,7 +20,7 @@ describe("renderRequestReceived", () => {
     expect(out.text).toContain("Olá Maria,");
     expect(out.text).toContain("@frederico.m.carvalho");
     expect(out.text).toContain("fase beta");
-    expect(out.text).toContain("equipa InstaBench");
+    expect(out.text).toContain("equipa AuditProfiles");
     expect(out.html).toMatch(/^<!DOCTYPE html>/);
     expect(out.html).toContain('<html lang="pt-PT">');
   });
@@ -123,10 +123,10 @@ describe("renderCommercialFollowup", () => {
   it("emits a mailto CTA when replyToEmail is provided without checkoutUrl", () => {
     const out = renderCommercialFollowup({
       instagramHandle: "x",
-      replyToEmail: "ola@instabench.pt",
+      replyToEmail: "ola@auditprofiles.com",
     });
-    expect(out.html).toContain("mailto:ola@instabench.pt");
-    expect(out.text).toContain("ola@instabench.pt");
+    expect(out.html).toContain("mailto:ola@auditprofiles.com");
+    expect(out.text).toContain("ola@auditprofiles.com");
   });
 
   it("mentions the two pricing options and academic use", () => {
@@ -147,14 +147,14 @@ describe("preheader + signature", () => {
     );
   });
 
-  it("uses the equipa InstaBench sign-off", () => {
+  it("uses the equipa AuditProfiles sign-off", () => {
     const out = renderReportReady({
       instagramHandle: "x",
       reportUrl: REPORT_URL,
     });
     expect(out.text).toContain("Boa leitura,");
-    expect(out.text).toContain("— equipa InstaBench");
-    expect(out.html).toContain("equipa InstaBench");
+    expect(out.text).toContain("— equipa AuditProfiles");
+    expect(out.html).toContain("equipa AuditProfiles");
   });
 });
 

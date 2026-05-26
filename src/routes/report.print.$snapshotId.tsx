@@ -33,7 +33,7 @@ export const Route = createFileRoute("/report/print/$snapshotId")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Relatório (modo impressão) · InstaBench" },
+      { title: "Relatório (modo impressão) · AuditProfiles" },
       { name: "robots", content: "noindex,nofollow" },
     ],
     scripts: [

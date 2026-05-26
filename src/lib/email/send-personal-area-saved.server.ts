@@ -13,7 +13,7 @@ import { renderPersonalAreaSaved } from "./templates/personal-area-saved";
 import { sendTransactionalEmail } from "./transactional-email.server";
 import { renderWithOverride } from "./template-overrides.server";
 
-const DEFAULT_BASE_URL = "https://instagramaudit.lovable.app";
+const DEFAULT_BASE_URL = "https://auditprofiles.com";
 
 export interface SendPersonalAreaSavedArgs {
   toEmail: string;

@@ -1,11 +1,11 @@
 # Instagram Benchmark Context & Source Policy
 
 > Política canónica de fontes editoriais e linguagem do relatório
-> InstaBench. Espelhada como `KnowledgeNote` na BD (categoria `tool`,
+> AuditProfiles. Espelhada como `KnowledgeNote` na BD (categoria `tool`,
 > título "Política de fontes de benchmark") e injectada no prompt do
 > orquestrador de insights via `formatKnowledgeContextForPrompt`.
 
-InstaBench usa contexto de benchmark do Instagram para tornar os
+AuditProfiles usa contexto de benchmark do Instagram para tornar os
 relatórios mais úteis, mas o benchmark é sempre **contexto direcional**,
 nunca verdade absoluta.
 
@@ -70,7 +70,7 @@ A não ser que existam no dataset da app:
 ### 2.3 Taxa de envolvimento — explicação canónica
 
 A taxa varia por fonte, dimensão da conta, sector, janela temporal e
-método de cálculo. No InstaBench é apresentada como **referência
+método de cálculo. No AuditProfiles é apresentada como **referência
 direcional**.
 
 Copy preferido (pt-PT):

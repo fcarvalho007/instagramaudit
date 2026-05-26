@@ -11,7 +11,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 const mocks = vi.hoisted(() => {
   const requireAdminSession = vi.fn();
   const recordLeadEvent = vi.fn();
-  const resolveSender = vi.fn(() => ({ ok: true, from: "InstaBench <test@example.pt>" }));
+  const resolveSender = vi.fn(() => ({ ok: true, from: "AuditProfiles <test@example.pt>" }));
 
   // Per-test fixtures
   const state: {
@@ -140,7 +140,7 @@ beforeEach(() => {
   mocks.state.leadUpdates = [];
 
   mocks.requireAdminSession.mockResolvedValue({ email: "admin@example.pt" });
-  mocks.resolveSender.mockReturnValue({ ok: true, from: "InstaBench <test@example.pt>" });
+  mocks.resolveSender.mockReturnValue({ ok: true, from: "AuditProfiles <test@example.pt>" });
 
   process.env.RESEND_API_KEY = "re_test_key";
   process.env.PUBLIC_APP_BASE_URL = "https://instabench.test";

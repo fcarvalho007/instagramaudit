@@ -6,17 +6,17 @@ import { LEGAL } from "@/lib/brand/legal";
 export const Route = createFileRoute("/termos")({
   head: () => ({
     meta: [
-      { title: "Termos e Condições — InstaBench" },
+      { title: "Termos e Condições — AuditProfiles" },
       {
         name: "description",
         content:
-          "Termos e Condições de utilização do InstaBench, prestado pela Fomentar Sonhos, Lda. Identificação do prestador, objecto, regras de utilização e limites de responsabilidade.",
+          "Termos e Condições de utilização do AuditProfiles, prestado pela Fomentar Sonhos, Lda. Identificação do prestador, objecto, regras de utilização e limites de responsabilidade.",
       },
-      { property: "og:title", content: "Termos e Condições — InstaBench" },
+      { property: "og:title", content: "Termos e Condições — AuditProfiles" },
       {
         property: "og:description",
         content:
-          "Termos e Condições do InstaBench: identificação do prestador, regras de utilização, propriedade intelectual e limites de responsabilidade.",
+          "Termos e Condições do AuditProfiles: identificação do prestador, regras de utilização, propriedade intelectual e limites de responsabilidade.",
       },
     ],
   }),
@@ -44,7 +44,7 @@ function TermosPage() {
       eyebrow="Documento legal"
       title="Termos e Condições de Utilização"
       lede={
-        "Os presentes termos regulam o acesso e a utilização da plataforma InstaBench (doravante \u201Co Serviço\u201D), prestada pela Fomentar Sonhos, Lda."
+        "Os presentes termos regulam o acesso e a utilização da plataforma AuditProfiles (doravante \u201Co Serviço\u201D), prestada pela Fomentar Sonhos, Lda."
       }
       lastUpdated="11 de Maio de 2026"
       toc={TOC}
@@ -69,7 +69,7 @@ function TermosPage() {
       <section id="objeto">
         <h2>2. Objecto do serviço</h2>
         <p>
-          O InstaBench é uma ferramenta de análise editorial de perfis públicos de Instagram. A
+          O AuditProfiles é uma ferramenta de análise editorial de perfis públicos de Instagram. A
           partir de um username indicado pelo utilizador, gera um relatório com diagnóstico de
           conteúdo, desempenho e oportunidade competitiva, com base em dados públicos disponíveis
           na plataforma Instagram à data da consulta.

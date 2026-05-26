@@ -1145,8 +1145,8 @@
     }
   },
   "positioning": {
-    "aria": "O que mostra o InstaBench",
-    "lead": "O <1>InstaBench</1> mostra o que o perfil comunica publicamente, como compara com perfis semelhantes e que temas têm procura fora do Instagram.",
+    "aria": "O que mostra o AuditProfiles",
+    "lead": "O <1>AuditProfiles</1> mostra o que o perfil comunica publicamente, como compara com perfis semelhantes e que temas têm procura fora do Instagram.",
     "chip_public_content": "Conteúdo público",
     "chip_peer_comparison": "Comparação com pares",
     "chip_external_demand": "Procura externa",
@@ -1174,7 +1174,7 @@
     "ctx_hootsuite": "contexto cross-indústria"
   },
   "snapshot": {
-    "metaTitle": "Relatório · InstaBench",
+    "metaTitle": "Relatório · AuditProfiles",
     "retentionMessage": "Os relatórios ficam disponíveis durante {{days}} dias após a geração."
   }
 }

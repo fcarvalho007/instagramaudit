@@ -4,7 +4,7 @@ import { useTranslation, Trans } from "react-i18next";
 
 /**
  * Banner editorial curto entre o hero e o bloco 01: explica em uma
- * frase o que o InstaBench cruza neste relatório, e identifica a
+ * frase o que o AuditProfiles cruza neste relatório, e identifica a
  * família de fontes editoriais que serve de enquadramento (sem links).
  *
  * Política completa: ver `KNOWLEDGE.md` na raiz do projecto e a nota

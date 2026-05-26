@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { renderReportSummary } from "../templates/report-summary";
 
-const REPORT_URL = "https://instagramaudit.lovable.app/analyze/frederico.m.carvalho";
+const REPORT_URL = "https://auditprofiles.com/analyze/frederico.m.carvalho";
 
 const baseInput = {
   firstName: "Maria",

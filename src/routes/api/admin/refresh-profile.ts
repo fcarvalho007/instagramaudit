@@ -48,11 +48,11 @@ interface AnalyzeResult {
  */
 function getAnalyzeUrls(request: Request): string[] {
   const origin = new URL(request.url).origin;
-  const publishedUrl = "https://instagramaudit.lovable.app";
+  const publishedUrl = "https://auditprofiles.com";
   const urls: string[] = [];
 
   // If we're NOT already on the published URL, try it first
-  if (!origin.includes("instagramaudit.lovable.app")) {
+  if (!origin.includes("auditprofiles.com")) {
     urls.push(`${publishedUrl}/api/analyze-public-v1?refresh=1`);
   }
   // Always include the current origin as fallback

@@ -11,7 +11,7 @@ interface ReportEmailParams {
   signedUrl: string;
 }
 
-const BRAND = "InstaBench";
+const BRAND = "AuditProfiles";
 const SIGNED_URL_TTL_DAYS = 7;
 
 function escapeHtml(value: string): string {

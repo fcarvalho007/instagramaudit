@@ -1,9 +1,9 @@
 ---
 name: Iconosquare-inspired report style
-description: Visual DNA for InstaBench report — clean SaaS analytics, white cards, pale backgrounds, compact KPIs, chart and post-card patterns, do/don't rules
+description: Visual DNA for AuditProfiles report — clean SaaS analytics, white cards, pale backgrounds, compact KPIs, chart and post-card patterns, do/don't rules
 type: design
 ---
-# InstaBench — Iconosquare-Inspired Report Style
+# AuditProfiles — Iconosquare-Inspired Report Style
 
 ## Visual DNA
 Clean SaaS analytics dashboard inspired by Iconosquare.

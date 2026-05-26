@@ -37,7 +37,7 @@ function resolveBaseUrl(): string {
   return (
     process.env.PUBLIC_APP_BASE_URL ??
     process.env.PDF_PUBLIC_BASE_URL ??
-    "https://instagramaudit.lovable.app"
+    "https://auditprofiles.com"
   )
     .trim()
     .replace(/\/+$/, "");

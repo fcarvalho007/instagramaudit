@@ -1,4 +1,4 @@
-# Kill Switches — InstaBench
+# Kill Switches — AuditProfiles
 
 Todas as flags usam comparação literal: definir como `"false"` desliga.
 Default = ON (não definida = ligada). Nenhuma destas flags afeta o

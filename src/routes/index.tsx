@@ -13,7 +13,7 @@ export const Route = createFileRoute("/")({
     meta: [
       {
         title:
-          "InstaBench · O benchmark de Instagram que faltava ao mercado",
+          "AuditProfiles · O benchmark de Instagram que faltava ao mercado",
       },
       {
         name: "description",
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/")({
       {
         property: "og:title",
         content:
-          "InstaBench · O benchmark de Instagram que faltava ao mercado",
+          "AuditProfiles · O benchmark de Instagram que faltava ao mercado",
       },
       {
         property: "og:description",

@@ -5,10 +5,10 @@ import { ReportPage } from "@/components/report/report-page";
 export const Route = createFileRoute("/report/example")({
   head: () => ({
     meta: [
-      { title: "Relatório · @frederico.marketing · InstaBench" },
+      { title: "Relatório · @frederico.marketing · AuditProfiles" },
       {
         name: "description",
-        content: "Exemplo de relatório analítico completo do InstaBench.",
+        content: "Exemplo de relatório analítico completo do AuditProfiles.",
       },
       { name: "robots", content: "noindex, nofollow" },
     ],

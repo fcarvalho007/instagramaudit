@@ -66,7 +66,7 @@ export function AdminGate({ onSuccess }: AdminGateProps = {}) {
       >
         <div className="space-y-2">
           <p className="text-eyebrow text-content-tertiary">
-            InstaBench · Admin
+            AuditProfiles · Admin
           </p>
           <h1 className="font-display text-2xl text-content-primary">Acesso</h1>
           <p className="text-sm text-content-secondary">

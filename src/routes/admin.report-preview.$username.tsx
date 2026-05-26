@@ -58,7 +58,7 @@ export const Route = createFileRoute("/admin/report-preview/$username")({
   component: AdminReportPreviewPage,
   head: () => ({
     meta: [
-      { title: "Pré-visualização de relatório · Admin · InstaBench" },
+      { title: "Pré-visualização de relatório · Admin · AuditProfiles" },
       { name: "robots", content: "noindex, nofollow" },
     ],
     scripts: [
@@ -276,7 +276,7 @@ function AdminBanner({ username, variant, load, onLogout, isDraft }: ChromeProps
       <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-3 md:flex-row md:items-center md:justify-between">
         <div className="space-y-1">
           <p className="text-eyebrow text-content-tertiary">
-            InstaBench · Admin · Pré-visualização
+            AuditProfiles · Admin · Pré-visualização
             <span className={`ml-2 inline-flex items-center rounded-full border px-2 py-0.5 text-[12px] font-semibold ${VARIANT_BADGE_TONES[variant]}`}>
               {VARIANT_LABELS[variant]}
             </span>

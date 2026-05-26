@@ -79,7 +79,7 @@ export function FeedbackForm({ requestId, leadFirstName, handle, onSubmitted }: 
           {leadFirstName ? `Obrigado, ${leadFirstName}.` : "Obrigado pelo teu tempo."}
         </h1>
         <p className="text-sm text-content-secondary">
-          6 perguntas curtas · cerca de 1 minuto. O teu feedback ajuda-nos a decidir os próximos passos do InstaBench.
+          6 perguntas curtas · cerca de 1 minuto. O teu feedback ajuda-nos a decidir os próximos passos do AuditProfiles.
         </p>
       </header>
 

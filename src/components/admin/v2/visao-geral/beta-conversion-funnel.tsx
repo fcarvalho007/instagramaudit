@@ -4,7 +4,7 @@
  * 6 etapas (pedido → interesse comercial) com contagem real e drop-off
  * entre etapas. Lê dados em `/api/admin/beta-funnel`. Inspirado no padrão
  * visual do CRM Webinar (barras horizontais), mas adaptado: terminologia
- * beta InstaBench, tokens admin (`--admin-leads-*`), sem mocks.
+ * beta AuditProfiles, tokens admin (`--admin-leads-*`), sem mocks.
  */
 
 import { useQuery } from "@tanstack/react-query";

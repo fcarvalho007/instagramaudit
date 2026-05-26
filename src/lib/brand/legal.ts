@@ -1,5 +1,5 @@
 /**
- * Identidade legal central da entidade operadora do InstaBench.
+ * Identidade legal central da entidade operadora do AuditProfiles.
  *
  * Source of truth para razão social, sede, email de privacidade/DPO e
  * domínio. Páginas legais (privacidade, termos, aviso-legal, cookies)
@@ -21,9 +21,9 @@ export const LEGAL = {
     full: "Rua da Carvalha n.º 570 · 2400-441 Leiria · Portugal",
   },
   privacyEmail: "frederico.carvalho@digitalfc.pt",
-  domain: "instabench.pt",
+  domain: "auditprofiles.com",
   operatorCity: "Leiria, Portugal",
-  productName: "InstaBench",
+  productName: "AuditProfiles",
 } as const;
 
 export type LegalIdentity = typeof LEGAL;

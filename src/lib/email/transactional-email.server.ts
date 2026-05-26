@@ -138,7 +138,7 @@ async function sendViaBrevo(
       latencyMs: Date.now() - startedAt,
     };
   }
-  const fromName = process.env.BREVO_FROM_NAME?.trim() || "InstaBench";
+  const fromName = process.env.BREVO_FROM_NAME?.trim() || "AuditProfiles";
 
   const res = await brevoFetch("/v3/smtp/email", {
     method: "POST",

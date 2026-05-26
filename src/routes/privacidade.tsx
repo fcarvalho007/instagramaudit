@@ -6,17 +6,17 @@ import { LEGAL } from "@/lib/brand/legal";
 export const Route = createFileRoute("/privacidade")({
   head: () => ({
     meta: [
-      { title: "Política de Privacidade — InstaBench" },
+      { title: "Política de Privacidade — AuditProfiles" },
       {
         name: "description",
         content:
-          "Política de Privacidade do InstaBench operado pela Fomentar Sonhos, Lda.: dados tratados, finalidades, subcontratantes e direitos previstos no RGPD.",
+          "Política de Privacidade do AuditProfiles operado pela Fomentar Sonhos, Lda.: dados tratados, finalidades, subcontratantes e direitos previstos no RGPD.",
       },
-      { property: "og:title", content: "Política de Privacidade — InstaBench" },
+      { property: "og:title", content: "Política de Privacidade — AuditProfiles" },
       {
         property: "og:description",
         content:
-          "Política de Privacidade do InstaBench em conformidade com o RGPD. Dados, finalidades, subcontratantes e direitos.",
+          "Política de Privacidade do AuditProfiles em conformidade com o RGPD. Dados, finalidades, subcontratantes e direitos.",
       },
     ],
   }),
@@ -43,7 +43,7 @@ function PrivacidadePage() {
     <LegalLayout
       eyebrow="Documento legal"
       title="Política de Privacidade"
-      lede="Esta política descreve, de forma clara e prática, que dados pessoais são tratados pelo InstaBench, com que finalidades, e quais os direitos dos titulares ao abrigo do Regulamento Geral sobre a Protecção de Dados (RGPD)."
+      lede="Esta política descreve, de forma clara e prática, que dados pessoais são tratados pelo AuditProfiles, com que finalidades, e quais os direitos dos titulares ao abrigo do Regulamento Geral sobre a Protecção de Dados (RGPD)."
       lastUpdated="11 de Maio de 2026"
       toc={TOC}
     >
@@ -253,7 +253,7 @@ function PrivacidadePage() {
       <section id="cookies">
         <h2>9. Cookies e armazenamento local</h2>
         <p>
-          O InstaBench não utiliza cookies de marketing nem ferramentas de seguimento de
+          O AuditProfiles não utiliza cookies de marketing nem ferramentas de seguimento de
           terceiros (como Google Analytics, Meta Pixel ou semelhantes). São utilizados apenas:
         </p>
         <ul>

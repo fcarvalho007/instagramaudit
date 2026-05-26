@@ -40,7 +40,7 @@ export const Route = createFileRoute(
   component: AdminSnapshotPreviewPage,
   head: () => ({
     meta: [
-      { title: "Pré-visualização de snapshot · Admin · InstaBench" },
+      { title: "Pré-visualização de snapshot · Admin · AuditProfiles" },
       { name: "robots", content: "noindex, nofollow" },
     ],
     scripts: [
@@ -260,7 +260,7 @@ function AdminBanner({ snapshotId, load, onLogout }: ChromeProps) {
       <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-3 md:flex-row md:items-center md:justify-between">
         <div className="space-y-1">
           <p className="text-eyebrow text-content-tertiary">
-            InstaBench · Admin · Pré-visualização por snapshot
+            AuditProfiles · Admin · Pré-visualização por snapshot
           </p>
           <p className="text-sm text-content-primary">
             {handle ? <>@{handle}</> : <>snapshot</>}
