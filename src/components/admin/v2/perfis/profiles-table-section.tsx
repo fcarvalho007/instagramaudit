@@ -1,121 +1,148 @@
 /**
- * Tab Perfis · Secção 4 — Tabela completa de perfis.
+ * Tab Perfis · Secção 4 — Tabela de perfis (dados reais).
  *
- * Header com `AdminSectionHeader` + filtros pill (Todos / Com reports /
- * Repetidos / Sem conversão) + tabela 8 colunas + rodapé com paginação mock.
- *
- * Conversão semaforizada:
- *   > 30% → verde
- *   15-30% → âmbar
- *   < 15% → vermelho
+ * Lê `/api/admin/profiles/list` (social_profiles + count de report_requests).
+ * Filtros pill client-side + pesquisa por handle.
  */
 
 import { useMemo, useRef, useState } from "react";
-import {
-  BarChart3,
-  ChevronLeft,
-  ChevronRight,
-  ExternalLink,
-  Send,
-} from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { DemoOnlySection } from "../demo-only-section";
 import { AdminCard } from "../admin-card";
 import { AdminBadge } from "../admin-badge";
 import { AdminAvatar } from "../admin-avatar";
 import { AdminActionButton } from "../admin-action-button";
+import { AdminSectionHeader } from "../admin-section-header";
 import { FilterPills, type FilterOption } from "../filter-pills";
 import { AdminSearchInput, type AdminSearchInputHandle } from "../admin-search-input";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useCmdK } from "@/hooks/use-cmd-k";
 import { ADMIN_LITERAL } from "../admin-tokens";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  MOCK_PROFILES_COUNTS,
-  MOCK_PROFILES_LIST,
-  PROFILE_CATEGORY_META,
-  type MockProfileRow,
-} from "@/lib/admin/mock-data";
+import { adminFetch } from "@/lib/admin/fetch";
 
 type ProfileFilter = "all" | "with_reports" | "repeated" | "no_conversion";
 
-function matchesFilter(filter: ProfileFilter, row: MockProfileRow): boolean {
+interface ProfileRow {
+  handle: string;
+  network: string;
+  display_name: string | null;
+  analyses: number;
+  analyses_fresh: number;
+  analyses_cache: number;
+  followers_last_seen: number | null;
+  last_analyzed_at: string | null;
+  last_outcome: string | null;
+  reports: number;
+  conversion_pct: number;
+}
+
+interface ListApi {
+  success: boolean;
+  rows: ProfileRow[];
+  total: number;
+  counts: {
+    all: number;
+    with_reports: number;
+    repeated: number;
+    no_conversion: number;
+  };
+}
+
+const PAGE_SIZE = 25;
+
+function matchesFilter(filter: ProfileFilter, row: ProfileRow): boolean {
   if (filter === "all") return true;
   if (filter === "with_reports") return row.reports > 0;
   if (filter === "no_conversion") return row.reports === 0;
-  // "repeated" — sinal mockado: análises >= 18 (proxy)
-  return row.analyses >= 18;
+  return row.analyses >= 2;
 }
 
-const MAX_ANALYSES = MOCK_PROFILES_LIST.reduce(
-  (m, r) => (r.analyses > m ? r.analyses : m),
-  0,
-);
+function formatRelative(iso: string | null): string {
+  if (!iso) return "—";
+  const diff = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "agora";
+  if (min < 60) return `há ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `há ${h} h`;
+  const d = Math.floor(h / 24);
+  return `há ${d} d`;
+}
 
 export function ProfilesTableSection() {
   const [filter, setFilter] = useState<ProfileFilter>("all");
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
   const debouncedQuery = useDebouncedValue(query, 200);
   const searchRef = useRef<AdminSearchInputHandle>(null);
   useCmdK(() => searchRef.current?.focus());
 
-  const counts = MOCK_PROFILES_COUNTS;
-  const filterCounts: Record<ProfileFilter, number> = {
-    all: counts.all,
-    with_reports: counts.withReports,
-    repeated: counts.repeated,
-    no_conversion: counts.noConversion,
-  };
+  const { data, isLoading } = useQuery<ListApi>({
+    queryKey: ["admin", "profiles", "list"],
+    queryFn: async () => {
+      const res = await adminFetch("/api/admin/profiles/list");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
 
-  const rows = useMemo(() => {
+  const allRows = data?.rows ?? [];
+  const counts = data?.counts ?? { all: 0, with_reports: 0, repeated: 0, no_conversion: 0 };
+
+  const filtered = useMemo(() => {
     const q = debouncedQuery.trim().toLowerCase();
-    return MOCK_PROFILES_LIST.filter((r) => {
+    return allRows.filter((r) => {
       if (!matchesFilter(filter, r)) return false;
       if (!q) return true;
       return (
         r.handle.toLowerCase().includes(q) ||
-        r.sub.toLowerCase().includes(q) ||
-        r.category.toLowerCase().includes(q)
+        (r.display_name ?? "").toLowerCase().includes(q)
       );
     });
-  }, [filter, debouncedQuery]);
+  }, [allRows, filter, debouncedQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const rows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const filterOptions: ReadonlyArray<FilterOption<ProfileFilter>> = [
-    { value: "all", label: "Todos", count: filterCounts.all },
-    { value: "with_reports", label: "Com reports", count: filterCounts.with_reports },
-    { value: "repeated", label: "Repetidos", count: filterCounts.repeated },
-    { value: "no_conversion", label: "Sem conversão", count: filterCounts.no_conversion },
+    { value: "all", label: "Todos", count: counts.all },
+    { value: "with_reports", label: "Com reports", count: counts.with_reports },
+    { value: "repeated", label: "Repetidos", count: counts.repeated },
+    { value: "no_conversion", label: "Sem conversão", count: counts.no_conversion },
   ];
 
+  const maxAnalyses = allRows.reduce((m, r) => (r.analyses > m ? r.analyses : m), 0);
+
   return (
-    <DemoOnlySection
-      title="Tabela de perfis"
-      subtitle="284 perfis · 30 dias"
-      accent="expense"
-      info={"Lista completa de perfis Instagram analisados. Usa os filtros para isolar perfis que já converteram, repetidos sem report ou outros segmentos."}
-      pendingReason={"Tabela detalhada de perfis com filtros e ordenação será ligada a `social_profiles`. Entretanto, a tab Sistema mostra perfis analisados via logs reais."}
-    >
-      <section>
-      <div className="mb-3.5 flex flex-wrap items-end justify-between gap-3">
-        <div className="-mb-3.5">
-        </div>
+    <section>
+      <AdminSectionHeader
+        title="Tabela de perfis"
+        subtitle={`${allRows.length} perfis no histórico`}
+        accent="expense"
+        info="Lista completa de perfis analisados (de `social_profiles`) com agregação de relatórios por handle."
+      />
+      <div className="mb-3.5 flex flex-wrap items-end justify-end gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <AdminSearchInput
             ref={searchRef}
             value={query}
-            onChange={setQuery}
-            placeholder="Pesquisar perfil ou categoria…"
+            onChange={(v) => {
+              setQuery(v);
+              setPage(1);
+            }}
+            placeholder="Pesquisar handle ou nome…"
             ariaLabel="Pesquisar perfis"
           />
           <FilterPills
             options={filterOptions}
             value={filter}
-            onChange={setFilter}
+            onChange={(v) => {
+              setFilter(v);
+              setPage(1);
+            }}
             ariaLabel="Filtros de perfil"
           />
         </div>
@@ -127,63 +154,63 @@ export function ProfilesTableSection() {
             <thead>
               <tr className="text-admin-text-tertiary">
                 <Th>Perfil</Th>
-                <Th>Tipo</Th>
-                <Th>Análises</Th>
+                <Th>Rede</Th>
+                <Th align="right">Análises</Th>
+                <Th align="right">Cache</Th>
                 <Th align="right">Reports</Th>
                 <Th align="right">Conversão</Th>
-                <Th align="right">Receita</Th>
                 <Th>Última actividade</Th>
-                <Th align="right">Acções</Th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
-                <ProfileRow key={row.handle} row={row} />
-              ))}
-              {rows.length === 0 ? (
+              {isLoading ? (
                 <tr>
-                  <td
-                    colSpan={8}
-                    className="px-6 py-8 text-center text-[12px] text-admin-text-tertiary"
-                  >
+                  <td colSpan={7} className="px-6 py-8 text-center text-[12px] text-admin-text-tertiary">
+                    A carregar…
+                  </td>
+                </tr>
+              ) : rows.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-8 text-center text-[12px] text-admin-text-tertiary">
                     {debouncedQuery
                       ? `Sem resultados para «${debouncedQuery}».`
                       : "Sem perfis para este filtro."}
-                    {debouncedQuery ? (
-                      <>
-                        {" "}
-                        <button
-                          type="button"
-                          onClick={() => setQuery("")}
-                          className="underline underline-offset-2 hover:text-admin-text-primary"
-                        >
-                          Limpar pesquisa
-                        </button>
-                      </>
-                    ) : null}
                   </td>
                 </tr>
-              ) : null}
+              ) : (
+                rows.map((row) => (
+                  <ProfileRowView key={row.handle} row={row} maxAnalyses={maxAnalyses} />
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-admin-border px-6 py-3.5">
           <p className="m-0 text-[12px] text-admin-text-tertiary">
-            A mostrar {rows.length} de {counts.all} · ordenado por análises
+            A mostrar {rows.length} de {filtered.length} · página {safePage}/{totalPages}
           </p>
           <div className="flex items-center gap-1.5">
-            <AdminActionButton size="sm" aria-label="Página anterior">
+            <AdminActionButton
+              size="sm"
+              aria-label="Página anterior"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={safePage <= 1}
+            >
               <ChevronLeft size={14} strokeWidth={1.75} />
             </AdminActionButton>
-            <AdminActionButton size="sm" aria-label="Página seguinte">
+            <AdminActionButton
+              size="sm"
+              aria-label="Página seguinte"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={safePage >= totalPages}
+            >
               <ChevronRight size={14} strokeWidth={1.75} />
             </AdminActionButton>
           </div>
         </div>
       </AdminCard>
     </section>
-    </DemoOnlySection>
   );
 }
 
@@ -205,19 +232,16 @@ function Th({
   );
 }
 
-function ProfileRow({ row }: { row: MockProfileRow }) {
-  const meta = PROFILE_CATEGORY_META[row.category];
-  const initial = row.handle.replace("@", "").charAt(0).toUpperCase();
-  const analysesPct = Math.round((row.analyses / MAX_ANALYSES) * 100);
-
-  // Semáforo da conversão.
-  const conv = row.conversionPct;
+function ProfileRowView({ row, maxAnalyses }: { row: ProfileRow; maxAnalyses: number }) {
+  const initial = row.handle.charAt(0).toUpperCase();
+  const analysesPct = maxAnalyses > 0 ? Math.round((row.analyses / maxAnalyses) * 100) : 0;
+  const conv = row.conversion_pct;
   const convCls =
     conv > 30
       ? "text-admin-revenue-700"
       : conv >= 15
-      ? "text-admin-expense-700"
-      : "text-admin-danger-500";
+        ? "text-admin-expense-700"
+        : "text-admin-danger-500";
 
   return (
     <tr className="border-t border-admin-border transition-colors hover:bg-[var(--color-admin-surface-muted)]">
@@ -225,35 +249,35 @@ function ProfileRow({ row }: { row: MockProfileRow }) {
         <div className="flex items-center gap-3">
           <AdminAvatar
             initials={initial}
-            variant={meta.avatar}
+            variant="signal"
             size={32}
             ariaLabel={row.handle}
             seed={row.handle}
           />
           <div className="min-w-0">
             <p className="m-0 truncate text-[13px] text-admin-text-primary">
-              {row.handle}
+              @{row.handle}
             </p>
-            <p className="m-0 text-[12px] text-admin-text-secondary">
-              {row.sub}
-            </p>
+            {row.display_name ? (
+              <p className="m-0 text-[12px] text-admin-text-secondary">
+                {row.display_name}
+              </p>
+            ) : null}
           </div>
         </div>
       </td>
       <td className="px-6 py-3.5 align-middle">
-        <AdminBadge variant={meta.badge}>{meta.label}</AdminBadge>
+        <AdminBadge variant="info">{row.network}</AdminBadge>
       </td>
-      <td className="px-6 py-3.5 align-middle">
-        <div className="flex items-center gap-2">
+      <td className="px-6 py-3.5 text-right align-middle">
+        <div className="flex items-center justify-end gap-2">
           <span className="admin-code tabular-nums text-admin-text-primary">
             {row.analyses}
           </span>
           <span
             aria-hidden="true"
             className="block h-1 w-16 rounded-full"
-            style={{
-              backgroundColor: ADMIN_LITERAL.profileFunnelBase,
-            }}
+            style={{ backgroundColor: ADMIN_LITERAL.profileFunnelBase }}
           >
             <span
               className="block h-1 rounded-full"
@@ -265,17 +289,14 @@ function ProfileRow({ row }: { row: MockProfileRow }) {
           </span>
         </div>
       </td>
+      <td className="px-6 py-3.5 text-right align-middle admin-code tabular-nums text-admin-text-tertiary">
+        {row.analyses_cache}
+      </td>
       <td
         className={`px-6 py-3.5 text-right align-middle admin-code tabular-nums ${
-          row.reports > 0
-            ? ""
-            : "text-admin-text-tertiary"
+          row.reports > 0 ? "" : "text-admin-text-tertiary"
         }`}
-        style={
-          row.reports > 0
-            ? { color: ADMIN_LITERAL.profileBarReports }
-            : undefined
-        }
+        style={row.reports > 0 ? { color: ADMIN_LITERAL.profileBarReports } : undefined}
       >
         {row.reports}
       </td>
@@ -284,74 +305,11 @@ function ProfileRow({ row }: { row: MockProfileRow }) {
           row.reports === 0 ? "text-admin-text-tertiary" : convCls
         }`}
       >
-        {row.reports === 0 ? "—" : `${row.conversionPct.toFixed(1)}%`}
-      </td>
-      <td className="px-6 py-3.5 text-right align-middle admin-code tabular-nums text-admin-text-primary">
-        {row.revenue ?? "—"}
+        {row.reports === 0 ? "—" : `${conv.toFixed(1)}%`}
       </td>
       <td className="px-6 py-3.5 align-middle text-[12px] text-admin-text-secondary">
-        {row.lastActivity}
-      </td>
-      <td className="px-6 py-3.5 align-middle">
-        <ProfileActions hasReports={row.reports > 0} handle={row.handle} />
+        {formatRelative(row.last_analyzed_at)}
       </td>
     </tr>
-  );
-}
-
-function ProfileActions({
-  hasReports,
-  handle,
-}: {
-  hasReports: boolean;
-  handle: string;
-}) {
-  return (
-    <TooltipProvider delayDuration={150}>
-      <div className="flex items-center justify-end gap-2 text-admin-text-tertiary">
-        <ActionIcon
-          label="Ver detalhes do perfil"
-          icon={<BarChart3 size={16} strokeWidth={1.75} />}
-        />
-        {hasReports ? (
-          <ActionIcon
-            label="Enviar para utilizadores recorrentes"
-            icon={<Send size={16} strokeWidth={1.75} />}
-          />
-        ) : null}
-        <ActionIcon
-          label={`Abrir ${handle} no Instagram`}
-          icon={<ExternalLink size={16} strokeWidth={1.75} />}
-        />
-      </div>
-    </TooltipProvider>
-  );
-}
-
-function ActionIcon({
-  label,
-  icon,
-}: {
-  label: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          aria-label={label}
-          className="inline-flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-[var(--color-admin-surface-muted)] hover:text-admin-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-admin-revenue-500"
-        >
-          {icon}
-        </button>
-      </TooltipTrigger>
-      <TooltipContent
-        side="top"
-        className="bg-admin-neutral-900 text-[12px] text-white"
-      >
-        {label}
-      </TooltipContent>
-    </Tooltip>
   );
 }

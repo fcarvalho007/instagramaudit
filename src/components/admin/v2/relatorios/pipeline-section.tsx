@@ -1,97 +1,86 @@
 /**
  * Secção 1 — Pipeline operacional.
  *
- * Cartão único com 4 fases horizontais (Pedido → Análise Apify → PDF → Email)
- * + rodapé com 4 stats agregados (tempo médio, taxa de entrega, falhas,
- * custo médio).
- *
- * Cada fase é um cartão interno warm com border-left colorido e um indicador
- * de saúde pulsante no canto inferior direito.
+ * Lê estado real do pipeline em `/api/admin/report-requests/pipeline`.
  */
 
-import { DemoOnlySection } from "../demo-only-section";
+import { useQuery } from "@tanstack/react-query";
 import { AdminCard } from "../admin-card";
-import { ADMIN_LITERAL } from "../admin-tokens";
-import {
-  MOCK_PIPELINE_AGGREGATES,
-  MOCK_PIPELINE_PHASES,
-  type ReportPipelineHealth,
-} from "@/lib/admin/mock-data";
+import { AdminSectionHeader } from "../admin-section-header";
+import { adminFetch } from "@/lib/admin/fetch";
 
-const HEALTH_COLOR: Record<ReportPipelineHealth, string> = {
-  ok: ADMIN_LITERAL.healthOk,
-  warn: ADMIN_LITERAL.healthWarn,
-  critical: ADMIN_LITERAL.healthCritical,
-};
+interface PipelineApi {
+  success: boolean;
+  phases: { pedido: number; analise: number; pdf: number; email: number };
+  failures_to_recover: number;
+  avg_total_seconds: number | null;
+  success_rate_pct: number | null;
+  avg_cost_usd: number | null;
+  total_window: number;
+}
 
-const HEALTH_LABEL: Record<ReportPipelineHealth, string> = {
-  ok: "operacional",
-  warn: "backlog",
-  critical: "falha crítica",
-};
+function formatSeconds(s: number | null): string {
+  if (s == null) return "—";
+  const mins = Math.floor(s / 60);
+  const secs = Math.round(s % 60);
+  return `${mins}m ${String(secs).padStart(2, "0")}s`;
+}
 
 export function PipelineSection() {
-  const aggregates = MOCK_PIPELINE_AGGREGATES;
-  const failuresCritical = aggregates.failuresToRecover.value > 0;
+  const { data } = useQuery<PipelineApi>({
+    queryKey: ["admin", "report-requests", "pipeline"],
+    queryFn: async () => {
+      const res = await adminFetch("/api/admin/report-requests/pipeline");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    },
+    staleTime: 15_000,
+  });
+
+  const phases = data?.phases ?? { pedido: 0, analise: 0, pdf: 0, email: 0 };
+  const failures = data?.failures_to_recover ?? 0;
 
   return (
-    <DemoOnlySection
-      title="Pipeline operacional"
-      subtitle="do pedido à entrega"
-      accent="signal"
-      info={"Cada relatório passa por 4 fases: pedido recebido → análise Apify → PDF gerado → email entregue. Fases bloqueadas indicam intervenção manual necessária."}
-      pendingReason={"O pipeline operacional (Pedido → Análise → PDF → Email) tem zero pedidos por enquanto. Será preenchido com dados reais à medida que existam relatórios pagos."}
-    >
-      <section>
+    <section className="flex flex-col gap-4">
+      <AdminSectionHeader
+        title="Pipeline operacional"
+        subtitle="do pedido à entrega"
+        accent="signal"
+        info="Estado vivo de cada pedido: Pedido → Análise Apify → PDF → Email entregue."
+      />
       <AdminCard className="!p-7">
-        {/* Fases */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {MOCK_PIPELINE_PHASES.map((phase) => (
-            <PhaseCard
-              key={phase.id}
-              accent={ADMIN_LITERAL[phase.accentKey]}
-              eyebrow={phase.eyebrow}
-              label={phase.label}
-              value={phase.value}
-              sub={phase.sub}
-              health={phase.health}
-            />
-          ))}
+          <PhaseCard accent="#7664E4" eyebrow="Fase 1" label="Pedido recebido" value={phases.pedido} sub="sem análise ainda" />
+          <PhaseCard accent="#3772E5" eyebrow="Fase 2" label="Análise Apify" value={phases.analise} sub="snapshot pronto" />
+          <PhaseCard accent="#D85A30" eyebrow="Fase 3" label="PDF gerado" value={phases.pdf} sub="aguarda envio" />
+          <PhaseCard accent="#1D9E75" eyebrow="Fase 4" label="Email entregue" value={phases.email} sub="ciclo completo" />
         </div>
 
-        {/* Rodapé · stats agregados */}
         <div className="mt-6 grid grid-cols-1 gap-5 border-t border-admin-border pt-6 sm:grid-cols-2 lg:grid-cols-4">
+          <AggregateStat eyebrow="Tempo médio total" value={formatSeconds(data?.avg_total_seconds ?? null)} sub="pedido → email" />
           <AggregateStat
-            eyebrow={aggregates.avgTotalTime.eyebrow}
-            value={aggregates.avgTotalTime.value}
-            sub={aggregates.avgTotalTime.sub}
-          />
-          <AggregateStat
-            eyebrow={aggregates.successRate.eyebrow}
-            value={aggregates.successRate.value}
-            sub={aggregates.successRate.sub}
+            eyebrow="Taxa de sucesso"
+            value={data?.success_rate_pct != null ? `${data.success_rate_pct.toFixed(1)}%` : "—"}
+            sub={`${data?.total_window ?? 0} pedidos (30d)`}
             valueColor="rgb(var(--admin-revenue-700))"
             divider
           />
           <AggregateStat
-            eyebrow={aggregates.failuresToRecover.eyebrow}
-            value={String(aggregates.failuresToRecover.value)}
-            sub={aggregates.failuresToRecover.sub}
-            valueColor={
-              failuresCritical ? "rgb(var(--admin-danger-500))" : undefined
-            }
+            eyebrow="A recuperar"
+            value={String(failures)}
+            sub="falhas a investigar"
+            valueColor={failures > 0 ? "rgb(var(--admin-danger-500))" : undefined}
             divider
           />
           <AggregateStat
-            eyebrow={aggregates.avgCost.eyebrow}
-            value={aggregates.avgCost.value}
-            sub={aggregates.avgCost.sub}
+            eyebrow="Custo médio"
+            value={data?.avg_cost_usd != null ? `$${data.avg_cost_usd.toFixed(3)}` : "—"}
+            sub="apify + openai"
             divider
           />
         </div>
       </AdminCard>
     </section>
-    </DemoOnlySection>
   );
 }
 
@@ -101,22 +90,17 @@ function PhaseCard({
   label,
   value,
   sub,
-  health,
 }: {
   accent: string;
   eyebrow: string;
   label: string;
   value: number;
   sub: string;
-  health: ReportPipelineHealth;
 }) {
   return (
     <div
       className="relative bg-admin-canvas px-6 py-5"
-      style={{
-        borderLeft: `4px solid ${accent}`,
-        borderRadius: "0 12px 12px 0",
-      }}
+      style={{ borderLeft: `4px solid ${accent}`, borderRadius: "0 12px 12px 0" }}
     >
       <p className="admin-eyebrow mb-1.5">{eyebrow}</p>
       <p className="m-0 text-[13px] text-admin-text-secondary">{label}</p>
@@ -127,13 +111,6 @@ function PhaseCard({
         {value}
       </p>
       <p className="mt-2 text-[12px] text-admin-text-tertiary">{sub}</p>
-
-      <span
-        aria-label={`Estado ${HEALTH_LABEL[health]}`}
-        title={HEALTH_LABEL[health]}
-        className="admin-pulse-dot absolute bottom-3 right-3 block h-2 w-2 rounded-full"
-        style={{ backgroundColor: HEALTH_COLOR[health] }}
-      />
     </div>
   );
 }
@@ -152,13 +129,7 @@ function AggregateStat({
   divider?: boolean;
 }) {
   return (
-    <div
-      className={
-        divider
-          ? "sm:border-l sm:border-admin-border sm:pl-5"
-          : ""
-      }
-    >
+    <div className={divider ? "sm:border-l sm:border-admin-border sm:pl-5" : ""}>
       <p className="admin-eyebrow mb-2">{eyebrow}</p>
       <p
         className="m-0 font-mono font-medium leading-tight"

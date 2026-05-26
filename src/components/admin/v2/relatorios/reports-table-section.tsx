@@ -1,103 +1,131 @@
 /**
- * Secção 4 — Tabela de relatórios.
+ * Secção 4 — Tabela de relatórios (dados reais).
  *
- * Header com filtros pill (Todos / Entregues / Em curso / Falhados) +
- * tabela 8 colunas + rodapé com paginação mock.
- *
- * Estado das linhas com badges semânticos. Acções por ícone com tooltip
- * Radix.
+ * Lê `/api/admin/report-requests` (já existente, paginação server-side).
  */
 
-import { useMemo, useState } from "react";
-import {
-  AlertCircle,
-  ArrowUpRight,
-  ChevronLeft,
-  ChevronRight,
-  Eye,
-  Loader2,
-  RefreshCw,
-  RotateCw,
-} from "lucide-react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { ChevronLeft, ChevronRight, Eye } from "lucide-react";
 
-import { DemoOnlySection } from "../demo-only-section";
 import { AdminCard } from "../admin-card";
 import { AdminBadge } from "../admin-badge";
 import { AdminActionButton } from "../admin-action-button";
+import { AdminSectionHeader } from "../admin-section-header";
 import { FilterPills, type FilterOption } from "../filter-pills";
 import { ReportDrawer } from "../report-drawer";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  MOCK_REPORTS_COUNTS,
-  MOCK_REPORTS_LIST,
-  type MockReport,
-  type ReportOrigin,
-  type ReportStatus,
-} from "@/lib/admin/mock-data";
+import { adminFetch } from "@/lib/admin/fetch";
 
 type ReportFilter = "all" | "delivered" | "in_progress" | "failed";
 
-function matchesFilter(filter: ReportFilter, status: ReportStatus): boolean {
-  if (filter === "all") return true;
-  if (filter === "delivered") return status === "delivered";
-  if (filter === "in_progress") return status === "processing" || status === "queued";
-  return status === "failed";
+interface ReportRow {
+  id: string;
+  instagram_username: string;
+  request_status: string;
+  pdf_status: string;
+  delivery_status: string;
+  request_source: string;
+  is_free_request: boolean;
+  created_at: string;
+  email_sent_at: string | null;
+  lead: { id: string; name: string | null; email: string | null } | null;
 }
 
-const ORIGIN_LABEL: Record<ReportOrigin, string> = {
-  subscription: "subscrição",
-  one_off: "avulso",
-};
+interface ListApi {
+  success: boolean;
+  rows: ReportRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+function deriveStatus(r: ReportRow): "delivered" | "processing" | "failed" {
+  if (r.delivery_status === "sent") return "delivered";
+  if (
+    r.request_status === "failed" ||
+    r.pdf_status === "failed" ||
+    r.delivery_status === "failed"
+  )
+    return "failed";
+  return "processing";
+}
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function formatDuration(r: ReportRow): string {
+  if (!r.email_sent_at) return "—";
+  const sec = Math.round(
+    (new Date(r.email_sent_at).getTime() - new Date(r.created_at).getTime()) / 1000,
+  );
+  if (sec < 60) return `${sec}s`;
+  return `${Math.floor(sec / 60)}m ${String(sec % 60).padStart(2, "0")}s`;
+}
 
 export function ReportsTableSection() {
   const [filter, setFilter] = useState<ReportFilter>("all");
+  const [page, setPage] = useState(1);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+
+  const filterParams: Record<ReportFilter, string> = {
+    all: "",
+    delivered: "&email=sent",
+    in_progress: "",
+    failed: "&status=failed",
+  };
+
+  const { data, isLoading } = useQuery<ListApi>({
+    queryKey: ["admin", "report-requests", "list", filter, page],
+    queryFn: async () => {
+      const res = await adminFetch(
+        `/api/admin/report-requests?page=${page}&pageSize=25${filterParams[filter]}`,
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    },
+    staleTime: 15_000,
+  });
+
+  let rows = data?.rows ?? [];
+  // Client-side narrowing for "in_progress" (no single status maps to it)
+  if (filter === "in_progress") {
+    rows = rows.filter((r) => deriveStatus(r) === "processing");
+  }
+
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / (data?.pageSize ?? 25)));
+
+  const filterOptions: ReadonlyArray<FilterOption<ReportFilter>> = [
+    { value: "all", label: "Todos" },
+    { value: "delivered", label: "Entregues" },
+    { value: "in_progress", label: "Em curso" },
+    { value: "failed", label: "Falhados" },
+  ];
 
   function openReport(id: string) {
     setSelectedReportId(id);
     setDrawerOpen(true);
   }
 
-  const counts = MOCK_REPORTS_COUNTS;
-
-  const rows = useMemo(
-    () => MOCK_REPORTS_LIST.filter((r) => matchesFilter(filter, r.status)),
-    [filter],
-  );
-
-  const filterOptions: ReadonlyArray<FilterOption<ReportFilter>> = [
-    { value: "all", label: "Todos", count: counts.all },
-    { value: "delivered", label: "Entregues", count: counts.delivered },
-    { value: "in_progress", label: "Em curso", count: counts.inProgress },
-    { value: "failed", label: "Falhados", count: counts.failed },
-  ];
-
   return (
-    <DemoOnlySection
-      title="Relatórios"
-      subtitle="histórico, estado e custo por pedido"
-      accent="revenue"
-      info={"Histórico completo de relatórios pedidos com estado actual, duração e custo por execução. Filtros pill no topo direito."}
-      pendingReason={"A tabela de relatórios lê `report_requests`. Está vazia até existirem pedidos reais — usa Modo demonstração para ver as colunas e ações disponíveis."}
-    >
-      <section>
-      <div className="mb-3.5 flex flex-wrap items-end justify-between gap-3">
-        <div className="-mb-3.5">
-          {/*
-           * `AdminSectionHeader` traz `mb-3.5` interno; compensamos para
-           * evitar dupla margem quando o header está num wrapper flex.
-           */}
-        </div>
+    <section>
+      <AdminSectionHeader
+        title="Relatórios"
+        subtitle="histórico de pedidos"
+        accent="revenue"
+        info="Pedidos reais de relatórios (`report_requests`) com lead associado."
+      />
+      <div className="mb-3.5 flex flex-wrap items-end justify-end gap-3">
         <FilterPills
           options={filterOptions}
           value={filter}
-          onChange={setFilter}
+          onChange={(v) => {
+            setFilter(v);
+            setPage(1);
+          }}
           ariaLabel="Filtros de relatório"
         />
       </div>
@@ -107,43 +135,95 @@ export function ReportsTableSection() {
           <table className="w-full border-collapse text-left text-[12px]">
             <thead>
               <tr className="text-admin-text-tertiary">
-                <Th>Pedido</Th>
+                <Th>Lead</Th>
                 <Th>Perfil</Th>
                 <Th>Origem</Th>
                 <Th>Estado</Th>
                 <Th>Início</Th>
                 <Th>Duração</Th>
-                <Th align="right">Custo</Th>
                 <Th align="right">Acções</Th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
-                <ReportRow key={r.id} report={r} onView={() => openReport(r.id)} />
-              ))}
-              {rows.length === 0 ? (
+              {isLoading ? (
                 <tr>
-                  <td
-                    colSpan={8}
-                    className="px-6 py-8 text-center text-[12px] text-admin-text-tertiary"
-                  >
+                  <td colSpan={7} className="px-6 py-8 text-center text-[12px] text-admin-text-tertiary">
+                    A carregar…
+                  </td>
+                </tr>
+              ) : rows.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-8 text-center text-[12px] text-admin-text-tertiary">
                     Sem relatórios para este filtro.
                   </td>
                 </tr>
-              ) : null}
+              ) : (
+                rows.map((r) => (
+                  <tr
+                    key={r.id}
+                    className="border-t border-admin-border transition-colors hover:bg-[var(--color-admin-surface-muted)]"
+                  >
+                    <td className="px-6 py-3.5 align-top">
+                      <p className="m-0 text-[13px] text-admin-text-primary">
+                        {r.lead?.name ?? "—"}
+                      </p>
+                      <p className="mt-0.5 text-[12px] text-admin-text-secondary">
+                        {r.lead?.email ?? "—"}
+                      </p>
+                    </td>
+                    <td className="px-6 py-3.5 align-top text-[13px] text-admin-text-primary">
+                      @{r.instagram_username}
+                    </td>
+                    <td className="px-6 py-3.5 align-top">
+                      <AdminBadge variant={r.is_free_request ? "info" : "revenue"}>
+                        {r.is_free_request ? "grátis" : "pago"}
+                      </AdminBadge>
+                    </td>
+                    <td className="px-6 py-3.5 align-top">
+                      <StatusBadge status={deriveStatus(r)} />
+                    </td>
+                    <td className="px-6 py-3.5 align-top admin-code text-admin-text-secondary">
+                      {formatDate(r.created_at)}
+                    </td>
+                    <td className="px-6 py-3.5 align-top admin-code text-admin-text-secondary">
+                      {formatDuration(r)}
+                    </td>
+                    <td className="px-6 py-3.5 align-top text-right">
+                      <button
+                        type="button"
+                        aria-label="Ver detalhe"
+                        onClick={() => openReport(r.id)}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-md text-admin-text-tertiary transition-colors hover:bg-[var(--color-admin-surface-muted)] hover:text-admin-text-primary"
+                      >
+                        <Eye size={16} strokeWidth={1.75} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-admin-border px-6 py-3.5">
           <p className="m-0 text-[12px] text-admin-text-tertiary">
-            A mostrar {rows.length} de {counts.all} · ordenado por mais recente
+            A mostrar {rows.length} · página {page}/{totalPages} · {total} no total
           </p>
           <div className="flex items-center gap-1.5">
-            <AdminActionButton size="sm" aria-label="Página anterior">
+            <AdminActionButton
+              size="sm"
+              aria-label="Página anterior"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+            >
               <ChevronLeft size={14} strokeWidth={1.75} />
             </AdminActionButton>
-            <AdminActionButton size="sm" aria-label="Página seguinte">
+            <AdminActionButton
+              size="sm"
+              aria-label="Página seguinte"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+            >
               <ChevronRight size={14} strokeWidth={1.75} />
             </AdminActionButton>
           </div>
@@ -156,7 +236,6 @@ export function ReportsTableSection() {
         reportId={selectedReportId}
       />
     </section>
-    </DemoOnlySection>
   );
 }
 
@@ -178,138 +257,8 @@ function Th({
   );
 }
 
-function ReportRow({ report, onView }: { report: MockReport; onView: () => void }) {
-  return (
-    <tr className="border-t border-admin-border transition-colors hover:bg-[var(--color-admin-surface-muted)]">
-      <td className="px-6 py-3.5 align-top">
-        <p className="m-0 admin-code text-admin-text-primary">
-          #{report.id}
-        </p>
-        <p className="mt-0.5 text-[12px] text-admin-text-secondary">
-          {report.customer}
-        </p>
-      </td>
-      <td className="px-6 py-3.5 align-top">
-        <span className="inline-flex items-center gap-1 text-[13px] text-admin-text-primary">
-          {report.profile}
-          <ArrowUpRight
-            size={12}
-            strokeWidth={1.75}
-            className="text-admin-text-tertiary"
-          />
-        </span>
-      </td>
-      <td className="px-6 py-3.5 align-top">
-        <AdminBadge variant={report.origin === "subscription" ? "revenue" : "expense"}>
-          {ORIGIN_LABEL[report.origin]}
-        </AdminBadge>
-      </td>
-      <td className="px-6 py-3.5 align-top">
-        <StatusBadge status={report.status} />
-      </td>
-      <td className="px-6 py-3.5 align-top admin-code text-admin-text-secondary">
-        {report.startedAt}
-      </td>
-      <td className="px-6 py-3.5 align-top admin-code text-admin-text-secondary">
-        {report.duration ?? "—"}
-      </td>
-      <td className="px-6 py-3.5 text-right align-top admin-code text-admin-text-primary">
-        {report.cost ?? "—"}
-      </td>
-      <td className="px-6 py-3.5 align-top">
-        <ActionsCell status={report.status} onView={onView} />
-      </td>
-    </tr>
-  );
-}
-
-function StatusBadge({ status }: { status: ReportStatus }) {
-  if (status === "delivered") {
-    return <AdminBadge variant="revenue">entregue</AdminBadge>;
-  }
-  if (status === "processing") {
-    return (
-      <AdminBadge variant="signal" className="gap-1">
-        <Loader2 size={10} strokeWidth={2.25} className="animate-spin" />
-        a processar
-      </AdminBadge>
-    );
-  }
-  if (status === "queued") {
-    return <AdminBadge variant="info">em fila</AdminBadge>;
-  }
-  return <AdminBadge variant="danger">falhou</AdminBadge>;
-}
-
-function ActionsCell({ status, onView }: { status: ReportStatus; onView: () => void }) {
-  return (
-    <TooltipProvider delayDuration={150}>
-      <div className="flex items-center justify-end gap-2 text-admin-text-tertiary">
-        {status === "failed" ? (
-          <ActionIcon
-            label="Investigar falha"
-            icon={<AlertCircle size={16} strokeWidth={1.75} />}
-            tone="danger"
-            onClick={onView}
-          />
-        ) : null}
-        {status === "delivered" || status === "failed" ? (
-          <>
-            <ActionIcon
-              label="Re-gerar PDF"
-              icon={<RefreshCw size={16} strokeWidth={1.75} />}
-              onClick={onView}
-            />
-            {status === "delivered" ? (
-              <ActionIcon
-                label="Re-enviar email"
-                icon={<RotateCw size={16} strokeWidth={1.75} />}
-                onClick={onView}
-              />
-            ) : null}
-          </>
-        ) : null}
-        <ActionIcon
-          label="Ver detalhe"
-          icon={<Eye size={16} strokeWidth={1.75} />}
-          onClick={onView}
-        />
-      </div>
-    </TooltipProvider>
-  );
-}
-
-function ActionIcon({
-  label,
-  icon,
-  tone,
-  onClick,
-}: {
-  label: string;
-  icon: React.ReactNode;
-  tone?: "danger";
-  onClick?: () => void;
-}) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          aria-label={label}
-          onClick={onClick}
-          className={`inline-flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-[var(--color-admin-surface-muted)] hover:text-admin-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-admin-revenue-500 ${
-            tone === "danger" ? "text-admin-danger-500" : ""
-          }`}
-        >
-          {icon}
-        </button>
-      </TooltipTrigger>
-      <TooltipContent
-        side="top"
-        className="bg-admin-neutral-900 text-[12px] text-white"
-      >
-        {label}
-      </TooltipContent>
-    </Tooltip>
-  );
+function StatusBadge({ status }: { status: "delivered" | "processing" | "failed" }) {
+  if (status === "delivered") return <AdminBadge variant="revenue">entregue</AdminBadge>;
+  if (status === "failed") return <AdminBadge variant="danger">falhou</AdminBadge>;
+  return <AdminBadge variant="signal">a processar</AdminBadge>;
 }
