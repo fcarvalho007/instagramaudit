@@ -25,14 +25,14 @@ export function ReportDiagnosticGroup({
       <div className="flex items-center gap-3 border-b border-border-subtle pb-4">
         <span
           aria-hidden
-          className="size-5 rounded-full bg-surface-muted inline-flex items-center justify-center text-[11px] font-bold text-content-tertiary shrink-0"
+          className="size-5 rounded-full bg-surface-muted inline-flex items-center justify-center text-xs font-bold text-content-tertiary shrink-0"
         >
           {letter}
         </span>
         <p className="text-eyebrow text-content-tertiary">
           {label}
         </p>
-        <span className="text-[10px] font-medium tracking-[0.08em] uppercase ml-auto text-content-tertiary tabular-nums">
+        <span className="text-[11px] font-medium tracking-[0.08em] uppercase ml-auto text-content-tertiary tabular-nums">
           {t("diagnostic.group_questions", { count: questionsCount })}
         </span>
       </div>
