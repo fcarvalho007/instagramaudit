@@ -15,7 +15,8 @@
  * basta trocar os stubs.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
   Check,
@@ -38,12 +39,12 @@ import { AdminActionButton } from "./admin-action-button";
 import { ConfirmDialog } from "./confirm-dialog";
 import { ErrorInvestigationModal } from "./error-investigation-modal";
 import {
-  getMockReportDetail,
   type MockReportDetail,
   type ReportPhase,
   type ReportEvent,
   type ReportStatus,
 } from "@/lib/admin/mock-data";
+import { adminFetch } from "@/lib/admin/fetch";
 import {
   regenerateReportPdf,
   resendReportEmail,
@@ -69,10 +70,17 @@ const ACTION_LABEL: Record<AdminActionLog["action"], string> = {
 };
 
 export function ReportDrawer({ open, onOpenChange, reportId }: ReportDrawerProps) {
-  const detail = useMemo<MockReportDetail | null>(
-    () => (reportId ? getMockReportDetail(reportId) : null),
-    [reportId],
-  );
+  const { data: detail } = useQuery<MockReportDetail | null>({
+    queryKey: ["admin", "report-detail", reportId],
+    enabled: !!reportId && open,
+    queryFn: async () => {
+      const res = await adminFetch(`/api/admin/report-detail/${reportId}`);
+      if (!res.ok) return null;
+      const json = (await res.json()) as { success: boolean; detail: MockReportDetail };
+      return json.detail ?? null;
+    },
+    staleTime: 15_000,
+  });
 
   // Histórico de acções fica em memória de sessão. TODO: quando existir a
   // tabela `report_actions`, substituir este state por fetch + insert real.
