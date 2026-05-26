@@ -185,13 +185,16 @@ export const submitBetaRequest = createServerFn({ method: "POST" })
 
     // Fire-and-forget: send "Pedido recebido" confirmation email.
     // Failures are recorded as a product_event but never block the response.
+    // Routed through `sendTransactionalEmail` (Brevo-first, Resend fallback)
+    // for consistency with the rest of the transactional flows.
     try {
-      const resendApiKey = process.env.RESEND_API_KEY;
-      if (resendApiKey && data.email) {
+      if (data.email) {
         const { renderRequestReceived } = await import("./email/templates");
-        const { resolveSender } = await import("./email/sender");
         const { renderWithOverride } = await import(
           "./email/template-overrides.server"
+        );
+        const { sendTransactionalEmail } = await import(
+          "./email/transactional-email.server"
         );
         const firstName = data.name?.trim().split(/\s+/)[0] ?? null;
         const { subject, html, text } = await renderWithOverride(
@@ -206,40 +209,30 @@ export const submitBetaRequest = createServerFn({ method: "POST" })
               instagramHandle: data.instagramHandle,
             }),
         );
-        const controller = new AbortController();
-        const t = setTimeout(() => controller.abort(), 10_000);
-        try {
-          const res = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${resendApiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              from: resolveSender(),
-              to: [data.email.trim()],
-              subject,
-              html,
-              text,
-            }),
-            signal: controller.signal,
-          });
-          const ok = res.ok;
-          const body = ok ? ((await res.json().catch(() => ({}))) as { id?: string }) : null;
-          const { recordProductEvent } = await import("./tracking.server");
-          recordProductEvent({
-            eventType: ok ? "request_received_email_sent" : "request_received_email_failed",
-            leadId: leadId,
-            handle: data.instagramHandle,
-            metadata: {
-              report_request_id: request.id,
-              message_id: body?.id ?? null,
-              http_status: res.status,
-            },
-          });
-        } finally {
-          clearTimeout(t);
-        }
+        const result = await sendTransactionalEmail({
+          to: data.email.trim(),
+          subject,
+          html,
+          text,
+          flowType: "request-received",
+          leadId,
+          reportRequestId: request.id,
+          handle: data.instagramHandle,
+        });
+        const { recordProductEvent } = await import("./tracking.server");
+        await recordProductEvent({
+          eventType: result.ok
+            ? "request_received_email_sent"
+            : "request_received_email_failed",
+          leadId,
+          handle: data.instagramHandle,
+          metadata: {
+            report_request_id: request.id,
+            message_id: result.ok ? result.messageId : null,
+            provider: result.ok ? result.provider : null,
+            reason: result.ok ? null : result.brevoReason,
+          },
+        });
       }
     } catch (err) {
       console.error("[beta] request_received email failed:", err);
