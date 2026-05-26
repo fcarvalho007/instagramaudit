@@ -12,7 +12,7 @@
  * removed because it was trivially bypassable and is no longer authoritative.
  */
 
-export const FREE_MONTHLY_LIMIT = 2;
+export const FREE_MONTHLY_LIMIT = 3;
 
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
