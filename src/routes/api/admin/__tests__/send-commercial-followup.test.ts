@@ -143,7 +143,7 @@ beforeEach(() => {
   mocks.resolveSender.mockReturnValue({ ok: true, from: "AuditProfiles <test@example.pt>" });
 
   process.env.RESEND_API_KEY = "re_test_key";
-  process.env.PUBLIC_APP_BASE_URL = "https://instabench.test";
+  process.env.PUBLIC_APP_BASE_URL = "https://auditprofiles.test";
 
   fetchMock = vi.fn();
   globalThis.fetch = fetchMock as unknown as typeof fetch;

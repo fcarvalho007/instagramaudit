@@ -10,7 +10,7 @@ export const Route = createFileRoute("/api/admin/knowledge/export")({
         catch (res) { if (res instanceof Response) return res; throw res; }
         try {
           const data = await exportDataset();
-          const filename = `instabench-knowledge-${new Date().toISOString().slice(0, 10)}.json`;
+          const filename = `auditprofiles-knowledge-${new Date().toISOString().slice(0, 10)}.json`;
           return new Response(JSON.stringify(data, null, 2), {
             status: 200,
             headers: {
