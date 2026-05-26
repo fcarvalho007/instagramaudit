@@ -607,14 +607,14 @@ function BulletColumn({
         <Icon className={cn("h-3.5 w-3.5 mt-0.5", accent)} aria-hidden="true" />
         <span className={cn("text-eyebrow-sm", accent)}>{title}</span>
       </div>
-      <ul className="space-y-2.5">
+      <ul className="space-y-3">
         {items.map((it, i) => (
-          <li key={i} className="flex gap-2 text-[15px] leading-relaxed">
+          <li key={i} className="flex gap-2.5 text-[15px] leading-[1.55]">
             <span
-              className={cn("mt-1.5 h-1.5 w-1.5 rounded-full shrink-0", dot)}
+              className={cn("mt-[7px] h-1.5 w-1.5 rounded-full shrink-0", dot)}
               aria-hidden="true"
             />
-            <span className="text-content-secondary">
+            <span className="text-content-primary">
               <span className="font-medium text-content-primary">{it.destaque}</span>
               {" · "}
               {it.detalhe}
