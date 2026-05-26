@@ -71,6 +71,53 @@ const FORMAT_HEX: Record<FormatKey, string> = {
 
 const BREAKDOWN_ORDER: FormatKey[] = ["Carousels", "Reels", "Imagens"];
 
+/**
+ * Pure helper: directional reading of this profile's mix vs the
+ * Socialinsider per-format reference. Exported for tests.
+ *
+ * IMPORTANT: refShare here is only used for DIRECTIONAL comparison of
+ * mix. It is NEVER displayed as a total posting target and must NOT be
+ * interpreted as a recommended monthly volume.
+ */
+export type ExternalReading =
+  | "above"
+  | "below"
+  | "near"
+  | "absent"
+  | "dash";
+
+export function computeExternalReading(
+  key: FormatKey,
+  refs: SocialinsiderInstagramContext | null,
+  formats: FormatEntry[],
+): ExternalReading {
+  if (!refs) return "dash";
+  const refData =
+    key === "Carousels"
+      ? refs.carousel
+      : key === "Reels"
+        ? refs.reel
+        : key === "Imagens"
+          ? refs.image
+          : null;
+  if (!refData) return "dash";
+  const entry = formats.find((f) => f.format === key);
+  if (!entry || entry.count === 0) return "absent";
+  const refTotal =
+    (refs.carousel?.postsPerMonth ?? 0) +
+    (refs.reel?.postsPerMonth ?? 0) +
+    (refs.image?.postsPerMonth ?? 0);
+  const refShare =
+    refTotal > 0 && refData.postsPerMonth
+      ? (refData.postsPerMonth / refTotal) * 100
+      : null;
+  if (refShare === null) return "dash";
+  const delta = entry.sharePct - refShare;
+  if (delta > 10) return "above";
+  if (delta < -10) return "below";
+  return "near";
+}
+
 function tFormatPlural(t: TFunction, key: FormatKey): string {
   return t(`format.names_plural.${key}`);
 }
