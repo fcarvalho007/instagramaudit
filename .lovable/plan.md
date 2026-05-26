@@ -1,65 +1,74 @@
 ## Objetivo
 
-1. **Primeira dobra mobile (hero)** mais organizada: o handle `@100xengineers` não pode partir para a segunda linha (`rs`). Tem de caber elegantemente.
-2. **Card de veredicto** (`editorial-identity-card`) com **mais legibilidade**: corpo do texto maior e em tom mais escuro (mais próximo de preto) para leitura confortável em mobile.
+Em mobile (411px), o bloco com as 3 métricas (Gostos · Comentários · Ritmo) e a coluna verde "O que já funciona" tem pouca leitura: subtítulos em cinza muito claro, eyebrows muito pequenos, e os bullets das forças num cinza secundário que perde contraste. Subir a qualidade visual e a legibilidade sem reorganizar o layout.
 
-Âmbito: apenas presentação. Sem alterações em dados, i18n, unlock logic, providers.
-
----
-
-## 1. Hero mobile — handle numa só linha
-
-**Ficheiro:** `src/components/report-redesign/v2/report-hero-v2.tsx`
-
-Causa: no viewport 411px, o avatar (`size-20` = 80px + padding 8px) + gap-5 ocupa ~108px, sobrando ~280px. O handle a `text-[1.875rem]` (30px) Fraunces bold não cabe em ~14 caracteres.
-
-Solução cirúrgica (sem reorganizar grelha):
-
-- **Handle** (linha 78): reduzir tamanho mobile e aliviar tracking.
-  - Antes: `text-[1.875rem] lg:text-[2.25rem] ... tracking-[-0.025em] leading-[1.05] break-words`
-  - Depois: `text-[1.5rem] sm:text-[1.75rem] lg:text-[2.25rem] ... tracking-[-0.03em] leading-[1.1] break-all sm:break-words`
-  - Adicionar `min-w-0` ao container já existente (linha 77) — já está.
-
-- **Avatar mobile mais compacto** (linha 282 no helper `Avatar`):
-  - Antes: `size-20 md:size-28`
-  - Depois: `size-16 md:size-28`
-  - Ajustar verified badge mobile (linha 316): `size-5 md:size-7` em vez de `size-6 md:size-7` para manter proporção.
-
-- **Gap mais apertado em mobile** (linha 69):
-  - Antes: `gap-5 lg:gap-7`
-  - Depois: `gap-4 lg:gap-7`
-
-Efeito esperado em 411px: avatar 64 + p1 8 + gap 16 = 88px usados; sobram ~300px para um handle a 24px Fraunces — `@100xengineers` (~14 chars) cabe confortavelmente numa linha. `break-all` em mobile garante que handles ainda maiores quebram limpo em vez de transbordar.
+Âmbito: apenas presentação (`editorial-identity-card.tsx`). Sem dados, i18n ou lógica.
 
 ---
 
-## 2. Card de veredicto — leitura mais confortável
+## 1. MetricsStrip (linhas 711-738)
 
-**Ficheiro:** `src/components/report-redesign/v2/overview/editorial-identity-card.tsx` (linha 405)
+**Container**: passa a respirar mais em mobile.
+- Padding mobile: `px-5 py-5` → `px-5 py-4.5` mantém, mas reduzir o gap vertical entre items quando empilhados:
+  - Adicionar `divide-y divide-border-default sm:divide-y-0` para ter separadores subtis em vez do `border-t` atual (mais limpo).
 
-Alteração ao parágrafo do veredicto:
+**Eyebrow (label "GOSTOS · MÉDIA")** (linha 726):
+- Antes: `text-eyebrow-sm text-content-tertiary` (~10-11px, cinza claro)
+- Depois: `text-eyebrow-sm text-content-secondary` (mesmo tamanho mas tom mais escuro — mais legível em mobile sem mudar hierarquia)
 
-- Antes: `text-[15px] leading-relaxed text-content-secondary max-w-2xl whitespace-pre-line`
-- Depois: `text-[17px] md:text-[17px] leading-[1.65] text-content-primary max-w-2xl whitespace-pre-line`
+**Valor numérico** (linha 729):
+- Antes: `text-[1.625rem]` (26px) em todos os ecrãs
+- Depois: `text-[1.75rem] md:text-[1.625rem]` — ligeiramente maior em mobile (28px) para dar peso ao número, voltando aos 26px em desktop onde a strip é horizontal e mais densa.
 
-Justificação:
-- Subir de 15px → 17px aumenta corpo do texto, especialmente útil em mobile.
-- `leading-[1.65]` em vez de `leading-relaxed` (1.625) → ligeiramente mais ar entre linhas, melhora ritmo de leitura num parágrafo longo.
-- `text-content-primary` (navy escuro, ~near-black) em vez de `text-content-secondary` (cinza médio) → contraste muito maior, mais próximo do "preto" pedido, mantendo a coerência com os tokens do design system.
+**Unidade "por post"** (linha 732):
+- Antes: `text-sm text-content-secondary` (14px)
+- Depois: `text-[15px] text-content-secondary` — emparelha melhor com o número maior.
 
-**Não alterar:**
-- Título (`h2`) — já foi uniformizado no último prompt.
-- Eyebrows, badges e bullets de "Sinais usados" — escala secundária, manter como está.
-- Warnings (`text-xs`) — meta info, manter.
+**Subtítulo ("0,19% dos seguidores" / "boa conversa" / "ritmo saudável")** (linha 734):
+- Antes: `mt-1.5 text-xs text-content-tertiary leading-snug` (12px, cinza muito claro — quase ilegível em mobile)
+- Depois: `mt-2 text-[13px] text-content-secondary leading-snug` — sobe 1px e troca para o tom secundário (mais escuro, mais próximo de preto). Mantém-se claramente abaixo do número na hierarquia mas torna-se legível.
+
+---
+
+## 2. BulletColumn "O que já funciona" / "O que limita" (linhas 604-625)
+
+**Padding mobile** (linha 605):
+- Antes: `px-5 py-4 sm:px-6 sm:py-5`
+- Depois: `px-5 py-5 sm:px-6 sm:py-5` — mais ar vertical em mobile.
+
+**Eyebrow do título** (linha 608):
+- Antes: `text-eyebrow-sm` (cinza secundário)
+- Manter classe mas garantir `font-semibold` (já vem do utilitário) — sem alteração necessária se já contrasta.
+
+**Texto dos bullets** (linha 612):
+- Antes: `flex gap-2 text-[15px] leading-relaxed` + `text-content-secondary` no texto (linha 617)
+- Depois: `flex gap-2.5 text-[15px] md:text-[15px] leading-[1.55]` + `text-content-primary` no texto (substituir o `text-content-secondary` da linha 617 por `text-content-primary`). O destaque (`it.destaque`) já vai a primary com font-medium; o detalhe a primary com peso normal mantém o contraste hierárquico via peso, não via cor. Resultado: o parágrafo inteiro torna-se mais escuro e legível, especialmente em ecrãs OLED móveis.
+
+**Bullet dot** (linha 614):
+- Antes: `mt-1.5 h-1.5 w-1.5`
+- Depois: `mt-[7px] h-1.5 w-1.5` — pequeno ajuste de alinhamento óptico com a nova line-height.
+
+**Spacing entre itens** (linha 610):
+- Antes: `space-y-2.5`
+- Depois: `space-y-3` — um pouco mais de ar entre bullets em mobile.
+
+---
+
+## Não alterar
+
+- Estrutura do grid (1 col em mobile, 3 em sm) do MetricsStrip — empilhamento vertical já é o ideal em 411px.
+- Border vermelho/verde lateral (`border-l-2 border-signal-success/warning`) — assinatura visual do bloco, manter.
+- Ícones, copy ou i18n.
+- Score gauge, ReferenceBar, ou veredicto (já tratados no prompt anterior).
+- Card de diagnóstico (Bloco 02) — fora de scope.
 
 ---
 
 ## Checkpoint
 
-- [ ] Em 411px, `@100xengineers` aparece numa só linha no hero
-- [ ] Avatar mobile reduz para 64px e o conjunto fica visualmente equilibrado
-- [ ] Parágrafo do veredicto fica a 17px, line-height 1.65, em `text-content-primary`
-- [ ] Desktop (≥1024px) mantém o handle 36px e avatar 112px como hoje
-- [ ] Sem regressão em verdict cards muito longos (ainda dentro de `max-w-2xl`)
+- [ ] MetricsStrip: número 28px em mobile, subtitle 13px em `text-content-secondary` (legível)
+- [ ] BulletColumn: corpo dos bullets a `text-content-primary` com line-height 1.55
+- [ ] Mobile 411px: subtítulos das métricas perfeitamente legíveis sem zoom
+- [ ] Desktop ≥768px: nenhum desvio visível (número volta a 26px, separadores horizontais como hoje)
 - [ ] `bunx tsc --noEmit` passa
 - [ ] `bunx vitest run` passa
