@@ -54,6 +54,44 @@ function fmtDateTime(iso: string): string {
   return `${day} · ${time}`;
 }
 
+function csvEscape(value: string | number | null): string {
+  if (value === null || value === undefined) return "";
+  const s = String(value);
+  if (/[",\n;]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function downloadCsv(rows: MuralComment[]): void {
+  const header = [
+    "created_at_iso", "source", "language", "author_email", "author_name",
+    "handle", "block", "rating", "intent", "text",
+  ];
+  const lines = [header.join(",")];
+  for (const r of rows) {
+    lines.push([
+      csvEscape(r.createdAt),
+      csvEscape(r.source),
+      csvEscape(r.language),
+      csvEscape(r.authorEmail),
+      csvEscape(r.authorName),
+      csvEscape(r.handle ?? null),
+      csvEscape(r.block),
+      csvEscape(r.rating),
+      csvEscape(r.intent),
+      csvEscape(r.text),
+    ].join(","));
+  }
+  const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `comentarios-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export function CommentMural({
   comments,
   emptyText = "Sem comentários no período.",
