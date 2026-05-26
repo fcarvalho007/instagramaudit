@@ -1,7 +1,7 @@
 /**
- * GET /api/admin/profiles/metrics — agregados de perfis (30d).
+ * GET /api/admin/profiles/metrics — agregados de perfis na janela `?period=`.
  *
- * Lê `social_profiles` (totais por perfil) + `report_requests` para conversão.
+ * Lê `social_profiles` (totais por perfil) + `analysis_snapshots` na janela.
  */
 
 import { createFileRoute } from "@tanstack/react-router";

@@ -2,7 +2,7 @@
  * GET /api/admin/profiles/list — lista de perfis com totais e nº de reports.
  *
  * Devolve até 500 perfis ordenados por análises totais (desc) com agregação
- * de report_requests por instagram_username.
+ * de snapshots por instagram_username dentro da janela `?period=`.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
