@@ -14,6 +14,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
 import { resolvePeriod } from "@/lib/admin/period";
+import {
+  buildPipelineSummary,
+  type PipelineRequestInput,
+} from "@/lib/admin/pipeline-phases";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -52,13 +56,9 @@ export const Route = createFileRoute("/api/admin/report-requests/pipeline")({
         const snapshotIds = snaps.map((s) => s.id);
 
         // Report_requests associados a essas análises.
-        type Req = {
+        type Req = PipelineRequestInput & {
           analysis_snapshot_id: string | null;
-          request_status: string;
-          pdf_status: string;
-          delivery_status: string;
           created_at: string;
-          email_sent_at: string | null;
         };
         let requests: Req[] = [];
         if (snapshotIds.length > 0) {
@@ -76,61 +76,25 @@ export const Route = createFileRoute("/api/admin/report-requests/pipeline")({
           }
           requests = (data ?? []) as Req[];
         }
-        const reqBySnap = new Map<string, Req>();
+        const reqBySnap = new Map<string, PipelineRequestInput>();
+        const reqCreatedAt = new Map<string, string>();
         for (const r of requests) {
           if (!r.analysis_snapshot_id) continue;
-          const existing = reqBySnap.get(r.analysis_snapshot_id);
-          if (!existing || r.created_at > existing.created_at) {
-            reqBySnap.set(r.analysis_snapshot_id, r);
+          const prevAt = reqCreatedAt.get(r.analysis_snapshot_id);
+          if (!prevAt || r.created_at > prevAt) {
+            reqCreatedAt.set(r.analysis_snapshot_id, r.created_at);
+            reqBySnap.set(r.analysis_snapshot_id, {
+              request_status: r.request_status,
+              pdf_status: r.pdf_status,
+              delivery_status: r.delivery_status,
+              email_sent_at: r.email_sent_at,
+            });
           }
         }
 
-        // Fases:
-        let phSnapshot = 0,
-          phEmailSubmitted = 0,
-          phPdf = 0,
-          phEmail = 0,
-          failures = 0;
-        let delivered = 0;
-        let deliverySum = 0;
-        let deliveryN = 0;
-        const total = snaps.length;
-
-        for (const s of snaps) {
-          const req = reqBySnap.get(s.id);
-          if (!req) {
-            phSnapshot += 1;
-            continue;
-          }
-          if (
-            req.request_status === "failed" ||
-            req.pdf_status === "failed" ||
-            req.delivery_status === "failed"
-          ) {
-            failures += 1;
-            continue;
-          }
-          if (req.delivery_status === "sent") {
-            phEmail += 1;
-            delivered += 1;
-            if (req.email_sent_at) {
-              const ms =
-                new Date(req.email_sent_at).getTime() - new Date(s.created_at).getTime();
-              if (Number.isFinite(ms) && ms >= 0) {
-                deliverySum += ms;
-                deliveryN += 1;
-              }
-            }
-            continue;
-          }
-          if (req.pdf_status === "generated") {
-            phPdf += 1;
-            continue;
-          }
-          phEmailSubmitted += 1;
-        }
-
-        const avgTotalSec = deliveryN > 0 ? deliverySum / deliveryN / 1000 : null;
+        const summary = buildPipelineSummary(snaps, reqBySnap);
+        const { phases, failures_to_recover, delivered, delivery_avg_seconds, total } =
+          summary;
         const successRate = total > 0 ? (delivered / total) * 100 : null;
 
         // Custo médio na janela (provider_call_logs ÷ análises totais).
@@ -156,15 +120,10 @@ export const Route = createFileRoute("/api/admin/report-requests/pipeline")({
 
         return jsonResponse({
           success: true,
-          phases: {
-            snapshot: phSnapshot,
-            email_submitted: phEmailSubmitted,
-            pdf: phPdf,
-            email: phEmail,
-          },
-          failures_to_recover: failures,
+          phases,
+          failures_to_recover,
           window_days: days,
-          avg_total_seconds: avgTotalSec,
+          avg_total_seconds: delivery_avg_seconds,
           success_rate_pct: successRate,
           avg_cost_usd: avgCost,
           total_window: total,
