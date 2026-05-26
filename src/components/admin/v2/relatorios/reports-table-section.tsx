@@ -21,6 +21,7 @@ type ReportFilter = "all" | "delivered" | "in_progress" | "failed";
 
 interface ReportRow {
   id: string;
+  kind: "snapshot" | "request";
   instagram_username: string;
   request_status: string;
   pdf_status: string;
@@ -40,7 +41,8 @@ interface ListApi {
   pageSize: number;
 }
 
-function deriveStatus(r: ReportRow): "delivered" | "processing" | "failed" {
+function deriveStatus(r: ReportRow): "snapshot" | "delivered" | "processing" | "failed" {
+  if (r.kind === "snapshot") return "snapshot";
   if (r.delivery_status === "sent") return "delivered";
   if (
     r.request_status === "failed" ||
@@ -57,12 +59,24 @@ function formatDate(iso: string): string {
 }
 
 function formatDuration(r: ReportRow): string {
+  if (r.kind === "snapshot") return "—";
   if (!r.email_sent_at) return "—";
   const sec = Math.round(
     (new Date(r.email_sent_at).getTime() - new Date(r.created_at).getTime()) / 1000,
   );
   if (sec < 60) return `${sec}s`;
   return `${Math.floor(sec / 60)}m ${String(sec % 60).padStart(2, "0")}s`;
+}
+
+const SOURCE_LABEL: Record<string, string> = {
+  public_dashboard: "Dashboard",
+  public_analysis: "Análise pública",
+  lead_magnet: "Lead magnet",
+  public_report_gate: "Report gate",
+};
+
+function sourceLabel(s: string): string {
+  return SOURCE_LABEL[s] ?? s;
 }
 
 export function ReportsTableSection({ period }: { period: AdminPeriod }) {
@@ -93,7 +107,7 @@ export function ReportsTableSection({ period }: { period: AdminPeriod }) {
   let rows = data?.rows ?? [];
   // Client-side narrowing for "in_progress" (no single status maps to it)
   if (filter === "in_progress") {
-    rows = rows.filter((r) => deriveStatus(r) === "processing");
+    rows = rows.filter((r) => r.kind === "request" && deriveStatus(r) === "processing");
   }
 
   const total = data?.total ?? 0;
@@ -176,9 +190,16 @@ export function ReportsTableSection({ period }: { period: AdminPeriod }) {
                       @{r.instagram_username}
                     </td>
                     <td className="px-6 py-3.5 align-top">
-                      <AdminBadge variant={r.is_free_request ? "info" : "revenue"}>
-                        {r.is_free_request ? "grátis" : "pago"}
-                      </AdminBadge>
+                      {r.kind === "snapshot" ? (
+                        <AdminBadge variant="info">análise pública</AdminBadge>
+                      ) : (
+                        <div className="flex flex-col items-start gap-1">
+                          <AdminBadge variant="neutral">{sourceLabel(r.request_source)}</AdminBadge>
+                          <AdminBadge variant={r.is_free_request ? "info" : "revenue"}>
+                            {r.is_free_request ? "grátis" : "pago"}
+                          </AdminBadge>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-3.5 align-top">
                       <StatusBadge status={deriveStatus(r)} />
@@ -190,14 +211,16 @@ export function ReportsTableSection({ period }: { period: AdminPeriod }) {
                       {formatDuration(r)}
                     </td>
                     <td className="px-6 py-3.5 align-top text-right">
-                      <button
-                        type="button"
-                        aria-label="Ver detalhe"
-                        onClick={() => openReport(r.id)}
-                        className="inline-flex h-6 w-6 items-center justify-center rounded-md text-admin-text-tertiary transition-colors hover:bg-[var(--color-admin-surface-muted)] hover:text-admin-text-primary"
-                      >
-                        <Eye size={16} strokeWidth={1.75} />
-                      </button>
+                      {r.kind === "request" ? (
+                        <button
+                          type="button"
+                          aria-label="Ver detalhe"
+                          onClick={() => openReport(r.id)}
+                          className="inline-flex h-6 w-6 items-center justify-center rounded-md text-admin-text-tertiary transition-colors hover:bg-[var(--color-admin-surface-muted)] hover:text-admin-text-primary"
+                        >
+                          <Eye size={16} strokeWidth={1.75} />
+                        </button>
+                      ) : null}
                     </td>
                   </tr>
                 ))
@@ -258,7 +281,8 @@ function Th({
   );
 }
 
-function StatusBadge({ status }: { status: "delivered" | "processing" | "failed" }) {
+function StatusBadge({ status }: { status: "snapshot" | "delivered" | "processing" | "failed" }) {
+  if (status === "snapshot") return <AdminBadge variant="neutral">análise</AdminBadge>;
   if (status === "delivered") return <AdminBadge variant="revenue">entregue</AdminBadge>;
   if (status === "failed") return <AdminBadge variant="danger">falhou</AdminBadge>;
   return <AdminBadge variant="signal">a processar</AdminBadge>;

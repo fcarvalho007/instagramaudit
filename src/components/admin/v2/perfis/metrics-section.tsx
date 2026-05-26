@@ -11,45 +11,55 @@ import { AdminInfoTooltip } from "../admin-info-tooltip";
 import { type AdminAccent, ACCENT_500 } from "../admin-tokens";
 import { AdminSectionHeader } from "../admin-section-header";
 import { adminFetch } from "@/lib/admin/fetch";
+import type { AdminPeriod } from "@/components/admin/v2/period-select";
 
 interface MetricsApi {
   success: boolean;
-  unique_profiles_30d: number;
+  unique_profiles: number;
   repeated_profiles: number;
-  profiles_with_report_30d: number;
+  profiles_with_report: number;
   conversion_pct: number | null;
   total_profiles: number;
+  window_days: number;
 }
 
-export function MetricsSection() {
+const PERIOD_LABEL: Record<AdminPeriod, string> = {
+  "7d": "últimos 7 dias",
+  "30d": "últimos 30 dias",
+  "90d": "últimos 90 dias",
+  ytd: "desde 1 Jan",
+};
+
+export function MetricsSection({ period }: { period: AdminPeriod }) {
   const { data } = useQuery<MetricsApi>({
-    queryKey: ["admin", "profiles", "metrics"],
+    queryKey: ["admin", "profiles", "metrics", period],
     queryFn: async () => {
-      const res = await adminFetch("/api/admin/profiles/metrics");
+      const res = await adminFetch(`/api/admin/profiles/metrics?period=${period}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
     },
     staleTime: 30_000,
   });
 
-  const unique = data?.unique_profiles_30d ?? 0;
+  const unique = data?.unique_profiles ?? 0;
   const repeated = data?.repeated_profiles ?? 0;
-  const withReport = data?.profiles_with_report_30d ?? 0;
+  const withReport = data?.profiles_with_report ?? 0;
   const conv = data?.conversion_pct;
+  const label = PERIOD_LABEL[period];
 
   return (
     <section className="flex flex-col gap-4">
       <AdminSectionHeader
         title="Visão de perfis"
-        subtitle="últimos 30 dias"
+        subtitle={label}
         accent="expense"
-        info="Agregação de perfis Instagram analisados nos últimos 30 dias, lida de `social_profiles`."
+        info="Agregação de perfis Instagram com snapshot no período seleccionado (fonte: `analysis_snapshots`)."
       />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <ProfileKpi
           accent="expense"
-          eyebrow="Perfis únicos · 30d"
-          info="Perfis com pelo menos uma análise nos últimos 30 dias."
+          eyebrow={`Perfis únicos · ${period}`}
+          info="Perfis distintos com pelo menos uma análise (snapshot) na janela."
           value={String(unique)}
           sub={`${data?.total_profiles ?? 0} no histórico`}
         />
@@ -62,14 +72,14 @@ export function MetricsSection() {
         />
         <ProfileKpi
           accent="revenue"
-          eyebrow="Com relatório · 30d"
-          info="Perfis analisados nos últimos 30 dias que originaram um pedido de relatório."
+          eyebrow={`Com relatório · ${period}`}
+          info="Perfis com snapshot na janela (fonte: `analysis_snapshots`)."
           value={String(withReport)}
-          sub="origem report_requests"
+          sub="origem analysis_snapshots"
         />
         <ProfileKpi
           accent="revenue-alt"
-          eyebrow="Conversão · 30d"
+          eyebrow={`Conversão · ${period}`}
           info="Perfis com relatório ÷ perfis únicos analisados."
           value={conv != null ? `${conv.toFixed(1)}%` : "—"}
           sub="análise → report"

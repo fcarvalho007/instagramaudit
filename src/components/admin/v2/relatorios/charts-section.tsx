@@ -5,8 +5,8 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   Bar,
-  BarChart,
   CartesianGrid,
+  ComposedChart,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -23,9 +23,22 @@ import type { AdminPeriod } from "@/components/admin/v2/period-select";
 
 interface DailyApi {
   success: boolean;
-  volume: Array<{ day: string; delivered: number; failed: number; queued: number }>;
+  volume: Array<{
+    day: string;
+    analyses: number;
+    with_unlock: number;
+    delivered: number;
+    failed: number;
+  }>;
   timing: Array<{ day: string; avgSeconds: number | null }>;
 }
+
+const PERIOD_LABEL: Record<AdminPeriod, string> = {
+  "7d": "últimos 7 dias",
+  "30d": "últimos 30 dias",
+  "90d": "últimos 90 dias",
+  ytd: "desde 1 Jan",
+};
 
 export function ChartsSection({ period }: { period: AdminPeriod }) {
   const { data } = useQuery<DailyApi>({
@@ -45,9 +58,9 @@ export function ChartsSection({ period }: { period: AdminPeriod }) {
     <section className="flex flex-col gap-4">
       <AdminSectionHeader
         title="Volume e timing diário"
-        subtitle="últimos 30 dias"
+        subtitle={PERIOD_LABEL[period]}
         accent="signal"
-        info="Volume diário de relatórios (entregues/falhados/em fila) e tempo médio de entrega."
+        info="Análises (linha) vs relatórios desbloqueados por email (barras entregue/falhado) e tempo médio de entrega."
       />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <AdminCard>
@@ -56,15 +69,21 @@ export function ChartsSection({ period }: { period: AdminPeriod }) {
           </p>
           <div className="h-44 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={volume} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+              <ComposedChart data={volume} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="2 4" stroke="rgba(136,135,128,0.18)" vertical={false} />
                 <XAxis dataKey="day" tick={{ fontSize: 11 }} tickLine={false} interval={2} />
                 <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={28} allowDecimals={false} />
                 <Tooltip />
                 <Bar dataKey="delivered" stackId="a" fill={ADMIN_LITERAL.chartDelivered} />
                 <Bar dataKey="failed" stackId="a" fill={ADMIN_LITERAL.chartFailed} />
-                <Bar dataKey="queued" stackId="a" fill={ADMIN_LITERAL.chartQueued} />
-              </BarChart>
+                <Line
+                  type="monotone"
+                  dataKey="analyses"
+                  stroke={ADMIN_LITERAL.chartTiming}
+                  strokeWidth={1.5}
+                  dot={false}
+                />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </AdminCard>
