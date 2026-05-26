@@ -8,6 +8,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
+import { resolvePeriod } from "@/lib/admin/period";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -19,7 +20,7 @@ function jsonResponse(body: unknown, status = 200) {
 export const Route = createFileRoute("/api/admin/profiles/list")({
   server: {
     handlers: {
-      GET: async () => {
+      GET: async ({ request }) => {
         try {
           await requireAdminSession();
         } catch (res) {
@@ -27,7 +28,10 @@ export const Route = createFileRoute("/api/admin/profiles/list")({
           throw res;
         }
 
-        const [{ data: profiles, error: pErr }, { data: requests, error: rErr }] =
+        const url = new URL(request.url);
+        const { sinceISO } = resolvePeriod(url.searchParams.get("period"));
+
+        const [{ data: profiles, error: pErr }, { data: snapshots, error: sErr }] =
           await Promise.all([
             supabaseAdmin
               .from("social_profiles")
@@ -37,32 +41,37 @@ export const Route = createFileRoute("/api/admin/profiles/list")({
               .order("analyses_total", { ascending: false })
               .limit(500),
             supabaseAdmin
-              .from("report_requests")
-              .select("instagram_username, delivery_status")
-              .limit(5000),
+              .from("analysis_snapshots")
+              .select("instagram_username, created_at")
+              .gte("created_at", sinceISO)
+              .limit(10000),
           ]);
 
-        if (pErr || rErr) {
+        if (pErr || sErr) {
           return jsonResponse(
-            { success: false, error_code: "QUERY_FAILED", message: (pErr ?? rErr)?.message },
+            { success: false, error_code: "QUERY_FAILED", message: (pErr ?? sErr)?.message },
             500,
           );
         }
 
-        const reportsByHandle = new Map<string, number>();
-        for (const r of requests ?? []) {
-          const k = r.instagram_username.toLowerCase();
-          reportsByHandle.set(k, (reportsByHandle.get(k) ?? 0) + 1);
+        // Contagens na janela a partir de analysis_snapshots (1 snapshot = 1 relatório).
+        const snapshotsByHandle = new Map<string, number>();
+        for (const s of snapshots ?? []) {
+          const k = s.instagram_username.toLowerCase();
+          snapshotsByHandle.set(k, (snapshotsByHandle.get(k) ?? 0) + 1);
         }
 
         const rows = (profiles ?? []).map((p) => {
-          const reports = reportsByHandle.get(p.handle.toLowerCase()) ?? 0;
-          const analyses = p.analyses_total ?? 0;
+          const inWindow = snapshotsByHandle.get(p.handle.toLowerCase()) ?? 0;
+          const reports = inWindow;
+          const analyses = inWindow;
           return {
             handle: p.handle,
             network: p.network,
             display_name: p.display_name,
             analyses,
+            analyses_in_window: inWindow,
+            analyses_lifetime: p.analyses_total ?? 0,
             analyses_fresh: p.analyses_fresh ?? 0,
             analyses_cache: p.analyses_cache ?? 0,
             followers_last_seen: p.followers_last_seen,
@@ -79,9 +88,9 @@ export const Route = createFileRoute("/api/admin/profiles/list")({
           total: rows.length,
           counts: {
             all: rows.length,
-            with_reports: rows.filter((r) => r.reports > 0).length,
-            repeated: rows.filter((r) => r.analyses >= 2).length,
-            no_conversion: rows.filter((r) => r.reports === 0).length,
+            with_reports: rows.filter((r) => r.analyses_in_window > 0).length,
+            repeated: rows.filter((r) => r.analyses_in_window >= 2).length,
+            no_conversion: rows.filter((r) => r.analyses_in_window === 0).length,
           },
         });
       },
