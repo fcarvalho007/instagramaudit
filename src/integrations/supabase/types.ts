@@ -663,6 +663,48 @@ export type Database = {
         }
         Relationships: []
       }
+      pricing_interest: {
+        Row: {
+          comment: string | null
+          created_at: string
+          email: string | null
+          email_normalized: string | null
+          id: string
+          ip_hash: string | null
+          price_fairness: string | null
+          pricing_option: string
+          referrer: string | null
+          user_agent: string | null
+          would_pay: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          email?: string | null
+          email_normalized?: string | null
+          id?: string
+          ip_hash?: string | null
+          price_fairness?: string | null
+          pricing_option: string
+          referrer?: string | null
+          user_agent?: string | null
+          would_pay: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          email?: string | null
+          email_normalized?: string | null
+          id?: string
+          ip_hash?: string | null
+          price_fairness?: string | null
+          pricing_option?: string
+          referrer?: string | null
+          user_agent?: string | null
+          would_pay?: string
+        }
+        Relationships: []
+      }
       product_events: {
         Row: {
           actor_hash: string | null

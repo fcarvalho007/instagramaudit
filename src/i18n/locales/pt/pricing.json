@@ -10,6 +10,7 @@
   "free": {
     "label": "Grátis",
     "title": "Visão inicial do perfil",
+    "price_word": "Grátis",
     "bullets": [
       "Bloco 1 incluído",
       "Diagnóstico editorial disponível como oferta de lançamento",
@@ -59,5 +60,34 @@
         "body": "As secções de Desempenho, Conteúdo, Procura e Comparação ficam disponíveis com compra."
       }
     ]
+  },
+  "interest_modal": {
+    "eyebrow": "Lançamento",
+    "title": "Estamos em fase de lançamento",
+    "intro": "O pagamento ainda não está aberto. Estamos a recolher interesse para perceber se, considerando o que já viste nos relatórios, este formato e este preço fazem sentido para ti.",
+    "would_pay_label": "Considerando o que já viste, pagarias este valor?",
+    "would_pay_options": {
+      "sim": "Sim, pagaria",
+      "talvez": "Talvez, depende",
+      "nao": "Não, ainda não"
+    },
+    "fairness_label": "Como percecionas o preço?",
+    "fairness_options": {
+      "barato": "Barato",
+      "justo": "Justo",
+      "caro": "Caro"
+    },
+    "email_label": "Email (opcional)",
+    "email_placeholder": "para te avisarmos quando abrir",
+    "comment_label": "O que faria a diferença para um sim convicto? (opcional)",
+    "comment_placeholder": "Ex.: mais comparações, exportação em PDF, integração com…",
+    "submit": "Registar interesse",
+    "submitting": "A registar…",
+    "rgpd": "Usamos apenas para validar a oferta. Não envia spam.",
+    "cancel": "Fechar",
+    "success_title": "Recebido. Obrigado.",
+    "success_body": "O teu sinal ajuda-nos a decidir o próximo passo. Avisamos-te quando o pagamento abrir.",
+    "success_close": "Voltar aos planos",
+    "error": "Não foi possível registar. Tenta novamente daqui a uns segundos."
   }
 }
