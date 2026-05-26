@@ -274,8 +274,33 @@ function computeAvailableSignals(ctx: InsightsContext): string[] {
   }
   if (Array.isArray(ctx.top_hashtags) && ctx.top_hashtags.length > 0) {
     signals.push("top_hashtags");
+    // Recurring flag mirrors hashtags_state === "recurring", but the
+    // verdict allowlist references it explicitly so the prompt can cite
+    // its presence as evidence.
+    if (ctx.top_hashtags.some((h) => (h.uses ?? 0) >= 2)) {
+      signals.push("has_recurring_hashtags");
+    }
   }
   if (ctx.hashtags_state) signals.push("hashtags_state");
+
+  // Caption intelligence (optional, only when snapshot has the OpenAI
+  // caption_semantic_analysis). The verdict prompt is allowed to cite
+  // these paths via the EDITORIAL_VERDICT_EVIDENCE_ALLOWLIST.
+  if (ctx.caption_intelligence) {
+    if (ctx.caption_intelligence.topics.length > 0) {
+      signals.push("caption_intelligence.topics");
+    }
+    if (ctx.caption_intelligence.caption_length_pattern) {
+      signals.push("caption_intelligence.length");
+    }
+  }
+
+  // Visual cover (optional). Same rationale as caption_intelligence.
+  if (ctx.visual_cover) {
+    if (ctx.visual_cover.summary) signals.push("visual_cover.summary");
+    if (ctx.visual_cover.consistency) signals.push("visual_cover.consistency");
+    if (ctx.visual_cover.visual_clarity) signals.push("visual_cover.visual_clarity");
+  }
 
   // Per-post allow-list. Mirrors the trimmed `top_posts` array sent in
   // `buildInsightsUserPayload` (cap = PROMPT_TOP_POSTS_CAP). Order is
