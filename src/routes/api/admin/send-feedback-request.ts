@@ -16,6 +16,7 @@ import {
   updateLeadCommercialStatus,
 } from "@/lib/admin/lead-events.server";
 import { renderFeedbackRequest } from "@/lib/email/templates";
+import { renderWithOverride } from "@/lib/email/template-overrides.server";
 import { buildUnsubscribeUrl } from "@/lib/email/url";
 import { resolveSender } from "@/lib/email/sender";
 
@@ -177,13 +178,23 @@ export const Route = createFileRoute("/api/admin/send-feedback-request")({
         const reportUrl = `${baseUrl}/analyze/${encodeURIComponent(rr.instagram_username)}`;
 
         const firstName = lead.name?.trim().split(/\s+/)[0] ?? null;
-        const { subject, html, text } = renderFeedbackRequest({
-          firstName,
-          instagramHandle: rr.instagram_username,
-          reportUrl,
-          feedbackUrl,
-          unsubscribeUrl: lead?.id ? buildUnsubscribeUrl(lead.id) : null,
-        });
+        const { subject, html, text } = await renderWithOverride(
+          "feedback_request",
+          {
+            firstName: firstName ?? "",
+            instagramHandle: rr.instagram_username,
+            reportUrl,
+            feedbackUrl,
+          },
+          () =>
+            renderFeedbackRequest({
+              firstName,
+              instagramHandle: rr.instagram_username,
+              reportUrl,
+              feedbackUrl,
+              unsubscribeUrl: lead?.id ? buildUnsubscribeUrl(lead.id) : null,
+            }),
+        );
 
         // Send via Resend
         const controller = new AbortController();
