@@ -7,6 +7,7 @@
 
 import { useMemo, useState } from "react";
 import type { Lang } from "@/lib/admin/lang-detect";
+import { sourceColor as SOURCE_COLOR_MAP } from "./chart-palette";
 
 export type MuralSource = "inline" | "beta" | "pricing";
 
@@ -29,11 +30,7 @@ const SOURCE_LABEL: Record<MuralSource, string> = {
   beta: "Modal beta",
   pricing: "Modal preços",
 };
-const SOURCE_COLOR: Record<MuralSource, string> = {
-  inline: "#3772E5",
-  beta: "#7664E4",
-  pricing: "#BA7517",
-};
+const SOURCE_COLOR: Record<MuralSource, string> = SOURCE_COLOR_MAP;
 const LANG_LABEL: Record<Lang, string> = {
   pt: "PT",
   en: "EN",
@@ -128,6 +125,15 @@ export function CommentMural({
         <span className="text-[12px] text-admin-text-secondary tabular-nums">
           {filtered.length}/{comments.length}
         </span>
+        <button
+          type="button"
+          onClick={() => downloadCsv(filtered)}
+          disabled={filtered.length === 0}
+          className="rounded-md border border-admin-border bg-white px-2.5 py-1.5 text-[12px] font-medium text-admin-text-primary transition-colors hover:bg-admin-surface-elevated disabled:cursor-not-allowed disabled:opacity-50"
+          title="Exportar comentários filtrados para CSV"
+        >
+          Exportar CSV
+        </button>
       </div>
 
       {filtered.length === 0 ? (
