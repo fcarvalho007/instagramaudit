@@ -260,8 +260,12 @@ export function computeContentSummary(
   return {
     posts_analyzed: postsAnalyzed,
     dominant_format: dominantFormat,
-    average_likes: Math.round(averageLikes),
-    average_comments: Math.round(averageComments),
+    // Preserve decimal precision so downstream cards can format consistently
+    // (Bloco 1 / Identidade Editorial and Bloco 2 / Resposta do público both
+    // derive from this same number — rounding here forced 0,4 → 0 in Bloco 1
+    // while Bloco 2 recomputed from posts and showed 0,4).
+    average_likes: Number(averageLikes.toFixed(2)),
+    average_comments: Number(averageComments.toFixed(2)),
     average_engagement_rate: Number(averageEngagementRate.toFixed(2)),
     estimated_posts_per_week: Number(estimatedPostsPerWeek.toFixed(1)),
   };

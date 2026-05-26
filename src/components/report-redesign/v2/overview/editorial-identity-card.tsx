@@ -709,7 +709,7 @@ function MetricsStrip({
       key: "likes",
       icon: Heart,
       label: t("identity.metrics.likes_label"),
-      value: formatCompactNumber(Math.round(averageLikes), lang),
+      value: formatAvgMetric(averageLikes, lang),
       unit: t("identity.metrics.per_post"),
       subtitle,
     });
@@ -721,7 +721,7 @@ function MetricsStrip({
       key: "comments",
       icon: MessageCircle,
       label: t("identity.metrics.comments_label"),
-      value: formatCompactNumber(Math.round(averageComments), lang),
+      value: formatAvgMetric(averageComments, lang),
       unit: t("identity.metrics.per_post"),
       subtitle: t(`identity.metrics.comments_${band}`),
     });
