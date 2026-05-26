@@ -124,7 +124,7 @@ const BADGE_ICON_CLASSES: Record<StatusConfig["tone"], string> = {
 function ScopeNote() {
   const { t } = useTranslation("report");
   return (
-    <p className="text-[11px] leading-relaxed text-content-tertiary italic">
+    <p className="text-xs leading-relaxed text-content-tertiary italic">
       {t("comments.scope_note")}
     </p>
   );
