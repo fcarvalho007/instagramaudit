@@ -217,6 +217,32 @@
       "weak_cadence": "Current cadence limits reach: the algorithm needs a minimum frequency to distribute content consistently.",
       "format_concentrated": "Concentrating on a single format reduces editorial testing. Diversifying opens new traction hypotheses without abandoning what works.",
       "neutral": "Current signals do not define a clear direction — the editorial analysis completes the picture with content type, captions and audience response."
+    },
+    "index": {
+      "eyebrow": "Profile index",
+      "subtitle_above": "{{pp}} pp above the tier engagement benchmark",
+      "subtitle_below": "{{pp}} pp below the tier engagement benchmark",
+      "subtitle_no_benchmark": "Profile activity index",
+      "microline": "Comparative index built from 3 profile signals.",
+      "rail_aria": "Index {{value}} out of 100",
+      "this_brand": "▸ this brand · {{value}}",
+      "stage": {
+        "leader": "Leader",
+        "competitive": "Competitive",
+        "progress": "In progress",
+        "emerging": "Emerging"
+      }
+    },
+    "method": {
+      "toggle": "How it was calculated",
+      "signals_line": "Built from 3 profile indicators: engagement, posting rhythm and caption conversation.",
+      "benchmark_line": "Compared against the tier engagement benchmark (Nano · Micro · Mid · Macro · Mega), based on recent observed activity.",
+      "sample": {
+        "tier": "Tier: {{tier}}",
+        "posts": "Posts analyzed: {{count}}",
+        "window": "Window: {{days}} days"
+      },
+      "disclaimer": "Comparative reading — not an official Instagram metric."
     }
   },
   "frequency": {
