@@ -406,6 +406,8 @@ function InterestTab({ windowDays }: { windowDays: WindowDays }) {
     Sim: d.sim, Talvez: d.talvez, Não: d.nao,
     conviction: d.convictionRate !== null ? Math.round(d.convictionRate * 100) : null,
   }));
+  const dailyHasResponses = dailyChart.some((d) => d.Sim + d.Talvez + d.Não > 0);
+  const dailyHasConviction = dailyChart.some((d) => d.conviction !== null && d.conviction !== undefined);
 
   return (
     <div className="space-y-5">
@@ -423,38 +425,46 @@ function InterestTab({ windowDays }: { windowDays: WindowDays }) {
           <h3 className="m-0 mb-3 text-[14px] font-semibold text-admin-text-primary">
             Respostas por dia
           </h3>
+          {!dailyHasResponses ? (
+            <Empty>Sem respostas no período.</Empty>
+          ) : (
           <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={dailyChart} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--admin-border) / 0.5)" />
                 <XAxis dataKey="day" tick={{ fontSize: 10 }} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
-                <Tooltip />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgb(var(--admin-border) / 0.2)" }} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="Sim" stackId="a" fill="#1D9E75" />
-                <Bar dataKey="Talvez" stackId="a" fill="#3772E5" />
-                <Bar dataKey="Não" stackId="a" fill="#E24B4A" />
+                <Bar dataKey="Sim" stackId="a" fill={chartPalette.positive} />
+                <Bar dataKey="Talvez" stackId="a" fill={chartPalette.accentPrimary} />
+                <Bar dataKey="Não" stackId="a" fill={chartPalette.negative} />
               </BarChart>
             </ResponsiveContainer>
           </div>
+          )}
         </AdminCard>
 
         <AdminCard>
           <h3 className="m-0 mb-3 text-[14px] font-semibold text-admin-text-primary">
             % sim convicto por dia
           </h3>
+          {!dailyHasConviction ? (
+            <Empty>Sem amostra suficiente para % convicto.</Empty>
+          ) : (
           <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={dailyChart} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--admin-border) / 0.5)" />
                 <XAxis dataKey="day" tick={{ fontSize: 10 }} />
                 <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} unit="%" />
-                <Tooltip />
-                <Line type="monotone" dataKey="conviction" stroke="#1D9E75" strokeWidth={2}
+                <Tooltip content={<ChartTooltip valueSuffix="%" />} />
+                <Line type="monotone" dataKey="conviction" stroke={chartPalette.positive} strokeWidth={2}
                   dot={{ r: 3 }} name="% convicto" connectNulls />
               </LineChart>
             </ResponsiveContainer>
           </div>
+          )}
         </AdminCard>
       </div>
 
