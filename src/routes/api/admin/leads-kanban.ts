@@ -8,6 +8,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
 import { resolveCallCost } from "@/lib/admin/cost-resolution";
+import type {
+  LeadPaymentSummary,
+  PaymentProduct,
+} from "@/lib/admin/kanban-columns";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -43,6 +47,66 @@ export const Route = createFileRoute("/api/admin/leads-kanban")({
         }
 
         const leadIds = leads.map((l) => l.id);
+
+        // 1b. Resumo de pagamentos por lead (vindo de `lead_payments`).
+        const paymentByLead = new Map<string, LeadPaymentSummary>();
+        {
+          const { data: payments } = await supabaseAdmin
+            .from("lead_payments")
+            .select(
+              "lead_id, product, amount_cents, status, paid_at, checkout_started_at, created_at, updated_at",
+            )
+            .in("lead_id", leadIds)
+            .order("created_at", { ascending: false });
+
+          if (payments) {
+            for (const p of payments) {
+              const lid = p.lead_id as string;
+              const summary = paymentByLead.get(lid) ?? {
+                has_pending: false,
+                paid_products: [] as PaymentProduct[],
+                last_payment_at: null as string | null,
+                pending_checkout_started_at: null as string | null,
+                total_paid_cents: 0,
+              };
+              const product = p.product as PaymentProduct;
+              const ts =
+                (p.paid_at as string | null) ??
+                (p.checkout_started_at as string | null) ??
+                (p.updated_at as string | null) ??
+                (p.created_at as string | null);
+              if (
+                ts &&
+                (!summary.last_payment_at ||
+                  new Date(ts).getTime() >
+                    new Date(summary.last_payment_at).getTime())
+              ) {
+                summary.last_payment_at = ts;
+              }
+              if (p.status === "paid") {
+                if (!summary.paid_products.includes(product)) {
+                  summary.paid_products.push(product);
+                }
+                summary.total_paid_cents += Number(p.amount_cents ?? 0);
+              } else if (p.status === "pending") {
+                summary.has_pending = true;
+                const started =
+                  (p.checkout_started_at as string | null) ??
+                  (p.created_at as string | null);
+                if (
+                  started &&
+                  (!summary.pending_checkout_started_at ||
+                    new Date(started).getTime() <
+                      new Date(summary.pending_checkout_started_at).getTime())
+                ) {
+                  // mantemos o mais antigo (= "abandonado há mais tempo")
+                  summary.pending_checkout_started_at = started;
+                }
+              }
+              paymentByLead.set(lid, summary);
+            }
+          }
+        }
 
         // 2. Latest report_request per lead
         const { data: requests } = await supabaseAdmin
@@ -262,6 +326,24 @@ export const Route = createFileRoute("/api/admin/leads-kanban")({
           const handle = req?.instagram_username?.toLowerCase() ?? null;
           const snapshotId = req?.analysis_snapshot_id ?? null;
           const lastEvent = lastEventByLead.get(lead.id);
+          const lm = lmByLead.get(lead.id) ?? {
+            status: "none" as const,
+            last_event_at: null,
+            last_event_type: null,
+            sent_count: 0,
+          };
+          const isLmSubscriber =
+            lm.status === "active" ||
+            lm.status === "completed" ||
+            !!lead.marketing_consent;
+          const paymentSummary =
+            paymentByLead.get(lead.id) ?? {
+              has_pending: false,
+              paid_products: [] as PaymentProduct[],
+              last_payment_at: null,
+              pending_checkout_started_at: null,
+              total_paid_cents: 0,
+            };
 
           return {
             id: lead.id,
@@ -289,13 +371,10 @@ export const Route = createFileRoute("/api/admin/leads-kanban")({
             created_at: lead.created_at,
             report_request_id: req?.id ?? null,
             feedback: feedbackByLead.get(lead.id) ?? null,
-            lead_magnet: lmByLead.get(lead.id) ?? {
-              status: "none" as const,
-              last_event_at: null,
-              last_event_type: null,
-              sent_count: 0,
-            },
+            lead_magnet: lm,
             marketing_consent: !!lead.marketing_consent,
+            is_lead_magnet_subscriber: isLmSubscriber,
+            payment_summary: paymentSummary,
           };
         });
 
