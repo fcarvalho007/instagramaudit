@@ -7,6 +7,8 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { computeFrequencia } from "./score-utils";
 import { InsightCallout } from "./insight-callout";
+import type { SocialinsiderInstagramContext } from "@/lib/knowledge/socialinsider-context";
+import { ExternalSourceNote, formatDateRange } from "./external-source-note";
 
 function getFrequencyStatusKey(score: number): "high" | "medium" | "low" {
   if (score >= 70) return "high";
@@ -87,6 +89,8 @@ export interface FrequencyCardProps {
   cadenceSufficient?: boolean;
   cadenceSampleSize?: number;
   cadenceWindowDays?: number;
+  /** External market reference (Socialinsider IG per format). Optional. */
+  socialinsiderRef?: SocialinsiderInstagramContext | null;
 }
 
 // ─── Weekly summary helpers ─────────────────────────────────────────
@@ -368,6 +372,7 @@ export function FrequencyCard({
   cadenceSufficient,
   cadenceSampleSize,
   cadenceWindowDays,
+  socialinsiderRef,
 }: FrequencyCardProps) {
   const { t, i18n } = useTranslation("report");
   // Prefer cadence-derived sample (pinned-excluded) for subtitle counts.
@@ -591,17 +596,82 @@ export function FrequencyCard({
         </p>
       </InsightCallout>
       )}
-      <p className="px-4 sm:px-5 md:px-6 pb-5 sm:pb-6 md:pb-8 -mt-2 text-xs text-content-tertiary leading-relaxed">
-        {t("frequency.source_socialinsider_ig")}{" "}
-        <a
-          href="https://www.socialinsider.io/blog/social-media-posting-frequency/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline decoration-dotted underline-offset-2 hover:text-content-secondary"
-        >
-          {t("frequency.source_link_label")}
-        </a>
-      </p>
+      <ExternalReferenceNote
+        refs={socialinsiderRef ?? null}
+        headline={headline}
+        posts={effectiveSampleSize}
+        days={effectiveWindowDays}
+        scoreHigh={score >= 70}
+        hasUsableData={hasUsableData}
+        lang={i18n.language}
+      />
+      <ExternalSourceNote
+        refData={
+          socialinsiderRef?.reel ??
+          socialinsiderRef?.carousel ??
+          socialinsiderRef?.image ??
+          null
+        }
+        className="px-4 sm:px-5 md:px-6 pb-5 sm:pb-6 md:pb-8 -mt-2 text-xs text-content-tertiary leading-relaxed"
+      />
     </article>
+  );
+}
+
+function ExternalReferenceNote({
+  refs,
+  headline,
+  posts,
+  days,
+  scoreHigh,
+  hasUsableData,
+  lang,
+}: {
+  refs: SocialinsiderInstagramContext | null;
+  headline: string;
+  posts: number;
+  days: number;
+  scoreHigh: boolean;
+  hasUsableData: boolean;
+  lang: string;
+}) {
+  const { t } = useTranslation("report");
+  if (!refs) return null;
+  const anyRef = refs.reel ?? refs.carousel ?? refs.image;
+  if (!anyRef) return null;
+  const range = formatDateRange(
+    anyRef.dataRange.from,
+    anyRef.dataRange.to,
+    lang,
+  );
+  const intro = t("frequency.external_ref.intro", {
+    reel: refs.reel?.postsPerMonth ?? "—",
+    carousel: refs.carousel?.postsPerMonth ?? "—",
+    image: refs.image?.postsPerMonth ?? "—",
+    range,
+  });
+  return (
+    <div className="px-4 sm:px-5 md:px-6 mt-2 space-y-1.5">
+      {hasUsableData ? (
+        <p className="text-[13px] text-content-secondary leading-relaxed">
+          {t("frequency.external_ref.profile_line", {
+            cadence: headline,
+            posts,
+            days,
+          })}
+        </p>
+      ) : null}
+      <p className="text-[13px] text-content-secondary leading-relaxed">
+        {intro}
+        {scoreHigh ? (
+          <>
+            {" "}
+            <span className="text-content-primary">
+              {t("frequency.external_ref.opportunity_mix")}
+            </span>
+          </>
+        ) : null}
+      </p>
+    </div>
   );
 }
