@@ -78,8 +78,11 @@ export const Route = createFileRoute("/api/public/inline-feedback")({
 
         const ip = clientIp(request);
         const ip_hash = ipHash(ip);
+        const hasComment = typeof comment === "string" && comment.length > 0;
         const rateKey = `${handle}:${ip_hash ?? "anon"}`;
-        if (rateLimited(rateKey)) {
+        // Só rate-limit em votos sem comentário. Comentários são acções
+        // intencionais e seguem-se quase sempre ao clique do emoji.
+        if (!hasComment && rateLimited(rateKey)) {
           // Resposta opaca para não revelar bloqueio.
           return json({ ok: true });
         }
@@ -87,6 +90,56 @@ export const Route = createFileRoute("/api/public/inline-feedback")({
         const userAgent =
           request.headers.get("user-agent")?.slice(0, 255) ?? null;
 
+        // Caminho 1 — comentário: tentar anexar ao registo recente de
+        // rating do mesmo (handle, block, ip_hash) sem comentário.
+        if (hasComment) {
+          const since = new Date(Date.now() - 15 * 60_000).toISOString();
+          let targetId: string | null = null;
+          if (ip_hash) {
+            const { data: recentRow } = await supabaseAdmin
+              .from("inline_report_feedback")
+              .select("id")
+              .eq("handle", handle)
+              .eq("block", block)
+              .eq("ip_hash", ip_hash)
+              .is("comment", null)
+              .gte("created_at", since)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            targetId = recentRow?.id ?? null;
+          }
+
+          if (targetId) {
+            const { error: updateErr } = await supabaseAdmin
+              .from("inline_report_feedback")
+              .update({ comment, user_agent: userAgent })
+              .eq("id", targetId);
+            if (updateErr) {
+              return json({ ok: false, code: "WRITE_FAILED" }, 500);
+            }
+            return json({ ok: true });
+          }
+
+          // Fallback — sem rating prévio, grava novo registo com comentário.
+          const { error: insertErr } = await supabaseAdmin
+            .from("inline_report_feedback")
+            .insert({
+              handle,
+              snapshot_id: snapshot_id ?? null,
+              block,
+              rating,
+              comment,
+              user_agent: userAgent,
+              ip_hash,
+            });
+          if (insertErr) {
+            return json({ ok: false, code: "WRITE_FAILED" }, 500);
+          }
+          return json({ ok: true });
+        }
+
+        // Caminho 2 — só rating.
         const { error } = await supabaseAdmin
           .from("inline_report_feedback")
           .insert({
@@ -94,7 +147,7 @@ export const Route = createFileRoute("/api/public/inline-feedback")({
             snapshot_id: snapshot_id ?? null,
             block,
             rating,
-            comment: comment ?? null,
+            comment: null,
             user_agent: userAgent,
             ip_hash,
           });
