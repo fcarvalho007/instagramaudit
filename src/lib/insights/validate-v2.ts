@@ -362,6 +362,21 @@ export function validateInsightsV2(raw: unknown): ValidateV2Result {
       evidence.push(trimmed as EditorialVerdictEvidence);
     }
 
+    // Visual claim guard — só permitir falar de capas / consistência
+    // visual quando o snapshot tem `visual_cover_analysis` (representado
+    // por um rótulo `visual_cover.*` em evidence_used).
+    if (VISUAL_CLAIM_KEYWORDS.test(paragraph)) {
+      const hasVisualEvidence = evidence.some((e) =>
+        e.startsWith("visual_cover."),
+      );
+      if (!hasVisualEvidence) {
+        return fail(
+          "VISUAL_CLAIM_UNSUPPORTED",
+          "verdict.paragraph mentions visual but no visual_cover.* evidence",
+        );
+      }
+    }
+
     editorialVerdict = {
       verdict_label: v.verdict_label,
       title,
