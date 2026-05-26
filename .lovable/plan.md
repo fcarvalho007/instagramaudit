@@ -1,110 +1,41 @@
-## Objetivo
+## Estado actual (já implementado)
 
-Inserir um widget de feedback discreto entre o Bloco 1 (Visão geral) e o Bloco 2 (Diagnóstico) no relatório `/analyze/$username`, aproveitando a fase beta para recolher uma reação de 1 clique.
+A maior parte do trabalho do passo anterior já está no código:
 
-## UX
+- `src/lib/report/editorial-verdict-fallback.ts` aceita `FallbackQualifiers` com `cadenceLabelPt`, `hashtagsState`, `topHashtags`, `hasRecurringHashtags`, `cadenceMethod`. As regras descritas no pedido (recurring/weak/absent, cita até 2 tags com `#`, sem `%`, prioridade do `cadenceLabelPt`, frase cautelosa quando insuficiente) já estão implementadas.
+- `src/lib/insights/build-context.ts` já deriva `top_hashtags`, `hashtags_state`, `cadence_label_pt` e injecta `caption_intelligence` + `visual_cover` quando há análise persistida.
+- `snapshot-to-report-data.ts` → `report-overview-block.tsx` → `EditorialIdentityCard` já propagam `cadenceLabelPt`, `hashtagsState`, `topHashtags` para o fallback.
+- `EditorialIdentityCard` nunca renderiza `ai_insights_v2.sections.hero.text` (comentário explícito + `copy` vem só de `resolved.title/paragraph`). Não existe `deriveCopyFromAi` no caminho activo (a única referência a `AI_INSIGHTS_MOCK.hero.text` é a página de exemplo `report-page.tsx`, mock isolado).
+- Testes existentes: `validate-v2-verdict.test.ts` (cobre 90–140 palavras, máx 4 frases, sem `%`, sem métricas privadas, `HASHTAGS_NOT_HANDLED`, `VISUAL_CLAIM_UNSUPPORTED`, `PTBR_LEAK`, evidências), `build-context-hashtags.test.ts` (recurring/weak/absent + cadence label), `editorial-verdict-fallback.test.ts` (retrocompat, recurring, weak, absent, prioridade `cadenceLabelPt`, sem `%`).
 
-Pequena secção centrada, fundo `surface-base`, sem card pesado:
+## Gaps a fechar
 
-```
-                  COMO FOI O BLOCO 1?
-              😔   😕   😐   🙂   😍
-                        Bom
-   Estamos em beta. O teu clique ajuda-nos a afinar o relatório.
-```
+1. **Falta o ficheiro `src/lib/insights/__tests__/build-context-caption-visual.test.ts`** com 4 casos: caption presente / caption ausente / visual presente / visual ausente — assegurando que `ctx.caption_intelligence` e `ctx.visual_cover` são incluídos/omissos de forma segura.
 
-- Eyebrow: `COMO FOI ATÉ AQUI?` (Inter uppercase, `.text-eyebrow-sm`).
-- 5 emojis com hover/scale subtle, transição grayscale → cor no hover.
-- Label dinâmico (Péssimo / Mau / Razoável / Bom / Excelente) em pt-PT, Inter SemiBold ~text-base.
-- Linha de microcopy beta sob o widget.
-- Após clique: animação fade → mensagem "Obrigado. Feedback registado." + opcional `textarea` minimal ("Queres acrescentar algo? (opcional)") com botão "Enviar". O botão fica `ghost` e enviar é opcional — clicar fora basta.
-- Bloqueio anti-duplo-voto: `localStorage` key `inline-fb:{handle}:{snapshot_id}` (ou só `{handle}` quando snapshot não existe). Se já votou, widget aparece colapsado: "Já registaste o teu feedback. Obrigado." (sem CTA).
+2. **Reforçar `editorial-verdict-fallback.test.ts`** com 2 cenários ainda não cobertos:
+   - fallback sem `cadenceLabelPt` nem `cadenceMethod` (apenas hashtags absent) — confirma linguagem cautelosa, sem frase de cadência.
+   - fallback é diagnóstico, não prescritivo — paragraph não contém verbos prescritivos no imperativo (`publica`, `usa`, `aposta`, `cria`, `evita`, `reduz`, `aumenta`, `começa`, `deves`, `tens de`).
+   - (legacy hero text): assert directo de que o paragraph não contém marcadores conhecidos do hero mock (`AI_INSIGHTS_MOCK.hero.text`). A função não importa nada do hero, mas o teste serve de guarda contra regressões.
 
-Tokens semânticos apenas (`content-primary`, `content-secondary`, `surface-muted`, `border-default`). **Sem `slate-*`, sem `red-*`/`orange-*` hard-coded** — as cores no snippet do utilizador violariam a memória do projeto; uso os accents do design system (signal-success/warning/danger já existentes) para o gradiente subtle no emoji ativo, sem gradientes berrantes.
+3. **Confirmação de segurança legacy**: nenhuma alteração de código — só validação por `rg` que `sections.hero.text` continua sem ser consumido pelo card e que `deriveCopyFromAi` continua inexistente. Já confirmado durante a exploração; será re-executado e reportado.
 
-## Inserção
+4. **Validação final**:
+   - `bunx tsc --noEmit`
+   - `bunx vitest run`
+   - Reporte estruturado conforme os 10 pontos pedidos.
 
-Ficheiro `src/components/report-redesign/v2/report-shell-v2.tsx`, em **2 sítios** (gated e non-gated), entre `ReportOverviewBlock` e `ReportDiagnosticBlock`:
+## Out of scope (explicitamente não tocar)
 
-```tsx
-{features.blockDiagnosis !== "hidden" && (
-  <BlockFeedback
-    handle={result.data.profile.username}
-    snapshotId={result.data.snapshot?.id ?? null}
-    block="overview"
-  />
-)}
-```
+- Pricing, sidebar, modal, gates, admin, blocos 3–6.
+- Apify, OpenAI, DataForSEO, Brevo, Resend.
+- Schema/migrations.
+- Qualquer redesign visual além do prop-wiring já existente.
+- `report-page.tsx` / `report.example` (mock isolado).
 
-## Componente
+## Checkpoint
 
-Novo: `src/components/report-redesign/v2/feedback/block-feedback.tsx`
-
-- Client-side, sem SSR.
-- Estado: `idle | submitting | done | error`.
-- POST para `/api/public/inline-feedback` com `{ handle, snapshot_id, block, rating, comment? }`.
-- Em erro: silencioso (mostra "Não foi possível registar. Tenta mais tarde.") — não bloqueia leitura do relatório.
-- i18n: chaves novas em `src/i18n/locales/pt/report.json` namespace `feedback.inline.*` (mesmo padrão dos restantes textos do report).
-
-## Backend
-
-### Migration: tabela `inline_report_feedback`
-
-```sql
-create table public.inline_report_feedback (
-  id uuid primary key default gen_random_uuid(),
-  handle text not null,
-  snapshot_id uuid,
-  block text not null check (block in ('overview','diagnostic','performance','content')),
-  rating smallint not null check (rating between 1 and 5),
-  comment text,
-  user_agent text,
-  ip_hash text,
-  created_at timestamptz not null default now()
-);
-
-alter table public.inline_report_feedback enable row level security;
-
--- No SELECT policy (apenas service role lê via admin futuro).
--- INSERT é feito server-side via supabaseAdmin no /api/public — RLS bloqueia o resto.
-create index idx_inline_fb_handle on public.inline_report_feedback(handle, created_at desc);
-create index idx_inline_fb_snapshot on public.inline_report_feedback(snapshot_id) where snapshot_id is not null;
-```
-
-Sem políticas para anon → escrita é exclusivamente via endpoint server-side com `supabaseAdmin` (bypassa RLS).
-
-### Endpoint: `src/routes/api/public/inline-feedback.ts`
-
-- POST handler.
-- Validação Zod: `handle` (1..255, `^[a-zA-Z0-9._-]+$`), `snapshot_id` UUID opcional, `block` enum, `rating` 1..5, `comment` ≤ 500 chars opcional.
-- Rate-limit leve: hash do IP + handle, max 5 inserts/hora (consulta `count` na tabela com janela). Em excesso devolve 200 vazio (não revela bloqueio).
-- Grava `user_agent` truncado e `ip_hash` (`sha256(ip + DAILY_SALT)`).
-- Resposta `{ ok: true }`.
-
-## Fora do âmbito
-
-- Não tocar em `beta_feedback` (é outra coisa: lead-gated, tied a `report_request_id`).
-- Sem login, sem email — alinha com "private/admin testing, no email gate".
-- Sem dashboard admin agora — fica preparado para um futuro `/admin/feedback`.
-- Não emitir emails, não tocar em Brevo/Resend.
-
-## Ficheiros
-
-**Novos**
-- `supabase/migrations/<ts>_inline_report_feedback.sql`
-- `src/routes/api/public/inline-feedback.ts`
-- `src/components/report-redesign/v2/feedback/block-feedback.tsx`
-
-**Editados**
-- `src/components/report-redesign/v2/report-shell-v2.tsx` (2 inserções)
-- `src/i18n/locales/pt/report.json` (chaves `feedback.inline.*`)
-
-## Validação
-
-- `bunx tsc --noEmit`
-- `bunx vitest run`
-- Preview `/analyze/robs.cortez`: ver widget entre blocos; clicar 🙂; recarregar página → widget aparece em estado "já registado"; confirmar 1 linha em `inline_report_feedback`.
-
-## Confirmação antes de avançar
-
-A tabela `inline_report_feedback` é nova e não toca em nada existente. Confirmas que avanço com a migration + componente + endpoint?
+☐ Criar `src/lib/insights/__tests__/build-context-caption-visual.test.ts` (4 cenários)
+☐ Adicionar 2–3 casos a `src/lib/report/__tests__/editorial-verdict-fallback.test.ts` (sem cadência, não prescritivo, sem hero legacy)
+☐ Correr `bunx tsc --noEmit`
+☐ Correr `bunx vitest run`
+☐ Reportar: ficheiros alterados, testes, comportamento final do fallback, hashtags (recurring/weak/absent), cadence label, caption/visual, confirmação no-legacy-hero, resultado tsc, resultado vitest, gaps restantes
