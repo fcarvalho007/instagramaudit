@@ -1,67 +1,50 @@
-## Auditoria — Emails enviados vs. editor de Automações
+## Diagnóstico
 
-### Conclusão executiva
-Há **3 desalinhamentos reais** entre o que o editor `/admin/automacoes/templates` mostra/edita e o que de facto sai para os subscritores. Nada está "mockado" no envio, mas o editor está a comunicar estado errado em 1 template e o sistema tem duas fontes de cópia paralelas que podem divergir silenciosamente.
+A discrepância no perfil `@lg_portugal` (Card 1 = "0 por post"; Card P05 = "0,4 por post") tem causa identificada:
 
----
+- Os **12 posts** persistidos têm um total de **5 comentários** → média real = **0,42/post**.
+- O Card 1 (Visão geral · `EditorialIdentityCard`) lê `payload.content_summary.average_comments`.
+- O Card P05 (Resposta do público · `classifyAudienceResponse`) recalcula a partir de `payload.posts`.
 
-### 1. Inventário (7 templates no editor)
+No snapshot atual (`b1fe467a-…`) o campo persistido `content_summary.average_comments` vale **0** (inteiro), não `0.42`. Foi gerado antes da correção de `toFixed(2)` em `src/lib/analysis/normalize.ts` (linhas 264-268, cujo comentário descreve este mesmo bug histórico). Como o snapshot é cache imutável, qualquer arranjo só em `normalize.ts` não corrige relatórios já guardados — e o problema vai voltar sempre que houver um snapshot antigo em cache.
 
-| Key | Editor diz | Envio real | Caller | Provider |
-|---|---|---|---|---|
-| `request_received` | wired | **enviado** | `src/lib/beta.functions.ts` (submissão beta) | **Resend direto** ⚠️ |
-| `report_ready` | wired | enviado | `routes/api/admin/send-report-link.ts` (manual admin) | Brevo→Resend |
-| `feedback_request` | wired | enviado | `routes/api/admin/send-feedback-request.ts` (manual admin) | Brevo→Resend |
-| `personal_area_saved` | wired | **NÃO enviado** ❌ | nenhum caller — `sendPersonalAreaSavedEmail` é função morta | — |
-| `welcome_beta` | wired | enviado | `lead-magnet-sequence.server.ts` (primeiro unlock) | Brevo→Resend |
-| `report_summary` | wired | enviado | `lead-magnet-sequence.server.ts` (após unlock) | Brevo→Resend |
-| `commercial_followup` | orphan (correcto) | manual via admin | `routes/api/admin/send-commercial-followup.ts` | Brevo→Resend |
+A única forma de garantir paridade entre o Card 1 e o P05 (e qualquer card futuro) é ter **uma única fonte de verdade em runtime**: derivar as médias do array `payload.posts` (que já é usado pelo P05), em vez de confiar no campo agregado `content_summary` que pode estar dessincronizado.
 
-Verificação em DB (`product_events`, 30d): 1 `beta_welcome_email_sent`, 1 `report_summary_email_sent`, 2 `brevo_email_sent`. Coerente com a tabela acima.
+## Plano
 
----
+**1. Centralizar o cálculo de médias num utilitário partilhado**
+- Criar `src/lib/report/post-aggregates.ts` com:
+  - `computePostAverages(posts)` → `{ averageLikes, averageComments, postsAnalyzed }`
+  - Usa `payload.posts` diretamente, ignorando `content_summary` quando há posts.
+  - Mantém precisão (sem `Math.round`), devolve `null` quando `posts.length === 0`.
 
-### 2. Problemas encontrados
+**2. Card 1 (Visão geral) passa a usar o utilitário**
+- Em `src/components/report-redesign/v2/report-overview-block.tsx`:
+  - Substituir o `useMemo` de `avgComments` (que faz média apenas dos top-5 de `enriched.topPosts`) por `computePostAverages(payload?.posts)`.
+  - `averageLikes` e `averageComments` passados a `<EditorialIdentityCard>` vêm desse utilitário; só caem para `payload.content_summary.*` se `payload.posts` estiver vazio (snapshots antigos sem array de posts).
+- Resultado visível: `0,4 por post` aparece no Card 1, idêntico ao P05.
 
-**P1 — `personal_area_saved` está falsamente marcado como "wired".**
-`sendPersonalAreaSavedEmail` existe em `src/lib/email/send-personal-area-saved.server.ts` mas **não tem nenhum caller no projecto** (verificado com ripgrep em todo `src/`, excluindo testes). O lead que cria conta e tem reports associados nunca recebe este email, apesar de o editor afirmar que está ligado.
+**3. P05 alinha-se ao mesmo utilitário (paridade explícita)**
+- Em `src/lib/report/block02-diagnostic.ts` → `classifyAudienceResponse`:
+  - Manter a assinatura `(posts)` (continua a receber `payload.posts`).
+  - Internamente continuar a usar o mesmo total/contagem; adicionar um teste curto que confirma que `avgComments` devolvido bate certo com `computePostAverages(posts).averageComments`.
 
-**P2 — `request_received` faz `fetch` directo à Resend.**
-`src/lib/beta.functions.ts` (l.210-224) chama `https://api.resend.com/emails` directamente em vez de passar por `sendTransactionalEmail` (que faz Brevo-first com fallback Resend). Consequências:
-- nunca tenta Brevo, embora o resto do sistema priorize Brevo;
-- não emite os eventos uniformes `brevo_email_sent`/`brevo_email_failed`;
-- duplica a lógica de timeout/abort.
+**4. Testes**
+- `src/lib/report/__tests__/post-aggregates.test.ts`:
+  - Caso `lg_portugal` real (12 posts, 5 comentários) → `0.4` (não 0).
+  - Caso sem posts → devolve `null`.
+- `src/lib/report/__tests__/overview-vs-block02-parity.test.ts`:
+  - Dado o mesmo `payload.posts`, o valor exibido pelo Card 1 (via utilitário) é igual ao `avgComments` devolvido por `classifyAudienceResponse`.
 
-**P3 — Duas fontes de cópia paralelas para o mesmo template.**
-- `src/lib/email/templates/*.ts` (`renderXxx`) — o que **realmente sai** quando não há override em DB.
-- `src/lib/admin/email-template-registry.ts` → `DEFAULTS` (`defaultParts`) — o que **aparece no editor** como ponto de partida.
+## Fora de âmbito
 
-Estado actual em DB: `SELECT * FROM email_template_overrides` → **0 linhas**. Ou seja: nenhum admin nunca guardou um template, logo tudo o que sai é o fallback hardcoded — não é o conteúdo do editor. Se o admin editar `welcome_beta` no editor e fechar sem guardar (ou se o subject no `DEFAULTS` divergir do `renderWelcomeBeta`), o que ele vê no preview não corresponde ao que o subscritor recebe.
+- Não regerar snapshots antigos nem alterar a estrutura persistida (`content_summary` mantém-se como está; passa apenas a ser fallback).
+- Não tocar em copy, layout, tokens, ou no card P05 visualmente — só na fonte do número.
+- Não tocar em `normalize.ts` (já está correto para snapshots futuros).
 
-Comparação rápida: `DEFAULTS.welcome_beta.subject = "Bem-vindo à beta do InstaBench"` vs. `renderWelcomeBeta` (ficheiro `welcome-beta.ts`) tem um `SUBJECT` próprio que pode divergir. Mesmo padrão para os outros 6.
+## Checkpoint
 
----
-
-### 3. Recomendações (ordem proposta, uma por prompt)
-
-1. **Corrigir P1** — em `email-template-registry.ts`, marcar `personal_area_saved` como `wired: false` com `wiredNote: "Função existe mas sem trigger automático; reservado para evolução."` Decisão de produto a seguir: ou ligar o caller no fluxo de criação de conta (`handle_new_user` / `link_user_to_existing_reports`) ou remover o template do editor.
-
-2. **Corrigir P2** — substituir o `fetch` directo em `beta.functions.ts` por `sendTransactionalEmail({ flowType: "request-received", ... })`, eliminando ~30 linhas duplicadas e uniformizando provider/eventos.
-
-3. **Corrigir P3 (estrutural)** — escolher **uma** fonte de verdade:
-   - **Opção A (recomendada)**: o editor passa a derivar `defaultParts` a partir do mesmo `renderXxx` (extraindo subject/body), garantindo paridade automática. Reduz código e elimina divergência.
-   - **Opção B**: manter `DEFAULTS` mas adicionar um teste de paridade (`expect(DEFAULTS[key].subject).toBe(renderXxx.subject)`) que falha o build se desalinhar.
-
-4. **Validação manual** — em `/admin/automacoes/templates/<key>`, gravar pelo menos `welcome_beta` e `report_summary` com o conteúdo actual, para que o caminho com override em DB seja efectivamente exercitado em produção.
-
----
-
-### Fora de âmbito
-- Mudar provider (Brevo/Resend).
-- Refazer o editor visualmente.
-- Tocar em `commercial_followup` (orphan declarado, comportamento correcto).
-
-### Checkpoint
-- ☐ Aprovar relatório
-- ☐ Decidir ordem dos fixes (P1 → P2 → P3 sugerido)
-- ☐ Decidir opção A ou B para P3
+- ☐ `post-aggregates.ts` criado e testado
+- ☐ Card 1 mostra `0,4 por post` para `@lg_portugal` (igual ao P05)
+- ☐ Snapshots antigos sem `posts` continuam a renderizar (fallback para `content_summary`)
+- ☐ Testes de paridade verdes

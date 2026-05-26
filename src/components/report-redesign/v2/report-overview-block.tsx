@@ -22,6 +22,7 @@ import {
   classifyHashtagsState,
   pickHashtagsForVerdict,
 } from "@/lib/report/cadence-label";
+import { computePostAverages } from "@/lib/report/post-aggregates";
 
 export interface Props {
   result: AdapterResult;
@@ -49,11 +50,20 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
   const k = result.data.keyMetrics;
   const enriched = result.enriched;
 
-  const avgComments = useMemo(() => {
-    const posts = enriched.topPosts;
-    if (!posts.length) return 0;
-    return posts.reduce((sum, p) => sum + p.comments, 0) / posts.length;
-  }, [enriched.topPosts]);
+  // Single source of truth: derive likes/comments averages from the full
+  // `payload.posts` array (same data P05 / classifyAudienceResponse uses).
+  // Falls back to `content_summary` only when the snapshot has no posts.
+  const postAverages = useMemo(
+    () => computePostAverages(payload?.posts ?? null),
+    [payload?.posts],
+  );
+
+  const avgLikes =
+    postAverages?.averageLikes ?? payload?.content_summary?.average_likes ?? 0;
+  const avgComments =
+    postAverages?.averageComments ??
+    payload?.content_summary?.average_comments ??
+    0;
 
   const scores: Record<ScoreKey, { value: number; subtitle: string }> = useMemo(() => ({
     envolvimento: {
@@ -128,10 +138,8 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
           postingFrequencyWeekly={k.postingFrequencyWeekly}
           followers={result.data.profile.followers}
           postsAnalyzed={k.postsAnalyzed}
-          averageLikes={payload?.content_summary?.average_likes ?? undefined}
-          averageComments={
-            payload?.content_summary?.average_comments ?? avgComments
-          }
+          averageLikes={avgLikes}
+          averageComments={avgComments}
           cadenceSufficient={enriched.cadence.sufficient}
           cadenceReliability={enriched.cadence.reliability}
           competitorsCount={result.data.competitors.length}
