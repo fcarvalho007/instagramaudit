@@ -19,7 +19,7 @@ import { AdminCard } from "../admin-card";
 import { AdminSectionHeader } from "../admin-section-header";
 import { ADMIN_LITERAL } from "../admin-tokens";
 import { adminFetch } from "@/lib/admin/fetch";
-import type { AdminPeriod } from "@/lib/admin/period";
+import type { AdminPeriod } from "@/components/admin/v2/period-select";
 
 interface DailyApi {
   success: boolean;
