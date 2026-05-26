@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { AdminPeriod } from "@/components/admin/v2/period-select";
-import { ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 
 import { AdminCard } from "../admin-card";
 import { AdminBadge } from "../admin-badge";
@@ -56,16 +56,6 @@ function deriveStatus(r: ReportRow): "snapshot" | "delivered" | "processing" | "
 function formatDate(iso: string): string {
   const d = new Date(iso);
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
-function formatDuration(r: ReportRow): string {
-  if (r.kind === "snapshot") return "—";
-  if (!r.email_sent_at) return "—";
-  const sec = Math.round(
-    (new Date(r.email_sent_at).getTime() - new Date(r.created_at).getTime()) / 1000,
-  );
-  if (sec < 60) return `${sec}s`;
-  return `${Math.floor(sec / 60)}m ${String(sec % 60).padStart(2, "0")}s`;
 }
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -150,25 +140,24 @@ export function ReportsTableSection({ period }: { period: AdminPeriod }) {
           <table className="w-full border-collapse text-left text-[12px]">
             <thead>
               <tr className="text-admin-text-tertiary">
-                <Th>Lead</Th>
+                <Th>Registo</Th>
                 <Th>Perfil</Th>
                 <Th>Origem</Th>
                 <Th>Estado</Th>
                 <Th>Início</Th>
-                <Th>Duração</Th>
                 <Th align="right">Acções</Th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-[12px] text-admin-text-tertiary">
+                  <td colSpan={6} className="px-6 py-8 text-center text-[12px] text-admin-text-tertiary">
                     A carregar…
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-[12px] text-admin-text-tertiary">
+                  <td colSpan={6} className="px-6 py-8 text-center text-[12px] text-admin-text-tertiary">
                     Sem relatórios para este filtro.
                   </td>
                 </tr>
