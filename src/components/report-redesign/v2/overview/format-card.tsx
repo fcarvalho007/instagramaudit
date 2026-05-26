@@ -623,27 +623,23 @@ function ExternalReferenceTable({
     key: "Carousels" | "Reels" | "Imagens",
     refData: SocialinsiderFormatRef | null,
   ): string {
-    if (!refData) return t("format.external_ref.reading_dash");
-    const entry = byKey.get(key);
-    if (!entry || entry.count === 0) return t("format.external_ref.reading_dash");
-    // refShare: only used for DIRECTIONAL comparison of mix between this
-    // profile and the Socialinsider per-format reference. It is NEVER
-    // displayed as a total posting target and must NOT be interpreted as
-    // a recommended monthly volume. Socialinsider data is an external
-    // reference for context only — never a fixed rule.
-    const refTotal =
-      (refs?.carousel?.postsPerMonth ?? 0) +
-      (refs?.reel?.postsPerMonth ?? 0) +
-      (refs?.image?.postsPerMonth ?? 0);
-    const refShare =
-      refTotal > 0 && refData.postsPerMonth
-        ? (refData.postsPerMonth / refTotal) * 100
-        : null;
-    if (refShare === null) return t("format.external_ref.reading_dash");
-    const delta = entry.sharePct - refShare;
-    if (delta > 10) return t("format.external_ref.reading_above_freq");
-    if (delta < -10) return t("format.external_ref.reading_below_freq");
-    return t("format.external_ref.reading_near_freq");
+    void refData;
+    // Delegates to the pure helper `computeExternalReading`; see its
+    // docblock — refShare is DIRECTIONAL only, never a volume target.
+    const reading = computeExternalReading(key, refs, formats);
+    switch (reading) {
+      case "above":
+        return t("format.external_ref.reading_above_freq");
+      case "below":
+        return t("format.external_ref.reading_below_freq");
+      case "near":
+        return t("format.external_ref.reading_near_freq");
+      case "absent":
+        return t("format.external_ref.absent");
+      case "dash":
+      default:
+        return t("format.external_ref.reading_dash");
+    }
   }
 
   function refCell(refData: SocialinsiderFormatRef | null): string {
