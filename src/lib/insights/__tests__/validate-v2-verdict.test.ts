@@ -119,7 +119,7 @@ describe("validateInsightsV2 — editorial_verdict", () => {
       "O perfil mantém actividade visível com cerca de 5 publicações por semana, dominadas por Reels e centradas em poucos temas recorrentes que dão coerência à grelha. " +
       "A leitura é feita contra o benchmark do escalão, como se pode consultar nas secções abaixo deste relatório, e o sinal aponta para um perfil acima do habitual. " +
       "A audiência reage com gostos mas raramente entra em conversa, num padrão típico de consumo silencioso a que vale a pena prestar atenção. " +
-      "Nesta amostra, não há hashtags suficientemente claras ou recorrentes para definir um território editorial estável.";
+      "Nesta amostra, as hashtags não são suficientemente claras ou recorrentes para definir um território editorial estável.";
     const r = validateInsightsV2(payload({ paragraph: para }));
     expect(r.ok).toBe(true);
   });
@@ -136,17 +136,14 @@ describe("validateInsightsV2 — editorial_verdict", () => {
   });
 
   it("rejects visual claim without visual_cover evidence", () => {
+    // Insere uma afirmação visual mantendo 4 frases e palavras dentro
+    // do intervalo 90–140. Sem `visual_cover.*` em evidence → deve
+    // disparar VISUAL_CLAIM_UNSUPPORTED.
     const para = VALID_PARAGRAPH.replace(
-      "Em termos de assinatura temática",
-      "A consistência visual das capas é evidente. Em termos de assinatura temática",
+      "sem grande dispersão.",
+      "sem grande dispersão, e a consistência visual das capas reforça a identidade.",
     );
-    // 99 + ~6 palavras extra; ainda dentro do limite mas o número de
-    // frases sobe para 5. Reduz uma das frases originais para manter ≤4.
-    const trimmed = para.replace(
-      "A leitura é feita contra o benchmark do escalão, como se pode consultar nas secções abaixo deste relatório, e o sinal aponta para um perfil acima do habitual. ",
-      "",
-    );
-    const r = validateInsightsV2(payload({ paragraph: trimmed }));
+    const r = validateInsightsV2(payload({ paragraph: para }));
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.reason).toBe("VISUAL_CLAIM_UNSUPPORTED");
   });
