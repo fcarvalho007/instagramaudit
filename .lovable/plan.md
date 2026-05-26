@@ -1,53 +1,32 @@
-## Estado atual
+## Problema
 
-A Fase 1 do rebranding (`InstaBench` → `AuditProfiles`) **já foi executada** numa task anterior. Uma pesquisa global confirma que **não restam ocorrências visíveis** de `InstaBench`, `instabench` ou `instagramaudit` no código de UI público ou app autenticada.
+O widget de feedback (`BlockFeedback` — "Como foi até aqui?" + 5 emojis) aparece sempre depois do Bloco 1 (Visão Geral), mesmo quando o relatório ainda está gated. O pedido anterior era esconder os emojis até o utilizador subscrever o lead magnet (unlock).
 
-As **3 únicas ocorrências restantes** são intencionais (Class B na auditoria) e devem permanecer:
+## Causa
 
-| Ficheiro | Ocorrência | Razão |
-|---|---|---|
-| `supabase/migrations/20260429163700_*.sql` | `'InstaBench dataset interno'` | Migration histórica congelada — nunca editar |
-| `src/lib/analysis/cost.ts` | `"instabench-default-salt"` (fallback) | Alterar invalida todos os IP hashes existentes |
-| `src/i18n/index.ts` | `LANG_STORAGE_KEY = "instabench.lang"` | Alterar perde preferência de idioma de todos os utilizadores |
+`src/components/report-redesign/v2/report-shell-v2.tsx` linhas 215-223 renderizam `<BlockFeedback>` com guard apenas em `features.blockOverview !== "hidden"`, sem verificar o estado `gated`/`unlocked`.
 
-O `src/lib/brand/legal.ts` central já tem `productName: "AuditProfiles"` e `domain: "auditprofiles.com"`.
+## Correção
 
-## O que falta (escopo desta fase)
+Adicionar `!gated` ao guard:
 
-A peça que **ainda não foi feita** é o requisito técnico #1 do prompt: adicionar nomes de **produto** centralizados (separados do nome da plataforma), para evitar copy ambígua entre plataforma (`AuditProfiles`) e serviço atual (`Instagram Profile Audit` / `Auditoria de Perfil Instagram`).
-
-### Mudanças propostas
-
-**1. Estender `src/lib/brand/legal.ts`** com 2 novos campos:
-```ts
-primaryProductName: "Instagram Profile Audit",  // EN
-ptProductName: "Auditoria de Perfil Instagram", // PT
+```tsx
+{features.blockOverview !== "hidden" && !gated && (
+  <div className="mt-6 md:mt-8 mb-2">
+    <BlockFeedback ... />
+  </div>
+)}
 ```
 
-**2. Adicionar chaves i18n** em `src/i18n/locales/{pt,en}/common.json` (ou no namespace existente mais apropriado — a confirmar durante exploração):
-- `brand.productName` → "Auditoria de Perfil Instagram" / "Instagram Profile Audit"
-- `brand.startingWith` → "Começámos pelo Instagram." / "We're starting with Instagram."
+Semântica de `gated` (linha 125): `lockBoundary === "engagement" && !unlocked` — ou seja, `!gated` cobre os dois casos legítimos para mostrar feedback:
+1. Não há gate (ex.: `/report.example`)
+2. Há gate mas o utilizador já fez unlock (subscreveu lead magnet)
 
-**3. Auditar 3 superfícies-chave** onde se diz apenas "AuditProfiles" e onde clarificar o produto Instagram adiciona valor (sem overpromise):
-- Landing page hero/subtítulo (`src/routes/index.tsx`)
-- Pricing `/precos` (`src/routes/precos.tsx`) — clarificar que o tier inicial é Instagram
-- Página de unlock / report gates — mencionar produto, não só plataforma
+## Escopo
 
-Estas 3 superfícies já dizem "AuditProfiles" corretamente; só ajustamos onde a frase ficaria mais clara com `Auditoria de Perfil Instagram`. Não vou reescrever copy alargado — só pequenos ajustes cirúrgicos.
+1 ficheiro, 1 linha. Sem mudanças de lógica de unlock, sem mudanças no `BlockFeedback`, sem mudanças no servidor.
 
-**4. Validação final:**
-- `rg -i 'instabench|instagramaudit'` deve devolver apenas as 3 ocorrências intencionais acima
+## Validação
+
+- Visual: relatório gated não mostra emojis; relatório unlocked mostra emojis.
 - `bunx tsc --noEmit`
-- `bunx vitest run`
-
-### Fora de escopo (não tocar)
-
-- Migration histórica, salt de hash, `LANG_STORAGE_KEY`
-- Pricing logic, Apify/OpenAI/DataForSEO, geração de relatórios, emails
-- Routes (nenhuma contém `instabench`)
-- Texto legal (`Fomentar Sonhos, Lda.`)
-- Reescrita ampla de copy — só substituições onde clarifica produto vs plataforma
-
-### Risco
-
-Baixo. As alterações são aditivas (novos campos no brand config + novas chaves i18n) e edits cirúrgicos em 3 ficheiros de rota. Sem mudanças de schema, sem mudanças de comportamento.
