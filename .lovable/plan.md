@@ -1,75 +1,177 @@
-# Fix: comentário do widget de feedback não persiste nem confirma envio
+# Regenerar `editorial_verdict` para snapshot único — plano de execução seguro
 
-## Diagnóstico
+## Auditoria
 
-Dois bugs ligados na mesma feature `BlockFeedback`:
+### 1. Rotas e helpers existentes
 
-### Bug 1 — "Enviar" não dá feedback visual
-`src/components/report-redesign/v2/feedback/block-feedback.tsx`, estado `done`: o botão "Enviar" chama `submit(rating, comment)`. Em sucesso, `submit` faz `setStatus("done")` — mas o estado já é `"done"`, portanto a UI não muda. O utilizador vê o textarea exatamente como estava e fica sem saber se a mensagem foi enviada. Não há estado de loading no botão, nem confirmação final.
+- **`POST /api/public/enrich-snapshot`** (`src/routes/api/public/enrich-snapshot.ts`) — endpoint protegido por `INTERNAL_API_TOKEN`. Processa **apenas** jobs em `enrichment_jobs` com `status='pending'` para um `snapshot_id` específico. Por tipo de job, despacha para `runEnrichment(...)`. **Não** dispara nada por si só: se não existir um job pendente para `insights_v2`, não corre `insights_v2`. **Não** chama Apify nem cascata de outras enriquezas. **Não** toca em leads, report_requests, emails, Brevo, Resend.
 
-### Bug 2 — Comentário nunca chega ao /admin
-`src/routes/api/public/inline-feedback.ts` tem rate-limit de 3s por chave `handle:ip_hash`. Fluxo real do utilizador:
+- **`runEnrichment` / `runInsightsV2`** (`src/lib/enrichment/run-enrichment.server.ts`, linhas 382‑425) — executa **só** `generateInsightsV2(insightsCtx, …)`. Reaproveita `caption_semantic_analysis` e `visual_cover_analysis` já existentes no payload (linhas 318‑324). Não chama Apify, DataForSEO, caption-semantic nem visual-cover.
 
-1. Clique no emoji → POST 1 (rating, sem comentário) → 200 OK, regista no DB, marca timestamp em `recent`.
-2. Escreve comentário (< 3s depois normalmente) → clique Enviar → POST 2 (rating + comentário) → cai no `rateLimited()` → devolve `{ok:true}` opaco e **não escreve**.
-3. Resultado: o comentário desaparece silenciosamente. O admin `/admin/estudo-mercado` (que já lê `inline_report_feedback.comment` via `getMarketStudyBlocks` linhas 153‑165) nunca o vê.
+- **Guarda crítica** (linha 401): `if (ctx.previousPayload.ai_insights_v2) { … skipping }`. Como o snapshot já tem `ai_insights_v2` (versão antiga), é obrigatório **remover** essa chave antes de criar o job, senão o runner faz no-op.
 
-Confirmado pela leitura de `src/server/admin/market-study.functions.ts`: a agregação está correta — o problema é só no write path.
+- **`removePayloadKey`** (`src/lib/analysis/cache.ts`, já importado em `enrich-snapshot.ts`) — helper atómico para apagar uma chave de `normalized_payload`.
 
-## Mudanças
+- **`/api/admin/force-refresh`** — corre o pipeline público todo (Apify + DFS + tudo). **Não usar** — fere todas as restrições.
 
-### A. `src/routes/api/public/inline-feedback.ts`
+- **`/api/admin/regenerate-pdf`** — só PDF, não toca insights.
 
-Tratar o POST com `comment` como atualização do registo de rating anterior, não como insert novo:
+- **Nenhuma rota** existente regenera *só* `insights_v2` para um snapshot existente. É preciso uma sequência manual de 3 passos usando as primitivas que já existem (sem novo endpoint, sem novo código).
 
-1. Adicionar ramo: se `comment` está presente:
-   - **Não aplicar rate-limit** (o utilizador acabou de escrever; é uma ação intencional). Mantém rate-limit para POSTs só de rating.
-   - Tentar `UPDATE inline_report_feedback SET comment = ? WHERE handle = ? AND block = ? AND ip_hash = ? AND created_at > now() - interval '15 minutes' AND comment IS NULL` ordenado por `created_at DESC LIMIT 1` (via `.select().single()` após filter, ou usar RPC). Como o cliente Supabase JS não faz UPDATE com LIMIT direto, implementar em dois passos: SELECT id da linha mais recente que satisfaz os filtros → UPDATE por id.
-   - Se nenhuma linha encontrada (ex.: utilizador veio direto comentar sem rating), fazer INSERT normal com o comentário.
-2. Se não há `comment`, manter comportamento atual (INSERT + rate-limit).
+### 2. Caminho de execução escolhido
 
-Isto evita registos duplicados e garante que o comentário fica visível agregado ao mesmo evento de rating no admin.
+Reutilizar 100% do código existente (sem novo endpoint) via 3 chamadas de ferramentas:
 
-Sem mudanças de schema (tabela já tem `comment` nullable). Sem mudança no Zod.
+1. **DB (insert tool, SQL `UPDATE`)** — limpar `ai_insights_v2` do payload do snapshot alvo:
 
-### B. `src/components/report-redesign/v2/feedback/block-feedback.tsx`
+   ```sql
+   UPDATE public.analysis_snapshots
+   SET normalized_payload = normalized_payload - 'ai_insights_v2',
+       updated_at = now()
+   WHERE id = '3cd9340c-da04-4fc2-a79f-235ac0a1192f';
+   ```
 
-Adicionar estado final `"comment_sent"` para fechar o ciclo visual:
+2. **DB (insert tool, SQL `INSERT`)** — criar um único job pendente para esse snapshot:
 
-1. No handler do botão "Enviar":
-   - Pôr o botão em estado loading (`sending` local boolean) e desativá-lo durante o request.
-   - No sucesso, `setStatus("comment_sent")` (novo estado).
-   - No erro, mostrar a mensagem de erro já existente abaixo do textarea (reaproveitar `text-signal-danger`).
-2. Renderizar `comment_sent` como mensagem editorial centrada: ícone `CheckCircle2` (lucide, já no projeto) + título "Mensagem registada. Obrigado." + microcopy "Vamos lê-la com atenção." Mantém a mesma moldura visual do estado `done` para continuidade.
-3. Persistir no localStorage que já houve comentário (chave separada `${storageKey}:c`) para no próximo render hidratar diretamente em `comment_sent` em vez de re-mostrar o textarea.
+   ```sql
+   INSERT INTO public.enrichment_jobs
+     (snapshot_id, handle, enrichment_type, status, priority, attempts, max_attempts)
+   VALUES
+     ('3cd9340c-da04-4fc2-a79f-235ac0a1192f', 'robs.cortez',
+      'insights_v2', 'pending', 50, 0, 3);
+   ```
 
-Sem novas dependências. Apenas tokens semânticos.
+3. **HTTP (invoke-server-function)** — disparar **apenas** o job acima:
 
-### C. Sem mudanças no admin
+   ```
+   POST /api/public/enrich-snapshot
+   Authorization: Bearer ${INTERNAL_API_TOKEN}
+   Content-Type: application/json
+   { "snapshot_id": "3cd9340c-da04-4fc2-a79f-235ac0a1192f" }
+   ```
 
-`/admin/estudo-mercado` → `getMarketStudyBlocks` já lê `comment` da tabela e expõe na tab "Block Emojis". Assim que o write path é corrigido, comentários novos aparecem automaticamente (com filtro de janela 7/30/90 dias já existente).
+   O endpoint só vai encontrar 1 job pendente (`insights_v2`) e executá-lo. Os outros tipos (`dataforseo`, `visual_cover`, `caption_semantic`, `insights_v1`) **não** estão pendentes → não correm.
 
-## Ficheiros
+### 3. Conformidade com as restrições
 
-- editar `src/routes/api/public/inline-feedback.ts`
-- editar `src/components/report-redesign/v2/feedback/block-feedback.tsx`
+| Restrição | Garantia |
+|---|---|
+| Sem Apify | `runEnrichment('insights_v2', …)` não chama Apify. Nenhum job `dataforseo`/`visual_cover` é criado. |
+| Sem DataForSEO | Idem. `runInsightsV2` só lê `market_signals_free` do payload se já existir. |
+| Sem caption-semantic | `runInsightsV2` lê do payload, não regera. |
+| Sem visual-cover | Idem; usa o `visual_cover_analysis` já persistido. |
+| Sem emails / Brevo / Resend | Nenhum desses serviços é tocado neste path. |
+| Sem leads / report_requests | Nenhum SQL/insert nessas tabelas. |
+| Sem outros snapshots | Todos os passos filtram por `id = '3cd9340c-…'` ou `snapshot_id = '3cd9340c-…'`. |
+| Só `ai_insights_v2` muda | `runInsightsV2` devolve `payloadPatch = { ai_insights_v2: result.insights }` — `patchSnapshotPayload` faz merge superficial; nada mais é alterado. |
 
-## Validação
+## 4. Checklist de validação
 
-1. `bunx tsc --noEmit`
-2. `bunx vitest run`
-3. Manual no preview:
-   - Votar num emoji → ver estado "done" com textarea.
-   - Escrever mensagem → clicar Enviar → botão mostra loading → UI passa para "Mensagem registada. Obrigado.".
-   - Reload da página → estado hidrata em "comment_sent" (não volta a pedir comentário).
-4. Verificar no admin `/admin/estudo-mercado` → tab Block Emojis → janela 7 dias → ver o comentário na lista do bloco respectivo.
-5. (Opcional) `psql -c "select handle, block, rating, comment, created_at from public.inline_report_feedback order by created_at desc limit 5"` para confirmar que o comentário foi escrito no mesmo registo da rating.
+### Antes da regeneração
+
+```sql
+-- A: confirmar AUSÊNCIA de editorial_verdict
+SELECT normalized_payload->'ai_insights_v2' ? 'editorial_verdict' AS has_verdict,
+       normalized_payload->'ai_insights_v2'->>'version'         AS v2_version
+FROM public.analysis_snapshots
+WHERE id = '3cd9340c-da04-4fc2-a79f-235ac0a1192f';
+-- Esperado: has_verdict = false (ou ai_insights_v2 = NULL após o UPDATE de limpeza)
+
+-- B: confirmar que payload tem visual_cover_analysis e caption_semantic_analysis
+SELECT
+  normalized_payload ? 'visual_cover_analysis'      AS has_visual,
+  normalized_payload ? 'caption_semantic_analysis'  AS has_caption,
+  normalized_payload ? 'ai_insights_v2'             AS has_v2_before_cleanup
+FROM public.analysis_snapshots
+WHERE id = '3cd9340c-da04-4fc2-a79f-235ac0a1192f';
+
+-- C: contar jobs do snapshot
+SELECT enrichment_type, status, attempts
+FROM public.enrichment_jobs
+WHERE snapshot_id = '3cd9340c-da04-4fc2-a79f-235ac0a1192f'
+ORDER BY created_at DESC;
+
+-- D: contar provider_call_logs nas últimas 24h para esse handle
+SELECT provider, count(*) FROM public.provider_call_logs
+WHERE handle = 'robs.cortez' AND created_at > now() - interval '24 hours'
+GROUP BY provider;
+-- Esperado: registar baseline (apify/dataforseo/openai counts antes).
+```
+
+### Após a regeneração
+
+```sql
+-- 1. editorial_verdict presente
+SELECT normalized_payload->'ai_insights_v2' ? 'editorial_verdict' AS has_verdict
+FROM public.analysis_snapshots
+WHERE id = '3cd9340c-da04-4fc2-a79f-235ac0a1192f';
+-- Esperado: true
+
+-- 2. Inspecionar o conteúdo
+SELECT normalized_payload->'ai_insights_v2'->'editorial_verdict' AS verdict
+FROM public.analysis_snapshots
+WHERE id = '3cd9340c-da04-4fc2-a79f-235ac0a1192f';
+
+-- 3. Job correu e ficou success
+SELECT enrichment_type, status, attempts, error_message
+FROM public.enrichment_jobs
+WHERE snapshot_id = '3cd9340c-da04-4fc2-a79f-235ac0a1192f'
+  AND enrichment_type = 'insights_v2'
+ORDER BY created_at DESC LIMIT 1;
+-- Esperado: status='success', error_message=NULL.
+
+-- 4. Provider calls: APENAS openai novo
+SELECT provider, count(*) FROM public.provider_call_logs
+WHERE handle = 'robs.cortez' AND created_at > now() - interval '10 minutes'
+GROUP BY provider;
+-- Esperado: openai = 1 ; apify/dataforseo = 0.
+```
+
+### Validações de conteúdo (manuais, sobre o JSON devolvido em #2)
+
+Aplicando `src/lib/insights/validate.ts` (já há testes em `__tests__/validate-editorial.test.ts` e `editorial-verdict-warnings.test.ts`):
+
+- ☐ `editorial_verdict.paragraph` passa `validateEditorialVerdict` sem warnings críticos.
+- ☐ Paragraph **não** contém o carácter `%` (regra do validator atual).
+- ☐ Hashtags (`#…`) sanitizadas conforme `sanitize-ai-copy`.
+- ☐ Claims visuais (cores, composição, faces) só presentes se `visual_cover_analysis.posts.length > 0` no payload anterior (verificado em validate.ts via `visual_evidence`).
+- ☐ Sem alteração de outras chaves do payload (`profile`, `posts`, `competitors`, `market_signals_free`, `visual_cover_analysis`, `caption_semantic_analysis` intactos — comparar `jsonb_object_keys(normalized_payload)` antes/depois).
+- ☐ Zero linhas novas em `report_requests`, `leads`, `report_snapshots` (timestamp filter).
+
+## 5. Sequência exata a executar (quando autorizado em build mode)
+
+1. `supabase--read_query` — passos A, B, C, D da secção "Antes".
+2. `supabase--insert` — `UPDATE` para remover `ai_insights_v2`.
+3. `supabase--insert` — `INSERT` do job `insights_v2`.
+4. `stack_modern--invoke-server-function` — `POST /api/public/enrich-snapshot` com Bearer token + body `{snapshot_id}`. Esperar 200 + `{processed:1, succeeded:1, failed:0}`.
+5. `stack_modern--server-function-logs --search "enrich-snapshot"` — confirmar `[enrichment] insights_v2` sem erros.
+6. `supabase--read_query` — passos 1‑4 da secção "Após".
+7. Reportar: snippet do `editorial_verdict.paragraph` + tabela de provider calls.
+
+## 6. Rollback
+
+Se a regeneração falhar:
+- O `UPDATE` do passo 2 apaga o `ai_insights_v2` antigo — perda irrecuperável **a menos que** se faça backup antes:
+
+  ```sql
+  SELECT normalized_payload->'ai_insights_v2' AS backup_v2
+  FROM public.analysis_snapshots
+  WHERE id = '3cd9340c-da04-4fc2-a79f-235ac0a1192f';
+  ```
+
+  Guardar o JSON localmente antes do passo 2. Se necessário reverter:
+
+  ```sql
+  UPDATE public.analysis_snapshots
+  SET normalized_payload = jsonb_set(normalized_payload, '{ai_insights_v2}', '<backup_json>'::jsonb)
+  WHERE id = '3cd9340c-da04-4fc2-a79f-235ac0a1192f';
+  ```
 
 ## Checkpoint
 
-- ☐ Backend: comentário sem rate-limit; UPDATE no registo de rating recente do mesmo ip_hash; fallback insert.
-- ☐ Frontend: botão Enviar com estado loading + erro visível.
-- ☐ Novo estado `comment_sent` com confirmação clara, dentro da mesma moldura.
-- ☐ Hidratação localStorage para `comment_sent`.
-- ☐ Comentário visível em /admin/estudo-mercado sem alterações ao backend de admin.
-- ☐ tsc + vitest verdes.
+- ☐ Backup do `ai_insights_v2` actual capturado e guardado na resposta.
+- ☐ `UPDATE` remove só `ai_insights_v2`.
+- ☐ Único job `insights_v2` pendente criado.
+- ☐ `POST /api/public/enrich-snapshot` corre 1 job; 0 chamadas Apify/DFS; 1 chamada OpenAI.
+- ☐ `editorial_verdict` presente e válido (sem `%`, hashtags ok, claims visuais consistentes).
+- ☐ Outras chaves do payload intactas; nenhum email/lead/report_request criado.
