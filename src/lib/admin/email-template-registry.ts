@@ -105,7 +105,6 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
         instagramHandle: SAMPLE.instagramHandle,
       }),
     preheader: "Vamos rever manualmente e enviamos assim que estiver pronto.",
-    defaultParts: DEFAULTS.request_received,
   },
   {
     key: "report_ready",
@@ -128,7 +127,6 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
         reportUrl: SAMPLE.reportUrl,
       }),
     preheader: "Análise completa disponível para consultares.",
-    defaultParts: DEFAULTS.report_ready,
   },
   {
     key: "feedback_request",
@@ -155,7 +153,6 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
         reportViewed: true,
       }),
     preheader: "Duas ou três frases chegam — ajuda-nos a melhorar.",
-    defaultParts: DEFAULTS.feedback_request,
   },
   {
     key: "personal_area_saved",
@@ -179,7 +176,6 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
         appUrl: SAMPLE.appUrl,
       }),
     preheader: "Podes voltar a consultá-lo sempre que precisares.",
-    defaultParts: DEFAULTS.personal_area_saved,
   },
   {
     key: "welcome_beta",
@@ -202,7 +198,6 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
         reportUrl: SAMPLE.reportUrl,
       }),
     preheader: "Estamos a validar o produto e o teu feedback conta.",
-    defaultParts: DEFAULTS.welcome_beta,
   },
   {
     key: "report_summary",
@@ -237,7 +232,6 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
         },
       }),
     preheader: "Os principais sinais do teu relatório InstaBench.",
-    defaultParts: DEFAULTS.report_summary,
   },
   {
     key: "commercial_followup",
@@ -262,7 +256,6 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
         checkoutUrl: SAMPLE.checkoutUrl,
       }),
     preheader: "Sem pressão. Respondemos quando fizer sentido para ti.",
-    defaultParts: DEFAULTS.commercial_followup,
   },
 ];
 
