@@ -460,7 +460,7 @@ export type Database = {
           origin: string
           platform: string
           posts_per_month: number | null
-          sample_size: number
+          sample_size: number | null
           source_id: string | null
           tier: string
           updated_at: string
@@ -477,7 +477,7 @@ export type Database = {
           origin: string
           platform?: string
           posts_per_month?: number | null
-          sample_size: number
+          sample_size?: number | null
           source_id?: string | null
           tier: string
           updated_at?: string
@@ -494,7 +494,7 @@ export type Database = {
           origin?: string
           platform?: string
           posts_per_month?: number | null
-          sample_size?: number
+          sample_size?: number | null
           source_id?: string | null
           tier?: string
           updated_at?: string

@@ -1,72 +1,91 @@
-## Fase 1 — Consolidar fonte Socialinsider em `knowledge_benchmarks`
+## Objetivo
+Inserir 15 linhas Socialinsider em `knowledge_benchmarks` (3 IG + 5 FB + 7 LI) com `valid_from=2025-10-01`, `valid_to=2026-03-31`, `source_id` único Socialinsider já existente.
 
-Objectivo: deixar o DB como fonte única dos valores Socialinsider (frequência + engagement por formato), sem mexer ainda em UI nem em leitores. Fases 2-4 ficam para pedidos seguintes.
+**Fonte Socialinsider já confirmada (sem duplicados):**
+- id: `64796f2c-30cc-41eb-b95f-0b3a80251728`
+- name: "Socialinsider — Social Media Posting Frequency vs Engagement (Mai 2026)"
 
-## Decisão de valores (precisa de confirmação)
+## Bloqueios encontrados no schema actual
 
-Existem 3 conjuntos divergentes no projecto:
+A migration anterior adicionou `platform` e `posts_per_month`, mas deixou intactos três constraints que impedem o seed pedido:
 
-| Formato | A (knowledge_notes) | C (código `benchmark-context.ts`) | D (i18n report.json) |
-|---|---|---|---|
-| Reel — eng % | 0,50 | 0,52 | 0,50 |
-| Carousel — eng % | 0,52 | 0,55 | 0,52 |
-| Image — eng % | 0,35 | 0,37 | 0,35 |
-| Reel — posts/mês | — | 8 | ≈10 |
-| Carousel — posts/mês | 5 | 5 | 5 |
-| Image — posts/mês | — | 7 | 8 |
+1. `knowledge_benchmarks_tier_check` → só aceita `nano|micro|mid|macro`. Pedido usa `tier='overall'`.
+2. `knowledge_benchmarks_format_check` → só aceita `reels|carousels|images`. FB e LI precisam de `albums, statuses, links, native_documents, multi_image, videos, texts, polls`.
+3. `sample_size` é `NOT NULL`. O estudo Socialinsider não fornece N por formato/plataforma de forma consistente.
 
-Proposta: adoptar **A/D** (notas + i18n batem certo entre si: 0,50 / 0,52 / 0,35) e **frequência de C** ajustada (Reels 8, Carousels 5, Images 7 — é o que o estudo Socialinsider 2024 reporta). Confirma antes de fazer o seed ou indica os números corretos.
-
-## Migração
+## Fase 1 — Migração (relaxar constraints)
 
 ```sql
 ALTER TABLE public.knowledge_benchmarks
-  ADD COLUMN platform text NOT NULL DEFAULT 'instagram',
-  ADD COLUMN posts_per_month numeric;
+  DROP CONSTRAINT knowledge_benchmarks_tier_check,
+  ADD  CONSTRAINT knowledge_benchmarks_tier_check
+       CHECK (tier IN ('nano','micro','mid','macro','overall'));
 
 ALTER TABLE public.knowledge_benchmarks
-  ADD CONSTRAINT knowledge_benchmarks_platform_chk
-  CHECK (platform IN ('instagram','facebook','linkedin','tiktok','youtube'));
+  DROP CONSTRAINT knowledge_benchmarks_format_check,
+  ADD  CONSTRAINT knowledge_benchmarks_format_check
+       CHECK (format IN (
+         'reels','carousels','images',           -- IG legado
+         'albums','statuses','links',            -- FB
+         'native_documents','multi_image',
+         'videos','texts','polls'                -- LI
+       ));
 
-CREATE INDEX IF NOT EXISTS knowledge_benchmarks_platform_format_tier_idx
-  ON public.knowledge_benchmarks (platform, format, tier, valid_to);
+ALTER TABLE public.knowledge_benchmarks
+  ALTER COLUMN sample_size DROP NOT NULL;
 ```
 
-Notas:
-- `engagement_pct` continua `NOT NULL` na tabela. Para registos só de frequência, precisamos de relaxar para `NULL` (Socialinsider tem casos só-frequência). Adicionar `ALTER COLUMN engagement_pct DROP NOT NULL` na mesma migração.
-- `tier` é `NOT NULL` hoje — manter, e seed usa `tier='overall'`.
+Sem alterações ao código TypeScript nesta fase — os helpers existentes (`listBenchmarks`, `upsertBenchmark`, `get_knowledge_context`) continuam a funcionar porque já usam `text` para tier/format.
 
-## Seed Socialinsider (após confirmação dos valores)
+Nota: as Zod schemas em `src/routes/api/admin/knowledge.benchmarks.ts` continuam a aceitar apenas o enum antigo (nano/micro/mid/macro × reels/carousels/images). Isto é intencional — o admin UI continua a só editar IG por agora. O seed é feito via SQL directo, não passa pelo endpoint.
 
-9 linhas (3 plataformas × 3 formatos). Source: row já existente em `knowledge_sources` para Socialinsider — query do `id` no seed em vez de hardcoded.
+## Fase 2 — Seed (via insert tool)
 
-Para Instagram (exemplo, valores a confirmar):
+15 linhas, `origin='manual'`, `tier='overall'`, `source_id=64796f2c-…`, `valid_from='2025-10-01'`, `valid_to='2026-03-31'`, `sample_size=NULL`, `created_by_email='socialinsider-seed@system'`, `notes='Socialinsider 2025/2026 study'`.
 
-| platform | tier | format | engagement_pct | posts_per_month |
-|---|---|---|---|---|
-| instagram | overall | reel | 0.50 | 8 |
-| instagram | overall | carousel | 0.52 | 5 |
-| instagram | overall | image | 0.35 | 7 |
+Usar `WHERE NOT EXISTS (SELECT 1 FROM knowledge_benchmarks WHERE platform=? AND format=? AND source_id=? AND valid_from='2025-10-01')` por linha para garantir idempotência.
 
-Facebook e LinkedIn replicados a partir das `knowledge_notes` actuais (precisam dos números — confirmar se os mantenho como estão na nota ou actualizo).
+| Platform | Format | posts/month | eng % |
+|---|---|---|---|
+| instagram | reels | 10 | 0.50 |
+| instagram | carousels | 5 | 0.52 |
+| instagram | images | 8 | 0.35 |
+| facebook | reels | 7 | 0.20 |
+| facebook | albums | 6 | 0.17 |
+| facebook | images | 10 | 0.15 |
+| facebook | statuses | 6 | 0.13 |
+| facebook | links | 10 | 0.05 |
+| linkedin | native_documents | 2 | 6.90 |
+| linkedin | multi_image | 1 | 6.80 |
+| linkedin | videos | 4 | 5.90 |
+| linkedin | images | 7 | 5.00 |
+| linkedin | texts | 2 | 4.35 |
+| linkedin | links | 4 | 3.55 |
+| linkedin | polls | 1 | 2.90 |
 
-Campos obrigatórios: `valid_from='2025-10-01'`, `valid_to='2026-03-31'`, `origin='external_study'`, `sample_size` extraído das notas (Socialinsider IG: 394M posts; preencher por linha conforme nota original), `source_id = (SELECT id FROM knowledge_sources WHERE name ILIKE 'socialinsider%')`.
+## Fase 3 — Validação
 
-## Fora de scope (Fases 2-4, próximos pedidos)
+```sql
+SELECT platform, format, posts_per_month, engagement_pct, valid_from, valid_to, source_id
+FROM knowledge_benchmarks
+WHERE source_id='64796f2c-30cc-41eb-b95f-0b3a80251728'
+  AND valid_from='2025-10-01'
+ORDER BY platform, engagement_pct DESC;
 
-- Helper `getFormatBenchmark()` no servidor.
-- Props novas em `FormatCard` / `FrequencyCard`.
-- Limpeza dos números embebidos em `pt/en report.json` e duplicação em `benchmark-context.ts`.
-- Migração para derivar `BENCHMARK_DATASET_VERSION` do `MAX(valid_from)`.
+SELECT platform, COUNT(*) FROM knowledge_benchmarks
+WHERE source_id='64796f2c-30cc-41eb-b95f-0b3a80251728'
+  AND valid_from='2025-10-01' GROUP BY platform;
+-- esperado: instagram=3, facebook=5, linkedin=7
+```
+
+Linter Supabase depois da migration.
+
+## Fora de scope (confirmado)
+- UI do relatório, prompts OpenAI, Apify, DataForSEO, pricing, gates, admin CRM.
+- `bunx tsc --noEmit` / testes: não há alterações a código TS nesta entrega.
 
 ## Checkpoint
-
-- ☐ Confirmar tabela de valores (qual conjunto é "a verdade" para IG; e que números usar para FB/LinkedIn).
-- ☐ Migração: `platform`, `posts_per_month`, `engagement_pct` nullable, índice, CHECK constraint.
-- ☐ Seed das 9 linhas Socialinsider com `source_id` resolvido por query.
-- ☐ DB linter verde; tabela continua a renderizar em `/admin/conhecimento` sem regressões.
-- ☐ UI do relatório **não muda** nesta fase (Fase 3 trata disso).
-
-## Pergunta para destrancar
-
-Confirmas os valores propostos para Instagram (0,50 / 0,52 / 0,35 + 8 / 5 / 7) e indicas se mantenho Facebook/LinkedIn exactamente como estão nas `knowledge_notes` actuais? Sem isto não faço o seed para não fixar números errados no DB.
+- ☐ Migration aprovada e aplicada (3 ALTERs)
+- ☐ 15 linhas inseridas (IG 3 / FB 5 / LI 7)
+- ☐ Sem duplicados, todas com `source_id` Socialinsider
+- ☐ Linter verde
