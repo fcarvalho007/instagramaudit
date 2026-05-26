@@ -520,7 +520,17 @@ function InterestTab({ windowDays }: { windowDays: WindowDays }) {
                       <td className="py-2 pr-3 text-admin-text-primary">{PRICING_OPTION_LABEL[c.option] ?? c.option}</td>
                       <td className="py-2 pr-3 text-admin-text-primary">{WOULD_PAY_LABEL[c.wouldPay] ?? c.wouldPay}</td>
                       <td className="py-2 pr-3 text-admin-text-secondary">{c.fairness ? FAIRNESS_LABEL[c.fairness] : "—"}</td>
-                      <td className="py-2 pr-3 text-admin-text-primary">{c.email ?? "—"}</td>
+                      <td className="py-2 pr-3 text-admin-text-primary">
+                        {c.email ? (
+                          <Link
+                            to="/admin/clientes"
+                            search={{ email: c.email } as never}
+                            className="text-admin-text-primary underline-offset-2 hover:underline"
+                          >
+                            {c.email}
+                          </Link>
+                        ) : "—"}
+                      </td>
                       <td className="py-2 pr-3 text-admin-text-secondary tabular-nums whitespace-nowrap">
                         {d.toLocaleDateString("pt-PT")} · {d.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}
                       </td>
@@ -550,7 +560,7 @@ function SimpleBarList({ counts, total, labelMap }: {
           <li key={k} className="flex items-center gap-3 text-[13px]">
             <span className="min-w-[110px] text-admin-text-primary">{labelMap?.[k] ?? k}</span>
             <div className="flex-1 h-2 rounded-full bg-admin-surface-elevated overflow-hidden">
-              <div className="h-full" style={{ width: `${pct * 100}%`, background: "#3772E5" }} />
+              <div className="h-full" style={{ width: `${pct * 100}%`, background: chartPalette.accentPrimary }} />
             </div>
             <span className="tabular-nums text-admin-text-secondary min-w-[64px] text-right">
               {v} · {fmtPct(pct)}
