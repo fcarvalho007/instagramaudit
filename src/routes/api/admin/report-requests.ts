@@ -96,25 +96,24 @@ export const Route = createFileRoute("/api/admin/report-requests")({
         const snapshotIds = snapshots.map((s) => s.id);
 
         // 2) Para essas análises, carrega report_requests que apontam para elas.
-        let requestsRaw:
-          | Array<{
-              id: string;
-              instagram_username: string;
-              request_status: string;
-              pdf_status: string;
-              delivery_status: string;
-              pdf_storage_path: string | null;
-              email_sent_at: string | null;
-              pdf_generated_at: string | null;
-              is_free_request: boolean;
-              analysis_snapshot_id: string | null;
-              request_source: string;
-              created_at: string;
-              updated_at: string;
-              lead: LeadJoin | LeadJoin[] | null;
-              lead_id: string | null;
-            }>
-          | null = null;
+        type ReqRow = {
+          id: string;
+          instagram_username: string;
+          request_status: string;
+          pdf_status: string;
+          delivery_status: string;
+          pdf_storage_path: string | null;
+          email_sent_at: string | null;
+          pdf_generated_at: string | null;
+          is_free_request: boolean;
+          analysis_snapshot_id: string | null;
+          request_source: string;
+          created_at: string;
+          updated_at: string;
+          lead_id: string | null;
+          lead: LeadJoin | LeadJoin[] | null;
+        };
+        let requestsRaw: ReqRow[] = [];
 
         if (snapshotIds.length > 0) {
           const { data, error: reqErr } = await supabaseAdmin
@@ -133,12 +132,12 @@ export const Route = createFileRoute("/api/admin/report-requests")({
               500,
             );
           }
-          requestsRaw = (data ?? []) as unknown as typeof requestsRaw;
+          requestsRaw = (data ?? []) as unknown as ReqRow[];
         }
 
         // Indexa requests por snapshot id (preferindo o mais recente caso haja >1).
-        const requestBySnapshot = new Map<string, NonNullable<typeof requestsRaw>[number]>();
-        for (const r of requestsRaw ?? []) {
+        const requestBySnapshot = new Map<string, ReqRow>();
+        for (const r of requestsRaw) {
           if (!r.analysis_snapshot_id) continue;
           const existing = requestBySnapshot.get(r.analysis_snapshot_id);
           if (!existing || r.created_at > existing.created_at) {
