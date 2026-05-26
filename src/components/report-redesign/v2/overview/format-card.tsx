@@ -71,6 +71,53 @@ const FORMAT_HEX: Record<FormatKey, string> = {
 
 const BREAKDOWN_ORDER: FormatKey[] = ["Carousels", "Reels", "Imagens"];
 
+/**
+ * Pure helper: directional reading of this profile's mix vs the
+ * Socialinsider per-format reference. Exported for tests.
+ *
+ * IMPORTANT: refShare here is only used for DIRECTIONAL comparison of
+ * mix. It is NEVER displayed as a total posting target and must NOT be
+ * interpreted as a recommended monthly volume.
+ */
+export type ExternalReading =
+  | "above"
+  | "below"
+  | "near"
+  | "absent"
+  | "dash";
+
+export function computeExternalReading(
+  key: FormatKey,
+  refs: SocialinsiderInstagramContext | null,
+  formats: FormatEntry[],
+): ExternalReading {
+  if (!refs) return "dash";
+  const refData =
+    key === "Carousels"
+      ? refs.carousel
+      : key === "Reels"
+        ? refs.reel
+        : key === "Imagens"
+          ? refs.image
+          : null;
+  if (!refData) return "dash";
+  const entry = formats.find((f) => f.format === key);
+  if (!entry || entry.count === 0) return "absent";
+  const refTotal =
+    (refs.carousel?.postsPerMonth ?? 0) +
+    (refs.reel?.postsPerMonth ?? 0) +
+    (refs.image?.postsPerMonth ?? 0);
+  const refShare =
+    refTotal > 0 && refData.postsPerMonth
+      ? (refData.postsPerMonth / refTotal) * 100
+      : null;
+  if (refShare === null) return "dash";
+  const delta = entry.sharePct - refShare;
+  if (delta > 10) return "above";
+  if (delta < -10) return "below";
+  return "near";
+}
+
 function tFormatPlural(t: TFunction, key: FormatKey): string {
   return t(`format.names_plural.${key}`);
 }
@@ -335,6 +382,11 @@ export function FormatCard({
           {verdict.rest}
         </p>
       </InsightCallout>
+      {socialinsiderRef ? (
+        <p className="px-5 md:px-6 -mt-4 mb-3 text-[13px] text-content-secondary leading-relaxed">
+          {t("format.external_ref.bridge")}
+        </p>
+      ) : null}
       <ExternalReferenceTable
         refs={socialinsiderRef ?? null}
         formats={formats}
@@ -571,23 +623,23 @@ function ExternalReferenceTable({
     key: "Carousels" | "Reels" | "Imagens",
     refData: SocialinsiderFormatRef | null,
   ): string {
-    if (!refData) return t("format.external_ref.reading_dash");
-    const entry = byKey.get(key);
-    if (!entry || entry.count === 0) return t("format.external_ref.reading_dash");
-    // Compare profile share vs reference share within the 3 formats.
-    const refTotal =
-      (refs?.carousel?.postsPerMonth ?? 0) +
-      (refs?.reel?.postsPerMonth ?? 0) +
-      (refs?.image?.postsPerMonth ?? 0);
-    const refShare =
-      refTotal > 0 && refData.postsPerMonth
-        ? (refData.postsPerMonth / refTotal) * 100
-        : null;
-    if (refShare === null) return t("format.external_ref.reading_dash");
-    const delta = entry.sharePct - refShare;
-    if (delta > 10) return t("format.external_ref.reading_above_freq");
-    if (delta < -10) return t("format.external_ref.reading_below_freq");
-    return t("format.external_ref.reading_near_freq");
+    void refData;
+    // Delegates to the pure helper `computeExternalReading`; see its
+    // docblock — refShare is DIRECTIONAL only, never a volume target.
+    const reading = computeExternalReading(key, refs, formats);
+    switch (reading) {
+      case "above":
+        return t("format.external_ref.reading_above_freq");
+      case "below":
+        return t("format.external_ref.reading_below_freq");
+      case "near":
+        return t("format.external_ref.reading_near_freq");
+      case "absent":
+        return t("format.external_ref.absent");
+      case "dash":
+      default:
+        return t("format.external_ref.reading_dash");
+    }
   }
 
   function refCell(refData: SocialinsiderFormatRef | null): string {
@@ -635,7 +687,42 @@ function ExternalReferenceTable({
             {t("format.external_ref.provisional")}
           </p>
         ) : null}
-        <div className="grid grid-cols-[1fr_1.1fr_1.2fr_1fr] gap-x-3 gap-y-1.5 text-[12px]">
+        {/* Mobile: stacked mini-cards (one per format). */}
+        <div className="sm:hidden space-y-2" data-testid="external-ref-mobile">
+          {rows.map(({ key, refData }) => (
+            <div
+              key={key}
+              className="rounded-lg border border-border-subtle/60 bg-surface-secondary p-3 space-y-1.5"
+            >
+              <div className="text-[14px] font-semibold text-content-primary">
+                {tFormatLegend(t, key)}
+              </div>
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-[12px] text-content-tertiary">
+                  {t("format.external_ref.mobile_label_profile")}
+                </span>
+                <span className="text-[13px] text-content-secondary tabular-nums text-right">
+                  {profileCell(key)}
+                </span>
+              </div>
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-[12px] text-content-tertiary">
+                  {t("format.external_ref.mobile_label_reference")}
+                </span>
+                <span className="text-[13px] text-content-secondary tabular-nums text-right">
+                  {refCell(refData)}
+                </span>
+              </div>
+              <div>
+                <span className="inline-block text-[11px] text-content-secondary bg-surface-muted px-2 py-0.5 rounded-full">
+                  {readingFor(key, refData)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Desktop: compact 4-column grid. */}
+        <div className="hidden sm:grid grid-cols-[1fr_1.1fr_1.2fr_1fr] gap-x-3 gap-y-1.5 text-[12px]">
           <span className="text-content-tertiary uppercase tracking-[0.04em]">
             {t("format.external_ref.col_format")}
           </span>

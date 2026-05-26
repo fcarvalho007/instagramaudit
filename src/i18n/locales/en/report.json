@@ -408,14 +408,18 @@
       "ref_cell": "{{posts}}/mo · {{eng}}% ER",
       "ref_cell_no_eng": "{{posts}}/mo",
       "ref_cell_no_freq": "{{eng}}% ER",
-      "reading_above_freq": "Above on frequency",
-      "reading_below_freq": "Below on frequency",
-      "reading_near_freq": "Close to reference",
-      "reading_dash": "—"
+      "reading_above_freq": "Above the reference",
+      "reading_below_freq": "Below the reference",
+      "reading_near_freq": "Near the reference",
+      "reading_dash": "—",
+      "bridge": "Use this as context: below you compare this profile's format mix with an external format reference.",
+      "mobile_label_profile": "This profile",
+      "mobile_label_reference": "External reference"
     }
   },
   "external_source_note": {
-    "template": "External source: {{source}}, data {{range}}."
+    "template": "External source: {{source}}, data {{range}}.",
+    "methodology": "Tier benchmark: compares the profile with accounts of a similar size. External reference: uses aggregated Socialinsider data by Instagram format. These references provide context, not a fixed target."
   },
   "blocks": {
     "overview": {

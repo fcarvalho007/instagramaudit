@@ -29,13 +29,22 @@ export function formatDateRange(
 interface Props {
   refData: SocialinsiderFormatRef | null;
   className?: string;
+  /**
+   * Show the methodology line that distinguishes the tier benchmark
+   * from the external Socialinsider reference. Defaults to true.
+   */
+  showMethodology?: boolean;
 }
 
 /**
  * Dynamic source attribution rendered at the bottom of cards that consume
  * external market data. Renders nothing if `refData` is null.
  */
-export function ExternalSourceNote({ refData, className }: Props) {
+export function ExternalSourceNote({
+  refData,
+  className,
+  showMethodology = true,
+}: Props) {
   const { t, i18n } = useTranslation("report");
   if (!refData) return null;
   const range = formatDateRange(
@@ -70,6 +79,14 @@ export function ExternalSourceNote({ refData, className }: Props) {
       {before}
       {sourceLink}
       {after}
+      {showMethodology ? (
+        <>
+          <br />
+          <span className="text-[11px] text-content-tertiary mt-1 block">
+            {t("external_source_note.methodology")}
+          </span>
+        </>
+      ) : null}
     </p>
   );
 }
