@@ -626,3 +626,175 @@ function CountList({
     </ul>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Pricing interest                                                          */
+/* -------------------------------------------------------------------------- */
+
+const PRICING_OPTION_LABEL: Record<string, string> = {
+  single_report: "1 relatório · 7€",
+  pack_5_reports: "Pack 5 · 28€",
+};
+const WOULD_PAY_LABEL: Record<string, string> = {
+  sim: "Sim, pagaria",
+  talvez: "Talvez, depende",
+  nao: "Não, ainda não",
+};
+const FAIRNESS_LABEL: Record<string, string> = {
+  barato: "Barato",
+  justo: "Justo",
+  caro: "Caro",
+};
+
+function InterestTab({ windowDays }: { windowDays: WindowDays }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin", "market-study", "interest", windowDays],
+    queryFn: () => getPricingInterest({ data: { windowDays } }),
+  });
+
+  if (isLoading || !data) {
+    return <EmptyState>A carregar intenção de compra…</EmptyState>;
+  }
+
+  const {
+    n,
+    wouldPayCounts,
+    optionCounts,
+    fairnessByOption,
+    positiveRate,
+    convictionRate,
+    emailsCount,
+    comments,
+  } = data;
+
+  const signal: { tone: "positive" | "neutral" | "warning"; text: string } =
+    n < 5
+      ? {
+          tone: "neutral",
+          text: "Amostra ainda pequena. Aguardar mais respostas antes de validar o preço.",
+        }
+      : positiveRate !== null && positiveRate >= 0.6 && n >= 20
+        ? {
+            tone: "positive",
+            text: `${fmtPct(positiveRate)} dos respondentes diz sim ou talvez em ${n} respostas — preço validado.`,
+          }
+        : convictionRate !== null && convictionRate >= 0.3 && n >= 10
+          ? {
+              tone: "positive",
+              text: `${fmtPct(convictionRate)} de "sim convicto" em ${n} respostas — sinal forte de intenção.`,
+            }
+          : positiveRate !== null && positiveRate < 0.3 && n >= 10
+            ? {
+                tone: "warning",
+                text: `Apenas ${fmtPct(positiveRate)} positivos — o preço atual pode estar acima do percebido.`,
+              }
+            : {
+                tone: "neutral",
+                text: "Sinal misto — continuar a recolher respostas para consolidar tendência.",
+              };
+
+  return (
+    <div className="space-y-5">
+      <SignalCard tone={signal.tone} title="Sinal editorial" body={signal.text} />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatTile
+          label="Respostas"
+          value={String(n)}
+          hint={`Single ${optionCounts.single_report} · Pack ${optionCounts.pack_5_reports}`}
+        />
+        <StatTile
+          label="% sim + talvez"
+          value={fmtPct(positiveRate)}
+          hint={`Sim ${wouldPayCounts.sim} · Talvez ${wouldPayCounts.talvez} · Não ${wouldPayCounts.nao}`}
+        />
+        <StatTile
+          label="% sim convicto"
+          value={fmtPct(convictionRate)}
+          hint="Sinal mais forte de compra"
+        />
+        <StatTile
+          label="Emails deixados"
+          value={String(emailsCount)}
+          hint="Lista de espera potencial"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <AdminCard>
+          <h3 className="m-0 mb-3 text-[14px] font-semibold text-admin-text-primary">
+            Intenção de pagar
+          </h3>
+          <CountList
+            counts={wouldPayCounts as unknown as Record<string, number>}
+            total={n}
+            labelMap={WOULD_PAY_LABEL}
+          />
+        </AdminCard>
+        <AdminCard>
+          <h3 className="m-0 mb-3 text-[14px] font-semibold text-admin-text-primary">
+            Perceção do preço por plano
+          </h3>
+          {(Object.keys(fairnessByOption) as Array<keyof typeof fairnessByOption>).map(
+            (opt) => {
+              const total = optionCounts[opt];
+              return (
+                <div key={opt} className="mb-3 last:mb-0">
+                  <div className="mb-1.5 text-[11px] uppercase tracking-wide font-semibold text-admin-text-secondary">
+                    {PRICING_OPTION_LABEL[opt] ?? opt} ({total})
+                  </div>
+                  <CountList
+                    counts={fairnessByOption[opt] as unknown as Record<string, number>}
+                    total={total}
+                    labelMap={FAIRNESS_LABEL}
+                  />
+                </div>
+              );
+            },
+          )}
+        </AdminCard>
+      </div>
+
+      <AdminCard>
+        <h3 className="m-0 mb-3 text-[14px] font-semibold text-admin-text-primary">
+          Comentários ({comments.length})
+        </h3>
+        {comments.length === 0 ? (
+          <EmptyState>Sem comentários no período.</EmptyState>
+        ) : (
+          <ul className="m-0 space-y-2 list-none p-0">
+            {comments.map((c) => (
+              <li
+                key={c.id}
+                className="rounded-md border border-admin-border bg-admin-surface-elevated px-3 py-2 text-[13px]"
+              >
+                <div className="flex flex-wrap items-center gap-2 mb-1 text-[11px] uppercase tracking-wide text-admin-text-secondary">
+                  <span>{PRICING_OPTION_LABEL[c.option] ?? c.option}</span>
+                  <span>·</span>
+                  <span>{WOULD_PAY_LABEL[c.wouldPay] ?? c.wouldPay}</span>
+                  {c.fairness ? (
+                    <>
+                      <span>·</span>
+                      <span>{FAIRNESS_LABEL[c.fairness] ?? c.fairness}</span>
+                    </>
+                  ) : null}
+                  {c.email ? (
+                    <>
+                      <span>·</span>
+                      <span className="normal-case tracking-normal text-admin-text-primary">
+                        {c.email}
+                      </span>
+                    </>
+                  ) : null}
+                  <span>·</span>
+                  <span>{new Date(c.createdAt).toLocaleDateString("pt-PT")}</span>
+                </div>
+                <p className="m-0 leading-snug text-admin-text-primary">{c.comment}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </AdminCard>
+    </div>
+  );
+}
