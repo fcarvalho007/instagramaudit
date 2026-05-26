@@ -591,6 +591,17 @@ export function FrequencyCard({
         </p>
       </InsightCallout>
       )}
+      <p className="px-4 sm:px-5 md:px-6 pb-5 sm:pb-6 md:pb-8 -mt-2 text-xs text-content-tertiary leading-relaxed">
+        {t("frequency.source_socialinsider_ig")}{" "}
+        <a
+          href="https://www.socialinsider.io/blog/social-media-posting-frequency/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline decoration-dotted underline-offset-2 hover:text-content-secondary"
+        >
+          {t("frequency.source_link_label")}
+        </a>
+      </p>
     </article>
   );
 }
