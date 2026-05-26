@@ -453,11 +453,13 @@ export type Database = {
         Row: {
           created_at: string
           created_by_email: string | null
-          engagement_pct: number
+          engagement_pct: number | null
           format: string
           id: string
           notes: string | null
           origin: string
+          platform: string
+          posts_per_month: number | null
           sample_size: number
           source_id: string | null
           tier: string
@@ -468,11 +470,13 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by_email?: string | null
-          engagement_pct: number
+          engagement_pct?: number | null
           format: string
           id?: string
           notes?: string | null
           origin: string
+          platform?: string
+          posts_per_month?: number | null
           sample_size: number
           source_id?: string | null
           tier: string
@@ -483,11 +487,13 @@ export type Database = {
         Update: {
           created_at?: string
           created_by_email?: string | null
-          engagement_pct?: number
+          engagement_pct?: number | null
           format?: string
           id?: string
           notes?: string | null
           origin?: string
+          platform?: string
+          posts_per_month?: number | null
           sample_size?: number
           source_id?: string | null
           tier?: string
