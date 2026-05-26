@@ -1,45 +1,30 @@
-## Refinamentos finais — /admin/estudo-mercado
+Plano para concluir e refinar o editor de emails em `/admin/automacoes`:
 
-Foco: tirar arestas que ficaram da iteração anterior, sem mexer em lógica de servidor nem em schema.
+1. Ligar o botão “Editar” dos cartões do fluxo
+- Em `AutomationNode`, trocar o botão desativado por um link real para `/admin/automacoes/templates/$key` quando existir `templateKey`.
+- Manter “Bloqueado” para blocos de sistema/não editáveis.
+- Manter “Configurar trigger” desativado para automações sem trigger, porque isso é outra funcionalidade.
 
-### 1. Centralizar paleta dos gráficos
-Criar `src/components/admin/v2/estudo-mercado/chart-palette.ts` com constantes nomeadas (positive / neutral / warning / negative / accent-primary / accent-secondary / accent-amber) derivadas dos tokens admin. Substituir os hex hardcoded em `admin.estudo-mercado.tsx`, `comment-mural.tsx`, `rating-ranking.tsx` e `block-heatmap.tsx` por esse módulo. Cumpre a regra global "never hardcode colors/fonts in components".
+2. Garantir navegação direta ao separador certo
+- Ao voltar do editor, direcionar para `/admin/automacoes?tab=templates` ou preservar o contexto quando fizer sentido.
+- Ajustar `AutomationFlowPage` para aceitar `?tab=templates` e abrir automaticamente o separador correto.
 
-### 2. Tooltip Recharts temático
-Criar `ChartTooltip` partilhado (`chart-tooltip.tsx`) — fundo branco, border `admin-border`, sombra subtil, fonte Inter tabular-nums. Aplicar nos 4 gráficos (intent diário modal, utilidade diária, intent diário pricing, % convicto diário).
+3. Refinar a lista de templates
+- Remover comentário antigo “Edição não implementada”.
+- Tornar o CTA “Editar” mais claro e consistente com o botão do fluxo.
+- Se um template já tiver override, mostrar estado “Editado”/data quando os dados estiverem disponíveis sem criar nova tabela.
 
-### 3. Estado vazio nos gráficos diários
-Quando `daily.length === 0` ou todos os valores forem zero, mostrar `<Empty>` em vez de renderizar um gráfico achatado. Aplica-se ao ModalTab e InterestTab.
+4. Validar o editor existente
+- Rever `TemplateEditor` para garantir que carrega, pré-visualiza, guarda e repõe overrides via `/api/admin/email-templates/*`.
+- Ajustar mensagens de erro para explicar sessão expirada/sem permissão, em vez de falhar silenciosamente.
+- Não mexer nos ficheiros locked nem nos templates públicos fora do escopo.
 
-### 4. Tabela de comentários de preços ligada a /admin/clientes
-Na `InterestTab`, transformar a coluna `Email` em link interno para `/admin/clientes?email={email}` quando houver email (igual ao padrão usado noutros admins). Sem email continua "—".
+5. Verificação
+- Confirmar que o clique em “Editar” já navega para o editor.
+- Confirmar que guardar chama `PUT /api/admin/email-templates/$key` e que o botão deixa de estar inativo depois de uma alteração.
 
-### 5. Export CSV do mural
-Adicionar botão "Exportar CSV" no `CommentMural` (lado direito da barra de filtros). Exporta o conjunto **filtrado** com colunas: `created_at_iso`, `source`, `language`, `author_email`, `author_name`, `handle`, `block`, `rating`, `intent`, `text`. Geração 100% client-side (Blob + download anchor), sem dependências novas.
-
-### 6. Pequenos polish
-- Heatmap: garantir tooltip nativo via `title` em cada célula com formato "Bloco · ⭐ N · X respostas".
-- RatingRanking: alinhar números à direita e usar `tabular-nums`.
-- PulseTab `3 sinais principais`: mostrar até 6 tokens em vez de 3 quando houver ≥30 comentários (sinaliza melhor mural maduro).
-
-### Ficheiros tocados
-- novo `src/components/admin/v2/estudo-mercado/chart-palette.ts`
-- novo `src/components/admin/v2/estudo-mercado/chart-tooltip.tsx`
-- edit `src/routes/admin.estudo-mercado.tsx`
-- edit `src/components/admin/v2/estudo-mercado/comment-mural.tsx`
-- edit `src/components/admin/v2/estudo-mercado/rating-ranking.tsx`
-- edit `src/components/admin/v2/estudo-mercado/block-heatmap.tsx`
-
-### Fora de âmbito
-- Sem alterações em `market-study.functions.ts` nem em migrations.
-- Sem alterações em /admin/visao-geral nem nos formulários públicos.
-- Sem novas dependências.
-
-### Checkpoint
-- ☐ Paleta centralizada e hex substituídos
-- ☐ Tooltip partilhado nos 4 gráficos
-- ☐ Estados vazios em ModalTab e InterestTab
-- ☐ Email da tabela pricing → link `/admin/clientes`
-- ☐ Botão Exportar CSV no mural funcional
-- ☐ Heatmap com `title`, RatingRanking com tabular-nums, Pulse com até 6 tópicos
-- ☐ `tsc --noEmit` limpo
+☐ Botão “Editar” funcional nos cartões do fluxo
+☐ Separador `templates` abrível por URL
+☐ Editor com feedback de erro mais claro
+☐ Lista de templates limpa e coerente
+☐ Sem alterações a ficheiros locked
