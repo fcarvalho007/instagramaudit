@@ -226,12 +226,14 @@
     },
     "index": {
       "eyebrow": "Índice do perfil",
-      "subtitle_above": "{{pp}} pp acima da referência de envolvimento do escalão",
-      "subtitle_below": "{{pp}} pp abaixo da referência de envolvimento do escalão",
+      "subtitle_above": "{{pp}} pp acima do envolvimento típico do escalão",
+      "subtitle_below": "{{pp}} pp abaixo do envolvimento típico do escalão",
       "subtitle_no_benchmark": "Índice de atividade do perfil",
-      "microline": "Índice comparativo, construído a partir de 3 sinais do perfil.",
+      "no_value": "Sem dados suficientes para calcular o índice.",
+      "microline": "Índice comparativo, calculado a partir de 3 sinais observados no perfil.",
       "rail_aria": "Índice {{value}} de 100",
-      "this_brand": "▸ esta marca · {{value}}",
+      "rail_aria_full": "Índice {{value}} de 100, estágio {{stage}}",
+      "this_brand": "esta marca · {{value}}",
       "stage": {
         "leader": "Líder",
         "competitive": "Competitivo",
