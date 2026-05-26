@@ -484,9 +484,13 @@ export function ReportBlockSidebar({ variant, features, profile, profiles }: Sid
 
 // ── Mobile bottom tabs + drawer ──────────────────────────────────────
 
-export function ReportBlockTopTabs({ variant, features, profile }: SidebarProps) {
+export function ReportBlockTopTabs({ variant, features, profile, profiles }: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
+  const profileList = useMemo(
+    () => normalizeProfiles(profile, profiles),
+    [profile, profiles],
+  );
   const items = useMemo(
     () => buildSidebarItems(blocks, variant, features),
     [blocks, variant, features],
@@ -605,7 +609,7 @@ export function ReportBlockTopTabs({ variant, features, profile }: SidebarProps)
               </SheetTitle>
             </SheetHeader>
             <div className="mt-3">
-              <ProfileHeader profile={profile} />
+              <ProfileHeader profiles={profileList} />
               <div className="mb-2 flex justify-end">
                 <VariantBadge variant={variant} />
               </div>
