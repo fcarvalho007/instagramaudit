@@ -19,6 +19,7 @@ import {
   getMarketStudyPulse,
   getMarketStudyBlocks,
   getMarketStudyModal,
+  getPricingInterest,
 } from "@/server/admin/market-study.functions";
 
 type WindowDays = 7 | 30 | 90;
@@ -27,6 +28,7 @@ const TABS = [
   { id: "pulse", label: "Pulso do produto" },
   { id: "blocks", label: "Emojis por bloco" },
   { id: "modal", label: "Modal beta" },
+  { id: "interest", label: "Intenção de compra" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
@@ -98,6 +100,7 @@ function EstudoMercadoPage() {
       {tab === "pulse" && <PulseTab windowDays={windowDays} />}
       {tab === "blocks" && <BlocksTab windowDays={windowDays} />}
       {tab === "modal" && <ModalTab windowDays={windowDays} />}
+      {tab === "interest" && <InterestTab windowDays={windowDays} />}
     </div>
   );
 }
