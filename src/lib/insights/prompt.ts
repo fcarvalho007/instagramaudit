@@ -195,6 +195,16 @@ export interface InsightsUserPayload {
    */
   editorial_patterns?: NonNullable<InsightsContext["editorial_patterns"]>;
   /**
+   * Top recurring hashtags (max 5, sorted by usage desc). Mirrors
+   * `InsightsContext.top_hashtags`. The editorial-verdict prompt is
+   * instructed to quote at most 2 of these in the first-card paragraph.
+   */
+  top_hashtags?: Array<{ tag: string; uses: number }>;
+  /** "recurring" | "weak" | "absent" — derived from `top_hashtags`. */
+  hashtags_state?: "recurring" | "weak" | "absent";
+  /** Pre-built pt-PT cadence sentence; embed verbatim in the verdict. */
+  cadence_label_pt?: string;
+  /**
    * The flat list of `evidence` strings the model is allowed to cite.
    * Mirrored by `validate.ts` so any citation outside this list is
    * rejected. Keep paths short and JSON-pointer-ish.
