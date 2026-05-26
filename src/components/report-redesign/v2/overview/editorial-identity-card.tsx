@@ -435,9 +435,20 @@ export function EditorialIdentityCard({
     >
       {/* Zona macro */}
       <div className="px-6 py-7 sm:px-7 sm:py-8 flex flex-col sm:flex-row sm:items-stretch gap-6 sm:gap-8">
-        <div className="self-center sm:self-stretch shrink-0 flex items-center justify-center rounded-2xl bg-surface-muted/60 px-6 py-5 sm:py-6">
-          <ScoreGauge value={overall} band={band} t={t} />
-        </div>
+        <IndexBlock
+          value={overall}
+          engagementRatePct={keyMetrics?.engagementRate ?? null}
+          engagementBenchmarkPct={
+            keyMetrics && keyMetrics.engagementBenchmark > 0
+              ? keyMetrics.engagementBenchmark
+              : null
+          }
+          followers={followers}
+          postsAnalyzed={postsAnalyzed}
+          cadenceWindowDays={cadenceWindowDays ?? null}
+          t={t}
+          locale={i18n.language}
+        />
 
         <div className="flex-1 min-w-0 space-y-3">
           <div className="flex items-center gap-2 flex-wrap">
