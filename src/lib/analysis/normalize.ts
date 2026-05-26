@@ -275,9 +275,6 @@ export function computeContentSummary(
 // fields below survive the normalization step.
 // ============================================================================
 
-/** Hard cap. Apify currently returns 12; this defends against future actor changes. */
-const POSTS_LIMIT = 12;
-
 /** Caption length cap to keep the persisted payload small. */
 const CAPTION_MAX_LENGTH = 500;
 
@@ -532,14 +529,15 @@ function emptyFormatStats(): FormatStats {
  * Convert raw Apify posts into a stable, frontend-friendly shape and compute
  * per-format aggregates. Pure function — no I/O, no mutation of the input.
  *
- * Caps the result at POSTS_LIMIT to keep the persisted JSON small.
+ * Caps the result at PUBLIC_INSTAGRAM_POSTS_LIMIT to keep the persisted
+ * JSON small and to defend against future actor changes.
  */
 export function enrichPosts(
   rawPosts: unknown,
   followersCount: number,
 ): EnrichedPosts {
   const list = Array.isArray(rawPosts)
-    ? (rawPosts.slice(0, POSTS_LIMIT) as RawPostExtended[])
+    ? (rawPosts.slice(0, PUBLIC_INSTAGRAM_POSTS_LIMIT) as RawPostExtended[])
     : [];
 
   const posts: EnrichedPost[] = list.map((raw, index) => {
