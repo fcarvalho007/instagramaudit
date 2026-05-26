@@ -41,6 +41,7 @@ import { ReportBlockSection } from "./report-block-section";
 import { ReportHeroV2 } from "./report-hero-v2";
 import { ReportOverviewBlock } from "./report-overview-block";
 import { ReportDiagnosticBlock } from "./report-diagnostic-block";
+import { BlockFeedback } from "./feedback/block-feedback";
 import { ReportLockGate } from "@/components/product/report-lock-gate";
 import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useState } from "react";
