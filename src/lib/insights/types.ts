@@ -205,6 +205,27 @@ export interface InsightsContext {
    * post has a usable timestamp.
    */
   days_since_last_post?: number | null;
+  /**
+   * Top recurring hashtags from the analysed sample. Capped to 5 rows by
+   * the context builder; the verdict prompt is instructed to quote at
+   * most 2 of them (the rest is context). Empty array when the sample
+   * has no usable hashtags.
+   */
+  top_hashtags?: Array<{ tag: string; uses: number }>;
+  /**
+   * Diagnostic verdict on the hashtag situation, derived deterministically
+   * from `top_hashtags`. The first-card prompt uses this to pick the
+   * matching hashtag sentence (recurring → quote 2; weak → "ainda não
+   * criam assinatura"; absent → "não há hashtags suficientemente claras").
+   */
+  hashtags_state?: "recurring" | "weak" | "absent";
+  /**
+   * Human-readable cadence sentence in pt-PT, derived from the corrected
+   * `cadence` object via `buildCadenceLabelPt`. The model must embed this
+   * exact phrase instead of inventing a variant — keeps the public copy
+   * consistent with the rest of the report.
+   */
+  cadence_label_pt?: string;
 }
 
 /** Result envelope returned by the (future) generator. */
