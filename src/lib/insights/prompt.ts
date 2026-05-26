@@ -513,6 +513,11 @@ export function buildInsightsUserPayload(
         : {}),
     },
     ...(ctx.editorial_patterns ? { editorial_patterns: ctx.editorial_patterns } : {}),
+    ...(Array.isArray(ctx.top_hashtags) && ctx.top_hashtags.length > 0
+      ? { top_hashtags: ctx.top_hashtags }
+      : {}),
+    ...(ctx.hashtags_state ? { hashtags_state: ctx.hashtags_state } : {}),
+    ...(ctx.cadence_label_pt ? { cadence_label_pt: ctx.cadence_label_pt } : {}),
     available_signals: signals,
     allowed_evidence_paths: signals,
   };
