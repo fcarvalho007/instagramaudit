@@ -17,6 +17,7 @@ import {
   updateLeadCommercialStatus,
 } from "@/lib/admin/lead-events.server";
 import { renderReportReady } from "@/lib/email/templates";
+import { renderWithOverride } from "@/lib/email/template-overrides.server";
 import { maybeAdvanceLeadStatus } from "@/lib/admin/lead-lifecycle";
 import { resolveSender } from "@/lib/email/sender";
 
@@ -214,11 +215,20 @@ export const Route = createFileRoute("/api/admin/send-report-link")({
 
         // 7. Build email (uses unified pt-PT templates module)
         const firstName = lead.name?.trim().split(/\s+/)[0] ?? null;
-        const { subject, html, text } = renderReportReady({
-          firstName,
-          instagramHandle: reportRequest.instagram_username,
-          reportUrl: publicUrl,
-        });
+        const { subject, html, text } = await renderWithOverride(
+          "report_ready",
+          {
+            firstName: firstName ?? "",
+            instagramHandle: reportRequest.instagram_username,
+            reportUrl: publicUrl,
+          },
+          () =>
+            renderReportReady({
+              firstName,
+              instagramHandle: reportRequest.instagram_username,
+              reportUrl: publicUrl,
+            }),
+        );
 
         // 8. Send via Resend
         const controller = new AbortController();

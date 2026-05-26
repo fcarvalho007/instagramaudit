@@ -16,6 +16,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
 import { recordLeadEvent } from "@/lib/admin/lead-events.server";
 import { renderCommercialFollowup } from "@/lib/email/templates";
+import { renderWithOverride } from "@/lib/email/template-overrides.server";
 import { buildUnsubscribeUrl } from "@/lib/email/url";
 import { resolveSender } from "@/lib/email/sender";
 import { interpretFeedback } from "@/lib/admin/feedback-intent";
@@ -171,14 +172,24 @@ export const Route = createFileRoute("/api/admin/send-commercial-followup")({
         const pricingPreference =
           feedbackSummary?.pricing_preference ?? lead.pricing_preference ?? null;
         const checkoutUrl = payload.checkout_url ?? null;
-        const { subject, html, text } = renderCommercialFollowup({
-          firstName,
-          instagramHandle: handle,
-          reportUrl,
-          replyToEmail: null,
-          checkoutUrl,
-          unsubscribeUrl: lead?.id ? buildUnsubscribeUrl(lead.id) : null,
-        });
+        const { subject, html, text } = await renderWithOverride(
+          "commercial_followup",
+          {
+            firstName: firstName ?? "",
+            instagramHandle: handle ?? "",
+            reportUrl: reportUrl ?? "",
+            checkoutUrl: checkoutUrl ?? "",
+          },
+          () =>
+            renderCommercialFollowup({
+              firstName,
+              instagramHandle: handle,
+              reportUrl,
+              replyToEmail: null,
+              checkoutUrl,
+              unsubscribeUrl: lead?.id ? buildUnsubscribeUrl(lead.id) : null,
+            }),
+        );
 
         const sender = resolveSender();
 

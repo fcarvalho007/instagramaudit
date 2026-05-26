@@ -11,6 +11,7 @@
 
 import { renderPersonalAreaSaved } from "./templates/personal-area-saved";
 import { sendTransactionalEmail } from "./transactional-email.server";
+import { renderWithOverride } from "./template-overrides.server";
 
 const DEFAULT_BASE_URL = "https://instagramaudit.lovable.app";
 
@@ -42,11 +43,21 @@ export async function sendPersonalAreaSavedEmail(
 ): Promise<SendPersonalAreaSavedResult> {
   let rendered;
   try {
-    rendered = renderPersonalAreaSaved({
-      firstName: args.firstName,
-      instagramHandle: args.instagramHandle,
-      appUrl: resolveAppUrl(),
-    });
+    const appUrl = resolveAppUrl();
+    rendered = await renderWithOverride(
+      "personal_area_saved",
+      {
+        firstName: args.firstName ?? "",
+        instagramHandle: args.instagramHandle ?? "",
+        appUrl,
+      },
+      () =>
+        renderPersonalAreaSaved({
+          firstName: args.firstName,
+          instagramHandle: args.instagramHandle,
+          appUrl,
+        }),
+    );
   } catch (err) {
     return {
       ok: false,

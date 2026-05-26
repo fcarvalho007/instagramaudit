@@ -1,79 +1,102 @@
-## Diagnóstico
+## Objetivo
 
-A secção **Produto** mostra dados parcialmente falsos porque mistura dois conceitos:
+Substituir o botão "Editar (em breve)" por um editor real que permite alterar **assunto, preheader, headline, corpo HTML e corpo texto** de cada um dos 7 templates de email beta. As alterações persistem em DB e passam a ser usadas em todos os envios reais, sem precisar de deploy.
 
-- `analysis_snapshots` (7 linhas) — toda a análise que tu ou um visitante corre.
-- `report_requests` (3 linhas) — apenas quando alguém preenche o gate de email e desbloqueia o PDF.
+## Princípio
 
-Hoje **/admin/relatorios lê só `report_requests`**, por isso as análises recentes (`100xengineers`, `martimsilvai`, `karmel`, etc.) **não aparecem** na lista, no pipeline, nem nas métricas. /admin/perfis lista os 22 perfis (correto), mas a coluna "reports" e a taxa de conversão também derivam só de `report_requests`, dando a impressão de que quase nada converte.
+- O código atual em `src/lib/email/templates/*.ts` continua a ser a **versão de fábrica** (fallback). Não é apagado.
+- Em DB, uma nova tabela `email_template_overrides` guarda, por `template_key`, a versão editada pelo admin. Se existir override, é usada; caso contrário usa-se o default.
+- O corpo aceita placeholders `{{firstName}}`, `{{instagramHandle}}`, `{{reportUrl}}`, `{{feedbackUrl}}`, `{{appUrl}}`, `{{checkoutUrl}}`, substituídos antes do envio.
+- O layout exterior (`wrapHtml`) continua partilhado — o admin edita só o conteúdo, não o invólucro, para garantir consistência visual e que continua a renderizar bem em todos os clientes de email.
 
-Adicionalmente, o `PeriodSelect` (7d / 30d / 90d / YTD) está renderizado mas **não é enviado para nenhum endpoint** — está tudo hard-coded a 30 dias.
+## Alterações
 
-### Dados reais agora
+### 1. Base de dados (migração)
 
-| Fonte                | Linhas | Notas                                                  |
-|----------------------|--------|--------------------------------------------------------|
-| `analysis_snapshots` | 7      | lg_portugal, 100xengineers, robs.cortez, martimsilvai, karmel_loja_, karmel, frederico.m.carvalho |
-| `report_snapshots`   | 3      | só os 3 unlocked com email                             |
-| `report_requests`    | 3      | só `request_source = public_unlock`                    |
-| `social_profiles`    | 22     | inclui handles testados sem unlock                     |
+Nova tabela `public.email_template_overrides`:
+- `template_key` text PK (corresponde a `EmailTemplateKey`)
+- `subject` text nullable
+- `preheader` text nullable
+- `headline` text nullable
+- `body_html` text nullable (conteúdo do cartão, sem `<html>` exterior)
+- `body_text` text nullable
+- `updated_at`, `updated_by_email`
+- Trigger `set_updated_at`
+- RLS ativo, sem políticas públicas (só acessível pelo service-role nas server functions admin)
 
-## Plano
+Nova tabela `public.email_template_history` (auditoria simples):
+- `id`, `template_key`, `snapshot` (jsonb com versão anterior), `changed_by_email`, `changed_at`
+- Trigger em update/delete que insere snapshot do estado anterior.
 
-### 1. Redefinir "Relatórios" como `analysis_snapshots ⟕ report_requests`
+### 2. Render com override
 
-A unidade verdadeira de produto é a análise. O envio de PDF por email é apenas uma fase opcional.
+Novo módulo `src/lib/email/template-overrides.server.ts`:
+- `loadOverride(key)` — lê de DB usando `supabaseAdmin`, cache curto in-memory (60s).
+- `applyVariables(template, vars)` — substitui `{{var}}` no HTML/texto.
+- `renderWithOverride(key, vars, fallbackRender)` — devolve `RenderedEmail`:
+  - se há override com pelo menos `subject` definido, usa override para os campos preenchidos e default para os restantes;
+  - aplica `wrapHtml` com `headline`, `preheader` e `body_html` finais;
+  - se não há override, devolve `fallbackRender()`.
 
-- **`/api/admin/report-requests`** (lista): passar a fazer LEFT JOIN `analysis_snapshots → report_requests`, devolvendo uma linha por análise. Quando existe `report_request`, mostramos email/PDF/lead; quando não existe, mostramos estado "análise pública (sem email)".
-- **`/api/admin/report-requests/pipeline`**: ampliar o pipeline para 5 fases reais:
-  1. Análise gerada (snapshot pronto, sem email)
-  2. Email submetido (lead criado, unlock iniciado)
-  3. PDF gerado
-  4. Email entregue
-  5. Falhado (qualquer fase)
-- **`/api/admin/report-requests/metrics`**: KPIs passam a contar análises totais, % com unlock (conversão lead→email), % com PDF entregue, custo médio por análise.
-- **`/api/admin/report-requests/daily`**: barras empilhadas por análise/dia, com segmento "com unlock" vs "sem unlock".
+Atualizar os 7 call sites server-side (e.g. `send-welcome-beta.server.ts`, `send-report-summary.server.ts`, `send-personal-area-saved.server.ts`, `lead-magnet-sequence.server.ts`, `transactional-email.server.ts` para `request_received`/`report_ready`/`feedback_request`/`commercial_followup`) para passarem por `renderWithOverride(key, vars, () => renderX(input))` em vez de chamarem diretamente o `renderX`.
 
-### 2. Corrigir /admin/perfis
+### 3. API admin (server functions / server routes)
 
-- A coluna `reports` em `profiles.list` passa a contar `analysis_snapshots` por handle (não `report_requests`). A "conversão" passa a ser % de análises que tiveram unlock — mais coerente com o pipeline acima.
-- `profiles.metrics` aplica a mesma lógica: `unique_profiles_30d` cruzado com `analysis_snapshots`, não `social_profiles.last_analyzed_at` (que conta também cache hits).
+Novo ficheiro `src/routes/api/admin/email-templates.ts` (servidor protegido por `requireAdmin` já existente no projeto):
+- `GET /api/admin/email-templates` → lista das chaves com flag `hasOverride` e `updatedAt`.
+- `GET /api/admin/email-templates/$key` → `{ default: { subject, preheader, headline, body_html, body_text }, override: same shape | null, variables: [...], samplePreview: RenderedEmail }`.
+- `PUT /api/admin/email-templates/$key` body `{ subject?, preheader?, headline?, body_html?, body_text? }` → upsert + insere em `email_template_history`.
+- `DELETE /api/admin/email-templates/$key` → repõe predefinido (apaga override + grava snapshot em history).
+- `POST /api/admin/email-templates/$key/preview` body `{ subject, preheader, headline, body_html, body_text }` → renderiza com as variáveis SAMPLE e devolve `RenderedEmail` sem persistir.
 
-### 3. Ligar o PeriodSelect aos endpoints
+### 4. UI em `/admin/automacoes` → tab Templates
 
-Cada um dos 6 endpoints acima aceita `?period=7d|30d|90d|ytd` e calcula `since` a partir disso. Os componentes passam o estado `period` no `queryKey` e na URL. Default mantém-se 30d.
+`templates-tab.tsx`: trocar o botão desativado por `Link` para nova rota `/admin/automacoes/templates/$key`.
 
-### 4. Etiquetas na UI
+Nova rota `src/routes/admin.automacoes.templates.$key.tsx` (drawer/page no admin shell):
+- **Coluna esquerda — formulário**:
+  - Assunto (input)
+  - Preheader (input, pequeno hint sobre o que é)
+  - Headline (input)
+  - Corpo HTML (textarea grande, monoespaçada)
+  - Corpo texto (textarea, fallback texto puro)
+  - Chips com as variáveis disponíveis (clicar copia `{{firstName}}` para a clipboard ou insere no campo focado)
+  - Aviso quando se usa uma variável que não está na lista do template.
+  - Ações: "Guardar alterações", "Pré-visualizar", "Repor predefinido" (com confirmação), link "Ver histórico".
+- **Coluna direita — pré-visualização**:
+  - Toggle HTML / Texto
+  - iframe sandbox com `srcDoc` = HTML renderizado pelo endpoint de preview (com variáveis SAMPLE).
+  - Mostra o `subject` final num cabeçalho tipo cliente de email.
+- Estado salvo via `useMutation` (TanStack Query), toast em sucesso/erro, `invalidate` da lista.
 
-- /admin/relatorios → subtítulo passa a "Análises geradas, com ou sem envio de PDF por email"
-- Tabela ganha uma coluna "Origem" com chip (análise pública / unlock email / beta form / market study).
-- /admin/perfis → tooltip explícito a dizer que "Reports = análises realizadas; Unlock = pediram PDF por email".
+Nova subpágina `/admin/automacoes/templates/$key/history` (modal ou rota) que lista as últimas alterações (data, autor, diff resumido) e permite ver snapshot anterior.
 
-### Out of scope
+### 5. Registry
 
-- Não mexer em `/report.example`.
-- Não criar nova rota; só refactor dos endpoints existentes + leitura.
-- Sem alterações ao gate público nem aos formulários.
+`email-template-registry.ts` fica como source-of-truth de metadados (título, categoria, variáveis disponíveis, wired). A função `render` deixa de ser usada diretamente em produção pelos call sites — passa a servir apenas o EmailLab/preview default. Acrescentar:
+- `defaultParts(key)` → devolve `{ subject, preheader, headline, body_html, body_text }` extraídos a partir de render com SAMPLE (para popular o editor quando ainda não há override). Implementado caso a caso por template (precisamos de expor as partes; alternativa: incluir um campo `defaultParts` estático em cada entry do registry — preferível).
 
-### Ficheiros tocados
+## Detalhes técnicos
 
-Backend (6 endpoints):
-- `src/routes/api/admin/report-requests.ts`
-- `src/routes/api/admin/report-requests.pipeline.ts`
-- `src/routes/api/admin/report-requests.metrics.ts`
-- `src/routes/api/admin/report-requests.daily.ts`
-- `src/routes/api/admin/profiles.list.ts`
-- `src/routes/api/admin/profiles.metrics.ts`
+- Sanitização: como apenas admins editam e o HTML é entregue dentro do nosso `wrapHtml`, não fazemos strip; mas removemos `<script>`/`<iframe>` por segurança simples antes de guardar.
+- Variáveis desconhecidas (`{{xyz}}`) ficam literais — adicionar lint visual no editor.
+- Os call sites continuam responsáveis por validar/inputs; nada muda nos triggers.
+- `transactional-email.server.ts` e `send-*-beta.server.ts` passam a aceitar uma `templateKey` e chamar `renderWithOverride`.
 
-Frontend (8 componentes — passar `period` e re-tipar):
-- `src/routes/admin.relatorios.tsx`, `src/routes/admin.perfis.tsx`
-- `src/components/admin/v2/relatorios/{pipeline,metrics,charts,reports-table}-section.tsx`
-- `src/components/admin/v2/perfis/{metrics,top-profiles,profiles-table,intent-opportunities}-section.tsx`
+## Fora de scope
 
-### Checkpoint
+- WYSIWYG visual (mantemos textarea HTML — rápido e suficiente para o teu uso).
+- Versionamento per-canal (apenas EN/PT) — todos os templates são pt-PT.
+- A/B testing.
 
-☐ Endpoints devolvem 7 análises (não 3) em /admin/relatorios  
-☐ Pipeline mostra 5 fases (não 4) com contagens reais  
-☐ /admin/perfis mostra `reports = analyses_total` por handle  
-☐ PeriodSelect altera os números visíveis  
-☐ Tabela de relatórios ganha coluna "Origem"
+## Checkpoints
+
+- ☐ Migração `email_template_overrides` + `email_template_history` + trigger criada
+- ☐ `template-overrides.server.ts` com cache + `applyVariables` + `renderWithOverride`
+- ☐ Registry expõe `defaultParts` para os 7 templates
+- ☐ 7 call sites passam por `renderWithOverride`
+- ☐ Endpoints GET/PUT/DELETE/preview funcionais e protegidos por admin
+- ☐ Rota `/admin/automacoes/templates/$key` com editor + preview ao vivo
+- ☐ Botão "Editar" em `templates-tab.tsx` aponta para nova rota
+- ☐ "Repor predefinido" apaga override e mantém histórico
+- ☐ Histórico visível na UI
