@@ -13,6 +13,11 @@ import { Play, Image, GalleryHorizontalEnd } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { InsightCallout, type InsightTone } from "./insight-callout";
+import type {
+  SocialinsiderFormatRef,
+  SocialinsiderInstagramContext,
+} from "@/lib/knowledge/socialinsider-context";
+import { ExternalSourceNote, formatDateRange } from "./external-source-note";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -36,6 +41,8 @@ export interface FormatCardProps {
   dominantFormatShare: number;
   formats: FormatEntry[];
   analysedPostFormats: AnalysedPostFormat[];
+  /** External market reference (Socialinsider IG per format). Optional. */
+  socialinsiderRef?: SocialinsiderInstagramContext | null;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -174,6 +181,7 @@ export function FormatCard({
   dominantFormatShare,
   formats,
   analysedPostFormats,
+  socialinsiderRef,
 }: FormatCardProps) {
   const { t } = useTranslation("report");
   // Headline kept for legacy reasons (export) but render uses t() version.
@@ -327,17 +335,19 @@ export function FormatCard({
           {verdict.rest}
         </p>
       </InsightCallout>
-      <p className="px-5 md:px-6 pb-6 md:pb-8 -mt-2 text-xs text-content-tertiary leading-relaxed">
-        {t("format.source_socialinsider_ig")}{" "}
-        <a
-          href="https://www.socialinsider.io/blog/social-media-posting-frequency/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline decoration-dotted underline-offset-2 hover:text-content-secondary"
-        >
-          {t("format.source_link_label")}
-        </a>
-      </p>
+      <ExternalReferenceTable
+        refs={socialinsiderRef ?? null}
+        formats={formats}
+        postsAnalyzed={postsAnalyzed}
+      />
+      <ExternalSourceNote
+        refData={
+          socialinsiderRef?.reel ??
+          socialinsiderRef?.carousel ??
+          socialinsiderRef?.image ??
+          null
+        }
+      />
     </article>
   );
 }
