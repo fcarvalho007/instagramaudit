@@ -335,6 +335,11 @@ export function FormatCard({
           {verdict.rest}
         </p>
       </InsightCallout>
+      {socialinsiderRef ? (
+        <p className="px-5 md:px-6 -mt-4 mb-3 text-[13px] text-content-secondary leading-relaxed">
+          {t("format.external_ref.bridge")}
+        </p>
+      ) : null}
       <ExternalReferenceTable
         refs={socialinsiderRef ?? null}
         formats={formats}
