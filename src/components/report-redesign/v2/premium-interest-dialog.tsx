@@ -11,6 +11,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { trackEvent } from "@/lib/tracking.functions";
 import { cn } from "@/lib/utils";
+import {
+  PricingInterestModal,
+  type PricingInterestOption,
+} from "@/components/pricing/pricing-interest-modal";
 
 // NOTE: Real checkout endpoint is not yet wired. CTAs only emit a typed
 // `pricing_option_clicked` event so we can measure intent without faking a
@@ -36,6 +40,9 @@ export function PremiumInterestDialog({
 }: Props) {
   const { t } = useTranslation("report");
   const [selected, setSelected] = useState<PricingOption | null>(null);
+  const [interestOption, setInterestOption] =
+    useState<PricingInterestOption | null>(null);
+  const [interestOpen, setInterestOpen] = useState(false);
 
   const handleSelect = (option: PricingOption) => {
     setSelected(option);
@@ -54,10 +61,29 @@ export function PremiumInterestDialog({
     }).catch(() => {});
     if (option === "free") {
       onOpenChange(false);
+      return;
     }
+    // Para planos pagos abre o modal de recolha de interesse.
+    // Fecha primeiro o dialog actual para evitar focus-trap duplo do Radix,
+    // e abre o PricingInterestModal após a animação de saída.
+    setInterestOption(option);
+    onOpenChange(false);
+    setTimeout(() => setInterestOpen(true), 200);
+  };
+
+  const interestMeta: Record<PricingInterestOption, { label: string; price: string }> = {
+    single_report: {
+      label: t("premium.dialog.single.title"),
+      price: t("premium.dialog.single.price"),
+    },
+    pack_5_reports: {
+      label: t("premium.dialog.pack.title"),
+      price: t("premium.dialog.pack.price"),
+    },
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[760px]">
         <DialogHeader className="text-left">
@@ -120,6 +146,14 @@ export function PremiumInterestDialog({
         </p>
       </DialogContent>
     </Dialog>
+    <PricingInterestModal
+      open={interestOpen}
+      onOpenChange={setInterestOpen}
+      option={interestOption}
+      planLabel={interestOption ? interestMeta[interestOption].label : ""}
+      planPrice={interestOption ? interestMeta[interestOption].price : ""}
+    />
+    </>
   );
 }
 

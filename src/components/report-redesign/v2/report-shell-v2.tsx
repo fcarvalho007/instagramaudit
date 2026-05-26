@@ -210,6 +210,18 @@ export function ReportShellV2({
               </ReportBlockSection>
               )}
 
+              {/* Feedback do Bloco 1 (overview) — fica entre Bloco 1 e Bloco 2,
+                  visualmente associado ao Bloco 1 e não dentro do header do Bloco 2. */}
+              {features.blockOverview !== "hidden" && (
+                <div className="mt-6 md:mt-8 mb-2">
+                  <BlockFeedback
+                    handle={result.data.profile.username}
+                    snapshotId={snapshotId ?? null}
+                    block="overview"
+                  />
+                </div>
+              )}
+
               {/* When gated, everything from the Engagement card onward
                   lives inside one ReportLockGate so a single CTA overlay
                   covers the entire locked region. */}
@@ -231,12 +243,6 @@ export function ReportShellV2({
                   )}
                   {features.blockDiagnosis !== "hidden" && (
                     <ReportBlockSection block={diagnostico} tone="canvas">
-                      <BlockFeedback
-                        handle={result.data.profile.username}
-                        snapshotId={snapshotId ?? null}
-                        block="overview"
-                        className="mb-2"
-                      />
                       <ReportDiagnosticBlock result={result} payload={payload} />
                     </ReportBlockSection>
                   )}
@@ -324,12 +330,6 @@ export function ReportShellV2({
               {/* 02 · Diagnóstico editorial */}
               {!gated && features.blockDiagnosis !== "hidden" && (
               <ReportBlockSection block={diagnostico} tone="canvas">
-                <BlockFeedback
-                  handle={result.data.profile.username}
-                  snapshotId={snapshotId ?? null}
-                  block="overview"
-                  className="mb-2"
-                />
                 <ReportDiagnosticBlock result={result} payload={payload} />
               </ReportBlockSection>
               )}
