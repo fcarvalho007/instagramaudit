@@ -220,12 +220,14 @@
     },
     "index": {
       "eyebrow": "Profile index",
-      "subtitle_above": "{{pp}} pp above the tier engagement benchmark",
-      "subtitle_below": "{{pp}} pp below the tier engagement benchmark",
+      "subtitle_above": "{{pp}} pp above typical tier engagement",
+      "subtitle_below": "{{pp}} pp below typical tier engagement",
       "subtitle_no_benchmark": "Profile activity index",
-      "microline": "Comparative index built from 3 profile signals.",
+      "no_value": "Not enough data to calculate the index.",
+      "microline": "Comparative index, calculated from 3 signals observed on the profile.",
       "rail_aria": "Index {{value}} out of 100",
-      "this_brand": "▸ this brand · {{value}}",
+      "rail_aria_full": "Index {{value}} out of 100, stage {{stage}}",
+      "this_brand": "this brand · {{value}}",
       "stage": {
         "leader": "Leader",
         "competitive": "Competitive",
