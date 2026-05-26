@@ -1,6 +1,7 @@
 /**
  * TemplatesTab — lista os templates beta com estado wired/orphan.
- * Edição não implementada — botão "Editar" desativado ("em breve").
+ * Cada cartão tem CTA para pré-visualizar (Email Lab) e editar
+ * (`/admin/automacoes/templates/$key`).
  */
 
 import { AdminCard } from "../admin-card";

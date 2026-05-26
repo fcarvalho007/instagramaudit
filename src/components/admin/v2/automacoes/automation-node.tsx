@@ -6,6 +6,7 @@
 
 import { Lock, Pencil, Mail, Settings, BarChart3, ArrowRightLeft, Clock, AlertTriangle, AlertCircle, Zap } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Link } from "@tanstack/react-router";
 import type {
   AutomationFlow,
   FlowStatus,
@@ -263,27 +264,44 @@ function EditButton({
       </TooltipProvider>
     );
   }
+  if (!templateKey) {
+    return (
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              disabled
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-admin-border bg-admin-surface-muted px-3 text-[12px] font-medium text-admin-text-tertiary"
+              style={{ cursor: "not-allowed" }}
+            >
+              <Pencil size={12} />
+              Editar
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Sem template editável</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
   return (
     <TooltipProvider delayDuration={200}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <button
-            type="button"
-            disabled
-            className="inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[12px] font-semibold text-white opacity-90"
+          <Link
+            to="/admin/automacoes/templates/$key"
+            params={{ key: templateKey }}
+            className="inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[12px] font-semibold text-white"
             style={{
               background: "rgb(var(--admin-button-dark))",
-              cursor: "not-allowed",
               boxShadow: "0 1px 2px rgb(var(--admin-button-dark) / 0.2)",
             }}
           >
             <Pencil size={12} />
             Editar
-          </button>
+          </Link>
         </TooltipTrigger>
-        <TooltipContent side="top">
-          {templateKey ? "Disponível em breve" : "Sem template editável"}
-        </TooltipContent>
+        <TooltipContent side="top">Abrir editor de template</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );
