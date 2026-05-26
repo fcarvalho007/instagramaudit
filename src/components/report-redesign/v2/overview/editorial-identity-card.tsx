@@ -11,6 +11,7 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   CalendarDays,
+  ChevronDown,
   Heart,
   MessageCircle,
 } from "lucide-react";
@@ -18,6 +19,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { formatCompactNumber } from "@/lib/i18n/format";
 import type { ScoreKey } from "./score-utils";
+import { computeGlobalScore } from "./score-utils";
 import type { EditorialVerdict } from "@/lib/insights/types";
 import {
   deriveEditorialVerdict,
@@ -29,6 +31,16 @@ import { buildFallbackVerdict } from "@/lib/report/editorial-verdict-fallback";
 
 type Band = "warning" | "developing" | "solid";
 type Tone = "success" | "warning";
+
+/** Stage rail (4 níveis discretos, apenas leitura visual). */
+type Stage = "leader" | "competitive" | "progress" | "emerging";
+
+function stageFromScore(value: number): Stage {
+  if (value >= 80) return "leader";
+  if (value >= 60) return "competitive";
+  if (value >= 40) return "progress";
+  return "emerging";
+}
 
 interface Bullet {
   destaque: string;
@@ -90,13 +102,20 @@ interface EditorialCopy {
 
 /* ── Pontuação + bandas ────────────────────────────────────────────── */
 
+/**
+ * Índice agregado do perfil. Usa `computeGlobalScore` de `score-utils` para
+ * garantir consistência com os scores individuais documentados nos tooltips
+ * (pesos: envolvimento 45%, ritmo 25%, conversa 30%).
+ */
 function computeOverall(
   scores: Record<ScoreKey, { value: number; subtitle: string }>,
 ): number {
-  const e = scores.envolvimento.value;
-  const f = scores.frequencia.value;
-  const i = scores.interaccao.value;
-  return Math.max(0, Math.min(100, Math.round(0.5 * e + 0.3 * f + 0.2 * i)));
+  const raw = computeGlobalScore(
+    scores.envolvimento.value,
+    scores.frequencia.value,
+    scores.interaccao.value,
+  );
+  return Math.max(0, Math.min(100, raw));
 }
 
 function verdictLabelToBand(label: EditorialVerdict["verdict_label"]): Band {
