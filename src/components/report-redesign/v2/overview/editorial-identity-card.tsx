@@ -16,6 +16,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useState } from "react";
 import type { TFunction } from "i18next";
 import { formatCompactNumber } from "@/lib/i18n/format";
 import type { ScoreKey } from "./score-utils";
