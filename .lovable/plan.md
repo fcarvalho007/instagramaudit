@@ -1,83 +1,100 @@
-## Objectivo
-Fechar o build vermelho deixado a meio: três componentes ainda não estão alinhados com as novas shapes (`analysis_snapshots` como fonte única + filtro `period`).
+
+## Diagnóstico
+
+Confirmado no DB: existem **apenas 7 snapshots reais** em `analysis_snapshots`, mas `social_profiles.analyses_total` tem valores inflacionados (frederico=1627, lg_portugal=194, martimsilvai=143, …). Razão: esse contador soma TODOS os pedidos (cache + fresh + falhas), não análises reais.
+
+Assim, qualquer "166 análises" que aparece em /admin/perfis vem de:
+- `social_profiles.analyses_total` (lifetime, inclui cache hits e tentativas), exposto em badges e na coluna "Análises lifetime", OU
+- pesquisas repetidas a contar como "análise".
+
+A coluna **Cache** representa precisamente isso: quando um pedido para o mesmo handle chega dentro do TTL, devolvemos o snapshot guardado em vez de chamar a Apify novamente (poupa custo e latência). O contador `analyses_cache` incrementa em cada cache hit. É um sinal operacional útil mas **não é uma análise nova**.
 
 ---
 
-## 1. `ChartsSection` (`src/components/admin/v2/relatorios/charts-section.tsx`)
+## Plano
 
-O endpoint `report-requests.daily` já devolve `volume = { day, analyses, with_unlock, delivered, failed }` (sem `queued`). Componente ainda lê `queued`.
+### 1. /admin/perfis — clarificar "análise" vs "cache" vs "pesquisa"
 
-- Actualizar tipo `DailyApi.volume` para `{ day, analyses, with_unlock, delivered, failed }`.
-- BarChart (Volume diário): empilhar `delivered` + `failed`; adicionar duas linhas/áreas leves de contexto:
-  - `analyses` como `Line` cinza fina (total de análises feitas).
-  - `with_unlock` como `Bar` translúcido por trás (ou `Line` accent) — relatórios desbloqueados por email.
-- Remover `Bar dataKey="queued"`. Reutilizar `ADMIN_LITERAL.chartDelivered` / `chartFailed`; usar `chartTiming` para a linha `analyses` (ou criar token novo `chartAnalyses` se já existir paleta — confirmar em `admin-tokens` antes; caso não exista, reusar um existente sem criar token novo).
-- Subtítulo dinâmico: substituir "últimos 30 dias" por mapping de `period` (`7d` → "últimos 7 dias", `30d` → "30 dias", `90d` → "90 dias", `ytd` → "desde 1 Jan").
-- `period` já é prop e já entra na queryKey — manter.
+**Conceito**: 1 análise = 1 snapshot gerado (linha em `analysis_snapshots`). Tudo o resto é **pesquisa** (request) que pode resolver via cache ou produzir nova análise.
 
-## 2. `ReportsTableSection` (`src/components/admin/v2/relatorios/reports-table-section.tsx`)
+- `MetricsSection`:
+  - **Remover** o 4º KPI "Conversão · 30d / análise → report" (pedido explícito).
+  - Renomear "Perfis únicos" → mantém, mas tooltip explícito: "perfis com pelo menos 1 análise nova (snapshot) na janela".
+  - "Perfis repetidos" passa a usar `analyses_in_window ≥ 2` (snapshots, não `analyses_total` que inclui cache). Endpoint `profiles.metrics` ajustado em conformidade.
+  - "Com relatório" mantém.
+  - Grid passa a 3 colunas.
 
-O endpoint `report-requests` agora devolve linhas com `kind: "snapshot" | "request"` (snapshots = análises sem unlock por email). UI ainda assume só `request`.
+- `ProfilesTableSection`:
+  - Renomear coluna **"Análises"** → **"Análises"** (mantém, mas valor = `analyses_in_window`, real, ≤ 7 hoje). Tooltip no header: "snapshots gerados na janela".
+  - Renomear coluna **"Cache"** → **"Cache hits"** com tooltip: "pesquisas servidas a partir de snapshot guardado (não geraram análise nova). Usado para poupar custo de provider."
+  - Adicionar pequena legenda por baixo da tabela: "Análise = snapshot novo. Cache = pesquisa repetida servida do cache (sem custo)."
+  - Filtro "Repetidos" passa a usar `analyses_in_window ≥ 2`.
 
-- Estender `ReportRow` com `kind: "snapshot" | "request"`, `request_source: string` (já tipo) e tornar `is_free_request` independente.
-- Adicionar **coluna "Origem"** entre Perfil e Estado:
-  - `kind === "snapshot"` → `<AdminBadge variant="info">análise pública</AdminBadge>`
-  - `kind === "request"` → mostrar `request_source` formatado (`public_dashboard`, `lead_magnet`, etc.) num badge subtil + badge `grátis/pago` por baixo (manter a info actual).
-  - Remover a coluna independente "Origem" que hoje só mostra `grátis/pago` — fundir as duas dimensões nesta única coluna.
-- Estado para `kind: "snapshot"`: nova badge `<AdminBadge variant="muted">análise</AdminBadge>` (sem "entregue/falhou/a processar").
-- Lead column: `kind: "snapshot"` mostra "—" em ambas linhas (já compatível porque `lead` vem `null`).
-- Duração: para `snapshot` devolver `—`.
-- Acção "Ver detalhe": esconder o botão `<Eye>` quando `kind === "snapshot"` (renderizar célula vazia). `ReportDrawer` continua a ler por `id` (que para snapshots não existe em `report_requests`).
-- Filtro "in_progress" client-side: passar a usar `r.kind === "request" && deriveStatus(r) === "processing"`.
-- Filter pill "Todos" inclui snapshots; considerar adicionar pill "Só com email" (filtra `kind === "request"`) — fica como nota para próximo turno se quisermos manter o âmbito enxuto. **Não implementar agora.**
-- `period` já é prop e já entra na queryKey + URL — manter.
+- `IntentOpportunitiesSection`:
+  - Substituir o atual `EmptyStateCard` por uma versão **realmente útil** já que existe sinal: ler `analysis_events` agrupado por `handle` (não-`request_ip_hash`-dependente) e listar perfis com `count_events ≥ 3` mas `0 snapshots gerados na janela` ou `0 reports`. Ou seja: **handles muito pesquisados mas sem conversão para snapshot/email**.
+  - Novo endpoint `GET /api/admin/profiles/intent-opportunities?period=…` que devolve `[{ handle, searches, last_search_at, has_snapshot, has_lead }]` (top 20).
+  - UI: tabela compacta com handle, nº pesquisas, último timestamp, badge "sem snapshot" / "sem lead" e CTA "Forçar análise" (reusa endpoint existente `refresh-profile`).
+  - Manter nota curta a explicar limitação (sem dedup por user real até existir auth pública).
 
-## 3. `/admin/perfis` + `profiles.list` + `profiles.metrics`
+### 2. /admin/relatorios — KPIs, custo, tabela
 
-Mudar fonte de "reports por handle" de `report_requests` para `analysis_snapshots` (para uma análise contar mesmo sem email) e aceitar `period`.
+- `MetricsSection`:
+  - **Remover** KPI "Entrega · sucesso" (pedido explícito).
+  - Reordenar para destacar o que importa (pedido do utilizador):
+    1. **Pediram análise** — total de snapshots/pesquisas na janela (fonte: `analysis_snapshots`, valor real, hoje = 7).
+    2. **Submeteram email (lead magnet)** — `with_unlock` + `unlock_rate_pct` como sub.
+    3. **Custo médio · análise** — mantém, mas ver ponto seguinte.
+  - Tornar grid responsivo (3 colunas em vez de 4).
 
-### 3a. `src/routes/api/admin/profiles.metrics.ts`
-- Aceitar `?period=` via `resolvePeriod` (default 30d).
-- Substituir o set de handles de reports: passar a contar quantos `analysis_snapshots` distintos por handle na janela; `profiles_with_report_<period>` = perfis únicos com snapshot na janela que também têm snapshot anterior OU directo conforme regra actual.
-  - Definição concreta: `profiles_with_report` = perfis em `social_profiles` cujo `lower(handle)` aparece em `analysis_snapshots` (na janela). Como `analysis_snapshots` é a fonte da unidade-produto, isto reflecte "perfis com relatório gerado na janela".
-- Substituir `window_days: 30` e keys `*_30d` por keys parametrizadas (`window_days`, `unique_profiles`, `profiles_with_report`) — actualizar `MetricsSection` em conformidade.
-- `unique_profiles` na janela = `count(distinct lower(instagram_username))` em `analysis_snapshots` desde `sinceISO` (mais fiável que `social_profiles.last_analyzed_at`).
+- **Validação do custo médio**:
+  - Fonte actual em `report-requests.metrics`: soma `provider_call_logs.actual_cost_usd ?? estimated_cost_usd` na janela ÷ `total_analyses`. Hoje: 157 logs em 30d ÷ 7 snapshots = média artificialmente alta (inclui re-runs, cache lookups que NÃO geraram snapshot, OpenAI insights, etc.).
+  - Correcção: dividir por `count(provider_call_logs WHERE actor LIKE 'apify%')` agrupado, OU mostrar **dois valores**:
+    - "Custo total na janela" (soma real)
+    - "Custo por análise nova" (soma ÷ snapshots da janela)
+  - Adicionar tooltip a apontar que esta linha bate com a soma exposta em `/admin/receita` (waterfall + cost_daily reconciliação Apify). Já é o caso pela query, mas explicitar e cross-link.
+  - Nota de auditoria: confirmar manualmente alinhamento com `cost_daily` (provider='apify') e com `provider_billing_imports` reconciliados antes de fechar.
 
-### 3b. `src/routes/api/admin/profiles.list.ts`
-- Aceitar `?period=`.
-- Substituir o `from("report_requests").select("instagram_username, ...")` por `from("analysis_snapshots").select("instagram_username, created_at").gte("created_at", sinceISO)`.
-- `reports` por handle = nº de snapshots na janela. `conversion_pct` mantém semântica (`reports/analyses`) mas com numerador vindo de snapshots na janela e denominador `analyses_total` (lifetime) — documentar em comentário que mistura escalas; alternativa: mudar denominador para também ser da janela. **Decisão**: usar **ambos** da janela para coerência (`analyses_in_window` count + `reports_in_window` count) e renomear conversão para "% perfis com snapshot na janela". Substituir `analyses` (lifetime) por `analyses_in_window` no payload. Manter `analyses_fresh/cache` lifetime apenas como contexto secundário.
-- `counts` (`all/with_reports/repeated/no_conversion`) recalcular sobre a nova métrica de janela.
+- `ReportsTableSection`:
+  - **Remover coluna "Duração"** (`formatDuration` deixa de ser usado).
+  - **Renomear coluna "Lead"** → **"Registo"**, com:
+    - Se `lead != null` e `lead.email` presente → badge verde "Email submetido" + nome/email por baixo.
+    - Se `lead == null` (snapshot anónimo) → badge cinza "Anónimo".
+  - **Botão "Ver relatório"** explícito (substitui o ícone Eye discreto):
+    - Para `kind === "request"` → botão pequeno `<AdminActionButton>` com label "Ver" que abre o `ReportDrawer` actual.
+    - Para `kind === "snapshot"` (análise pública sem request) → botão "Ver análise" que abre `/analyze/$username` em nova tab (snapshots não têm drawer, mas têm página pública).
+  - Manter a coluna "Origem" e badges existentes.
 
-### 3c. `src/routes/admin.perfis.tsx`
-- Passar `period` como prop a `MetricsSection`, `TopProfilesSection`, `IntentOpportunitiesSection`, `ProfilesTableSection`. **Âmbito deste turno**: ligar `period` apenas em `MetricsSection` e `ProfilesTableSection` (os dois que tocamos). `TopProfilesSection` e `IntentOpportunitiesSection` ficam fora — anotar nota inline para próximo turno.
+### 3. Endpoints a tocar
 
-### 3d. `src/components/admin/v2/perfis/metrics-section.tsx`
-- Aceitar `period: AdminPeriod`.
-- Actualizar tipo `MetricsApi` para novas keys (`unique_profiles`, `profiles_with_report`, `window_days`).
-- Mapear subtítulos/eyebrows para reflectir período seleccionado (helper local `periodLabel(period)`).
-- queryKey: `["admin", "profiles", "metrics", period]`; URL `?period=${period}`.
+- `src/routes/api/admin/profiles.metrics.ts` — `repeated` passa a usar snapshots em janela.
+- `src/routes/api/admin/profiles.list.ts` — adicionar `last_search_at` se necessário (já tem `last_analyzed_at`).
+- **Novo**: `src/routes/api/admin/profiles.intent-opportunities.ts`.
+- `src/routes/api/admin/report-requests.metrics.ts` — opcional, expor `total_cost_usd` separado de `avg_cost_usd`.
 
-### 3e. `src/components/admin/v2/perfis/profiles-table-section.tsx`
-- Aceitar `period: AdminPeriod`.
-- queryKey + URL com `period`.
-- Renomear coluna "Análises" para continuar a chamar-se "Análises" mas ler `analyses_in_window`. Subtítulo do header dinâmico ("X perfis com snapshot em <período>").
+### 4. Componentes a tocar
+
+- `src/components/admin/v2/perfis/metrics-section.tsx`
+- `src/components/admin/v2/perfis/profiles-table-section.tsx`
+- `src/components/admin/v2/perfis/intent-opportunities-section.tsx` (reescrito)
+- `src/components/admin/v2/relatorios/metrics-section.tsx`
+- `src/components/admin/v2/relatorios/reports-table-section.tsx`
+
+### Fora de scope (não tocar)
+
+- `social_profiles.analyses_total` continua a contar tudo (é útil em outras vistas). Só mudamos a **interpretação** na UI de /admin/perfis.
+- /admin/receita — apenas verificação manual de alinhamento, sem alterações.
 
 ---
 
-## Fora de âmbito (próximo turno)
-- `TopProfilesSection`, `IntentOpportunitiesSection` — também precisam de `period` e da nova fonte; deixar comentário `// TODO(period)` onde forem invocados.
-- Drawer mostrar snapshots sem `request_id`.
-- Pill "Só com email" no relatórios.
-- CSV export de `/admin/perfis` (continua mock).
+## Checkpoint
 
-## Checkpoint final
-- ☐ Build TypeScript verde (`bun run build` corre sem erros)
-- ☐ `/admin/relatorios` com seletor 7d/30d/90d/ytd:
-  - Charts mostra `delivered + failed` empilhados + linha `analyses`
-  - Tabela mostra coluna "Origem" com `análise pública` para `kind:"snapshot"` e sem botão "Ver detalhe" nessas linhas
-- ☐ `/admin/perfis` com seletor de período:
-  - KPIs reflectem snapshots na janela
-  - Tabela mostra `analyses_in_window` e `reports` baseado em snapshots
-- ☐ `rg "queued" src/components/admin/v2/relatorios` retorna vazio
-- ☐ `rg "report_requests" src/routes/api/admin/profiles.*.ts` retorna vazio
+- ☐ /admin/perfis: KPI "Conversão · 30d" removido; grid 3 colunas.
+- ☐ Coluna "Cache" renomeada para "Cache hits" com tooltip claro; legenda por baixo da tabela.
+- ☐ "Perfis repetidos" usa snapshots na janela (não `analyses_total`); valores realistas (hoje ~0).
+- ☐ "Oportunidades de conversão" mostra handles com ≥3 pesquisas sem snapshot/lead, via novo endpoint.
+- ☐ /admin/relatorios: KPI "Entrega · sucesso" removido.
+- ☐ KPIs reordenados (Pediram análise → Email submetido → Custo médio).
+- ☐ Custo médio confirmado contra `/admin/receita` e tooltip ligado.
+- ☐ Tabela: coluna "Duração" removida; "Lead" → "Registo" com badge anónimo/email submetido.
+- ☐ Botão "Ver" explícito por linha (drawer para requests, página pública para snapshots).
+- ☐ Build verde, sem warnings TS.

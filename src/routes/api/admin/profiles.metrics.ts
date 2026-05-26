@@ -51,12 +51,17 @@ export const Route = createFileRoute("/api/admin/profiles/metrics")({
         }
 
         const all = profiles ?? [];
-        const snapHandles = new Set<string>();
+        // Contar snapshots por handle na janela (fonte real, sem cache hits).
+        const snapCountByHandle = new Map<string, number>();
         for (const s of snapshots ?? []) {
-          snapHandles.add(s.instagram_username.toLowerCase());
+          const k = s.instagram_username.toLowerCase();
+          snapCountByHandle.set(k, (snapCountByHandle.get(k) ?? 0) + 1);
         }
+        const snapHandles = new Set(snapCountByHandle.keys());
         const uniqueProfiles = snapHandles.size;
-        const repeated = all.filter((p) => (p.analyses_total ?? 0) >= 2).length;
+        // Repetidos = perfis com ≥2 SNAPSHOTS na janela (não cache hits).
+        let repeated = 0;
+        for (const n of snapCountByHandle.values()) if (n >= 2) repeated += 1;
 
         // "Com relatório" = perfis com snapshot na janela que também existem em social_profiles.
         const profileHandleSet = new Set(all.map((p) => p.handle.toLowerCase()));

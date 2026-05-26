@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { AdminPeriod } from "@/components/admin/v2/period-select";
-import { ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 
 import { AdminCard } from "../admin-card";
 import { AdminBadge } from "../admin-badge";
@@ -56,16 +56,6 @@ function deriveStatus(r: ReportRow): "snapshot" | "delivered" | "processing" | "
 function formatDate(iso: string): string {
   const d = new Date(iso);
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
-function formatDuration(r: ReportRow): string {
-  if (r.kind === "snapshot") return "—";
-  if (!r.email_sent_at) return "—";
-  const sec = Math.round(
-    (new Date(r.email_sent_at).getTime() - new Date(r.created_at).getTime()) / 1000,
-  );
-  if (sec < 60) return `${sec}s`;
-  return `${Math.floor(sec / 60)}m ${String(sec % 60).padStart(2, "0")}s`;
 }
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -150,25 +140,24 @@ export function ReportsTableSection({ period }: { period: AdminPeriod }) {
           <table className="w-full border-collapse text-left text-[12px]">
             <thead>
               <tr className="text-admin-text-tertiary">
-                <Th>Lead</Th>
+                <Th>Registo</Th>
                 <Th>Perfil</Th>
                 <Th>Origem</Th>
                 <Th>Estado</Th>
                 <Th>Início</Th>
-                <Th>Duração</Th>
                 <Th align="right">Acções</Th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-[12px] text-admin-text-tertiary">
+                  <td colSpan={6} className="px-6 py-8 text-center text-[12px] text-admin-text-tertiary">
                     A carregar…
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-[12px] text-admin-text-tertiary">
+                  <td colSpan={6} className="px-6 py-8 text-center text-[12px] text-admin-text-tertiary">
                     Sem relatórios para este filtro.
                   </td>
                 </tr>
@@ -179,12 +168,21 @@ export function ReportsTableSection({ period }: { period: AdminPeriod }) {
                     className="border-t border-admin-border transition-colors hover:bg-[var(--color-admin-surface-muted)]"
                   >
                     <td className="px-6 py-3.5 align-top">
-                      <p className="m-0 text-[13px] text-admin-text-primary">
-                        {r.lead?.name ?? "—"}
-                      </p>
-                      <p className="mt-0.5 text-[12px] text-admin-text-secondary">
-                        {r.lead?.email ?? "—"}
-                      </p>
+                      {r.lead?.email ? (
+                        <div className="flex flex-col items-start gap-1">
+                          <AdminBadge variant="revenue">email submetido</AdminBadge>
+                          {r.lead.name ? (
+                            <p className="m-0 text-[13px] text-admin-text-primary">
+                              {r.lead.name}
+                            </p>
+                          ) : null}
+                          <p className="m-0 text-[12px] text-admin-text-secondary">
+                            {r.lead.email}
+                          </p>
+                        </div>
+                      ) : (
+                        <AdminBadge variant="neutral">anónimo</AdminBadge>
+                      )}
                     </td>
                     <td className="px-6 py-3.5 align-top text-[13px] text-admin-text-primary">
                       @{r.instagram_username}
@@ -207,20 +205,27 @@ export function ReportsTableSection({ period }: { period: AdminPeriod }) {
                     <td className="px-6 py-3.5 align-top admin-code text-admin-text-secondary">
                       {formatDate(r.created_at)}
                     </td>
-                    <td className="px-6 py-3.5 align-top admin-code text-admin-text-secondary">
-                      {formatDuration(r)}
-                    </td>
                     <td className="px-6 py-3.5 align-top text-right">
                       {r.kind === "request" ? (
-                        <button
-                          type="button"
-                          aria-label="Ver detalhe"
+                        <AdminActionButton
+                          size="sm"
+                          aria-label="Ver detalhe do relatório"
                           onClick={() => openReport(r.id)}
-                          className="inline-flex h-6 w-6 items-center justify-center rounded-md text-admin-text-tertiary transition-colors hover:bg-[var(--color-admin-surface-muted)] hover:text-admin-text-primary"
                         >
-                          <Eye size={16} strokeWidth={1.75} />
-                        </button>
-                      ) : null}
+                          Ver
+                        </AdminActionButton>
+                      ) : (
+                        <a
+                          href={`/analyze/${r.instagram_username}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label="Abrir análise pública"
+                          className="inline-flex items-center gap-1 text-[12px] text-admin-text-secondary hover:text-admin-text-primary"
+                        >
+                          Ver análise
+                          <ExternalLink size={12} strokeWidth={1.75} />
+                        </a>
+                      )}
                     </td>
                   </tr>
                 ))
