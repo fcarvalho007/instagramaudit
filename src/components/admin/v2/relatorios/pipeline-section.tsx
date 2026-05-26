@@ -7,7 +7,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { AdminCard } from "../admin-card";
 import { AdminSectionHeader } from "../admin-section-header";
-import { ADMIN_LITERAL } from "../admin-tokens";
 import { adminFetch } from "@/lib/admin/fetch";
 
 interface PipelineApi {
@@ -51,10 +50,10 @@ export function PipelineSection() {
       />
       <AdminCard className="!p-7">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <PhaseCard accent={ADMIN_LITERAL.phasePedido} eyebrow="Fase 1" label="Pedido recebido" value={phases.pedido} sub="sem análise ainda" />
-          <PhaseCard accent={ADMIN_LITERAL.phaseAnalise} eyebrow="Fase 2" label="Análise Apify" value={phases.analise} sub="snapshot pronto" />
-          <PhaseCard accent={ADMIN_LITERAL.phasePdf} eyebrow="Fase 3" label="PDF gerado" value={phases.pdf} sub="aguarda envio" />
-          <PhaseCard accent={ADMIN_LITERAL.phaseEmail} eyebrow="Fase 4" label="Email entregue" value={phases.email} sub="ciclo completo" />
+          <PhaseCard accent="#7664E4" eyebrow="Fase 1" label="Pedido recebido" value={phases.pedido} sub="sem análise ainda" />
+          <PhaseCard accent="#3772E5" eyebrow="Fase 2" label="Análise Apify" value={phases.analise} sub="snapshot pronto" />
+          <PhaseCard accent="#D85A30" eyebrow="Fase 3" label="PDF gerado" value={phases.pdf} sub="aguarda envio" />
+          <PhaseCard accent="#1D9E75" eyebrow="Fase 4" label="Email entregue" value={phases.email} sub="ciclo completo" />
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-5 border-t border-admin-border pt-6 sm:grid-cols-2 lg:grid-cols-4">
