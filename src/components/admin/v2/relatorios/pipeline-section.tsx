@@ -43,31 +43,30 @@ export function PipelineSection({ period }: { period: AdminPeriod }) {
 
   const phases = data?.phases ?? { snapshot: 0, email_submitted: 0, pdf: 0, email: 0 };
   const failures = data?.failures_to_recover ?? 0;
+  const totalWindow = data?.total_window ?? 0;
 
   return (
     <section className="flex flex-col gap-4">
       <AdminSectionHeader
         title="Pipeline operacional"
-        subtitle="da análise à entrega por email"
+        subtitle="funil cumulativo — Fase 1 é o total de análises geradas; fases seguintes são subconjuntos"
         accent="signal"
-        info="Cada análise gerada percorre: Snapshot → Email submetido (unlock) → PDF → Email entregue."
+        info="Funil cumulativo: Fase 1 = total de análises na janela (igual ao KPI 'Pediram análise'). Fases 2-4 = progressão até entrega por email."
       />
       <AdminCard className="!p-7">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <PhaseCard accent="#3772E5" eyebrow="Fase 1" label="Análise gerada" value={phases.snapshot} sub="sem unlock por email" />
+          <PhaseCard accent="#3772E5" eyebrow="Fase 1" label="Análise gerada" value={totalWindow} sub="total na janela" />
           <PhaseCard accent="#7664E4" eyebrow="Fase 2" label="Email submetido" value={phases.email_submitted} sub="lead criado" />
           <PhaseCard accent="#D85A30" eyebrow="Fase 3" label="PDF gerado" value={phases.pdf} sub="aguarda envio" />
           <PhaseCard accent="#1D9E75" eyebrow="Fase 4" label="Email entregue" value={phases.email} sub="ciclo completo" />
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-5 border-t border-admin-border pt-6 sm:grid-cols-2 lg:grid-cols-4">
-          <AggregateStat eyebrow="Tempo médio total" value={formatSeconds(data?.avg_total_seconds ?? null)} sub="pedido → email" />
+        <div className="mt-6 grid grid-cols-1 gap-5 border-t border-admin-border pt-6 sm:grid-cols-2 lg:grid-cols-3">
           <AggregateStat
             eyebrow="Taxa de sucesso"
             value={data?.success_rate_pct != null ? `${data.success_rate_pct.toFixed(1)}%` : "—"}
             sub={`${data?.total_window ?? 0} análises (${period})`}
             valueColor="rgb(var(--admin-revenue-700))"
-            divider
           />
           <AggregateStat
             eyebrow="A recuperar"
