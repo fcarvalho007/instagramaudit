@@ -164,29 +164,32 @@ export function buildInsightsCtx(
   ).map((r) => ({ tag: r.tag, uses: r.uses }));
   const hashtagsState = classifyHashtagsState(hashtagRows);
 
+  // Compute cadence once so the label can be derived from the same object.
+  const cadenceRaw = computeCadence(
+    posts.map((p) => ({
+      taken_at_iso: p.taken_at_iso ?? null,
+      taken_at: p.taken_at ?? null,
+      is_pinned: p.is_pinned ?? false,
+    })),
+  );
+  const cadence: InsightsContext["cadence"] = {
+    method: cadenceRaw.method,
+    sampleSize: cadenceRaw.sampleSize,
+    sufficient: cadenceRaw.sufficient,
+    weekly: cadenceRaw.sufficient ? cadenceRaw.weekly : null,
+    windowDays: cadenceRaw.sufficient ? cadenceRaw.windowDays : null,
+    pinnedExcluded: cadenceRaw.excludedPinned,
+    reliability: cadenceRaw.reliability,
+    note:
+      !cadenceRaw.sufficient || cadenceRaw.reliability === "low"
+        ? cadenceRaw.notePt
+        : null,
+  };
+
   const ctx: InsightsContext = {
     profile,
     content_summary: summary,
-    cadence: (() => {
-      const c = computeCadence(
-        posts.map((p) => ({
-          taken_at_iso: p.taken_at_iso ?? null,
-          taken_at: p.taken_at ?? null,
-          is_pinned: p.is_pinned ?? false,
-        })),
-      );
-      return {
-        method: c.method,
-        sampleSize: c.sampleSize,
-        sufficient: c.sufficient,
-        weekly: c.sufficient ? c.weekly : null,
-        windowDays: c.sufficient ? c.windowDays : null,
-        pinnedExcluded: c.excludedPinned,
-        reliability: c.reliability,
-        note:
-          !c.sufficient || c.reliability === "low" ? c.notePt : null,
-      };
-    })(),
+    cadence,
     top_posts: topPosts,
     benchmark,
     competitors_summary: {
@@ -198,19 +201,13 @@ export function buildInsightsCtx(
     top_hashtags: hashtagRows,
     hashtags_state: hashtagsState,
     cadence_label_pt: buildCadenceLabelPt({
-      weekly: null,
-      sufficient: false,
+      weekly: cadence.weekly,
+      sufficient: cadence.sufficient,
     }),
     ...(editorialPatternsForAi
       ? { editorial_patterns: editorialPatternsForAi }
       : {}),
   };
-
-  // Override with the real cadence label now that ctx.cadence is built.
-  ctx.cadence_label_pt = buildCadenceLabelPt({
-    weekly: ctx.cadence.weekly,
-    sufficient: ctx.cadence.sufficient,
-  });
 
   return { ctx, editorialPatternsForAi };
 }
