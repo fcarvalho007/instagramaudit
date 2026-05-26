@@ -4,6 +4,7 @@
  */
 
 import { LineChart, Line, ResponsiveContainer, YAxis } from "recharts";
+import { ratingColor } from "./chart-palette";
 
 const RATING_LABEL: Record<1 | 2 | 3 | 4 | 5, string> = {
   1: "1 · Muito mau",
@@ -15,13 +16,7 @@ const RATING_LABEL: Record<1 | 2 | 3 | 4 | 5, string> = {
 const RATING_EMOJI: Record<1 | 2 | 3 | 4 | 5, string> = {
   1: "😡", 2: "😕", 3: "😐", 4: "🙂", 5: "🤩",
 };
-const RATING_COLOR: Record<1 | 2 | 3 | 4 | 5, string> = {
-  1: "#E24B4A",
-  2: "#BA7517",
-  3: "#888780",
-  4: "#3772E5",
-  5: "#1D9E75",
-};
+const RATING_COLOR = ratingColor;
 
 export interface RatingDailyPoint {
   day: string;
@@ -70,8 +65,9 @@ export function RatingRanking({
                 style={{ width: `${barPct}%`, background: RATING_COLOR[k] }}
               />
             </div>
-            <div className="text-[13px] tabular-nums text-admin-text-primary text-right">
-              {n} · {Math.round(pct * 100)}%
+            <div className="text-[13px] tabular-nums text-admin-text-primary text-right whitespace-nowrap">
+              <span className="font-semibold">{n}</span>
+              <span className="text-admin-text-secondary"> · {Math.round(pct * 100)}%</span>
             </div>
             <div className="h-7" aria-hidden>
               <ResponsiveContainer width="100%" height="100%">
