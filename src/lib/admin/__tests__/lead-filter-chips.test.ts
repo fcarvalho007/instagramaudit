@@ -34,14 +34,28 @@ describe("matchesChip", () => {
   it("'todos' aceita qualquer estado", () => {
     expect(matchesChip(lead({ commercial_status: "arquivado" }), "todos")).toBe(true);
   });
-  it("'em_analise' aceita novo_pedido e em_analise", () => {
-    expect(matchesChip(lead({ commercial_status: "novo_pedido" }), "em_analise")).toBe(true);
-    expect(matchesChip(lead({ commercial_status: "em_analise" }), "em_analise")).toBe(true);
-    expect(matchesChip(lead({ commercial_status: "convertido" }), "em_analise")).toBe(false);
+  it("'expirados' aceita arquivado/expirado e nada mais", () => {
+    expect(matchesChip(lead({ commercial_status: "arquivado" }), "expirados")).toBe(true);
+    expect(matchesChip(lead({ commercial_status: "expirado" }), "expirados")).toBe(true);
+    expect(matchesChip(lead({ commercial_status: "pago_report" }), "expirados")).toBe(false);
   });
-  it("'arquivados' só aceita arquivado", () => {
-    expect(matchesChip(lead({ commercial_status: "arquivado" }), "arquivados")).toBe(true);
-    expect(matchesChip(lead({ commercial_status: "novo_pedido" }), "arquivados")).toBe(false);
+  it("'pagaram' aceita leads com pagamento confirmado", () => {
+    expect(
+      matchesChip(
+        lead({
+          commercial_status: "pago_report",
+          payment_summary: {
+            has_pending: false,
+            paid_products: ["report_single"],
+            last_payment_at: new Date().toISOString(),
+            pending_checkout_started_at: null,
+            total_paid_cents: 700,
+          },
+        }),
+        "pagaram",
+      ),
+    ).toBe(true);
+    expect(matchesChip(lead({ commercial_status: "novo_pedido" }), "pagaram")).toBe(false);
   });
 });
 
