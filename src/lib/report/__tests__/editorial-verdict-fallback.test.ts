@@ -101,4 +101,37 @@ describe("buildFallbackVerdict — qualifiers", () => {
     });
     expect(v.paragraph).not.toMatch(/\d+([.,]\d+)?\s*%/);
   });
+
+  it("sem cadenceLabelPt nem cadenceMethod: paragraph não tenta inventar cadência", () => {
+    const v = buildFallbackVerdict(baseMetrics(), t, {
+      hashtagsState: "absent",
+    });
+    expect(v.paragraph).not.toContain("Na amostra recente, o perfil publica");
+    expect(v.paragraph).toContain("Sem hashtags relevantes na amostra.");
+  });
+
+  it("fallback é diagnóstico, não prescritivo (paragraph sem verbos imperativos)", () => {
+    const v = buildFallbackVerdict(baseMetrics(), t, {
+      cadenceLabelPt: "cerca de 1 post por dia",
+      hashtagsState: "recurring",
+      topHashtags: ["lifestyle"],
+    });
+    // Imperativos típicos que NÃO devem aparecer no diagnóstico.
+    const prescriptive =
+      /\b(deves|tens de|aposta|publica mais|usa mais|cria|evita|reduz|aumenta|começa|experimenta)\b/i;
+    expect(v.paragraph).not.toMatch(prescriptive);
+  });
+
+  it("fallback não reutiliza marcadores do hero legacy mock", () => {
+    const v = buildFallbackVerdict(baseMetrics(), t, {
+      cadenceLabelPt: "cerca de 1 post por dia",
+      hashtagsState: "recurring",
+      topHashtags: ["lifestyle"],
+    });
+    // Hero mock antigo costumava conter "AI_INSIGHTS_MOCK" ou prefixos
+    // genéricos como "Insight principal:". O fallback não deve depender
+    // desse texto — confirma que não há leak.
+  expect(v.paragraph).not.toMatch(/AI_INSIGHTS_MOCK/i);
+  expect(v.paragraph).not.toMatch(/Insight principal:/i);
+  });
 });
