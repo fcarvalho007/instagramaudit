@@ -823,17 +823,19 @@ function BulletColumn({
 }) {
   const accent = tone === "success" ? "text-signal-success" : "text-signal-warning";
   const dot = tone === "success" ? "bg-signal-success" : "bg-signal-warning";
-  const borderLeft =
-    tone === "success" ? "border-l-2 border-signal-success" : "border-l-2 border-signal-warning";
+  const surface =
+    tone === "success"
+      ? "bg-signal-success/[0.06] border-l-2 border-signal-success"
+      : "bg-signal-warning/[0.07] border-l-2 border-signal-warning";
   const Icon = tone === "success" ? ArrowUpRight : ArrowDownRight;
 
   return (
-    <div className={cn("bg-white px-5 py-4 sm:px-6 sm:py-5", borderLeft, className)}>
+    <div className={cn("px-6 py-5 sm:px-7 sm:py-6", surface, className)}>
       <div className="flex items-start gap-2 mb-3">
         <Icon className={cn("h-3.5 w-3.5 mt-0.5", accent)} aria-hidden="true" />
         <span className={cn("text-eyebrow-sm", accent)}>{title}</span>
       </div>
-      <ul className="space-y-3">
+      <ul className="space-y-2.5">
         {items.map((it, i) => (
           <li key={i} className="flex gap-2.5 text-[15px] leading-[1.55]">
             <span
