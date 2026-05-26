@@ -6,20 +6,14 @@
  */
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type {
+  SocialinsiderFormatRef,
+  SocialinsiderInstagramContext,
+} from "./socialinsider-context";
 
-export interface SocialinsiderFormatRef {
-  postsPerMonth: number | null;
-  engagementPct: number | null;
-  sourceName: string;
-  sourceUrl: string | null;
-  dataRange: { from: string; to: string | null };
-}
+export type { SocialinsiderFormatRef, SocialinsiderInstagramContext };
 
-export interface SocialinsiderInstagramContext {
-  reel: SocialinsiderFormatRef | null;
-  carousel: SocialinsiderFormatRef | null;
-  image: SocialinsiderFormatRef | null;
-}
+// (Types re-exported above from the client-safe module.)
 
 type Row = {
   format: string;
