@@ -1,108 +1,75 @@
-## Objetivo
+# Fix: comentário do widget de feedback não persiste nem confirma envio
 
-Refinar `/precos` para respeitar o design system editorial (Fraunces + Inter) e substituir o fluxo "comprar" por um modal de **registo de interesse** alinhado com a fase de lançamento.
+## Diagnóstico
 
----
+Dois bugs ligados na mesma feature `BlockFeedback`:
 
-## Bloco 1 — Refinamento visual de `/precos`
+### Bug 1 — "Enviar" não dá feedback visual
+`src/components/report-redesign/v2/feedback/block-feedback.tsx`, estado `done`: o botão "Enviar" chama `submit(rating, comment)`. Em sucesso, `submit` faz `setStatus("done")` — mas o estado já é `"done"`, portanto a UI não muda. O utilizador vê o textarea exatamente como estava e fica sem saber se a mensagem foi enviada. Não há estado de loading no botão, nem confirmação final.
 
-Ficheiro: `src/components/pricing/pricing-page.tsx` (+ `public/locales/pt/pricing.json` se necessário).
+### Bug 2 — Comentário nunca chega ao /admin
+`src/routes/api/public/inline-feedback.ts` tem rate-limit de 3s por chave `handle:ip_hash`. Fluxo real do utilizador:
 
-Problemas detetados vs. design system:
-- `"0€"` no cartão Free é frio; deve ser **"Grátis"** (Fraunces, tom editorial).
-- Preços a `font-bold` — substituir por **Inter `font-semibold tabular-nums`** (consistente com restantes KPIs públicos).
-- Falta hierarquia editorial: títulos de plano (`h3`) são Inter — manter, mas adicionar **eyebrow Inter uppercase** acima e usar Fraunces apenas no preço grande do plano destacado para criar ritmo serif/sans.
-- `font-bold` removido em favor de `font-semibold` (peso permitido no DS).
-- Garantir `.text-eyebrow-sm` em todos os labels/badges (já está em parte).
-- Step numbers (1, 2, 3) em Fraunces — manter (decorativo editorial).
-- Confirmar tokens: nada de cores hardcoded; substituir `bg-white/80` por `bg-surface-elevated/80` se existir token equivalente (verificar `tokens-light.css`).
+1. Clique no emoji → POST 1 (rating, sem comentário) → 200 OK, regista no DB, marca timestamp em `recent`.
+2. Escreve comentário (< 3s depois normalmente) → clique Enviar → POST 2 (rating + comentário) → cai no `rateLimited()` → devolve `{ok:true}` opaco e **não escreve**.
+3. Resultado: o comentário desaparece silenciosamente. O admin `/admin/estudo-mercado` (que já lê `inline_report_feedback.comment` via `getMarketStudyBlocks` linhas 153‑165) nunca o vê.
 
-Sem alterações de layout/estrutura. Mobile-first preservado.
+Confirmado pela leitura de `src/server/admin/market-study.functions.ts`: a agregação está correta — o problema é só no write path.
 
----
+## Mudanças
 
-## Bloco 2 — Modal "Registo de interesse"
+### A. `src/routes/api/public/inline-feedback.ts`
 
-### UX
+Tratar o POST com `comment` como atualização do registo de rating anterior, não como insert novo:
 
-Ao clicar em CTA dos planos pagos (`single_report` ou `pack_5_reports`) abre um modal em vez de navegar para checkout:
+1. Adicionar ramo: se `comment` está presente:
+   - **Não aplicar rate-limit** (o utilizador acabou de escrever; é uma ação intencional). Mantém rate-limit para POSTs só de rating.
+   - Tentar `UPDATE inline_report_feedback SET comment = ? WHERE handle = ? AND block = ? AND ip_hash = ? AND created_at > now() - interval '15 minutes' AND comment IS NULL` ordenado por `created_at DESC LIMIT 1` (via `.select().single()` após filter, ou usar RPC). Como o cliente Supabase JS não faz UPDATE com LIMIT direto, implementar em dois passos: SELECT id da linha mais recente que satisfaz os filtros → UPDATE por id.
+   - Se nenhuma linha encontrada (ex.: utilizador veio direto comentar sem rating), fazer INSERT normal com o comentário.
+2. Se não há `comment`, manter comportamento atual (INSERT + rate-limit).
 
-1. **Cabeçalho** (Fraunces H2): *"Estamos em fase de lançamento"*
-2. **Parágrafo** (Inter): explica que ainda não há pagamento ativo; queremos perceber se, **considerando o que já viu nos relatórios**, pagaria mesmo este valor.
-3. **Campos** (todos opcionais exceto `would_pay`):
-   - `would_pay` (radio obrigatório): *Sim, pagaria* · *Talvez, depende* · *Não, ainda não*
-   - `price_fairness` (radio): *Barato* · *Justo* · *Caro*
-   - `email` (text, opcional): *"Avise-me quando abrir"*
-   - `comment` (textarea, opcional, máx 500): *"O que faria a diferença para sim?"*
-4. **CTA** (Inter): *"Registar interesse"* + nota fina sobre RGPD.
-5. **Estado de sucesso**: mensagem editorial curta + botão *"Voltar aos planos"*.
+Isto evita registos duplicados e garante que o comentário fica visível agregado ao mesmo evento de rating no admin.
 
-Modal usa `Dialog` shadcn já existente. Acessível (focus trap, ESC, `aria-describedby`).
+Sem mudanças de schema (tabela já tem `comment` nullable). Sem mudança no Zod.
 
-### Backend
+### B. `src/components/report-redesign/v2/feedback/block-feedback.tsx`
 
-Nova tabela `public.pricing_interest`:
-- `id uuid pk`
-- `pricing_option text check in ('single_report','pack_5_reports')`
-- `would_pay text check in ('sim','talvez','nao')` NOT NULL
-- `price_fairness text check in ('barato','justo','caro')` nullable
-- `email text` nullable + `email_normalized` gerado
-- `comment text` nullable (max 500 enforçado em validação)
-- `user_agent text`, `referrer text`, `created_at`
-- RLS: ativada, sem policies públicas (acesso apenas via service role).
+Adicionar estado final `"comment_sent"` para fechar o ciclo visual:
 
-Endpoint público: `src/routes/api/public/pricing-interest.ts`
-- `POST` com Zod (todos os limites min/max definidos).
-- Rate-limit simples por IP (3/min) reutilizando o padrão de `inline-feedback`.
-- Usa `supabaseAdmin` para insert.
+1. No handler do botão "Enviar":
+   - Pôr o botão em estado loading (`sending` local boolean) e desativá-lo durante o request.
+   - No sucesso, `setStatus("comment_sent")` (novo estado).
+   - No erro, mostrar a mensagem de erro já existente abaixo do textarea (reaproveitar `text-signal-danger`).
+2. Renderizar `comment_sent` como mensagem editorial centrada: ícone `CheckCircle2` (lucide, já no projeto) + título "Mensagem registada. Obrigado." + microcopy "Vamos lê-la com atenção." Mantém a mesma moldura visual do estado `done` para continuidade.
+3. Persistir no localStorage que já houve comentário (chave separada `${storageKey}:c`) para no próximo render hidratar diretamente em `comment_sent` em vez de re-mostrar o textarea.
 
-Tracking: continua a emitir `pricing_option_clicked` ao abrir; novo evento `pricing_interest_submitted` no envio.
+Sem novas dependências. Apenas tokens semânticos.
 
-### Admin (Estudo de mercado)
+### C. Sem mudanças no admin
 
-Adicionar 4ª tab **"Intenção de compra"** em `/admin/estudo-mercado`:
-- Total de registos por janela (7/30/90d)
-- Distribuição `would_pay` (donut)
-- Distribuição `price_fairness` por plano (barras agrupadas)
-- Top 20 comentários livres com email/UA
-- Sinal editorial determinístico (ex.: *"≥60% 'sim' + 'talvez' em N≥20 → preço a 7€ validado"*)
+`/admin/estudo-mercado` → `getMarketStudyBlocks` já lê `comment` da tabela e expõe na tab "Block Emojis". Assim que o write path é corrigido, comentários novos aparecem automaticamente (com filtro de janela 7/30/90 dias já existente).
 
-Server fn: `getPricingInterest` em `src/server/admin/market-study.functions.ts`.
+## Ficheiros
 
----
+- editar `src/routes/api/public/inline-feedback.ts`
+- editar `src/components/report-redesign/v2/feedback/block-feedback.tsx`
 
-## Detalhes técnicos
+## Validação
 
-- Migração nova (não editar existentes).
-- Tipos Supabase regenerados automaticamente após migração aprovada.
-- `route` API protegida por validação Zod estrita (sem PII em logs).
-- Sem dependências novas.
-- Sem alteração de `/report.example` nem de rotas existentes além das listadas.
+1. `bunx tsc --noEmit`
+2. `bunx vitest run`
+3. Manual no preview:
+   - Votar num emoji → ver estado "done" com textarea.
+   - Escrever mensagem → clicar Enviar → botão mostra loading → UI passa para "Mensagem registada. Obrigado.".
+   - Reload da página → estado hidrata em "comment_sent" (não volta a pedir comentário).
+4. Verificar no admin `/admin/estudo-mercado` → tab Block Emojis → janela 7 dias → ver o comentário na lista do bloco respectivo.
+5. (Opcional) `psql -c "select handle, block, rating, comment, created_at from public.inline_report_feedback order by created_at desc limit 5"` para confirmar que o comentário foi escrito no mesmo registo da rating.
 
----
+## Checkpoint
 
-## Ficheiros afetados
-
-**Novos**
-- `supabase/migrations/<ts>_pricing_interest.sql`
-- `src/components/pricing/pricing-interest-modal.tsx`
-- `src/routes/api/public/pricing-interest.ts`
-
-**Editados**
-- `src/components/pricing/pricing-page.tsx` (tipografia + abrir modal)
-- `public/locales/pt/pricing.json` (novas strings do modal + "Grátis")
-- `src/routes/admin.estudo-mercado.tsx` (nova tab)
-- `src/server/admin/market-study.functions.ts` (`getPricingInterest`)
-
----
-
-## Checkpoint ☐
-
-- ☐ Tipografia em `/precos` 100% Fraunces/Inter, sem `font-bold`, com tabular-nums nos preços
-- ☐ Cartão Free mostra "Grátis" (Fraunces) em vez de "0€"
-- ☐ CTAs pagos abrem modal (não navegam)
-- ☐ Modal valida e envia para `/api/public/pricing-interest`
-- ☐ Tabela `pricing_interest` criada com RLS e checks
-- ☐ Admin Estudo de Mercado mostra nova tab "Intenção de compra"
-- ☐ `bunx tsc --noEmit` 0 erros
-- ☐ `bunx vitest run` verde
+- ☐ Backend: comentário sem rate-limit; UPDATE no registo de rating recente do mesmo ip_hash; fallback insert.
+- ☐ Frontend: botão Enviar com estado loading + erro visível.
+- ☐ Novo estado `comment_sent` com confirmação clara, dentro da mesma moldura.
+- ☐ Hidratação localStorage para `comment_sent`.
+- ☐ Comentário visível em /admin/estudo-mercado sem alterações ao backend de admin.
+- ☐ tsc + vitest verdes.
