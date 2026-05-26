@@ -605,6 +605,7 @@ function IndexBlock({
   locale: string;
 }) {
   const clamped = Math.max(0, Math.min(100, value));
+  const hasValue = value > 0;
   const stage = stageFromScore(clamped);
   const tier =
     typeof followers === "number" && followers > 0
@@ -643,6 +644,31 @@ function IndexBlock({
     { key: "progress", label: t("identity.index.stage.progress", { defaultValue: "Em progresso" }) },
     { key: "emerging", label: t("identity.index.stage.emerging", { defaultValue: "Emergente" }) },
   ];
+  const currentStageLabel =
+    stages.find((s) => s.key === stage)?.label ?? stage;
+
+  const [methodOpen, setMethodOpen] = useState(false);
+
+  const sampleParts = [
+    tier
+      ? t("identity.method.sample.tier", {
+          tier,
+          defaultValue: `Escalão: ${tier}`,
+        })
+      : null,
+    typeof postsAnalyzed === "number" && postsAnalyzed > 0
+      ? t("identity.method.sample.posts", {
+          count: postsAnalyzed,
+          defaultValue: `Posts analisados: ${postsAnalyzed}`,
+        })
+      : null,
+    typeof cadenceWindowDays === "number" && cadenceWindowDays > 0
+      ? t("identity.method.sample.window", {
+          days: cadenceWindowDays,
+          defaultValue: `Janela: ${cadenceWindowDays} dias`,
+        })
+      : null,
+  ].filter(Boolean) as string[];
 
   return (
     <div className="shrink-0 sm:w-[280px] flex flex-col gap-5">
@@ -653,80 +679,97 @@ function IndexBlock({
         </span>
         <div className="flex items-baseline gap-1.5">
           <span className="font-display text-[3rem] leading-none font-semibold tabular-nums text-content-primary">
-            {clamped}
+            {hasValue ? clamped : "—"}
           </span>
           <span className="text-[15px] text-content-secondary tabular-nums">
             / 100
           </span>
         </div>
         <p className="text-[14px] leading-snug text-content-primary max-w-[260px]">
-          {subtitle}
+          {hasValue
+            ? subtitle
+            : t("identity.index.no_value", {
+                defaultValue: "Sem dados suficientes para calcular o índice.",
+              })}
         </p>
         <p className="text-xs leading-snug text-content-tertiary max-w-[260px]">
           {t("identity.index.microline", {
             defaultValue:
-              "Índice comparativo, construído a partir de 3 sinais do perfil.",
+              "Índice comparativo, calculado a partir de 3 sinais observados no perfil.",
           })}
         </p>
       </div>
 
       {/* Régua vertical de estágios */}
-      <div
-        className="flex gap-3"
-        role="img"
-        aria-label={t("identity.index.rail_aria", {
-          value: clamped,
-          defaultValue: `Índice ${clamped} de 100, estágio ${stage}`,
-        })}
-      >
-        <div className="flex flex-col w-1.5 rounded-full overflow-hidden bg-surface-muted">
-          {stages.map((s) => {
-            const isCurrent = s.key === stage;
-            return (
-              <div
-                key={s.key}
-                className={cn(
-                  "flex-1",
-                  isCurrent ? "bg-accent-primary" : "bg-transparent",
-                )}
-              />
-            );
+      {hasValue ? (
+        <div
+          className="flex gap-3 min-h-[104px]"
+          role="img"
+          aria-label={t("identity.index.rail_aria_full", {
+            value: clamped,
+            stage: currentStageLabel,
+            defaultValue: `Índice ${clamped} de 100, estágio ${currentStageLabel}`,
           })}
-        </div>
-        <ul className="flex flex-col justify-between text-xs leading-tight">
-          {stages.map((s) => {
-            const isCurrent = s.key === stage;
-            return (
-              <li
-                key={s.key}
-                className={cn(
-                  "flex flex-col",
-                  isCurrent ? "text-content-primary" : "text-content-tertiary",
-                )}
-              >
-                <span className={cn(isCurrent && "font-medium")}>
-                  {s.label}
-                </span>
-                {isCurrent ? (
-                  <span className="text-accent-primary font-medium tabular-nums mt-0.5">
-                    {t("identity.index.this_brand", {
-                      value: clamped,
-                      defaultValue: `▸ esta marca · ${clamped}`,
-                    })}
+        >
+          <div className="flex flex-col w-1.5 rounded-full overflow-hidden bg-surface-muted">
+            {stages.map((s) => {
+              const isCurrent = s.key === stage;
+              return (
+                <div
+                  key={s.key}
+                  className={cn(
+                    "flex-1",
+                    isCurrent ? "bg-accent-primary" : "bg-transparent",
+                  )}
+                />
+              );
+            })}
+          </div>
+          <ul className="flex flex-col justify-around text-xs leading-tight flex-1">
+            {stages.map((s) => {
+              const isCurrent = s.key === stage;
+              return (
+                <li
+                  key={s.key}
+                  className={cn(
+                    "flex flex-col",
+                    isCurrent ? "text-content-primary" : "text-content-tertiary",
+                  )}
+                >
+                  <span className={cn(isCurrent && "font-medium")}>
+                    {s.label}
                   </span>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
-      </div>
+                  {isCurrent ? (
+                    <span className="text-accent-primary font-medium tabular-nums mt-0.5 flex items-center gap-1">
+                      <span aria-hidden="true">▸</span>
+                      <span>
+                        {t("identity.index.this_brand", {
+                          value: clamped,
+                          defaultValue: `esta marca · ${clamped}`,
+                        })}
+                      </span>
+                    </span>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
 
       {/* "Como foi calculado" colapsável */}
-      <details className="group rounded-lg border border-border-default bg-white">
+      <details
+        className={cn(
+          "group rounded-lg border border-border-default transition-colors",
+          methodOpen ? "bg-surface-muted/50" : "bg-white",
+        )}
+        onToggle={(e) => setMethodOpen((e.target as HTMLDetailsElement).open)}
+      >
         <summary
+          aria-expanded={methodOpen}
           className={cn(
             "flex items-center justify-between gap-2 cursor-pointer list-none",
-            "px-3 py-2 text-xs font-medium text-content-secondary",
+            "px-3.5 py-3 text-xs font-medium text-content-secondary",
             "hover:text-content-primary transition-colors",
           )}
         >
@@ -734,11 +777,11 @@ function IndexBlock({
             {t("identity.method.toggle", { defaultValue: "Como foi calculado" })}
           </span>
           <ChevronDown
-            className="h-3.5 w-3.5 text-content-tertiary transition-transform group-open:rotate-180"
+            className="h-3.5 w-3.5 text-content-tertiary transition-transform duration-200 group-open:rotate-180"
             aria-hidden="true"
           />
         </summary>
-        <div className="px-3 pb-3 pt-1 space-y-2.5 text-xs leading-snug text-content-secondary">
+        <div className="px-3.5 pb-3.5 pt-1 space-y-2.5 text-xs leading-snug text-content-secondary">
           <p>
             {t("identity.method.signals_line", {
               defaultValue:
@@ -751,31 +794,8 @@ function IndexBlock({
                 "Comparado com o benchmark de envolvimento do escalão de referência (Nano · Micro · Mid · Macro · Mega), com base na atividade recente observada.",
             })}
           </p>
-          {tier || typeof postsAnalyzed === "number" || cadenceWindowDays ? (
-            <p className="text-content-tertiary">
-              {[
-                tier
-                  ? t("identity.method.sample.tier", {
-                      tier,
-                      defaultValue: `Escalão: ${tier}`,
-                    })
-                  : null,
-                typeof postsAnalyzed === "number" && postsAnalyzed > 0
-                  ? t("identity.method.sample.posts", {
-                      count: postsAnalyzed,
-                      defaultValue: `Posts analisados: ${postsAnalyzed}`,
-                    })
-                  : null,
-                typeof cadenceWindowDays === "number" && cadenceWindowDays > 0
-                  ? t("identity.method.sample.window", {
-                      days: cadenceWindowDays,
-                      defaultValue: `Janela: ${cadenceWindowDays} dias`,
-                    })
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
+          {sampleParts.length > 0 ? (
+            <p className="text-content-tertiary">{sampleParts.join(" · ")}</p>
           ) : null}
           <p className="text-content-tertiary italic">
             {t("identity.method.disclaimer", {
