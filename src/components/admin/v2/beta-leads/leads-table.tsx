@@ -40,7 +40,6 @@ import { adminFetch } from "@/lib/admin/fetch";
 import {
   KANBAN_COLUMNS,
   COMMERCIAL_STATUS_OPTIONS,
-  deriveKanbanColumn,
   type EnrichedLead,
 } from "@/lib/admin/kanban-columns";
 import { interpretFeedback } from "@/lib/admin/feedback-intent";
