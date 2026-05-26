@@ -3,6 +3,8 @@
  * número de respostas. Mostra média por linha à direita.
  */
 
+import { chartPalette } from "./chart-palette";
+
 const BLOCK_LABEL: Record<string, string> = {
   overview: "Visão geral",
   diagnostic: "Diagnóstico",
@@ -57,15 +59,17 @@ export function BlockHeatmap({ rows }: { rows: HeatmapBlock[] }) {
                 {([1, 2, 3, 4, 5] as const).map((k) => {
                   const v = r.counts[k];
                   const intensity = v === 0 ? 0 : 0.12 + (v / max) * 0.78;
+                  const blockLabel = BLOCK_LABEL[r.block] ?? r.block;
                   return (
                     <td key={k} className="px-1">
                       <div
                         className="flex h-9 items-center justify-center rounded-md text-[13px] font-semibold tabular-nums"
+                        title={`${blockLabel} · ${EMOJI[k]} ${k}/5 · ${v} ${v === 1 ? "resposta" : "respostas"}`}
                         style={{
                           background:
                             v === 0
                               ? "rgb(var(--admin-border) / 0.25)"
-                              : `rgba(55, 114, 229, ${intensity})`,
+                              : hexWithAlpha(chartPalette.accentPrimary, intensity),
                           color: intensity > 0.55 ? "#fff" : "rgb(var(--admin-text-primary))",
                         }}
                       >
@@ -87,4 +91,12 @@ export function BlockHeatmap({ rows }: { rows: HeatmapBlock[] }) {
       </table>
     </div>
   );
+}
+
+function hexWithAlpha(hex: string, alpha: number): string {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
