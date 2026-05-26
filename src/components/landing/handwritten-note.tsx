@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
+import { usePublicAppConfig } from "@/lib/config/use-app-config";
 import { AnimatedCounter } from "./animated-counter";
 
 interface HandwrittenNoteProps {
@@ -10,6 +11,7 @@ interface HandwrittenNoteProps {
 
 export function HandwrittenNote({ className }: HandwrittenNoteProps) {
   const { t } = useTranslation("landing");
+  const { freeMonthlyReportLimit } = usePublicAppConfig();
   const [arrowIn, setArrowIn] = useState(false);
   const [textIn, setTextIn] = useState(false);
 
@@ -45,7 +47,7 @@ export function HandwrittenNote({ className }: HandwrittenNoteProps) {
         style={{ transform: textIn ? "rotate(-6deg)" : "rotate(-6deg) translateY(4px)" }}
       >
         <span className="block whitespace-nowrap">
-          <AnimatedCounter to={2} delayMs={2100} durationMs={600} />{" "}
+          <AnimatedCounter to={freeMonthlyReportLimit} delayMs={2100} durationMs={600} />{" "}
           {t("handwritten.freeReportsSuffix")}
         </span>
       </div>
