@@ -435,7 +435,7 @@ export function EditorialIdentityCard({
       className="rounded-2xl border border-border-default bg-white shadow-card overflow-hidden"
     >
       {/* Zona macro */}
-      <div className="px-6 py-7 sm:px-7 sm:py-8 flex flex-col sm:flex-row sm:items-stretch gap-6 sm:gap-8">
+      <div className="px-6 py-7 sm:px-7 sm:py-8 flex flex-col sm:flex-row sm:items-stretch gap-6 sm:gap-10">
         <IndexBlock
           value={overall}
           engagementRatePct={keyMetrics?.engagementRate ?? null}
@@ -451,7 +451,7 @@ export function EditorialIdentityCard({
           locale={i18n.language}
         />
 
-        <div className="flex-1 min-w-0 space-y-3">
+        <div className="flex-1 min-w-0 space-y-3.5 sm:pl-8 sm:border-l sm:border-border-default">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-eyebrow-sm text-content-tertiary">
               {t("identity.eyebrow_verdict")}
@@ -556,7 +556,7 @@ export function EditorialIdentityCard({
       )}
 
       {/* Zona accionável */}
-      <div className="border-t border-border-default grid grid-cols-1 md:grid-cols-2">
+      <div className="border-t border-border-default grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border-default/60">
         <BulletColumn
           tone="success"
           title={t("identity.columns.strengths")}
@@ -566,7 +566,6 @@ export function EditorialIdentityCard({
           tone="warning"
           title={t("identity.columns.limits")}
           items={limits}
-          className="border-t md:border-t-0 md:border-l border-border-default"
         />
       </div>
     </article>
@@ -671,7 +670,7 @@ function IndexBlock({
   ].filter(Boolean) as string[];
 
   return (
-    <div className="shrink-0 sm:w-[280px] flex flex-col gap-5">
+    <div className="shrink-0 sm:w-[300px] flex flex-col gap-5 h-full pb-6 mb-2 border-b border-border-default sm:pb-0 sm:mb-0 sm:border-b-0">
       {/* Eyebrow + número + subtítulo + micro-linha */}
       <div className="space-y-2">
         <span className="text-eyebrow-sm text-content-tertiary">
@@ -703,7 +702,7 @@ function IndexBlock({
       {/* Régua vertical de estágios */}
       {hasValue ? (
         <div
-          className="flex gap-3 min-h-[104px]"
+          className="flex gap-3 min-h-[148px]"
           role="img"
           aria-label={t("identity.index.rail_aria_full", {
             value: clamped,
@@ -711,21 +710,21 @@ function IndexBlock({
             defaultValue: `Índice ${clamped} de 100, estágio ${currentStageLabel}`,
           })}
         >
-          <div className="flex flex-col w-1.5 rounded-full overflow-hidden bg-surface-muted">
+          <div className="flex flex-col w-2 gap-1 bg-surface-muted rounded-full p-0.5">
             {stages.map((s) => {
               const isCurrent = s.key === stage;
               return (
                 <div
                   key={s.key}
                   className={cn(
-                    "flex-1",
+                    "flex-1 rounded-full",
                     isCurrent ? "bg-accent-primary" : "bg-transparent",
                   )}
                 />
               );
             })}
           </div>
-          <ul className="flex flex-col justify-around text-xs leading-tight flex-1">
+          <ul className="flex flex-col justify-around text-[13px] leading-tight flex-1">
             {stages.map((s) => {
               const isCurrent = s.key === stage;
               return (
@@ -736,11 +735,11 @@ function IndexBlock({
                     isCurrent ? "text-content-primary" : "text-content-tertiary",
                   )}
                 >
-                  <span className={cn(isCurrent && "font-medium")}>
+                  <span className={cn(isCurrent && "text-[14px] font-medium")}>
                     {s.label}
                   </span>
                   {isCurrent ? (
-                    <span className="text-accent-primary font-medium tabular-nums mt-0.5 flex items-center gap-1">
+                    <span className="text-accent-primary font-medium tabular-nums mt-1 inline-flex items-center gap-1 self-start bg-accent-primary/10 px-2 py-0.5 rounded-md text-[12px]">
                       <span aria-hidden="true">▸</span>
                       <span>
                         {t("identity.index.this_brand", {
@@ -760,7 +759,7 @@ function IndexBlock({
       {/* "Como foi calculado" colapsável */}
       <details
         className={cn(
-          "group rounded-lg border border-border-default transition-colors",
+          "group rounded-lg border border-border-default transition-colors mt-auto",
           methodOpen ? "bg-surface-muted/50" : "bg-white",
         )}
         onToggle={(e) => setMethodOpen((e.target as HTMLDetailsElement).open)}
@@ -769,7 +768,7 @@ function IndexBlock({
           aria-expanded={methodOpen}
           className={cn(
             "flex items-center justify-between gap-2 cursor-pointer list-none",
-            "px-3.5 py-3 text-xs font-medium text-content-secondary",
+            "px-3 py-2.5 text-[11px] font-medium uppercase tracking-wide text-content-tertiary",
             "hover:text-content-primary transition-colors",
           )}
         >
@@ -777,7 +776,7 @@ function IndexBlock({
             {t("identity.method.toggle", { defaultValue: "Como foi calculado" })}
           </span>
           <ChevronDown
-            className="h-3.5 w-3.5 text-content-tertiary transition-transform duration-200 group-open:rotate-180"
+            className="h-3 w-3 text-content-tertiary transition-transform duration-200 group-open:rotate-180"
             aria-hidden="true"
           />
         </summary>
@@ -824,17 +823,19 @@ function BulletColumn({
 }) {
   const accent = tone === "success" ? "text-signal-success" : "text-signal-warning";
   const dot = tone === "success" ? "bg-signal-success" : "bg-signal-warning";
-  const borderLeft =
-    tone === "success" ? "border-l-2 border-signal-success" : "border-l-2 border-signal-warning";
+  const surface =
+    tone === "success"
+      ? "bg-signal-success/[0.06] border-l-2 border-signal-success"
+      : "bg-signal-warning/[0.07] border-l-2 border-signal-warning";
   const Icon = tone === "success" ? ArrowUpRight : ArrowDownRight;
 
   return (
-    <div className={cn("bg-white px-5 py-4 sm:px-6 sm:py-5", borderLeft, className)}>
+    <div className={cn("px-6 py-5 sm:px-7 sm:py-6", surface, className)}>
       <div className="flex items-start gap-2 mb-3">
         <Icon className={cn("h-3.5 w-3.5 mt-0.5", accent)} aria-hidden="true" />
         <span className={cn("text-eyebrow-sm", accent)}>{title}</span>
       </div>
-      <ul className="space-y-3">
+      <ul className="space-y-2.5">
         {items.map((it, i) => (
           <li key={i} className="flex gap-2.5 text-[15px] leading-[1.55]">
             <span
