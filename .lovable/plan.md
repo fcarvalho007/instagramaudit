@@ -1,74 +1,55 @@
 ## Objetivo
 
-Em mobile (411px), o bloco com as 3 métricas (Gostos · Comentários · Ritmo) e a coluna verde "O que já funciona" tem pouca leitura: subtítulos em cinza muito claro, eyebrows muito pequenos, e os bullets das forças num cinza secundário que perde contraste. Subir a qualidade visual e a legibilidade sem reorganizar o layout.
+Endurecer a camada de dados pública do Instagram (Apify) sem mudar comportamento: centralizar o limite de posts, documentar input vs derivado, e adicionar testes-guarda. Zero chamadas a Apify, zero alteração de UI/copy/preços.
 
-Âmbito: apenas presentação (`editorial-identity-card.tsx`). Sem dados, i18n ou lógica.
+## Ficheiros a alterar
 
----
+1. **`src/lib/analysis/constants.ts`** (novo)
+   - Exporta `PUBLIC_INSTAGRAM_POSTS_LIMIT = 12` com JSDoc explicando que é o cap aplicado tanto ao `resultsLimit` enviado ao Apify como ao slice defensivo em `enrichPosts`.
+   - Exporta `APIFY_PUBLIC_DATA_CONTRACT` (objeto `as const`) com duas listas: `fields_from_apify` e `derived_internally`, conforme o briefing. Funciona como contrato vivo e é testável.
 
-## 1. MetricsStrip (linhas 711-738)
+2. **`src/routes/api/analyze-public-v1.ts`**
+   - Remover constante local `POSTS_LIMIT` (linha 95); importar `PUBLIC_INSTAGRAM_POSTS_LIMIT` de `@/lib/analysis/constants`.
+   - Substituir `resultsLimit: POSTS_LIMIT` (linha 223) pela constante centralizada.
+   - Expandir o comentário junto ao input do actor (linhas 229-232) para deixar explícito:
+     - `directUrls`: 1 URL = 1 perfil.
+     - `maxItems: 1`: um perfil por run (não 1 post).
+     - `resultsLimit: PUBLIC_INSTAGRAM_POSTS_LIMIT`: até 12 posts dentro de `latestPosts[]` desse perfil.
+     - Nota anti-confusão: nunca significa 12 perfis.
 
-**Container**: passa a respirar mais em mobile.
-- Padding mobile: `px-5 py-5` → `px-5 py-4.5` mantém, mas reduzir o gap vertical entre items quando empilhados:
-  - Adicionar `divide-y divide-border-default sm:divide-y-0` para ter separadores subtis em vez do `border-t` atual (mais limpo).
+3. **`src/lib/analysis/normalize.ts`**
+   - Remover `const POSTS_LIMIT = 12` (linha 257); importar `PUBLIC_INSTAGRAM_POSTS_LIMIT` e usá-lo no slice de `enrichPosts` (linha 520) e no JSDoc (linha 513).
+   - Acrescentar bloco de comentário no topo (ou imediatamente antes de `normalizeProfile` e `enrichPosts`) a explicar:
+     - Apify devolve campos públicos de perfil + `latestPosts[]`.
+     - Engagement rate, cadência semanal, distribuição de formatos, hashtags/mentions e benchmark são derivados internamente (não vêm do Apify).
+     - Apify não fornece reach, impressions, saves, profile visits ou stories.
+     - `followers_count` é gating: ausente → `normalizeProfile` devolve `null` → análise falha de forma segura (sem benchmark fiável).
 
-**Eyebrow (label "GOSTOS · MÉDIA")** (linha 726):
-- Antes: `text-eyebrow-sm text-content-tertiary` (~10-11px, cinza claro)
-- Depois: `text-eyebrow-sm text-content-secondary` (mesmo tamanho mas tom mais escuro — mais legível em mobile sem mudar hierarquia)
+4. **`src/lib/analysis/__tests__/constants.test.ts`** (novo)
+   - Confirma `PUBLIC_INSTAGRAM_POSTS_LIMIT === 12`.
+   - Confirma que a string source de `src/routes/api/analyze-public-v1.ts` referencia `PUBLIC_INSTAGRAM_POSTS_LIMIT` no input do actor (leitura via `fs.readFileSync`, sem importar a rota — evita arrastar deps de servidor, padrão já usado em `analyze-public-v1-normalize.test.ts`).
+   - Confirma que `enrichPosts` recebendo 20 posts brutos retorna no máximo `PUBLIC_INSTAGRAM_POSTS_LIMIT`.
+   - Confirma que `APIFY_PUBLIC_DATA_CONTRACT.fields_from_apify` inclui chaves-âncora (`username`, `followers_count`, `caption`, `is_pinned`) e que `derived_internally` inclui (`engagement_rate`, `weekly_cadence`, `hashtags`, `benchmark_positioning`).
 
-**Valor numérico** (linha 729):
-- Antes: `text-[1.625rem]` (26px) em todos os ecrãs
-- Depois: `text-[1.75rem] md:text-[1.625rem]` — ligeiramente maior em mobile (28px) para dar peso ao número, voltando aos 26px em desktop onde a strip é horizontal e mais densa.
+5. **`src/lib/analysis/__tests__/normalize-pinned-cadence.test.ts`** (novo, leve)
+   - Reforça o invariante já coberto em `snapshot-pinned-toppost.test.ts` ao nível de `enrichPosts`: posts com `isPinned: true` continuam presentes no array (com `is_pinned: true`) e com hashtags/captions extraídas, garantindo que mexer na normalização não os apaga acidentalmente. A exclusão de pinned do cálculo de cadência continua a viver na camada `snapshot-to-report-data` e mantém o teste existente.
 
-**Unidade "por post"** (linha 732):
-- Antes: `text-sm text-content-secondary` (14px)
-- Depois: `text-[15px] text-content-secondary` — emparelha melhor com o número maior.
+## Fora de scope
 
-**Subtítulo ("0,19% dos seguidores" / "boa conversa" / "ritmo saudável")** (linha 734):
-- Antes: `mt-1.5 text-xs text-content-tertiary leading-snug` (12px, cinza muito claro — quase ilegível em mobile)
-- Depois: `mt-2 text-[13px] text-content-secondary leading-snug` — sobe 1px e troca para o tom secundário (mais escuro, mais próximo de preto). Mantém-se claramente abaixo do número na hierarquia mas torna-se legível.
+- Não alterar o nome do actor.
+- Não alterar `resultsLimit` (mantém-se 12).
+- Sem chamadas a Apify nos testes (tudo puro / fixtures).
+- Sem mexer em UI, prompts OpenAI, preços, gates, admin CRM, `/report.example`.
 
----
+## Validação
 
-## 2. BulletColumn "O que já funciona" / "O que limita" (linhas 604-625)
+- `bunx tsc --noEmit`
+- `bunx vitest run` (espera-se 509 anteriores + ≈4 novos a passar)
 
-**Padding mobile** (linha 605):
-- Antes: `px-5 py-4 sm:px-6 sm:py-5`
-- Depois: `px-5 py-5 sm:px-6 sm:py-5` — mais ar vertical em mobile.
+## Entregáveis no fim da implementação
 
-**Eyebrow do título** (linha 608):
-- Antes: `text-eyebrow-sm` (cinza secundário)
-- Manter classe mas garantir `font-semibold` (já vem do utilitário) — sem alteração necessária se já contrasta.
-
-**Texto dos bullets** (linha 612):
-- Antes: `flex gap-2 text-[15px] leading-relaxed` + `text-content-secondary` no texto (linha 617)
-- Depois: `flex gap-2.5 text-[15px] md:text-[15px] leading-[1.55]` + `text-content-primary` no texto (substituir o `text-content-secondary` da linha 617 por `text-content-primary`). O destaque (`it.destaque`) já vai a primary com font-medium; o detalhe a primary com peso normal mantém o contraste hierárquico via peso, não via cor. Resultado: o parágrafo inteiro torna-se mais escuro e legível, especialmente em ecrãs OLED móveis.
-
-**Bullet dot** (linha 614):
-- Antes: `mt-1.5 h-1.5 w-1.5`
-- Depois: `mt-[7px] h-1.5 w-1.5` — pequeno ajuste de alinhamento óptico com a nova line-height.
-
-**Spacing entre itens** (linha 610):
-- Antes: `space-y-2.5`
-- Depois: `space-y-3` — um pouco mais de ar entre bullets em mobile.
-
----
-
-## Não alterar
-
-- Estrutura do grid (1 col em mobile, 3 em sm) do MetricsStrip — empilhamento vertical já é o ideal em 411px.
-- Border vermelho/verde lateral (`border-l-2 border-signal-success/warning`) — assinatura visual do bloco, manter.
-- Ícones, copy ou i18n.
-- Score gauge, ReferenceBar, ou veredicto (já tratados no prompt anterior).
-- Card de diagnóstico (Bloco 02) — fora de scope.
-
----
-
-## Checkpoint
-
-- [ ] MetricsStrip: número 28px em mobile, subtitle 13px em `text-content-secondary` (legível)
-- [ ] BulletColumn: corpo dos bullets a `text-content-primary` com line-height 1.55
-- [ ] Mobile 411px: subtítulos das métricas perfeitamente legíveis sem zoom
-- [ ] Desktop ≥768px: nenhum desvio visível (número volta a 26px, separadores horizontais como hoje)
-- [ ] `bunx tsc --noEmit` passa
-- [ ] `bunx vitest run` passa
+1. Lista de ficheiros alterados.
+2. Localização única do limite: `src/lib/analysis/constants.ts` → `PUBLIC_INSTAGRAM_POSTS_LIMIT`.
+3. Confirmação de que pinned continua excluído de cadência (teste `snapshot-pinned-toppost.test.ts` mantém-se verde).
+4. Confirmação de que `APIFY_PUBLIC_DATA_CONTRACT` documenta Apify vs derivado.
+5. Resultados de `tsc` e `vitest`.
