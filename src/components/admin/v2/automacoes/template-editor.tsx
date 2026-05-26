@@ -245,8 +245,8 @@ export function TemplateEditor({ templateKey }: { templateKey: string }) {
               disabled={saving || !dirty}
               className="rounded-md border px-3 py-1.5 text-[12px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
               style={{
-                background: "rgb(var(--admin-accent-500))",
-                borderColor: "rgb(var(--admin-accent-500))",
+                background: "rgb(var(--admin-button-dark))",
+                borderColor: "rgb(var(--admin-button-dark))",
               }}
             >
               {saving ? "A guardar…" : dirty ? "Guardar alterações" : "Guardado"}
