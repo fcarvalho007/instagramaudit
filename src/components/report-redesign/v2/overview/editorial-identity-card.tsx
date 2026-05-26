@@ -73,6 +73,14 @@ interface EditorialIdentityCardProps {
   /** Verdadeiro quando pelo menos uma hashtag aparece em >= 2 publicações.
    *  `false` injecta "Sem hashtags recorrentes na amostra." no fallback. */
   hasRecurringHashtags?: boolean | null;
+  /** Frase humana em pt-PT que descreve a cadência (e.g. "cerca de 1
+   *  post a cada 2–3 dias"). Quando presente, embebida no fallback. */
+  cadenceLabelPt?: string | null;
+  /** Estado diagnóstico das hashtags (recurring/weak/absent). Tem
+   *  prioridade sobre `hasRecurringHashtags` quando presente. */
+  hashtagsState?: "recurring" | "weak" | "absent" | null;
+  /** Tags top a citar quando `hashtagsState === "recurring"`. */
+  topHashtags?: ReadonlyArray<string> | null;
 }
 
 interface EditorialCopy {
@@ -294,6 +302,9 @@ export function EditorialIdentityCard({
   cadenceMethod,
   cadenceWindowDays,
   hasRecurringHashtags,
+  cadenceLabelPt,
+  hashtagsState,
+  topHashtags,
 }: EditorialIdentityCardProps) {
   const { t, i18n } = useTranslation("report");
 
@@ -320,6 +331,9 @@ export function EditorialIdentityCard({
     cadenceMethod: cadenceMethod ?? null,
     cadenceWindowDays: cadenceWindowDays ?? null,
     hasRecurringHashtags: hasRecurringHashtags ?? null,
+    cadenceLabelPt: cadenceLabelPt ?? null,
+    hashtagsState: hashtagsState ?? null,
+    topHashtags: topHashtags ?? null,
   });
   const resolution = deriveEditorialVerdict(
     aiVerdict ?? null,

@@ -17,6 +17,11 @@ import { EngagementCardRefined } from "./report-overview-engagement";
 import { FrequencyCard } from "./overview/frequency-card";
 import { FormatCard, type FormatEntry } from "./overview/format-card";
 import { PostComparisonBlock } from "./report-post-comparison";
+import {
+  buildCadenceLabelPt,
+  classifyHashtagsState,
+  pickHashtagsForVerdict,
+} from "@/lib/report/cadence-label";
 
 export interface Props {
   result: AdapterResult;
@@ -135,6 +140,25 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
           hasRecurringHashtags={
             (result.data.topHashtags ?? []).some((h) => (h.uses ?? 0) >= 2)
           }
+          cadenceLabelPt={buildCadenceLabelPt({
+            weekly: enriched.cadence.sufficient
+              ? (enriched.cadence.weekly ?? null)
+              : null,
+            sufficient: enriched.cadence.sufficient,
+          })}
+          hashtagsState={classifyHashtagsState(
+            (result.data.topHashtags ?? []).map((h) => ({
+              tag: h.tag,
+              uses: h.uses,
+            })),
+          )}
+          topHashtags={pickHashtagsForVerdict(
+            (result.data.topHashtags ?? []).map((h) => ({
+              tag: h.tag,
+              uses: h.uses,
+            })),
+            2,
+          )}
         />
       )}
 

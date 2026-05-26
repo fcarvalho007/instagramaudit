@@ -35,6 +35,22 @@ export interface FallbackQualifiers {
     | null;
   cadenceWindowDays?: number | null;
   hasRecurringHashtags?: boolean | null;
+  /**
+   * Pre-built pt-PT cadence sentence (e.g. "cerca de 1 post por dia").
+   * When present, takes precedence over the `cadenceMethod` qualifier and
+   * is embedded verbatim as "Na amostra recente, o perfil publica {label}."
+   */
+  cadenceLabelPt?: string | null;
+  /**
+   * Diagnostic state derived from `top_hashtags`. When provided overrides
+   * `hasRecurringHashtags`:
+   *   - "recurring" → quote up to 2 tags as "Hashtags recorrentes: #a, #b."
+   *   - "weak"      → "Uso pontual de hashtags, sem assinatura clara."
+   *   - "absent"    → "Sem hashtags relevantes na amostra."
+   */
+  hashtagsState?: "recurring" | "weak" | "absent" | null;
+  /** Tags (lowercased, sem `#`) usadas para construir a frase recorrente. */
+  topHashtags?: ReadonlyArray<string> | null;
 }
 
 type FallbackKey =
@@ -92,14 +108,39 @@ export function buildFallbackVerdict(
   const baseParagraph = t(`identity.fallback.${key}.paragraph`);
 
   const qualifierSentences: string[] = [];
-  if (qualifiers.cadenceMethod && qualifiers.cadenceMethod !== "insufficient") {
+  if (
+    typeof qualifiers.cadenceLabelPt === "string" &&
+    qualifiers.cadenceLabelPt.trim().length > 0
+  ) {
+    qualifierSentences.push(
+      `Na amostra recente, o perfil publica ${qualifiers.cadenceLabelPt.trim()}.`,
+    );
+  } else if (
+    qualifiers.cadenceMethod &&
+    qualifiers.cadenceMethod !== "insufficient"
+  ) {
     const qKey = qualifiers.cadenceMethod;
     const sentence = t(`identity.fallback_cadence_qualifier.${qKey}`, {
       defaultValue: "",
     });
     if (sentence) qualifierSentences.push(sentence);
   }
-  if (qualifiers.hasRecurringHashtags === false) {
+  if (qualifiers.hashtagsState) {
+    if (qualifiers.hashtagsState === "recurring") {
+      const tags = (qualifiers.topHashtags ?? [])
+        .slice(0, 2)
+        .map((tag) => (tag.startsWith("#") ? tag : `#${tag}`));
+      if (tags.length > 0) {
+        qualifierSentences.push(
+          `Hashtags recorrentes na amostra: ${tags.join(", ")}.`,
+        );
+      }
+    } else if (qualifiers.hashtagsState === "weak") {
+      qualifierSentences.push("Uso pontual de hashtags, sem assinatura clara.");
+    } else if (qualifiers.hashtagsState === "absent") {
+      qualifierSentences.push("Sem hashtags relevantes na amostra.");
+    }
+  } else if (qualifiers.hasRecurringHashtags === false) {
     const sentence = t("identity.fallback_hashtags_absent", {
       defaultValue: "",
     });
