@@ -1,4 +1,9 @@
 {
   "loading": "A carregar…",
-  "error": "Algo correu mal"
+  "error": "Algo correu mal",
+  "brand": {
+    "platformName": "AuditProfiles",
+    "productName": "Auditoria de Perfil Instagram",
+    "startingWith": "Começámos pelo Instagram."
+  }
 }

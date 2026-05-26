@@ -24,6 +24,10 @@ export const LEGAL = {
   domain: "auditprofiles.com",
   operatorCity: "Leiria, Portugal",
   productName: "AuditProfiles",
+  // Nome do serviço/produto atual (MVP focado em Instagram).
+  // Usado para clarificar a oferta concreta vs nome da plataforma.
+  primaryProductName: "Instagram Profile Audit",
+  ptProductName: "Auditoria de Perfil Instagram",
 } as const;
 
 export type LegalIdentity = typeof LEGAL;
