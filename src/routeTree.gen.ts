@@ -118,6 +118,7 @@ import { Route as ApiAdminReportRequestsDailyRouteImport } from './routes/api/ad
 import { Route as ApiAdminReportRequestsIdRouteImport } from './routes/api/admin/report-requests.$id'
 import { Route as ApiAdminReportDetailIdRouteImport } from './routes/api/admin/report-detail.$id'
 import { Route as ApiAdminProfilesMetricsRouteImport } from './routes/api/admin/profiles.metrics'
+import { Route as ApiAdminProfilesListRouteImport } from './routes/api/admin/profiles.list'
 import { Route as ApiAdminLeadsKanbanIdRouteImport } from './routes/api/admin/leads-kanban.$id'
 import { Route as ApiAdminLeadTimelineIdRouteImport } from './routes/api/admin/lead-timeline.$id'
 import { Route as ApiAdminKnowledgeSuggestionsRouteImport } from './routes/api/admin/knowledge.suggestions'
@@ -713,6 +714,11 @@ const ApiAdminProfilesMetricsRoute = ApiAdminProfilesMetricsRouteImport.update({
   path: '/api/admin/profiles/metrics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminProfilesListRoute = ApiAdminProfilesListRouteImport.update({
+  id: '/api/admin/profiles/list',
+  path: '/api/admin/profiles/list',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminLeadsKanbanIdRoute = ApiAdminLeadsKanbanIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -898,6 +904,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/knowledge/suggestions': typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
   '/api/admin/lead-timeline/$id': typeof ApiAdminLeadTimelineIdRoute
   '/api/admin/leads-kanban/$id': typeof ApiAdminLeadsKanbanIdRoute
+  '/api/admin/profiles/list': typeof ApiAdminProfilesListRoute
   '/api/admin/profiles/metrics': typeof ApiAdminProfilesMetricsRoute
   '/api/admin/report-detail/$id': typeof ApiAdminReportDetailIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
@@ -1024,6 +1031,7 @@ export interface FileRoutesByTo {
   '/api/admin/knowledge/suggestions': typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
   '/api/admin/lead-timeline/$id': typeof ApiAdminLeadTimelineIdRoute
   '/api/admin/leads-kanban/$id': typeof ApiAdminLeadsKanbanIdRoute
+  '/api/admin/profiles/list': typeof ApiAdminProfilesListRoute
   '/api/admin/profiles/metrics': typeof ApiAdminProfilesMetricsRoute
   '/api/admin/report-detail/$id': typeof ApiAdminReportDetailIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
@@ -1152,6 +1160,7 @@ export interface FileRoutesById {
   '/api/admin/knowledge/suggestions': typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
   '/api/admin/lead-timeline/$id': typeof ApiAdminLeadTimelineIdRoute
   '/api/admin/leads-kanban/$id': typeof ApiAdminLeadsKanbanIdRoute
+  '/api/admin/profiles/list': typeof ApiAdminProfilesListRoute
   '/api/admin/profiles/metrics': typeof ApiAdminProfilesMetricsRoute
   '/api/admin/report-detail/$id': typeof ApiAdminReportDetailIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
@@ -1281,6 +1290,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/suggestions'
     | '/api/admin/lead-timeline/$id'
     | '/api/admin/leads-kanban/$id'
+    | '/api/admin/profiles/list'
     | '/api/admin/profiles/metrics'
     | '/api/admin/report-detail/$id'
     | '/api/admin/report-requests/$id'
@@ -1407,6 +1417,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/suggestions'
     | '/api/admin/lead-timeline/$id'
     | '/api/admin/leads-kanban/$id'
+    | '/api/admin/profiles/list'
     | '/api/admin/profiles/metrics'
     | '/api/admin/report-detail/$id'
     | '/api/admin/report-requests/$id'
@@ -1534,6 +1545,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/suggestions'
     | '/api/admin/lead-timeline/$id'
     | '/api/admin/leads-kanban/$id'
+    | '/api/admin/profiles/list'
     | '/api/admin/profiles/metrics'
     | '/api/admin/report-detail/$id'
     | '/api/admin/report-requests/$id'
@@ -1640,6 +1652,7 @@ export interface RootRouteChildren {
   ApiAdminKnowledgeSourcesRoute: typeof ApiAdminKnowledgeSourcesRoute
   ApiAdminKnowledgeSuggestionsRoute: typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
   ApiAdminLeadTimelineIdRoute: typeof ApiAdminLeadTimelineIdRoute
+  ApiAdminProfilesListRoute: typeof ApiAdminProfilesListRoute
   ApiAdminProfilesMetricsRoute: typeof ApiAdminProfilesMetricsRoute
   ApiAdminReportDetailIdRoute: typeof ApiAdminReportDetailIdRoute
   ApiAdminSistemaAlertsRoute: typeof ApiAdminSistemaAlertsRouteWithChildren
@@ -2432,6 +2445,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminProfilesMetricsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/profiles/list': {
+      id: '/api/admin/profiles/list'
+      path: '/api/admin/profiles/list'
+      fullPath: '/api/admin/profiles/list'
+      preLoaderRoute: typeof ApiAdminProfilesListRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/leads-kanban/$id': {
       id: '/api/admin/leads-kanban/$id'
       path: '/$id'
@@ -2796,6 +2816,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminKnowledgeSuggestionsRoute:
     ApiAdminKnowledgeSuggestionsRouteWithChildren,
   ApiAdminLeadTimelineIdRoute: ApiAdminLeadTimelineIdRoute,
+  ApiAdminProfilesListRoute: ApiAdminProfilesListRoute,
   ApiAdminProfilesMetricsRoute: ApiAdminProfilesMetricsRoute,
   ApiAdminReportDetailIdRoute: ApiAdminReportDetailIdRoute,
   ApiAdminSistemaAlertsRoute: ApiAdminSistemaAlertsRouteWithChildren,
