@@ -226,69 +226,108 @@ export function BlockFeedback({
     <section
       aria-label="Feedback do bloco"
       className={cn(
-        "py-8 sm:py-10 text-center space-y-4",
+        "py-10 sm:py-14",
         className,
       )}
     >
-      <p className="text-eyebrow-sm text-content-tertiary">
-        Como foi até aqui?
-      </p>
-
       <div
-        className="flex items-center justify-center gap-3 sm:gap-5"
-        onMouseLeave={() => setHover(0)}
+        className={cn(
+          "mx-auto max-w-4xl bg-surface-primary border border-border-default",
+          "px-6 py-10 sm:px-12 sm:py-14 text-center",
+          "shadow-[0_2px_15px_rgba(15,23,42,0.03)]",
+        )}
       >
-        {RATINGS.map((item) => {
-          const isHovered = hover === item.value;
-          const isSelected = rating === item.value;
-          const dimmed = display > 0 && !isHovered && !isSelected;
-          return (
-            <button
-              key={item.value}
-              type="button"
-              onClick={() => {
-                setRating(item.value);
-                void submitRating(item.value);
-              }}
-              onMouseEnter={() => setHover(item.value)}
-              onFocus={() => setHover(item.value)}
-              onBlur={() => setHover(0)}
-              disabled={status === "submitting"}
-              aria-label={`${item.value} de 5: ${item.label}`}
-              className={cn(
-                "text-3xl sm:text-4xl transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-full",
-                "hover:scale-110 active:scale-95",
-                dimmed ? "opacity-40 grayscale" : "opacity-100 grayscale-0",
-                (isHovered || isSelected) && "scale-110",
-                status === "submitting" && "cursor-wait",
-              )}
-            >
-              {item.emoji}
-            </button>
-          );
-        })}
-      </div>
+        <p className="text-eyebrow-sm text-content-tertiary">
+          Como foi até aqui?
+        </p>
 
-      <div className="h-6 flex items-center justify-center">
-        <p
+        <h3
           className={cn(
-            "text-base font-semibold text-content-primary transition-opacity duration-200",
-            active ? "opacity-100" : "opacity-0",
+            "mt-5 font-serif italic font-normal leading-tight",
+            "text-content-primary text-3xl sm:text-4xl md:text-[2.75rem]",
           )}
         >
-          {active?.label ?? "\u00a0"}
-        </p>
+          Uma breve pausa para te ouvirmos
+        </h3>
+
+        <div
+          className="mt-10 flex items-center justify-center gap-4 sm:gap-8"
+          onMouseLeave={() => setHover(0)}
+        >
+          {RATINGS.map((item) => {
+            const isHovered = hover === item.value;
+            const isSelected = rating === item.value;
+            const dimmed = display > 0 && !isHovered && !isSelected;
+            const highlighted = isHovered || isSelected;
+            return (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => {
+                  setRating(item.value);
+                  void submitRating(item.value);
+                }}
+                onMouseEnter={() => setHover(item.value)}
+                onFocus={() => setHover(item.value)}
+                onBlur={() => setHover(0)}
+                disabled={status === "submitting"}
+                aria-label={`${item.value} de 5: ${item.label}`}
+                className={cn(
+                  "group flex flex-col items-center gap-3 transition-all duration-200",
+                  "focus:outline-none rounded-full",
+                  "hover:-translate-y-1 active:translate-y-0",
+                  status === "submitting" && "cursor-wait",
+                )}
+              >
+                <span
+                  className={cn(
+                    "flex h-14 w-14 items-center justify-center rounded-full",
+                    "bg-surface-muted text-2xl transition-all duration-200",
+                    "ring-1 ring-transparent",
+                    "group-hover:bg-accent-primary/10 group-hover:ring-accent-primary/40",
+                    "group-focus-visible:ring-2 group-focus-visible:ring-accent-primary/60",
+                    highlighted && "bg-accent-primary/10 ring-accent-primary/40",
+                    dimmed && "opacity-40 grayscale",
+                  )}
+                >
+                  <span className="opacity-90 group-hover:opacity-100">
+                    {item.emoji}
+                  </span>
+                </span>
+                <span
+                  className={cn(
+                    "text-eyebrow-sm transition-opacity duration-200",
+                    highlighted
+                      ? "text-accent-primary opacity-100"
+                      : "text-content-tertiary opacity-0 group-hover:opacity-100",
+                  )}
+                >
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-10 mx-auto max-w-sm">
+          <p
+            className={cn(
+              "text-sm leading-relaxed transition-colors",
+              active ? "text-content-secondary" : "text-content-tertiary",
+            )}
+          >
+            {active
+              ? "Obrigado. Vais ver, ajuda mesmo."
+              : "Estamos em beta. O teu clique ajuda-nos a afinar o relatório."}
+          </p>
+        </div>
+
+        {status === "error" && (
+          <p className="mt-3 text-xs text-signal-danger" aria-live="polite">
+            Não foi possível registar. Tenta mais tarde.
+          </p>
+        )}
       </div>
-
-      <p className="text-xs text-content-tertiary max-w-md mx-auto">
-        Estamos em beta. O teu clique ajuda-nos a afinar o relatório.
-      </p>
-
-      {status === "error" && (
-        <p className="text-xs text-signal-danger">
-          Não foi possível registar. Tenta mais tarde.
-        </p>
-      )}
     </section>
   );
 }
