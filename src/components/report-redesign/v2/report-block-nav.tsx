@@ -41,7 +41,8 @@ interface SidebarProfile {
 interface SidebarProps {
   variant: ReportVariant;
   features: VariantFeatures;
-  profile: SidebarProfile;
+  profile?: SidebarProfile;
+  profiles?: SidebarProfile[];
 }
 
 // ── Item builder ─────────────────────────────────────────────────────
@@ -97,35 +98,94 @@ function VariantBadge({ variant }: { variant: ReportVariant }) {
   return null;
 }
 
-function ProfileHeader({ profile }: { profile: SidebarProfile }) {
+function normalizeProfiles(
+  profile?: SidebarProfile,
+  profiles?: SidebarProfile[],
+): SidebarProfile[] {
+  if (profiles && profiles.length > 0) return profiles;
+  if (profile) return [profile];
+  return [];
+}
+
+function formatHandle(handle: string) {
+  return handle.startsWith("@") ? handle : `@${handle}`;
+}
+
+function ProfileAvatar({
+  profile,
+  size = "md",
+  ringOffset = true,
+}: {
+  profile: SidebarProfile;
+  size?: "md" | "sm";
+  ringOffset?: boolean;
+}) {
   const { t } = useTranslation("report");
-  const handle = profile.handle.startsWith("@") ? profile.handle : `@${profile.handle}`;
+  const handle = formatHandle(profile.handle);
+  const sizeCls = size === "md" ? "size-10 text-sm" : "size-7 text-[11px]";
+  const ringCls = ringOffset
+    ? "ring-1 ring-border-default ring-offset-2 ring-offset-white"
+    : "ring-2 ring-white";
+  if (profile.avatarUrl) {
+    return (
+      <img
+        src={`/api/public/ig-thumb?url=${encodeURIComponent(profile.avatarUrl)}`}
+        alt={t("nav.avatar_alt", { handle })}
+        loading="eager"
+        decoding="async"
+        onError={(e) => {
+          (e.currentTarget as HTMLImageElement).style.display = "none";
+        }}
+        className={cn("rounded-full object-cover", sizeCls, ringCls)}
+      />
+    );
+  }
+  return (
+    <div
+      aria-hidden="true"
+      className={cn(
+        "rounded-full bg-blue-600 text-white font-semibold flex items-center justify-center",
+        sizeCls,
+        ringCls,
+      )}
+    >
+      {initialOf(profile.handle)}
+    </div>
+  );
+}
+
+function ProfileHeader({ profiles }: { profiles: SidebarProfile[] }) {
+  const { t } = useTranslation("report");
+  if (profiles.length === 0) return null;
+  const isMulti = profiles.length > 1;
+  const eyebrow = isMulti
+    ? t("nav.eyebrow_multi", { count: profiles.length })
+    : t("nav.eyebrow_single");
+  const primary = profiles[0];
+  const primaryHandle = formatHandle(primary.handle);
   return (
     <div className="flex items-center gap-3 px-1 pb-3 mb-3 border-b border-border-default/60">
-      {profile.avatarUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={`/api/public/ig-thumb?url=${encodeURIComponent(profile.avatarUrl)}`}
-          alt={t("nav.avatar_alt", { handle })}
-          loading="eager"
-          decoding="async"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.display = "none";
-          }}
-          className="size-10 rounded-full object-cover ring-1 ring-border-default"
-        />
-      ) : (
-        <div
-          aria-hidden="true"
-          className="size-10 rounded-full bg-blue-600 text-white font-semibold flex items-center justify-center text-sm"
-        >
-          {initialOf(profile.handle)}
-        </div>
-      )}
+      {!isMulti && <ProfileAvatar profile={primary} />}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-base font-display font-semibold text-content-primary">
-          {handle}
-        </p>
+        <p className="text-eyebrow-sm text-content-tertiary mb-1">{eyebrow}</p>
+        {isMulti ? (
+          <div className="flex items-center">
+            {profiles.map((p) => (
+              <span
+                key={p.handle}
+                title={formatHandle(p.handle)}
+                aria-label={formatHandle(p.handle)}
+                className="-ml-2 first:ml-0 inline-flex"
+              >
+                <ProfileAvatar profile={p} size="sm" ringOffset={false} />
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="truncate text-base font-semibold text-content-primary">
+            {primaryHandle}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -380,9 +440,13 @@ function SidebarList({
 
 // ── Desktop sidebar ──────────────────────────────────────────────────
 
-export function ReportBlockSidebar({ variant, features, profile }: SidebarProps) {
+export function ReportBlockSidebar({ variant, features, profile, profiles }: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
+  const profileList = useMemo(
+    () => normalizeProfiles(profile, profiles),
+    [profile, profiles],
+  );
   const items = useMemo(
     () => buildSidebarItems(blocks, variant, features),
     [blocks, variant, features],
@@ -404,7 +468,7 @@ export function ReportBlockSidebar({ variant, features, profile }: SidebarProps)
         "p-4 xl:p-5",
       )}
     >
-      <ProfileHeader profile={profile} />
+      <ProfileHeader profiles={profileList} />
       <div className="mb-2 flex justify-end">
         <VariantBadge variant={variant} />
       </div>
@@ -420,9 +484,13 @@ export function ReportBlockSidebar({ variant, features, profile }: SidebarProps)
 
 // ── Mobile bottom tabs + drawer ──────────────────────────────────────
 
-export function ReportBlockTopTabs({ variant, features, profile }: SidebarProps) {
+export function ReportBlockTopTabs({ variant, features, profile, profiles }: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
+  const profileList = useMemo(
+    () => normalizeProfiles(profile, profiles),
+    [profile, profiles],
+  );
   const items = useMemo(
     () => buildSidebarItems(blocks, variant, features),
     [blocks, variant, features],
@@ -541,7 +609,7 @@ export function ReportBlockTopTabs({ variant, features, profile }: SidebarProps)
               </SheetTitle>
             </SheetHeader>
             <div className="mt-3">
-              <ProfileHeader profile={profile} />
+              <ProfileHeader profiles={profileList} />
               <div className="mb-2 flex justify-end">
                 <VariantBadge variant={variant} />
               </div>
