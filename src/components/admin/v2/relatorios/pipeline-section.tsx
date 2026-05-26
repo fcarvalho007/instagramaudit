@@ -55,7 +55,7 @@ export function PipelineSection({ period }: { period: AdminPeriod }) {
       />
       <AdminCard className="!p-7">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <PhaseCard accent="#3772E5" eyebrow="Fase 1" label="Análise gerada" value={totalWindow} sub="total na janela" />
+          <PhaseCard accent="#3772E5" eyebrow="Fase 1" label="Análise gerada" value={phases.snapshot} sub="total na janela" />
           <PhaseCard accent="#7664E4" eyebrow="Fase 2" label="Email submetido" value={phases.email_submitted} sub="lead criado" />
           <PhaseCard accent="#D85A30" eyebrow="Fase 3" label="PDF gerado" value={phases.pdf} sub="aguarda envio" />
           <PhaseCard accent="#1D9E75" eyebrow="Fase 4" label="Email entregue" value={phases.email} sub="ciclo completo" />

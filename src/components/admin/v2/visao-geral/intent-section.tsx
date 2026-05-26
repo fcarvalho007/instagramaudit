@@ -90,8 +90,8 @@ export function IntentSection() {
         <AdminCard>
           <CardHeader
             title="Pesquisas repetidas"
-            eyebrowRight="leads quentes"
-            subtitle="Mesmo perfil pesquisado várias vezes — sinal forte de intenção."
+            eyebrowRight={<AdminBadge variant="signal">leads quentes</AdminBadge>}
+            subtitle="Mesmo perfil com 2+ análises geradas (sem contar cache)."
           />
           {repeatedQ.isLoading ? (
             <p className="mt-4 text-[12px] text-admin-text-tertiary">A carregar…</p>
@@ -194,7 +194,7 @@ function CardHeader({
 }: {
   title: string;
   subtitle: string;
-  eyebrowRight: string;
+  eyebrowRight: React.ReactNode;
 }) {
   return (
     <div className="mb-3">
@@ -202,9 +202,7 @@ function CardHeader({
         <p className="m-0 text-sm font-medium text-admin-text-primary">
           {title}
         </p>
-        <span className="text-[12px] text-admin-text-tertiary">
-          {eyebrowRight}
-        </span>
+        <span className="text-[12px] text-admin-text-tertiary">{eyebrowRight}</span>
       </div>
       <p className="mt-1 text-[12px] text-admin-text-tertiary">{subtitle}</p>
     </div>
