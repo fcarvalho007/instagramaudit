@@ -212,7 +212,7 @@ export function ReportShellV2({
 
               {/* Feedback do Bloco 1 (overview) — fica entre Bloco 1 e Bloco 2,
                   visualmente associado ao Bloco 1 e não dentro do header do Bloco 2. */}
-              {features.blockOverview !== "hidden" && (
+              {features.blockOverview !== "hidden" && !gated && (
                 <div className="mt-6 md:mt-8 mb-2">
                   <BlockFeedback
                     handle={result.data.profile.username}
