@@ -34,7 +34,7 @@ function RelatoriosPage() {
     <>
       <AdminPageHeader
         title="Relatórios"
-        subtitle="Pipeline operacional desde o pedido até à entrega"
+        subtitle="Análises geradas — com ou sem unlock por email"
         actions={
           <>
             <PeriodSelect value={period} onChange={setPeriod} />
@@ -49,10 +49,10 @@ function RelatoriosPage() {
         }
       />
       <div className="flex flex-col gap-14">
-        <PipelineSection />
-        <MetricsSection />
-        <ChartsSection />
-        <ReportsTableSection />
+        <PipelineSection period={period} />
+        <MetricsSection period={period} />
+        <ChartsSection period={period} />
+        <ReportsTableSection period={period} />
       </div>
     </>
   );

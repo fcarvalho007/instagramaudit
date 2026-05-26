@@ -1,19 +1,25 @@
 /**
- * GET /api/admin/report-requests — paginated list with filters.
+ * GET /api/admin/report-requests — lista paginada de RELATÓRIOS reais.
+ *
+ * A unidade de produto é `analysis_snapshots` (uma análise = um relatório).
+ * Quando essa análise foi também desbloqueada por email (unlock), juntamos a
+ * linha de `report_requests` + lead. Caso contrário a linha mostra estado
+ * "análise pública (sem email)".
  *
  * Query params:
- *   status   — request_status filter
- *   pdf      — pdf_status filter
- *   email    — delivery_status filter
- *   source   — request_source filter (e.g. "beta_form")
- *   q        — search by username or lead email (ilike)
- *   page     — 1-indexed (default 1)
- *   pageSize — default 25, max 100
+ *   status    — filtro de estado derivado (delivered | processing | failed | snapshot_only)
+ *   source    — request_source (apenas filtra unlocks; "snapshot" para snapshots sem request)
+ *   lead_id   — só relatórios desse lead
+ *   q         — pesquisa por username ou email do lead
+ *   period    — janela temporal (7d | 30d | 90d | ytd; default 30d)
+ *   page      — 1-indexed (default 1)
+ *   pageSize  — default 25, max 100
  */
 
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
+import { resolvePeriod } from "@/lib/admin/period";
 
 const PAGE_SIZE_DEFAULT = 25;
 const PAGE_SIZE_MAX = 100;
@@ -48,12 +54,11 @@ export const Route = createFileRoute("/api/admin/report-requests")({
         }
 
         const url = new URL(request.url);
-        const status = url.searchParams.get("status") ?? undefined;
-        const pdf = url.searchParams.get("pdf") ?? undefined;
-        const email = url.searchParams.get("email") ?? undefined;
+        const statusFilter = url.searchParams.get("status") ?? undefined;
         const source = url.searchParams.get("source") ?? undefined;
         const leadId = url.searchParams.get("lead_id")?.trim() || undefined;
         const q = url.searchParams.get("q")?.trim() ?? "";
+        const { sinceISO } = resolvePeriod(url.searchParams.get("period"));
 
         const pageRaw = Number(url.searchParams.get("page") ?? "1");
         const pageSizeRaw = Number(url.searchParams.get("pageSize") ?? PAGE_SIZE_DEFAULT);
@@ -63,66 +68,35 @@ export const Route = createFileRoute("/api/admin/report-requests")({
           Number.isFinite(pageSizeRaw) && pageSizeRaw > 0 ? Math.floor(pageSizeRaw) : PAGE_SIZE_DEFAULT,
         );
 
-        const from = (page - 1) * pageSize;
-        const to = from + pageSize - 1;
-
-        let query = supabaseAdmin
-          .from("report_requests")
-          .select(
-            `id, instagram_username, request_status, pdf_status, delivery_status,
-             pdf_storage_path, email_sent_at, pdf_generated_at, is_free_request,
-             analysis_snapshot_id, request_source, created_at, updated_at,
-             lead:lead_id ( id, name, email, user_type, purpose, profile_ownership, source, company )`,
-            { count: "exact" },
-          )
+        // 1) Carrega TODAS as análises na janela (1 linha = 1 relatório real).
+        //    7d≈poucas dezenas, 90d≈centenas, ytd≈milhares — limit 5000 chega.
+        const { data: snapshotsRaw, error: snapErr } = await supabaseAdmin
+          .from("analysis_snapshots")
+          .select("id, instagram_username, analysis_status, created_at, updated_at")
+          .gte("created_at", sinceISO)
           .order("created_at", { ascending: false })
-          .range(from, to);
+          .limit(5000);
 
-        if (status) query = query.eq("request_status", status);
-        if (pdf) query = query.eq("pdf_status", pdf);
-        if (email) query = query.eq("delivery_status", email);
-        if (source) query = query.eq("request_source", source);
-        if (leadId) query = query.eq("lead_id", leadId);
-        if (q) {
-          // Match by username (on the row) OR by lead email.
-          // Supabase JS does not support ORs across joins easily — apply on the
-          // username only and filter the rest client-side if needed. For email
-          // search we use a separate query path.
-          if (q.includes("@")) {
-            // resolve lead ids first
-            const { data: leadHits } = await supabaseAdmin
-              .from("leads")
-              .select("id")
-              .ilike("email_normalized", `%${q.toLowerCase()}%`)
-              .limit(500);
-            const ids = (leadHits ?? []).map((l) => l.id);
-            if (ids.length === 0) {
-              return jsonResponse({
-                success: true,
-                rows: [],
-                total: 0,
-                page,
-                pageSize,
-              });
-            }
-            query = query.in("lead_id", ids);
-          } else {
-            query = query.ilike("instagram_username", `%${q}%`);
-          }
-        }
-
-        const { data, error, count } = await query;
-
-        if (error) {
-          console.error("[admin/report-requests] query failed", error);
+        if (snapErr) {
+          console.error("[admin/report-requests] snapshots query failed", snapErr);
           return jsonResponse(
-            { success: false, error_code: "QUERY_FAILED", message: error.message },
+            { success: false, error_code: "QUERY_FAILED", message: snapErr.message },
             500,
           );
         }
 
-        // Normalize lead join shape (Supabase returns array for non-FK joins).
-        type RawRow = {
+        type Snap = {
+          id: string;
+          instagram_username: string;
+          analysis_status: string;
+          created_at: string;
+          updated_at: string;
+        };
+        const snapshots = (snapshotsRaw ?? []) as Snap[];
+        const snapshotIds = snapshots.map((s) => s.id);
+
+        // 2) Para essas análises, carrega report_requests que apontam para elas.
+        type ReqRow = {
           id: string;
           instagram_username: string;
           request_status: string;
@@ -136,44 +110,148 @@ export const Route = createFileRoute("/api/admin/report-requests")({
           request_source: string;
           created_at: string;
           updated_at: string;
+          lead_id: string | null;
           lead: LeadJoin | LeadJoin[] | null;
         };
+        let requestsRaw: ReqRow[] = [];
 
-        const rows = (data as unknown as RawRow[] | null ?? []).map((r) => {
-          const leadValue = Array.isArray(r.lead) ? r.lead[0] ?? null : r.lead;
+        if (snapshotIds.length > 0) {
+          const { data, error: reqErr } = await supabaseAdmin
+            .from("report_requests")
+            .select(
+              `id, instagram_username, request_status, pdf_status, delivery_status,
+               pdf_storage_path, email_sent_at, pdf_generated_at, is_free_request,
+               analysis_snapshot_id, request_source, created_at, updated_at, lead_id,
+               lead:lead_id ( id, name, email, user_type, purpose, profile_ownership, source, company )`,
+            )
+            .in("analysis_snapshot_id", snapshotIds);
+          if (reqErr) {
+            console.error("[admin/report-requests] requests query failed", reqErr);
+            return jsonResponse(
+              { success: false, error_code: "QUERY_FAILED", message: reqErr.message },
+              500,
+            );
+          }
+          requestsRaw = (data ?? []) as unknown as ReqRow[];
+        }
+
+        // Indexa requests por snapshot id (preferindo o mais recente caso haja >1).
+        const requestBySnapshot = new Map<string, ReqRow>();
+        for (const r of requestsRaw) {
+          if (!r.analysis_snapshot_id) continue;
+          const existing = requestBySnapshot.get(r.analysis_snapshot_id);
+          if (!existing || r.created_at > existing.created_at) {
+            requestBySnapshot.set(r.analysis_snapshot_id, r);
+          }
+        }
+
+        type Kind = "snapshot" | "request";
+        type Row = {
+          id: string;
+          kind: Kind;
+          snapshot_id: string;
+          request_id: string | null;
+          instagram_username: string;
+          request_status: string;
+          pdf_status: string;
+          delivery_status: string;
+          request_source: string;
+          is_free_request: boolean;
+          created_at: string;
+          updated_at: string;
+          email_sent_at: string | null;
+          pdf_generated_at: string | null;
+          analysis_snapshot_id: string | null;
+          lead: LeadJoin | null;
+        };
+
+        const merged: Row[] = snapshots.map((s) => {
+          const req = requestBySnapshot.get(s.id);
+          if (req) {
+            const leadValue = Array.isArray(req.lead) ? req.lead[0] ?? null : req.lead;
+            return {
+              id: req.id,
+              kind: "request",
+              snapshot_id: s.id,
+              request_id: req.id,
+              instagram_username: req.instagram_username,
+              request_status: req.request_status,
+              pdf_status: req.pdf_status,
+              delivery_status: req.delivery_status,
+              request_source: req.request_source,
+              is_free_request: req.is_free_request,
+              created_at: req.created_at,
+              updated_at: req.updated_at,
+              email_sent_at: req.email_sent_at,
+              pdf_generated_at: req.pdf_generated_at,
+              analysis_snapshot_id: req.analysis_snapshot_id,
+              lead: leadValue
+                ? {
+                    id: leadValue.id,
+                    name: leadValue.name,
+                    email: leadValue.email,
+                    user_type: leadValue.user_type,
+                    purpose: leadValue.purpose,
+                    profile_ownership: leadValue.profile_ownership,
+                    source: leadValue.source,
+                    company: leadValue.company,
+                  }
+                : null,
+            };
+          }
+          // Análise sem unlock (sem email).
           return {
-            id: r.id,
-            instagram_username: r.instagram_username,
-            request_status: r.request_status,
-            pdf_status: r.pdf_status,
-            delivery_status: r.delivery_status,
-            pdf_storage_path: r.pdf_storage_path,
-            email_sent_at: r.email_sent_at,
-            pdf_generated_at: r.pdf_generated_at,
-            is_free_request: r.is_free_request,
-            analysis_snapshot_id: r.analysis_snapshot_id,
-            request_source: r.request_source,
-            created_at: r.created_at,
-            updated_at: r.updated_at,
-            lead: leadValue
-              ? {
-                  id: leadValue.id,
-                  name: leadValue.name,
-                  email: leadValue.email,
-                  user_type: leadValue.user_type,
-                  purpose: leadValue.purpose,
-                  profile_ownership: leadValue.profile_ownership,
-                  source: leadValue.source,
-                  company: leadValue.company,
-                }
-              : null,
+            id: s.id,
+            kind: "snapshot",
+            snapshot_id: s.id,
+            request_id: null,
+            instagram_username: s.instagram_username,
+            request_status: s.analysis_status === "ready" ? "completed" : s.analysis_status,
+            pdf_status: "not_generated",
+            delivery_status: "not_sent",
+            request_source: "public_analysis",
+            is_free_request: true,
+            created_at: s.created_at,
+            updated_at: s.updated_at,
+            email_sent_at: null,
+            pdf_generated_at: null,
+            analysis_snapshot_id: s.id,
+            lead: null,
           };
         });
+
+        // Filtros aplicados após o merge.
+        let filtered = merged;
+        if (statusFilter) {
+          filtered = filtered.filter((r) => deriveStatus(r) === statusFilter);
+        }
+        if (source) {
+          filtered = filtered.filter((r) => r.request_source === source);
+        }
+        if (leadId) {
+          filtered = filtered.filter((r) => r.lead?.id === leadId);
+        }
+        if (q) {
+          const qLow = q.toLowerCase();
+          if (q.includes("@")) {
+            filtered = filtered.filter((r) =>
+              (r.lead?.email ?? "").toLowerCase().includes(qLow),
+            );
+          } else {
+            filtered = filtered.filter((r) =>
+              r.instagram_username.toLowerCase().includes(qLow),
+            );
+          }
+        }
+
+        const total = filtered.length;
+        const from = (page - 1) * pageSize;
+        const rows = filtered.slice(from, from + pageSize);
 
         return jsonResponse({
           success: true,
           rows,
-          total: count ?? rows.length,
+          total,
           page,
           pageSize,
         });
@@ -181,3 +259,21 @@ export const Route = createFileRoute("/api/admin/report-requests")({
     },
   },
 });
+
+function deriveStatus(r: {
+  kind: "snapshot" | "request";
+  request_status: string;
+  pdf_status: string;
+  delivery_status: string;
+}): "snapshot_only" | "delivered" | "processing" | "failed" {
+  if (r.kind === "snapshot") return "snapshot_only";
+  if (r.delivery_status === "sent") return "delivered";
+  if (
+    r.request_status === "failed" ||
+    r.pdf_status === "failed" ||
+    r.delivery_status === "failed"
+  ) {
+    return "failed";
+  }
+  return "processing";
+}
