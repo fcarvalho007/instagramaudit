@@ -644,7 +644,42 @@ function ExternalReferenceTable({
             {t("format.external_ref.provisional")}
           </p>
         ) : null}
-        <div className="grid grid-cols-[1fr_1.1fr_1.2fr_1fr] gap-x-3 gap-y-1.5 text-[12px]">
+        {/* Mobile: stacked mini-cards (one per format). */}
+        <div className="sm:hidden space-y-2" data-testid="external-ref-mobile">
+          {rows.map(({ key, refData }) => (
+            <div
+              key={key}
+              className="rounded-lg border border-border-subtle/60 bg-surface-secondary p-3 space-y-1.5"
+            >
+              <div className="text-[14px] font-semibold text-content-primary">
+                {tFormatLegend(t, key)}
+              </div>
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-[12px] text-content-tertiary">
+                  {t("format.external_ref.mobile_label_profile")}
+                </span>
+                <span className="text-[13px] text-content-secondary tabular-nums text-right">
+                  {profileCell(key)}
+                </span>
+              </div>
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-[12px] text-content-tertiary">
+                  {t("format.external_ref.mobile_label_reference")}
+                </span>
+                <span className="text-[13px] text-content-secondary tabular-nums text-right">
+                  {refCell(refData)}
+                </span>
+              </div>
+              <div>
+                <span className="inline-block text-[11px] text-content-secondary bg-surface-muted px-2 py-0.5 rounded-full">
+                  {readingFor(key, refData)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Desktop: compact 4-column grid. */}
+        <div className="hidden sm:grid grid-cols-[1fr_1.1fr_1.2fr_1fr] gap-x-3 gap-y-1.5 text-[12px]">
           <span className="text-content-tertiary uppercase tracking-[0.04em]">
             {t("format.external_ref.col_format")}
           </span>
