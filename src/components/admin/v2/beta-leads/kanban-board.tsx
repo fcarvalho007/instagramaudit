@@ -27,6 +27,14 @@ import {
 import { LeadCard } from "./lead-card";
 import { toast } from "sonner";
 
+/**
+ * Mapeia chave de coluna do board → valor a gravar em `leads.commercial_status`.
+ * Coincide 1:1 com as 5 colunas (todas valores válidos do schema).
+ */
+function mapColumnToStatus(columnKey: string): string {
+  return columnKey;
+}
+
 interface KanbanBoardProps {
   leads: EnrichedLead[];
   onUpdate: (id: string, updates: Record<string, unknown>) => void;
@@ -232,7 +240,9 @@ export function KanbanBoard({
       {/* Mobile: accordion */}
       <div className="md:hidden flex flex-col gap-2">
         {visibleColumns.map((col) => {
-          const colLeads = filteredLeads.filter((l) => l.commercial_status === col.key);
+          const colLeads = filteredLeads.filter(
+            (l) => deriveKanbanColumn(l) === col.key,
+          );
           const isOpen = openMobileSection === col.key;
           return (
             <div
@@ -297,7 +307,7 @@ export function KanbanBoard({
         <div className="flex gap-3 pb-4" style={{ minWidth: "fit-content" }}>
           {visibleColumns.map((col) => {
             const colLeads = filteredLeads.filter(
-              (l) => l.commercial_status === col.key
+              (l) => deriveKanbanColumn(l) === col.key,
             );
             const isDragOver = dragOverColumn === col.key;
             return (
