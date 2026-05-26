@@ -418,7 +418,8 @@
     }
   },
   "external_source_note": {
-    "template": "External source: {{source}}, data {{range}}."
+    "template": "External source: {{source}}, data {{range}}.",
+    "methodology": "Tier benchmark: compares the profile with accounts of a similar size. External reference: uses aggregated Socialinsider data by Instagram format. These references provide context, not a fixed target."
   },
   "blocks": {
     "overview": {
