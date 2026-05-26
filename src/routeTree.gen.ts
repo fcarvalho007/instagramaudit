@@ -78,6 +78,7 @@ import { Route as ApiAdminRefreshProfileRouteImport } from './routes/api/admin/r
 import { Route as ApiAdminLeadsKanbanRouteImport } from './routes/api/admin/leads-kanban'
 import { Route as ApiAdminLeadsBulkRouteImport } from './routes/api/admin/leads-bulk'
 import { Route as ApiAdminGenerateBetaReportRouteImport } from './routes/api/admin/generate-beta-report'
+import { Route as ApiAdminFunnelRouteImport } from './routes/api/admin/funnel'
 import { Route as ApiAdminForceRefreshRouteImport } from './routes/api/admin/force-refresh'
 import { Route as ApiAdminFollowUpsRouteImport } from './routes/api/admin/follow-ups'
 import { Route as ApiAdminDiagnosticsRouteImport } from './routes/api/admin/diagnostics'
@@ -479,6 +480,11 @@ const ApiAdminGenerateBetaReportRoute =
     path: '/api/admin/generate-beta-report',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAdminFunnelRoute = ApiAdminFunnelRouteImport.update({
+  id: '/api/admin/funnel',
+  path: '/api/admin/funnel',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminForceRefreshRoute = ApiAdminForceRefreshRouteImport.update({
   id: '/api/admin/force-refresh',
   path: '/api/admin/force-refresh',
@@ -807,6 +813,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/follow-ups': typeof ApiAdminFollowUpsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
+  '/api/admin/funnel': typeof ApiAdminFunnelRoute
   '/api/admin/generate-beta-report': typeof ApiAdminGenerateBetaReportRoute
   '/api/admin/leads-bulk': typeof ApiAdminLeadsBulkRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
@@ -925,6 +932,7 @@ export interface FileRoutesByTo {
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/follow-ups': typeof ApiAdminFollowUpsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
+  '/api/admin/funnel': typeof ApiAdminFunnelRoute
   '/api/admin/generate-beta-report': typeof ApiAdminGenerateBetaReportRoute
   '/api/admin/leads-bulk': typeof ApiAdminLeadsBulkRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
@@ -1045,6 +1053,7 @@ export interface FileRoutesById {
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/follow-ups': typeof ApiAdminFollowUpsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
+  '/api/admin/funnel': typeof ApiAdminFunnelRoute
   '/api/admin/generate-beta-report': typeof ApiAdminGenerateBetaReportRoute
   '/api/admin/leads-bulk': typeof ApiAdminLeadsBulkRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
@@ -1166,6 +1175,7 @@ export interface FileRouteTypes {
     | '/api/admin/diagnostics'
     | '/api/admin/follow-ups'
     | '/api/admin/force-refresh'
+    | '/api/admin/funnel'
     | '/api/admin/generate-beta-report'
     | '/api/admin/leads-bulk'
     | '/api/admin/leads-kanban'
@@ -1284,6 +1294,7 @@ export interface FileRouteTypes {
     | '/api/admin/diagnostics'
     | '/api/admin/follow-ups'
     | '/api/admin/force-refresh'
+    | '/api/admin/funnel'
     | '/api/admin/generate-beta-report'
     | '/api/admin/leads-bulk'
     | '/api/admin/leads-kanban'
@@ -1403,6 +1414,7 @@ export interface FileRouteTypes {
     | '/api/admin/diagnostics'
     | '/api/admin/follow-ups'
     | '/api/admin/force-refresh'
+    | '/api/admin/funnel'
     | '/api/admin/generate-beta-report'
     | '/api/admin/leads-bulk'
     | '/api/admin/leads-kanban'
@@ -1504,6 +1516,7 @@ export interface RootRouteChildren {
   ApiAdminDiagnosticsRoute: typeof ApiAdminDiagnosticsRoute
   ApiAdminFollowUpsRoute: typeof ApiAdminFollowUpsRoute
   ApiAdminForceRefreshRoute: typeof ApiAdminForceRefreshRoute
+  ApiAdminFunnelRoute: typeof ApiAdminFunnelRoute
   ApiAdminGenerateBetaReportRoute: typeof ApiAdminGenerateBetaReportRoute
   ApiAdminLeadsBulkRoute: typeof ApiAdminLeadsBulkRoute
   ApiAdminLeadsKanbanRoute: typeof ApiAdminLeadsKanbanRouteWithChildren
@@ -2045,6 +2058,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/generate-beta-report'
       fullPath: '/api/admin/generate-beta-report'
       preLoaderRoute: typeof ApiAdminGenerateBetaReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/funnel': {
+      id: '/api/admin/funnel'
+      path: '/api/admin/funnel'
+      fullPath: '/api/admin/funnel'
+      preLoaderRoute: typeof ApiAdminFunnelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/force-refresh': {
@@ -2591,6 +2611,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminDiagnosticsRoute: ApiAdminDiagnosticsRoute,
   ApiAdminFollowUpsRoute: ApiAdminFollowUpsRoute,
   ApiAdminForceRefreshRoute: ApiAdminForceRefreshRoute,
+  ApiAdminFunnelRoute: ApiAdminFunnelRoute,
   ApiAdminGenerateBetaReportRoute: ApiAdminGenerateBetaReportRoute,
   ApiAdminLeadsBulkRoute: ApiAdminLeadsBulkRoute,
   ApiAdminLeadsKanbanRoute: ApiAdminLeadsKanbanRouteWithChildren,
