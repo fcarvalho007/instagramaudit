@@ -226,6 +226,29 @@ export interface InsightsContext {
    * consistent with the rest of the report.
    */
   cadence_label_pt?: string;
+  /**
+   * Compact summary of `caption_semantic_analysis` (when present in the
+   * snapshot). The verdict prompt is allowed to quote 1 topic and the
+   * length pattern, never raw scores. `undefined` for old snapshots that
+   * pre-date the semantic enrichment.
+   */
+  caption_intelligence?: {
+    topics: string[];
+    caption_length_pattern: string | null;
+    tone_summary: string | null;
+    hook_pattern: string | null;
+  };
+  /**
+   * Compact summary of `visual_cover_analysis` (when present). The verdict
+   * prompt may reference cover consistency / visual clarity ONLY when this
+   * object exists — see `validate-v2.ts::VISUAL_CLAIM_UNSUPPORTED`.
+   */
+  visual_cover?: {
+    summary: string;
+    consistency: "consistent" | "mixed" | "inconsistent" | null;
+    visual_clarity: "strong" | "needs_improvement" | "critical";
+    cover_pattern: string | null;
+  };
 }
 
 /** Result envelope returned by the (future) generator. */
@@ -373,14 +396,22 @@ export const EDITORIAL_VERDICT_EVIDENCE_ALLOWLIST = [
   "cadence.window_30d",
   "cadence.window_90d",
   "cadence.sample_span",
+  "cadence.method",
+  "cadence.windowDays",
+  "cadence.sampleSize",
   "benchmark.tier_delta",
   "benchmark.tier_label",
   "format_mix.dominant_share",
   "format_mix.dominant_format",
   "top_posts.top1",
+  "top_hashtags",
+  "has_recurring_hashtags",
   "caption_intelligence.topics",
   "caption_intelligence.length",
   "caption_intelligence.hashtags",
+  "visual_cover.summary",
+  "visual_cover.consistency",
+  "visual_cover.visual_clarity",
   "editorial_patterns.collaboration_lift",
   "editorial_patterns.comments_to_likes_ratio",
   "editorial_patterns.engagement_trend",
