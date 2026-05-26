@@ -72,6 +72,7 @@ import { Route as ApiAdminSendCommercialFollowupRouteImport } from './routes/api
 import { Route as ApiAdminResendEmailRouteImport } from './routes/api/admin/resend-email'
 import { Route as ApiAdminReportsRouteImport } from './routes/api/admin/reports'
 import { Route as ApiAdminReportRequestsRouteImport } from './routes/api/admin/report-requests'
+import { Route as ApiAdminRepeatedSearchesRouteImport } from './routes/api/admin/repeated-searches'
 import { Route as ApiAdminRegeneratePdfRouteImport } from './routes/api/admin/regenerate-pdf'
 import { Route as ApiAdminRefreshProfilePreflightRouteImport } from './routes/api/admin/refresh-profile-preflight'
 import { Route as ApiAdminRefreshProfileRouteImport } from './routes/api/admin/refresh-profile'
@@ -449,6 +450,12 @@ const ApiAdminReportRequestsRoute = ApiAdminReportRequestsRouteImport.update({
   path: '/api/admin/report-requests',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminRepeatedSearchesRoute =
+  ApiAdminRepeatedSearchesRouteImport.update({
+    id: '/api/admin/repeated-searches',
+    path: '/api/admin/repeated-searches',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminRegeneratePdfRoute = ApiAdminRegeneratePdfRouteImport.update({
   id: '/api/admin/regenerate-pdf',
   path: '/api/admin/regenerate-pdf',
@@ -827,6 +834,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/refresh-profile': typeof ApiAdminRefreshProfileRoute
   '/api/admin/refresh-profile-preflight': typeof ApiAdminRefreshProfilePreflightRoute
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
+  '/api/admin/repeated-searches': typeof ApiAdminRepeatedSearchesRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
@@ -947,6 +955,7 @@ export interface FileRoutesByTo {
   '/api/admin/refresh-profile': typeof ApiAdminRefreshProfileRoute
   '/api/admin/refresh-profile-preflight': typeof ApiAdminRefreshProfilePreflightRoute
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
+  '/api/admin/repeated-searches': typeof ApiAdminRepeatedSearchesRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
@@ -1069,6 +1078,7 @@ export interface FileRoutesById {
   '/api/admin/refresh-profile': typeof ApiAdminRefreshProfileRoute
   '/api/admin/refresh-profile-preflight': typeof ApiAdminRefreshProfilePreflightRoute
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
+  '/api/admin/repeated-searches': typeof ApiAdminRepeatedSearchesRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
@@ -1192,6 +1202,7 @@ export interface FileRouteTypes {
     | '/api/admin/refresh-profile'
     | '/api/admin/refresh-profile-preflight'
     | '/api/admin/regenerate-pdf'
+    | '/api/admin/repeated-searches'
     | '/api/admin/report-requests'
     | '/api/admin/reports'
     | '/api/admin/resend-email'
@@ -1312,6 +1323,7 @@ export interface FileRouteTypes {
     | '/api/admin/refresh-profile'
     | '/api/admin/refresh-profile-preflight'
     | '/api/admin/regenerate-pdf'
+    | '/api/admin/repeated-searches'
     | '/api/admin/report-requests'
     | '/api/admin/reports'
     | '/api/admin/resend-email'
@@ -1433,6 +1445,7 @@ export interface FileRouteTypes {
     | '/api/admin/refresh-profile'
     | '/api/admin/refresh-profile-preflight'
     | '/api/admin/regenerate-pdf'
+    | '/api/admin/repeated-searches'
     | '/api/admin/report-requests'
     | '/api/admin/reports'
     | '/api/admin/resend-email'
@@ -1536,6 +1549,7 @@ export interface RootRouteChildren {
   ApiAdminRefreshProfileRoute: typeof ApiAdminRefreshProfileRoute
   ApiAdminRefreshProfilePreflightRoute: typeof ApiAdminRefreshProfilePreflightRoute
   ApiAdminRegeneratePdfRoute: typeof ApiAdminRegeneratePdfRoute
+  ApiAdminRepeatedSearchesRoute: typeof ApiAdminRepeatedSearchesRoute
   ApiAdminReportRequestsRoute: typeof ApiAdminReportRequestsRouteWithChildren
   ApiAdminReportsRoute: typeof ApiAdminReportsRouteWithChildren
   ApiAdminResendEmailRoute: typeof ApiAdminResendEmailRoute
@@ -2029,6 +2043,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/report-requests'
       fullPath: '/api/admin/report-requests'
       preLoaderRoute: typeof ApiAdminReportRequestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/repeated-searches': {
+      id: '/api/admin/repeated-searches'
+      path: '/api/admin/repeated-searches'
+      fullPath: '/api/admin/repeated-searches'
+      preLoaderRoute: typeof ApiAdminRepeatedSearchesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/regenerate-pdf': {
@@ -2639,6 +2660,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminRefreshProfileRoute: ApiAdminRefreshProfileRoute,
   ApiAdminRefreshProfilePreflightRoute: ApiAdminRefreshProfilePreflightRoute,
   ApiAdminRegeneratePdfRoute: ApiAdminRegeneratePdfRoute,
+  ApiAdminRepeatedSearchesRoute: ApiAdminRepeatedSearchesRoute,
   ApiAdminReportRequestsRoute: ApiAdminReportRequestsRouteWithChildren,
   ApiAdminReportsRoute: ApiAdminReportsRouteWithChildren,
   ApiAdminResendEmailRoute: ApiAdminResendEmailRoute,
