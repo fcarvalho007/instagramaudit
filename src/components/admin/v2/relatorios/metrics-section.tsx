@@ -49,17 +49,7 @@ export function MetricsSection({ period }: { period: AdminPeriod }) {
   const total = data?.total_analyses ?? 0;
   const withUnlock = data?.with_unlock ?? 0;
   const unlockRate = data?.unlock_rate_pct;
-  const avgMin = data?.avg_delivery_minutes;
-  const successPct = data?.success_rate_pct;
   const avgCost = data?.avg_cost_usd;
-
-  function fmtMinutes(v: number | null | undefined): string {
-    if (v == null) return "—";
-    if (v < 1) return `${Math.round(v * 60)}s`;
-    const m = Math.floor(v);
-    const s = Math.round((v - m) * 60);
-    return `${m}m ${String(s).padStart(2, "0")}s`;
-  }
 
   return (
     <section className="flex flex-col gap-4">
@@ -69,32 +59,25 @@ export function MetricsSection({ period }: { period: AdminPeriod }) {
         accent="revenue"
         info="Análises geradas, taxa de unlock por email e desempenho do pipeline na janela selecionada."
       />
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <ReportKpi
           accent="revenue"
-          eyebrow="Análises geradas"
-          info="Total de snapshots gerados na janela (cada análise = um relatório real)."
+          eyebrow="Pediram análise"
+          info="Total de snapshots gerados na janela (cada análise = 1 relatório real, fonte: `analysis_snapshots`)."
           value={String(total)}
-          sub={`${delivered} com email entregue`}
+          sub={`${delivered} com PDF entregue por email`}
         />
         <ReportKpi
           accent="info"
-          eyebrow="Unlock por email"
-          info="Análises onde o utilizador submeteu email para receber o PDF."
+          eyebrow="Submeteram email"
+          info="Análises em que o utilizador preencheu o lead magnet (email) para receber o PDF."
           value={`${withUnlock}`}
           sub={unlockRate != null ? `${unlockRate.toFixed(1)}% de conversão` : "—"}
         />
         <ReportKpi
-          accent="revenue"
-          eyebrow="Entrega · sucesso"
-          info="% de análises com email entregue sobre o total."
-          value={successPct != null ? `${successPct.toFixed(1)}%` : "—"}
-          sub={`${data?.failed ?? 0} falhas · ${fmtMinutes(avgMin)} médio`}
-        />
-        <ReportKpi
           accent="revenue-alt"
           eyebrow="Custo médio · análise"
-          info="Soma de custos de providers (Apify+OpenAI) na janela ÷ nº análises."
+          info="Soma de custos de providers (Apify+OpenAI) na janela ÷ nº de snapshots gerados. Deve bater com o total da janela em /admin/receita (reconciliação Apify + cost_daily)."
           value={avgCost != null ? `$${avgCost.toFixed(3)}` : "—"}
           sub="apify + openai"
         />
