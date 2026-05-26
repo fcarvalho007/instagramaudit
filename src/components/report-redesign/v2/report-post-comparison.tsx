@@ -161,17 +161,17 @@ function VsBar({ bestEng, worstEng, t, language }: { bestEng: number; worstEng: 
 
   return (
     <div
-      className="relative flex items-center justify-between rounded-xl border border-border-subtle px-4 py-3 md:px-6 md:py-4 overflow-hidden"
+      className="relative flex items-stretch justify-between gap-3 rounded-xl border border-border-subtle px-4 py-3 md:px-6 md:py-4 overflow-hidden"
       style={{
         background:
           "linear-gradient(90deg, rgba(37,99,217,0.04) 0%, transparent 35%, transparent 65%, rgba(217,119,6,0.04) 100%)",
       }}
     >
       {/* Best side */}
-      <div className="flex flex-col items-start gap-0.5 min-w-[60px] sm:min-w-[70px] md:min-w-[100px]">
+      <div className="flex-1 min-w-0 flex flex-col items-start gap-0.5">
         <div className="flex items-center gap-1.5">
           <TrendingUp className="size-3 text-accent-primary" aria-hidden="true" />
-          <span className="text-[9px] font-bold uppercase tracking-widest text-accent-primary">{t("posts.vs.best")}</span>
+          <span className="text-[11px] font-bold uppercase tracking-widest text-accent-primary">{t("posts.vs.best")}</span>
         </div>
         <span className="tabular-nums text-[18px] md:text-[22px] font-bold tabular-nums text-accent-primary leading-none">
           {formatNumber(bestEng, language, { maximumFractionDigits: 2 })}%
@@ -181,17 +181,15 @@ function VsBar({ bestEng, worstEng, t, language }: { bestEng: number; worstEng: 
         </div>
       </div>
 
-      {/* VS badge */}
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-        <div className="flex items-center justify-center size-9 md:size-10 rounded-full bg-white border border-border-default shadow-sm">
-          <span className="text-[10px] font-bold text-content-secondary tracking-wider">VS</span>
-        </div>
+      {/* VS badge — inline in-flow so it never overlaps */}
+      <div className="shrink-0 self-center flex items-center justify-center size-9 md:size-10 rounded-full bg-white border border-border-default shadow-sm z-10">
+        <span className="text-[11px] font-bold text-content-secondary tracking-wider">VS</span>
       </div>
 
       {/* Worst side */}
-      <div className="flex flex-col items-end gap-0.5 min-w-[60px] sm:min-w-[70px] md:min-w-[100px]">
+      <div className="flex-1 min-w-0 flex flex-col items-end gap-0.5">
         <div className="flex items-center gap-1.5">
-          <span className="text-[9px] font-bold uppercase tracking-widest text-signal-warning">{t("posts.vs.worst")}</span>
+          <span className="text-[11px] font-bold uppercase tracking-widest text-signal-warning">{t("posts.vs.worst")}</span>
           <TrendingDown className="size-3 text-signal-warning" aria-hidden="true" />
         </div>
         <span className="tabular-nums text-[18px] md:text-[22px] font-bold tabular-nums text-signal-warning leading-none">
