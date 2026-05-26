@@ -95,7 +95,7 @@ function GhostChart() {
               />
             )}
           </div>
-          <span className="text-[9px] text-slate-400">{t.label}</span>
+          <span className="text-[11px] text-content-tertiary">{t.label}</span>
         </div>
       ))}
     </div>
