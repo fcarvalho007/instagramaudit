@@ -120,7 +120,7 @@ const DEFAULTS: Record<EmailTemplateKey, EmailTemplateParts> = {
       `Até já,\n— equipa InstaBench`,
   },
   report_ready: {
-    subject: "O teu relatório de @{{instagramHandle}} está pronto",
+    subject: "O teu relatório de @{{instagramHandle}} está disponível",
     preheader: "Análise completa disponível para consultares.",
     headline: "Relatório pronto",
     body_html:
@@ -136,7 +136,7 @@ const DEFAULTS: Record<EmailTemplateKey, EmailTemplateParts> = {
       `Até já,\n— equipa InstaBench`,
   },
   feedback_request: {
-    subject: "Podes dar feedback sobre o relatório de @{{instagramHandle}}?",
+    subject: "O relatório de @{{instagramHandle}} foi útil?",
     preheader: "Duas ou três frases chegam — ajuda-nos a melhorar.",
     headline: "Pedido de feedback",
     body_html:
@@ -152,7 +152,7 @@ const DEFAULTS: Record<EmailTemplateKey, EmailTemplateParts> = {
       `Obrigado,\n— equipa InstaBench`,
   },
   personal_area_saved: {
-    subject: "Guardámos a análise de @{{instagramHandle}} na tua área",
+    subject: "O relatório foi guardado na tua área pessoal",
     preheader: "Podes voltar a consultá-lo sempre que precisares.",
     headline: "Área pessoal guardada",
     body_html:
@@ -167,7 +167,7 @@ const DEFAULTS: Record<EmailTemplateKey, EmailTemplateParts> = {
       `Até já,\n— equipa InstaBench`,
   },
   welcome_beta: {
-    subject: "Bem-vindo à beta do InstaBench",
+    subject: "Bem-vindo à beta — o que esperar daqui",
     preheader: "O que está aberto, o que é premium e como ajudar a melhorar.",
     headline: "Bem-vindo à beta",
     body_html:
@@ -185,7 +185,7 @@ const DEFAULTS: Record<EmailTemplateKey, EmailTemplateParts> = {
       `Bom trabalho,\n— equipa InstaBench`,
   },
   report_summary: {
-    subject: "As 3 conclusões do relatório de @{{instagramHandle}}",
+    subject: "Resumo da análise de @{{instagramHandle}}",
     preheader: "Os principais sinais do teu relatório InstaBench.",
     headline: "Resumo do relatório",
     body_html:
@@ -201,7 +201,7 @@ const DEFAULTS: Record<EmailTemplateKey, EmailTemplateParts> = {
       `Até já,\n— equipa InstaBench`,
   },
   commercial_followup: {
-    subject: "Continuamos disponíveis para @{{instagramHandle}}",
+    subject: "Próximos passos para o relatório completo",
     preheader: "Sem pressão. Respondemos quando fizer sentido para ti.",
     headline: "Follow-up",
     body_html:
