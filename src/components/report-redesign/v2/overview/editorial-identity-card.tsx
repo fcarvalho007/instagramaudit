@@ -61,6 +61,18 @@ interface EditorialIdentityCardProps {
   /** Quantidade de concorrentes com dados reais. Usado pelo guard para
    *  rejeitar menções a concorrentes inexistentes. */
   competitorsCount?: number;
+  /** Método de cadência (window_30d / window_90d / sample_span / insufficient).
+   *  Propagado para o fallback para gerar o sufixo "nos últimos 30 dias" etc. */
+  cadenceMethod?:
+    | "window_30d"
+    | "window_90d"
+    | "sample_span"
+    | "insufficient"
+    | null;
+  cadenceWindowDays?: number | null;
+  /** Verdadeiro quando pelo menos uma hashtag aparece em >= 2 publicações.
+   *  `false` injecta "Sem hashtags recorrentes na amostra." no fallback. */
+  hasRecurringHashtags?: boolean | null;
 }
 
 interface EditorialCopy {
@@ -279,6 +291,9 @@ export function EditorialIdentityCard({
   cadenceSufficient,
   cadenceReliability,
   competitorsCount,
+  cadenceMethod,
+  cadenceWindowDays,
+  hasRecurringHashtags,
 }: EditorialIdentityCardProps) {
   const { t, i18n } = useTranslation("report");
 
@@ -301,7 +316,11 @@ export function EditorialIdentityCard({
     competitorsCount: competitorsCount ?? 0,
     postsAnalyzed: typeof postsAnalyzed === "number" ? postsAnalyzed : 0,
   };
-  const fallbackVerdict = buildFallbackVerdict(verdictMetrics, t);
+  const fallbackVerdict = buildFallbackVerdict(verdictMetrics, t, {
+    cadenceMethod: cadenceMethod ?? null,
+    cadenceWindowDays: cadenceWindowDays ?? null,
+    hasRecurringHashtags: hasRecurringHashtags ?? null,
+  });
   const resolution = deriveEditorialVerdict(
     aiVerdict ?? null,
     verdictMetrics,

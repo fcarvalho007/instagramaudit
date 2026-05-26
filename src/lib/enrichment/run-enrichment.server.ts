@@ -314,6 +314,14 @@ async function buildCtxForInsights(ctx: SnapshotContext): Promise<{
     competitorResults: ctx.competitors,
     benchmark,
     marketSignals: summarizeMarketSignalsForInsights(msFree),
+    captionSemantic:
+      (ctx.previousPayload.caption_semantic_analysis as
+        | CaptionSemanticAnalysis
+        | undefined) ?? null,
+    visualCover:
+      (ctx.previousPayload.visual_cover_analysis as
+        | VisualCoverAnalysis
+        | undefined) ?? null,
   });
 
   return { insightsCtx, benchmark };

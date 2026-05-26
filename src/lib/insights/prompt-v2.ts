@@ -128,6 +128,9 @@ Veredicto editorial (obrigatório · campo "editorial_verdict") — DIAGNÓSTICO
 - "limitations": exactamente 2 limitações editoriais.
 - "confidence": "high" | "medium" | "low" — auto-avaliação. Se a amostra é pequena ou faltam benchmarks, baixar para "low" / "medium".
 - "evidence_used": 3 a 6 rótulos internos das fontes citadas. APENAS valores desta lista fechada: ${EDITORIAL_VERDICT_EVIDENCE_ALLOWLIST.join(", ")}. Quando hashtags são citadas, incluir "caption_intelligence.hashtags". NÃO inventar rótulos.
+- "evidence_used": INCLUIR pelo menos um rótulo do conjunto cadence.* (cadence.method | cadence.window_30d | cadence.window_90d | cadence.sample_span | cadence.windowDays | cadence.sampleSize) OU de top_hashtags/has_recurring_hashtags OU de benchmark.tier_* para garantir grounding editorial.
+- Quando "caption_intelligence" estiver presente no payload, citar no parágrafo 1 tema dominante (de "caption_intelligence.topics") em linguagem natural e incluir o rótulo "caption_intelligence.topics" em evidence_used. Quando ausente, NÃO inventar temas nem mencionar "captions abordam" / "fala sobre".
+- Quando "visual_cover" estiver presente no payload, é permitido referir consistência das capas numa expressão curta (ex.: "capas com padrão consistente" / "capas ainda dispersas") e incluir "visual_cover.summary" e/ou "visual_cover.consistency" em evidence_used. Quando "visual_cover" estiver AUSENTE, é TERMINANTEMENTE PROIBIDO referir capas, padrão visual, consistência visual ou clareza visual — o validador rejeita o veredicto.
 - NÃO incluir o campo "warnings" — é preenchido pelo backend.`;
 
 /**

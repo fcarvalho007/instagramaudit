@@ -69,6 +69,15 @@ const HASHTAG_TOKEN = /#[\p{L}\p{N}_]+/u;
 const HASHTAG_ABSENCE =
   /\bhashtags?\b[^.!?]{0,160}?(n[ãa]o\s+h[áa]|n[ãa]o\s+criam|n[ãa]o\s+s[ãa]o\s+suficient|ainda\s+n[ãa]o\s+criam|sem\s+assinatura\s+tem[áa]tica|n[ãa]o\s+definem|n[ãa]o\s+chegam|n[ãa]o\s+formam)/i;
 
+/**
+ * Visual claims in the verdict paragraph require visual evidence. When
+ * the paragraph mentions covers / visual consistency but `evidence_used`
+ * carries no `visual_cover.*` rótulo, we treat it as hallucination —
+ * the snapshot has no `visual_cover_analysis` to back it up.
+ */
+const VISUAL_CLAIM_KEYWORDS =
+  /\b(capas?|consist[êe]ncia\s+visual|padr[ãa]o\s+visual|clareza\s+visual|identidade\s+visual)\b/i;
+
 const itemSchema = z.object({
   emphasis: z.enum(["positive", "negative", "default", "neutral"]),
   text: z.string().min(1).max(INSIGHT_V2_TEXT_MAX + 40), // tolerância para trim posterior
@@ -351,6 +360,21 @@ export function validateInsightsV2(raw: unknown): ValidateV2Result {
         return fail("EVIDENCE_UNKNOWN", `verdict.evidence="${trimmed}"`);
       }
       evidence.push(trimmed as EditorialVerdictEvidence);
+    }
+
+    // Visual claim guard — só permitir falar de capas / consistência
+    // visual quando o snapshot tem `visual_cover_analysis` (representado
+    // por um rótulo `visual_cover.*` em evidence_used).
+    if (VISUAL_CLAIM_KEYWORDS.test(paragraph)) {
+      const hasVisualEvidence = evidence.some((e) =>
+        e.startsWith("visual_cover."),
+      );
+      if (!hasVisualEvidence) {
+        return fail(
+          "VISUAL_CLAIM_UNSUPPORTED",
+          "verdict.paragraph mentions visual but no visual_cover.* evidence",
+        );
+      }
     }
 
     editorialVerdict = {

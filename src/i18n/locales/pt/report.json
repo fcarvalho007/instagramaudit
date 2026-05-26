@@ -86,6 +86,12 @@
       "needs_work": "Rever ângulo editorial e clarificar o pedido de interação em cada publicação.",
       "limited_data": "Reunir amostra maior antes de tirar conclusões definitivas."
     },
+    "fallback_cadence_qualifier": {
+      "window_30d": "Leitura feita nos últimos 30 dias.",
+      "window_90d": "Leitura feita nos últimos 90 dias.",
+      "sample_span": "Leitura feita na amostra recente."
+    },
+    "fallback_hashtags_absent": "Sem hashtags recorrentes na amostra.",
     "verdict": {
       "provisional": "Leitura provisória",
       "provisional_hint": "Leitura ajustada por divergência entre a interpretação editorial e os números observados."

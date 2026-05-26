@@ -130,6 +130,11 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
           cadenceSufficient={enriched.cadence.sufficient}
           cadenceReliability={enriched.cadence.reliability}
           competitorsCount={result.data.competitors.length}
+          cadenceMethod={enriched.cadence.method}
+          cadenceWindowDays={enriched.cadence.windowDays}
+          hasRecurringHashtags={
+            (result.data.topHashtags ?? []).some((h) => (h.uses ?? 0) >= 2)
+          }
         />
       )}
 
