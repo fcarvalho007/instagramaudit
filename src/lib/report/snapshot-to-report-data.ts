@@ -15,6 +15,7 @@
 
 import type { ReportData } from "@/components/report/report-mock-data";
 import type { BenchmarkPositioning } from "@/lib/benchmark/types";
+import type { SocialinsiderInstagramContext } from "@/lib/knowledge/socialinsider-context";
 import type {
   AiInsightV2Item,
   AiInsightV2Section,
