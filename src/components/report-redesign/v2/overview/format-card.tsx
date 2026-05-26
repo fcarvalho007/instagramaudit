@@ -579,7 +579,11 @@ function ExternalReferenceTable({
     if (!refData) return t("format.external_ref.reading_dash");
     const entry = byKey.get(key);
     if (!entry || entry.count === 0) return t("format.external_ref.reading_dash");
-    // Compare profile share vs reference share within the 3 formats.
+    // refShare: only used for DIRECTIONAL comparison of mix between this
+    // profile and the Socialinsider per-format reference. It is NEVER
+    // displayed as a total posting target and must NOT be interpreted as
+    // a recommended monthly volume. Socialinsider data is an external
+    // reference for context only — never a fixed rule.
     const refTotal =
       (refs?.carousel?.postsPerMonth ?? 0) +
       (refs?.reel?.postsPerMonth ?? 0) +
