@@ -135,6 +135,7 @@ import { Route as ApiPublicAnalysisSnapshotByIdSnapshotIdRouteImport } from './r
 import { Route as ApiAdminKnowledgeSuggestionsIdRouteImport } from './routes/api/admin/knowledge.suggestions.$id'
 import { Route as ApiAdminKnowledgeNotesIdRouteImport } from './routes/api/admin/knowledge.notes.$id'
 import { Route as ApiAdminKnowledgeBenchmarksIdRouteImport } from './routes/api/admin/knowledge.benchmarks.$id'
+import { Route as ApiAdminEmailTemplatesKeyPreviewRouteImport } from './routes/api/admin/email-templates.$key.preview'
 import { Route as ApiAdminSistemaAlertsIdAckRouteImport } from './routes/api/admin/sistema.alerts.$id.ack'
 import { Route as ApiAdminKnowledgeHistoryTypeIdRouteImport } from './routes/api/admin/knowledge.history.$type.$id'
 
@@ -812,6 +813,12 @@ const ApiAdminKnowledgeBenchmarksIdRoute =
     path: '/$id',
     getParentRoute: () => ApiAdminKnowledgeBenchmarksRoute,
   } as any)
+const ApiAdminEmailTemplatesKeyPreviewRoute =
+  ApiAdminEmailTemplatesKeyPreviewRouteImport.update({
+    id: '/preview',
+    path: '/preview',
+    getParentRoute: () => ApiAdminEmailTemplatesKeyRoute,
+  } as any)
 const ApiAdminSistemaAlertsIdAckRoute =
   ApiAdminSistemaAlertsIdAckRouteImport.update({
     id: '/$id/ack',
@@ -910,7 +917,7 @@ export interface FileRoutesByFullPath {
   '/beta/submitted/$requestId': typeof BetaSubmittedRequestIdRoute
   '/report/print/$snapshotId': typeof ReportPrintSnapshotIdRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
-  '/api/admin/email-templates/$key': typeof ApiAdminEmailTemplatesKeyRoute
+  '/api/admin/email-templates/$key': typeof ApiAdminEmailTemplatesKeyRouteWithChildren
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
   '/api/admin/knowledge/export': typeof ApiAdminKnowledgeExportRoute
   '/api/admin/knowledge/notes': typeof ApiAdminKnowledgeNotesRouteWithChildren
@@ -947,6 +954,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/sync-apify-costs': typeof ApiPublicHooksSyncApifyCostsRoute
   '/api/public/hooks/sync-dataforseo-costs': typeof ApiPublicHooksSyncDataforseoCostsRoute
   '/api/public/hooks/sync-openai-costs': typeof ApiPublicHooksSyncOpenaiCostsRoute
+  '/api/admin/email-templates/$key/preview': typeof ApiAdminEmailTemplatesKeyPreviewRoute
   '/api/admin/knowledge/benchmarks/$id': typeof ApiAdminKnowledgeBenchmarksIdRoute
   '/api/admin/knowledge/notes/$id': typeof ApiAdminKnowledgeNotesIdRoute
   '/api/admin/knowledge/suggestions/$id': typeof ApiAdminKnowledgeSuggestionsIdRoute
@@ -1039,7 +1047,7 @@ export interface FileRoutesByTo {
   '/beta/submitted/$requestId': typeof BetaSubmittedRequestIdRoute
   '/report/print/$snapshotId': typeof ReportPrintSnapshotIdRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
-  '/api/admin/email-templates/$key': typeof ApiAdminEmailTemplatesKeyRoute
+  '/api/admin/email-templates/$key': typeof ApiAdminEmailTemplatesKeyRouteWithChildren
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
   '/api/admin/knowledge/export': typeof ApiAdminKnowledgeExportRoute
   '/api/admin/knowledge/notes': typeof ApiAdminKnowledgeNotesRouteWithChildren
@@ -1076,6 +1084,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/sync-apify-costs': typeof ApiPublicHooksSyncApifyCostsRoute
   '/api/public/hooks/sync-dataforseo-costs': typeof ApiPublicHooksSyncDataforseoCostsRoute
   '/api/public/hooks/sync-openai-costs': typeof ApiPublicHooksSyncOpenaiCostsRoute
+  '/api/admin/email-templates/$key/preview': typeof ApiAdminEmailTemplatesKeyPreviewRoute
   '/api/admin/knowledge/benchmarks/$id': typeof ApiAdminKnowledgeBenchmarksIdRoute
   '/api/admin/knowledge/notes/$id': typeof ApiAdminKnowledgeNotesIdRoute
   '/api/admin/knowledge/suggestions/$id': typeof ApiAdminKnowledgeSuggestionsIdRoute
@@ -1170,7 +1179,7 @@ export interface FileRoutesById {
   '/beta/submitted/$requestId': typeof BetaSubmittedRequestIdRoute
   '/report/print/$snapshotId': typeof ReportPrintSnapshotIdRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
-  '/api/admin/email-templates/$key': typeof ApiAdminEmailTemplatesKeyRoute
+  '/api/admin/email-templates/$key': typeof ApiAdminEmailTemplatesKeyRouteWithChildren
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
   '/api/admin/knowledge/export': typeof ApiAdminKnowledgeExportRoute
   '/api/admin/knowledge/notes': typeof ApiAdminKnowledgeNotesRouteWithChildren
@@ -1207,6 +1216,7 @@ export interface FileRoutesById {
   '/api/public/hooks/sync-apify-costs': typeof ApiPublicHooksSyncApifyCostsRoute
   '/api/public/hooks/sync-dataforseo-costs': typeof ApiPublicHooksSyncDataforseoCostsRoute
   '/api/public/hooks/sync-openai-costs': typeof ApiPublicHooksSyncOpenaiCostsRoute
+  '/api/admin/email-templates/$key/preview': typeof ApiAdminEmailTemplatesKeyPreviewRoute
   '/api/admin/knowledge/benchmarks/$id': typeof ApiAdminKnowledgeBenchmarksIdRoute
   '/api/admin/knowledge/notes/$id': typeof ApiAdminKnowledgeNotesIdRoute
   '/api/admin/knowledge/suggestions/$id': typeof ApiAdminKnowledgeSuggestionsIdRoute
@@ -1339,6 +1349,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/sync-apify-costs'
     | '/api/public/hooks/sync-dataforseo-costs'
     | '/api/public/hooks/sync-openai-costs'
+    | '/api/admin/email-templates/$key/preview'
     | '/api/admin/knowledge/benchmarks/$id'
     | '/api/admin/knowledge/notes/$id'
     | '/api/admin/knowledge/suggestions/$id'
@@ -1468,6 +1479,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/sync-apify-costs'
     | '/api/public/hooks/sync-dataforseo-costs'
     | '/api/public/hooks/sync-openai-costs'
+    | '/api/admin/email-templates/$key/preview'
     | '/api/admin/knowledge/benchmarks/$id'
     | '/api/admin/knowledge/notes/$id'
     | '/api/admin/knowledge/suggestions/$id'
@@ -1598,6 +1610,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/sync-apify-costs'
     | '/api/public/hooks/sync-dataforseo-costs'
     | '/api/public/hooks/sync-openai-costs'
+    | '/api/admin/email-templates/$key/preview'
     | '/api/admin/knowledge/benchmarks/$id'
     | '/api/admin/knowledge/notes/$id'
     | '/api/admin/knowledge/suggestions/$id'
@@ -2590,6 +2603,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminKnowledgeBenchmarksIdRouteImport
       parentRoute: typeof ApiAdminKnowledgeBenchmarksRoute
     }
+    '/api/admin/email-templates/$key/preview': {
+      id: '/api/admin/email-templates/$key/preview'
+      path: '/preview'
+      fullPath: '/api/admin/email-templates/$key/preview'
+      preLoaderRoute: typeof ApiAdminEmailTemplatesKeyPreviewRouteImport
+      parentRoute: typeof ApiAdminEmailTemplatesKeyRoute
+    }
     '/api/admin/sistema/alerts/$id/ack': {
       id: '/api/admin/sistema/alerts/$id/ack'
       path: '/$id/ack'
@@ -2686,13 +2706,28 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface ApiAdminEmailTemplatesKeyRouteChildren {
+  ApiAdminEmailTemplatesKeyPreviewRoute: typeof ApiAdminEmailTemplatesKeyPreviewRoute
+}
+
+const ApiAdminEmailTemplatesKeyRouteChildren: ApiAdminEmailTemplatesKeyRouteChildren =
+  {
+    ApiAdminEmailTemplatesKeyPreviewRoute:
+      ApiAdminEmailTemplatesKeyPreviewRoute,
+  }
+
+const ApiAdminEmailTemplatesKeyRouteWithChildren =
+  ApiAdminEmailTemplatesKeyRoute._addFileChildren(
+    ApiAdminEmailTemplatesKeyRouteChildren,
+  )
+
 interface ApiAdminEmailTemplatesRouteChildren {
-  ApiAdminEmailTemplatesKeyRoute: typeof ApiAdminEmailTemplatesKeyRoute
+  ApiAdminEmailTemplatesKeyRoute: typeof ApiAdminEmailTemplatesKeyRouteWithChildren
 }
 
 const ApiAdminEmailTemplatesRouteChildren: ApiAdminEmailTemplatesRouteChildren =
   {
-    ApiAdminEmailTemplatesKeyRoute: ApiAdminEmailTemplatesKeyRoute,
+    ApiAdminEmailTemplatesKeyRoute: ApiAdminEmailTemplatesKeyRouteWithChildren,
   }
 
 const ApiAdminEmailTemplatesRouteWithChildren =
