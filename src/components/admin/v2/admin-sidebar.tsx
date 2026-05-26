@@ -21,6 +21,7 @@ import {
   MailCheck,
   Settings,
   BarChart2,
+  LineChart,
   LogOut,
   X,
 } from "lucide-react";
@@ -38,6 +39,7 @@ interface NavItem {
     | "/admin/conhecimento"
     | "/admin/report-lab"
     | "/admin/email-lab"
+    | "/admin/estudo-mercado"
     | "/admin/sistema";
   label: string;
   icon: typeof LayoutDashboard;
@@ -85,6 +87,12 @@ const GROUPS: NavGroup[] = [
       { to: "/admin/report-lab", label: "Report Lab", icon: FlaskConical },
       { to: "/admin/automacoes", label: "Automações", icon: Zap },
       { to: "/admin/email-lab", label: "Templates Email + SMS", icon: MailCheck },
+    ],
+  },
+  {
+    label: "Estudo de mercado",
+    items: [
+      { to: "/admin/estudo-mercado", label: "Feedback agregado", icon: LineChart },
     ],
   },
   {
