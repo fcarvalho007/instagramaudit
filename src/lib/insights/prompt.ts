@@ -257,6 +257,16 @@ function computeAvailableSignals(ctx: InsightsContext): string[] {
   if (cad.windowDays !== null) signals.push("cadence.windowDays");
   if (cad.pinnedExcluded > 0) signals.push("cadence.pinnedExcluded");
 
+  // Editorial helpers used by the first-card verdict prompt. Exposed as
+  // citable evidence paths so the model can ground its reasoning.
+  if (typeof ctx.cadence_label_pt === "string" && ctx.cadence_label_pt) {
+    signals.push("cadence_label_pt");
+  }
+  if (Array.isArray(ctx.top_hashtags) && ctx.top_hashtags.length > 0) {
+    signals.push("top_hashtags");
+  }
+  if (ctx.hashtags_state) signals.push("hashtags_state");
+
   // Per-post allow-list. Mirrors the trimmed `top_posts` array sent in
   // `buildInsightsUserPayload` (cap = PROMPT_TOP_POSTS_CAP). Order is
   // deterministic both across posts (index order) and within a post
