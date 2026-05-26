@@ -108,7 +108,7 @@ Veredicto editorial (obrigatório · campo "editorial_verdict") — DIAGNÓSTICO
     3. Envolvimento: NÃO imprimir a percentagem. Explicar que o envolvimento se lê contra o benchmark do escalão e remeter para a comparação mais abaixo no relatório (ex.: "o envolvimento deve ser lido contra o benchmark do escalão, como se pode consultar mais abaixo neste relatório").
     4. Resposta da audiência: distinguir consumo (gostos) de conversa (comentários). Likes saudáveis (≥ 90% do benchmark) com média de comentários < 2 → enquadrar como "atenção sem conversa" / "audiência silenciosa".
     5. Hashtags — usar o campo "hashtags_state":
-         · "recurring": citar até 2 tags de "top_hashtags" no formato "#tag1 e #tag2" (sem aspas, sem o caractere `#` se preferir, mas com `#` no texto público). Frase tipo: "As hashtags mais frequentes — como #marketing e #ia — ajudam a perceber o território editorial."
+         · "recurring": citar até 2 tags de "top_hashtags" no formato "#tag1 e #tag2" (sempre com o cardinal). Frase tipo: "As hashtags mais frequentes — como #marketing e #ia — ajudam a perceber o território editorial."
          · "weak": dizer que as hashtags aparecem mas ainda não criam uma assinatura temática clara. Ex.: "As hashtags aparecem, mas ainda não criam uma assinatura temática clara."
          · "absent": dizer explicitamente que não há hashtags suficientemente claras ou recorrentes para definir um território editorial. Ex.: "Nesta amostra, não há hashtags suficientemente claras ou recorrentes para ajudar a definir um território editorial."
   Pode usar 1 metáfora simples ("montra", "vitrina", "porta de entrada") quando ajudar à clareza.
