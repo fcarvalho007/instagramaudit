@@ -147,7 +147,7 @@ export function PeopleTab() {
                       {formatRelative(l.last_interaction)}
                     </span>
                     <Link
-                      to="/admin/beta-leads"
+                      to="/admin/leads"
                       search={{ lead: l.id }}
                       className="text-[11px] font-medium text-admin-text-secondary hover:text-admin-text-primary hover:underline"
                     >
@@ -161,7 +161,7 @@ export function PeopleTab() {
               <p className="mt-2 text-[11px] text-admin-text-tertiary">
                 + {items.length - MAX_PER_STAGE} outros · ver todos em{" "}
                 <Link
-                  to="/admin/beta-leads"
+                  to="/admin/leads"
                   className="underline hover:text-admin-text-primary"
                 >
                   Pipeline
