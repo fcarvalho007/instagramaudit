@@ -15,6 +15,7 @@ import { buildReportSummaryEmailData } from "./build-report-summary-data.server"
 import { renderReportSummary } from "./templates/report-summary";
 import { sendTransactionalEmail } from "./transactional-email.server";
 import { resolveReportUrl, buildUnsubscribeUrl } from "./url";
+import { renderWithOverride } from "./template-overrides.server";
 
 export interface SendReportSummaryArgs {
   toEmail: string;
@@ -51,17 +52,28 @@ export async function sendReportSummaryEmail(
 
   let rendered;
   try {
-    rendered = renderReportSummary({
-      firstName: args.firstName,
-      instagramHandle: summary.instagramHandle,
-      reportUrl: resolveReportUrl(
-        summary.instagramHandle,
-        args.reportSnapshotId ?? null,
-      ),
-      kpis: summary.kpis,
-      topPost: summary.topPost,
-      unsubscribeUrl: args.leadId ? buildUnsubscribeUrl(args.leadId) : null,
-    });
+    const reportUrl = resolveReportUrl(
+      summary.instagramHandle,
+      args.reportSnapshotId ?? null,
+    );
+    const unsubscribeUrl = args.leadId ? buildUnsubscribeUrl(args.leadId) : null;
+    rendered = await renderWithOverride(
+      "report_summary",
+      {
+        firstName: args.firstName ?? "",
+        instagramHandle: summary.instagramHandle,
+        reportUrl,
+      },
+      () =>
+        renderReportSummary({
+          firstName: args.firstName,
+          instagramHandle: summary.instagramHandle,
+          reportUrl,
+          kpis: summary.kpis,
+          topPost: summary.topPost,
+          unsubscribeUrl,
+        }),
+    );
   } catch (err) {
     return {
       ok: false,
