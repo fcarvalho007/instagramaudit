@@ -168,12 +168,21 @@ export function ReportsTableSection({ period }: { period: AdminPeriod }) {
                     className="border-t border-admin-border transition-colors hover:bg-[var(--color-admin-surface-muted)]"
                   >
                     <td className="px-6 py-3.5 align-top">
-                      <p className="m-0 text-[13px] text-admin-text-primary">
-                        {r.lead?.name ?? "—"}
-                      </p>
-                      <p className="mt-0.5 text-[12px] text-admin-text-secondary">
-                        {r.lead?.email ?? "—"}
-                      </p>
+                      {r.lead?.email ? (
+                        <div className="flex flex-col items-start gap-1">
+                          <AdminBadge variant="revenue">email submetido</AdminBadge>
+                          {r.lead.name ? (
+                            <p className="m-0 text-[13px] text-admin-text-primary">
+                              {r.lead.name}
+                            </p>
+                          ) : null}
+                          <p className="m-0 text-[12px] text-admin-text-secondary">
+                            {r.lead.email}
+                          </p>
+                        </div>
+                      ) : (
+                        <AdminBadge variant="neutral">anónimo</AdminBadge>
+                      )}
                     </td>
                     <td className="px-6 py-3.5 align-top text-[13px] text-admin-text-primary">
                       @{r.instagram_username}
@@ -196,20 +205,27 @@ export function ReportsTableSection({ period }: { period: AdminPeriod }) {
                     <td className="px-6 py-3.5 align-top admin-code text-admin-text-secondary">
                       {formatDate(r.created_at)}
                     </td>
-                    <td className="px-6 py-3.5 align-top admin-code text-admin-text-secondary">
-                      {formatDuration(r)}
-                    </td>
                     <td className="px-6 py-3.5 align-top text-right">
                       {r.kind === "request" ? (
-                        <button
-                          type="button"
-                          aria-label="Ver detalhe"
+                        <AdminActionButton
+                          size="sm"
+                          aria-label="Ver detalhe do relatório"
                           onClick={() => openReport(r.id)}
-                          className="inline-flex h-6 w-6 items-center justify-center rounded-md text-admin-text-tertiary transition-colors hover:bg-[var(--color-admin-surface-muted)] hover:text-admin-text-primary"
                         >
-                          <Eye size={16} strokeWidth={1.75} />
-                        </button>
-                      ) : null}
+                          Ver
+                        </AdminActionButton>
+                      ) : (
+                        <a
+                          href={`/analyze/${r.instagram_username}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label="Abrir análise pública"
+                          className="inline-flex items-center gap-1 text-[12px] text-admin-text-secondary hover:text-admin-text-primary"
+                        >
+                          Ver análise
+                          <ExternalLink size={12} strokeWidth={1.75} />
+                        </a>
+                      )}
                     </td>
                   </tr>
                 ))
