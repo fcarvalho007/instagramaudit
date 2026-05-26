@@ -15,8 +15,62 @@ import { AdminInfoTooltip } from "../admin-info-tooltip";
 import { ADMIN_LITERAL } from "../admin-tokens";
 import { AdminSectionHeader } from "../admin-section-header";
 import { PaymentsPendingBanner } from "../payments-pending-banner";
-import { useDemoMode } from "@/lib/admin/demo-mode";
-import { MOCK_FUNNEL, ZERO_FUNNEL } from "@/lib/admin/mock-data";
+import { useQuery } from "@tanstack/react-query";
+import { adminFetch } from "@/lib/admin/fetch";
+
+interface FunnelApiResponse {
+  success: boolean;
+  window_days: number;
+  visitors: number | null;
+  analyses: number;
+  leads: number;
+  customers: number;
+  report_requests_total: number;
+  lead_to_customer_pct: number | null;
+}
+
+type FunnelData = {
+  visitors: { eyebrow: string; value: string };
+  freeAnalyses: { eyebrow: string; value: string };
+  leads: { eyebrow: string; value: string };
+  visitorToLead: { eyebrow: string; value: string };
+  customers: { eyebrow: string; value: string };
+  leadToCustomer: { eyebrow: string; value: string };
+  totals: Array<{ eyebrow: string; value: string; sub: string }>;
+};
+
+const EMPTY_DATA: FunnelData = {
+  visitors: { eyebrow: "Visitantes anónimos", value: "—" },
+  freeAnalyses: { eyebrow: "Análises grátis feitas", value: "0" },
+  leads: { eyebrow: "Leads · registados", value: "0" },
+  visitorToLead: { eyebrow: "conversão visitante → lead", value: "—" },
+  customers: { eyebrow: "Clientes · pedidos", value: "0" },
+  leadToCustomer: { eyebrow: "conversão lead → cliente", value: "—" },
+  totals: [
+    { eyebrow: "Conversão total", value: "—", sub: "ainda sem tracker de visitantes" },
+    { eyebrow: "Receita por lead", value: "€0,00", sub: "sem checkout ligado" },
+    { eyebrow: "Valor médio cliente", value: "€0,00", sub: "sem checkout ligado" },
+  ],
+};
+
+function buildData(api: FunnelApiResponse): FunnelData {
+  return {
+    visitors: { eyebrow: "Visitantes anónimos", value: "—" },
+    freeAnalyses: { eyebrow: "Análises feitas · 30d", value: String(api.analyses) },
+    leads: { eyebrow: "Leads · registados", value: String(api.leads) },
+    visitorToLead: { eyebrow: "análises → lead", value: api.analyses > 0 ? `${((api.leads / api.analyses) * 100).toFixed(1)}%` : "—" },
+    customers: { eyebrow: "Clientes · pedidos", value: String(api.customers) },
+    leadToCustomer: {
+      eyebrow: "conversão lead → cliente",
+      value: api.lead_to_customer_pct != null ? `${api.lead_to_customer_pct.toFixed(1)}%` : "—",
+    },
+    totals: [
+      { eyebrow: "Conversão total", value: "—", sub: "ainda sem tracker de visitantes" },
+      { eyebrow: "Receita por lead", value: "€0,00", sub: "sem checkout ligado" },
+      { eyebrow: "Valor médio cliente", value: "€0,00", sub: "sem checkout ligado" },
+    ],
+  };
+}
 
 const FUNNEL_TOTALS_INFO: Record<string, string> = {
   "Conversão total":
@@ -28,8 +82,16 @@ const FUNNEL_TOTALS_INFO: Record<string, string> = {
 };
 
 export function FunnelSection() {
-  const { enabled: demo } = useDemoMode();
-  const data = demo ? MOCK_FUNNEL : ZERO_FUNNEL;
+  const { data: api } = useQuery<FunnelApiResponse>({
+    queryKey: ["admin", "funnel"],
+    queryFn: async () => {
+      const res = await adminFetch("/api/admin/funnel");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
+  const data = api ? buildData(api) : EMPTY_DATA;
   return (
     <section className="flex flex-col gap-4">
       <AdminSectionHeader
@@ -38,9 +100,9 @@ export function FunnelSection() {
         accent="leads"
         info="Mostra o percurso desde visitante anónimo até cliente pagante. As percentagens indicam a conversão entre cada etapa."
       />
-      {!demo && (
+      {api && api.customers === 0 && (
         <PaymentsPendingBanner
-          reason="O funil mostra-se a zero porque ainda não existem visitantes registados nem checkout ligado. Liga EuPago/Stripe para passar a contabilizar leads → clientes em tempo real."
+          reason="Ainda não há clientes pagantes na janela. As contagens de análises e leads são reais; o checkout (EuPago/Stripe) está por ligar."
         />
       )}
       <AdminCard className="!p-4 sm:!p-10">
@@ -86,7 +148,7 @@ export function FunnelSection() {
  * SVG funnel — viewBox 800×280, 3 layers de 70px cada, gaps de 14px.
  * Textos dentro do SVG em coordenadas absolutas; escalam com o viewBox.
  */
-function FunnelDiagram({ data }: { data: typeof MOCK_FUNNEL | typeof ZERO_FUNNEL }) {
+function FunnelDiagram({ data }: { data: FunnelData }) {
   return (
     <div
       role="img"
@@ -213,7 +275,7 @@ function FunnelText({
 function FunnelStackedMobile({
   data,
 }: {
-  data: typeof MOCK_FUNNEL | typeof ZERO_FUNNEL;
+  data: FunnelData;
 }) {
   const layers: Array<{
     left: { eyebrow: string; value: string };

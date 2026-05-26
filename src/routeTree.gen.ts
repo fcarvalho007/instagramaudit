@@ -72,12 +72,15 @@ import { Route as ApiAdminSendCommercialFollowupRouteImport } from './routes/api
 import { Route as ApiAdminResendEmailRouteImport } from './routes/api/admin/resend-email'
 import { Route as ApiAdminReportsRouteImport } from './routes/api/admin/reports'
 import { Route as ApiAdminReportRequestsRouteImport } from './routes/api/admin/report-requests'
+import { Route as ApiAdminRepeatedSearchesRouteImport } from './routes/api/admin/repeated-searches'
 import { Route as ApiAdminRegeneratePdfRouteImport } from './routes/api/admin/regenerate-pdf'
 import { Route as ApiAdminRefreshProfilePreflightRouteImport } from './routes/api/admin/refresh-profile-preflight'
 import { Route as ApiAdminRefreshProfileRouteImport } from './routes/api/admin/refresh-profile'
+import { Route as ApiAdminRecentReportsRouteImport } from './routes/api/admin/recent-reports'
 import { Route as ApiAdminLeadsKanbanRouteImport } from './routes/api/admin/leads-kanban'
 import { Route as ApiAdminLeadsBulkRouteImport } from './routes/api/admin/leads-bulk'
 import { Route as ApiAdminGenerateBetaReportRouteImport } from './routes/api/admin/generate-beta-report'
+import { Route as ApiAdminFunnelRouteImport } from './routes/api/admin/funnel'
 import { Route as ApiAdminForceRefreshRouteImport } from './routes/api/admin/force-refresh'
 import { Route as ApiAdminFollowUpsRouteImport } from './routes/api/admin/follow-ups'
 import { Route as ApiAdminDiagnosticsRouteImport } from './routes/api/admin/diagnostics'
@@ -110,6 +113,7 @@ import { Route as ApiAdminSistemaCapsRouteImport } from './routes/api/admin/sist
 import { Route as ApiAdminSistemaAlertsRouteImport } from './routes/api/admin/sistema.alerts'
 import { Route as ApiAdminReportsCleanupExpiredRouteImport } from './routes/api/admin/reports.cleanup-expired'
 import { Route as ApiAdminReportRequestsIdRouteImport } from './routes/api/admin/report-requests.$id'
+import { Route as ApiAdminReportDetailIdRouteImport } from './routes/api/admin/report-detail.$id'
 import { Route as ApiAdminLeadsKanbanIdRouteImport } from './routes/api/admin/leads-kanban.$id'
 import { Route as ApiAdminLeadTimelineIdRouteImport } from './routes/api/admin/lead-timeline.$id'
 import { Route as ApiAdminKnowledgeSuggestionsRouteImport } from './routes/api/admin/knowledge.suggestions'
@@ -447,6 +451,12 @@ const ApiAdminReportRequestsRoute = ApiAdminReportRequestsRouteImport.update({
   path: '/api/admin/report-requests',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminRepeatedSearchesRoute =
+  ApiAdminRepeatedSearchesRouteImport.update({
+    id: '/api/admin/repeated-searches',
+    path: '/api/admin/repeated-searches',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminRegeneratePdfRoute = ApiAdminRegeneratePdfRouteImport.update({
   id: '/api/admin/regenerate-pdf',
   path: '/api/admin/regenerate-pdf',
@@ -461,6 +471,11 @@ const ApiAdminRefreshProfilePreflightRoute =
 const ApiAdminRefreshProfileRoute = ApiAdminRefreshProfileRouteImport.update({
   id: '/api/admin/refresh-profile',
   path: '/api/admin/refresh-profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminRecentReportsRoute = ApiAdminRecentReportsRouteImport.update({
+  id: '/api/admin/recent-reports',
+  path: '/api/admin/recent-reports',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdminLeadsKanbanRoute = ApiAdminLeadsKanbanRouteImport.update({
@@ -479,6 +494,11 @@ const ApiAdminGenerateBetaReportRoute =
     path: '/api/admin/generate-beta-report',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAdminFunnelRoute = ApiAdminFunnelRouteImport.update({
+  id: '/api/admin/funnel',
+  path: '/api/admin/funnel',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminForceRefreshRoute = ApiAdminForceRefreshRouteImport.update({
   id: '/api/admin/force-refresh',
   path: '/api/admin/force-refresh',
@@ -661,6 +681,11 @@ const ApiAdminReportRequestsIdRoute =
     path: '/$id',
     getParentRoute: () => ApiAdminReportRequestsRoute,
   } as any)
+const ApiAdminReportDetailIdRoute = ApiAdminReportDetailIdRouteImport.update({
+  id: '/api/admin/report-detail/$id',
+  path: '/api/admin/report-detail/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminLeadsKanbanIdRoute = ApiAdminLeadsKanbanIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -807,12 +832,15 @@ export interface FileRoutesByFullPath {
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/follow-ups': typeof ApiAdminFollowUpsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
+  '/api/admin/funnel': typeof ApiAdminFunnelRoute
   '/api/admin/generate-beta-report': typeof ApiAdminGenerateBetaReportRoute
   '/api/admin/leads-bulk': typeof ApiAdminLeadsBulkRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
+  '/api/admin/recent-reports': typeof ApiAdminRecentReportsRoute
   '/api/admin/refresh-profile': typeof ApiAdminRefreshProfileRoute
   '/api/admin/refresh-profile-preflight': typeof ApiAdminRefreshProfilePreflightRoute
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
+  '/api/admin/repeated-searches': typeof ApiAdminRepeatedSearchesRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
@@ -843,6 +871,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/knowledge/suggestions': typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
   '/api/admin/lead-timeline/$id': typeof ApiAdminLeadTimelineIdRoute
   '/api/admin/leads-kanban/$id': typeof ApiAdminLeadsKanbanIdRoute
+  '/api/admin/report-detail/$id': typeof ApiAdminReportDetailIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
   '/api/admin/sistema/alerts': typeof ApiAdminSistemaAlertsRouteWithChildren
@@ -925,12 +954,15 @@ export interface FileRoutesByTo {
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/follow-ups': typeof ApiAdminFollowUpsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
+  '/api/admin/funnel': typeof ApiAdminFunnelRoute
   '/api/admin/generate-beta-report': typeof ApiAdminGenerateBetaReportRoute
   '/api/admin/leads-bulk': typeof ApiAdminLeadsBulkRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
+  '/api/admin/recent-reports': typeof ApiAdminRecentReportsRoute
   '/api/admin/refresh-profile': typeof ApiAdminRefreshProfileRoute
   '/api/admin/refresh-profile-preflight': typeof ApiAdminRefreshProfilePreflightRoute
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
+  '/api/admin/repeated-searches': typeof ApiAdminRepeatedSearchesRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
@@ -961,6 +993,7 @@ export interface FileRoutesByTo {
   '/api/admin/knowledge/suggestions': typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
   '/api/admin/lead-timeline/$id': typeof ApiAdminLeadTimelineIdRoute
   '/api/admin/leads-kanban/$id': typeof ApiAdminLeadsKanbanIdRoute
+  '/api/admin/report-detail/$id': typeof ApiAdminReportDetailIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
   '/api/admin/sistema/alerts': typeof ApiAdminSistemaAlertsRouteWithChildren
@@ -1045,12 +1078,15 @@ export interface FileRoutesById {
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/follow-ups': typeof ApiAdminFollowUpsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
+  '/api/admin/funnel': typeof ApiAdminFunnelRoute
   '/api/admin/generate-beta-report': typeof ApiAdminGenerateBetaReportRoute
   '/api/admin/leads-bulk': typeof ApiAdminLeadsBulkRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
+  '/api/admin/recent-reports': typeof ApiAdminRecentReportsRoute
   '/api/admin/refresh-profile': typeof ApiAdminRefreshProfileRoute
   '/api/admin/refresh-profile-preflight': typeof ApiAdminRefreshProfilePreflightRoute
   '/api/admin/regenerate-pdf': typeof ApiAdminRegeneratePdfRoute
+  '/api/admin/repeated-searches': typeof ApiAdminRepeatedSearchesRoute
   '/api/admin/report-requests': typeof ApiAdminReportRequestsRouteWithChildren
   '/api/admin/reports': typeof ApiAdminReportsRouteWithChildren
   '/api/admin/resend-email': typeof ApiAdminResendEmailRoute
@@ -1081,6 +1117,7 @@ export interface FileRoutesById {
   '/api/admin/knowledge/suggestions': typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
   '/api/admin/lead-timeline/$id': typeof ApiAdminLeadTimelineIdRoute
   '/api/admin/leads-kanban/$id': typeof ApiAdminLeadsKanbanIdRoute
+  '/api/admin/report-detail/$id': typeof ApiAdminReportDetailIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
   '/api/admin/sistema/alerts': typeof ApiAdminSistemaAlertsRouteWithChildren
@@ -1166,12 +1203,15 @@ export interface FileRouteTypes {
     | '/api/admin/diagnostics'
     | '/api/admin/follow-ups'
     | '/api/admin/force-refresh'
+    | '/api/admin/funnel'
     | '/api/admin/generate-beta-report'
     | '/api/admin/leads-bulk'
     | '/api/admin/leads-kanban'
+    | '/api/admin/recent-reports'
     | '/api/admin/refresh-profile'
     | '/api/admin/refresh-profile-preflight'
     | '/api/admin/regenerate-pdf'
+    | '/api/admin/repeated-searches'
     | '/api/admin/report-requests'
     | '/api/admin/reports'
     | '/api/admin/resend-email'
@@ -1202,6 +1242,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/suggestions'
     | '/api/admin/lead-timeline/$id'
     | '/api/admin/leads-kanban/$id'
+    | '/api/admin/report-detail/$id'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
     | '/api/admin/sistema/alerts'
@@ -1284,12 +1325,15 @@ export interface FileRouteTypes {
     | '/api/admin/diagnostics'
     | '/api/admin/follow-ups'
     | '/api/admin/force-refresh'
+    | '/api/admin/funnel'
     | '/api/admin/generate-beta-report'
     | '/api/admin/leads-bulk'
     | '/api/admin/leads-kanban'
+    | '/api/admin/recent-reports'
     | '/api/admin/refresh-profile'
     | '/api/admin/refresh-profile-preflight'
     | '/api/admin/regenerate-pdf'
+    | '/api/admin/repeated-searches'
     | '/api/admin/report-requests'
     | '/api/admin/reports'
     | '/api/admin/resend-email'
@@ -1320,6 +1364,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/suggestions'
     | '/api/admin/lead-timeline/$id'
     | '/api/admin/leads-kanban/$id'
+    | '/api/admin/report-detail/$id'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
     | '/api/admin/sistema/alerts'
@@ -1403,12 +1448,15 @@ export interface FileRouteTypes {
     | '/api/admin/diagnostics'
     | '/api/admin/follow-ups'
     | '/api/admin/force-refresh'
+    | '/api/admin/funnel'
     | '/api/admin/generate-beta-report'
     | '/api/admin/leads-bulk'
     | '/api/admin/leads-kanban'
+    | '/api/admin/recent-reports'
     | '/api/admin/refresh-profile'
     | '/api/admin/refresh-profile-preflight'
     | '/api/admin/regenerate-pdf'
+    | '/api/admin/repeated-searches'
     | '/api/admin/report-requests'
     | '/api/admin/reports'
     | '/api/admin/resend-email'
@@ -1439,6 +1487,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/suggestions'
     | '/api/admin/lead-timeline/$id'
     | '/api/admin/leads-kanban/$id'
+    | '/api/admin/report-detail/$id'
     | '/api/admin/report-requests/$id'
     | '/api/admin/reports/cleanup-expired'
     | '/api/admin/sistema/alerts'
@@ -1504,12 +1553,15 @@ export interface RootRouteChildren {
   ApiAdminDiagnosticsRoute: typeof ApiAdminDiagnosticsRoute
   ApiAdminFollowUpsRoute: typeof ApiAdminFollowUpsRoute
   ApiAdminForceRefreshRoute: typeof ApiAdminForceRefreshRoute
+  ApiAdminFunnelRoute: typeof ApiAdminFunnelRoute
   ApiAdminGenerateBetaReportRoute: typeof ApiAdminGenerateBetaReportRoute
   ApiAdminLeadsBulkRoute: typeof ApiAdminLeadsBulkRoute
   ApiAdminLeadsKanbanRoute: typeof ApiAdminLeadsKanbanRouteWithChildren
+  ApiAdminRecentReportsRoute: typeof ApiAdminRecentReportsRoute
   ApiAdminRefreshProfileRoute: typeof ApiAdminRefreshProfileRoute
   ApiAdminRefreshProfilePreflightRoute: typeof ApiAdminRefreshProfilePreflightRoute
   ApiAdminRegeneratePdfRoute: typeof ApiAdminRegeneratePdfRoute
+  ApiAdminRepeatedSearchesRoute: typeof ApiAdminRepeatedSearchesRoute
   ApiAdminReportRequestsRoute: typeof ApiAdminReportRequestsRouteWithChildren
   ApiAdminReportsRoute: typeof ApiAdminReportsRouteWithChildren
   ApiAdminResendEmailRoute: typeof ApiAdminResendEmailRoute
@@ -1537,6 +1589,7 @@ export interface RootRouteChildren {
   ApiAdminKnowledgeSourcesRoute: typeof ApiAdminKnowledgeSourcesRoute
   ApiAdminKnowledgeSuggestionsRoute: typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
   ApiAdminLeadTimelineIdRoute: typeof ApiAdminLeadTimelineIdRoute
+  ApiAdminReportDetailIdRoute: typeof ApiAdminReportDetailIdRoute
   ApiAdminSistemaAlertsRoute: typeof ApiAdminSistemaAlertsRouteWithChildren
   ApiAdminSistemaCapsRoute: typeof ApiAdminSistemaCapsRoute
   ApiAdminSistemaCommentScraperRoute: typeof ApiAdminSistemaCommentScraperRoute
@@ -2005,6 +2058,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminReportRequestsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/repeated-searches': {
+      id: '/api/admin/repeated-searches'
+      path: '/api/admin/repeated-searches'
+      fullPath: '/api/admin/repeated-searches'
+      preLoaderRoute: typeof ApiAdminRepeatedSearchesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/regenerate-pdf': {
       id: '/api/admin/regenerate-pdf'
       path: '/api/admin/regenerate-pdf'
@@ -2026,6 +2086,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminRefreshProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/recent-reports': {
+      id: '/api/admin/recent-reports'
+      path: '/api/admin/recent-reports'
+      fullPath: '/api/admin/recent-reports'
+      preLoaderRoute: typeof ApiAdminRecentReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/leads-kanban': {
       id: '/api/admin/leads-kanban'
       path: '/api/admin/leads-kanban'
@@ -2045,6 +2112,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/generate-beta-report'
       fullPath: '/api/admin/generate-beta-report'
       preLoaderRoute: typeof ApiAdminGenerateBetaReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/funnel': {
+      id: '/api/admin/funnel'
+      path: '/api/admin/funnel'
+      fullPath: '/api/admin/funnel'
+      preLoaderRoute: typeof ApiAdminFunnelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/force-refresh': {
@@ -2270,6 +2344,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/admin/report-requests/$id'
       preLoaderRoute: typeof ApiAdminReportRequestsIdRouteImport
       parentRoute: typeof ApiAdminReportRequestsRoute
+    }
+    '/api/admin/report-detail/$id': {
+      id: '/api/admin/report-detail/$id'
+      path: '/api/admin/report-detail/$id'
+      fullPath: '/api/admin/report-detail/$id'
+      preLoaderRoute: typeof ApiAdminReportDetailIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/admin/leads-kanban/$id': {
       id: '/api/admin/leads-kanban/$id'
@@ -2591,12 +2672,15 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminDiagnosticsRoute: ApiAdminDiagnosticsRoute,
   ApiAdminFollowUpsRoute: ApiAdminFollowUpsRoute,
   ApiAdminForceRefreshRoute: ApiAdminForceRefreshRoute,
+  ApiAdminFunnelRoute: ApiAdminFunnelRoute,
   ApiAdminGenerateBetaReportRoute: ApiAdminGenerateBetaReportRoute,
   ApiAdminLeadsBulkRoute: ApiAdminLeadsBulkRoute,
   ApiAdminLeadsKanbanRoute: ApiAdminLeadsKanbanRouteWithChildren,
+  ApiAdminRecentReportsRoute: ApiAdminRecentReportsRoute,
   ApiAdminRefreshProfileRoute: ApiAdminRefreshProfileRoute,
   ApiAdminRefreshProfilePreflightRoute: ApiAdminRefreshProfilePreflightRoute,
   ApiAdminRegeneratePdfRoute: ApiAdminRegeneratePdfRoute,
+  ApiAdminRepeatedSearchesRoute: ApiAdminRepeatedSearchesRoute,
   ApiAdminReportRequestsRoute: ApiAdminReportRequestsRouteWithChildren,
   ApiAdminReportsRoute: ApiAdminReportsRouteWithChildren,
   ApiAdminResendEmailRoute: ApiAdminResendEmailRoute,
@@ -2626,6 +2710,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminKnowledgeSuggestionsRoute:
     ApiAdminKnowledgeSuggestionsRouteWithChildren,
   ApiAdminLeadTimelineIdRoute: ApiAdminLeadTimelineIdRoute,
+  ApiAdminReportDetailIdRoute: ApiAdminReportDetailIdRoute,
   ApiAdminSistemaAlertsRoute: ApiAdminSistemaAlertsRouteWithChildren,
   ApiAdminSistemaCapsRoute: ApiAdminSistemaCapsRoute,
   ApiAdminSistemaCommentScraperRoute: ApiAdminSistemaCommentScraperRoute,
