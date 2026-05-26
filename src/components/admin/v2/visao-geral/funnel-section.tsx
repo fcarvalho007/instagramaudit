@@ -17,12 +17,15 @@ import { AdminSectionHeader } from "../admin-section-header";
 import { PaymentsPendingBanner } from "../payments-pending-banner";
 import { useQuery } from "@tanstack/react-query";
 import { adminFetch } from "@/lib/admin/fetch";
+import type { AdminPeriod } from "../period-select";
 
 interface FunnelApiResponse {
   success: boolean;
   window_days: number;
   visitors: number | null;
   analyses: number;
+  analyses_total?: number;
+  analyses_fresh?: number;
   leads: number;
   customers: number;
   report_requests_total: number;
@@ -54,11 +57,19 @@ const EMPTY_DATA: FunnelData = {
 };
 
 function buildData(api: FunnelApiResponse): FunnelData {
+  const total = api.analyses_total ?? api.analyses;
+  const fresh = api.analyses_fresh ?? api.analyses;
   return {
     visitors: { eyebrow: "Visitantes anónimos", value: "—" },
-    freeAnalyses: { eyebrow: "Análises feitas · 30d", value: String(api.analyses) },
+    freeAnalyses: {
+      eyebrow: `Análises feitas · ${api.window_days}d`,
+      value: String(total),
+    },
     leads: { eyebrow: "Leads · registados", value: String(api.leads) },
-    visitorToLead: { eyebrow: "análises → lead", value: api.analyses > 0 ? `${((api.leads / api.analyses) * 100).toFixed(1)}%` : "—" },
+    visitorToLead: {
+      eyebrow: `análises → lead · ${fresh} c/ chamada paga`,
+      value: total > 0 ? `${((api.leads / total) * 100).toFixed(1)}%` : "—",
+    },
     customers: { eyebrow: "Clientes · pedidos", value: String(api.customers) },
     leadToCustomer: {
       eyebrow: "conversão lead → cliente",
@@ -81,11 +92,11 @@ const FUNNEL_TOTALS_INFO: Record<string, string> = {
     "Receita média gerada por cada cliente pagante nos últimos 30 dias.",
 };
 
-export function FunnelSection() {
+export function FunnelSection({ period = "30d" }: { period?: AdminPeriod } = {}) {
   const { data: api } = useQuery<FunnelApiResponse>({
-    queryKey: ["admin", "funnel"],
+    queryKey: ["admin", "funnel", period],
     queryFn: async () => {
-      const res = await adminFetch("/api/admin/funnel");
+      const res = await adminFetch(`/api/admin/funnel?period=${period}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
     },

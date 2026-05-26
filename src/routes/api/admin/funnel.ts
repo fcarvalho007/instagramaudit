@@ -8,6 +8,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
+import { resolvePeriod } from "@/lib/admin/period";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -19,7 +20,7 @@ function jsonResponse(body: unknown, status = 200) {
 export const Route = createFileRoute("/api/admin/funnel")({
   server: {
     handlers: {
-      GET: async () => {
+      GET: async ({ request }) => {
         try {
           await requireAdminSession();
         } catch (res) {
@@ -27,14 +28,19 @@ export const Route = createFileRoute("/api/admin/funnel")({
           throw res;
         }
 
-        const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        const url = new URL(request.url);
+        const { sinceISO: since, days } = resolvePeriod(url.searchParams.get("period"));
 
-        const [analysesRes, leadsRes, requestsRes] = await Promise.all([
+        const [analysesFreshRes, analysesTotalRes, leadsRes, requestsRes] = await Promise.all([
           supabaseAdmin
             .from("analysis_events")
             .select("*", { count: "exact", head: true })
             .gte("created_at", since)
             .neq("data_source", "cache"),
+          supabaseAdmin
+            .from("analysis_events")
+            .select("*", { count: "exact", head: true })
+            .gte("created_at", since),
           supabaseAdmin
             .from("leads")
             .select("*", { count: "exact", head: true })
@@ -45,7 +51,8 @@ export const Route = createFileRoute("/api/admin/funnel")({
             .gte("created_at", since),
         ]);
 
-        const analyses = analysesRes.count ?? 0;
+        const analysesFresh = analysesFreshRes.count ?? 0;
+        const analysesTotal = analysesTotalRes.count ?? 0;
         const leads = leadsRes.count ?? 0;
         const requestsTotal = requestsRes.count ?? 0;
         const uniqueCustomers = new Set(
@@ -58,9 +65,11 @@ export const Route = createFileRoute("/api/admin/funnel")({
 
         return jsonResponse({
           success: true,
-          window_days: 30,
+          window_days: days,
           visitors: null, // sem tracker
-          analyses,
+          analyses: analysesTotal,
+          analyses_total: analysesTotal,
+          analyses_fresh: analysesFresh,
           leads,
           customers: uniqueCustomers,
           report_requests_total: requestsTotal,

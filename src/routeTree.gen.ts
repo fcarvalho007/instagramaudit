@@ -90,6 +90,7 @@ import { Route as ApiAdminFollowUpsRouteImport } from './routes/api/admin/follow
 import { Route as ApiAdminEmailTemplatesRouteImport } from './routes/api/admin/email-templates'
 import { Route as ApiAdminDiagnosticsRouteImport } from './routes/api/admin/diagnostics'
 import { Route as ApiAdminDataforseoDiagnosticsRouteImport } from './routes/api/admin/dataforseo-diagnostics'
+import { Route as ApiAdminCacheStatsRouteImport } from './routes/api/admin/cache-stats'
 import { Route as ApiAdminBillingReconciliationRouteImport } from './routes/api/admin/billing-reconciliation'
 import { Route as ApiAdminBetaFunnelRouteImport } from './routes/api/admin/beta-funnel'
 import { Route as ApiAdminAutomationFlowRouteImport } from './routes/api/admin/automation-flow'
@@ -559,6 +560,11 @@ const ApiAdminDataforseoDiagnosticsRoute =
     path: '/api/admin/dataforseo-diagnostics',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAdminCacheStatsRoute = ApiAdminCacheStatsRouteImport.update({
+  id: '/api/admin/cache-stats',
+  path: '/api/admin/cache-stats',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminBillingReconciliationRoute =
   ApiAdminBillingReconciliationRouteImport.update({
     id: '/api/admin/billing-reconciliation',
@@ -920,6 +926,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/automation-flow': typeof ApiAdminAutomationFlowRoute
   '/api/admin/beta-funnel': typeof ApiAdminBetaFunnelRoute
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
+  '/api/admin/cache-stats': typeof ApiAdminCacheStatsRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/email-templates': typeof ApiAdminEmailTemplatesRouteWithChildren
@@ -1055,6 +1062,7 @@ export interface FileRoutesByTo {
   '/api/admin/automation-flow': typeof ApiAdminAutomationFlowRoute
   '/api/admin/beta-funnel': typeof ApiAdminBetaFunnelRoute
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
+  '/api/admin/cache-stats': typeof ApiAdminCacheStatsRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/email-templates': typeof ApiAdminEmailTemplatesRouteWithChildren
@@ -1193,6 +1201,7 @@ export interface FileRoutesById {
   '/api/admin/automation-flow': typeof ApiAdminAutomationFlowRoute
   '/api/admin/beta-funnel': typeof ApiAdminBetaFunnelRoute
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
+  '/api/admin/cache-stats': typeof ApiAdminCacheStatsRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
   '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
   '/api/admin/email-templates': typeof ApiAdminEmailTemplatesRouteWithChildren
@@ -1332,6 +1341,7 @@ export interface FileRouteTypes {
     | '/api/admin/automation-flow'
     | '/api/admin/beta-funnel'
     | '/api/admin/billing-reconciliation'
+    | '/api/admin/cache-stats'
     | '/api/admin/dataforseo-diagnostics'
     | '/api/admin/diagnostics'
     | '/api/admin/email-templates'
@@ -1467,6 +1477,7 @@ export interface FileRouteTypes {
     | '/api/admin/automation-flow'
     | '/api/admin/beta-funnel'
     | '/api/admin/billing-reconciliation'
+    | '/api/admin/cache-stats'
     | '/api/admin/dataforseo-diagnostics'
     | '/api/admin/diagnostics'
     | '/api/admin/email-templates'
@@ -1604,6 +1615,7 @@ export interface FileRouteTypes {
     | '/api/admin/automation-flow'
     | '/api/admin/beta-funnel'
     | '/api/admin/billing-reconciliation'
+    | '/api/admin/cache-stats'
     | '/api/admin/dataforseo-diagnostics'
     | '/api/admin/diagnostics'
     | '/api/admin/email-templates'
@@ -1722,6 +1734,7 @@ export interface RootRouteChildren {
   ApiAdminAutomationFlowRoute: typeof ApiAdminAutomationFlowRoute
   ApiAdminBetaFunnelRoute: typeof ApiAdminBetaFunnelRoute
   ApiAdminBillingReconciliationRoute: typeof ApiAdminBillingReconciliationRoute
+  ApiAdminCacheStatsRoute: typeof ApiAdminCacheStatsRoute
   ApiAdminDataforseoDiagnosticsRoute: typeof ApiAdminDataforseoDiagnosticsRoute
   ApiAdminDiagnosticsRoute: typeof ApiAdminDiagnosticsRoute
   ApiAdminEmailTemplatesRoute: typeof ApiAdminEmailTemplatesRouteWithChildren
@@ -2363,6 +2376,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminDataforseoDiagnosticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/cache-stats': {
+      id: '/api/admin/cache-stats'
+      path: '/api/admin/cache-stats'
+      fullPath: '/api/admin/cache-stats'
+      preLoaderRoute: typeof ApiAdminCacheStatsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/billing-reconciliation': {
       id: '/api/admin/billing-reconciliation'
       path: '/api/admin/billing-reconciliation'
@@ -2996,6 +3016,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminAutomationFlowRoute: ApiAdminAutomationFlowRoute,
   ApiAdminBetaFunnelRoute: ApiAdminBetaFunnelRoute,
   ApiAdminBillingReconciliationRoute: ApiAdminBillingReconciliationRoute,
+  ApiAdminCacheStatsRoute: ApiAdminCacheStatsRoute,
   ApiAdminDataforseoDiagnosticsRoute: ApiAdminDataforseoDiagnosticsRoute,
   ApiAdminDiagnosticsRoute: ApiAdminDiagnosticsRoute,
   ApiAdminEmailTemplatesRoute: ApiAdminEmailTemplatesRouteWithChildren,
