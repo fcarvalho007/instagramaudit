@@ -10,6 +10,7 @@ import { AdminAvatar } from "../admin-avatar";
 import { AdminSectionHeader } from "../admin-section-header";
 import { ADMIN_LITERAL } from "../admin-tokens";
 import { adminFetch } from "@/lib/admin/fetch";
+import type { AdminPeriod } from "../period-select";
 
 interface ProfileRow {
   handle: string;
@@ -23,34 +24,36 @@ interface ListApi {
   rows: ProfileRow[];
 }
 
-export function TopProfilesSection() {
+export function TopProfilesSection({ period }: { period: AdminPeriod }) {
   const { data, isLoading } = useQuery<ListApi>({
-    queryKey: ["admin", "profiles", "top"],
+    queryKey: ["admin", "profiles", "top", period],
     queryFn: async () => {
-      const res = await adminFetch("/api/admin/profiles/list");
+      const res = await adminFetch(`/api/admin/profiles/list?period=${period}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
     },
     staleTime: 30_000,
   });
 
-  const top = (data?.rows ?? []).slice(0, 10);
+  const top = (data?.rows ?? [])
+    .filter((p) => p.analyses > 0)
+    .slice(0, 10);
   const maxAnalyses = top.reduce((m, p) => (p.analyses > m ? p.analyses : m), 0);
 
   return (
     <section className="flex flex-col gap-4">
       <AdminSectionHeader
         title="Top perfis"
-        subtitle="ranking por análises totais"
+        subtitle="ranking por análises na janela"
         accent="signal"
-        info="Perfis ordenados por análises totais em `social_profiles`."
+        info="Perfis ordenados por análises (snapshots reais) dentro da janela seleccionada."
       />
       <AdminCard className="!p-7">
         {isLoading ? (
           <p className="text-[12px] text-admin-text-tertiary">A carregar…</p>
         ) : top.length === 0 ? (
           <p className="text-[12px] text-admin-text-tertiary">
-            Ainda não existem perfis analisados.
+            Sem análises nesta janela.
           </p>
         ) : (
           <ul className="m-0 flex list-none flex-col gap-3 p-0">
