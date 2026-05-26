@@ -280,6 +280,28 @@ export function TemplateEditor({ templateKey }: { templateKey: string }) {
         </div>
       </div>
 
+      {/* Honesty note: explica o que está em DB vs. o que é enviado. */}
+      {!hasOverride && (
+        <div
+          className="rounded-md border px-3 py-2 text-[12px] text-admin-text-secondary"
+          style={{
+            borderColor: "rgb(var(--admin-warning-500) / 0.35)",
+            background: "rgb(var(--admin-warning-500) / 0.06)",
+          }}
+        >
+          <strong className="font-semibold text-admin-text-primary">
+            Sem override em base de dados.
+          </strong>{" "}
+          O que segue para os subscritores é o template rico em{" "}
+          <code className="font-mono text-[11px]">
+            src/lib/email/templates/{data.key}.ts
+          </code>{" "}
+          — não o texto abaixo. Os campos abaixo são apenas o ponto de
+          partida simplificado para começares a editar. Quando guardas, o
+          envio passa a usar este conteúdo.
+        </div>
+      )}
+
       {/* Meta fields */}
       <AdminCard>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
