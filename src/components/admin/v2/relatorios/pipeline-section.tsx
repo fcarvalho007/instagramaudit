@@ -8,15 +8,17 @@ import { useQuery } from "@tanstack/react-query";
 import { AdminCard } from "../admin-card";
 import { AdminSectionHeader } from "../admin-section-header";
 import { adminFetch } from "@/lib/admin/fetch";
+import type { AdminPeriod } from "../period-select";
 
 interface PipelineApi {
   success: boolean;
-  phases: { pedido: number; analise: number; pdf: number; email: number };
+  phases: { snapshot: number; email_submitted: number; pdf: number; email: number };
   failures_to_recover: number;
   avg_total_seconds: number | null;
   success_rate_pct: number | null;
   avg_cost_usd: number | null;
   total_window: number;
+  window_days: number;
 }
 
 function formatSeconds(s: number | null): string {
@@ -26,32 +28,34 @@ function formatSeconds(s: number | null): string {
   return `${mins}m ${String(secs).padStart(2, "0")}s`;
 }
 
-export function PipelineSection() {
+export function PipelineSection({ period }: { period: AdminPeriod }) {
   const { data } = useQuery<PipelineApi>({
-    queryKey: ["admin", "report-requests", "pipeline"],
+    queryKey: ["admin", "report-requests", "pipeline", period],
     queryFn: async () => {
-      const res = await adminFetch("/api/admin/report-requests/pipeline");
+      const res = await adminFetch(
+        `/api/admin/report-requests/pipeline?period=${period}`,
+      );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
     },
     staleTime: 15_000,
   });
 
-  const phases = data?.phases ?? { pedido: 0, analise: 0, pdf: 0, email: 0 };
+  const phases = data?.phases ?? { snapshot: 0, email_submitted: 0, pdf: 0, email: 0 };
   const failures = data?.failures_to_recover ?? 0;
 
   return (
     <section className="flex flex-col gap-4">
       <AdminSectionHeader
         title="Pipeline operacional"
-        subtitle="do pedido à entrega"
+        subtitle="da análise à entrega por email"
         accent="signal"
-        info="Estado vivo de cada pedido: Pedido → Análise Apify → PDF → Email entregue."
+        info="Cada análise gerada percorre: Snapshot → Email submetido (unlock) → PDF → Email entregue."
       />
       <AdminCard className="!p-7">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <PhaseCard accent="#7664E4" eyebrow="Fase 1" label="Pedido recebido" value={phases.pedido} sub="sem análise ainda" />
-          <PhaseCard accent="#3772E5" eyebrow="Fase 2" label="Análise Apify" value={phases.analise} sub="snapshot pronto" />
+          <PhaseCard accent="#3772E5" eyebrow="Fase 1" label="Análise gerada" value={phases.snapshot} sub="sem unlock por email" />
+          <PhaseCard accent="#7664E4" eyebrow="Fase 2" label="Email submetido" value={phases.email_submitted} sub="lead criado" />
           <PhaseCard accent="#D85A30" eyebrow="Fase 3" label="PDF gerado" value={phases.pdf} sub="aguarda envio" />
           <PhaseCard accent="#1D9E75" eyebrow="Fase 4" label="Email entregue" value={phases.email} sub="ciclo completo" />
         </div>
@@ -61,7 +65,7 @@ export function PipelineSection() {
           <AggregateStat
             eyebrow="Taxa de sucesso"
             value={data?.success_rate_pct != null ? `${data.success_rate_pct.toFixed(1)}%` : "—"}
-            sub={`${data?.total_window ?? 0} pedidos (30d)`}
+            sub={`${data?.total_window ?? 0} análises (${period})`}
             valueColor="rgb(var(--admin-revenue-700))"
             divider
           />
