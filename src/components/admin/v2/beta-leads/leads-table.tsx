@@ -39,6 +39,8 @@ import { Inbox, Loader2, Search, Trash2, X } from "lucide-react";
 import { adminFetch } from "@/lib/admin/fetch";
 import {
   KANBAN_COLUMNS,
+  COMMERCIAL_STATUS_OPTIONS,
+  deriveKanbanColumn,
   type EnrichedLead,
 } from "@/lib/admin/kanban-columns";
 import { interpretFeedback } from "@/lib/admin/feedback-intent";
@@ -60,7 +62,7 @@ const HARD_CONFIRM_PHRASE = "APAGAR";
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> =
   Object.fromEntries(
-    KANBAN_COLUMNS.map((c) => [c.key, { label: c.label, color: c.color }]),
+    COMMERCIAL_STATUS_OPTIONS.map((c) => [c.key, { label: c.label, color: c.color }]),
   );
 
 function formatDate(value: string | null | undefined): string {
