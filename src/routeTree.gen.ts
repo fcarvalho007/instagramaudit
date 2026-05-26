@@ -112,6 +112,7 @@ import { Route as ApiAdminSistemaCommentScraperRouteImport } from './routes/api/
 import { Route as ApiAdminSistemaCapsRouteImport } from './routes/api/admin/sistema.caps'
 import { Route as ApiAdminSistemaAlertsRouteImport } from './routes/api/admin/sistema.alerts'
 import { Route as ApiAdminReportsCleanupExpiredRouteImport } from './routes/api/admin/reports.cleanup-expired'
+import { Route as ApiAdminReportRequestsMetricsRouteImport } from './routes/api/admin/report-requests.metrics'
 import { Route as ApiAdminReportRequestsIdRouteImport } from './routes/api/admin/report-requests.$id'
 import { Route as ApiAdminReportDetailIdRouteImport } from './routes/api/admin/report-detail.$id'
 import { Route as ApiAdminLeadsKanbanIdRouteImport } from './routes/api/admin/leads-kanban.$id'
@@ -675,6 +676,12 @@ const ApiAdminReportsCleanupExpiredRoute =
     path: '/cleanup-expired',
     getParentRoute: () => ApiAdminReportsRoute,
   } as any)
+const ApiAdminReportRequestsMetricsRoute =
+  ApiAdminReportRequestsMetricsRouteImport.update({
+    id: '/metrics',
+    path: '/metrics',
+    getParentRoute: () => ApiAdminReportRequestsRoute,
+  } as any)
 const ApiAdminReportRequestsIdRoute =
   ApiAdminReportRequestsIdRouteImport.update({
     id: '/$id',
@@ -873,6 +880,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/leads-kanban/$id': typeof ApiAdminLeadsKanbanIdRoute
   '/api/admin/report-detail/$id': typeof ApiAdminReportDetailIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
+  '/api/admin/report-requests/metrics': typeof ApiAdminReportRequestsMetricsRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
   '/api/admin/sistema/alerts': typeof ApiAdminSistemaAlertsRouteWithChildren
   '/api/admin/sistema/caps': typeof ApiAdminSistemaCapsRoute
@@ -995,6 +1003,7 @@ export interface FileRoutesByTo {
   '/api/admin/leads-kanban/$id': typeof ApiAdminLeadsKanbanIdRoute
   '/api/admin/report-detail/$id': typeof ApiAdminReportDetailIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
+  '/api/admin/report-requests/metrics': typeof ApiAdminReportRequestsMetricsRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
   '/api/admin/sistema/alerts': typeof ApiAdminSistemaAlertsRouteWithChildren
   '/api/admin/sistema/caps': typeof ApiAdminSistemaCapsRoute
@@ -1119,6 +1128,7 @@ export interface FileRoutesById {
   '/api/admin/leads-kanban/$id': typeof ApiAdminLeadsKanbanIdRoute
   '/api/admin/report-detail/$id': typeof ApiAdminReportDetailIdRoute
   '/api/admin/report-requests/$id': typeof ApiAdminReportRequestsIdRoute
+  '/api/admin/report-requests/metrics': typeof ApiAdminReportRequestsMetricsRoute
   '/api/admin/reports/cleanup-expired': typeof ApiAdminReportsCleanupExpiredRoute
   '/api/admin/sistema/alerts': typeof ApiAdminSistemaAlertsRouteWithChildren
   '/api/admin/sistema/caps': typeof ApiAdminSistemaCapsRoute
@@ -1244,6 +1254,7 @@ export interface FileRouteTypes {
     | '/api/admin/leads-kanban/$id'
     | '/api/admin/report-detail/$id'
     | '/api/admin/report-requests/$id'
+    | '/api/admin/report-requests/metrics'
     | '/api/admin/reports/cleanup-expired'
     | '/api/admin/sistema/alerts'
     | '/api/admin/sistema/caps'
@@ -1366,6 +1377,7 @@ export interface FileRouteTypes {
     | '/api/admin/leads-kanban/$id'
     | '/api/admin/report-detail/$id'
     | '/api/admin/report-requests/$id'
+    | '/api/admin/report-requests/metrics'
     | '/api/admin/reports/cleanup-expired'
     | '/api/admin/sistema/alerts'
     | '/api/admin/sistema/caps'
@@ -1489,6 +1501,7 @@ export interface FileRouteTypes {
     | '/api/admin/leads-kanban/$id'
     | '/api/admin/report-detail/$id'
     | '/api/admin/report-requests/$id'
+    | '/api/admin/report-requests/metrics'
     | '/api/admin/reports/cleanup-expired'
     | '/api/admin/sistema/alerts'
     | '/api/admin/sistema/caps'
@@ -2338,6 +2351,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminReportsCleanupExpiredRouteImport
       parentRoute: typeof ApiAdminReportsRoute
     }
+    '/api/admin/report-requests/metrics': {
+      id: '/api/admin/report-requests/metrics'
+      path: '/metrics'
+      fullPath: '/api/admin/report-requests/metrics'
+      preLoaderRoute: typeof ApiAdminReportRequestsMetricsRouteImport
+      parentRoute: typeof ApiAdminReportRequestsRoute
+    }
     '/api/admin/report-requests/$id': {
       id: '/api/admin/report-requests/$id'
       path: '/$id'
@@ -2559,11 +2579,13 @@ const ApiAdminLeadsKanbanRouteWithChildren =
 
 interface ApiAdminReportRequestsRouteChildren {
   ApiAdminReportRequestsIdRoute: typeof ApiAdminReportRequestsIdRoute
+  ApiAdminReportRequestsMetricsRoute: typeof ApiAdminReportRequestsMetricsRoute
 }
 
 const ApiAdminReportRequestsRouteChildren: ApiAdminReportRequestsRouteChildren =
   {
     ApiAdminReportRequestsIdRoute: ApiAdminReportRequestsIdRoute,
+    ApiAdminReportRequestsMetricsRoute: ApiAdminReportRequestsMetricsRoute,
   }
 
 const ApiAdminReportRequestsRouteWithChildren =
