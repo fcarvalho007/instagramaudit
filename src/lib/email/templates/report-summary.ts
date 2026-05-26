@@ -1,4 +1,5 @@
 import {
+  type EmailTemplateParts,
   type RenderedEmail,
   escapeHtml,
   greetingHtml,
@@ -109,7 +110,9 @@ function insightListHtml(insights: string[]): string {
   return `<ol style="margin:0 0 20px 0;padding:0 0 0 20px;list-style:none;">${items}</ol>`;
 }
 
-export function renderReportSummary(input: ReportSummaryInput): RenderedEmail {
+export function getReportSummaryParts(
+  input: ReportSummaryInput,
+): EmailTemplateParts {
   if (!input.reportUrl?.trim()) {
     throw new Error("reportUrl is required for reportSummary");
   }
@@ -161,12 +164,24 @@ export function renderReportSummary(input: ReportSummaryInput): RenderedEmail {
 
   return {
     subject,
-    text,
+    preheader: PREHEADER,
+    headline: HEADLINE,
+    body_html: bodyHtml,
+    body_text: text,
+  };
+}
+
+export function renderReportSummary(input: ReportSummaryInput): RenderedEmail {
+  const parts = getReportSummaryParts(input);
+  const unsubscribeUrl = input.unsubscribeUrl?.trim() || null;
+  return {
+    subject: parts.subject,
+    text: parts.body_text,
     html: wrapHtml({
-      title: subject,
-      headline: HEADLINE,
-      bodyHtml,
-      preheader: PREHEADER,
+      title: parts.subject,
+      headline: parts.headline,
+      bodyHtml: parts.body_html,
+      preheader: parts.preheader,
       unsubscribeUrl,
     }),
   };

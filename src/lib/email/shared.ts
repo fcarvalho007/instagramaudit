@@ -9,6 +9,21 @@ export interface RenderedEmail {
   html: string;
 }
 
+/**
+ * Editable parts of a template. Used both by the admin editor (as the
+ * shape of `defaults` and overrides) and by each template module as the
+ * intermediate representation between `getXxxParts()` and `renderXxx()`.
+ * Keeping these identical guarantees the editor preview matches what is
+ * actually sent when no override exists.
+ */
+export interface EmailTemplateParts {
+  subject: string;
+  preheader: string;
+  headline: string;
+  body_html: string;
+  body_text: string;
+}
+
 export interface BaseTemplateInput {
   firstName?: string | null;
   email?: string | null;

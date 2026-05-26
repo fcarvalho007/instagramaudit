@@ -1,4 +1,5 @@
 import {
+  type EmailTemplateParts,
   type RenderedEmail,
   escapeHtml,
   greetingHtml,
@@ -28,7 +29,9 @@ const SUBJECT = "Próximos passos para o relatório completo";
 const HEADLINE = "Próximos passos";
 const PREHEADER = "Duas opções para desbloquear o relatório completo. Sem subscrição.";
 
-export function renderCommercialFollowup(input: CommercialFollowupInput): RenderedEmail {
+export function getCommercialFollowupParts(
+  input: CommercialFollowupInput,
+): EmailTemplateParts {
   const handle = input.instagramHandle ? `@${input.instagramHandle}` : "o teu perfil";
   const safeHandle = escapeHtml(handle);
   const checkoutUrl = input.checkoutUrl?.trim() || null;
@@ -87,12 +90,26 @@ export function renderCommercialFollowup(input: CommercialFollowupInput): Render
 
   return {
     subject: SUBJECT,
-    text,
+    preheader: PREHEADER,
+    headline: HEADLINE,
+    body_html: bodyHtml,
+    body_text: text,
+  };
+}
+
+export function renderCommercialFollowup(
+  input: CommercialFollowupInput,
+): RenderedEmail {
+  const parts = getCommercialFollowupParts(input);
+  const unsubscribeUrl = input.unsubscribeUrl?.trim() || null;
+  return {
+    subject: parts.subject,
+    text: parts.body_text,
     html: wrapHtml({
-      title: SUBJECT,
-      headline: HEADLINE,
-      bodyHtml,
-      preheader: PREHEADER,
+      title: parts.subject,
+      headline: parts.headline,
+      bodyHtml: parts.body_html,
+      preheader: parts.preheader,
       unsubscribeUrl,
     }),
   };

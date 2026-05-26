@@ -1,4 +1,5 @@
 import {
+  type EmailTemplateParts,
   type RenderedEmail,
   escapeHtml,
   greetingHtml,
@@ -28,7 +29,7 @@ const SUBJECT = "Bem-vindo à beta — o que esperar daqui";
 const HEADLINE = "Bem-vindo à beta";
 const PREHEADER = "O que está aberto, o que é premium e como ajudar a melhorar.";
 
-export function renderWelcomeBeta(input: WelcomeBetaInput): RenderedEmail {
+export function getWelcomeBetaParts(input: WelcomeBetaInput): EmailTemplateParts {
   if (!input.reportUrl || !input.reportUrl.trim()) {
     throw new Error("reportUrl is required for welcomeBeta");
   }
@@ -100,12 +101,24 @@ export function renderWelcomeBeta(input: WelcomeBetaInput): RenderedEmail {
 
   return {
     subject: SUBJECT,
-    text,
+    preheader: PREHEADER,
+    headline: HEADLINE,
+    body_html: bodyHtml,
+    body_text: text,
+  };
+}
+
+export function renderWelcomeBeta(input: WelcomeBetaInput): RenderedEmail {
+  const parts = getWelcomeBetaParts(input);
+  const unsubscribeUrl = input.unsubscribeUrl?.trim() || null;
+  return {
+    subject: parts.subject,
+    text: parts.body_text,
     html: wrapHtml({
-      title: SUBJECT,
-      headline: HEADLINE,
-      bodyHtml,
-      preheader: PREHEADER,
+      title: parts.subject,
+      headline: parts.headline,
+      bodyHtml: parts.body_html,
+      preheader: parts.preheader,
       unsubscribeUrl,
     }),
   };

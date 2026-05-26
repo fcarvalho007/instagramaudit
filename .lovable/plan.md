@@ -1,152 +1,112 @@
+## Objetivo
 
-# Plano — Refinamentos Socialinsider no relatório público
+Eliminar a duplicação entre `DEFAULTS` no registry admin e os renderers reais em `src/lib/email/templates/*`. Passar a derivar as predefinições do editor a partir dos mesmos renderers usados em produção, mantendo overrides em DB e o fluxo de envio intactos.
 
-Cinco mudanças cirúrgicas. Sem alterar o pipeline de dados, schema, valores de benchmark, providers ou `/report.example`.
+## Diagnóstico
 
----
+- `src/lib/admin/email-template-registry.ts` declara `DEFAULTS: Record<EmailTemplateKey, EmailTemplateParts>` (subject + preheader + headline + body_html + body_text por template) — esta é a cópia paralela.
+- Os renderers reais (`renderRequestReceived`, `renderReportReady`, etc.) compõem `bodyHtml` localmente, chamam `wrapHtml`, e expõem só `{ subject, text, html }`. Não expõem `headline`, `preheader` ou `bodyHtml` pré-wrap.
+- Quem consome `defaultParts`: `routes/api/admin/email-templates.$key.ts` (GET → `defaults`) → `template-editor.tsx` (`partsFromResponse`).
+- Envio real: `renderWithOverride(key, vars, renderXxx)` em `template-overrides.server.ts`. Quando não há override, devolve `renderXxx()` intacto. As `defaultParts` do registry **não são usadas** no envio — só na pré-popularização do editor. É por isso que podem divergir silenciosamente.
 
-## 1. FormatCard — layout mobile empilhado
+## Abordagem
 
-Ficheiro: `src/components/report-redesign/v2/overview/format-card.tsx` (função `ExternalReferenceTable`, linhas 533–670).
+Adoptar o adaptador descrito no ponto 3 do pedido: cada template passa a expor explicitamente as suas *parts* internas (subject, preheader, headline, bodyHtml, bodyText) através de uma função pura `getXxxParts(vars)`. O `renderXxx` é refactorizado para compor `wrapHtml` a partir dessas parts — assim divergência fica estruturalmente impossível.
 
-Hoje a grelha `grid-cols-[1fr_1.1fr_1.2fr_1fr]` é aplicada em todos os breakpoints, o que comprime as 4 colunas em mobile e quebra a leitura.
+O registry deixa de declarar `DEFAULTS` e o endpoint `GET /api/admin/email-templates/$key` passa a chamar o adaptador com vars de placeholder (`{{firstName}}`, etc.) para gerar o estado inicial do editor.
 
-Refactor:
+## Mudanças
 
-- **Mobile (< 640px / `sm`)**: render como lista vertical de mini-cards (uma entrada por formato), com a estrutura:
-  ```
-  ┌─────────────────────────────┐
-  │ Carrosséis                  │  ← format name (text-[14px], primary)
-  │ Este perfil      8 · 67%    │  ← label esquerda / valor direita
-  │ Referência ext.  6/mês · 1.34% ER
-  │ ▸ Acima da referência       │  ← reading badge (chip discreto)
-  └─────────────────────────────┘
-  ```
-  Cada mini-card: `rounded-lg border border-border-subtle/60 bg-surface-secondary p-3 space-y-1.5`. Reading badge como chip de fundo neutro (`bg-surface-muted text-content-secondary text-[11px] px-2 py-0.5 rounded-full`).
+### 1. Refactor de cada template em `src/lib/email/templates/*`
 
-- **Desktop (`sm:` em diante)**: manter a grelha actual de 4 colunas como já está.
+Para cada um dos 7 ficheiros (`request-received.ts`, `report-ready.ts`, `feedback-request.ts`, `personal-area-saved.ts`, `welcome-beta.ts`, `report-summary.ts`, `commercial-followup.ts`):
 
-Implementação: dois blocos JSX paralelos com `className="sm:hidden"` e `className="hidden sm:grid ..."`, partilhando os mesmos helpers `profileCell` / `refCell` / `readingFor` (sem duplicação de lógica).
+- Extrair a construção de `bodyHtml` / `text` / `subject` para `getXxxParts(input): EmailTemplateParts` retornando `{ subject, preheader, headline, body_html, body_text }`.
+- `renderXxx(input)` passa a chamar `getXxxParts(input)` e a aplicar `wrapHtml({ title: subject, headline, bodyHtml: body_html, preheader })`. Output `{ subject, text: body_text, html }` mantém-se exactamente igual ao actual.
+- Exportar tanto `renderXxx` como `getXxxParts`.
 
-## 2. Copy neutra das leituras
+Risco de divergência visual: zero — o HTML produzido por `renderXxx` é literalmente o `wrapHtml(getXxxParts(...))`.
 
-As 3 chaves `format.external_ref.reading_*` em `src/i18n/locales/{pt,en}/report.json` passam de "frequência" → linguagem neutra de referência:
+### 2. Adaptador central
 
-| Chave | PT (novo) | EN (novo) |
-|---|---|---|
-| `reading_above_freq` | `Acima da referência` | `Above the reference` |
-| `reading_below_freq` | `Abaixo da referência` | `Below the reference` |
-| `reading_near_freq` | `Próximo da referência` | `Near the reference` |
+Novo ficheiro `src/lib/email/templates/default-parts.ts`:
 
-`absent` já é `ausente na amostra` (mantém). `provisional` já é `Leitura provisória — amostra pequena.` (mantém).
-
-## 3. Bridge entre verdict editorial e tabela
-
-Em `FormatCard` (depois do `InsightCallout`, antes do `<ExternalReferenceTable />`, linha ~338), adicionar:
-
-```tsx
-<p className="px-5 md:px-6 mt-2 text-[13px] text-content-secondary leading-relaxed">
-  {t("format.external_ref.bridge")}
-</p>
+```text
+getTemplateDefaultParts(key, vars) -> EmailTemplateParts
 ```
 
-Novas chaves i18n:
+Faz dispatch para o `getXxxParts` correcto e devolve as parts. Aceita vars com placeholders (`{{firstName}}`, etc.) para o caso "preview do editor sem override".
 
-- PT: `"Usa esta leitura como enquadramento: abaixo comparas o mix do perfil com uma referência externa por formato."`
-- EN: `"Use this as context: below you compare this profile's format mix with an external format reference."`
+### 3. Registry sem `DEFAULTS`
 
-## 4. Metodologia — distinguir tier vs referência externa
+Em `src/lib/admin/email-template-registry.ts`:
 
-`ExternalSourceNote` é o único ponto onde a fonte é nomeada hoje. Vou estender o template i18n `external_source_note.template` para incluir a clarificação dos dois layers:
+- Remover `const DEFAULTS` e o campo `defaultParts` de cada entrada.
+- Remover `defaultParts` de `EmailTemplateEntry`.
+- Manter `EmailTemplateParts` (continua a ser o contrato I/O do editor) — exportar como tipo partilhado.
+- Restante (variables, render com SAMPLE, wired, wiredAt, wiredNote) inalterado.
 
-Novas chaves em `src/i18n/locales/{pt,en}/report.json`:
+### 4. Endpoint passa a chamar o adaptador
 
-```jsonc
-"external_source_note": {
-  "template": "Fonte externa: {{source}}, dados {{range}}.",
-  "methodology": "Benchmark do escalão: compara o perfil com contas de dimensão semelhante. Referência externa: usa dados agregados da Socialinsider por formato no Instagram. Estas referências servem para enquadramento, não como meta fixa."
-}
+Em `src/routes/api/admin/email-templates.$key.ts`, o `GET` calcula:
+
+```text
+defaults = getTemplateDefaultParts(key, PLACEHOLDER_VARS)
 ```
 
-EN:
-```jsonc
-"methodology": "Tier benchmark: compares the profile with accounts of a similar size. External reference: uses aggregated Socialinsider data by Instagram format. These references provide context, not a fixed target."
-```
+Onde `PLACEHOLDER_VARS = { firstName: "{{firstName}}", instagramHandle: "{{instagramHandle}}", reportUrl: "{{reportUrl}}", ... }` — restitui o comportamento actual em que o admin vê placeholders no editor.
 
-Em `external-source-note.tsx`, renderizar `methodology` numa linha adicional discreta abaixo do `template` (`text-[11px] text-content-tertiary mt-1`). Sem nova secção visual — fica no slot que já existe no fundo de `FormatCard` e `FrequencyCard`.
+Para `report_summary` (que recebe `kpis` e `topPost` estruturados, não strings), o adaptador usa valores sample neutros (mesma estratégia que `EMAIL_TEMPLATES[].render` já usa) — não há placeholders úteis aqui porque o body não interpola esses campos como `{{var}}` (interpola-os como números formatados).
 
-## 5. FrequencyCard — auditoria de copy
+### 5. Editor — banner explicativo
 
-`frequency.external_ref.intro` já diz literalmente `"Não é uma regra fixa nem um total prescrito"`. ✔ Já não soma frequências num total — apenas lista por formato com `≈`. Sem mudanças de lógica.
+Em `src/components/admin/v2/automacoes/template-editor.tsx`, na zona onde já existe o banner "Sem override", afinar copy para:
 
-Single small tweak: trocar `"opportunity_mix"` de `"A oportunidade pode estar no mix de formatos, não no volume."` (mantém — é não-imperativo, OK). **Nenhuma mudança** necessária no FrequencyCard.
+> "Sem override guardado — o editor mostra a versão de produção. Qualquer alteração que guardes passa a sobrepor-se ao fallback."
 
-## 6. Comentário no cálculo `refShare`
+Sem mudanças de layout.
 
-Em `format-card.tsx` linhas 577–591 (função `readingFor`, dentro de `ExternalReferenceTable`), adicionar bloco de comentário:
+### 6. Tests
 
-```ts
-// refShare: only used for DIRECTIONAL comparison of mix between this profile
-// and the Socialinsider per-format reference. It is NEVER displayed as a
-// total posting target and must NOT be interpreted as a recommended monthly
-// volume. Socialinsider data is an external reference for context only.
-```
+Actualizar `src/lib/email/__tests__/registry-parity.test.ts` (ou substituir):
 
-## 7. Testes
+- `getXxxParts(SAMPLE).subject === renderXxx(SAMPLE).subject` (continua a validar paridade, mas agora sobre a mesma função composta).
+- `wrapHtml(getXxxParts(SAMPLE)).html === renderXxx(SAMPLE).html` — garante que o renderer e o adaptador não divergem.
+- Para cada `EMAIL_TEMPLATES[k]`, confirmar `typeof getTemplateDefaultParts(key, PLACEHOLDER_VARS) === EmailTemplateParts` (sem `undefined`).
+- `personal_area_saved`: `wired === false` e `wiredAt === null`.
+- `request_received`: grep do call-site existente em `src/lib/beta.functions.ts` para confirmar que continua a usar `sendTransactionalEmail` (não Resend directo).
 
-Ficheiros novos/actualizados:
+### 7. Fora de âmbito (não tocar)
 
-### `src/lib/knowledge/__tests__/socialinsider-context.test.ts` (novo)
-- Mock de `supabaseAdmin` (vi.mock) devolvendo 3 linhas (reel/carousel/image) com `knowledge_sources.name = "Socialinsider"`.
-- Assert: `loadSocialinsiderInstagramContext()` devolve `{ reel, carousel, image }` todos preenchidos com `postsPerMonth`/`engagementPct` numéricos.
-- Assert: linhas sem source `Socialinsider` são ignoradas.
-- Assert: chama `__resetSocialinsiderCache()` entre testes.
+- `template-overrides.server.ts` (override behaviour mantém-se exactamente igual).
+- Triggers / call sites de envio.
+- Schema DB e tabela `email_template_overrides`.
+- Wiring de `personal_area_saved`.
+- UI além do micro-copy do banner.
 
-### `src/components/report-redesign/v2/overview/__tests__/format-card.test.tsx` (novo)
-- Render do `FormatCard` com `socialinsiderRef` e i18n stub:
-  - mostra `format.external_ref.title` (source note presente).
-  - reels com `count: 0` → célula mostra `"ausente na amostra"` e NÃO contém palavras imperativas (`/deve|tem de|ideal|meta|regra/i`).
-  - `postsAnalyzed = 5` → mostra `format.external_ref.provisional`.
-- Render do mini-card empilhado em viewport mobile (verificar pela presença de classes `sm:hidden` e que cada formato aparece como bloco distinto).
+## Detalhes técnicos
 
-### `src/components/report-redesign/v2/overview/__tests__/frequency-card.test.tsx` (novo, mínimo)
-- Render do `FrequencyCard` com 3 refs Socialinsider distintas (postsPerMonth 4/6/3).
-- Assert: o texto renderizado NÃO contém a soma `"13"` nem `"~13/mês"`. Só as 3 frequências separadas.
+- `EmailTemplateParts` movido (ou re-exportado) para `src/lib/email/templates/index.ts` para evitar import circular admin → email.
+- `getXxxParts` é pura, sem I/O, testável isoladamente.
+- `renderXxx.subject = FALLBACK_SUBJECT` (propriedade estática que alguns ficheiros têm) mantém-se.
+- O `escapeHtml("{{instagramHandle}}")` devolve a string intacta (não tem caracteres reservados), por isso os placeholders sobrevivem ao caminho HTML.
 
-### Copy assertions (`socialinsider-copy.test.ts`, novo em `src/i18n/__tests__/`)
-- Carregar `pt/report.json` + `en/report.json`.
-- Assert: `format.external_ref.reading_*` não contém `/deve|tem de|ideal|meta|regra|target|must|should/i`.
-- Assert: `external_source_note.methodology` existe em ambos e distingue "escalão"/"tier" de "referência externa"/"external reference".
-- Assert: nenhuma string fora de `format.external_ref.*` menciona literalmente "Socialinsider" (excepto `external_source_note` que é dinâmica) — confirma que valores Socialinsider não estão hardcoded em copy editorial.
+## Validação
 
-## 8. Ficheiros tocados
+- `bunx tsc --noEmit`
+- `bunx vitest run`
 
-| Ficheiro | Mudança |
-|---|---|
-| `src/components/report-redesign/v2/overview/format-card.tsx` | mobile stacked layout + bridge + comentário refShare |
-| `src/components/report-redesign/v2/overview/external-source-note.tsx` | render linha `methodology` |
-| `src/i18n/locales/pt/report.json` | bridge, reading_* neutras, methodology |
-| `src/i18n/locales/en/report.json` | idem |
-| `src/lib/knowledge/__tests__/socialinsider-context.test.ts` | novo |
-| `src/components/report-redesign/v2/overview/__tests__/format-card.test.tsx` | novo |
-| `src/components/report-redesign/v2/overview/__tests__/frequency-card.test.tsx` | novo |
-| `src/i18n/__tests__/socialinsider-copy.test.ts` | novo |
+## Checkpoint
 
-## 9. Fora de âmbito
+- ☐ 7 templates refactored para `getXxxParts` + `renderXxx` composto sobre `wrapHtml`
+- ☐ `getTemplateDefaultParts(key, vars)` criado e usado pelo endpoint `GET`
+- ☐ `DEFAULTS` e `defaultParts` removidos do registry
+- ☐ Editor consome `defaults` vindos do adaptador, sem cópia paralela
+- ☐ Banner "Sem override" com copy explicativa
+- ☐ Override path (parcial e completo) inalterado em runtime
+- ☐ `personal_area_saved` continua `wired: false`
+- ☐ `request_received` continua via `sendTransactionalEmail`
+- ☐ Testes de paridade renderer ↔ parts a passar
+- ☐ `tsc` e `vitest` limpos
 
-- Apify, OpenAI, DataForSEO, pipeline, gates, pricing, admin CRM, schema, valores de benchmark, Block 1, `/report.example`.
-- Não toco em `frequency-card.tsx` (copy já é neutra e não soma totais).
-- Não mudo `socialinsider-context.server.ts` (lógica está correcta).
-
-## ☐ Checkpoint
-
-- ☐ Mobile: cada formato como mini-card empilhado; desktop mantém grelha 4-col
-- ☐ Reading labels neutras (`acima/abaixo/próximo da referência`)
-- ☐ Bridge editorial → tabela presente
-- ☐ Linha de metodologia render em FormatCard e FrequencyCard
-- ☐ Comentário sobre `refShare` adicionado
-- ☐ 4 ficheiros de testes novos a verde
-- ☐ `bunx tsc --noEmit` e `bunx vitest run` limpos
-- ☐ Confirmação: zero providers chamados (só leitura de `knowledge_benchmarks` via cache existente)
-
-Aprovas para implementar?
+Aprovas?

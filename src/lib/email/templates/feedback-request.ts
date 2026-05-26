@@ -1,4 +1,5 @@
 import {
+  type EmailTemplateParts,
   type RenderedEmail,
   escapeHtml,
   greetingHtml,
@@ -32,7 +33,9 @@ function buildSubject(handle: string | null | undefined): string {
   return handle ? `O relatório de @${handle} foi útil?` : FALLBACK_SUBJECT;
 }
 
-export function renderFeedbackRequest(input: FeedbackRequestInput): RenderedEmail {
+export function getFeedbackRequestParts(
+  input: FeedbackRequestInput,
+): EmailTemplateParts {
   const handle = input.instagramHandle ? `@${input.instagramHandle}` : "o teu perfil";
   const safeHandle = escapeHtml(handle);
   const feedbackUrl = input.feedbackUrl?.trim() || null;
@@ -99,12 +102,26 @@ export function renderFeedbackRequest(input: FeedbackRequestInput): RenderedEmai
 
   return {
     subject,
-    text,
+    preheader: PREHEADER,
+    headline: HEADLINE,
+    body_html: bodyHtml,
+    body_text: text,
+  };
+}
+
+export function renderFeedbackRequest(
+  input: FeedbackRequestInput,
+): RenderedEmail {
+  const parts = getFeedbackRequestParts(input);
+  const unsubscribeUrl = input.unsubscribeUrl?.trim() || null;
+  return {
+    subject: parts.subject,
+    text: parts.body_text,
     html: wrapHtml({
-      title: subject,
-      headline: HEADLINE,
-      bodyHtml,
-      preheader: PREHEADER,
+      title: parts.subject,
+      headline: parts.headline,
+      bodyHtml: parts.body_html,
+      preheader: parts.preheader,
       unsubscribeUrl,
     }),
   };

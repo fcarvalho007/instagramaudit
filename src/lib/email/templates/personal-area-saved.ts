@@ -1,4 +1,5 @@
 import {
+  type EmailTemplateParts,
   type RenderedEmail,
   escapeHtml,
   greetingHtml,
@@ -24,9 +25,9 @@ const SUBJECT = "O relatório foi guardado na tua área pessoal";
 const HEADLINE = "Área pessoal guardada";
 const PREHEADER = "Acede sempre que precisares.";
 
-export function renderPersonalAreaSaved(
+export function getPersonalAreaSavedParts(
   input: PersonalAreaSavedInput,
-): RenderedEmail {
+): EmailTemplateParts {
   if (!input.appUrl || !input.appUrl.trim()) {
     throw new Error("appUrl is required for personalAreaSaved");
   }
@@ -66,8 +67,26 @@ export function renderPersonalAreaSaved(
 
   return {
     subject: SUBJECT,
-    text,
-    html: wrapHtml({ title: SUBJECT, headline: HEADLINE, bodyHtml, preheader: PREHEADER }),
+    preheader: PREHEADER,
+    headline: HEADLINE,
+    body_html: bodyHtml,
+    body_text: text,
+  };
+}
+
+export function renderPersonalAreaSaved(
+  input: PersonalAreaSavedInput,
+): RenderedEmail {
+  const parts = getPersonalAreaSavedParts(input);
+  return {
+    subject: parts.subject,
+    text: parts.body_text,
+    html: wrapHtml({
+      title: parts.subject,
+      headline: parts.headline,
+      bodyHtml: parts.body_html,
+      preheader: parts.preheader,
+    }),
   };
 }
 

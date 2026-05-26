@@ -1,4 +1,5 @@
 import {
+  type EmailTemplateParts,
   type RenderedEmail,
   escapeHtml,
   greetingHtml,
@@ -28,7 +29,9 @@ function buildSubject(handle: string | null | undefined): string {
   return handle ? `Recebemos o teu pedido para @${handle}` : FALLBACK_SUBJECT;
 }
 
-export function renderRequestReceived(input: RequestReceivedInput): RenderedEmail {
+export function getRequestReceivedParts(
+  input: RequestReceivedInput,
+): EmailTemplateParts {
   const handle = handleLabel(input.instagramHandle);
   const safeHandle = escapeHtml(handle);
   const subject = buildSubject(input.instagramHandle);
@@ -61,8 +64,24 @@ export function renderRequestReceived(input: RequestReceivedInput): RenderedEmai
 
   return {
     subject,
-    text,
-    html: wrapHtml({ title: subject, headline: HEADLINE, bodyHtml, preheader: PREHEADER }),
+    preheader: PREHEADER,
+    headline: HEADLINE,
+    body_html: bodyHtml,
+    body_text: text,
+  };
+}
+
+export function renderRequestReceived(input: RequestReceivedInput): RenderedEmail {
+  const parts = getRequestReceivedParts(input);
+  return {
+    subject: parts.subject,
+    text: parts.body_text,
+    html: wrapHtml({
+      title: parts.subject,
+      headline: parts.headline,
+      bodyHtml: parts.body_html,
+      preheader: parts.preheader,
+    }),
   };
 }
 
