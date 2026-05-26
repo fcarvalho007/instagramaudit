@@ -43,7 +43,6 @@ export function PipelineSection({ period }: { period: AdminPeriod }) {
 
   const phases = data?.phases ?? { snapshot: 0, email_submitted: 0, pdf: 0, email: 0 };
   const failures = data?.failures_to_recover ?? 0;
-  const totalWindow = data?.total_window ?? 0;
 
   return (
     <section className="flex flex-col gap-4">

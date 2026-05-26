@@ -7,7 +7,7 @@
  import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
  import { Link } from "@tanstack/react-router";
- import { useQuery } from "@tanstack/react-query";
+  import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AdminPageHeader } from "@/components/admin/v2/admin-page-header";
 import { PeriodSelect, type AdminPeriod } from "@/components/admin/v2/period-select";
 import { AdminActionButton } from "@/components/admin/v2/admin-action-button";
@@ -19,6 +19,7 @@ import { ExpenseSection } from "@/components/admin/v2/visao-geral/expense-sectio
 import { KanbanSection } from "@/components/admin/v2/visao-geral/kanban-section";
 import { IntentSection } from "@/components/admin/v2/visao-geral/intent-section";
  import { getExecutionMode } from "@/server/admin/execution-mode.functions";
+ import { adminFetch } from "@/lib/admin/fetch";
 
 export const Route = createFileRoute("/admin/visao-geral")({
   component: VisaoGeralPage,
@@ -29,6 +30,15 @@ export const Route = createFileRoute("/admin/visao-geral")({
      queryKey: ["admin", "execution-mode"],
      queryFn: () => getExecutionMode(),
      staleTime: 10_000,
+   });
+   const { data: cacheStats } = useQuery<{ hit_rate_pct: number; cache_hits: number; analyses_total: number }>({
+     queryKey: ["admin", "cache-stats"],
+     queryFn: async () => {
+       const res = await adminFetch("/api/admin/cache-stats?period=30d");
+       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+       return res.json();
+     },
+     staleTime: 30_000,
    });
    const mode = data?.mode ?? "cache_only";
    const isCacheOnly = mode === "cache_only";
@@ -73,18 +83,29 @@ export const Route = createFileRoute("/admin/visao-geral")({
              : "Fresh ativo — as próximas análises podem chamar Apify, OpenAI e DataForSEO."}
          </span>
        </div>
-       <Link
-         to="/admin/sistema"
-         className="shrink-0 rounded-md border border-admin-border px-2.5 py-1 text-[12px] font-medium text-admin-text-secondary hover:text-admin-text-primary hover:bg-admin-surface-elevated transition-colors"
-       >
-         Abrir Sistema
-       </Link>
+        <div className="flex items-center gap-2 shrink-0">
+          {cacheStats && (
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full border border-admin-border px-2 py-0.5 text-[12px] font-medium text-admin-text-secondary"
+              title={`${cacheStats.cache_hits} hits de cache em ${cacheStats.analyses_total} análises (30d)`}
+            >
+              Cache {cacheStats.hit_rate_pct.toFixed(0)}%
+            </span>
+          )}
+          <Link
+            to="/admin/sistema"
+            className="rounded-md border border-admin-border px-2.5 py-1 text-[12px] font-medium text-admin-text-secondary hover:text-admin-text-primary hover:bg-admin-surface-elevated transition-colors"
+          >
+            Abrir Sistema
+          </Link>
+        </div>
      </div>
    );
  }
  
 function VisaoGeralPage() {
   const [period, setPeriod] = useState<AdminPeriod>("30d");
+  const queryClient = useQueryClient();
   return (
     <>
       <AdminPageHeader
@@ -93,7 +114,9 @@ function VisaoGeralPage() {
         actions={
           <>
             <PeriodSelect value={period} onChange={setPeriod} />
-            <AdminActionButton>↻ Atualizar</AdminActionButton>
+            <AdminActionButton onClick={() => queryClient.invalidateQueries({ queryKey: ["admin"] })}>
+              ↻ Atualizar
+            </AdminActionButton>
           </>
         }
       />
@@ -101,7 +124,7 @@ function VisaoGeralPage() {
          <ExecutionModeStrip />
         <BetaConversionFunnel />
         <PriorityFollowups />
-        <FunnelSection />
+        <FunnelSection period={period} />
         <RevenueSection />
         <ExpenseSection />
         <KanbanSection />
