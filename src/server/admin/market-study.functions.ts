@@ -314,9 +314,42 @@ export const getMarketStudyBlocks = createServerFn({ method: "GET" })
       };
     });
 
+    // Totais agregados por rating (1..5)
+    const ratingTotals: Record<1 | 2 | 3 | 4 | 5, number> = {
+      1: 0, 2: 0, 3: 0, 4: 0, 5: 0,
+    };
+    for (const r of rows) {
+      if (r.rating >= 1 && r.rating <= 5) {
+        ratingTotals[r.rating as 1 | 2 | 3 | 4 | 5]++;
+      }
+    }
+
+    // Série diária por rating
+    const days = daysBack(data.windowDays);
+    const dayIndex = new Map<string, number>();
+    days.forEach((d, i) => dayIndex.set(d, i));
+    const ratingDaily = days.map((day) => ({
+      day,
+      r1: 0, r2: 0, r3: 0, r4: 0, r5: 0,
+    }));
+    for (const r of rows) {
+      const idx = dayIndex.get(dayKey(r.created_at));
+      if (idx === undefined) continue;
+      const k = `r${r.rating}` as "r1" | "r2" | "r3" | "r4" | "r5";
+      if (k in ratingDaily[idx]) (ratingDaily[idx] as Record<string, unknown>)[k] = ((ratingDaily[idx] as unknown as Record<string, number>)[k] ?? 0) + 1;
+    }
+
+    const heatmap = BLOCKS.map((block) => ({
+      block,
+      counts: distribution(rows.filter((r) => r.block === block).map((r) => r.rating)),
+    }));
+
     return {
       windowDays: data.windowDays,
       byBlock,
+      ratingTotals,
+      ratingDaily,
+      heatmap,
       comments: comments.map((c) => ({
         block: c.block as BlockKey,
         rating: c.rating,
