@@ -271,24 +271,48 @@ export function validateInsightsV2(raw: unknown): ValidateV2Result {
       return fail("TITLE_HAS_NUMBER", `verdict.title contains digit`);
     }
 
-    // Paragraph: 80–220 palavras + ≥ 1 dígito (grounding) + sem verbos
-    // prescritivos. Sentence count fica livre para o modelo poder usar
-    // 2–6 frases distribuídas em 1–4 parágrafos curtos.
+    // Paragraph: 90–140 palavras, máx. 4 frases, sem `%`, sem métricas
+    // privadas, sem verbos prescritivos. Hashtags têm de ser tratadas
+    // explicitamente (quotar `#tag` ou afirmar ausência).
     const paraWords = paragraph.split(/\s+/).filter(Boolean).length;
-    if (paraWords < 80) {
+    if (paraWords < 90) {
       return fail(
         "PARAGRAPH_TOO_SHORT",
-        `verdict.paragraph words=${paraWords} min=80`,
+        `verdict.paragraph words=${paraWords} min=90`,
       );
     }
-    if (paraWords > 220) {
+    if (paraWords > 140) {
       return fail(
         "PARAGRAPH_TOO_LONG",
-        `verdict.paragraph words=${paraWords} max=220`,
+        `verdict.paragraph words=${paraWords} max=140`,
       );
     }
-    if (!/\d/.test(paragraph)) {
-      return fail("GENERIC_OUTPUT", `verdict.paragraph (missing number)`);
+    const sentenceCount = countSentences(paragraph);
+    if (sentenceCount > 4) {
+      return fail(
+        "TOO_MANY_SENTENCES",
+        `verdict.paragraph sentences=${sentenceCount} max=4`,
+      );
+    }
+    const pct = PERCENT_LEAK.exec(paragraph);
+    if (pct) {
+      return fail(
+        "ENGAGEMENT_PERCENT_LEAK",
+        `verdict.paragraph token="${pct[0]}"`,
+      );
+    }
+    const priv = PRIVATE_METRICS.exec(paragraph);
+    if (priv) {
+      return fail(
+        "PRIVATE_METRIC_LEAK",
+        `verdict.paragraph token="${priv[0]}"`,
+      );
+    }
+    if (!HASHTAG_TOKEN.test(paragraph) && !HASHTAG_ABSENCE.test(paragraph)) {
+      return fail(
+        "HASHTAGS_NOT_HANDLED",
+        `verdict.paragraph missing #tag or absence phrase`,
+      );
     }
     const presc = RECOMMENDATION_VERBS.exec(paragraph);
     if (presc) {
