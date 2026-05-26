@@ -205,6 +205,16 @@ export interface InsightsUserPayload {
   /** Pre-built pt-PT cadence sentence; embed verbatim in the verdict. */
   cadence_label_pt?: string;
   /**
+   * Compact caption-semantic block (when the snapshot has it). Optional —
+   * the verdict prompt mentions topics ONLY when this field is present.
+   */
+  caption_intelligence?: NonNullable<InsightsContext["caption_intelligence"]>;
+  /**
+   * Compact visual-cover block (when the snapshot has it). Optional —
+   * the verdict validator rejects visual claims when this is absent.
+   */
+  visual_cover?: NonNullable<InsightsContext["visual_cover"]>;
+  /**
    * The flat list of `evidence` strings the model is allowed to cite.
    * Mirrored by `validate.ts` so any citation outside this list is
    * rejected. Keep paths short and JSON-pointer-ish.
