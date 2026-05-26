@@ -709,7 +709,7 @@ function MetricsStrip({
   if (items.length === 0) return null;
 
   return (
-    <div className="rounded-xl border border-border-default bg-white grid grid-cols-1 sm:grid-cols-3 overflow-hidden">
+    <div className="rounded-xl border border-border-default bg-white grid grid-cols-1 sm:grid-cols-3 overflow-hidden divide-y divide-border-default sm:divide-y-0">
       {items.map((it, idx) => {
         const Icon = it.icon;
         const isFirst = idx === 0;
@@ -718,20 +718,20 @@ function MetricsStrip({
             key={it.key}
             className={cn(
               "px-5 py-4 sm:px-6 sm:py-5",
-              !isFirst && "border-t border-border-default sm:border-t-0 sm:border-l sm:border-border-default/60",
+              !isFirst && "sm:border-l sm:border-border-default/60",
             )}
           >
             <div className="flex items-center gap-1.5 mb-2">
               <Icon className="h-3.5 w-3.5 text-accent-primary" aria-hidden="true" />
-              <span className="text-eyebrow-sm text-content-tertiary">{it.label}</span>
+              <span className="text-eyebrow-sm text-content-secondary">{it.label}</span>
             </div>
             <div className="flex items-baseline gap-1.5">
-              <span className="font-sans text-[1.625rem] font-semibold tabular-nums text-content-primary leading-none">
+              <span className="font-sans text-[1.75rem] md:text-[1.625rem] font-semibold tabular-nums text-content-primary leading-none">
                 {it.value}
               </span>
-              <span className="text-sm text-content-secondary">{it.unit}</span>
+              <span className="text-[15px] text-content-secondary">{it.unit}</span>
             </div>
-            <p className="mt-1.5 text-xs text-content-tertiary leading-snug">{it.subtitle}</p>
+            <p className="mt-2 text-[13px] text-content-secondary leading-snug">{it.subtitle}</p>
           </div>
         );
       })}
