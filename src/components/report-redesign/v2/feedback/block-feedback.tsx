@@ -3,9 +3,16 @@
  * 1 clique em emoji + comentário opcional. Beta-friendly.
  */
 import { useEffect, useState } from "react";
+import { CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Status = "idle" | "submitting" | "done" | "error" | "already";
+type Status =
+  | "idle"
+  | "submitting"
+  | "done"
+  | "error"
+  | "already"
+  | "comment_sent";
 
 interface BlockFeedbackProps {
   handle: string;
@@ -26,6 +33,14 @@ function storageKey(handle: string, snapshotId: string | null, block: string) {
   return `inline-fb:${block}:${handle}:${snapshotId ?? "_"}`;
 }
 
+function commentStorageKey(
+  handle: string,
+  snapshotId: string | null,
+  block: string,
+) {
+  return `inline-fb:${block}:${handle}:${snapshotId ?? "_"}:c`;
+}
+
 export function BlockFeedback({
   handle,
   snapshotId,
@@ -36,11 +51,20 @@ export function BlockFeedback({
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
   const [comment, setComment] = useState("");
+  const [sendingComment, setSendingComment] = useState(false);
+  const [commentError, setCommentError] = useState(false);
 
   // Hydrate "already voted" state from localStorage.
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
+      const prevComment = window.localStorage.getItem(
+        commentStorageKey(handle, snapshotId, block),
+      );
+      if (prevComment) {
+        setStatus("comment_sent");
+        return;
+      }
       const prev = window.localStorage.getItem(
         storageKey(handle, snapshotId, block),
       );
@@ -53,7 +77,7 @@ export function BlockFeedback({
   const display = hover || rating;
   const active = display > 0 ? RATINGS[display - 1] : null;
 
-  async function submit(value: number, withComment?: string) {
+  async function submitRating(value: number) {
     if (status === "submitting") return;
     setStatus("submitting");
     try {
@@ -65,7 +89,6 @@ export function BlockFeedback({
           snapshot_id: snapshotId,
           block,
           rating: value,
-          comment: withComment?.trim() || undefined,
         }),
       });
       if (!res.ok) throw new Error("submit_failed");
@@ -83,6 +106,39 @@ export function BlockFeedback({
     }
   }
 
+  async function submitComment(value: number, text: string) {
+    if (sendingComment) return;
+    setSendingComment(true);
+    setCommentError(false);
+    try {
+      const res = await fetch("/api/public/inline-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          handle,
+          snapshot_id: snapshotId,
+          block,
+          rating: value || 3,
+          comment: text.trim(),
+        }),
+      });
+      if (!res.ok) throw new Error("submit_failed");
+      try {
+        window.localStorage.setItem(
+          commentStorageKey(handle, snapshotId, block),
+          "1",
+        );
+      } catch {
+        // ignore storage errors
+      }
+      setStatus("comment_sent");
+    } catch {
+      setCommentError(true);
+    } finally {
+      setSendingComment(false);
+    }
+  }
+
   if (status === "already") {
     return (
       <section
@@ -94,6 +150,25 @@ export function BlockFeedback({
       >
         <p className="text-sm text-content-tertiary">
           Já registaste o teu feedback. Obrigado.
+        </p>
+      </section>
+    );
+  }
+
+  if (status === "comment_sent") {
+    return (
+      <section
+        aria-label="Mensagem registada"
+        className={cn("py-8 sm:py-10 text-center space-y-3", className)}
+      >
+        <div className="flex justify-center">
+          <CheckCircle2 className="h-8 w-8 text-signal-success" aria-hidden />
+        </div>
+        <p className="text-base font-semibold text-content-primary">
+          Mensagem registada. Obrigado.
+        </p>
+        <p className="text-sm text-content-secondary max-w-md mx-auto">
+          Vamos lê-la com atenção.
         </p>
       </section>
     );
@@ -117,20 +192,29 @@ export function BlockFeedback({
             onChange={(e) => setComment(e.target.value.slice(0, 500))}
             rows={2}
             placeholder="Uma frase ajuda-nos a melhorar."
+            disabled={sendingComment}
             className="w-full rounded-lg border border-border-default bg-surface-secondary px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between gap-3">
+            <p
+              className={cn(
+                "text-xs text-signal-danger transition-opacity",
+                commentError ? "opacity-100" : "opacity-0",
+              )}
+              aria-live="polite"
+            >
+              Não foi possível enviar. Tenta novamente.
+            </p>
             <button
               type="button"
               onClick={() => {
                 if (!comment.trim()) return;
-                // Re-submit same rating with comment attached.
-                void submit(rating, comment);
+                void submitComment(rating, comment);
               }}
-              disabled={!comment.trim()}
+              disabled={!comment.trim() || sendingComment}
               className="text-sm font-medium text-primary hover:text-primary/80 disabled:text-content-tertiary disabled:cursor-not-allowed transition-colors"
             >
-              Enviar
+              {sendingComment ? "A enviar…" : "Enviar"}
             </button>
           </div>
         </div>
@@ -164,7 +248,7 @@ export function BlockFeedback({
               type="button"
               onClick={() => {
                 setRating(item.value);
-                void submit(item.value);
+                void submitRating(item.value);
               }}
               onMouseEnter={() => setHover(item.value)}
               onFocus={() => setHover(item.value)}
