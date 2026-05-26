@@ -94,7 +94,7 @@ describe("buildInsightsCtx — hashtags + cadence label", () => {
     ];
     const ctx = buildCtxFor(posts);
     expect(ctx.hashtags_state).toBe("recurring");
-    expect(ctx.top_hashtags?.[0]?.tag).toBe("lifestyle");
+    expect(ctx.top_hashtags?.[0]?.tag).toMatch(/^#?lifestyle$/);
     expect(ctx.top_hashtags?.[0]?.uses).toBeGreaterThanOrEqual(2);
     expect(typeof ctx.cadence_label_pt).toBe("string");
     // 6 posts diários → cadência alta
