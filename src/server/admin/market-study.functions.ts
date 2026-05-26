@@ -16,6 +16,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { detectLanguage, type Lang } from "@/lib/admin/lang-detect";
+import { topTokens } from "@/lib/admin/topics";
 
 const WindowSchema = z.object({
   windowDays: z.union([z.literal(7), z.literal(30), z.literal(90)]).default(30),
@@ -38,6 +40,78 @@ function distribution(nums: number[]): Record<1 | 2 | 3 | 4 | 5, number> {
   return out;
 }
 
+function dayKey(iso: string): string {
+  return iso.slice(0, 10);
+}
+function daysBack(n: number): string[] {
+  const out: string[] = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86_400_000);
+    out.push(d.toISOString().slice(0, 10));
+  }
+  return out;
+}
+
+/** Resolve email/nome dos leads pedidos a partir de uma lista de IDs. */
+async function resolveLeads(
+  ids: Array<string | null | undefined>,
+): Promise<Map<string, { email: string | null; name: string | null }>> {
+  const unique = Array.from(new Set(ids.filter((x): x is string => !!x)));
+  if (unique.length === 0) return new Map();
+  const { data } = await supabaseAdmin
+    .from("leads")
+    .select("id, email, name")
+    .in("id", unique);
+  const map = new Map<string, { email: string | null; name: string | null }>();
+  for (const l of data ?? []) {
+    map.set(l.id, { email: l.email ?? null, name: l.name ?? null });
+  }
+  return map;
+}
+
+/** Resolve snapshot → report_request → lead para enriquecer inline feedback. */
+async function resolveLeadsBySnapshot(
+  snapshotIds: Array<string | null | undefined>,
+): Promise<Map<string, { email: string | null; name: string | null }>> {
+  const unique = Array.from(new Set(snapshotIds.filter((x): x is string => !!x)));
+  if (unique.length === 0) return new Map();
+  const { data: reqs } = await supabaseAdmin
+    .from("report_requests")
+    .select("analysis_snapshot_id, lead_id, created_at")
+    .in("analysis_snapshot_id", unique);
+  // Para cada snapshot pegamos no lead_id mais recente
+  const snapToLead = new Map<string, string>();
+  for (const r of (reqs ?? []).sort((a, b) =>
+    (b.created_at ?? "").localeCompare(a.created_at ?? ""),
+  )) {
+    if (r.analysis_snapshot_id && r.lead_id && !snapToLead.has(r.analysis_snapshot_id)) {
+      snapToLead.set(r.analysis_snapshot_id, r.lead_id);
+    }
+  }
+  const leads = await resolveLeads(Array.from(snapToLead.values()));
+  const out = new Map<string, { email: string | null; name: string | null }>();
+  for (const [snap, leadId] of snapToLead.entries()) {
+    const l = leads.get(leadId);
+    if (l) out.set(snap, l);
+  }
+  return out;
+}
+
+export type MarketCommentSource = "inline" | "beta" | "pricing";
+export interface MarketComment {
+  id: string;
+  source: MarketCommentSource;
+  text: string;
+  rating: number | null;
+  block: string | null;
+  intent: string | null;
+  authorEmail: string | null;
+  authorName: string | null;
+  language: Lang;
+  createdAt: string;
+  handle: string | null;
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Pulse                                                                     */
 /* -------------------------------------------------------------------------- */
@@ -53,8 +127,9 @@ export const getMarketStudyPulse = createServerFn({ method: "GET" })
     const [inlineRes, prevInlineRes, modalRes, reportsRes] = await Promise.all([
       supabaseAdmin
         .from("inline_report_feedback")
-        .select("rating, comment, block, created_at")
+        .select("id, rating, comment, block, handle, snapshot_id, created_at")
         .gte("created_at", since)
+        .order("created_at", { ascending: false })
         .limit(1000),
       supabaseAdmin
         .from("inline_report_feedback")
@@ -64,8 +139,9 @@ export const getMarketStudyPulse = createServerFn({ method: "GET" })
         .limit(1000),
       supabaseAdmin
         .from("beta_feedback")
-        .select("usefulness_score, purchase_intent, clarity_text, missing_text, created_at")
+        .select("id, lead_id, usefulness_score, purchase_intent, clarity_text, missing_text, created_at")
         .gte("created_at", since)
+        .order("created_at", { ascending: false })
         .limit(1000),
       supabaseAdmin
         .from("report_requests")
@@ -77,6 +153,14 @@ export const getMarketStudyPulse = createServerFn({ method: "GET" })
     const inlinePrev = prevInlineRes.data ?? [];
     const modal = modalRes.data ?? [];
     const reportsTotal = reportsRes.count ?? 0;
+
+    const { data: pricingRows = [] } = await supabaseAdmin
+      .from("pricing_interest")
+      .select("id, comment, email, would_pay, created_at")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(500);
+    const pricing = pricingRows ?? [];
 
     const inlineAvg = avg(inline.map((r) => r.rating));
     const inlineAvgPrev = avg(inlinePrev.map((r) => r.rating));
@@ -94,23 +178,74 @@ export const getMarketStudyPulse = createServerFn({ method: "GET" })
       }
     }
 
-    // Top frases recorrentes (clarity_text + missing_text) — heurística simples
-    // baseada em primeiras palavras significativas. Não substitui análise
-    // textual mas dá um vislumbre rápido.
-    const freeText: string[] = [];
-    for (const m of modal) {
-      if (typeof m.clarity_text === "string" && m.clarity_text.trim()) {
-        freeText.push(m.clarity_text.trim());
-      }
-      if (typeof m.missing_text === "string" && m.missing_text.trim()) {
-        freeText.push(m.missing_text.trim());
-      }
-    }
+    // Resolver autores
+    const betaLeadIds = modal.map((m) => m.lead_id);
+    const snapshotIds = inline.map((c) => c.snapshot_id);
+    const [betaLeadMap, snapLeadMap] = await Promise.all([
+      resolveLeads(betaLeadIds),
+      resolveLeadsBySnapshot(snapshotIds),
+    ]);
+
+    const comments: MarketComment[] = [];
     for (const c of inline) {
-      if (typeof c.comment === "string" && c.comment.trim()) {
-        freeText.push(c.comment.trim());
-      }
+      const text = (c.comment ?? "").trim();
+      if (!text) continue;
+      const author = c.snapshot_id ? snapLeadMap.get(c.snapshot_id) : undefined;
+      comments.push({
+        id: `inline:${c.id}`,
+        source: "inline",
+        text,
+        rating: c.rating,
+        block: c.block,
+        intent: null,
+        authorEmail: author?.email ?? null,
+        authorName: author?.name ?? null,
+        language: detectLanguage(text),
+        createdAt: c.created_at,
+        handle: c.handle ?? null,
+      });
     }
+    for (const m of modal) {
+      const parts = [m.clarity_text, m.missing_text].filter(
+        (t): t is string => typeof t === "string" && t.trim().length > 0,
+      );
+      if (parts.length === 0) continue;
+      const text = parts.join(" — ").trim();
+      const author = m.lead_id ? betaLeadMap.get(m.lead_id) : undefined;
+      comments.push({
+        id: `beta:${m.id}`,
+        source: "beta",
+        text,
+        rating: m.usefulness_score ?? null,
+        block: null,
+        intent: m.purchase_intent ?? null,
+        authorEmail: author?.email ?? null,
+        authorName: author?.name ?? null,
+        language: detectLanguage(text),
+        createdAt: m.created_at,
+        handle: null,
+      });
+    }
+    for (const p of pricing) {
+      const text = (p.comment ?? "").trim();
+      if (!text) continue;
+      comments.push({
+        id: `pricing:${p.id}`,
+        source: "pricing",
+        text,
+        rating: null,
+        block: null,
+        intent: p.would_pay ?? null,
+        authorEmail: p.email ?? null,
+        authorName: null,
+        language: detectLanguage(text),
+        createdAt: p.created_at,
+        handle: null,
+      });
+    }
+    comments.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+    const topics = topTokens(comments.map((c) => c.text), 3, 2);
 
     return {
       windowDays: data.windowDays,
@@ -125,7 +260,8 @@ export const getMarketStudyPulse = createServerFn({ method: "GET" })
         reportsTotal,
         intentCounts,
       },
-      recentFreeText: freeText.slice(0, 5),
+      comments: comments.slice(0, 100),
+      topics,
     };
   });
 
@@ -178,9 +314,42 @@ export const getMarketStudyBlocks = createServerFn({ method: "GET" })
       };
     });
 
+    // Totais agregados por rating (1..5)
+    const ratingTotals: Record<1 | 2 | 3 | 4 | 5, number> = {
+      1: 0, 2: 0, 3: 0, 4: 0, 5: 0,
+    };
+    for (const r of rows) {
+      if (r.rating >= 1 && r.rating <= 5) {
+        ratingTotals[r.rating as 1 | 2 | 3 | 4 | 5]++;
+      }
+    }
+
+    // Série diária por rating
+    const days = daysBack(data.windowDays);
+    const dayIndex = new Map<string, number>();
+    days.forEach((d, i) => dayIndex.set(d, i));
+    const ratingDaily = days.map((day) => ({
+      day,
+      r1: 0, r2: 0, r3: 0, r4: 0, r5: 0,
+    }));
+    for (const r of rows) {
+      const idx = dayIndex.get(dayKey(r.created_at));
+      if (idx === undefined) continue;
+      const k = `r${r.rating}` as "r1" | "r2" | "r3" | "r4" | "r5";
+      if (k in ratingDaily[idx]) (ratingDaily[idx] as Record<string, unknown>)[k] = ((ratingDaily[idx] as unknown as Record<string, number>)[k] ?? 0) + 1;
+    }
+
+    const heatmap = BLOCKS.map((block) => ({
+      block,
+      counts: distribution(rows.filter((r) => r.block === block).map((r) => r.rating)),
+    }));
+
     return {
       windowDays: data.windowDays,
       byBlock,
+      ratingTotals,
+      ratingDaily,
+      heatmap,
       comments: comments.map((c) => ({
         block: c.block as BlockKey,
         rating: c.rating,
@@ -234,6 +403,8 @@ export const getMarketStudyModal = createServerFn({ method: "GET" })
     const consentTotal = safeRows.filter((r) => r.contact_consent === true).length;
     const consentRate = safeRows.length > 0 ? consentTotal / safeRows.length : null;
 
+    const leadMap = await resolveLeads(safeRows.map((r) => r.lead_id));
+
     const freeText = safeRows
       .map((r) => ({
         id: r.id,
@@ -244,6 +415,8 @@ export const getMarketStudyModal = createServerFn({ method: "GET" })
         score: r.usefulness_score,
         intent: r.purchase_intent,
         createdAt: r.created_at,
+        authorEmail: (r.lead_id ? leadMap.get(r.lead_id)?.email : null) ?? null,
+        authorName: (r.lead_id ? leadMap.get(r.lead_id)?.name : null) ?? null,
       }))
       .filter(
         (r) =>
@@ -251,6 +424,37 @@ export const getMarketStudyModal = createServerFn({ method: "GET" })
           (typeof r.missing === "string" && r.missing.trim().length > 0),
       )
       .slice(0, 50);
+
+    // Série diária
+    const days = daysBack(data.windowDays);
+    const idx = new Map<string, number>();
+    days.forEach((d, i) => idx.set(d, i));
+    const daily = days.map((day) => ({
+      day,
+      yes: 0, maybe: 0, no: 0, unsure: 0,
+      scoreSum: 0, scoreN: 0,
+    }));
+    for (const r of safeRows) {
+      const i = idx.get(dayKey(r.created_at));
+      if (i === undefined) continue;
+      const slot = daily[i];
+      if (r.purchase_intent === "yes") slot.yes++;
+      else if (r.purchase_intent === "maybe") slot.maybe++;
+      else if (r.purchase_intent === "no") slot.no++;
+      else if (r.purchase_intent === "unsure") slot.unsure++;
+      if (typeof r.usefulness_score === "number") {
+        slot.scoreSum += r.usefulness_score;
+        slot.scoreN++;
+      }
+    }
+    const dailySerialized = daily.map((d) => ({
+      day: d.day,
+      yes: d.yes,
+      maybe: d.maybe,
+      no: d.no,
+      unsure: d.unsure,
+      avgUsefulness: d.scoreN > 0 ? d.scoreSum / d.scoreN : null,
+    }));
 
     return {
       windowDays: data.windowDays,
@@ -260,6 +464,7 @@ export const getMarketStudyModal = createServerFn({ method: "GET" })
       pricingCounts,
       consent: { total: consentTotal, rate: consentRate },
       freeText,
+      daily: dailySerialized,
     };
   });
 
@@ -324,9 +529,33 @@ export const getPricingInterest = createServerFn({ method: "GET" })
       (r) => typeof r.email === "string" && r.email.trim().length > 0,
     ).length;
 
+    // Série diária
+    const days = daysBack(data.windowDays);
+    const idx = new Map<string, number>();
+    days.forEach((d, i) => idx.set(d, i));
+    const daily = days.map((day) => ({
+      day, sim: 0, talvez: 0, nao: 0,
+    }));
+    for (const r of safe) {
+      const i = idx.get(dayKey(r.created_at));
+      if (i === undefined) continue;
+      const k = r.would_pay as WouldPayKey | null;
+      if (k && k in daily[i]) (daily[i] as unknown as Record<string, number>)[k]++;
+    }
+    const dailySerialized = daily.map((d) => {
+      const dayN = d.sim + d.talvez + d.nao;
+      return {
+        day: d.day,
+        sim: d.sim,
+        talvez: d.talvez,
+        nao: d.nao,
+        convictionRate: dayN > 0 ? d.sim / dayN : null,
+      };
+    });
+
     const comments = safe
       .filter((r) => typeof r.comment === "string" && r.comment.trim().length > 0)
-      .slice(0, 20)
+      .slice(0, 100)
       .map((r) => ({
         id: r.id,
         option: r.pricing_option as PricingOptionKey,
@@ -347,5 +576,6 @@ export const getPricingInterest = createServerFn({ method: "GET" })
       convictionRate,
       emailsCount,
       comments,
+      daily: dailySerialized,
     };
   });

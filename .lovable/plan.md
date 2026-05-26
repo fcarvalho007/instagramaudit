@@ -1,102 +1,97 @@
 ## Objetivo
 
-Substituir o botão "Editar (em breve)" por um editor real que permite alterar **assunto, preheader, headline, corpo HTML e corpo texto** de cada um dos 7 templates de email beta. As alterações persistem em DB e passam a ser usadas em todos os envios reais, sem precisar de deploy.
+Tornar `/admin/estudo-mercado` mais visual e prático. Hoje todos os tabs parecem variações do mesmo KPI strip e a caixa "Comentários recentes" mostra apenas texto solto, sem autor, sem hora, sem agregação. Vou reorganizar cada um dos 4 tabs para responder às perguntas que tu fazes de facto:
 
-## Princípio
+1. Quem disse o quê (e quando)?
+2. Qual o emoji/voto mais escolhido?
+3. Como evolui no tempo?
 
-- O código atual em `src/lib/email/templates/*.ts` continua a ser a **versão de fábrica** (fallback). Não é apagado.
-- Em DB, uma nova tabela `email_template_overrides` guarda, por `template_key`, a versão editada pelo admin. Se existir override, é usada; caso contrário usa-se o default.
-- O corpo aceita placeholders `{{firstName}}`, `{{instagramHandle}}`, `{{reportUrl}}`, `{{feedbackUrl}}`, `{{appUrl}}`, `{{checkoutUrl}}`, substituídos antes do envio.
-- O layout exterior (`wrapHtml`) continua partilhado — o admin edita só o conteúdo, não o invólucro, para garantir consistência visual e que continua a renderizar bem em todos os clientes de email.
+Mantenho a stack atual (TanStack Query + recharts + AdminCard) e os endpoints existentes em `src/server/admin/market-study.functions.ts` — todas as mudanças são aditivas, sem migração de DB.
 
-## Alterações
+---
 
-### 1. Base de dados (migração)
+## Mudanças por tab
 
-Nova tabela `public.email_template_overrides`:
-- `template_key` text PK (corresponde a `EmailTemplateKey`)
-- `subject` text nullable
-- `preheader` text nullable
-- `headline` text nullable
-- `body_html` text nullable (conteúdo do cartão, sem `<html>` exterior)
-- `body_text` text nullable
-- `updated_at`, `updated_by_email`
-- Trigger `set_updated_at`
-- RLS ativo, sem políticas públicas (só acessível pelo service-role nas server functions admin)
+### 1. Pulso do produto — comentários com identidade
 
-Nova tabela `public.email_template_history` (auditoria simples):
-- `id`, `template_key`, `snapshot` (jsonb com versão anterior), `changed_by_email`, `changed_at`
-- Trigger em update/delete que insere snapshot do estado anterior.
+Substituo a caixa "Comentários recentes (livres)" por um **Mural de comentários** muito mais rico:
 
-### 2. Render com override
+- Cada item passa a ter: emoji do voto (1-5) · bloco · **email/nome do autor** (resolvido via `inline_report_feedback.snapshot_id → report_requests → leads`, ou direto via `beta_feedback.lead_id`, ou `pricing_interest.email`) · **data e hora HH:mm** · idioma detectado (PT / EN / outro, heurística simples por palavras-chave).
+- Filtros no topo do mural: **Origem** (Inline / Modal beta / Modal preços / Todos) · **Idioma** (PT / EN / Todos) · search box.
+- Acima do mural, novo bloco **"3 sinais principais"**: quando há ≥10 comentários no período, mostra 3 chips com os tokens mais frequentes (após stopwords pt+en) e a contagem. Quando há <10, mostra apenas "amostra ainda pequena" (mantém o tom editorial atual).
+- Os 4 KPI tiles em cima mantêm-se mas a métrica "Janela" passa a mostrar também o número absoluto de comentários no período (mais útil que repetir "30d").
 
-Novo módulo `src/lib/email/template-overrides.server.ts`:
-- `loadOverride(key)` — lê de DB usando `supabaseAdmin`, cache curto in-memory (60s).
-- `applyVariables(template, vars)` — substitui `{{var}}` no HTML/texto.
-- `renderWithOverride(key, vars, fallbackRender)` — devolve `RenderedEmail`:
-  - se há override com pelo menos `subject` definido, usa override para os campos preenchidos e default para os restantes;
-  - aplica `wrapHtml` com `headline`, `preheader` e `body_html` finais;
-  - se não há override, devolve `fallbackRender()`.
+### 2. Emojis por bloco — deixa de parecer Pulso
 
-Atualizar os 7 call sites server-side (e.g. `send-welcome-beta.server.ts`, `send-report-summary.server.ts`, `send-personal-area-saved.server.ts`, `lead-magnet-sequence.server.ts`, `transactional-email.server.ts` para `request_received`/`report_ready`/`feedback_request`/`commercial_followup`) para passarem por `renderWithOverride(key, vars, () => renderX(input))` em vez de chamarem diretamente o `renderX`.
+Hoje este tab é uma tabela quase idêntica ao Pulso. Vou separar claramente em duas peças visualmente distintas:
 
-### 3. API admin (server functions / server routes)
+- **Ranking de votos no período** (peça nova, em cima): tabela ordenada por frequência das opções 1⭐ → 5⭐, com barra horizontal proporcional, contagem absoluta, % do total, e sparkline com a evolução diária dessa opção. Responde diretamente ao "saber qual é o mais votado".
+- **Heatmap por bloco × emoji** (substitui a tabela atual): grelha compacta com blocos nas linhas e 1-5 nas colunas, cada célula colorida pela intensidade (count). Mantém a coluna "média" à direita. Muito mais visual que a tabela atual com 5 colunas de números.
+- Filtro extra "Bloco" (todos / overview / diagnostic / performance / content) que filtra também o ranking.
+- Mantenho "Últimos comentários inline" no fundo, mas usando o mesmo componente de mural do tab 1 (autor + hora + idioma).
 
-Novo ficheiro `src/routes/api/admin/email-templates.ts` (servidor protegido por `requireAdmin` já existente no projeto):
-- `GET /api/admin/email-templates` → lista das chaves com flag `hasOverride` e `updatedAt`.
-- `GET /api/admin/email-templates/$key` → `{ default: { subject, preheader, headline, body_html, body_text }, override: same shape | null, variables: [...], samplePreview: RenderedEmail }`.
-- `PUT /api/admin/email-templates/$key` body `{ subject?, preheader?, headline?, body_html?, body_text? }` → upsert + insere em `email_template_history`.
-- `DELETE /api/admin/email-templates/$key` → repõe predefinido (apaga override + grava snapshot em history).
-- `POST /api/admin/email-templates/$key/preview` body `{ subject, preheader, headline, body_html, body_text }` → renderiza com as variáveis SAMPLE e devolve `RenderedEmail` sem persistir.
+### 3. Modal beta — gráficos a sério
 
-### 4. UI em `/admin/automacoes` → tab Templates
+- Mantenho KPI strip (utilidade média, intenção sim/talvez, opt-in, janela).
+- **Novo gráfico "Respostas ao longo do tempo"**: stacked bar diário por intenção (Sim / Talvez / Não / Indeciso) usando recharts. Mostra picos e dias secos.
+- **Novo gráfico "Utilidade média por dia"**: linha simples com a média móvel de `usefulness_score`.
+- "Intenção de compra" e "Preferência de pricing" passam de listas para **donut + lista** lado a lado, com cores consistentes com a paleta admin.
+- "Respostas livres" passa a ser o mesmo componente de mural (autor + hora + idioma + score + intent badge).
 
-`templates-tab.tsx`: trocar o botão desativado por `Link` para nova rota `/admin/automacoes/templates/$key`.
+### 4. Intenção de compra (pricing modal) — perceber data, hora e gráfico
 
-Nova rota `src/routes/admin.automacoes.templates.$key.tsx` (drawer/page no admin shell):
-- **Coluna esquerda — formulário**:
-  - Assunto (input)
-  - Preheader (input, pequeno hint sobre o que é)
-  - Headline (input)
-  - Corpo HTML (textarea grande, monoespaçada)
-  - Corpo texto (textarea, fallback texto puro)
-  - Chips com as variáveis disponíveis (clicar copia `{{firstName}}` para a clipboard ou insere no campo focado)
-  - Aviso quando se usa uma variável que não está na lista do template.
-  - Ações: "Guardar alterações", "Pré-visualizar", "Repor predefinido" (com confirmação), link "Ver histórico".
-- **Coluna direita — pré-visualização**:
-  - Toggle HTML / Texto
-  - iframe sandbox com `srcDoc` = HTML renderizado pelo endpoint de preview (com variáveis SAMPLE).
-  - Mostra o `subject` final num cabeçalho tipo cliente de email.
-- Estado salvo via `useMutation` (TanStack Query), toast em sucesso/erro, `invalidate` da lista.
+- KPI strip mantém-se.
+- **Novo gráfico "Respostas por dia"**: stacked bar Sim/Talvez/Não. Idêntico em comportamento ao do Modal beta, para consistência visual.
+- **Gráfico "% sim convicto vs dia"**: linha que mostra se a convicção está a subir ou a descer com o tempo.
+- "Intenção de pagar" e "Perceção do preço por plano" passam a barras horizontais empilhadas (não listas), com legenda barato/justo/caro coloridas.
+- Tabela de comentários no fundo: plano · would_pay · fairness · email · **data + hora HH:mm** · comentário. Ordenável por data. Linka o email para uma pesquisa no /admin/clientes.
 
-Nova subpágina `/admin/automacoes/templates/$key/history` (modal ou rota) que lista as últimas alterações (data, autor, diff resumido) e permite ver snapshot anterior.
+---
 
-### 5. Registry
+## Mudanças server-side (`market-study.functions.ts`)
 
-`email-template-registry.ts` fica como source-of-truth de metadados (título, categoria, variáveis disponíveis, wired). A função `render` deixa de ser usada diretamente em produção pelos call sites — passa a servir apenas o EmailLab/preview default. Acrescentar:
-- `defaultParts(key)` → devolve `{ subject, preheader, headline, body_html, body_text }` extraídos a partir de render com SAMPLE (para popular o editor quando ainda não há override). Implementado caso a caso por template (precisamos de expor as partes; alternativa: incluir um campo `defaultParts` estático em cada entry do registry — preferível).
+Tudo via `supabaseAdmin`, sem nova RLS:
 
-## Detalhes técnicos
+1. **`getMarketStudyPulse`** — devolve `comments: Array<{ source, text, rating?, block?, intent?, authorEmail, authorName, language, createdAt }>` (até 50). Resolve email via 3 joins (inline → snapshot → request → lead; beta_feedback → lead; pricing_interest → email direto). Adiciona `topTokens: Array<{ token, count }>` (top 3, calculado em memória com stopwords PT+EN).
+2. **`getMarketStudyBlocks`** — adiciona `ratingTotals: Record<1..5, number>`, `ratingDaily: Array<{ day, r1, r2, r3, r4, r5 }>` (1 ponto por dia da janela) e `heatmap: Array<{ block, counts: Record<1..5, number> }>`. Mantém payload antigo para compatibilidade.
+3. **`getMarketStudyModal`** — adiciona `daily: Array<{ day, yes, maybe, no, unsure, avgUsefulness }>`. Estende `freeText` com `authorEmail` e `authorName` (join `leads`).
+4. **`getPricingInterest`** — adiciona `daily: Array<{ day, sim, talvez, nao, convictionRate }>`. `comments` passa a incluir `createdAt` formatado ISO (já está) e fica pronto para ordenação.
 
-- Sanitização: como apenas admins editam e o HTML é entregue dentro do nosso `wrapHtml`, não fazemos strip; mas removemos `<script>`/`<iframe>` por segurança simples antes de guardar.
-- Variáveis desconhecidas (`{{xyz}}`) ficam literais — adicionar lint visual no editor.
-- Os call sites continuam responsáveis por validar/inputs; nada muda nos triggers.
-- `transactional-email.server.ts` e `send-*-beta.server.ts` passam a aceitar uma `templateKey` e chamar `renderWithOverride`.
+Helper partilhado novo `detectLanguage(text)` em `src/lib/admin/lang-detect.ts` — heurística leve baseada em set de palavras-chave PT vs EN, devolve "pt" | "en" | "other".
+
+Helper `tokenize(texts, { stopwords })` em `src/lib/admin/topics.ts` para o "3 sinais principais".
+
+---
+
+## Componentes novos / partilhados
+
+- `src/components/admin/v2/estudo-mercado/comment-mural.tsx` — usado em Pulso, Emojis por bloco (rodapé) e Modal beta (rodapé). Recebe lista normalizada `Comment[]` + filtros internos.
+- `src/components/admin/v2/estudo-mercado/rating-ranking.tsx` — tabela de ranking 1-5 com barra + sparkline.
+- `src/components/admin/v2/estudo-mercado/block-heatmap.tsx` — heatmap bloco × emoji.
+- `src/components/admin/v2/estudo-mercado/daily-stack-chart.tsx` — wrapper recharts para stacked bar diário (reutilizado por Modal beta e Pricing).
+- `src/components/admin/v2/estudo-mercado/donut-chart.tsx` — donut + legenda para intenção/pricing.
+
+Tudo usa tokens semânticos (`--admin-*`), Inter para números (tabular-nums), respeita as cores de paleta: blue #3772E5 (positivo), amber #BA7517 (alerta), neutro `admin-text-secondary`. Sem dark navy, sem slate, sem font-mono em chips public-facing.
+
+---
 
 ## Fora de scope
 
-- WYSIWYG visual (mantemos textarea HTML — rápido e suficiente para o teu uso).
-- Versionamento per-canal (apenas EN/PT) — todos os templates são pt-PT.
-- A/B testing.
+- Sem migração de DB. Não adiciono colunas a `inline_report_feedback` (continua a não ter `lead_id` direto — uso o join via snapshot).
+- Sem IA — tokenização e deteção de língua são heurísticas determinísticas.
+- Não toco em `/admin/visao-geral` nem nos formulários do site público.
+
+---
 
 ## Checkpoints
 
-- ☐ Migração `email_template_overrides` + `email_template_history` + trigger criada
-- ☐ `template-overrides.server.ts` com cache + `applyVariables` + `renderWithOverride`
-- ☐ Registry expõe `defaultParts` para os 7 templates
-- ☐ 7 call sites passam por `renderWithOverride`
-- ☐ Endpoints GET/PUT/DELETE/preview funcionais e protegidos por admin
-- ☐ Rota `/admin/automacoes/templates/$key` com editor + preview ao vivo
-- ☐ Botão "Editar" em `templates-tab.tsx` aponta para nova rota
-- ☐ "Repor predefinido" apaga override e mantém histórico
-- ☐ Histórico visível na UI
+- ☐ `getMarketStudyPulse` devolve `comments` com email/nome/idioma e `topTokens`.
+- ☐ `getMarketStudyBlocks` devolve `ratingTotals`, `ratingDaily` e `heatmap`.
+- ☐ `getMarketStudyModal` devolve `daily` e join de email/nome em `freeText`.
+- ☐ `getPricingInterest` devolve `daily`.
+- ☐ Tab Pulso mostra mural rico + "3 sinais principais" quando ≥10 comentários.
+- ☐ Tab Emojis por bloco mostra ranking de votos + heatmap (não parece o Pulso).
+- ☐ Tab Modal beta tem gráfico diário stacked + utilidade ao longo do tempo + donuts.
+- ☐ Tab Intenção de compra tem gráfico diário + linha de convicção + tabela com hora HH:mm.
+- ☐ Filtros idioma (PT/EN/Todos) + origem funcionam no mural.
+- ☐ Tipos passam `bunx tsc --noEmit` sem erros.
