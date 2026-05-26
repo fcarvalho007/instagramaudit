@@ -6,6 +6,10 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { trackEvent } from "@/lib/tracking.functions";
 import { cn } from "@/lib/utils";
+import {
+  PricingInterestModal,
+  type PricingInterestOption,
+} from "./pricing-interest-modal";
 
 // Checkout is not yet wired. CTAs only emit a typed `pricing_option_clicked`
 // event so we can measure intent without faking a payment flow.
@@ -20,6 +24,9 @@ export function PricingPage() {
   const { t } = useTranslation("pricing");
   const navigate = useNavigate();
   const [selected, setSelected] = useState<PricingOption | null>(null);
+  const [interestOption, setInterestOption] =
+    useState<PricingInterestOption | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const handleSelect = (option: PricingOption) => {
     setSelected(option);
@@ -34,7 +41,10 @@ export function PricingPage() {
     }).catch(() => {});
     if (option === "free") {
       navigate({ to: "/" }).catch(() => {});
+      return;
     }
+    setInterestOption(option);
+    setModalOpen(true);
   };
 
   const accessSteps = t("access.steps", {
@@ -43,6 +53,11 @@ export function PricingPage() {
   const freeBullets = t("free.bullets", { returnObjects: true }) as string[];
   const singleBullets = t("single.bullets", { returnObjects: true }) as string[];
   const packBullets = t("pack.bullets", { returnObjects: true }) as string[];
+
+  const interestMeta: Record<PricingInterestOption, { label: string; price: string }> = {
+    single_report: { label: t("single.title"), price: t("single.price") },
+    pack_5_reports: { label: t("pack.title"), price: t("pack.price") },
+  };
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-surface-base">
@@ -72,6 +87,7 @@ export function PricingPage() {
             tone="free"
             label={t("free.label")}
             title={t("free.title")}
+            priceWord={t("free.price_word")}
             bullets={freeBullets}
             cta={t("free.cta")}
             selected={selected === "free"}
@@ -142,6 +158,14 @@ export function PricingPage() {
           ))}
         </div>
       </section>
+
+      <PricingInterestModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        option={interestOption}
+        planLabel={interestOption ? interestMeta[interestOption].label : ""}
+        planPrice={interestOption ? interestMeta[interestOption].price : ""}
+      />
     </main>
   );
 }
@@ -154,6 +178,7 @@ interface PricingCardProps {
   label: string;
   title: string;
   price?: string;
+  priceWord?: string;
   unit?: string;
   bullets: string[];
   cta: string;
@@ -168,6 +193,7 @@ function PricingCard({
   label,
   title,
   price,
+  priceWord,
   unit,
   bullets,
   cta,
@@ -239,12 +265,12 @@ function PricingCard({
         </h3>
 
         {price ? (
-          <p className="mt-2 text-4xl font-bold text-content-primary tabular-nums">
+          <p className="mt-2 text-4xl font-semibold text-content-primary tabular-nums">
             {price}
           </p>
         ) : (
-          <p className="mt-2 text-4xl font-bold text-content-primary tabular-nums">
-            0€
+          <p className="mt-2 font-fraunces text-4xl font-medium tracking-tight text-content-primary">
+            {priceWord ?? "—"}
           </p>
         )}
 
