@@ -79,6 +79,7 @@ import { Route as ApiAdminRegeneratePdfRouteImport } from './routes/api/admin/re
 import { Route as ApiAdminRefreshProfilePreflightRouteImport } from './routes/api/admin/refresh-profile-preflight'
 import { Route as ApiAdminRefreshProfileRouteImport } from './routes/api/admin/refresh-profile'
 import { Route as ApiAdminRecentReportsRouteImport } from './routes/api/admin/recent-reports'
+import { Route as ApiAdminPricingPlansRouteImport } from './routes/api/admin/pricing-plans'
 import { Route as ApiAdminLeadsKanbanRouteImport } from './routes/api/admin/leads-kanban'
 import { Route as ApiAdminLeadsFunnelRouteImport } from './routes/api/admin/leads-funnel'
 import { Route as ApiAdminLeadsBulkRouteImport } from './routes/api/admin/leads-bulk'
@@ -499,6 +500,11 @@ const ApiAdminRefreshProfileRoute = ApiAdminRefreshProfileRouteImport.update({
 const ApiAdminRecentReportsRoute = ApiAdminRecentReportsRouteImport.update({
   id: '/api/admin/recent-reports',
   path: '/api/admin/recent-reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminPricingPlansRoute = ApiAdminPricingPlansRouteImport.update({
+  id: '/api/admin/pricing-plans',
+  path: '/api/admin/pricing-plans',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdminLeadsKanbanRoute = ApiAdminLeadsKanbanRouteImport.update({
@@ -924,6 +930,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/leads-bulk': typeof ApiAdminLeadsBulkRoute
   '/api/admin/leads-funnel': typeof ApiAdminLeadsFunnelRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
+  '/api/admin/pricing-plans': typeof ApiAdminPricingPlansRoute
   '/api/admin/recent-reports': typeof ApiAdminRecentReportsRoute
   '/api/admin/refresh-profile': typeof ApiAdminRefreshProfileRoute
   '/api/admin/refresh-profile-preflight': typeof ApiAdminRefreshProfilePreflightRoute
@@ -1058,6 +1065,7 @@ export interface FileRoutesByTo {
   '/api/admin/leads-bulk': typeof ApiAdminLeadsBulkRoute
   '/api/admin/leads-funnel': typeof ApiAdminLeadsFunnelRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
+  '/api/admin/pricing-plans': typeof ApiAdminPricingPlansRoute
   '/api/admin/recent-reports': typeof ApiAdminRecentReportsRoute
   '/api/admin/refresh-profile': typeof ApiAdminRefreshProfileRoute
   '/api/admin/refresh-profile-preflight': typeof ApiAdminRefreshProfilePreflightRoute
@@ -1195,6 +1203,7 @@ export interface FileRoutesById {
   '/api/admin/leads-bulk': typeof ApiAdminLeadsBulkRoute
   '/api/admin/leads-funnel': typeof ApiAdminLeadsFunnelRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
+  '/api/admin/pricing-plans': typeof ApiAdminPricingPlansRoute
   '/api/admin/recent-reports': typeof ApiAdminRecentReportsRoute
   '/api/admin/refresh-profile': typeof ApiAdminRefreshProfileRoute
   '/api/admin/refresh-profile-preflight': typeof ApiAdminRefreshProfilePreflightRoute
@@ -1333,6 +1342,7 @@ export interface FileRouteTypes {
     | '/api/admin/leads-bulk'
     | '/api/admin/leads-funnel'
     | '/api/admin/leads-kanban'
+    | '/api/admin/pricing-plans'
     | '/api/admin/recent-reports'
     | '/api/admin/refresh-profile'
     | '/api/admin/refresh-profile-preflight'
@@ -1467,6 +1477,7 @@ export interface FileRouteTypes {
     | '/api/admin/leads-bulk'
     | '/api/admin/leads-funnel'
     | '/api/admin/leads-kanban'
+    | '/api/admin/pricing-plans'
     | '/api/admin/recent-reports'
     | '/api/admin/refresh-profile'
     | '/api/admin/refresh-profile-preflight'
@@ -1603,6 +1614,7 @@ export interface FileRouteTypes {
     | '/api/admin/leads-bulk'
     | '/api/admin/leads-funnel'
     | '/api/admin/leads-kanban'
+    | '/api/admin/pricing-plans'
     | '/api/admin/recent-reports'
     | '/api/admin/refresh-profile'
     | '/api/admin/refresh-profile-preflight'
@@ -1720,6 +1732,7 @@ export interface RootRouteChildren {
   ApiAdminLeadsBulkRoute: typeof ApiAdminLeadsBulkRoute
   ApiAdminLeadsFunnelRoute: typeof ApiAdminLeadsFunnelRoute
   ApiAdminLeadsKanbanRoute: typeof ApiAdminLeadsKanbanRouteWithChildren
+  ApiAdminPricingPlansRoute: typeof ApiAdminPricingPlansRoute
   ApiAdminRecentReportsRoute: typeof ApiAdminRecentReportsRoute
   ApiAdminRefreshProfileRoute: typeof ApiAdminRefreshProfileRoute
   ApiAdminRefreshProfilePreflightRoute: typeof ApiAdminRefreshProfilePreflightRoute
@@ -2271,6 +2284,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/recent-reports'
       fullPath: '/api/admin/recent-reports'
       preLoaderRoute: typeof ApiAdminRecentReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/pricing-plans': {
+      id: '/api/admin/pricing-plans'
+      path: '/api/admin/pricing-plans'
+      fullPath: '/api/admin/pricing-plans'
+      preLoaderRoute: typeof ApiAdminPricingPlansRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/leads-kanban': {
@@ -2986,6 +3006,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminLeadsBulkRoute: ApiAdminLeadsBulkRoute,
   ApiAdminLeadsFunnelRoute: ApiAdminLeadsFunnelRoute,
   ApiAdminLeadsKanbanRoute: ApiAdminLeadsKanbanRouteWithChildren,
+  ApiAdminPricingPlansRoute: ApiAdminPricingPlansRoute,
   ApiAdminRecentReportsRoute: ApiAdminRecentReportsRoute,
   ApiAdminRefreshProfileRoute: ApiAdminRefreshProfileRoute,
   ApiAdminRefreshProfilePreflightRoute: ApiAdminRefreshProfilePreflightRoute,

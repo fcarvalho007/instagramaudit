@@ -73,7 +73,13 @@ export const Route = createFileRoute("/api/admin/pricing-plans")({
           return json({ ok: false, code: "INVALID_PAYLOAD", issues: parsed.error.issues }, 400);
         }
 
-        const patch: Record<string, unknown> = {
+        const patch: {
+          label: string;
+          price_cents: number;
+          unit_label: string | null;
+          updated_by_email: string;
+          active?: boolean;
+        } = {
           label: parsed.data.label,
           price_cents: parsed.data.price_cents,
           unit_label: parsed.data.unit_label ?? null,
