@@ -134,6 +134,24 @@ function formatDecimal(value: number, locale: string, digits = 1): string {
   return value.toFixed(digits).replace(".", sep);
 }
 
+/**
+ * Format an average metric (likes/post, comments/post) consistently with
+ * Bloco 2 (`formatAvg` in report-diagnostic-card.tsx): keeps 1 decimal when
+ * < 10 so 0,4 doesn't get rounded to 0; compacts when >= 10.
+ */
+function formatAvgMetric(value: number, lang: "en" | "pt"): string {
+  if (value === 0) return "0";
+  if (value > 0 && value < 0.1) return "<0,1";
+  if (value < 10) {
+    const locale = lang.startsWith("pt") ? "pt-PT" : "en-US";
+    return value.toLocaleString(locale, {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    });
+  }
+  return formatCompactNumber(Math.round(value), lang);
+}
+
 function tierLabelFromFollowers(followers: number): string {
   if (followers >= 1_000_000) return "Mega";
   if (followers >= 250_000) return "Macro";
@@ -709,7 +727,7 @@ function MetricsStrip({
       key: "likes",
       icon: Heart,
       label: t("identity.metrics.likes_label"),
-      value: formatCompactNumber(Math.round(averageLikes), lang),
+      value: formatAvgMetric(averageLikes, lang),
       unit: t("identity.metrics.per_post"),
       subtitle,
     });
@@ -721,7 +739,7 @@ function MetricsStrip({
       key: "comments",
       icon: MessageCircle,
       label: t("identity.metrics.comments_label"),
-      value: formatCompactNumber(Math.round(averageComments), lang),
+      value: formatAvgMetric(averageComments, lang),
       unit: t("identity.metrics.per_post"),
       subtitle: t(`identity.metrics.comments_${band}`),
     });

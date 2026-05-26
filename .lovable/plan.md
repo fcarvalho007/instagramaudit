@@ -1,177 +1,61 @@
-# Regenerar `editorial_verdict` para snapshot único — plano de execução seguro
+## Diagnóstico
 
-## Auditoria
+Os dois cartões usam **a mesma fonte (posts analisados)**, mas calculam e formatam de forma diferente:
 
-### 1. Rotas e helpers existentes
+**Bloco 1 — Identidade Editorial (`overview/editorial-identity-card.tsx`)**
+- Consome `payload.content_summary.average_comments`.
+- Esse valor já vem **arredondado para inteiro** em `src/lib/analysis/normalize.ts:264`: `average_comments: Math.round(averageComments)`.
+- Depois ainda volta a fazer `Math.round(averageComments)` em `editorial-identity-card.tsx:724`.
+- Resultado: 0,4 → `0 por post`.
 
-- **`POST /api/public/enrich-snapshot`** (`src/routes/api/public/enrich-snapshot.ts`) — endpoint protegido por `INTERNAL_API_TOKEN`. Processa **apenas** jobs em `enrichment_jobs` com `status='pending'` para um `snapshot_id` específico. Por tipo de job, despacha para `runEnrichment(...)`. **Não** dispara nada por si só: se não existir um job pendente para `insights_v2`, não corre `insights_v2`. **Não** chama Apify nem cascata de outras enriquezas. **Não** toca em leads, report_requests, emails, Brevo, Resend.
+**Bloco 2 — Resposta do público (`report-diagnostic-card.tsx` Z2, alimentado por `block02-diagnostic.ts`)**
+- Recalcula `avgComments = totalComments / postsWithData` directamente a partir dos posts.
+- Formata com `formatAvg()` (1 casa decimal).
+- Resultado: 0,4 `por post` / `0,4 coment./post`.
 
-- **`runEnrichment` / `runInsightsV2`** (`src/lib/enrichment/run-enrichment.server.ts`, linhas 382‑425) — executa **só** `generateInsightsV2(insightsCtx, …)`. Reaproveita `caption_semantic_analysis` e `visual_cover_analysis` já existentes no payload (linhas 318‑324). Não chama Apify, DataForSEO, caption-semantic nem visual-cover.
+Não há divergência de fonte; há divergência de precisão e dupla redução em `normalize.ts`.
 
-- **Guarda crítica** (linha 401): `if (ctx.previousPayload.ai_insights_v2) { … skipping }`. Como o snapshot já tem `ai_insights_v2` (versão antiga), é obrigatório **remover** essa chave antes de criar o job, senão o runner faz no-op.
+## Objectivo
 
-- **`removePayloadKey`** (`src/lib/analysis/cache.ts`, já importado em `enrich-snapshot.ts`) — helper atómico para apagar uma chave de `normalized_payload`.
+Mostrar **o mesmo número** (com a mesma precisão) em ambos os blocos, sem alterar Apify, DFS, IA, gates ou perfis não relacionados.
 
-- **`/api/admin/force-refresh`** — corre o pipeline público todo (Apify + DFS + tudo). **Não usar** — fere todas as restrições.
+## Alterações propostas
 
-- **`/api/admin/regenerate-pdf`** — só PDF, não toca insights.
+### 1. `src/lib/analysis/normalize.ts`
+- Deixar de arredondar `average_comments` (e por consistência também `average_likes`) — guardar valor decimal cru no `content_summary`.
+- Garantir que `engagement_pct` continua a ser calculado com os valores não arredondados (já era).
+- Impacto: o valor passa a ser idêntico ao usado pelo Bloco 2.
 
-- **Nenhuma rota** existente regenera *só* `insights_v2` para um snapshot existente. É preciso uma sequência manual de 3 passos usando as primitivas que já existem (sem novo endpoint, sem novo código).
+### 2. `src/components/report-redesign/v2/overview/editorial-identity-card.tsx`
+- Remover o `Math.round(averageComments)` no `value:` do KPI.
+- Formatar com helper consistente com o Bloco 2:
+  - `avg === 0` → `"0"`
+  - `0 < avg < 0,1` → `"<0,1"`
+  - `avg < 10` → 1 casa decimal (`"0,4"`, `"2,3"`)
+  - `avg >= 10` → inteiro arredondado
+- Aplicar a mesma regra ao card de `averageLikes` para evitar regressões cosméticas (28,2 → "28").
 
-### 2. Caminho de execução escolhido
+### 3. Verificação
+- Snapshot `robs.cortez` (`3cd9340c-...`) — confirmar via `read_query` que:
+  - `content_summary.average_comments` deixa de ser inteiro arredondado;
+  - `engagement_pct` permanece igual;
+  - o Bloco 1 e o Bloco 2 renderizam o mesmo valor (`0,4 por post` / `0,4 coment./post`).
+- Correr os testes existentes (`block02-diagnostic`, `editorial-verdict`) — nenhum depende do arredondamento de `average_comments`.
 
-Reutilizar 100% do código existente (sem novo endpoint) via 3 chamadas de ferramentas:
+## Ficheiros tocados
 
-1. **DB (insert tool, SQL `UPDATE`)** — limpar `ai_insights_v2` do payload do snapshot alvo:
+- `src/lib/analysis/normalize.ts`
+- `src/components/report-redesign/v2/overview/editorial-identity-card.tsx`
 
-   ```sql
-   UPDATE public.analysis_snapshots
-   SET normalized_payload = normalized_payload - 'ai_insights_v2',
-       updated_at = now()
-   WHERE id = '3cd9340c-da04-4fc2-a79f-235ac0a1192f';
-   ```
+## Fora de scope
 
-2. **DB (insert tool, SQL `INSERT`)** — criar um único job pendente para esse snapshot:
-
-   ```sql
-   INSERT INTO public.enrichment_jobs
-     (snapshot_id, handle, enrichment_type, status, priority, attempts, max_attempts)
-   VALUES
-     ('3cd9340c-da04-4fc2-a79f-235ac0a1192f', 'robs.cortez',
-      'insights_v2', 'pending', 50, 0, 3);
-   ```
-
-3. **HTTP (invoke-server-function)** — disparar **apenas** o job acima:
-
-   ```
-   POST /api/public/enrich-snapshot
-   Authorization: Bearer ${INTERNAL_API_TOKEN}
-   Content-Type: application/json
-   { "snapshot_id": "3cd9340c-da04-4fc2-a79f-235ac0a1192f" }
-   ```
-
-   O endpoint só vai encontrar 1 job pendente (`insights_v2`) e executá-lo. Os outros tipos (`dataforseo`, `visual_cover`, `caption_semantic`, `insights_v1`) **não** estão pendentes → não correm.
-
-### 3. Conformidade com as restrições
-
-| Restrição | Garantia |
-|---|---|
-| Sem Apify | `runEnrichment('insights_v2', …)` não chama Apify. Nenhum job `dataforseo`/`visual_cover` é criado. |
-| Sem DataForSEO | Idem. `runInsightsV2` só lê `market_signals_free` do payload se já existir. |
-| Sem caption-semantic | `runInsightsV2` lê do payload, não regera. |
-| Sem visual-cover | Idem; usa o `visual_cover_analysis` já persistido. |
-| Sem emails / Brevo / Resend | Nenhum desses serviços é tocado neste path. |
-| Sem leads / report_requests | Nenhum SQL/insert nessas tabelas. |
-| Sem outros snapshots | Todos os passos filtram por `id = '3cd9340c-…'` ou `snapshot_id = '3cd9340c-…'`. |
-| Só `ai_insights_v2` muda | `runInsightsV2` devolve `payloadPatch = { ai_insights_v2: result.insights }` — `patchSnapshotPayload` faz merge superficial; nada mais é alterado. |
-
-## 4. Checklist de validação
-
-### Antes da regeneração
-
-```sql
--- A: confirmar AUSÊNCIA de editorial_verdict
-SELECT normalized_payload->'ai_insights_v2' ? 'editorial_verdict' AS has_verdict,
-       normalized_payload->'ai_insights_v2'->>'version'         AS v2_version
-FROM public.analysis_snapshots
-WHERE id = '3cd9340c-da04-4fc2-a79f-235ac0a1192f';
--- Esperado: has_verdict = false (ou ai_insights_v2 = NULL após o UPDATE de limpeza)
-
--- B: confirmar que payload tem visual_cover_analysis e caption_semantic_analysis
-SELECT
-  normalized_payload ? 'visual_cover_analysis'      AS has_visual,
-  normalized_payload ? 'caption_semantic_analysis'  AS has_caption,
-  normalized_payload ? 'ai_insights_v2'             AS has_v2_before_cleanup
-FROM public.analysis_snapshots
-WHERE id = '3cd9340c-da04-4fc2-a79f-235ac0a1192f';
-
--- C: contar jobs do snapshot
-SELECT enrichment_type, status, attempts
-FROM public.enrichment_jobs
-WHERE snapshot_id = '3cd9340c-da04-4fc2-a79f-235ac0a1192f'
-ORDER BY created_at DESC;
-
--- D: contar provider_call_logs nas últimas 24h para esse handle
-SELECT provider, count(*) FROM public.provider_call_logs
-WHERE handle = 'robs.cortez' AND created_at > now() - interval '24 hours'
-GROUP BY provider;
--- Esperado: registar baseline (apify/dataforseo/openai counts antes).
-```
-
-### Após a regeneração
-
-```sql
--- 1. editorial_verdict presente
-SELECT normalized_payload->'ai_insights_v2' ? 'editorial_verdict' AS has_verdict
-FROM public.analysis_snapshots
-WHERE id = '3cd9340c-da04-4fc2-a79f-235ac0a1192f';
--- Esperado: true
-
--- 2. Inspecionar o conteúdo
-SELECT normalized_payload->'ai_insights_v2'->'editorial_verdict' AS verdict
-FROM public.analysis_snapshots
-WHERE id = '3cd9340c-da04-4fc2-a79f-235ac0a1192f';
-
--- 3. Job correu e ficou success
-SELECT enrichment_type, status, attempts, error_message
-FROM public.enrichment_jobs
-WHERE snapshot_id = '3cd9340c-da04-4fc2-a79f-235ac0a1192f'
-  AND enrichment_type = 'insights_v2'
-ORDER BY created_at DESC LIMIT 1;
--- Esperado: status='success', error_message=NULL.
-
--- 4. Provider calls: APENAS openai novo
-SELECT provider, count(*) FROM public.provider_call_logs
-WHERE handle = 'robs.cortez' AND created_at > now() - interval '10 minutes'
-GROUP BY provider;
--- Esperado: openai = 1 ; apify/dataforseo = 0.
-```
-
-### Validações de conteúdo (manuais, sobre o JSON devolvido em #2)
-
-Aplicando `src/lib/insights/validate.ts` (já há testes em `__tests__/validate-editorial.test.ts` e `editorial-verdict-warnings.test.ts`):
-
-- ☐ `editorial_verdict.paragraph` passa `validateEditorialVerdict` sem warnings críticos.
-- ☐ Paragraph **não** contém o carácter `%` (regra do validator atual).
-- ☐ Hashtags (`#…`) sanitizadas conforme `sanitize-ai-copy`.
-- ☐ Claims visuais (cores, composição, faces) só presentes se `visual_cover_analysis.posts.length > 0` no payload anterior (verificado em validate.ts via `visual_evidence`).
-- ☐ Sem alteração de outras chaves do payload (`profile`, `posts`, `competitors`, `market_signals_free`, `visual_cover_analysis`, `caption_semantic_analysis` intactos — comparar `jsonb_object_keys(normalized_payload)` antes/depois).
-- ☐ Zero linhas novas em `report_requests`, `leads`, `report_snapshots` (timestamp filter).
-
-## 5. Sequência exata a executar (quando autorizado em build mode)
-
-1. `supabase--read_query` — passos A, B, C, D da secção "Antes".
-2. `supabase--insert` — `UPDATE` para remover `ai_insights_v2`.
-3. `supabase--insert` — `INSERT` do job `insights_v2`.
-4. `stack_modern--invoke-server-function` — `POST /api/public/enrich-snapshot` com Bearer token + body `{snapshot_id}`. Esperar 200 + `{processed:1, succeeded:1, failed:0}`.
-5. `stack_modern--server-function-logs --search "enrich-snapshot"` — confirmar `[enrichment] insights_v2` sem erros.
-6. `supabase--read_query` — passos 1‑4 da secção "Após".
-7. Reportar: snippet do `editorial_verdict.paragraph` + tabela de provider calls.
-
-## 6. Rollback
-
-Se a regeneração falhar:
-- O `UPDATE` do passo 2 apaga o `ai_insights_v2` antigo — perda irrecuperável **a menos que** se faça backup antes:
-
-  ```sql
-  SELECT normalized_payload->'ai_insights_v2' AS backup_v2
-  FROM public.analysis_snapshots
-  WHERE id = '3cd9340c-da04-4fc2-a79f-235ac0a1192f';
-  ```
-
-  Guardar o JSON localmente antes do passo 2. Se necessário reverter:
-
-  ```sql
-  UPDATE public.analysis_snapshots
-  SET normalized_payload = jsonb_set(normalized_payload, '{ai_insights_v2}', '<backup_json>'::jsonb)
-  WHERE id = '3cd9340c-da04-4fc2-a79f-235ac0a1192f';
-  ```
+- Não tocar em `report-diagnostic-card.tsx`, `block02-diagnostic.ts`, validador, prompt v2, Apify, DFS, Brevo, Resend, gates, leads, report_requests, pricing, UI de outras secções.
+- Não regenerar snapshots — a leitura do `content_summary` é só para validação visual; snapshots antigos com `average_comments: 0` continuam a renderizar, mas novos cálculos passam a ter precisão decimal. Para o `robs.cortez` específico, basta recarregar o relatório (o `content_summary` é recalculado a partir do payload normalizado em runtime? — **a confirmar antes da implementação**: se for persistido, pode ser preciso forçar uma re-normalização leve do snapshot).
 
 ## Checkpoint
 
-- ☐ Backup do `ai_insights_v2` actual capturado e guardado na resposta.
-- ☐ `UPDATE` remove só `ai_insights_v2`.
-- ☐ Único job `insights_v2` pendente criado.
-- ☐ `POST /api/public/enrich-snapshot` corre 1 job; 0 chamadas Apify/DFS; 1 chamada OpenAI.
-- ☐ `editorial_verdict` presente e válido (sem `%`, hashtags ok, claims visuais consistentes).
-- ☐ Outras chaves do payload intactas; nenhum email/lead/report_request criado.
+- ☐ Confirmar onde `content_summary.average_comments` é persistido vs. recalculado no `robs.cortez`.
+- ☐ Editar `normalize.ts` (sem `Math.round`).
+- ☐ Editar `editorial-identity-card.tsx` (helper de formatação partilhado).
+- ☐ Validar visualmente no preview: Bloco 1 e Bloco 2 mostram o mesmo número.
+- ☐ Correr `bunx vitest run` (testes do bloco 2 e overview).
