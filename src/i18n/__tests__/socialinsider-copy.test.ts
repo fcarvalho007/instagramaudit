@@ -1,11 +1,14 @@
 import { describe, it, expect } from "vitest";
-import ptReport from "../locales/pt/report.json";
-import enReport from "../locales/en/report.json";
+import ptReportRaw from "../locales/pt/report.json";
+import enReportRaw from "../locales/en/report.json";
+
+const ptReport = ptReportRaw as unknown as Record<string, unknown>;
+const enReport = enReportRaw as unknown as Record<string, unknown>;
 
 const IMPERATIVE_RX =
   /(\bdeve\b|\btem de\b|\bideal\b|\bmeta\b|\bregra\b|recommended target|\btarget\b|\bmust\b|\bshould\b)/i;
 
-function readingLabels(report: typeof ptReport): string[] {
+function readingLabels(report: Record<string, unknown>): string[] {
   const ext = (report as unknown as {
     format: { external_ref: Record<string, string> };
   }).format.external_ref;
