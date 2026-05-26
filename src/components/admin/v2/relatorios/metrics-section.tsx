@@ -29,6 +29,8 @@ interface MetricsApi {
   success_rate_pct: number | null;
   avg_delivery_minutes: number | null;
   avg_cost_usd: number | null;
+  total_cost_usd?: number | null;
+  apify_cost_usd?: number | null;
   window_days: number;
 }
 
@@ -50,6 +52,8 @@ export function MetricsSection({ period }: { period: AdminPeriod }) {
   const withUnlock = data?.with_unlock ?? 0;
   const unlockRate = data?.unlock_rate_pct;
   const avgCost = data?.avg_cost_usd;
+  const totalCost = data?.total_cost_usd ?? null;
+  const apifyCost = data?.apify_cost_usd ?? null;
 
   return (
     <section className="flex flex-col gap-4">
@@ -77,9 +81,13 @@ export function MetricsSection({ period }: { period: AdminPeriod }) {
         <ReportKpi
           accent="revenue-alt"
           eyebrow="Custo médio · análise"
-          info="Soma de custos de providers (Apify+OpenAI) na janela ÷ nº de snapshots gerados. Deve bater com o total da janela em /admin/receita (reconciliação Apify + cost_daily)."
+          info="Custo Apify na janela ÷ nº de snapshots gerados. Alinha com a reconciliação Apify em /admin/receita (cost_daily + provider_billing_imports)."
           value={avgCost != null ? `$${avgCost.toFixed(3)}` : "—"}
-          sub="apify + openai"
+          sub={
+            totalCost != null && apifyCost != null
+              ? `Apify por análise nova · Total janela $${totalCost.toFixed(3)} (Apify $${apifyCost.toFixed(3)})`
+              : "Apify por análise nova"
+          }
         />
       </div>
     </section>
