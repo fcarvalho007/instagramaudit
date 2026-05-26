@@ -81,7 +81,7 @@ function VariantBadge({ variant }: { variant: ReportVariant }) {
   const { t } = useTranslation("report");
   if (variant === "internal_lab") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-content-secondary border border-border-default">
+      <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-content-secondary border border-border-default">
         <span aria-hidden="true">✦</span>
         {t("nav.lab")}
       </span>
@@ -89,7 +89,7 @@ function VariantBadge({ variant }: { variant: ReportVariant }) {
   }
   if (variant === "pro_preview") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-blue-700 border border-blue-200">
+      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-blue-700 border border-blue-200">
         <span aria-hidden="true">✦</span>
         {t("nav.pro_active")}
       </span>
@@ -197,7 +197,7 @@ function ProgressSummary({ items }: { items: SidebarItem[] }) {
   const total = items.length;
   return (
     <div className="px-1 pt-3 pb-1">
-      <p className="mb-2 text-[11px] font-medium text-content-secondary">
+      <p className="mb-2 text-xs font-medium text-content-secondary">
         {t("nav.access.progress", { accessible, total })}
       </p>
       <div className="flex w-full gap-1" aria-hidden="true">
@@ -281,7 +281,7 @@ function ItemRow({
       </span>
       <span
         className={cn(
-          "ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] ring-1",
+          "ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.06em] ring-1",
           badgeClass,
         )}
       >
@@ -307,7 +307,7 @@ function PremiumBlockCard({
         <span className="text-sm font-semibold text-content-primary">
           {t("nav.premium")}
         </span>
-        <span className="ml-auto text-[11px] text-content-tertiary tabular-nums">
+        <span className="ml-auto text-xs text-content-tertiary tabular-nums">
           {t("nav.access.premium_count", { count: items.length })}
         </span>
       </div>
@@ -339,7 +339,7 @@ function PremiumBlockCard({
         {t("nav.access.cta")}
         <ArrowRight className="size-3.5" aria-hidden="true" />
       </button>
-      <p className="mt-2 text-center text-[11px] leading-relaxed text-content-tertiary">
+      <p className="mt-2 text-center text-xs leading-relaxed text-content-tertiary">
         {t("nav.access.trust")}
       </p>
     </div>
