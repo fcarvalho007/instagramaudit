@@ -702,7 +702,7 @@ function IndexBlock({
       {/* Régua vertical de estágios */}
       {hasValue ? (
         <div
-          className="flex gap-3 min-h-[148px]"
+          className="flex gap-3 min-h-[168px]"
           role="img"
           aria-label={t("identity.index.rail_aria_full", {
             value: clamped,
@@ -710,7 +710,7 @@ function IndexBlock({
             defaultValue: `Índice ${clamped} de 100, estágio ${currentStageLabel}`,
           })}
         >
-          <div className="flex flex-col w-2 gap-1 bg-surface-muted rounded-full p-0.5">
+          <div className="flex flex-col w-2.5 gap-1 bg-surface-muted rounded-full p-0.5">
             {stages.map((s) => {
               const isCurrent = s.key === stage;
               return (
@@ -724,7 +724,7 @@ function IndexBlock({
               );
             })}
           </div>
-          <ul className="flex flex-col justify-around text-[13px] leading-tight flex-1">
+          <ul className="flex flex-col justify-around text-[15px] leading-snug flex-1">
             {stages.map((s) => {
               const isCurrent = s.key === stage;
               return (
@@ -735,11 +735,11 @@ function IndexBlock({
                     isCurrent ? "text-content-primary" : "text-content-tertiary",
                   )}
                 >
-                  <span className={cn(isCurrent && "text-[14px] font-medium")}>
+                  <span className={cn(isCurrent && "text-[16px] font-semibold")}>
                     {s.label}
                   </span>
                   {isCurrent ? (
-                    <span className="text-accent-primary font-medium tabular-nums mt-1 inline-flex items-center gap-1 self-start bg-accent-primary/10 px-2 py-0.5 rounded-md text-[12px]">
+                    <span className="text-accent-primary font-medium tabular-nums mt-1 inline-flex items-center gap-1 self-start bg-accent-primary/10 px-2.5 py-1 rounded-md text-[13px]">
                       <span aria-hidden="true">▸</span>
                       <span>
                         {t("identity.index.this_brand", {
@@ -758,17 +758,14 @@ function IndexBlock({
 
       {/* "Como foi calculado" colapsável */}
       <details
-        className={cn(
-          "group rounded-lg border border-border-default transition-colors mt-auto",
-          methodOpen ? "bg-surface-muted/50" : "bg-white",
-        )}
+        className="group mt-auto"
         onToggle={(e) => setMethodOpen((e.target as HTMLDetailsElement).open)}
       >
         <summary
           aria-expanded={methodOpen}
           className={cn(
-            "flex items-center justify-between gap-2 cursor-pointer list-none",
-            "px-3 py-2.5 text-[11px] font-medium uppercase tracking-wide text-content-tertiary",
+            "flex items-center gap-1.5 cursor-pointer list-none",
+            "px-0 py-1.5 text-[10.5px] font-medium uppercase tracking-wide text-content-tertiary",
             "hover:text-content-primary transition-colors",
           )}
         >
@@ -776,11 +773,11 @@ function IndexBlock({
             {t("identity.method.toggle", { defaultValue: "Como foi calculado" })}
           </span>
           <ChevronDown
-            className="h-3 w-3 text-content-tertiary transition-transform duration-200 group-open:rotate-180"
+            className="h-2.5 w-2.5 text-content-tertiary transition-transform duration-200 group-open:rotate-180"
             aria-hidden="true"
           />
         </summary>
-        <div className="px-3.5 pb-3.5 pt-1 space-y-2.5 text-xs leading-snug text-content-secondary">
+        <div className="px-0 pb-1 pt-2 space-y-2.5 text-xs leading-snug text-content-secondary">
           <p>
             {t("identity.method.signals_line", {
               defaultValue:
