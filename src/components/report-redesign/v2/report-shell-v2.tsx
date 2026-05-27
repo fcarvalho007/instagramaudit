@@ -43,6 +43,7 @@ import { ReportOverviewBlock } from "./report-overview-block";
 import { ReportDiagnosticBlock } from "./report-diagnostic-block";
 import { BlockFeedback } from "./feedback/block-feedback";
 import { ReportEndOfFreeBlock } from "./end-of-free-block";
+import { ReportLeadMagnetCard } from "./report-lead-magnet-card";
 import { ReportLockGate } from "@/components/product/report-lock-gate";
 import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useState } from "react";
@@ -180,6 +181,8 @@ export function ReportShellV2({
           variant={variant}
           features={features}
           profile={sidebarProfile}
+          unlocked={unlocked}
+          onUnlockClick={handleUnlockClick}
         />
 
         {/* Layout 2-col a partir do bloco 01 */}
@@ -189,6 +192,8 @@ export function ReportShellV2({
               variant={variant}
               features={features}
               profile={sidebarProfile}
+              unlocked={unlocked}
+              onUnlockClick={handleUnlockClick}
             />
             <main className="min-w-0 flex-1 overflow-x-clip">
               {/* 01 · Overview (redesigned) */}
@@ -221,6 +226,14 @@ export function ReportShellV2({
                     block="overview"
                   />
                 </div>
+              )}
+
+              {/* Pre-lead-capture lead magnet: editorial bridge between
+                  the free Block 1 preview and the gated content. Renders
+                  only in the public report when the user has not yet
+                  completed the lead magnet (unlocked === false). */}
+              {gated && !unlocked && variant === "public_mvp" && (
+                <ReportLeadMagnetCard onUnlockClick={handleUnlockClick} />
               )}
 
               {/* When gated, everything from the Engagement card onward

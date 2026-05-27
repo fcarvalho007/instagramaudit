@@ -522,6 +522,19 @@
       "cta": "View access options",
       "cta_aria": "View premium access options",
       "trust": "1 report or pack of 5. No subscription."
+    },
+    "access_locked": {
+      "cta": "Continue free reading",
+      "cta_aria": "Continue free reading",
+      "trust": "Unlock the free diagnosis before the premium sections."
+    },
+    "lead_magnet": {
+      "eyebrow": "Free continuation",
+      "transition": "This is only the first reading. Continue to see the free diagnosis with more context about this profile.",
+      "title": "Continue the free report reading",
+      "body": "Add your name and email and answer 3 quick questions to open the free diagnosis.",
+      "cta": "View free report",
+      "cta_aria": "View free report"
     }
   },
   "shell": {

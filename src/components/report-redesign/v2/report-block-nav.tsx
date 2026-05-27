@@ -43,6 +43,11 @@ interface SidebarProps {
   features: VariantFeatures;
   profile?: SidebarProfile;
   profiles?: SidebarProfile[];
+  /** When false in public_mvp, sidebar shows a soft "continue free" CTA
+   *  instead of the pricing/access card. */
+  unlocked?: boolean;
+  /** Handler that opens the existing UnlockModal (lead-magnet flow). */
+  onUnlockClick?: () => void;
 }
 
 // ── Item builder ─────────────────────────────────────────────────────
@@ -346,6 +351,65 @@ function PremiumBlockCard({
   );
 }
 
+/**
+ * Pre-lead-capture variant of the premium card. Same visual frame, but
+ * the CTA leads to the lead-magnet card (free continuation) instead of
+ * the pricing dialog. No price, no pack wording.
+ */
+function ContinueReadingCard({
+  items,
+  onContinue,
+}: {
+  items: SidebarItem[];
+  onContinue: () => void;
+}) {
+  const { t } = useTranslation("report");
+  return (
+    <div className="rounded-lg border border-border-default bg-surface-muted/40 p-3">
+      <div className="flex items-center gap-2 border-b border-border-default/60 pb-2 mb-2">
+        <Lock className="size-3.5 text-content-secondary" aria-hidden="true" />
+        <span className="text-sm font-semibold text-content-primary">
+          {t("nav.premium")}
+        </span>
+        <span className="ml-auto text-xs text-content-tertiary tabular-nums">
+          {t("nav.access.premium_count", { count: items.length })}
+        </span>
+      </div>
+      <ul className="space-y-0.5 mb-3">
+        {items.map((item) => (
+          <li
+            key={item.block.id}
+            aria-disabled="true"
+            className="flex items-center gap-3 px-1 py-1.5 text-sm text-content-tertiary"
+          >
+            <span className="font-display italic tabular-nums text-content-tertiary">
+              {item.block.number}
+            </span>
+            <span className="truncate">{item.block.shortLabel}</span>
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        onClick={onContinue}
+        aria-label={t("nav.access_locked.cta_aria")}
+        className={cn(
+          "inline-flex w-full items-center justify-center gap-2 rounded-lg",
+          "bg-content-primary px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] text-white",
+          "hover:bg-content-primary/90 transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1",
+        )}
+      >
+        {t("nav.access_locked.cta")}
+        <ArrowRight className="size-3.5" aria-hidden="true" />
+      </button>
+      <p className="mt-2 text-center text-xs leading-relaxed text-content-tertiary">
+        {t("nav.access_locked.trust")}
+      </p>
+    </div>
+  );
+}
+
 // ── Sidebar list (shared layout for desktop + mobile drawer) ─────────
 
 function SidebarList({
@@ -353,11 +417,15 @@ function SidebarList({
   active,
   variant,
   onAccessibleClick,
+  unlocked = true,
+  onUnlockClick,
 }: {
   items: SidebarItem[];
   active: string | null;
   variant: ReportVariant;
   onAccessibleClick: (id: string) => void;
+  unlocked?: boolean;
+  onUnlockClick?: () => void;
 }) {
   const { t } = useTranslation("report");
   const { snapshotId, handle, variant: trackingVariant } = useReportTracking();
@@ -377,6 +445,27 @@ function SidebarList({
       },
     }).catch(() => {});
     setDialogOpen(true);
+  };
+
+  const focusLeadMagnet = () => {
+    trackEvent({
+      data: {
+        eventType: "unlock_clicked",
+        snapshotId: snapshotId ?? undefined,
+        handle: handle ?? undefined,
+        metadata: {
+          variant: trackingVariant,
+          source_component: "sidebar_continue_free",
+        },
+      },
+    }).catch(() => {});
+    if (typeof document === "undefined") return;
+    const el = document.getElementById("lead-magnet-card");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      onUnlockClick?.();
+    }
   };
 
   if (!isPublic) {
@@ -423,7 +512,11 @@ function SidebarList({
       )}
 
       {premium.length > 0 && (
-        <PremiumBlockCard items={premium} onOpenDialog={openDialog} />
+        unlocked ? (
+          <PremiumBlockCard items={premium} onOpenDialog={openDialog} />
+        ) : (
+          <ContinueReadingCard items={premium} onContinue={focusLeadMagnet} />
+        )
       )}
 
       <PremiumInterestDialog
@@ -440,7 +533,7 @@ function SidebarList({
 
 // ── Desktop sidebar ──────────────────────────────────────────────────
 
-export function ReportBlockSidebar({ variant, features, profile, profiles }: SidebarProps) {
+export function ReportBlockSidebar({ variant, features, profile, profiles, unlocked, onUnlockClick }: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
   const profileList = useMemo(
@@ -477,6 +570,8 @@ export function ReportBlockSidebar({ variant, features, profile, profiles }: Sid
         active={active}
         variant={variant}
         onAccessibleClick={scrollToBlock}
+        unlocked={unlocked}
+        onUnlockClick={onUnlockClick}
       />
     </nav>
   );
@@ -484,7 +579,7 @@ export function ReportBlockSidebar({ variant, features, profile, profiles }: Sid
 
 // ── Mobile bottom tabs + drawer ──────────────────────────────────────
 
-export function ReportBlockTopTabs({ variant, features, profile, profiles }: SidebarProps) {
+export function ReportBlockTopTabs({ variant, features, profile, profiles, unlocked, onUnlockClick }: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
   const profileList = useMemo(
@@ -620,6 +715,11 @@ export function ReportBlockTopTabs({ variant, features, profile, profiles }: Sid
                 onAccessibleClick={(id) => {
                   setSheetOpen(false);
                   setTimeout(() => scrollToBlock(id), 180);
+                }}
+                unlocked={unlocked}
+                onUnlockClick={() => {
+                  setSheetOpen(false);
+                  setTimeout(() => onUnlockClick?.(), 180);
                 }}
               />
             </div>
