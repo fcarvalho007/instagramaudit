@@ -66,12 +66,17 @@
       "consentText": "Aceito o <a>tratamento dos meus dados</a> para gerar, guardar e enviar este relatório, e li a <a2>política de privacidade</a2>.",
       "consentBadgeRequired": "OBRIG.",
       "marketingText": "Quero receber novidades e dicas sobre relatórios, benchmarks e funcionalidades futuras.",
-      "marketingHint": "Opcional · cancelas quando quiseres"
+      "marketingHint": "Opcional · cancelas quando quiseres",
+      "fullNameLabel": "Primeiro e último nome",
+      "fullNamePlaceholder": "Ana Marques"
     },
     "step2": {
       "eyebrow": "PASSO 2 DE 4",
       "title": "Que relação tens com este perfil?",
-      "subtitle": "Ajuda-nos a ajustar o tom da análise."
+      "subtitle": "Ajuda-nos a ajustar o tom da análise.",
+      "phoneLabel": "Telemóvel (opcional)",
+      "phonePlaceholder": "+351 912 345 678",
+      "phoneHint": "Usamos apenas em casos excecionais, para validar o acesso ao relatório."
     },
     "step3": {
       "eyebrow": "PASSO 3 DE 4",

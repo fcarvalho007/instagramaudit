@@ -66,12 +66,17 @@
       "consentText": "I accept the <a>processing of my data</a> to generate, store and email this report, and I've read the <a2>privacy policy</a2>.",
       "consentBadgeRequired": "REQ.",
       "marketingText": "I'd like to receive news and tips about reports, benchmarks and future features.",
-      "marketingHint": "Optional · unsubscribe any time"
+      "marketingHint": "Optional · unsubscribe any time",
+      "fullNameLabel": "First and last name",
+      "fullNamePlaceholder": "Ana Marques"
     },
     "step2": {
       "eyebrow": "STEP 2 OF 4",
       "title": "How are you related to this profile?",
-      "subtitle": "Helps us tune the tone of the analysis."
+      "subtitle": "Helps us tune the tone of the analysis.",
+      "phoneLabel": "Mobile phone (optional)",
+      "phonePlaceholder": "+351 912 345 678",
+      "phoneHint": "Only used in exceptional cases, to validate report access."
     },
     "step3": {
       "eyebrow": "STEP 3 OF 4",
