@@ -1,79 +1,66 @@
-## Auditoria mobile — `/analyze/$username`
+## Smoke test pré-lançamento beta — AuditProfiles (DigitalFC sender)
 
-Inspecionei o relatório a 390 × 844 (iPhone 12/13). Confirmei que as correções da iteração anterior estão aplicadas (hashtags em 2 linhas, VS em fluxo, tamanhos ≥ 12 px). Identifiquei mais quatro problemas reais em mobile e dois pontos de hardening preventivo.
+Validação puramente operacional. Zero alterações de código, schema ou secrets.
 
-### Problemas confirmados na auditoria
+### O que vou verificar
 
-#### 1. `ReportLockGate` — handle longo estoura a card
+#### 1. Configuração efectiva do sender
 
-`@frederico.m.carvalho` é renderizado dentro de um `<h2>` com `text-[28px]/[32px]`. Como é um único token sem espaços, não quebra e empurra horizontalmente além da card de 358 px (`calc(100% - 32px)`), sobrepondo-se à borda.
+Inspecção read-only do que está actualmente em runtime (a tool de secrets só revela nomes; valores são confirmados por diagnóstico e pelo envio real):
 
-Plano:
-- Adicionar `break-words` + `[overflow-wrap:anywhere]` no `<h2>` (`report-lock-gate.tsx`, linha 108).
-- Reduzir o tamanho mobile do título de `text-[28px]` para `text-[24px]` para handles longos respirarem.
-- Adicionar `max-w-full block` ao `<em>` do handle para garantir contenção.
+- `BREVO_FROM_NAME` — esperado `AuditProfiles`
+- `BREVO_FROM_EMAIL` — esperado `frederico.carvalho@digitalfc.pt`
+- `RESEND_FROM` — presença confirmada (valor não impresso; apenas a identidade do remetente que aparecer no email real)
+- `BREVO_TRANSACTIONAL_ENABLED` — deve estar a `true` (default) para a Brevo ser o provider primário
 
-#### 2. Hero — botão "Compare competitor" estoura com badge "COMING SOON · July 2026"
+Método: `stack_modern--invoke-server-function` contra `/api/admin/email-config-status` (se existir) ou inspecção via `system-queries.server.ts`; em alternativa leio o `product_events` recente para extrair o `provider`/`from` registado nas últimas tentativas.
 
-`report-hero-v2.tsx` linha 118 tem `whitespace-nowrap` no botão e empilha `Compare competitor` + badge `COMING SOON · julho 2026`. Em 390 px o conjunto ultrapassa o contentor.
+#### 2. Teste end-to-end de unlock
 
-Plano:
-- Remover `whitespace-nowrap` do botão.
-- Permitir quebra: badge desce para a linha de baixo em mobile (`flex-wrap`), ou ocultar o sufixo "· July 2026" em `< sm` (manter só "COMING SOON" curto).
-- Garantir `min-w-0` para o botão e `truncate` no label se necessário.
+a. **Selecção do snapshot**: procuro o snapshot mais recente, cached, na BD (`report_snapshots`), preferencialmente do handle `frederico.m.carvalho` (testing profile do projeto). Se existir, reutilizo — zero chamadas Apify.
+b. **Submissão**: envio um POST a `/api/request-full-report` com:
+   - `email` = endereço de teste indicado por ti
+   - `name` = `Smoke Test`
+   - `instagram_username` = handle escolhido
+   - `analysis_snapshot_id` = id do snapshot cached
+c. **Inspecção de eventos** (`product_events`, filtrados pelo lead criado):
+   - `unlock_email_submitted`
+   - `unlock_completed`
+   - `beta_welcome_email_sent` (ou explicação se foi `…_failed`/skipped)
+   - `report_summary_email_sent` (ou `report_summary_skipped_no_data` com motivo)
+d. **Confirmação de envio via Brevo**: leitura do `email_send_log` / `product_events` (campos `provider`, `provider_message_id`, `status`) para confirmar que o provider efectivo foi `brevo`, não fallback Resend.
+e. **Inspecção do conteúdo do email recebido** (tu confirmas após receberes):
+   - Links apontam para `https://auditprofiles.com/…`
+   - Sender visível: `AuditProfiles <frederico.carvalho@digitalfc.pt>`
+   - Zero ocorrências de “InstaBench” em subject / body / footer / alt text
 
-#### 3. Hashtag — validar o fix em runtime
+#### 3. Veredito final
 
-A correção anterior está no código (2 linhas em mobile). Vou:
-- Confirmar visualmente em 390 px após HMR.
-- Garantir que `pl-12` em row-2 alinha com o rank pill (w-9 = 36 px + gap-3 = 12 px → `pl-12` = 48 px é exato ✓).
-- Se a barra ficar mal alinhada, ajustar para `pl-[3rem]`.
+Devolvo **GO** ou **NO-GO** com justificação por cada um dos 7 critérios acima. Se algo falhar, indico exactamente o evento/log/linha em causa e a remediação proposta (sem aplicar).
 
-#### 4. KPI vertical na overview — KPIs `LIKES · AVG`, `COMMENTS · AVG`, `RHYTHM · WEEK` empilhados ocupam altura excessiva
+### Restrições aceites
 
-Em 390 px, os 3 KPIs ficam um por linha (correto), mas cada um tem `p-5+` e o conjunto ocupa quase um viewport inteiro. Sugiro grelha 2 colunas em mobile (`grid-cols-2`) para likes/comments e `RHYTHM` em linha cheia abaixo, ou manter 1 coluna mas reduzir padding vertical (`py-3`).
+- Nenhum write de código, secrets, ou schema.
+- Nenhuma chamada Apify — só reuso snapshot cached. Se não houver cached para nenhum handle elegível, devolvo NO-GO operacional e peço autorização explícita antes de gerar fresh.
+- Envio real de email apenas para o endereço de teste que indicares.
 
-Decisão recomendada: manter 1 coluna (legibilidade) mas reduzir `py` para `py-3.5` no `KpiCard` interno do `report-kpi-grid-v2.tsx`. Necessário ler o ficheiro para confirmar shape exato antes de mexer.
+### Preciso de ti antes de avançar
 
-### Hardening preventivo (sem alterar comportamento visual)
+- [ ] **Email de teste** para receber o welcome + report summary (não enviar para nenhum outro endereço).
+- [ ] **Handle preferencial** para o teste (default sugerido: `frederico.m.carvalho`, único na `APIFY_ALLOWLIST` do projeto).
+- [ ] **Confirmação explícita** de que posso enviar 2 emails reais (welcome + summary) para esse endereço.
 
-#### 5. Shell — garantir `overflow-x-clip` no contentor principal
-
-`report-shell-v2.tsx` já tem `overflow-x-clip` no min-h-screen wrapper. Adicionar também no `<main>` interno para travar qualquer descendente que escape (defesa em profundidade).
-
-#### 6. Auditoria sistemática de tokens em modo mobile
-
-Fazer `rg "text-\[1[01]px\]|text-\[9px\]|min-w-\[(?:12|14|16|18|20)0px\]"` para confirmar que não ficaram resquícios > 350 px ou texto < 12 px em zonas de leitura. Resolver tudo o que aparecer (já cobri 10 ficheiros; pode haver mais em componentes raramente vistos).
-
-### Ficheiros a editar
-
-```
-src/components/product/report-lock-gate.tsx      # break-words + size mobile
-src/components/report-redesign/v2/report-hero-v2.tsx  # Compare button wrap
-src/components/report-redesign/v2/report-kpi-grid-v2.tsx  # padding reduzido
-src/components/report-redesign/v2/report-shell-v2.tsx     # overflow-x-clip extra
-```
-
-E quaisquer ficheiros adicionais que apareçam no varrimento do ponto 6.
-
-### Fora de scope (não toco)
-
-- Conteúdo gated/paywall — só ajustes visuais; sem lógica.
-- Backend, traduções, tracking.
-- Ficheiros em `LOCKED_FILES.md`.
-
-### Validação
-
-- Screenshots em 390 × 844 antes e depois de cada bloco.
-- Testar também 360 × 800 (Android pequeno) e 414 × 896 (iPhone Plus).
-- Confirmar zero scroll horizontal (`document.body.scrollWidth === window.innerWidth`).
-- `bunx tsc --noEmit`.
+Sem estes 3 inputs paro aqui — não invento email de teste nem disparo a sequência por iniciativa própria.
 
 ### Checkpoint
 
-- [ ] Handle longo no `ReportLockGate` quebra corretamente.
-- [ ] Botão "Compare competitor" cabe em 360 px sem overflow.
-- [ ] Hashtags renderizam em 2 linhas em mobile com barra alinhada.
-- [ ] KPIs verticais respiram menos.
-- [ ] Shell sem scroll horizontal em qualquer breakpoint < 640 px.
-- [ ] Varrimento de tokens < 12 px concluído, sem regressões.
+- ☐ Sender effective config validado
+- ☐ Snapshot cached identificado (sem Apify)
+- ☐ Unlock submetido com sucesso
+- ☐ `unlock_completed` presente
+- ☐ `beta_welcome_email_sent` presente ou justificado
+- ☐ `report_summary_email_sent` presente ou justificado
+- ☐ Provider efectivo = Brevo
+- ☐ Links → auditprofiles.com
+- ☐ Zero menção a “InstaBench” no email recebido
+- ☐ Veredito GO / NO-GO emitido
