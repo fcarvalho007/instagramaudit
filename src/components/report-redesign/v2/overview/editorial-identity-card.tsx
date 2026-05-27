@@ -947,21 +947,21 @@ function MetricsStrip({
           <div
             key={it.key}
             className={cn(
-              "px-5 py-4 sm:px-6 sm:py-5",
+              "px-4 py-3.5 sm:px-6 sm:py-5",
               !isFirst && "sm:border-l sm:border-border-default/60",
             )}
           >
-            <div className="flex items-center gap-1.5 mb-2">
+            <div className="flex items-center gap-1.5 mb-1.5">
               <Icon className="h-3.5 w-3.5 text-accent-primary" aria-hidden="true" />
               <span className="text-eyebrow-sm text-content-secondary">{it.label}</span>
             </div>
             <div className="flex items-baseline gap-1.5">
-              <span className="font-sans text-[1.75rem] md:text-[1.625rem] font-semibold tabular-nums text-content-primary leading-none">
+              <span className="font-sans text-[1.5rem] sm:text-[1.75rem] md:text-[1.625rem] font-semibold tabular-nums text-content-primary leading-none">
                 {it.value}
               </span>
-              <span className="text-[15px] text-content-secondary">{it.unit}</span>
+              <span className="text-[14px] sm:text-[15px] text-content-secondary">{it.unit}</span>
             </div>
-            <p className="mt-2 text-[13px] text-content-secondary leading-snug">{it.subtitle}</p>
+            <p className="mt-1.5 sm:mt-2 text-[13px] text-content-secondary leading-snug">{it.subtitle}</p>
           </div>
         );
       })}
