@@ -566,7 +566,7 @@ function Step1FullName({
   );
 }
 
-function Step2EmailPhone({
+function Step5EmailPhone({
   form,
 }: {
   form: ReturnType<typeof useForm<UnlockFormValues>>;
@@ -609,19 +609,22 @@ function Step2EmailPhone({
 
       <div className="space-y-1.5">
         <Label htmlFor="unlock-phone" className="text-sm">
-          {t("unlock.step2.phoneLabel")}
+          {t("unlock.step5.phoneLabel")}{" "}
+          <span className="text-primary" aria-hidden>
+            *
+          </span>
         </Label>
         <Input
           id="unlock-phone"
           type="tel"
           inputMode="tel"
           autoComplete="tel"
-          placeholder={t("unlock.step2.phonePlaceholder")}
+          placeholder={t("unlock.step5.phonePlaceholder")}
           aria-invalid={Boolean(phoneError)}
           {...form.register("phone")}
         />
         <p className="text-[11px] text-content-tertiary">
-          {t("unlock.step2.phoneHint")}
+          {t("unlock.step5.phoneHint")}
         </p>
         {phoneError ? (
           <p className="text-xs text-destructive">{phoneError}</p>
