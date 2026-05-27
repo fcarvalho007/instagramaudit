@@ -380,11 +380,16 @@ export function FrequencyCard({
     typeof cadenceSampleSize === "number" && cadenceSampleSize > 0
       ? cadenceSampleSize
       : postsAnalyzed;
+  // When cadence is insufficient (cadenceWindowDays === 0), the raw
+  // posting timeline can span hundreds of days (e.g. 12 posts spread
+  // across 629 days). Clamp to a sensible recent window so the
+  // calendar/legend never read "12/629 dias".
+  const INSUFFICIENT_CALENDAR_MAX_DAYS = 90;
   const effectiveWindowDays =
     typeof cadenceWindowDays === "number" && cadenceWindowDays > 0
       ? cadenceWindowDays
       : calendarDays.length > 0
-        ? calendarDays.length
+        ? Math.min(calendarDays.length, INSUFFICIENT_CALENDAR_MAX_DAYS)
         : windowDays;
   // When cadence is explicitly insufficient, do NOT derive headline from
   // a fabricated postsPerDay (would yield "Less than 1 post per week" on
@@ -580,9 +585,11 @@ export function FrequencyCard({
                 {t("frequency.calendar.legend_many", { label: maxPosts >= 3 ? "3+" : "2" })}
               </span>
             )}
-            <span className="ml-auto text-sm font-medium tabular-nums text-content-secondary">
-              {t("frequency.calendar.ratio", { published: publishedCount, total: windowedDays.length })}
-            </span>
+            {!isInsufficient && (
+              <span className="ml-auto text-sm font-medium tabular-nums text-content-secondary">
+                {t("frequency.calendar.ratio", { published: publishedCount, total: windowedDays.length })}
+              </span>
+            )}
           </div>
         </div>
       )}
