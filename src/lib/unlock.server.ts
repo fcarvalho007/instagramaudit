@@ -480,6 +480,7 @@ export async function processReportUnlock(
           returning_lead: returningLead,
           fields_present: fieldsPresent,
           report_request_id: reportRequestId,
+          phone_provided: Boolean(data.phone),
         },
       });
     }
@@ -529,7 +530,10 @@ export async function processReportUnlock(
     //    `product_events` keyed by `report_request_id`. Never blocks unlock.
     if (createdReportRequest) {
       const firstName =
-        data.name ?? (existingLead?.name as string | null | undefined) ?? null;
+        deriveFirstName(data) ??
+        parseFullName((existingLead?.name as string | null | undefined) ?? "")
+          .first_name ||
+        null;
 
       // Awaited (não fire-and-forget): Cloudflare Workers matam o trabalho
       // assíncrono em background assim que a resposta volta (sem
