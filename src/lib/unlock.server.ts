@@ -210,7 +210,7 @@ export async function processReportUnlock(
     const { data: existingLead } = await (supabaseAdmin as any)
       .from("leads")
       .select(
-        "id, user_type, purpose, profile_ownership, pricing_preference, name, beta_consent, marketing_consent",
+        "id, user_type, purpose, profile_ownership, pricing_preference, name, phone, phone_normalized, beta_consent, marketing_consent",
       )
       .eq("email_normalized", emailNormalized)
       .maybeSingle();
@@ -239,6 +239,11 @@ export async function processReportUnlock(
       if (!existingLead.pricing_preference && data.pricing_preference) {
         patch.pricing_preference = data.pricing_preference;
         fieldsUpdated.push("pricing_preference");
+      }
+      if (!existingLead.phone && data.phone) {
+        patch.phone = data.phone;
+        patch.phone_normalized = normalizePhone(data.phone);
+        fieldsUpdated.push("phone");
       }
       if (!existingLead.beta_consent && data.gdpr_consent === true) {
         patch.beta_consent = true;
@@ -281,7 +286,9 @@ export async function processReportUnlock(
         .insert({
           email: data.email,
           email_normalized: emailNormalized,
-          name: data.name ?? "Sem nome",
+          name: deriveLeadName(data),
+          phone: data.phone ?? null,
+          phone_normalized: normalizePhone(data.phone),
           source: "public_report_unlock",
           commercial_status: "novo_pedido",
           user_type: data.user_type ?? null,
