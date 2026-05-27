@@ -531,9 +531,8 @@ export async function processReportUnlock(
     if (createdReportRequest) {
       const firstName =
         deriveFirstName(data) ??
-        parseFullName((existingLead?.name as string | null | undefined) ?? "")
-          .first_name ||
-        null;
+        (parseFullName((existingLead?.name as string | null | undefined) ?? "")
+          .first_name || null);
 
       // Awaited (não fire-and-forget): Cloudflare Workers matam o trabalho
       // assíncrono em background assim que a resposta volta (sem
