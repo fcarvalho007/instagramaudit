@@ -39,8 +39,9 @@ import {
   type UserType,
 } from "@/lib/unlock-flow";
 import { trackEvent } from "@/lib/tracking.functions";
+import { parseFullName } from "@/lib/names/parse-full-name";
 
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 5;
 
 const UNLOCKED_ITEM_KEYS = ["overview", "diagnosis", "performance"] as const;
 
@@ -90,10 +91,10 @@ function extractServerError(
 }
 
 type QField = "profile_ownership" | "goal" | "user_type";
-const STEP_FIELD: Record<2 | 3 | 4, QField> = {
-  2: "profile_ownership",
-  3: "goal",
-  4: "user_type",
+const STEP_FIELD: Record<3 | 4 | 5, QField> = {
+  3: "profile_ownership",
+  4: "goal",
+  5: "user_type",
 };
 
 export interface UnlockResult {
@@ -111,13 +112,13 @@ export interface UnlockModalProps {
   onUnlock: (result: UnlockResult) => void;
 }
 
-type Step = 1 | 2 | 3 | 4 | 5 | "welcome-back";
+type Step = 1 | 2 | 3 | 4 | 5 | 6 | "welcome-back";
 
-function useStepHeader(step: 1 | 2 | 3 | 4) {
+function useStepHeader(step: 1 | 2 | 3 | 4 | 5) {
   const { t } = useTranslation("gate");
   const eyebrow = t(`unlock.step${step}.eyebrow`);
   const subtitle = t(`unlock.step${step}.subtitle`);
-  const badge = step === 1 ? t("unlock.stepBadgeMinute") : undefined;
+  const badge = step === 1 || step === 2 ? t("unlock.stepBadgeMinute") : undefined;
   const title =
     step === 1 ? (
       <>
@@ -154,9 +155,9 @@ export function UnlockModal({
     resolver: zodResolver(unlockFormSchema),
     mode: "onChange",
     defaultValues: {
-      first_name: "",
-      last_name: "",
+      full_name: "",
       email: "",
+      phone: "",
       profile_ownership: undefined as unknown as ProfileOwnership,
       goal: undefined as unknown as Goal,
       user_type: undefined as unknown as UserType,
@@ -177,32 +178,17 @@ export function UnlockModal({
   const goNext = async () => {
     setServerError(null);
     let fields: (keyof UnlockFormValues)[] = [];
-    if (step === 1) fields = ["first_name", "last_name", "email", "gdpr_consent"];
-    if (step === 2) fields = ["profile_ownership"];
-    if (step === 3) {
+    if (step === 1) fields = ["full_name"];
+    if (step === 2) fields = ["email", "phone", "gdpr_consent"];
+    if (step === 3) fields = ["profile_ownership"];
+    if (step === 4) {
       fields = ["goal"];
       if (form.getValues("goal") === "other") fields.push("goal_other_text");
     }
     const ok = await form.trigger(fields, { shouldFocus: true });
     if (!ok) return;
 
-    if (step === 1) {
-      // Manual non-empty enforcement (schema keeps these optional for back-compat).
-      const firstName = (form.getValues("first_name") ?? "").trim();
-      const lastName = (form.getValues("last_name") ?? "").trim();
-      let invalid = false;
-      if (!firstName) {
-        form.setError("first_name", { message: t("unlock.step1.firstNameRequired") });
-        invalid = true;
-      }
-      if (!lastName) {
-        form.setError("last_name", { message: t("unlock.step1.lastNameRequired") });
-        invalid = true;
-      }
-      if (invalid) return;
-    }
-
-    if (step === 1) {
+    if (step === 2) {
       const email = form.getValues("email");
       setLookupPending(true);
       let exists = false;
@@ -279,21 +265,21 @@ export function UnlockModal({
           t("unlock.partialBanner", { count: missing.length }),
         );
         const firstMissing = missing[0];
-        const targetStep = (Object.keys(STEP_FIELD) as Array<"2" | "3" | "4">)
-          .find((k) => STEP_FIELD[Number(k) as 2 | 3 | 4] === firstMissing);
-        setStep((Number(targetStep ?? "2") as Step));
+        const targetStep = (Object.keys(STEP_FIELD) as Array<"3" | "4" | "5">)
+          .find((k) => STEP_FIELD[Number(k) as 3 | 4 | 5] === firstMissing);
+        setStep((Number(targetStep ?? "3") as Step));
         return;
       }
 
       setPartialBanner(null);
     }
 
-    if (typeof step === "number" && step <= 4) {
+    if (typeof step === "number" && step <= 5) {
       let next = step + 1;
-      while (next <= 4 && knownFields.has(STEP_FIELD[next as 2 | 3 | 4])) {
+      while (next <= 5 && knownFields.has(STEP_FIELD[next as 3 | 4 | 5])) {
         next += 1;
       }
-      if (next > 4) {
+      if (next > 5) {
         await handleFinalSubmit();
         return;
       }
@@ -311,9 +297,9 @@ export function UnlockModal({
       onOpenChange(false);
       return;
     }
-    if (typeof step === "number" && step > 1 && step < 5) {
+    if (typeof step === "number" && step > 1 && step < 6) {
       let prev = step - 1;
-      while (prev >= 2 && knownFields.has(STEP_FIELD[prev as 2 | 3 | 4])) {
+      while (prev >= 3 && knownFields.has(STEP_FIELD[prev as 3 | 4 | 5])) {
         prev -= 1;
       }
       setStep((prev < 1 ? 1 : prev) as Step);
@@ -324,13 +310,17 @@ export function UnlockModal({
     setSubmitting(true);
     setServerError(null);
     try {
+      const parsed = parseFullName(values.full_name);
       const res = await fetch("/api/public/report-unlock", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: values.email,
-          name: `${(values.first_name ?? "").trim()} ${(values.last_name ?? "").trim()}`
-            .trim() || undefined,
+          full_name: parsed.full_name || undefined,
+          first_name: parsed.first_name || undefined,
+          last_name: parsed.last_name ?? undefined,
+          name: parsed.full_name || undefined,
+          phone: values.phone?.trim() ? values.phone.trim() : undefined,
           instagram_username: instagramUsername,
           analysis_snapshot_id: snapshotId,
           profile_ownership: values.profile_ownership,
@@ -365,7 +355,7 @@ export function UnlockModal({
       };
       setResult(r);
       onUnlock(r);
-      setStep(5);
+      setStep(6);
     } catch {
       setServerError(t("unlock.errors.network"));
     } finally {
@@ -394,7 +384,7 @@ export function UnlockModal({
         returning_lead?: boolean;
       };
       if (!res.ok || !data.success || !data.lead_id || !data.report_request_id) {
-        setStep(2);
+        setStep(3);
         setServerError(t("unlock.errors.needMoreDetails"));
         return;
       }
@@ -405,9 +395,9 @@ export function UnlockModal({
       };
       setResult(r);
       onUnlock(r);
-      setStep(5);
+      setStep(6);
     } catch {
-      setStep(2);
+      setStep(3);
       setServerError(t("unlock.errors.network"));
     } finally {
       setSubmitting(false);
@@ -420,11 +410,11 @@ export function UnlockModal({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[760px] max-h-[92vh] overflow-y-auto p-0 gap-0 border-border-default/60">
-        {step === 5 ? (
+        {step === 6 ? (
           <SuccessStep
             firstName={
               returningFirstName ??
-              (form.getValues("first_name") || null) ??
+              (parseFullName(form.getValues("full_name")).first_name || null) ??
               firstNameFromEmail(form.getValues("email"))
             }
             email={form.getValues("email")}
@@ -443,7 +433,7 @@ export function UnlockModal({
           </div>
         ) : (
           <StepShellAndForm
-            step={step as 1 | 2 | 3 | 4}
+            step={step as 1 | 2 | 3 | 4 | 5}
             instagramUsername={instagramUsername}
             stepNumForBar={stepNumForBar}
             partialBanner={partialBanner}
@@ -474,7 +464,7 @@ function StepShellAndForm({
   goNext,
   handleFinalSubmit,
 }: {
-  step: 1 | 2 | 3 | 4;
+  step: 1 | 2 | 3 | 4 | 5;
   instagramUsername: string;
   stepNumForBar: number;
   partialBanner: string | null;
@@ -520,7 +510,7 @@ function StepShellAndForm({
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                if (step === 4) void handleFinalSubmit();
+                if (step === 5) void handleFinalSubmit();
                 else void goNext();
               }}
               className="space-y-6 mt-6"
@@ -530,8 +520,9 @@ function StepShellAndForm({
                   {partialBanner}
                 </p>
               ) : null}
-              {step === 1 ? <Step1Email form={form} /> : null}
-              {step === 2 ? (
+              {step === 1 ? <Step1FullName form={form} /> : null}
+              {step === 2 ? <Step2EmailPhone form={form} /> : null}
+              {step === 3 ? (
                 <RadioCardField
                   legend=""
                   name="profile_ownership"
@@ -549,7 +540,7 @@ function StepShellAndForm({
                   error={form.formState.errors.profile_ownership?.message}
                 />
               ) : null}
-              {step === 3 ? (
+              {step === 4 ? (
                 <RadioCardField
                   legend=""
                   name="goal"
@@ -568,12 +559,12 @@ function StepShellAndForm({
                     form.setValue("goal_other_text", v, { shouldValidate: true })
                   }
                   otherError={form.formState.errors.goal_other_text?.message}
-                  otherPlaceholder={t("unlock.step3.otherPlaceholder")}
-                  otherEyebrow={t("unlock.step3.otherEyebrow")}
-                  otherHint={t("unlock.step3.otherHint")}
+                  otherPlaceholder={t("unlock.step4.otherPlaceholder")}
+                  otherEyebrow={t("unlock.step4.otherEyebrow")}
+                  otherHint={t("unlock.step4.otherHint")}
                 />
               ) : null}
-              {step === 4 ? (
+              {step === 5 ? (
                 <RadioCardField
                   legend=""
                   name="user_type"
@@ -598,8 +589,8 @@ function StepShellAndForm({
                     })
                   }
                   otherError={form.formState.errors.user_type_other_text?.message}
-                  otherPlaceholder={t("unlock.step4.otherPlaceholder")}
-                  otherEyebrow={t("unlock.step4.otherEyebrow")}
+                  otherPlaceholder={t("unlock.step5.otherPlaceholder")}
+                  otherEyebrow={t("unlock.step5.otherEyebrow")}
                 />
               ) : null}
 
@@ -634,7 +625,7 @@ function StepShellAndForm({
                       <Loader2 className="size-4 animate-spin" aria-hidden />
                       {lookupPending ? t("unlock.verifying") : t("unlock.unlocking")}
                     </>
-                  ) : step === 4 ? (
+                  ) : step === 5 ? (
                     t("unlock.continueLong")
                   ) : (
                     t("unlock.continue")
@@ -642,7 +633,7 @@ function StepShellAndForm({
                 </Button>
               </div>
 
-              {step === 1 ? (
+              {step === 1 || step === 2 ? (
                 <p className="flex items-center justify-center gap-1.5 text-[11px] text-content-tertiary">
                   <Lock className="size-3" aria-hidden="true" />
                   <Trans
