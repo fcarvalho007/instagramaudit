@@ -420,15 +420,28 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                   >
                     {lead.email}
                   </a>
-                  {lead.handle && (
-                    <a
-                      href={`https://instagram.com/${lead.handle}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="admin-meta text-admin-text-tertiary mt-0.5 inline-flex items-center gap-1 hover:text-admin-text-primary transition-colors"
-                    >
-                      <Instagram size={12} /> @{lead.handle}
-                    </a>
+                  {(lead.handle || lead.phone) && (
+                    <div className="mt-0.5 flex flex-col gap-0.5">
+                      {lead.handle && (
+                        <a
+                          href={`https://instagram.com/${lead.handle}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="admin-meta text-admin-text-tertiary inline-flex items-center gap-1 hover:text-admin-text-primary transition-colors"
+                        >
+                          <Instagram size={12} /> @{lead.handle}
+                        </a>
+                      )}
+                      {lead.phone && (
+                        <a
+                          href={`tel:${lead.phone}`}
+                          className="admin-meta text-admin-text-tertiary inline-flex items-center gap-1 hover:text-admin-text-primary transition-colors"
+                          title="Telemóvel"
+                        >
+                          <Phone size={12} /> {lead.phone}
+                        </a>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

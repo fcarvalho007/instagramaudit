@@ -32,9 +32,11 @@ export type BrevoSyncOutcome =
       brevoId: number | null;
       status: number;
       latencyMs: number;
+      manualAction?: string;
     }
   | {
       ok: false;
       reason: string;
       latencyMs: number;
+      manualAction?: string;
     };
