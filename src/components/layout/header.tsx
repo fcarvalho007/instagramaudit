@@ -96,6 +96,11 @@ function Header() {
               <Moon />
             </Button>
 
+            <LanguageSwitcher
+              variant="compact"
+              className="hidden sm:inline-flex"
+            />
+
             {/* Auth link */}
             {loading ? (
               <span
