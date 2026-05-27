@@ -3,7 +3,7 @@
     "back_to_top": "Voltar ao topo"
   },
   "sticky_unlock": {
-    "body": "3 secções premium por desbloquear",
+    "body": "5 secções premium por desbloquear",
     "cta": "Desbloquear",
     "cta_aria": "Abrir opções de desbloqueio"
   },
@@ -521,7 +521,6 @@
     "eyebrow_multi": "A comparar {{count}} perfis",
     "access": {
       "badge_free": "Grátis",
-      "badge_included": "Incluído",
       "badge_premium": "Premium",
       "available_now": "Disponível agora",
       "progress": "{{accessible}} de {{total}} secções acessíveis",
@@ -533,15 +532,15 @@
     "access_locked": {
       "cta": "Continuar leitura gratuita",
       "cta_aria": "Continuar leitura gratuita",
-      "trust": "Desbloqueia o diagnóstico gratuito antes das secções premium."
+      "trust": "Guarda a tua visão geral antes de veres as opções premium."
     },
     "lead_magnet": {
       "eyebrow": "Continuação gratuita",
-      "transition": "Esta é apenas a primeira leitura. Continua para ver o diagnóstico gratuito com mais contexto sobre este perfil.",
+      "transition": "Esta é apenas a primeira leitura. Continua para guardares a visão geral completa deste perfil.",
       "title": "Continua a leitura gratuita do relatório",
-      "body": "Indica o nome e email e responde a 3 perguntas rápidas para abrir o diagnóstico gratuito.",
-      "cta": "Ver relatório gratuito",
-      "cta_aria": "Ver relatório gratuito"
+      "body": "Indica o nome e email e responde a 3 perguntas rápidas para guardares a visão geral completa.",
+      "cta": "Guardar visão geral",
+      "cta_aria": "Guardar visão geral completa"
     }
   },
   "shell": {
