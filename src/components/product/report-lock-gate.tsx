@@ -34,47 +34,59 @@ export function ReportLockGate({
   if (unlocked) return <>{children}</>;
 
   const cleanedHandle = handle.replace(/^@/, "");
+  const hasBlurredContent = Boolean(children);
 
   return (
     <div id={id} className="relative isolate">
-      {/* Blurred content (kept in DOM for layout, hidden from a11y/focus) */}
+      {hasBlurredContent && (
+        <>
+          {/* Blurred content (kept in DOM for layout, hidden from a11y/focus) */}
+          <div
+            aria-hidden="true"
+            // @ts-expect-error inert is a valid HTML attr but missing from React types in some setups
+            inert=""
+            className="select-none pointer-events-none"
+            style={{
+              filter: "blur(10px) saturate(0.85)",
+              WebkitFilter: "blur(10px) saturate(0.85)",
+            }}
+          >
+            {children}
+          </div>
+
+          {/* Top fade — easing the transition from clear → blurred */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-surface-base via-surface-base/70 to-transparent"
+          />
+
+          {/* Contrast veil over blurred content — gives the CTA something to land on */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-gradient-to-b from-surface-base/40 via-surface-muted/55 to-surface-base/80"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_28%,color-mix(in_oklab,var(--accent-primary)_8%,transparent),transparent_55%)]"
+          />
+        </>
+      )}
+
+      {/* CTA — overlay when blurred content exists; flow card otherwise */}
       <div
-        aria-hidden="true"
-        // @ts-expect-error inert is a valid HTML attr but missing from React types in some setups
-        inert=""
-        className="select-none pointer-events-none"
-        style={{
-          filter: "blur(10px) saturate(0.85)",
-          WebkitFilter: "blur(10px) saturate(0.85)",
-        }}
+        className={cn(
+          hasBlurredContent
+            ? "pointer-events-none absolute inset-0 flex justify-center"
+            : "flex justify-center py-6 md:py-8",
+        )}
       >
-        {children}
-      </div>
-
-      {/* Top fade — easing the transition from clear → blurred */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-surface-base via-surface-base/70 to-transparent"
-      />
-
-      {/* Contrast veil over blurred content — gives the CTA something to land on */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-surface-base/40 via-surface-muted/55 to-surface-base/80"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_28%,color-mix(in_oklab,var(--accent-primary)_8%,transparent),transparent_55%)]"
-      />
-
-      {/* CTA overlay */}
-      <div className="pointer-events-none absolute inset-0 flex justify-center">
         <div
           role="region"
           aria-label={t("lockGate.ariaRegion")}
           className={cn(
-            "pointer-events-auto sticky self-start",
-            "top-4 md:top-6 mt-2 md:mt-4",
+            hasBlurredContent
+              ? "pointer-events-auto sticky self-start top-4 md:top-6 mt-2 md:mt-4"
+              : "self-start",
             "w-[calc(100%-32px)] max-w-lg",
             "relative isolate",
             "rounded-2xl border border-border-default bg-surface-card/95 backdrop-blur-xl",

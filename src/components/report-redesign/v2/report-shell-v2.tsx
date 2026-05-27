@@ -34,6 +34,7 @@ import { ReportFramedBlock } from "../report-framed-block";
 import { Lock, Sparkles } from "lucide-react";
 import { ReportMethodology } from "../report-methodology";
 import { REDESIGN_TOKENS } from "../report-tokens";
+import { ReportLockGate } from "@/components/product/report-lock-gate";
 
 import { useBlocks } from "./block-config";
 import { ReportBlockSidebar, ReportBlockTopTabs } from "./report-block-nav";
@@ -218,9 +219,26 @@ export function ReportShellV2({
               </ReportBlockSection>
               )}
 
-              {/* Feedback do Bloco 1 (overview) — fica entre Bloco 1 e Bloco 2,
-                  visualmente associado ao Bloco 1 e não dentro do header do Bloco 2. */}
-              {features.blockOverview !== "hidden" && (
+              {/* Estado A · Anónimo — lead magnet logo após o Identity Card.
+                  Substitui o resto do Bloco 1 (Engagement/Frequência/Formato/
+                  Best vs Worst) e o "Há mais por trás" até o lead ser captado. */}
+              {features.blockOverview !== "hidden" &&
+                lockBoundary === "engagement" &&
+                !unlocked && (
+                  <section id="lead-magnet-card" className="mt-6 md:mt-8">
+                    <ReportLockGate
+                      unlocked={false}
+                      onUnlockClick={handleUnlockClick}
+                      handle={result.data.profile.username}
+                    >
+                      {null}
+                    </ReportLockGate>
+                  </section>
+                )}
+
+              {/* Estado B/C · Feedback do Bloco 1 (emojis "breve pausa para te
+                  ouvirmos") — só após captura de lead. */}
+              {features.blockOverview !== "hidden" && unlocked && (
                 <div className="mt-6 md:mt-8 mb-2">
                   <BlockFeedback
                     handle={result.data.profile.username}
@@ -230,11 +248,10 @@ export function ReportShellV2({
                 </div>
               )}
 
-              {/* Fluxo público gratuito: nenhum bloco 2–6 é renderizado.
-                  A sidebar/tabs já comunicam "5 por desbloquear". O fim
-                  da leitura pública (ReportEndOfFreeBlock) abaixo serve
-                  como ponto de captura de lead / CTA Premium e mantém o
-                  ancorador #lead-magnet-card para deep-links existentes. */}
+              {/* Fluxo público: blocos 2–6 só em premium. Sidebar/tabs
+                  comunicam "5 por desbloquear". Em estado B (lead capturado
+                  mas sem premium), o ReportEndOfFreeBlock abaixo serve como
+                  CTA Premium. */}
 
               {/* 02 · Diagnóstico editorial — só fora do gate em premium */}
               {premiumUnlocked && features.blockDiagnosis !== "hidden" && (
@@ -348,10 +365,13 @@ export function ReportShellV2({
 
               {/* Fim do relatório free + CTA Premium. Mantém o id
                   `lead-magnet-card` que servia de âncora ao antigo
-                  ReportLockGate, para deep-links e scrolls existentes. */}
-              <section id="lead-magnet-card">
-                <ReportEndOfFreeBlock />
-              </section>
+                  ReportLockGate, para deep-links e scrolls existentes.
+                  Só renderiza em estado B (lead capturado, sem premium). */}
+              {unlocked && !premiumUnlocked && (
+                <section id="lead-magnet-card">
+                  <ReportEndOfFreeBlock />
+                </section>
+              )}
             </main>
           </div>
         </div>
