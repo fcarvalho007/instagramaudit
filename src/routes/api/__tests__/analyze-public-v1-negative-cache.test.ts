@@ -25,7 +25,7 @@ function buildSupabaseMock(result: MockResult | { throw: unknown }) {
     maybeSingle,
   };
   return {
-    from: vi.fn(() => chain),
+    from: vi.fn((_table: string) => chain),
     _spies: { maybeSingle, chain },
   };
 }
