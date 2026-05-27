@@ -45,7 +45,14 @@ import { parseFullName } from "@/lib/names/parse-full-name";
 
 const TOTAL_STEPS = 5;
 
-const UNLOCKED_ITEM_KEYS = ["overview", "diagnosis", "performance"] as const;
+const PREMIUM_ANCHOR_KEYS = ["compare", "rank"] as const;
+const MORE_SECTION_KEYS = [
+  "diagnosis",
+  "performance",
+  "content",
+  "search",
+  "compare",
+] as const;
 
 type IconCmp = typeof User;
 
@@ -863,146 +870,111 @@ function RadioCardField({
 }
 
 function SuccessStep({
-  firstName,
   email,
   returningLead,
   onClose,
 }: {
-  firstName: string | null;
   email: string;
   returningLead: boolean;
   onClose: () => void;
 }) {
-  void email;
   void returningLead;
   const { t } = useTranslation("gate");
+
+  const ANCHOR_ICON: Record<(typeof PREMIUM_ANCHOR_KEYS)[number], IconCmp> = {
+    compare: Users,
+    rank: Trophy,
+  };
+
   return (
-    <div>
-      <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-emerald-50/40 px-6 pt-7 pb-5 sm:px-8">
-        <div
-          className="absolute right-0 top-0 size-40 rounded-full bg-emerald-200/30 blur-3xl pointer-events-none"
-          aria-hidden
-        />
-        <div className="relative space-y-3">
-          <div className="size-10 rounded-xl bg-emerald-500 flex items-center justify-center shadow-[0_0_0_4px_rgb(16_185_129_/_0.18)]">
-            <CheckCircle2 className="size-5 text-white" aria-hidden />
-          </div>
-          <p className="text-eyebrow-sm text-emerald-700">
-            {t("unlock.success.eyebrowAssoc")}
-            {firstName
-              ? ` · ${t("unlock.success.eyebrowThanks", { name: firstName.toUpperCase() })}`
-              : ""}
-          </p>
-          <h2 className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
-            {t("unlock.success.titlePrefix")}{" "}
-            <em className="not-italic font-display italic text-emerald-600">
-              {t("unlock.success.titleEm")}
-            </em>
-          </h2>
-          <p className="text-[13px] text-content-secondary leading-relaxed">
-            {t("unlock.success.subtitle")}
-          </p>
+    <div className="px-6 sm:px-8 py-7 space-y-6">
+      {/* Header */}
+      <div className="space-y-4">
+        <div className="size-10 rounded-full bg-emerald-100 flex items-center justify-center">
+          <Check className="size-5 text-emerald-700" aria-hidden />
+        </div>
+        <p className="text-eyebrow-sm text-content-tertiary uppercase">
+          {t("unlock.success.eyebrowEmail", { email })}
+        </p>
+        <h2 className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
+          {t("unlock.success.titlePrefix")}{" "}
+          <em className="not-italic font-display italic text-emerald-700">
+            {t("unlock.success.titleEm")}
+          </em>
+        </h2>
+        <p className="text-[13px] text-content-secondary leading-relaxed">
+          {t("unlock.success.subtitle")}
+        </p>
+      </div>
+
+      {/* Free chip */}
+      <div className="space-y-2">
+        <p className="text-eyebrow-sm text-content-tertiary">
+          {t("unlock.success.freeEyebrow")}
+        </p>
+        <div className="rounded-lg bg-emerald-100/70 border border-emerald-200/60 px-4 py-3">
+          <span className="text-[13px] font-medium text-emerald-900">
+            {t("unlock.success.freeChip")}
+          </span>
         </div>
       </div>
 
-      <div className="px-6 sm:px-8 py-6 space-y-5">
+      {/* Premium teaser */}
+      <div className="rounded-xl border border-border-default/60 bg-surface-muted/30 p-4 space-y-3">
+        <p className="text-[13px] font-medium text-content-primary flex items-center gap-1.5">
+          <Sparkles className="size-3.5 text-primary" aria-hidden />
+          {t("unlock.success.premiumEyebrow")}
+        </p>
         <ul className="space-y-2">
-          {UNLOCKED_ITEM_KEYS.map((key) => (
-            <li
-              key={key}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg border bg-emerald-50/70 border-emerald-200/70"
-            >
-              <Check className="size-4 text-emerald-600 shrink-0" aria-hidden />
-              <span className="text-[13px] text-content-primary flex-1">
-                {t(`unlock.success.items.${key}`)}
-              </span>
-            </li>
-          ))}
+          {PREMIUM_ANCHOR_KEYS.map((key) => {
+            const Icon = ANCHOR_ICON[key];
+            return (
+              <li
+                key={key}
+                className="flex items-center gap-2.5 text-[13px] text-content-primary"
+              >
+                <Icon className="size-4 text-primary shrink-0" aria-hidden />
+                <span>{t(`unlock.success.premium.${key}`)}</span>
+              </li>
+            );
+          })}
         </ul>
 
-        <div className="space-y-2 pt-2 border-t border-border-default/40">
-          <Button
-            size="lg"
-            className="w-full rounded-lg font-medium mt-4"
-            onClick={onClose}
-          >
-            {t("unlock.success.cta")}
-          </Button>
-          <p className="text-xs text-content-tertiary text-center">
-            {t("unlock.success.footnote")}
+        <div className="border-t border-dashed border-border-default/60 pt-3 space-y-2">
+          <p className="text-eyebrow-sm text-content-tertiary">
+            {t("unlock.success.moreSectionsEyebrow")}
           </p>
+          <ul className="space-y-1.5">
+            {MORE_SECTION_KEYS.map((key) => (
+              <li
+                key={key}
+                className="flex items-center gap-2.5 text-[12.5px] text-content-secondary"
+              >
+                <Lock className="size-3.5 text-content-tertiary shrink-0" aria-hidden />
+                <span>{t(`unlock.success.moreSections.${key}`)}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
-    </div>
-  );
-}
 
-function WelcomeBackState({
-  firstName,
-  submitting,
-  serverError,
-  onContinue,
-  onBack,
-}: {
-  firstName: string | null;
-  submitting: boolean;
-  serverError: string | null;
-  onContinue: () => void;
-  onBack: () => void;
-}) {
-  const { t } = useTranslation("gate");
-  return (
-    <div className="space-y-6">
-      <div className="size-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
-        <CheckCircle2 className="size-6 text-emerald-600" aria-hidden />
-      </div>
-      <DialogHeader className="text-left space-y-2">
-        <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
-          {t("unlock.welcomeBack.titlePrefix")}{" "}
-          <em className="not-italic font-display italic text-emerald-600">
-            {t("unlock.welcomeBack.titleEm")}
-          </em>
-          {firstName ? `, ${firstName}` : ""}
-        </DialogTitle>
-        <DialogDescription className="text-[13px] text-content-secondary leading-relaxed">
-          {t("unlock.welcomeBack.subtitle")}
-        </DialogDescription>
-      </DialogHeader>
-
-      {serverError ? (
-        <Alert variant="destructive">
-          <AlertDescription>{serverError}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      <div className="flex gap-3 pt-1 border-t border-border-default/40 -mx-7 sm:-mx-9 px-7 sm:px-9 pt-5 mt-2">
+      {/* CTAs */}
+      <div className="space-y-3 pt-1">
         <Button
-          type="button"
-          variant="outline"
           size="lg"
-          onClick={onBack}
-          disabled={submitting}
-          className="flex-shrink-0 rounded-lg"
+          className="w-full rounded-lg font-medium"
+          onClick={onClose}
         >
-          <ArrowLeft className="size-4" aria-hidden />
-          {t("unlock.back")}
+          {t("unlock.success.cta")}
         </Button>
-        <Button
-          type="button"
-          size="lg"
-          className="flex-1 rounded-lg font-medium"
-          onClick={onContinue}
-          disabled={submitting}
+        <a
+          href="/precos"
+          target="_blank"
+          rel="noopener"
+          className="block text-center text-[12.5px] text-primary hover:text-primary/80 underline-offset-4 hover:underline"
         >
-          {submitting ? (
-            <>
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-              {t("unlock.unlocking")}
-            </>
-          ) : (
-            t("unlock.continue").replace(/\s*→\s*$/, "")
-          )}
-        </Button>
+          {t("unlock.success.secondaryCta")}
+        </a>
       </div>
     </div>
   );
