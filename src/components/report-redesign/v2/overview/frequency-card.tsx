@@ -585,9 +585,11 @@ export function FrequencyCard({
                 {t("frequency.calendar.legend_many", { label: maxPosts >= 3 ? "3+" : "2" })}
               </span>
             )}
-            <span className="ml-auto text-sm font-medium tabular-nums text-content-secondary">
-              {t("frequency.calendar.ratio", { published: publishedCount, total: windowedDays.length })}
-            </span>
+            {!isInsufficient && (
+              <span className="ml-auto text-sm font-medium tabular-nums text-content-secondary">
+                {t("frequency.calendar.ratio", { published: publishedCount, total: windowedDays.length })}
+              </span>
+            )}
           </div>
         </div>
       )}
