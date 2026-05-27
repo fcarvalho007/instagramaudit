@@ -75,7 +75,7 @@ export async function syncLeadToBrevo(
     const { data: lead, error: leadErr } = await (supabaseAdmin as any)
       .from("leads")
       .select(
-        "id, email, name, phone, source, commercial_status, profile_ownership, purpose, user_type, pricing_preference, marketing_consent",
+        "id, email, name, phone, phone_normalized, source, commercial_status, profile_ownership, purpose, user_type, pricing_preference, marketing_consent",
       )
       .eq("id", leadId)
       .maybeSingle();
@@ -102,7 +102,19 @@ export async function syncLeadToBrevo(
         .trim()
         .toLowerCase() === "true";
     const parsedName = nameAttrsEnabled ? parseFullName(lead.name) : null;
-    const hasPhone = typeof lead.phone === "string" && lead.phone.trim().length > 0;
+    const phoneE164: string | null = (() => {
+      if (!nameAttrsEnabled) return null;
+      const normalized =
+        typeof lead.phone_normalized === "string" && lead.phone_normalized.trim().length > 0
+          ? lead.phone_normalized.trim()
+          : typeof lead.phone === "string" && lead.phone.trim().length > 0
+            ? lead.phone.trim()
+            : null;
+      if (!normalized) return null;
+      // Brevo SMS requires E.164 (must start with `+`). If we lack the
+      // country prefix, skip rather than send an invalid value.
+      return normalized.startsWith("+") ? normalized : null;
+    })();
 
     // 2. Most recent report_request + 3. count, in parallel.
     const [{ data: latestRR }, { count: reportsCount }] = await Promise.all([
@@ -153,6 +165,7 @@ export async function syncLeadToBrevo(
             LASTNAME: parsedName.last_name,
           }
         : {}),
+      ...(phoneE164 ? { SMS: phoneE164 } : {}),
     };
 
     // 5. Call Brevo.
@@ -163,13 +176,17 @@ export async function syncLeadToBrevo(
 
     const latencyMs = Date.now() - startedAt;
 
-    // If flag is ON and lead has a phone, record a manual action: Brevo
-    // SMS/PHONE attribute is not configured in this account yet.
-    const manualAction =
-      nameAttrsEnabled && hasPhone
-        ? "BREVO_PHONE_ATTR_NOT_CONFIGURED"
+    // If the flag is ON and the lead has a phone we couldn't normalize to
+    // E.164, log it so we can audit and ask for country prefix upstream.
+    const phoneSkippedReason =
+      nameAttrsEnabled &&
+      !phoneE164 &&
+      ((typeof lead.phone === "string" && lead.phone.trim().length > 0) ||
+        (typeof lead.phone_normalized === "string" &&
+          lead.phone_normalized.trim().length > 0))
+        ? "PHONE_NOT_E164"
         : undefined;
-    if (manualAction) {
+    if (phoneSkippedReason) {
       try {
         await recordProductEvent({
           eventType: "brevo_contact_sync_skipped" as any,
@@ -177,13 +194,14 @@ export async function syncLeadToBrevo(
           metadata: {
             sync_reason: reason,
             skipped_field: "phone",
-            manual_action: manualAction,
+            reason: phoneSkippedReason,
           },
         });
       } catch (err) {
         console.error("[brevo-sync] failed to record phone-skip event:", err);
       }
     }
+    const manualAction = phoneSkippedReason;
 
     if (!res.ok) {
       const outcome: BrevoSyncOutcome = {
@@ -217,6 +235,8 @@ export async function syncLeadToBrevo(
           email_masked: maskEmail(lead.email),
           reports_count: typeof reportsCount === "number" ? reportsCount : null,
           marketing_consent: marketingConsent,
+          sms_sent: !!phoneE164,
+          name_attrs_sent: !!parsedName,
         },
       });
     } catch (eventErr) {
