@@ -430,6 +430,15 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                       <Instagram size={12} /> @{lead.handle}
                     </a>
                   )}
+                  {lead.phone && (
+                    <a
+                      href={`tel:${lead.phone}`}
+                      className="admin-meta text-admin-text-tertiary mt-0.5 inline-flex items-center gap-1 hover:text-admin-text-primary transition-colors"
+                      title="Telemóvel"
+                    >
+                      <Phone size={12} /> {lead.phone}
+                    </a>
+                  )}
                 </div>
               </div>
               {columnDef && (
