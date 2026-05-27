@@ -13,6 +13,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { recordProductEvent } from "@/lib/tracking.server";
 import { ensureReportSnapshotForRequest } from "@/lib/report-snapshots/persist-report-snapshot.server";
+import { parseFullName } from "@/lib/names/parse-full-name";
 
 export const PROFILE_OWNERSHIPS = [
   "own_profile",
@@ -56,6 +57,10 @@ export const reportUnlockSchema = z
     user_type: z.enum(USER_TYPES).optional(),
     pricing_preference: z.string().trim().min(1).max(80).optional(),
     name: z.string().trim().min(1).max(100).optional(),
+    full_name: z.string().trim().min(2).max(120).optional(),
+    first_name: z.string().trim().min(1).max(60).optional(),
+    last_name: z.string().trim().min(1).max(120).optional(),
+    phone: z.string().trim().min(3).max(40).optional(),
     goal_other_text: z.string().trim().min(1).max(80).optional(),
     user_type_other_text: z.string().trim().min(1).max(80).optional(),
     gdpr_consent: z.boolean().optional(),
@@ -88,6 +93,49 @@ function maskEmail(email: string): string {
   if (!user || !domain) return "***";
   const head = user.slice(0, 1);
   return `${head}***@${domain}`;
+}
+
+/**
+ * Minimal phone normaliser — keeps a leading `+` and digits only.
+ * Returns null when the result is empty or too short to be useful.
+ * No libphonenumber dependency; we store the raw value in `leads.phone`
+ * for CRM display and the cleaned value in `leads.phone_normalized` for
+ * future dedup/match.
+ */
+function normalizePhone(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const hasPlus = trimmed.startsWith("+");
+  const digits = trimmed.replace(/[^\d]/g, "");
+  if (!digits) return null;
+  const out = hasPlus ? `+${digits}` : digits;
+  return out.length >= 4 ? out : null;
+}
+
+function deriveFirstName(data: {
+  first_name?: string;
+  full_name?: string;
+  name?: string;
+}): string | null {
+  if (data.first_name && data.first_name.trim()) return data.first_name.trim();
+  const parsed = parseFullName(data.full_name ?? data.name ?? "");
+  return parsed.first_name || null;
+}
+
+function deriveLeadName(data: {
+  full_name?: string;
+  first_name?: string;
+  last_name?: string;
+  name?: string;
+}): string {
+  if (data.full_name && data.full_name.trim()) return data.full_name.trim();
+  if (data.first_name && data.first_name.trim()) {
+    const last = data.last_name?.trim();
+    return last ? `${data.first_name.trim()} ${last}` : data.first_name.trim();
+  }
+  if (data.name && data.name.trim()) return data.name.trim();
+  return "Sem nome";
 }
 
 /**
