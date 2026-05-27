@@ -3,7 +3,7 @@
     "back_to_top": "Back to top"
   },
   "sticky_unlock": {
-    "body": "3 premium sections still locked",
+    "body": "5 premium sections still locked",
     "cta": "Unlock",
     "cta_aria": "Open unlock options"
   },
@@ -513,7 +513,6 @@
     "avatar_alt": "Avatar of {{handle}}",
     "access": {
       "badge_free": "Free",
-      "badge_included": "Included",
       "badge_premium": "Premium",
       "available_now": "Available now",
       "progress": "{{accessible}} of {{total}} sections accessible",
@@ -525,15 +524,15 @@
     "access_locked": {
       "cta": "Continue free reading",
       "cta_aria": "Continue free reading",
-      "trust": "Unlock the free diagnosis before the premium sections."
+      "trust": "Save your overview before viewing the premium options."
     },
     "lead_magnet": {
       "eyebrow": "Free continuation",
-      "transition": "This is only the first reading. Continue to see the free diagnosis with more context about this profile.",
+      "transition": "This is only the first reading. Continue to save the full overview of this profile.",
       "title": "Continue the free report reading",
-      "body": "Add your name and email and answer 3 quick questions to open the free diagnosis.",
-      "cta": "View free report",
-      "cta_aria": "View free report"
+      "body": "Add your name and email and answer 3 quick questions to save the full overview.",
+      "cta": "Save overview",
+      "cta_aria": "Save full overview"
     }
   },
   "shell": {
