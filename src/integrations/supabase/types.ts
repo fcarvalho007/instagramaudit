@@ -738,6 +738,8 @@ export type Database = {
           marketing_consent: boolean
           marketing_consent_at: string | null
           name: string
+          phone: string | null
+          phone_normalized: string | null
           pricing_preference: string | null
           profile_ownership: string | null
           purpose: string | null
@@ -760,6 +762,8 @@ export type Database = {
           marketing_consent?: boolean
           marketing_consent_at?: string | null
           name: string
+          phone?: string | null
+          phone_normalized?: string | null
           pricing_preference?: string | null
           profile_ownership?: string | null
           purpose?: string | null
@@ -782,6 +786,8 @@ export type Database = {
           marketing_consent?: boolean
           marketing_consent_at?: string | null
           name?: string
+          phone?: string | null
+          phone_normalized?: string | null
           pricing_preference?: string | null
           profile_ownership?: string | null
           purpose?: string | null
