@@ -515,13 +515,12 @@
       "badge_free": "Free",
       "badge_included": "Included",
       "badge_premium": "Premium",
-      "beta_note": "Diagnosis is included during this beta phase.",
       "available_now": "Available now",
       "progress": "{{accessible}} of {{total}} sections accessible",
       "premium_count": "{{count}} locked",
-      "cta": "View access options",
-      "cta_aria": "View premium access options",
-      "trust": "1 report or pack of 5. No subscription."
+      "cta": "Unlock full report",
+      "cta_aria": "Unlock full report",
+      "trust": "Access the editorial diagnosis and the remaining premium sections."
     },
     "access_locked": {
       "cta": "Continue free reading",
