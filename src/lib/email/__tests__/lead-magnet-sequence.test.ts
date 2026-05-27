@@ -226,4 +226,29 @@ describe("sendLeadMagnetSequence", () => {
       marketing_consent: true,
     });
   });
+
+  it("personalization: forwards firstName only — never phone or fullName", async () => {
+    await sendLeadMagnetSequence({
+      ...baseArgs,
+      firstName: "Ana",
+      sendWelcome: true,
+    });
+    const welcomeArg = sendWelcomeBetaEmail.mock.calls[0]?.[0] as Record<
+      string,
+      unknown
+    >;
+    const summaryArg = sendReportSummaryEmail.mock.calls[0]?.[0] as Record<
+      string,
+      unknown
+    >;
+    expect(welcomeArg.firstName).toBe("Ana");
+    expect(summaryArg.firstName).toBe("Ana");
+    // Sequence MUST NOT receive or forward phone/fullName/lastName.
+    expect(welcomeArg).not.toHaveProperty("phone");
+    expect(welcomeArg).not.toHaveProperty("fullName");
+    expect(welcomeArg).not.toHaveProperty("lastName");
+    expect(summaryArg).not.toHaveProperty("phone");
+    expect(summaryArg).not.toHaveProperty("fullName");
+    expect(summaryArg).not.toHaveProperty("lastName");
+  });
 });
