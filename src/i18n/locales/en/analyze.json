@@ -27,6 +27,10 @@
     "cacheOnly": {
       "title": "This report doesn't have public data available yet.",
       "body": "The data for this profile hasn't been generated yet or the saved version has expired. Try again later or request a new analysis."
+    },
+    "personalNoFeed": {
+      "title": "We couldn't analyze this profile",
+      "cta": "Analyze another profile"
     }
   }
 }

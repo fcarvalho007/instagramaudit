@@ -65,7 +65,11 @@ export function AnalysisErrorState({
               {t("error.eyebrow")}
             </span>
             <h1 className="font-display text-2xl md:text-3xl font-medium text-content-primary tracking-tight">
-              {isCacheOnly ? t("error.cacheOnly.title") : t("error.title")}
+              {isCacheOnly
+                ? t("error.cacheOnly.title")
+                : isPersonalNoFeed
+                  ? t("error.personalNoFeed.title")
+                  : t("error.title")}
             </h1>
             <p className="font-sans text-sm text-content-secondary leading-relaxed">
               {isCacheOnly
@@ -99,7 +103,11 @@ export function AnalysisErrorState({
                 leftIcon={<ArrowLeft />}
                 asChild
               >
-                <Link to="/">{t("error.back")}</Link>
+                <Link to="/">
+                  {isPersonalNoFeed
+                    ? t("error.personalNoFeed.cta")
+                    : t("error.back")}
+                </Link>
               </Button>
             )}
           </div>
