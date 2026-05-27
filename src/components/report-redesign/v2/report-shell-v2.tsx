@@ -347,9 +347,12 @@ export function ReportShellV2({
               </ReportBlockSection>
               )}
 
-              {/* Fim do relatório free — só em variantes não-gated. No gated
-                  o paywall do ReportLockGate já comunica que há mais. */}
-              {!gated && <ReportEndOfFreeBlock />}
+              {/* Fim do relatório free + CTA Premium. Mantém o id
+                  `lead-magnet-card` que servia de âncora ao antigo
+                  ReportLockGate, para deep-links e scrolls existentes. */}
+              <section id="lead-magnet-card">
+                <ReportEndOfFreeBlock />
+              </section>
             </main>
           </div>
         </div>
