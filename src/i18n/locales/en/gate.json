@@ -19,9 +19,11 @@
     },
     "stepEyebrow": "STEP {{current}} OF {{total}}",
     "stepBadgeMinute": "~1 MIN",
+    "stepBadgeLast": "last step",
     "verifying": "Checking…",
     "unlocking": "Unlocking…",
     "continueLong": "Open report  →",
+    "openSummary": "Open summary",
     "continue": "Continue  →",
     "back": "Back",
     "operatorLine": "Operator: <strong>{{name}}</strong> · {{city}} · Cancel any time.",
@@ -54,7 +56,7 @@
       "titlePrefix": "How should we",
       "titleEm": "address",
       "titleSuffix": " you?",
-      "subtitle": "We use this to save the report and email you the access link.",
+      "subtitle": "So we can personalise the reading.",
       "firstNameLabel": "First name",
       "firstNamePlaceholder": "Ana",
       "firstNameRequired": "Enter your first name",
@@ -72,31 +74,31 @@
     },
     "step2": {
       "eyebrow": "STEP 2 OF 5",
-      "title": "Where do we send the report?",
-      "subtitle": "Email to save your access. Mobile phone optional, only for exceptional cases.",
-      "phoneLabel": "Mobile phone (optional)",
-      "phonePlaceholder": "+351 912 345 678",
-      "phoneHint": "Only used in exceptional cases, to validate report access."
-    },
-    "step3": {
-      "eyebrow": "STEP 3 OF 5",
       "title": "How are you related to this profile?",
       "subtitle": "Helps us tune the tone of the analysis."
     },
-    "step4": {
-      "eyebrow": "STEP 4 OF 5",
+    "step3": {
+      "eyebrow": "STEP 3 OF 5",
       "title": "What do you want to understand?",
       "subtitle": "Pick what matters most. We'll highlight what counts.",
       "otherPlaceholder": "e.g.: academic research on creative AI",
       "otherEyebrow": "describe in a few words",
       "otherHint": "optional · helps us improve"
     },
-    "step5": {
-      "eyebrow": "STEP 5 OF 5",
+    "step4": {
+      "eyebrow": "STEP 4 OF 5",
       "title": "How do you describe yourself?",
-      "subtitle": "Last question — then we open the report.",
+      "subtitle": "Last question before you get your summary.",
       "otherPlaceholder": "e.g.: journalist, researcher, curator",
       "otherEyebrow": "select to describe"
+    },
+    "step5": {
+      "eyebrow": "STEP 5 OF 5",
+      "title": "Where should we send the report summary?",
+      "subtitle": "Get the summary by email plus access to your private account with every report you request in the future.",
+      "phoneLabel": "Mobile phone",
+      "phonePlaceholder": "+351 912 345 678",
+      "phoneHint": "* Helps us confirm your access in case the email doesn't arrive."
     },
     "options": {
       "chooseOne": "Pick an option",
@@ -127,18 +129,27 @@
       }
     },
     "success": {
-      "eyebrowAssoc": "REPORT LINKED",
-      "eyebrowThanks": "THANK YOU {{name}}",
-      "titlePrefix": "Report",
+      "eyebrowEmail": "SENT TO {{email}} · SAVED TO YOUR ACCOUNT",
+      "titlePrefix": "Summary",
       "titleEm": "unlocked",
-      "subtitle": "The report has been linked to the email you provided so you can come back to it later.",
-      "items": {
-        "overview": "Overview unlocked",
-        "diagnosis": "Diagnosis unlocked",
-        "performance": "Performance unlocked"
+      "subtitle": "You can now read the free summary. It's linked to your email so you can come back any time.",
+      "freeEyebrow": "UNLOCKED NOW · FREE",
+      "freeChip": "Full overview",
+      "premiumEyebrow": "Premium adds even more",
+      "premium": {
+        "compare": "Comparison with competitors",
+        "rank": "Exact position in your tier"
       },
-      "cta": "View free report now  →",
-      "footnote": "This report has been linked directly to your account."
+      "moreSectionsEyebrow": "ACCESS TO 5 MORE SECTIONS",
+      "moreSections": {
+        "diagnosis": "Editorial diagnosis",
+        "performance": "Real account performance",
+        "content": "Content analysis",
+        "search": "Search: Google vs Instagram",
+        "compare": "Comparison with other profiles"
+      },
+      "cta": "View summary now  →",
+      "secondaryCta": "See premium options"
     },
     "welcomeBack": {
       "titlePrefix": "Welcome",
