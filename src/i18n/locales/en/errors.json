@@ -3,7 +3,7 @@
   "PROFILE_NOT_FOUND": "We couldn't find this profile on Instagram.",
   "PROFILE_NOT_ALLOWED": "Public mode is not active for this profile yet.",
   "PROFILE_PRIVATE": "This profile appears to be private.",
-  "PROFILE_PERSONAL_NO_FEED": "This profile appears to be public, but we couldn't retrieve recent posts from our data source. This can happen with some personal accounts or profiles whose feed is not accessible for analysis. The tool works best with public Creator or Business profiles.",
+  "PROFILE_PERSONAL_NO_FEED": "Works best with public Creator or Business profiles. Some personal profiles may not return enough posts for analysis. This profile appears public, but we couldn't retrieve recent posts from our data source.",
   "PROVIDER_DISABLED": "Automatic analysis is temporarily turned off.",
   "BUDGET_EXCEEDED": "Today's free analyses have reached the limit.",
   "RATE_LIMITED": "Too many analyses were made. Please try again later.",
