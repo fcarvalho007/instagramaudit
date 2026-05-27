@@ -733,24 +733,19 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             return failure("PROFILE_NOT_FOUND");
           }
 
-          // Private profile: Apify returns the profile shell but no posts and
-          // marks `is_private`/`private` true. Treat as a distinct UX case.
+          // Classify the empty-feed case. Apify returns the profile shell but
+          // distinguishing between three real-world scenarios matters for UX:
+          //
+          //   1) Truly private account            → PROFILE_PRIVATE
+          //   2) Public PERSONAL (non-business)   → PROFILE_PERSONAL_NO_FEED
+          //      The `apify/instagram-scraper` actor reliably reads the public
+          //      feed of Creator/Business accounts but returns 0 posts for
+          //      personal accounts even when they are technically public,
+          //      because the underlying public endpoint is gated to
+          //      professional profiles. Showing "private" here is wrong and
+          //      frustrates users — see brunoremribeiro (May 2026).
+          //   3) Empty / brand-new public account → PROFILE_PRIVATE (fallback)
           const rawPrimary = primaryRow as Record<string, unknown>;
-          const isPrivate =
-            rawPrimary?.is_private === true || rawPrimary?.private === true;
-          if (isPrivate) {
-            await logEvent({
-              handle: primary,
-              competitorHandles: competitors,
-              cacheKey,
-              dataSource: "fresh",
-              outcome: "not_found",
-              errorCode: "PROFILE_PRIVATE",
-              providerCallLogId: providerCallIds[0] ?? null,
-            });
-            return failure("PROFILE_PRIVATE");
-          }
-
           const primaryPosts = Array.isArray(
             (primaryRow as { latestPosts?: unknown }).latestPosts,
           )
@@ -759,6 +754,33 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 unknown
               >[])
             : [];
+          const isPrivateFlag =
+            rawPrimary?.is_private === true || rawPrimary?.private === true;
+          const profilePostsCount = primaryProfile.posts_count ?? 0;
+          const isProfessional = primaryProfile.is_business;
+
+          if (primaryPosts.length === 0) {
+            // Personal-account heuristic: profile claims posts in its public
+            // shell (`postsCount > 0`) but the scraper returned none, AND the
+            // account is not flagged as business/creator → almost certainly a
+            // personal account whose feed the public endpoint cannot enumerate.
+            const looksPersonalNoFeed =
+              !isPrivateFlag && !isProfessional && profilePostsCount > 0;
+
+            const errorCode: "PROFILE_PERSONAL_NO_FEED" | "PROFILE_PRIVATE" =
+              looksPersonalNoFeed ? "PROFILE_PERSONAL_NO_FEED" : "PROFILE_PRIVATE";
+
+            await logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey,
+              dataSource: "fresh",
+              outcome: "not_found",
+              errorCode,
+              providerCallLogId: providerCallIds[0] ?? null,
+            });
+            return failure(errorCode);
+          }
           const primarySummary = computeContentSummary(
             primaryPosts,
             primaryProfile.followers_count,
