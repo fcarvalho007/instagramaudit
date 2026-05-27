@@ -35,9 +35,16 @@ async function lookupNegativeCache(
   handle: string,
 ): Promise<Code | null> {
   try {
-    const res = await supabase
-      .from("analysis_events")
-      // @ts-expect-error mock chain
+    const chain = supabase.from("analysis_events") as unknown as {
+      select: (s: string) => typeof chain;
+      eq: (k: string, v: string) => typeof chain;
+      in: (k: string, v: string[]) => typeof chain;
+      gte: (k: string, v: string) => typeof chain;
+      order: (k: string, o: { ascending: boolean }) => typeof chain;
+      limit: (n: number) => typeof chain;
+      maybeSingle: () => Promise<{ data: { error_code: Code } | null }>;
+    };
+    const res = await chain
       .select("error_code")
       .eq("handle", handle)
       .eq("network", "instagram")
@@ -46,8 +53,7 @@ async function lookupNegativeCache(
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    return ((res as { data?: { error_code?: Code } })?.data?.error_code ??
-      null) as Code | null;
+    return res?.data?.error_code ?? null;
   } catch {
     return null;
   }

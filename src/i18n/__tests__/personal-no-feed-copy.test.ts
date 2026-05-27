@@ -7,12 +7,8 @@ import enAnalyze from "@/i18n/locales/en/analyze.json";
 
 describe("i18n · PROFILE_PERSONAL_NO_FEED copy", () => {
   it("PT/EN têm entrada PROFILE_PERSONAL_NO_FEED em errors.json", () => {
-    expect(
-      (ptErrors as Record<string, string>).PROFILE_PERSONAL_NO_FEED,
-    ).toMatch(/perfil/i);
-    expect(
-      (enErrors as Record<string, string>).PROFILE_PERSONAL_NO_FEED,
-    ).toMatch(/profile/i);
+    expect((ptErrors as unknown as Record<string, string>).PROFILE_PERSONAL_NO_FEED).toMatch(/perfil/i);
+    expect((enErrors as unknown as Record<string, string>).PROFILE_PERSONAL_NO_FEED).toMatch(/profile/i);
   });
 
   it("PT/EN têm error.personalNoFeed.title e .cta em analyze.json", () => {
@@ -25,7 +21,7 @@ describe("i18n · PROFILE_PERSONAL_NO_FEED copy", () => {
   });
 
   it("Copy PT usa pt-PT (sem brasileirismos óbvios)", () => {
-    const msg = (ptErrors as Record<string, string>).PROFILE_PERSONAL_NO_FEED;
+    const msg = (ptErrors as unknown as Record<string, string>).PROFILE_PERSONAL_NO_FEED;
     expect(msg).not.toMatch(/\busuário\b/i);
     expect(msg).not.toMatch(/\btela\b/i);
     expect(msg).not.toMatch(/\bcelular\b/i);
@@ -33,7 +29,7 @@ describe("i18n · PROFILE_PERSONAL_NO_FEED copy", () => {
   });
 
   it("Copy PT é não-acusatória (não pede ao dono para mudar)", () => {
-    const msg = (ptErrors as Record<string, string>).PROFILE_PERSONAL_NO_FEED;
+    const msg = (ptErrors as unknown as Record<string, string>).PROFILE_PERSONAL_NO_FEED;
     expect(msg).not.toMatch(/pede ao dono/i);
     expect(msg).not.toMatch(/pedir ao dono/i);
   });
