@@ -1,78 +1,79 @@
-## Revisão mobile do relatório `/analyze/$username`
+## Auditoria mobile — `/analyze/$username`
 
-Inspeção feita em viewport 390 × 844 (iPhone 12/13). Encontrei três famílias de problemas que cruzam várias secções do relatório.
+Inspecionei o relatório a 390 × 844 (iPhone 12/13). Confirmei que as correções da iteração anterior estão aplicadas (hashtags em 2 linhas, VS em fluxo, tamanhos ≥ 12 px). Identifiquei mais quatro problemas reais em mobile e dois pontos de hardening preventivo.
 
-### 1. Hashtags cortadas (P03 — `hashtag-diagnostics-card.tsx`)
+### Problemas confirmados na auditoria
 
-A linha de cada hashtag (`FrequencyRow`) soma larguras fixas que não cabem em 350 px úteis:
+#### 1. `ReportLockGate` — handle longo estoura a card
 
-```
-rank 36 + gap 12 + tag min 120 + gap 12 + barra flex + gap 12 + usos 56 + gap 12 + posts 64 ≈ 324 px + barra
-```
+`@frederico.m.carvalho` é renderizado dentro de um `<h2>` com `text-[28px]/[32px]`. Como é um único token sem espaços, não quebra e empurra horizontalmente além da card de 358 px (`calc(100% - 32px)`), sobrepondo-se à borda.
 
-A barra fica comprimida ou a coluna "posts" sai fora da carta, dando a sensação de "cortada". Vou:
+Plano:
+- Adicionar `break-words` + `[overflow-wrap:anywhere]` no `<h2>` (`report-lock-gate.tsx`, linha 108).
+- Reduzir o tamanho mobile do título de `text-[28px]` para `text-[24px]` para handles longos respirarem.
+- Adicionar `max-w-full block` ao `<em>` do handle para garantir contenção.
 
-- Reestruturar `FrequencyRow` em mobile para 2 linhas (linha 1: rank + tag + barra; linha 2: usos · share alinhados à direita), mantendo o layout 1 linha a partir de `sm`.
-- Reduzir `min-w-[120px]` da tag em mobile (`min-w-0`) e deixar `truncate` fazer o trabalho.
-- Garantir `overflow-hidden` no card e nenhum elemento com largura fixa que ultrapasse o pai.
+#### 2. Hero — botão "Compare competitor" estoura com badge "COMING SOON · July 2026"
 
-### 2. Letra demasiado pequena (< 12 px) em zonas que não são "micro-labels"
+`report-hero-v2.tsx` linha 118 tem `whitespace-nowrap` no botão e empilha `Compare competitor` + badge `COMING SOON · julho 2026`. Em 390 px o conjunto ultrapassa o contentor.
 
-A regra do projeto é mínimo `text-xs` (12 px), com `< 12 px` reservado a eixos de gráficos. Foram detetados vários `text-[9px]` / `text-[10px]` em texto de leitura:
+Plano:
+- Remover `whitespace-nowrap` do botão.
+- Permitir quebra: badge desce para a linha de baixo em mobile (`flex-wrap`), ou ocultar o sufixo "· July 2026" em `< sm` (manter só "COMING SOON" curto).
+- Garantir `min-w-0` para o botão e `truncate` no label se necessário.
 
-| Ficheiro | Linha | Uso atual |
-|---|---|---|
-| `report-post-comparison.tsx` | 174, 187, 194, 232, 407, 413, 417 | chips VS, métricas, timestamps a 9–10 px |
-| `report-comment-intelligence.tsx` | 127, 425, 487, 510 | citações e labels a 11 px |
-| `report-block-nav.tsx` | 84, 92, 200, 284, 310, 342 | badges, captions a 10–11 px |
-| `overview/comparison-header.tsx` | 53, 119 | badge gold + iniciais a 10–11 px |
-| `overview/competitor-modal.tsx` | 98 | label a 9 px + cor `text-slate-400` (token errado) |
-| `overview/format-card.tsx` | 680, 717 | tags a 11 px |
-| `report-diagnostic-group.tsx` | 28, 35 | numeração + meta a 10–11 px |
-| `premium-interest-dialog.tsx` | 251 | preço a 11 px |
+#### 3. Hashtag — validar o fix em runtime
 
-Plano: subir tudo para `text-xs` (12 px) ou `text-[11px]` apenas se for badge decorativo com `uppercase tracking-wide`. Trocar `text-slate-400` por `text-content-tertiary` em `competitor-modal.tsx`.
+A correção anterior está no código (2 linhas em mobile). Vou:
+- Confirmar visualmente em 390 px após HMR.
+- Garantir que `pl-12` em row-2 alinha com o rank pill (w-9 = 36 px + gap-3 = 12 px → `pl-12` = 48 px é exato ✓).
+- Se a barra ficar mal alinhada, ajustar para `pl-[3rem]`.
 
-### 3. Conteúdo encavalitado em mobile
+#### 4. KPI vertical na overview — KPIs `LIKES · AVG`, `COMMENTS · AVG`, `RHYTHM · WEEK` empilhados ocupam altura excessiva
 
-- **`report-post-comparison.tsx`** (linha 171, 192): blocos VS "best/worst" com `min-w-[60px]` lado a lado mais setas/avatares — em 390 px ficam sobrepostos. Empilhar verticalmente em < `sm`.
-- **`report-engagement-benchmark-chart.tsx`** (linha 163, 238, 259, 282): label + número à direita com `min-w-[60px]` + `min-w-[64px]` + barra → em mobile a barra fica < 30 % do espaço e o número colide com o label. Reduzir `min-w` em mobile e permitir wrap do label.
-- **`report-hero-v2.tsx`** (linha 118): botão com `whitespace-nowrap` + `h-12 px-4` que estoura quando o handle é longo. Permitir `text-overflow` no handle (já existe `truncate` na zona de identidade, validar no botão).
-- **`hashtag-diagnostics-card.tsx`** — após a correção do ponto 1 — garantir que o `InsightCallout` final mantém padding interno em `px-5` (já ok).
+Em 390 px, os 3 KPIs ficam um por linha (correto), mas cada um tem `p-5+` e o conjunto ocupa quase um viewport inteiro. Sugiro grelha 2 colunas em mobile (`grid-cols-2`) para likes/comments e `RHYTHM` em linha cheia abaixo, ou manter 1 coluna mas reduzir padding vertical (`py-3`).
 
-### 4. Mudanças que NÃO faço
+Decisão recomendada: manter 1 coluna (legibilidade) mas reduzir `py` para `py-3.5` no `KpiCard` interno do `report-kpi-grid-v2.tsx`. Necessário ler o ficheiro para confirmar shape exato antes de mexer.
 
-- Não tocar nos tokens de design nem em `__root.tsx`.
-- Não mexer em conteúdo gated/paywall (`ReportLockGate`) nem em lógica de tracking.
-- Não alterar copy nem traduções.
-- Não tocar nos ficheiros listados em `LOCKED_FILES.md` sem pedir confirmação.
+### Hardening preventivo (sem alterar comportamento visual)
+
+#### 5. Shell — garantir `overflow-x-clip` no contentor principal
+
+`report-shell-v2.tsx` já tem `overflow-x-clip` no min-h-screen wrapper. Adicionar também no `<main>` interno para travar qualquer descendente que escape (defesa em profundidade).
+
+#### 6. Auditoria sistemática de tokens em modo mobile
+
+Fazer `rg "text-\[1[01]px\]|text-\[9px\]|min-w-\[(?:12|14|16|18|20)0px\]"` para confirmar que não ficaram resquícios > 350 px ou texto < 12 px em zonas de leitura. Resolver tudo o que aparecer (já cobri 10 ficheiros; pode haver mais em componentes raramente vistos).
 
 ### Ficheiros a editar
 
 ```
-src/components/report-redesign/v2/hashtag-diagnostics-card.tsx
-src/components/report-redesign/v2/report-post-comparison.tsx
-src/components/report-redesign/v2/report-comment-intelligence.tsx
-src/components/report-redesign/v2/report-block-nav.tsx
-src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx
-src/components/report-redesign/v2/report-diagnostic-group.tsx
-src/components/report-redesign/v2/premium-interest-dialog.tsx
-src/components/report-redesign/v2/overview/comparison-header.tsx
-src/components/report-redesign/v2/overview/competitor-modal.tsx
-src/components/report-redesign/v2/overview/format-card.tsx
+src/components/product/report-lock-gate.tsx      # break-words + size mobile
+src/components/report-redesign/v2/report-hero-v2.tsx  # Compare button wrap
+src/components/report-redesign/v2/report-kpi-grid-v2.tsx  # padding reduzido
+src/components/report-redesign/v2/report-shell-v2.tsx     # overflow-x-clip extra
 ```
+
+E quaisquer ficheiros adicionais que apareçam no varrimento do ponto 6.
+
+### Fora de scope (não toco)
+
+- Conteúdo gated/paywall — só ajustes visuais; sem lógica.
+- Backend, traduções, tracking.
+- Ficheiros em `LOCKED_FILES.md`.
 
 ### Validação
 
-- Verificação visual em 390 × 844, 360 × 800 e 414 × 896 com screenshot do bloco de hashtags e do bloco de comparação de posts.
-- Confirmar que nenhuma linha estoura horizontalmente (`overflow-x-clip` no shell já evita scroll, mas o conteúdo não pode ser "cortado").
-- `bunx tsc --noEmit` para garantir que nenhuma refatoração quebra tipos.
+- Screenshots em 390 × 844 antes e depois de cada bloco.
+- Testar também 360 × 800 (Android pequeno) e 414 × 896 (iPhone Plus).
+- Confirmar zero scroll horizontal (`document.body.scrollWidth === window.innerWidth`).
+- `bunx tsc --noEmit`.
 
 ### Checkpoint
 
-- [ ] FrequencyRow das hashtags reestruturada (2 linhas em mobile, 1 em `sm+`).
-- [ ] Todos os `text-[9px]`/`text-[10px]` de leitura subiram para `text-xs` (≥ 12 px).
-- [ ] `text-slate-400` substituído por token semântico.
-- [ ] Linha VS de `report-post-comparison` empilha em mobile.
-- [ ] Barras do `engagement-benchmark-chart` legíveis em 390 px sem colisão.
-- [ ] Screenshots de verificação no fim.
+- [ ] Handle longo no `ReportLockGate` quebra corretamente.
+- [ ] Botão "Compare competitor" cabe em 360 px sem overflow.
+- [ ] Hashtags renderizam em 2 linhas em mobile com barra alinhada.
+- [ ] KPIs verticais respiram menos.
+- [ ] Shell sem scroll horizontal em qualquer breakpoint < 640 px.
+- [ ] Varrimento de tokens < 12 px concluído, sem regressões.
