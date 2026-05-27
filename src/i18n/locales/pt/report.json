@@ -686,7 +686,7 @@
     "registered": "Registado",
     "dialog": {
       "title": "Desbloquear acesso premium",
-      "subtitle": "O primeiro bloco continua gratuito. O Diagnóstico editorial está incluído nesta fase de lançamento. As restantes secções premium ficam disponíveis com desbloqueio.",
+      "subtitle": "O primeiro bloco continua gratuito. As restantes secções premium ficam disponíveis com desbloqueio.",
       "free": {
         "label": "Incluído",
         "title": "Visão inicial do perfil",
