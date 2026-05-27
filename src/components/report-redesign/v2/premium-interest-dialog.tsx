@@ -89,6 +89,9 @@ export function PremiumInterestDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[760px]">
         <DialogHeader className="text-left">
+          <span className="text-eyebrow-sm text-accent-primary">
+            {t("premium.dialog.eyebrow", "Opções de acesso")}
+          </span>
           <DialogTitle className="text-lg font-semibold text-content-primary">
             {t("premium.dialog.title")}
           </DialogTitle>
@@ -97,7 +100,7 @@ export function PremiumInterestDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-3 items-stretch">
           <PricingCard
             id="free"
             tone="free"
