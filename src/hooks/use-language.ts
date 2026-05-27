@@ -31,7 +31,19 @@ export function useLanguage() {
         next = stored;
       } else {
         const nav = window.navigator.language?.toLowerCase() ?? "";
-        if (nav.startsWith("en")) next = "en";
+        if (nav.startsWith("pt")) {
+          next = "pt";
+        } else if (nav.startsWith("en")) {
+          next = "en";
+        } else {
+          // Weak fallback: timezone. No IP geolocation, no external calls.
+          try {
+            const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            if (tz === "Europe/Lisbon") next = "pt";
+          } catch {
+            // ignore
+          }
+        }
       }
       if (next && next !== i18n.language) {
         void i18n.changeLanguage(next);

@@ -1,74 +1,65 @@
-## Plano corrigido — Acesso ao relatório público: só Visão geral grátis
+# Plano — Seletor de idioma no header + deteção automática
 
-### Correção obrigatória (pre-lead copy)
-A frase pré-lead:
-> "Desbloqueia o diagnóstico gratuito antes das secções premium."
+## Objetivo
 
-está desalinhada com a decisão de produto. Substituir por:
+Tornar a troca PT/EN acessível diretamente no topo (desktop + mobile), mantendo o seletor no footer, e refinar a deteção inicial de idioma com fallback por timezone.
 
-**PT:** "Guarda a tua visão geral antes de veres as opções premium."
-**EN:** "Save your overview before viewing the premium options."
+## Ficheiros a alterar
 
-### Causa raiz do desalinhamento anterior
-O estado `unlocked` (lead-magnet completo) era tratado como **acesso premium** em dois sítios:
-1. Sidebar — `diagnostico` marcado como `included`/`accessible` em `public_mvp`
-2. Corpo — `gated = !unlocked` expunha blocos 02–06 após lead capture
+1. **`src/components/layout/header.tsx`**
+   - Desktop: inserir `<LanguageSwitcher variant="compact" />` no cluster da direita, entre o botão de tema (Moon) e o botão "Entrar". Visível em `sm:` para cima; em ecrãs muito estreitos fica no drawer.
+   - Mobile drawer: já contém o `LanguageSwitcher variant="full"` (linha 202–207) — mantido sem alterações.
 
-A correção introduz `premiumUnlocked` (sempre `false` por agora) como gating real do conteúdo; `unlocked` controla apenas UI do lock-gate / sticky bar / CTA.
+2. **`src/components/layout/language-switcher.tsx`**
+   - Manter a API atual (`compact` / `full`).
+   - Acrescentar bandeira emoji (🇵🇹 / 🇬🇧) antes do código no trigger `compact` e antes do nome no menu, sem aumentar significativamente a largura.
+   - `aria-label` já existe (`t("aria.language")` → "Mudar idioma"/"Change language"). Confirmar foco visível (já vem do `Button ghost`).
 
-### Modelo de acesso final (public_mvp)
+3. **`src/hooks/use-language.ts`**
+   - Refinar a lógica pós-mount (já corre só no cliente, evita hydration mismatch) com a prioridade pedida:
+     1. `localStorage[LANG_STORAGE_KEY]` se válido (`pt`|`en`).
+     2. `navigator.language` → começa por `pt` ⇒ `pt`; por `en` ⇒ `en`.
+     3. Fallback fraco: `Intl.DateTimeFormat().resolvedOptions().timeZone === "Europe/Lisbon"` ⇒ `pt`.
+     4. Default `pt` (já é o init do i18n; não força mudança).
+   - Continua a NÃO chamar nenhuma API externa nem geolocalização por IP.
+   - `setLanguage` mantém: `i18n.changeLanguage` + `localStorage.setItem` + `document.documentElement.lang` (já feito num `useEffect` separado).
 
-| Secção | Sidebar | Corpo | Badge |
-|---|---|---|---|
-| 01 Visão geral | acessível | sempre (modo free→full pós-lead) | GRÁTIS |
-| 02 Diagnóstico editorial | locked | só se `premiumUnlocked` | PREMIUM |
-| 03 Desempenho | locked | só se `premiumUnlocked` | PREMIUM |
-| 04 Conteúdo | locked | só se `premiumUnlocked` | PREMIUM |
-| 05 Procura | locked | só se `premiumUnlocked` | PREMIUM |
-| 06 Comparação | locked | só se `premiumUnlocked` | PREMIUM |
+4. **`src/i18n/locales/pt/header.json`** e **`src/i18n/locales/en/header.json`**
+   - Já contêm `aria.language`, `language.label`, `language.pt`, `language.en`. Sem alterações de copy necessárias (os requisitos do prompt já estão satisfeitos: "Português"/"Inglês"/"Alterar idioma" e equivalentes EN). Nada a fazer aqui.
 
-### Ficheiros a alterar
+## Ficheiros NÃO alterados
 
-1. **`src/i18n/locales/pt/report.json`** e **`src/i18n/locales/en/report.json`**
-   - `sticky_unlock.body`: 3 → 5 secções premium
-   - Remover `badge_included` (chave morta)
-   - `nav.access_locked.trust`: nova copy alinhada (sem "diagnóstico gratuito")
-   - `lead_magnet.transition/body/cta`: remover "diagnóstico gratuito", passar a "guardar visão geral completa"
+- `src/components/layout/footer.tsx` (mantém o seletor secundário).
+- `src/i18n/index.ts` (init síncrono em `pt` mantém-se — crítico para SSR/hidratação).
+- Qualquer ficheiro de relatórios, pricing, backend, providers, lead magnet, emails ou schema.
 
-2. **`src/components/report-redesign/v2/block-config.ts`**
-   - `shortLabel` de "Diagnóstico" → "Diagnóstico editorial"
+## Comportamento de deteção
 
-3. **`src/components/report-redesign/v2/report-block-nav.tsx`**
-   - `public_mvp`: só `overview` é `accessible/free`; resto → `premium/locked`
-   - Remover ramo `isIncluded` (badge INCLUÍDO + ícone Gift)
-   - Remover `hasDiagnostico` + `beta_note`
+- SSR e primeiro render do cliente: sempre `pt` (igual ao atual → sem hydration mismatch).
+- Após mount, `useLanguage` aplica a prioridade acima e chama `i18n.changeLanguage` apenas se o resultado for diferente do atual.
+- Sem bloqueio de render; sem chamadas de rede.
 
-4. **`src/components/report-redesign/v2/report-shell-v2.tsx`**
-   - Adicionar `premiumUnlocked?: boolean` (default `false`)
-   - `gated = lockBoundary === "engagement" && !premiumUnlocked`
-   - Blocos 02–06: guarda `premiumUnlocked && features.xxx !== "hidden"`
+## UI desktop (cluster direito do header)
 
-5. **`src/components/report-redesign/v2/sticky-unlock-bar.tsx`**
-   - Atualizar defaultValue para "5 secções premium por desbloquear"
+```text
+[Moon] [🇵🇹 PT ▾] [Entrar] [Analisar agora →] [≡ mobile]
+```
 
-6. **`src/routes/analyze.$username.tsx`**
-   - Passar `premiumUnlocked={false}` ao `ReportShellV2`
+- `compact` usa `Button ghost size="sm"`, mantém densidade do header.
+- `hidden sm:inline-flex` para não competir com o hamburger em ecrãs muito estreitos (no drawer já existe).
 
-7. **`src/i18n/locales/pt/pricing.json`** e **`src/i18n/locales/en/pricing.json`**
-   - Remover referências a "diagnóstico gratuito" / "oferta de lançamento"
-   - Atualizar steps de "Como funciona o acesso"
+## Validação
 
-### CTA: pré-lead vs pós-lead
+- `bunx tsc --noEmit`.
+- `bunx vitest run` (não há testes específicos de language switcher; correr para garantir que nada quebra).
+- Smoke manual: trocar idioma no header desktop, verificar persistência após reload; abrir drawer mobile e confirmar seletor; confirmar que footer continua a funcionar; verificar consola sem warnings de hidratação.
 
-| Estado | Botão | Helper |
-|---|---|---|
-| **Pré-lead** | "Continuar leitura gratuita" | "Guarda a tua visão geral antes de veres as opções premium." |
-| **Pós-lead** | "Desbloquear relatório completo" | "Acede ao Diagnóstico editorial e às restantes secções premium." |
+## Checkpoint
 
-### Validação
-- `bunx tsc --noEmit`
-- `bunx vitest run`
-- Preview manual: desktop 1460 pré/pós-lead + mobile 390
-
-### Fora de scope
-Apify, OpenAI, DataForSEO, scoring, pricing values, payments, emails, admin CRM, schema BD.
+- ☐ Header desktop mostra seletor 🇵🇹 PT / 🇬🇧 EN entre tema e "Entrar"
+- ☐ Drawer mobile continua a expor o seletor (sem necessidade de footer)
+- ☐ Footer mantém seletor
+- ☐ Prioridade de deteção: localStorage → navigator.language → timezone Europe/Lisbon → pt
+- ☐ Sem IP geolocation, sem chamadas externas
+- ☐ Sem hydration warnings
+- ☐ `tsc` e `vitest` verdes
