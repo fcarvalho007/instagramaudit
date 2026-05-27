@@ -75,7 +75,7 @@ export function ReportHeroV2({
                 t={t}
               />
               <div className="min-w-0 flex-1 space-y-1">
-                <h1 className="font-display text-[1.5rem] sm:text-[1.75rem] lg:text-[2.25rem] font-bold tracking-[-0.03em] text-content-primary leading-[1.1] break-all sm:break-words">
+                <h1 className="font-display text-[1.25rem] sm:text-[1.75rem] lg:text-[2.25rem] font-bold tracking-[-0.03em] text-content-primary leading-[1.1] [overflow-wrap:anywhere] min-w-0">
                   {handle}
                 </h1>
                 {fullName && (
