@@ -462,11 +462,13 @@ export function ReportShellV2({
         <ReportMethodology />
 
         {/* Espaço inferior mobile para a bottom nav bar não tapar conteúdo */}
-        <div className="h-20 lg:hidden" aria-hidden="true" />
+        <div className="h-28 lg:hidden" aria-hidden="true" />
 
         {/* UX helpers — back to top, shortcut help, mobile unlock CTA */}
         <BackToTopButton />
-        {gated && (
+        {/* Sticky premium CTA: only after lead capture (post-unlock).
+            Pre-lead the lead-magnet card is the single primary CTA. */}
+        {unlocked && lockBoundary === "engagement" && (
           <StickyUnlockBar onClick={handleUnlockClick} />
         )}
         <ReportShortcutDialog

@@ -1,69 +1,46 @@
-## State source of truth
+## Goal
 
-`unlocked` boolean lives in `src/routes/analyze.$username.tsx:AnalyzeReady` and is derived from `window.sessionStorage.getItem('ib_unlock:${snapshotId}')` (set by `UnlockModal.onUnlock` after lead capture). It is passed into `ReportShellV2` as `unlocked` and currently drives only the `ReportLockGate` blur overlay around blocks 2–6. **No prop reaches the sidebar today.**
+On mobile, the pre-unlock report page currently shows two competing CTAs: the lead-magnet card ("Ver relatório gratuito") and a fixed bottom bar "3 secções premium · DESBLOQUEAR". Before lead capture the only primary CTA must be the lead-magnet card. After lead capture, the existing premium sticky may appear (no change to pricing logic).
 
-We will reuse this same `unlocked` flag as the single signal for "lead magnet completed" — no new state, no backend, no schema changes.
+## Root cause
 
-## Scope of edits (UI + copy only)
+`src/components/report-redesign/v2/report-shell-v2.tsx` renders `<StickyUnlockBar>` whenever `gated === true`, and `gated = lockBoundary === "engagement" && !unlocked`. That is exactly the pre-lead state, so the bar competes with the lead-magnet card. The bar's copy ("Desbloquear", "secções premium") also pre-frames paid access before the user has even submitted the free lead form.
 
-### A) `src/components/report-redesign/v2/report-shell-v2.tsx`
-- Pass `unlocked` down to `<ReportBlockSidebar unlocked={unlocked} onUnlockClick={handleUnlockClick} />` and `<ReportBlockTopTabs unlocked={unlocked} onUnlockClick={handleUnlockClick} />`.
-- Add a new component `<ReportLeadMagnetCard onUnlockClick={handleUnlockClick} />` rendered **only when `gated && !unlocked && variant === 'public_mvp'`**, placed immediately after the Block 1 feedback row (between line 224 and the gated branch starting at line 229). This collapses the perceived gap between Block 1 and the gated content (currently the `ReportLockGate` overlay's `mt-24 md:mt-32` creates the "large empty blurred space" the brief calls out).
+## Edits (UI only, no backend, no pricing changes)
 
-### B) `src/components/report-redesign/v2/report-block-nav.tsx`
-- Extend `SidebarProps` with `unlocked?: boolean` and `onUnlockClick?: () => void`.
-- In `SidebarList`, when `isPublic && !unlocked` render a softer `<ContinueReadingCard />` instead of `<PremiumBlockCard />`. The card:
-  - Title row keeps the lock icon + "Premium · {n} por desbloquear" eyebrow.
-  - Lists premium block titles as today (visual continuity).
-  - Replaces CTA + trust copy with the new "Continuar leitura gratuita" / "Desbloquea o diagnóstico…" pair.
-  - Button click calls `onUnlockClick?.()` — same handler as today, which opens the existing `UnlockModal`. No pricing modal is opened, and we do NOT show any price wording, "pack de 5", "1 relatório" or "Sem subscrição".
-- When `isPublic && unlocked` keep the existing `<PremiumBlockCard />` unchanged.
-- Apply the same swap inside the mobile `ReportBlockTopTabs` drawer (it shares `SidebarList` already, so this is automatic once props flow through).
+### 1) `src/components/report-redesign/v2/report-shell-v2.tsx`
+- Replace the current conditional render of the sticky bar:
+  - From: `{gated && <StickyUnlockBar onClick={handleUnlockClick} />}`
+  - To: `{unlocked && lockBoundary === "engagement" && <StickyUnlockBar onClick={handleUnlockClick} />}`
+  
+  Effect: pre-lead state never shows the premium sticky bar. Post-lead state keeps the existing component available for when a real paid tier is wired (current MVP simply won't render it because `unlocked` already removes the gate; that matches the brief — "premium CTA *may* appear" only after lead capture, and only when premium gating exists, which is out of scope for this prompt).
+- Increase the mobile bottom spacer that sits above the fixed mobile bottom nav, from `h-20 lg:hidden` to `h-28 lg:hidden`, so the lead-magnet card's trust chips inside the unlock modal and the page footer never feel crammed against the bottom nav.
 
-### C) New file `src/components/report-redesign/v2/report-lead-magnet-card.tsx`
-Editorial, low-emphasis card placed in the main column:
-- Small eyebrow: "Continuação gratuita" (PT) / "Continue free" (EN) using `text-eyebrow-sm text-content-tertiary`.
-- One-line transition message above title: the PT/EN copy from requirement 3.
-- Title: "Continua a leitura gratuita do relatório" / "Continue the free report reading".
-- Body: 3-quick-questions framing.
-- Single primary button: "Ver relatório gratuito" / "View free report" → `onUnlockClick()`.
-- Surfaces: `bg-surface-secondary border border-border-default rounded-2xl px-6 py-7 sm:px-8 sm:py-8`, max width `max-w-3xl`, `mx-auto`, no shadow halo. No icons beyond a small `Gift` glyph for continuity with the Diagnóstico badge. No price.
-- Anchored `id="lead-magnet-card"` for the sidebar "Continuar leitura gratuita" button to `scrollIntoView({ block: 'start' })`.
+### 2) `src/components/report-redesign/v2/report-lead-magnet-card.tsx`
+- Add mobile-only extra bottom breathing room below the CTA card by changing the section wrapper from `mt-2 md:mt-4` to `mt-2 md:mt-4 pb-6 md:pb-0`. Keeps desktop visually identical, gives mobile ~24px of guaranteed gap before the next blurred gated section starts.
+- No copy changes (PT/EN already match the requirement: title "Continua a leitura gratuita do relatório", body "Indica o nome e email e responde a 3 perguntas rápidas…", CTA "Ver relatório gratuito").
 
-### D) `src/i18n/locales/{pt,en}/report.json`
-Add a new `nav.access_locked` block alongside the existing `nav.access`:
-- PT: `{ "cta": "Continuar leitura gratuita", "cta_aria": "Continuar leitura gratuita", "trust": "Desbloqueia o diagnóstico gratuito antes das secções premium." }`
-- EN: `{ "cta": "Continue free reading", "cta_aria": "Continue free reading", "trust": "Unlock the free diagnosis before the premium sections." }`
+### 3) Sticky-bar copy/contract — not modified
+`src/components/report-redesign/v2/sticky-unlock-bar.tsx` keeps its current "Desbloquear" copy because in MVP it now never renders pre-lead. We do NOT add a second "Continuar leitura gratuita" sticky bar: the lead-magnet card is the single primary CTA on mobile (matches requirement 1, and requirement 2 is "only if absolutely necessary" — it is not).
 
-Add a new `leadMagnet` block:
-- PT: `eyebrow`, `transition`, `title`, `body`, `cta`, `cta_aria` matching the brief.
-- EN: same keys.
+## Pre-lead vs post-lead determination
 
-Existing `nav.access.*` keys (cta = "Ver opções de acesso", trust = "1 relatório ou pack de 5. Sem subscrição.") stay untouched and are reused only in the post-unlock state.
+Single source of truth stays as today: `unlocked` boolean in `analyze.$username.tsx` (from `sessionStorage.getItem('ib_unlock:${snapshotId}')`) → `ReportShellV2` prop → drives both the lock gate and now the sticky bar gate. No new state.
 
-### E) Vertical-rhythm tweak in `report-shell-v2.tsx`
-- Replace the gated branch's outer wrapper margin from `mt-6 md:mt-8` to `mt-2 md:mt-4` for the lead magnet card, and let the `ReportLockGate` overlay's intrinsic `mt-24 md:mt-32` stay (it's responsible for visual breathing inside the gate, not for the pre-lead gap). The new card naturally appears closer to Block 1, satisfying the desktop + mobile "lead magnet should appear higher" requirement without changing the gate.
-
-## Out of scope (untouched)
-- `UnlockModal` internals, unlock API, lead/payment backend, pricing values, premium gating logic, Apify/OpenAI/DataForSEO, emails, Block 1 editorial logic, premium gate component itself, database schema.
-- Existing `PremiumInterestDialog` (still used post-unlock and from `ReportEndOfFreeBlock`).
-- The `ReportLockGate` blur overlay continues to render exactly as today; we only insert a softer card above it.
+## Out of scope
+`UnlockModal` internals, unlock API, lead/payment backend, pricing values, premium gating logic, Apify/OpenAI/DataForSEO, emails, `ReportLockGate`, sidebar copy, sticky bar copy.
 
 ## Validation
 1. `bunx tsc --noEmit`
-2. `bunx vitest run` if any report-nav / shell test exists (`rg "report-block-nav|report-shell-v2|sidebar.*pricing"`)
-3. Browser screenshots:
-   - Desktop 1366px before lead capture (sessionStorage cleared)
-   - Desktop 1366px after lead capture (force `sessionStorage.setItem('ib_unlock:<id>', '1')` in console then reload)
-   - Mobile 390px before lead capture (sidebar drawer open + closed)
-4. Confirm in pre-lead state: no "Ver opções de acesso", no "1 relatório", no "pack de 5", no "Sem subscrição" anywhere on the page or in the sidebar drawer.
-5. Confirm in post-lead state: sidebar shows the existing pricing CTA again, lead-magnet card is gone, premium content rendered.
-6. Confirm no horizontal scroll, no overlap with bottom mobile tab bar, no broken hydration (the hidden runtime hydration mismatch reported earlier is unrelated and already addressed by the prior copy fix).
+2. Browser at 390×844:
+   - Pre-lead: no sticky bottom bar, no "Desbloquear" word visible at bottom, lead-magnet card is the only primary CTA, no overlap with bottom nav, ≥24px gap above bottom nav.
+   - Post-lead (force `sessionStorage.setItem('ib_unlock:<id>', '1')` + reload): lead-magnet card gone, blurred region replaced by full content, no horizontal scroll.
+3. Desktop 1366px: no visual regression (sticky bar is `lg:hidden` so desktop was never affected; lead-magnet padding only adds `pb-6` on mobile).
 
 ## Output report (after build mode)
-- Files changed (list)
-- How pre-lead vs post-lead is determined (one line: `unlocked` prop chain from `analyze.$username.tsx` → `ReportShellV2` → `ReportBlockSidebar` + new card)
-- Exact PT/EN copy added (the 6 keys above, verbatim)
-- 3 screenshots + brief visual notes
-- Confirmation: no pricing values changed, no backend changed, no schema changed
-- Typecheck + vitest results
+- Files changed (2: `report-shell-v2.tsx`, `report-lead-magnet-card.tsx`)
+- How pre/post-lead is determined (one line)
+- Confirmation the sticky bar was conditionally hidden (not deleted)
+- Mobile screenshots before/after lead capture
+- Confirmation: pricing values, unlock backend, and `UnlockModal` untouched
+- Typecheck result
