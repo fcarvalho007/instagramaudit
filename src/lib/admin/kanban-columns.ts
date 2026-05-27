@@ -123,6 +123,7 @@ export interface EnrichedLead {
   email: string;
   name: string;
   handle: string | null;
+  phone: string | null;
   user_type: string | null;
   purpose: string | null;
   company: string | null;

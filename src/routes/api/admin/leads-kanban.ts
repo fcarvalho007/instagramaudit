@@ -350,6 +350,7 @@ export const Route = createFileRoute("/api/admin/leads-kanban")({
             email: lead.email,
             name: lead.name,
             handle,
+            phone: (lead.phone as string | null) ?? null,
             user_type: lead.user_type,
             purpose: lead.purpose,
             company: lead.company,
