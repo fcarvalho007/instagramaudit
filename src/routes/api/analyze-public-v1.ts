@@ -118,7 +118,7 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
   PROFILE_PRIVATE:
     "Perfil privado. A análise pública só funciona com perfis abertos.",
   PROFILE_PERSONAL_NO_FEED:
-    "Este perfil é público mas é uma conta pessoal. A análise automática só funciona com contas profissionais — Creator ou Empresa. Pedir ao dono do perfil para mudar em Definições → Conta → Mudar para conta profissional.",
+    "O perfil parece estar público, mas não conseguimos obter publicações recentes através da nossa fonte de dados. Isto pode acontecer com alguns perfis pessoais ou contas sem feed acessível para análise. A ferramenta funciona melhor com perfis públicos Creator ou Empresa.",
   PROVIDER_DISABLED:
     "A análise automática ainda não está ativa. O sistema está preparado, mas a ligação ao fornecedor de dados está desligada.",
   BUDGET_EXCEEDED:
