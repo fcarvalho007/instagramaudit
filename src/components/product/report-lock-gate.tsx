@@ -105,7 +105,7 @@ export function ReportLockGate({
           </span>
 
           {/* Title */}
-          <h2 className="mt-5 font-display text-[28px] md:text-[32px] leading-[1.1] tracking-[-0.01em] text-content-primary">
+          <h2 className="mt-5 font-display text-[24px] md:text-[32px] leading-[1.1] tracking-[-0.01em] text-content-primary break-words [overflow-wrap:anywhere]">
             <Trans
               i18nKey="lockGate.title"
               ns="gate"
@@ -115,7 +115,7 @@ export function ReportLockGate({
                   <span className="font-semibold text-content-primary underline decoration-2 underline-offset-4 decoration-accent-primary/70" />
                 ),
                 accent: (
-                  <em className="not-italic font-display italic text-accent-primary" />
+                  <em className="not-italic font-display italic text-accent-primary inline-block max-w-full [overflow-wrap:anywhere] break-words" />
                 ),
                 br: <br />,
               }}
