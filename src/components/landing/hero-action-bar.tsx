@@ -118,7 +118,11 @@ export function HeroActionBar() {
         >
           {error}
         </p>
-      ) : null}
+      ) : (
+        <p className="mt-3 text-center font-sans text-xs text-content-tertiary">
+          {t("actionBar.personalHint")}
+        </p>
+      )}
 
       {/* Progressive reveal: competitors */}
       <div className="mt-4 flex justify-center">
