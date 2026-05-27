@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Menu, Lock, ArrowRight, Gift } from "lucide-react";
+import { Menu, Lock, ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
@@ -61,15 +61,13 @@ function buildSidebarItems(
     const accessBadge: AccessBadge =
       block.id === "overview"
         ? "free"
-        : block.id === "diagnostico"
-          ? "included"
-          : "premium";
+        : "premium";
     if (variant === "internal_lab" || variant === "pro_preview") {
       return { block, group: "incluido", access: "accessible", accessBadge };
     }
-    // public_mvp: somente overview + diagnostico ficam acessíveis na sidebar.
+    // public_mvp: somente overview fica acessível na sidebar.
     // O corpo do relatório continua a respeitar features[block.featureKey].
-    if (block.id === "overview" || block.id === "diagnostico") {
+    if (block.id === "overview") {
       return { block, group: "incluido", access: "accessible", accessBadge };
     }
     return { block, group: "premium", access: "locked", accessBadge };
@@ -233,17 +231,12 @@ function ItemRow({
 }) {
   const { t } = useTranslation("report");
   const isFree = item.accessBadge === "free";
-  const isIncluded = item.accessBadge === "included";
   const badgeLabel = isFree
     ? t("nav.access.badge_free")
-    : isIncluded
-      ? t("nav.access.badge_included")
-      : t("nav.access.badge_premium");
+    : t("nav.access.badge_premium");
   const badgeClass = isFree
     ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-    : isIncluded
-      ? "bg-blue-50 text-blue-700 ring-blue-200"
-      : "bg-surface-muted text-content-secondary ring-border-default";
+    : "bg-surface-muted text-content-secondary ring-border-default";
   return (
     <button
       type="button"
@@ -290,7 +283,6 @@ function ItemRow({
           badgeClass,
         )}
       >
-        {isIncluded ? <Gift className="size-3" aria-hidden="true" /> : null}
         {badgeLabel}
       </span>
     </button>
@@ -433,7 +425,6 @@ function SidebarList({
   const incluidos = items.filter((i) => i.group === "incluido");
   const premium = items.filter((i) => i.group === "premium");
   const isPublic = variant === "public_mvp";
-  const hasDiagnostico = items.some((i) => i.block.id === "diagnostico");
 
   const openDialog = () => {
     trackEvent({
@@ -504,12 +495,6 @@ function SidebarList({
           ))}
         </ul>
       </section>
-
-      {hasDiagnostico && (
-        <p className="px-2 text-xs leading-relaxed text-content-secondary">
-          {t("nav.access.beta_note")}
-        </p>
-      )}
 
       {premium.length > 0 && (
         unlocked ? (

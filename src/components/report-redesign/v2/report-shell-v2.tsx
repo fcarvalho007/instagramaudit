@@ -70,6 +70,9 @@ interface ReportShellV2Props {
    */
   lockBoundary?: "engagement" | null;
   unlocked?: boolean;
+  /** True only when the user has paid/premium access. Lead capture
+   *  alone must NOT set this. Defaults to false. */
+  premiumUnlocked?: boolean;
   onUnlockClick?: () => void;
 }
 
@@ -95,6 +98,7 @@ export function ReportShellV2({
   featuresOverride,
   lockBoundary = null,
   unlocked = false,
+  premiumUnlocked = false,
   onUnlockClick,
 }: ReportShellV2Props) {
   const { t } = useTranslation("report");
@@ -123,7 +127,7 @@ export function ReportShellV2({
   const [overview, diagnostico, performance, conteudo, procura, benchmark] =
     useBlocks();
 
-  const gated = lockBoundary === "engagement" && !unlocked;
+  const gated = lockBoundary === "engagement" && !premiumUnlocked;
   const handleUnlockClick = onUnlockClick ?? (() => {});
 
   // Deep-link via URL hash (`#performance` etc.). Runs once on mount;
@@ -333,8 +337,8 @@ export function ReportShellV2({
                 </ReportLockGate>
               ) : null}
 
-              {/* 02 · Diagnóstico editorial */}
-              {!gated && features.blockDiagnosis !== "hidden" && (
+              {/* 02 · Diagnóstico editorial — só fora do gate em premium */}
+              {premiumUnlocked && features.blockDiagnosis !== "hidden" && (
               <ReportBlockSection block={diagnostico} tone="canvas">
                 <ReportDiagnosticBlock result={result} payload={payload} />
               </ReportBlockSection>
@@ -343,7 +347,7 @@ export function ReportShellV2({
               {/* 03 · Performance — só renderiza em variantes premium (`full`).
                   Em public_mvp (`lightweight`) a sidebar continua a mostrar o
                   bloco como locked, mas a secção de conteúdo não aparece. */}
-              {!gated && features.blockPerformance === "full" && (
+              {premiumUnlocked && features.blockPerformance === "full" && (
               <ReportBlockSection block={performance} tone="canvas">
                 <ReportFramedBlock
                   tone="canvas"
@@ -373,7 +377,7 @@ export function ReportShellV2({
               )}
 
               {/* 04 · Conteúdo */}
-              {!gated && features.blockContent !== "hidden" && (
+              {premiumUnlocked && features.blockContent !== "hidden" && (
               <ReportBlockSection block={conteudo} tone="soft-blue">
                 <ReportFramedBlock
                   tone="soft-blue"
@@ -404,7 +408,7 @@ export function ReportShellV2({
               )}
 
               {/* 05 · Procura fora do Instagram */}
-              {!gated && features.blockSearch !== "hidden" && (
+              {premiumUnlocked && features.blockSearch !== "hidden" && (
               <ReportBlockSection block={procura} tone="canvas">
                 <p className="text-sm md:text-[15px] text-content-secondary leading-relaxed max-w-3xl">
                   {t("shell.search_intro")}
@@ -420,7 +424,7 @@ export function ReportShellV2({
               )}
 
               {/* 06 · Benchmark competitivo */}
-              {!gated && features.blockBenchmark !== "hidden" && (
+              {premiumUnlocked && features.blockBenchmark !== "hidden" && (
               <ReportBlockSection block={benchmark} tone="soft-blue">
                 <ReportFramedBlock
                   tone="soft-blue"

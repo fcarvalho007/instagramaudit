@@ -387,6 +387,7 @@ function AnalyzeReady({
         featuresOverride={featuresOverride}
         lockBoundary="engagement"
         unlocked={unlocked}
+        premiumUnlocked={false}
         onUnlockClick={() => setUnlockOpen(true)}
         actions={{
           onExportPdf: () => {

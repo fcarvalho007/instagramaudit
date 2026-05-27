@@ -1,79 +1,95 @@
-## Objetivo
+## Causa raiz do desalinhamento
 
-Aplicar a estrutura "foot-in-the-door" ao modal de lead magnet conforme os 3 mockups: nome primeiro, 3 perguntas rápidas a meio, **email como último passo**, e ecrã final reposicionado para destacar "grátis agora vs premium depois".
+Hoje o estado `unlocked` (que apenas significa "lead magnet completo") é tratado como **acesso premium** em dois sítios:
 
-## Nova ordem dos passos (visível ao utilizador)
+1. **Sidebar** — `buildSidebarItems` (`report-block-nav.tsx`) marca `diagnostico` como `accessBadge: "included"` e `access: "accessible"` em `public_mvp` → mostra "INCLUÍDO" + ícone Gift e conta-o como acessível.
+2. **Corpo do relatório** — `report-shell-v2.tsx` calcula `gated = lockBoundary === "engagement" && !unlocked`. Quando `unlocked === true`, deixa de gerar o lock-gate **e** renderiza o bloco Diagnóstico (linha 337) + 03–06 fora dele. Ou seja, completar o lead magnet expõe Secção 02.
 
-| Passo | Conteúdo | Notas-chave |
-|------|----------|--------------|
-| 1/5 | Nome | Subtítulo passa a "Para personalizarmos a leitura." (sem "e te tratarmos pelo nome"). |
-| 2/5 | Relação com o perfil (`profile_ownership`) | Era o passo 3. |
-| 3/5 | Objetivo (`goal`) | Era o passo 4. |
-| 4/5 | Como te descreves (`user_type`) | Era o passo 5. |
-| 5/5 | Email + telemóvel + consentimentos | Era o passo 2. Submissão final. |
+A correção introduz uma distinção limpa: `unlocked` continua a ser "lead magnet completo" (controla apenas a UI do lock-gate / sticky bar / CTA secundário); um novo `premiumUnlocked` (sempre `false` por agora — não há pagamentos) controla o gating real do conteúdo.
 
-Barra de progresso continua com 5 segmentos; no passo 5 fica completa, reforçando "falta só isto".
+---
 
-## Ficheiros a tocar
+## Modelo de acesso final (public_mvp)
 
-1. **`src/i18n/locales/pt/gate.json`** e **`/en/gate.json`** — reescrever blocos `step1…step5`:
-   - `step1.subtitle` → "Para personalizarmos a leitura."
-   - `step2` agora descreve `profile_ownership` (texto actual do antigo step3).
-   - `step3` agora descreve `goal` (texto do antigo step4).
-   - `step4` agora descreve `user_type` (texto do antigo step5).
-   - `step5` (email) novo título: **"Onde queres receber o resumo do relatório?"**, subtítulo: **"Recebe o resumo por email e o acesso à tua conta privada, com todos os relatórios que pedires no futuro."**
-   - Novo `step5.phoneLabel` = "Telemóvel" + `phoneRequiredMark` = "*" + `phoneHint` = "* Ajuda-nos a confirmar o teu acesso, caso o email não chegue."
-   - `unlock.continueLong` ("Abrir relatório →") substituído no passo final por nova chave `unlock.openSummary` = **"Abrir resumo"** (com cadeado, como no mockup).
-   - Blocos `success.*` actualizados: novo eyebrow "ENVIÁMOS PARA {{email}} · GUARDADO NA TUA CONTA", título "Resumo desbloqueado", subtítulo "Já podes consultar a tua leitura gratuita. Fica associada ao teu email para voltares quando quiseres.", secção "DESBLOQUEADO AGORA · GRÁTIS" com chip "Visão Geral completa", e bloco premium com âncoras + lista de 5 secções (Diagnóstico editorial, Desempenho real da tua conta, Análise ao conteúdo, Procura: Google vs Instagram, Comparação com outros perfis). CTA primário "Ver resumo agora", link secundário "Ver opções premium".
-   - Versões EN equivalentes.
+| Secção | Sidebar | Render no corpo | Badge |
+|---|---|---|---|
+| 01 Visão geral | acessível | sempre (modo `free` pré-lead, `full` pós-lead) | `GRÁTIS` |
+| 02 Diagnóstico editorial | locked | só se `premiumUnlocked` | `PREMIUM` |
+| 03 Desempenho | locked | só se `premiumUnlocked` | `PREMIUM` |
+| 04 Conteúdo | locked | só se `premiumUnlocked` | `PREMIUM` |
+| 05 Procura | locked | só se `premiumUnlocked` | `PREMIUM` |
+| 06 Comparação | locked | só se `premiumUnlocked` | `PREMIUM` |
 
-2. **`src/components/product/unlock-modal.tsx`**:
-   - Atualizar `STEP_FIELD` para o novo mapeamento:
-     ```ts
-     const STEP_FIELD: Record<2 | 3 | 4, QField> = {
-       2: "profile_ownership",
-       3: "goal",
-       4: "user_type",
-     };
-     ```
-   - `goNext`:
-     - Passo 1 → valida `full_name`.
-     - Passo 2 → valida `profile_ownership`.
-     - Passo 3 → valida `goal` (+ `goal_other_text` se "other").
-     - Passo 4 → valida `user_type` (+ `user_type_other_text` se "other").
-     - Passo 5 → valida `email`, `phone`, `gdpr_consent` e dispara `handleFinalSubmit`.
-   - `StepShellAndForm` renderiza, por passo: `Step1FullName`, `RadioCardField` (ownership), `RadioCardField` (goal), `RadioCardField` (user_type), `Step5EmailPhone` (renomeado a partir de `Step2EmailPhone`).
-   - Botão final: ícone cadeado + texto `t("unlock.openSummary")` em vez de "Continuar →".
-   - **Lookup de email (`/api/public/unlock-check`)** e o estado `"welcome-back"`: o lookup deixa de fazer sentido a meio do funil (email já é o último passo). Remover a chamada no `goNext`; o backend continua a marcar `returning_lead: true` quando aplicável e o ecrã de sucesso adapta-se na mesma. Manter `WelcomeBackState` como componente morto não vale o ruído — eliminamos. `submitMinimal` deixa de ter call-site e é removido.
-   - Atualizar `useStepHeader`: badge "~1 MIN" só no passo 1 (no passo 5 mostramos o badge "último passo" como no mockup; adicionar suporte para um badge alternativo via i18n `step5.badgeLast`).
-   - Telemóvel: `Label` com asterisco a azul + nota `phoneHint` por baixo; **continua opcional na validação** (nudge visual, não bloqueio). Não alterar `unlockFormSchema`.
+Sidebar mostra **a mesma estrutura** pré e pós lead-magnet — só muda o CTA do cartão premium (ver §6).
 
-3. **Novo ecrã de sucesso (`SuccessStep`)** reescrito de raiz no mesmo ficheiro:
-   - Header com check verde discreto + eyebrow "ENVIÁMOS PARA {{email}} · GUARDADO NA TUA CONTA".
-   - Título: "Resumo **desbloqueado**" (verde editorial).
-   - Bloco "DESBLOQUEADO AGORA · GRÁTIS" com chip verde "Visão Geral completa".
-   - Bloco premium (border subtle): eyebrow "O premium ainda acrescenta mais" + 2 âncoras com ícones (Comparação com concorrentes, Posição exata no teu escalão) + separador + eyebrow "ACESSO A MAIS 5 SECÇÕES" + 5 itens com cadeado.
-   - CTA primário: "Ver resumo agora →" (`onClose`).
-   - CTA secundário (link): "Ver opções premium" — leva a `/precos` em nova tab (placeholder mas link real para a página existente).
+---
 
-## Fora do âmbito (não tocar)
+## Ficheiros a alterar
 
-- `src/lib/unlock-flow.ts`, `src/lib/unlock.server.ts` e `parseFullName` — a payload submetida no passo final mantém-se idêntica.
-- `report-unlock` e `unlock-check` (endpoints) — não removemos as rotas, apenas deixamos de chamar `unlock-check` neste fluxo (continua disponível para outros consumidores).
-- Schema da BD, premium gates, lógica de pagamento, geração de relatório, emails do Brevo.
+1. **`src/components/report-redesign/v2/block-config.ts`**
+   - Mudar `shortLabel` do bloco `diagnostico` de "Diagnóstico" → "Diagnóstico editorial" (usado quando não houver i18n override).
+
+2. **`src/components/report-redesign/v2/report-block-nav.tsx`**
+   - Em `buildSidebarItems` (public_mvp): só `overview` é `accessible/free`. Todos os outros (`diagnostico` incluído) → `group: "premium"`, `access: "locked"`, `accessBadge: "premium"`.
+   - Remover `import { Gift } from "lucide-react"`.
+   - Remover ramo `isIncluded` em `ItemRow` (sem badge "INCLUÍDO", sem ícone Gift) — ficam apenas `free` vs `premium`.
+   - Remover o bloco `hasDiagnostico` + `<p>{t("nav.access.beta_note")}</p>` (linhas 436, 508–512).
+   - Trocar tipos: `Group` deixa de ter `"incluido"` activo para `diagnostico`; ramo `incluido` continua a existir só por compat das variantes não-públicas (internal_lab / pro_preview).
+   - `PremiumBlockCard` ganha visual ligeiramente mais comercial (CTA com gradient `from-accent-primary to-accent-secondary` + shadow suave) — usado pós-lead.
+
+3. **`src/components/report-redesign/v2/report-shell-v2.tsx`**
+   - Adicionar prop `premiumUnlocked?: boolean` (default `false`).
+   - `const gated = lockBoundary === "engagement" && !premiumUnlocked;` (substitui `!unlocked`).
+   - Os blocos 02–06 "fora do lock-gate" (linhas 337, 346, 376, 407, 423) trocam guarda `!gated` por `premiumUnlocked && features.xxx !== "hidden"`. Resultado: pós-lead-só (sem premium), o corpo termina em Overview + `ReportLockGate` continua a cobrir 02–06 com novo CTA.
+   - `ReportOverviewBlock` em modo livre: já hoje é `mode="free"` quando `gated && !unlocked` (lock-gate) e full quando `!gated`. Manter — a Overview pode passar a full após lead magnet, sem expor outros blocos.
+   - `StickyUnlockBar` mantém-se ligado a `unlocked && lockBoundary === "engagement"` (mostrar pós-lead, antes de premium).
+   - O `ReportLockGate` continua a envolver 02–06; recebe `leadCaptured={unlocked}` (já recebe `unlocked`) para diferenciar internamente a UI (este componente já o faz hoje).
+
+4. **`src/routes/analyze.$username.tsx`**
+   - Passar `premiumUnlocked={false}` ao `ReportShellV2` (sem alteração de estado adicional — payments fora de scope).
+
+5. **`src/i18n/locales/pt/report.json`** e **`src/i18n/locales/en/report.json`**
+   - `blocks.diagnostico.short`: "Diagnóstico" → "Diagnóstico editorial" / "Editorial diagnosis".
+   - `nav.access.beta_note`: remover (não é mais lido após §2; manter chave seria lixo). Apagar.
+   - `nav.access.cta` pós-lead: "Ver opções de acesso" → "Desbloquear relatório completo" / "Unlock full report".
+   - `nav.access.cta_aria`: "Desbloquear relatório completo" / "Unlock full report".
+   - `nav.access.trust` pós-lead: "1 relatório ou pack de 5. Sem subscrição." → "Acede ao Diagnóstico editorial e às restantes secções premium." / "Access the editorial diagnosis and the remaining premium sections."
+   - Counters (`{{count}}` em `nav.access.progress`/`premium_count`) actualizam automaticamente: "1 de 6 secções acessíveis" / "5 por desbloquear" — sem mudança de chave.
+   - `premium.dialog.free.bullet_diag`: "Diagnóstico editorial aberto agora" → "Diagnóstico editorial disponível em premium" / "Editorial diagnosis available in premium" (já não é grátis).
+   - `sticky_unlock.body` default: "3 secções premium por desbloquear" → "5 secções premium por desbloquear" (em PT/EN). Está hardcoded como `defaultValue` em `sticky-unlock-bar.tsx`; manter sincronizado.
+
+6. **`src/i18n/locales/pt/pricing.json`** e **`src/i18n/locales/en/pricing.json`**
+   - `subtitle`: remover "Diagnóstico editorial está temporariamente incluído como oferta de lançamento" → "Começa pela visão gratuita do perfil. As restantes secções premium ficam disponíveis com desbloqueio." / equivalente EN.
+   - Em `features` / `launch_extra.title` / `launch_extra.body` / `launch_section.title`: remover referências a "Diagnóstico editorial disponível como oferta de lançamento" / "Recebe o extra de lançamento" / "O Diagnóstico editorial está atualmente aberto…" — substituir por copy alinhada com novo modelo.
+
+7. **`src/components/report-redesign/v2/sticky-unlock-bar.tsx`**
+   - Atualizar `defaultValue` literal para "5 secções premium por desbloquear" (sincroniza com i18n).
+
+---
+
+## CTA: pré-lead vs pós-lead
+
+| Estado | Componente | Botão | Helper |
+|---|---|---|---|
+| **Pré-lead** (`unlocked=false`) | `ContinueReadingCard` | "Continuar leitura gratuita" | "Desbloqueia o resumo gratuito antes das secções premium." |
+| **Pós-lead** (`unlocked=true`) | `PremiumBlockCard` | "Desbloquear relatório completo" | "Acede ao Diagnóstico editorial e às restantes secções premium." |
+
+Nenhum dos dois muda o gating do corpo (Diagnóstico continua locked).
+
+---
 
 ## Validação
 
-- Abrir `/analyze/<qualquer-handle>` em desktop e mobile 390×844; passar pelos 5 passos pela nova ordem.
-- Confirmar copy exacta dos 3 mockups (passos 1, 5 e ecrã de sucesso).
-- Confirmar que telemóvel é opcional na submissão (deixar vazio → submit deve passar).
-- Confirmar que `marketing_consent` desmarcado continua a permitir submit.
-- Returning lead: voltar a submeter com o mesmo email — sucesso aparece na mesma; sem `welcome-back` flow.
-- `bunx tsc --noEmit` ✅
-- `bunx vitest run` ✅ (não devem ser tocados testes existentes).
+- `bunx tsc --noEmit`
+- `bunx vitest run` (não esperado afectado, mas correr)
+- Manual preview:
+  - Desktop 1460 pré-lead: sidebar "1 de 6 secções acessíveis · 5 por desbloquear", só Overview no corpo, lock-gate com lead-magnet card.
+  - Desktop 1460 pós-lead (sessionStorage `ib_unlock_preview=1`): mesma sidebar, Overview full, **Diagnóstico não aparece**, lock-gate continua a cobrir 02–06 com CTA "Desbloquear relatório completo".
+  - Mobile 390 ambos os estados — bottom-tabs apenas Overview, sheet com mesma estrutura, sticky bar pós-lead.
+- Acceptance criteria do pedido (todas cobertas no plano acima).
 
-## Output esperado
+---
 
-- Ficheiros alterados: `gate.json` (pt/en), `unlock-modal.tsx`.
-- Nova ordem confirmada em screenshot.
-- `tsc` + testes verdes.
+## Fora de scope
+
+Apify, OpenAI, DataForSEO, geração do report, scoring, pricing values, payments, emails, admin CRM, schema BD, fluxo do modal, captura de lead backend.

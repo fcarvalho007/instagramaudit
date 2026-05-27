@@ -435,7 +435,7 @@
       "subtitle": "Identidade do perfil, indicadores principais e enquadramento do que este relatório mostra."
     },
     "diagnostico": {
-      "short": "Diagnóstico",
+      "short": "Diagnóstico editorial",
       "eyebrow": "Diagnóstico editorial",
       "question": "O que explica estes resultados?",
       "subtitle": "Perguntas essenciais que qualquer marketer faz ao olhar para um perfil — respondidas pelo cruzamento dos dados recolhidos."
@@ -523,13 +523,12 @@
       "badge_free": "Grátis",
       "badge_included": "Incluído",
       "badge_premium": "Premium",
-      "beta_note": "O Diagnóstico está incluído nesta fase beta.",
       "available_now": "Disponível agora",
       "progress": "{{accessible}} de {{total}} secções acessíveis",
       "premium_count": "{{count}} por desbloquear",
-      "cta": "Ver opções de acesso",
-      "cta_aria": "Ver opções de acesso premium",
-      "trust": "1 relatório ou pack de 5. Sem subscrição."
+      "cta": "Desbloquear relatório completo",
+      "cta_aria": "Desbloquear relatório completo",
+      "trust": "Acede ao Diagnóstico editorial e às restantes secções premium."
     },
     "access_locked": {
       "cta": "Continuar leitura gratuita",
@@ -691,7 +690,7 @@
         "label": "Incluído",
         "title": "Visão inicial do perfil",
         "bullet_block": "Bloco 1 sempre disponível",
-        "bullet_diag": "Diagnóstico editorial aberto agora",
+        "bullet_diag": "Diagnóstico editorial disponível em premium",
         "cta": "Continuar a explorar"
       },
       "single": {
