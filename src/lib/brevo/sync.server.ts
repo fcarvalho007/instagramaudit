@@ -25,6 +25,7 @@ import {
   mapLeadSource,
   mapPricingPreference,
 } from "./enum-mappers";
+import { parseFullName } from "@/lib/names/parse-full-name";
 
 function maskEmail(email: string | null | undefined): string {
   if (!email) return "***";
@@ -74,7 +75,7 @@ export async function syncLeadToBrevo(
     const { data: lead, error: leadErr } = await (supabaseAdmin as any)
       .from("leads")
       .select(
-        "id, email, source, commercial_status, profile_ownership, purpose, user_type, pricing_preference, marketing_consent",
+        "id, email, name, phone, source, commercial_status, profile_ownership, purpose, user_type, pricing_preference, marketing_consent",
       )
       .eq("id", leadId)
       .maybeSingle();
@@ -94,6 +95,14 @@ export async function syncLeadToBrevo(
     // newsletter para segmentação futura — quem não opt-in fica no CRM com
     // a flag a false e NÃO é adicionado a listas de marketing.
     const marketingConsent = lead.marketing_consent === true;
+
+    // Optional Brevo name/phone mapping (behind feature flag).
+    const nameAttrsEnabled =
+      (process.env.BREVO_NAME_PHONE_ATTRS_ENABLED ?? "false")
+        .trim()
+        .toLowerCase() === "true";
+    const parsedName = nameAttrsEnabled ? parseFullName(lead.name) : null;
+    const hasPhone = typeof lead.phone === "string" && lead.phone.trim().length > 0;
 
     // 2. Most recent report_request + 3. count, in parallel.
     const [{ data: latestRR }, { count: reportsCount }] = await Promise.all([
@@ -138,6 +147,12 @@ export async function syncLeadToBrevo(
       ),
       IS_CUSTOMER: false,
       MARKETING_CONSENT: marketingConsent,
+      ...(parsedName
+        ? {
+            FIRSTNAME: parsedName.first_name || null,
+            LASTNAME: parsedName.last_name,
+          }
+        : {}),
     };
 
     // 5. Call Brevo.
@@ -148,11 +163,34 @@ export async function syncLeadToBrevo(
 
     const latencyMs = Date.now() - startedAt;
 
+    // If flag is ON and lead has a phone, record a manual action: Brevo
+    // SMS/PHONE attribute is not configured in this account yet.
+    const manualAction =
+      nameAttrsEnabled && hasPhone
+        ? "BREVO_PHONE_ATTR_NOT_CONFIGURED"
+        : undefined;
+    if (manualAction) {
+      try {
+        await recordProductEvent({
+          eventType: "brevo_contact_sync_skipped" as any,
+          leadId,
+          metadata: {
+            sync_reason: reason,
+            skipped_field: "phone",
+            manual_action: manualAction,
+          },
+        });
+      } catch (err) {
+        console.error("[brevo-sync] failed to record phone-skip event:", err);
+      }
+    }
+
     if (!res.ok) {
       const outcome: BrevoSyncOutcome = {
         ok: false,
         reason: res.reason,
         latencyMs,
+        manualAction,
       };
       await safeRecordFailure(
         leadId,
@@ -190,6 +228,7 @@ export async function syncLeadToBrevo(
       brevoId: res.brevoId,
       status: res.status,
       latencyMs,
+      manualAction,
     };
   } catch (err) {
     const outcome: BrevoSyncOutcome = {
