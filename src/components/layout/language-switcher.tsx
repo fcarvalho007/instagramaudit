@@ -18,6 +18,11 @@ interface LanguageSwitcherProps {
   className?: string;
 }
 
+const FLAGS: Record<SupportedLanguage, string> = {
+  pt: "🇵🇹",
+  en: "🇬🇧",
+};
+
 export function LanguageSwitcher({
   variant = "compact",
   className,
@@ -39,7 +44,11 @@ export function LanguageSwitcher({
         >
           {variant === "full" ? (
             <Languages className="h-4 w-4" />
-          ) : null}
+          ) : (
+            <span aria-hidden="true" className="text-base leading-none">
+              {FLAGS[language]}
+            </span>
+          )}
           <span className="text-xs font-semibold uppercase tracking-wider tabular-nums">
             {language}
           </span>
@@ -56,7 +65,10 @@ export function LanguageSwitcher({
               language === lang && "font-semibold text-content-primary",
             )}
           >
-            <span>{t(`language.${lang}`)}</span>
+            <span className="flex items-center gap-2">
+              <span aria-hidden="true">{FLAGS[lang]}</span>
+              <span>{t(`language.${lang}`)}</span>
+            </span>
             <span className="text-xs uppercase tracking-wider text-content-tertiary tabular-nums">
               {lang}
             </span>
