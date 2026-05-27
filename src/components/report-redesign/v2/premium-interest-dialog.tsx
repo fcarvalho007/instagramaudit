@@ -201,28 +201,37 @@ function PricingCard({
   return (
     <div
       className={cn(
-        "relative flex flex-col overflow-hidden rounded-xl border p-4 backdrop-blur-sm",
+        "relative flex h-full flex-col overflow-hidden rounded-xl border p-5 backdrop-blur-sm transition-colors",
         isFree
           ? "bg-surface-muted/70 border-border-default"
-          : "bg-white/90 border-border-default shadow-[0_18px_48px_-32px_rgba(15,23,42,0.18)]",
-        isBest && "ring-1 ring-accent-secondary/30",
+          : "bg-white border-border-default shadow-[0_18px_48px_-32px_rgba(15,23,42,0.18)] hover:border-accent-primary/40",
+        isBest &&
+          "ring-1 ring-accent-primary/25 shadow-[0_24px_60px_-30px_rgba(55,114,229,0.35)]",
         selected && "ring-2 ring-accent-primary/40",
       )}
     >
+      {isBest ? (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-accent-primary/[0.05] via-transparent to-accent-secondary/[0.05]"
+        />
+      ) : null}
       <div
         aria-hidden="true"
         className={cn(
           "absolute inset-x-0 top-0 h-px",
           isFree
             ? "bg-gradient-to-r from-transparent via-border-default to-transparent"
-            : "bg-gradient-to-r from-transparent via-accent-primary/40 to-transparent",
+            : isBest
+              ? "bg-gradient-to-r from-transparent via-accent-primary/70 to-transparent"
+              : "bg-gradient-to-r from-transparent via-accent-primary/40 to-transparent",
         )}
       />
       {badge ? (
         <span
           className={cn(
             "absolute right-3 top-3 inline-flex items-center rounded-full",
-            "px-2 py-0.5 text-eyebrow-sm",
+            "px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide leading-none",
             "bg-accent-secondary/10 text-accent-secondary ring-1 ring-accent-secondary/20",
           )}
         >
@@ -232,7 +241,7 @@ function PricingCard({
 
       <span
         className={cn(
-          "inline-flex w-fit items-center rounded-full px-2 py-0.5 text-eyebrow-sm",
+          "inline-flex w-fit max-w-[60%] items-center rounded-full px-2 py-0.5 text-eyebrow-sm",
           isFree && "bg-surface-base text-content-tertiary ring-1 ring-border-default",
           tone === "premium" &&
             "bg-accent-primary/10 text-accent-primary ring-1 ring-accent-primary/20",
@@ -243,8 +252,8 @@ function PricingCard({
         {label}
       </span>
 
-      <p className="mt-2 text-sm font-semibold text-content-primary">{title}</p>
-      <p className="mt-1 text-2xl font-bold text-content-primary tabular-nums">
+      <p className="mt-3 text-sm font-semibold text-content-primary">{title}</p>
+      <p className="mt-1 text-3xl font-bold text-content-primary tabular-nums leading-none">
         {price ?? "0€"}
       </p>
       {unit ? (
@@ -282,7 +291,7 @@ function PricingCard({
         <Button
           type="button"
           onClick={() => onSelect(id)}
-          variant={isBest ? "primary" : isFree ? "ghost" : "outline"}
+          variant={isBest ? "primary" : "outline"}
           className="w-full"
           aria-pressed={selected}
         >
