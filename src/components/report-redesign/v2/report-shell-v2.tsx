@@ -190,7 +190,7 @@ export function ReportShellV2({
               features={features}
               profile={sidebarProfile}
             />
-            <main className="min-w-0 flex-1">
+            <main className="min-w-0 flex-1 overflow-x-clip">
               {/* 01 · Overview (redesigned) */}
               {features.blockOverview !== "hidden" && (
               <ReportBlockSection block={overview} tone="canvas" first>
