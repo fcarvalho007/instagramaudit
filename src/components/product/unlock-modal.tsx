@@ -698,16 +698,43 @@ function ProgressSegments({
   );
 }
 
-function Step1Email({
+function Step1FullName({
+  form,
+}: {
+  form: ReturnType<typeof useForm<UnlockFormValues>>;
+}) {
+  const { t } = useTranslation("gate");
+  const error = form.formState.errors.full_name?.message;
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1.5">
+        <Label htmlFor="unlock-full-name" className="text-sm">
+          {t("unlock.step1.fullNameLabel")}
+        </Label>
+        <Input
+          id="unlock-full-name"
+          type="text"
+          autoFocus
+          autoComplete="name"
+          placeholder={t("unlock.step1.fullNamePlaceholder")}
+          aria-invalid={Boolean(error)}
+          {...form.register("full_name")}
+        />
+        {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function Step2EmailPhone({
   form,
 }: {
   form: ReturnType<typeof useForm<UnlockFormValues>>;
 }) {
   const { t } = useTranslation("gate");
   const error = form.formState.errors.email?.message;
+  const phoneError = form.formState.errors.phone?.message;
   const consentError = form.formState.errors.gdpr_consent?.message;
-  const firstNameError = form.formState.errors.first_name?.message;
-  const lastNameError = form.formState.errors.last_name?.message;
   const consent = form.watch("gdpr_consent");
   const marketing = form.watch("marketing_consent");
   const emailValue = form.watch("email");
@@ -715,42 +742,6 @@ function Step1Email({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="unlock-first-name" className="text-sm">
-            {t("unlock.step1.firstNameLabel")}
-          </Label>
-          <Input
-            id="unlock-first-name"
-            type="text"
-            autoFocus
-            autoComplete="given-name"
-            placeholder={t("unlock.step1.firstNamePlaceholder")}
-            aria-invalid={Boolean(firstNameError)}
-            {...form.register("first_name")}
-          />
-          {firstNameError ? (
-            <p className="text-xs text-destructive">{firstNameError}</p>
-          ) : null}
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="unlock-last-name" className="text-sm">
-            {t("unlock.step1.lastNameLabel")}
-          </Label>
-          <Input
-            id="unlock-last-name"
-            type="text"
-            autoComplete="family-name"
-            placeholder={t("unlock.step1.lastNamePlaceholder")}
-            aria-invalid={Boolean(lastNameError)}
-            {...form.register("last_name")}
-          />
-          {lastNameError ? (
-            <p className="text-xs text-destructive">{lastNameError}</p>
-          ) : null}
-        </div>
-      </div>
-
       <div className="space-y-1.5">
         <Label htmlFor="unlock-email" className="text-sm">
           {t("unlock.step1.emailLabel")}
@@ -759,6 +750,7 @@ function Step1Email({
           <Input
             id="unlock-email"
             type="email"
+            autoFocus
             autoComplete="email"
             placeholder={t("unlock.step1.emailPlaceholder")}
             aria-invalid={Boolean(error)}
@@ -773,6 +765,27 @@ function Step1Email({
           ) : null}
         </div>
         {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="unlock-phone" className="text-sm">
+          {t("unlock.step2.phoneLabel")}
+        </Label>
+        <Input
+          id="unlock-phone"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          placeholder={t("unlock.step2.phonePlaceholder")}
+          aria-invalid={Boolean(phoneError)}
+          {...form.register("phone")}
+        />
+        <p className="text-[11px] text-content-tertiary">
+          {t("unlock.step2.phoneHint")}
+        </p>
+        {phoneError ? (
+          <p className="text-xs text-destructive">{phoneError}</p>
+        ) : null}
       </div>
 
       <div className="rounded-xl border border-border-default/40 bg-surface-muted/40 p-4 space-y-3">
