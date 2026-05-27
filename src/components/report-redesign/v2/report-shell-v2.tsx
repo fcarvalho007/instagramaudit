@@ -43,7 +43,6 @@ import { ReportOverviewBlock } from "./report-overview-block";
 import { ReportDiagnosticBlock } from "./report-diagnostic-block";
 import { BlockFeedback } from "./feedback/block-feedback";
 import { ReportEndOfFreeBlock } from "./end-of-free-block";
-import { ReportLeadMagnetCard } from "./report-lead-magnet-card";
 import { ReportLockGate } from "@/components/product/report-lock-gate";
 import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useState } from "react";
@@ -228,19 +227,12 @@ export function ReportShellV2({
                 </div>
               )}
 
-              {/* Pre-lead-capture lead magnet: editorial bridge between
-                  the free Block 1 preview and the gated content. Renders
-                  only in the public report when the user has not yet
-                  completed the lead magnet (unlocked === false). */}
-              {gated && !unlocked && variant === "public_mvp" && (
-                <ReportLeadMagnetCard onUnlockClick={handleUnlockClick} />
-              )}
-
               {/* When gated, everything from the Engagement card onward
                   lives inside one ReportLockGate so a single CTA overlay
                   covers the entire locked region. */}
               {gated ? (
                 <ReportLockGate
+                  id="lead-magnet-card"
                   unlocked={unlocked}
                   onUnlockClick={handleUnlockClick}
                   handle={result.data.profile.username}
