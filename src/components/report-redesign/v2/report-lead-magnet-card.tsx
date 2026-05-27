@@ -22,7 +22,7 @@ export function ReportLeadMagnetCard({
     <section
       id="lead-magnet-card"
       aria-label={t("nav.lead_magnet.title")}
-      className={cn("mt-2 md:mt-4", className)}
+      className={cn("mt-2 md:mt-4 pb-6 md:pb-0", className)}
     >
       <p className="mx-auto max-w-3xl text-center text-sm leading-relaxed text-content-secondary">
         {t("nav.lead_magnet.transition")}
