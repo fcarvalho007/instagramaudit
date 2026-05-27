@@ -5,7 +5,7 @@
   },
   "hero": {
     "title": "Simple pricing with progressive access",
-    "subtitle": "Start with the free profile overview. The Editorial Diagnosis is temporarily included as a launch offer. To unlock the remaining premium sections, choose one of two simple options."
+    "subtitle": "Start with the free profile overview. The remaining premium sections become available after unlock."
   },
   "free": {
     "label": "Free",
@@ -13,7 +13,6 @@
     "price_word": "Free",
     "bullets": [
       "Block 1 included",
-      "Editorial Diagnosis available as a launch offer",
       "Ideal to get to know the profile before going deeper"
     ],
     "cta": "Start free"
@@ -52,12 +51,12 @@
         "body": "See the first profile reading with no commitment."
       },
       {
-        "title": "Get the launch extra",
-        "body": "The Editorial Diagnosis is currently open to better demonstrate the product value."
+        "title": "Unlock the editorial diagnosis",
+        "body": "The editorial diagnosis is part of premium access, together with the remaining sections."
       },
       {
         "title": "Unlock premium",
-        "body": "Performance, Content, Search and Comparison become available after purchase."
+        "body": "Diagnosis, Performance, Content, Search and Comparison become available after purchase."
       }
     ]
   },

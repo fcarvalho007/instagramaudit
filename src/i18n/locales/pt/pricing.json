@@ -5,7 +5,7 @@
   },
   "hero": {
     "title": "Preços simples, com acesso progressivo",
-    "subtitle": "Começa pela visão gratuita do perfil. O Diagnóstico editorial está temporariamente incluído como oferta de lançamento. Para desbloquear as restantes secções premium, existem duas opções simples."
+    "subtitle": "Começa pela visão gratuita do perfil. As restantes secções premium ficam disponíveis com desbloqueio."
   },
   "free": {
     "label": "Grátis",
@@ -13,7 +13,6 @@
     "price_word": "Grátis",
     "bullets": [
       "Bloco 1 incluído",
-      "Diagnóstico editorial disponível como oferta de lançamento",
       "Ideal para conhecer o perfil antes de aprofundar"
     ],
     "cta": "Começar grátis"
@@ -52,12 +51,12 @@
         "body": "Vê a primeira leitura do perfil sem compromisso."
       },
       {
-        "title": "Recebe o extra de lançamento",
-        "body": "O Diagnóstico editorial está atualmente aberto para mostrar melhor o valor do produto."
+        "title": "Desbloqueia o Diagnóstico editorial",
+        "body": "O Diagnóstico editorial faz parte do acesso premium, juntamente com as restantes secções."
       },
       {
         "title": "Desbloqueia o premium",
-        "body": "As secções de Desempenho, Conteúdo, Procura e Comparação ficam disponíveis com compra."
+        "body": "As secções de Diagnóstico, Desempenho, Conteúdo, Procura e Comparação ficam disponíveis com compra."
       }
     ]
   },

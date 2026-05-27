@@ -429,7 +429,7 @@
       "subtitle": "Profile identity, key indicators and a framing of what this report covers."
     },
     "diagnostico": {
-      "short": "Diagnosis",
+      "short": "Editorial diagnosis",
       "eyebrow": "Editorial diagnosis",
       "question": "What explains these results?",
       "subtitle": "The essential questions any marketer asks about a profile — answered by cross-referencing the collected data."
@@ -682,7 +682,7 @@
         "label": "Included",
         "title": "Initial profile overview",
         "bullet_block": "Block 1 always available",
-        "bullet_diag": "Editorial Diagnosis open right now",
+        "bullet_diag": "Editorial diagnosis available in premium",
         "cta": "Keep exploring"
       },
       "single": {
