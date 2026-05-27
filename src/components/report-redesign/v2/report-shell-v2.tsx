@@ -43,7 +43,6 @@ import { ReportOverviewBlock } from "./report-overview-block";
 import { ReportDiagnosticBlock } from "./report-diagnostic-block";
 import { BlockFeedback } from "./feedback/block-feedback";
 import { ReportEndOfFreeBlock } from "./end-of-free-block";
-import { ReportLockGate } from "@/components/product/report-lock-gate";
 import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useState } from "react";
 
@@ -221,7 +220,7 @@ export function ReportShellV2({
 
               {/* Feedback do Bloco 1 (overview) — fica entre Bloco 1 e Bloco 2,
                   visualmente associado ao Bloco 1 e não dentro do header do Bloco 2. */}
-              {features.blockOverview !== "hidden" && !gated && (
+              {features.blockOverview !== "hidden" && (
                 <div className="mt-6 md:mt-8 mb-2">
                   <BlockFeedback
                     handle={result.data.profile.username}
@@ -231,111 +230,11 @@ export function ReportShellV2({
                 </div>
               )}
 
-              {/* When gated, everything from the Engagement card onward
-                  lives inside one ReportLockGate so a single CTA overlay
-                  covers the entire locked region. */}
-              {gated ? (
-                <ReportLockGate
-                  id="lead-magnet-card"
-                  unlocked={unlocked}
-                  onUnlockClick={handleUnlockClick}
-                  handle={result.data.profile.username}
-                >
-                  {features.blockOverview !== "hidden" && (
-                    <div className="mt-6 md:mt-8">
-                      <ReportOverviewBlock
-                        result={result}
-                        renderInsight={renderInsight}
-                        payload={payload}
-                        mode="locked"
-                      />
-                    </div>
-                  )}
-                  {features.blockDiagnosis !== "hidden" && (
-                    <ReportBlockSection block={diagnostico} tone="canvas">
-                      <ReportDiagnosticBlock result={result} payload={payload} />
-                    </ReportBlockSection>
-                  )}
-              {features.blockPerformance === "full" && (
-                    <ReportBlockSection block={performance} tone="canvas">
-                      <ReportFramedBlock
-                        tone="canvas"
-                        ariaLabel={t("shell.aria.performance_time")}
-                      >
-                        <ReportTemporalChart />
-                        <div className="mt-4">{renderInsight("evolutionChart")}</div>
-                      </ReportFramedBlock>
-                      <ReportFramedBlock
-                        tone="canvas"
-                        ariaLabel={t("shell.aria.audience_response")}
-                      >
-                        <div className="space-y-10 md:space-y-12">
-                          <ReportPostingHeatmap />
-                          <div className="mt-4">{renderInsight("heatmap")}</div>
-                          {features.blockPerformance === "full" ? (
-                            <>
-                              <ReportBestDays />
-                              <div className="mt-4">{renderInsight("daysOfWeek")}</div>
-                            </>
-                          ) : (
-                            <PerformanceLockedTeaser onUnlock={scrollToCofre} />
-                          )}
-                        </div>
-                      </ReportFramedBlock>
-                    </ReportBlockSection>
-                  )}
-                  {features.blockContent !== "hidden" && (
-                    <ReportBlockSection block={conteudo} tone="soft-blue">
-                      <ReportFramedBlock tone="soft-blue" ariaLabel={t("shell.aria.top_posts")}>
-                        <div className="mt-6">
-                          <ReportEnrichedTopLinks enriched={result.enriched} />
-                        </div>
-                      </ReportFramedBlock>
-                      <ReportFramedBlock tone="soft-blue" ariaLabel={t("shell.aria.format_mix")}>
-                        <ReportFormatBreakdown />
-                        <div className="mt-4">{renderInsight("formats")}</div>
-                      </ReportFramedBlock>
-                      <ReportFramedBlock tone="soft-blue" ariaLabel={t("shell.aria.hashtags")}>
-                        <div className="space-y-10 md:space-y-12">
-                          <ReportHashtagsKeywords />
-                          <div className="mt-4">{renderInsight("language")}</div>
-                          <ReportEnrichedMentions enriched={result.enriched} />
-                        </div>
-                      </ReportFramedBlock>
-                    </ReportBlockSection>
-                  )}
-                  {features.blockSearch !== "hidden" && (
-                    <ReportBlockSection block={procura} tone="canvas">
-                      <p className="text-sm md:text-[15px] text-content-secondary leading-relaxed max-w-3xl">
-                        {t("shell.search_intro_short")}
-                      </p>
-                      <ReportMarketSignalsSection
-                        snapshotId={snapshotId}
-                        plan="free"
-                        cachedSummary={payload?.market_signals_free}
-                        compact
-                      />
-                      {renderInsight("marketSignals")}
-                    </ReportBlockSection>
-                  )}
-                  {features.blockBenchmark !== "hidden" && (
-                    <ReportBlockSection block={benchmark} tone="soft-blue">
-                      <ReportFramedBlock tone="soft-blue" ariaLabel={t("shell.aria.market_position")}>
-                        <ReportBenchmarkGauge />
-                        <div className="mt-4">{renderInsight("benchmark")}</div>
-                      </ReportFramedBlock>
-                      <ReportFramedBlock tone="soft-blue" ariaLabel={t("shell.aria.peer_comparison")}>
-                        <ReportCompetitors />
-                        {result.coverage.competitors === "empty" ? (
-                          <div className="mt-6">
-                            <ReportEnrichedCompetitorsCta />
-                          </div>
-                        ) : null}
-                      </ReportFramedBlock>
-                    </ReportBlockSection>
-                  )}
-                </ReportLockGate>
-              ) : null}
+              {/* Fluxo público gratuito: nenhum bloco 2–6 é renderizado.
+                  A sidebar/tabs já comunicam "5 por desbloquear". O fim
+                  da leitura pública (ReportEndOfFreeBlock) abaixo serve
+                  como ponto de captura de lead / CTA Premium e mantém o
+                  ancorador #lead-magnet-card para deep-links existentes. */}
 
               {/* 02 · Diagnóstico editorial — só fora do gate em premium */}
               {premiumUnlocked && features.blockDiagnosis !== "hidden" && (
@@ -447,9 +346,12 @@ export function ReportShellV2({
               </ReportBlockSection>
               )}
 
-              {/* Fim do relatório free — só em variantes não-gated. No gated
-                  o paywall do ReportLockGate já comunica que há mais. */}
-              {!gated && <ReportEndOfFreeBlock />}
+              {/* Fim do relatório free + CTA Premium. Mantém o id
+                  `lead-magnet-card` que servia de âncora ao antigo
+                  ReportLockGate, para deep-links e scrolls existentes. */}
+              <section id="lead-magnet-card">
+                <ReportEndOfFreeBlock />
+              </section>
             </main>
           </div>
         </div>
