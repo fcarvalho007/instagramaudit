@@ -566,6 +566,62 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           for (const c of allowedCompetitors) competitors.push(c);
         }
 
+        // 2b) Negative-cache short-circuit. If this handle was classified as
+        // PROFILE_PERSONAL_NO_FEED or PROFILE_PRIVATE within the past 24h,
+        // do NOT burn another Apify call — replay the same error so retries
+        // are cheap and the user-facing message stays consistent. This is a
+        // direct response to a real incident where one handle triggered 6
+        // back-to-back Apify runs in ~3h. `analysis_events` is the source of
+        // truth (no extra table needed).
+        if (!forceRefresh) {
+          try {
+            const { data: recentNegative } = await supabaseAdmin
+              .from("analysis_events")
+              .select("error_code")
+              .eq("handle", primary)
+              .eq("network", "instagram")
+              .in("error_code", [
+                "PROFILE_PERSONAL_NO_FEED",
+                "PROFILE_PRIVATE",
+              ])
+              .gte(
+                "created_at",
+                new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+              )
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            const cachedCode = recentNegative?.error_code as
+              | "PROFILE_PERSONAL_NO_FEED"
+              | "PROFILE_PRIVATE"
+              | undefined;
+            if (cachedCode) {
+              console.info(
+                "[analyze-public-v1] negative-cache hit — skipping Apify",
+                primary,
+                cachedCode,
+              );
+              await logEvent({
+                handle: primary,
+                competitorHandles: competitors,
+                cacheKey,
+                dataSource: "cache",
+                outcome: "not_found",
+                errorCode: cachedCode,
+                estimatedCostUsd: 0,
+              });
+              return failure(cachedCode);
+            }
+          } catch (err) {
+            // Negative cache is an optimization — never block the request.
+            console.warn(
+              "[analyze-public-v1] negative-cache lookup failed",
+              err,
+            );
+          }
+        }
+
         // 3) Hard kill-switch. After the cache lookup so cached snapshots
         // remain serveable, before any provider call so disabled mode never
         // burns Apify credits. Stale fallback below is also bypassed because
