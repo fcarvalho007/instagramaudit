@@ -115,7 +115,7 @@ export function ReportHeroV2({
                 onClick={() => setCompareOpen(true)}
                 title={compareEnabled ? t("hero.actions.compare") : t("hero.actions.coming_soon_tooltip")}
                 className={cn(
-                  "inline-flex items-center justify-center gap-2 rounded-xl h-12 px-4 whitespace-nowrap",
+                  "inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-xl min-h-12 px-4 py-2 min-w-0",
                   "border border-border-default bg-white text-content-primary text-[15px] font-semibold",
                   "transition-colors duration-150",
                   "hover:border-accent-primary/40 hover:text-accent-primary hover:bg-accent-primary/[0.04]",
@@ -124,9 +124,9 @@ export function ReportHeroV2({
                 <Users className="size-4" aria-hidden="true" />
                 {t("hero.actions.compare")}
                 {!compareEnabled && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-content-secondary border border-border-default">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-content-secondary border border-border-default whitespace-nowrap">
                     <span>{t("hero.actions.coming_soon")}</span>
-                    <span className="text-content-tertiary normal-case font-medium">· {t("hero.actions.coming_soon_detail")}</span>
+                    <span className="hidden sm:inline text-content-tertiary normal-case font-medium">· {t("hero.actions.coming_soon_detail")}</span>
                   </span>
                 )}
               </button>
