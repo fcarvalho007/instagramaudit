@@ -49,7 +49,7 @@
       "instagram_username": "Instagram profile"
     },
     "step1": {
-      "eyebrow": "STEP 1 OF 4",
+      "eyebrow": "STEP 1 OF 5",
       "badge": "~1 MIN",
       "titlePrefix": "How should we",
       "titleEm": "address",
@@ -71,23 +71,28 @@
       "fullNamePlaceholder": "Ana Marques"
     },
     "step2": {
-      "eyebrow": "STEP 2 OF 4",
-      "title": "How are you related to this profile?",
-      "subtitle": "Helps us tune the tone of the analysis.",
+      "eyebrow": "STEP 2 OF 5",
+      "title": "Where do we send the report?",
+      "subtitle": "Email to save your access. Mobile phone optional, only for exceptional cases.",
       "phoneLabel": "Mobile phone (optional)",
       "phonePlaceholder": "+351 912 345 678",
       "phoneHint": "Only used in exceptional cases, to validate report access."
     },
     "step3": {
-      "eyebrow": "STEP 3 OF 4",
+      "eyebrow": "STEP 3 OF 5",
+      "title": "How are you related to this profile?",
+      "subtitle": "Helps us tune the tone of the analysis."
+    },
+    "step4": {
+      "eyebrow": "STEP 4 OF 5",
       "title": "What do you want to understand?",
       "subtitle": "Pick what matters most. We'll highlight what counts.",
       "otherPlaceholder": "e.g.: academic research on creative AI",
       "otherEyebrow": "describe in a few words",
       "otherHint": "optional · helps us improve"
     },
-    "step4": {
-      "eyebrow": "STEP 4 OF 4",
+    "step5": {
+      "eyebrow": "STEP 5 OF 5",
       "title": "How do you describe yourself?",
       "subtitle": "Last question — then we open the report.",
       "otherPlaceholder": "e.g.: journalist, researcher, curator",

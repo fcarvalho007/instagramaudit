@@ -49,7 +49,7 @@
       "instagram_username": "Perfil Instagram"
     },
     "step1": {
-      "eyebrow": "PASSO 1 DE 4",
+      "eyebrow": "PASSO 1 DE 5",
       "badge": "~1 MIN",
       "titlePrefix": "Como te",
       "titleEm": "tratamos",
@@ -71,23 +71,28 @@
       "fullNamePlaceholder": "Ana Marques"
     },
     "step2": {
-      "eyebrow": "PASSO 2 DE 4",
-      "title": "Que relação tens com este perfil?",
-      "subtitle": "Ajuda-nos a ajustar o tom da análise.",
+      "eyebrow": "PASSO 2 DE 5",
+      "title": "Onde te enviamos o relatório?",
+      "subtitle": "Email para guardar o acesso. Telemóvel opcional, apenas para casos excecionais.",
       "phoneLabel": "Telemóvel (opcional)",
       "phonePlaceholder": "+351 912 345 678",
       "phoneHint": "Usamos apenas em casos excecionais, para validar o acesso ao relatório."
     },
     "step3": {
-      "eyebrow": "PASSO 3 DE 4",
+      "eyebrow": "PASSO 3 DE 5",
+      "title": "Que relação tens com este perfil?",
+      "subtitle": "Ajuda-nos a ajustar o tom da análise."
+    },
+    "step4": {
+      "eyebrow": "PASSO 4 DE 5",
       "title": "O que queres perceber?",
       "subtitle": "Escolhe o que mais te interessa. Destacamos o que importa.",
       "otherPlaceholder": "ex: investigação académica sobre IA criativa",
       "otherEyebrow": "descreve em poucas palavras",
       "otherHint": "opcional · ajuda-nos a melhorar"
     },
-    "step4": {
-      "eyebrow": "PASSO 4 DE 4",
+    "step5": {
+      "eyebrow": "PASSO 5 DE 5",
       "title": "Como te descreves?",
       "subtitle": "Última pergunta — depois abrimos o relatório.",
       "otherPlaceholder": "ex: jornalista, investigador, curador",

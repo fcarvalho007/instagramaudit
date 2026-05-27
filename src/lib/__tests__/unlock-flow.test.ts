@@ -37,6 +37,7 @@ describe("unlockFormSchema", () => {
 
   it("accepts a complete valid payload (without pricing)", () => {
     const r = unlockFormSchema.safeParse({
+      full_name: "Ana Marques",
       email: "Ana@Empresa.PT",
       profile_ownership: "own_profile",
       goal: "improve_content",
@@ -49,6 +50,7 @@ describe("unlockFormSchema", () => {
 
   it("still accepts pricing_preference if provided (back-compat)", () => {
     const r = unlockFormSchema.safeParse({
+      full_name: "Ana Marques",
       email: "ana@empresa.pt",
       profile_ownership: "own_profile",
       goal: "improve_content",
@@ -87,11 +89,25 @@ describe("unlockFormSchema", () => {
 
   it("accepts goal='other' with goal_other_text", () => {
     const r = unlockFormSchema.safeParse({
+      full_name: "Ana Marques",
       email: "ana@empresa.pt",
       profile_ownership: "competitor_research",
       goal: "other",
       goal_other_text: "Crescer em LATAM",
       user_type: "creator",
+      gdpr_consent: true,
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("accepts optional phone", () => {
+    const r = unlockFormSchema.safeParse({
+      full_name: "Ana Marques",
+      email: "ana@empresa.pt",
+      profile_ownership: "own_profile",
+      goal: "improve_content",
+      user_type: "creator",
+      phone: "+351 912 345 678",
       gdpr_consent: true,
     });
     expect(r.success).toBe(true);
