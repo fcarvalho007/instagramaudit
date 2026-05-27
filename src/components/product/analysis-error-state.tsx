@@ -34,12 +34,17 @@ export function AnalysisErrorState({
   onRetry,
 }: AnalysisErrorStateProps) {
   const { t } = useTranslation("analyze");
-  const isCacheOnly = errorCode?.toUpperCase() === "CACHE_ONLY_NO_DATA";
+  const upperCode = errorCode?.toUpperCase();
+  const isCacheOnly = upperCode === "CACHE_ONLY_NO_DATA";
+  // Personal-account case: the profile is public but Instagram's public
+  // endpoint doesn't expose its feed. Retrying won't help and burns Apify
+  // credits, so suppress the retry button and only offer a way back.
+  const isPersonalNoFeed = upperCode === "PROFILE_PERSONAL_NO_FEED";
   const mountsRef = useRef<number>(0);
   if (mountsRef.current === 0) {
     mountsRef.current = bumpErrorMounts();
   }
-  const showHint = mountsRef.current >= 2 && !isCacheOnly;
+  const showHint = mountsRef.current >= 2 && !isCacheOnly && !isPersonalNoFeed;
 
   // Clear the counter once the user navigates away successfully.
   useEffect(() => {
@@ -77,15 +82,17 @@ export function AnalysisErrorState({
             )}
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-3">
-            <Button
-              variant="primary"
-              size="md"
-              leftIcon={<RotateCcw />}
-              onClick={onRetry}
-            >
-              {t("error.retry")}
-            </Button>
-            {isCacheOnly && (
+            {!isPersonalNoFeed && (
+              <Button
+                variant="primary"
+                size="md"
+                leftIcon={<RotateCcw />}
+                onClick={onRetry}
+              >
+                {t("error.retry")}
+              </Button>
+            )}
+            {(isCacheOnly || isPersonalNoFeed) && (
               <Button
                 variant="outline"
                 size="md"
