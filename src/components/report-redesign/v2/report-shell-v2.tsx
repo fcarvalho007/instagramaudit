@@ -43,7 +43,6 @@ import { ReportOverviewBlock } from "./report-overview-block";
 import { ReportDiagnosticBlock } from "./report-diagnostic-block";
 import { BlockFeedback } from "./feedback/block-feedback";
 import { ReportEndOfFreeBlock } from "./end-of-free-block";
-import { ReportLockGate } from "@/components/product/report-lock-gate";
 import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useState } from "react";
 
