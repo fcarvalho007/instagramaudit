@@ -47,7 +47,7 @@ export const BLOCKS: readonly BlockConfig[] = [
   {
     id: "diagnostico",
     number: "02",
-    shortLabel: "Diagnóstico",
+    shortLabel: "Diagnóstico editorial",
     eyebrowOverride: "Diagnóstico editorial",
     question: "O que explica estes resultados?",
     subtitle:

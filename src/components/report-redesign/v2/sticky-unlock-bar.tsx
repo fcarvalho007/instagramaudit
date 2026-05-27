@@ -32,7 +32,7 @@ export function StickyUnlockBar({ onClick }: Props) {
         <Lock className="size-4 shrink-0 text-amber-300" aria-hidden="true" />
         <p className="min-w-0 flex-1 truncate text-xs font-medium">
           {t("sticky_unlock.body", {
-            defaultValue: "3 secções premium por desbloquear",
+            defaultValue: "5 secções premium por desbloquear",
           })}
         </p>
         <button
