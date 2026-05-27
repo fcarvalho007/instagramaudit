@@ -1,92 +1,57 @@
-# Plano — Auditoria + refinamentos do fluxo lead magnet (nome, telefone, Brevo)
+## Problema observado
 
-## Resumo da auditoria (sem alterar nada ainda)
+Em `/analyze/$username` o relatório público (`variant="public_mvp"`, `lockBoundary="engagement"`, `premiumUnlocked=false`) está a:
 
-### 1. Email safety — ✅ já garantido
-`sendLeadMagnetSequence` (`src/lib/email/lead-magnet-sequence.server.ts`) é totalmente independente de phone, `marketing_consent` e de `BREVO_NAME_PHONE_ATTRS_ENABLED`. Só `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED=false` bloqueia. `marketing_consent` apenas enriquece metadata. Os emails `welcome-beta` e `report-summary` são enviados qualquer que seja o estado do telefone. Nenhuma alteração necessária — apenas adicionar testes que congelem este comportamento.
+1. Renderizar o **Bloco 1 · Visão geral duas vezes**: uma vez "limpo" no topo e outra vez dentro do `ReportLockGate` (em `mode="locked"`, desfocado).
+2. Renderizar o **Bloco 2 · Diagnóstico editorial** (e ainda os blocos 3–6) dentro do `ReportLockGate` como conteúdo desfocado — quando a decisão de produto é não dar acesso visual ao Bloco 2 no relatório gratuito.
+3. **Esconder o feedback do Bloco 1** (os emojis) sempre que `gated = true` — ou seja, sempre no fluxo público actual.
 
-### 2. Personalização por primeiro nome — ✅ já garantido
-`deriveFirstName` em `src/lib/unlock.server.ts` (linhas 116-124) usa `first_name` direto se existir, senão `parseFullName(full_name).first_name`. `sendLeadMagnetSequence` recebe `firstName` (não `fullName`). `parseFullName` em `src/lib/names/parse-full-name.ts` já trata "Ana Marques" → "Ana", "Ana Rita Marques Silva" → "Ana", "Élia" → "Élia". Tests já existem em `src/lib/names/__tests__/parse-full-name.test.ts`. Sem alterações.
+A sidebar e as tabs já estão corretas: marcam só o "Overview" como acessível ("1 de 6") e os outros 5 como `locked` / premium. O bug está apenas no corpo do relatório em `report-shell-v2.tsx`.
 
-### 3. Normalização de telefone — ❌ a corrigir
-`normalizePhone` em `src/lib/unlock.server.ts` (linhas 105-114) é mínimo: só mantém `+` e dígitos. Casos PT atuais:
-- "912345678" → `"912345678"` (sem `+`) → Brevo skip `PHONE_NOT_E164`
-- "912 345 678" → `"912345678"` → idem
-- "00351912345678" → `"00351912345678"` → idem (`00` não convertido para `+`)
-- "+351912345678" → `"+351912345678"` ✅
+## Correção
 
-**Ação**: extrair `normalizePhone` para `src/lib/phone/normalize-pt.ts` com regras seguras para PT móvel + mantendo passthrough internacional:
-- Se já começa por `+`: manter apenas `+` + dígitos.
-- Se começa por `00`: substituir `00` por `+`.
-- Se 9 dígitos e começa por `9` (móvel PT): prefixar `+351`.
-- Se 12 dígitos e começa por `351`: prefixar `+`.
-- Restantes casos: devolver `null` (e o sync Brevo logará `PHONE_NOT_E164` — já acontece).
+Ficheiro único: `src/components/report-redesign/v2/report-shell-v2.tsx`.
 
-Substituir o uso em `unlock.server.ts` (2 call-sites) pelo novo helper. Nunca rejeita o lead.
+1. **Remover a duplicação do Bloco 1**: eliminar o `ReportOverviewBlock` em `mode="locked"` que está dentro do ramo `gated ? (...)`. O Bloco 1 já é renderizado uma única vez acima, com `mode="free"` quando `lockBoundary === "engagement" && !unlocked` e completo caso contrário.
 
-### 4. Mapeamento Brevo — ⚠️ ajuste menor
-`src/lib/brevo/sync.server.ts` já:
-- envia `FIRSTNAME`/`LASTNAME` quando `BREVO_NAME_PHONE_ATTRS_ENABLED=true` e nome existe;
-- envia `SMS` só com E.164 (começa por `+`);
-- regista `name_attrs_sent` e `sms_sent` no evento `brevo_contact_synced`;
-- regista evento `brevo_contact_sync_skipped` com `skipped_field: "phone"` + `reason: "PHONE_NOT_E164"` quando aplicável (não armazena telefone em bruto — ✅);
-- continua a sincronizar o contacto mesmo quando o SMS é saltado.
+2. **Remover Diagnóstico Editorial (e restantes blocos premium) do render gratuito**: dentro do `gated ? (...)`, deixar de envolver `ReportDiagnosticBlock`, `ReportTemporalChart`/heatmap (Performance), Conteúdo, Procura e Benchmark no `ReportLockGate`. No fluxo público, esses blocos não devem aparecer no corpo — nem desfocados. A presença deles passa a ser comunicada apenas pela sidebar/tabs ("5 por desbloquear") e pelo `ReportEndOfFreeBlock` no fim.
 
-**Ação mínima**: também adicionar `sms_skipped_reason` no metadata do evento `brevo_contact_synced` para auditoria num único evento (pedido pelo utilizador). Sem mudanças de schema. Continua a não guardar telefone em bruto em `product_events`.
+3. **Repor o pedido de avaliação no fim do Bloco 1**: alterar a condição actual `features.blockOverview !== "hidden" && !gated` para `features.blockOverview !== "hidden"`. Assim o `BlockFeedback` (emojis) volta a aparecer no fim do Bloco 1 também no fluxo público gratuito.
 
-### 5. Admin — ✅ já garantido
-`src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` já mostra `lead.phone` com link `tel:` quando presente. `product_events` regista apenas `phone_provided: boolean` (linha 483 `unlock.server.ts`) e `skipped_field/reason` no skip event — nunca o número em bruto. Sem alterações.
+4. **Substituir o gate por uma única chamada ao Lead Magnet** mantendo o ancorador `#lead-magnet-card`: onde antes existia o `ReportLockGate` com 5 blocos por baixo, passa a existir uma simples `<section id="lead-magnet-card">` com o `ReportEndOfFreeBlock` (já existente) — que mostra "Fim da leitura pública / Há mais por trás deste perfil" e o CTA Premium. Antes da captura de lead, o CTA mantém o copy actual; após `unlocked=true`, evolui para "Desbloquear relatório completo" (i18n já previsto no plano anterior, mantém-se inalterado se já existir; caso contrário fica para outra iteração — não bloqueia esta correção).
 
-### 6. Testes a adicionar/atualizar
+5. **Não tocar** em:
+   - `block-config.ts`, `report-block-nav.tsx` (sidebar e tabs já estão corretas)
+   - `report-overview-block.tsx`, `report-diagnostic-block.tsx`
+   - `report-lock-gate.tsx`, `report-end-of-free-block.tsx`
+   - Variantes não-public (`internal_lab`, `pro_preview`) — só o ramo `gated` é alterado
+   - Backend, providers, scoring, pricing, emails, lead-magnet steps
 
-**Novo**: `src/lib/phone/__tests__/normalize-pt.test.ts`
-- "912345678" → "+351912345678"
-- "912 345 678" → "+351912345678"
-- "+351912345678" → "+351912345678"
-- "00351912345678" → "+351912345678"
-- "351912345678" → "+351912345678"
-- "+44 7700 900000" (UK) → "+447700900000"
-- inputs vazios/curtos → null
-- nunca lança
+## Resultado esperado
 
-**Atualizar**: `src/lib/brevo/__tests__/sync.test.ts`
-- adicionar caso com `BREVO_NAME_PHONE_ATTRS_ENABLED=true`, nome "Ana Rita Marques" e `phone_normalized="+351912345678"` → atributos incluem `FIRSTNAME:"Ana"`, `LASTNAME:"Rita Marques"`, `SMS:"+351912345678"`; metadata do success event tem `name_attrs_sent:true` e `sms_sent:true`.
-- caso com flag ON e telefone inválido (`"912345678"` sem `+`) → contacto sincronizado, sem `SMS` no payload, evento `brevo_contact_sync_skipped` emitido com `reason:"PHONE_NOT_E164"`, success event tem `sms_sent:false` e `sms_skipped_reason:"PHONE_NOT_E164"`.
-- caso com flag OFF → nem `FIRSTNAME`/`LASTNAME`/`SMS` no payload (regression).
+Fluxo público (`/analyze/$username`):
 
-**Atualizar**: `src/lib/email/__tests__/lead-magnet-sequence.test.ts`
-- caso explícito a chamar `sendLeadMagnetSequence` com `firstName: "Ana"` (e nada relacionado com phone) → `sendWelcomeBetaEmail` e `sendReportSummaryEmail` recebem `firstName: "Ana"`; nenhum dos mocks recebe `phone`/`fullName`. Garante que a sequência ignora telefone.
-- caso com `marketing_consent=false` → ambos emails enviados (já está coberto indiretamente; tornar explícito).
+```
+Hero
+└─ Bloco 1 · Visão geral (única vez, completo)
+   └─ Feedback (emojis)
+   └─ Fim da leitura pública (#lead-magnet-card → CTA)
+Methodology
+```
 
-## Ficheiros a alterar
-
-1. **Novo** `src/lib/phone/normalize-pt.ts` — função `normalizePhonePT(raw)` pura.
-2. **Novo** `src/lib/phone/__tests__/normalize-pt.test.ts`.
-3. **Editar** `src/lib/unlock.server.ts` — substituir `normalizePhone` local pelo helper novo; manter assinatura (`string | null`).
-4. **Editar** `src/lib/brevo/sync.server.ts` — adicionar `sms_skipped_reason` ao metadata do evento `brevo_contact_synced` quando aplicável.
-5. **Editar** `src/lib/brevo/__tests__/sync.test.ts` — 3 casos novos.
-6. **Editar** `src/lib/email/__tests__/lead-magnet-sequence.test.ts` — 2 asserts adicionais sobre `firstName` e independência de phone.
-
-## Ficheiros NÃO alterados
-
-- Schema da BD, `leads` table, `product_events` shape.
-- Pricing, premium gates, geração de relatório.
-- Providers (Apify/OpenAI/DataForSEO).
-- Sender real de emails (mocks nos testes; não se envia nada real).
-- `parseFullName`, `deriveFirstName`, modais e UI do lead magnet.
+Sidebar: "1 de 6 secções acessíveis", 5 marcadas como "Premium · por desbloquear".
 
 ## Validação
 
 - `bunx tsc --noEmit`
-- `bunx vitest run` (com foco em `src/lib/phone`, `src/lib/brevo`, `src/lib/email`, `src/lib/names`)
+- `bunx vitest run` (se existirem testes a tocar em `report-shell-v2`)
+- Inspecionar `/analyze/frederico.m.carvalho` no preview: confirmar que o Bloco 1 aparece **uma só vez**, que os emojis aparecem no fim do Bloco 1, e que não existe Bloco 2 desfocado no DOM.
 
 ## Checkpoint
 
-- ☐ Helper PT criado e testado (4+ casos)
-- ☐ `unlock.server.ts` usa o novo helper, sem mudança de comportamento internacional
-- ☐ Brevo sync: `sms_skipped_reason` presente no `brevo_contact_synced` quando aplicável
-- ☐ Sync continua mesmo com telefone inválido (SMS apenas é saltado)
-- ☐ Testes provam: emails enviados com phone vazio / inválido / consent OFF / flag ON ou OFF
-- ☐ Testes provam: emails usam só `first_name`
-- ☐ `product_events` continua sem telefone em bruto
-- ☐ `tsc` e `vitest` verdes
+- ☐ Bloco 1 renderizado uma única vez
+- ☐ Bloco 2 (Diagnóstico Editorial) ausente do corpo no fluxo público
+- ☐ Pedido de avaliação (emojis) visível no fim do Bloco 1
+- ☐ Sidebar mantém "1 de 6 secções acessíveis"
+- ☐ CTA Lead Magnet continua acessível via `#lead-magnet-card`
+- ☐ `tsc --noEmit` verde
