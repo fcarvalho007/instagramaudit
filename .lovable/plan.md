@@ -1,57 +1,53 @@
-## Problema observado
+## Problema
 
-Em `/analyze/$username` o relatório público (`variant="public_mvp"`, `lockBoundary="engagement"`, `premiumUnlocked=false`) está a:
+A última alteração ao `report-shell-v2.tsx` aplanou o fluxo em apenas 2 estados (free vs premium) e perdeu o gating do lead magnet. Resultado:
+- O utilizador anónimo vê de imediato **todo** o Bloco 1 (Identity + Engagement + Frequência + Formato + Top vs Worst posts) sem ter de deixar contacto.
+- O `BlockFeedback` e o `ReportEndOfFreeBlock` (“Há mais por trás deste perfil”) aparecem sempre, mesmo antes da captura de lead.
+- O `ReportLockGate` (lead magnet) deixou de ser renderizado.
 
-1. Renderizar o **Bloco 1 · Visão geral duas vezes**: uma vez "limpo" no topo e outra vez dentro do `ReportLockGate` (em `mode="locked"`, desfocado).
-2. Renderizar o **Bloco 2 · Diagnóstico editorial** (e ainda os blocos 3–6) dentro do `ReportLockGate` como conteúdo desfocado — quando a decisão de produto é não dar acesso visual ao Bloco 2 no relatório gratuito.
-3. **Esconder o feedback do Bloco 1** (os emojis) sempre que `gated = true` — ou seja, sempre no fluxo público actual.
+## Fluxo correto (3 estados)
 
-A sidebar e as tabs já estão corretas: marcam só o "Overview" como acessível ("1 de 6") e os outros 5 como `locked` / premium. O bug está apenas no corpo do relatório em `report-shell-v2.tsx`.
+**A · Anónimo** (`lockBoundary="engagement" && !unlocked && !premiumUnlocked`)
+- Bloco 1 renderiza apenas `mode="free"` → só o **Editorial Identity Card** (“índice do perfil”).
+- Logo a seguir, o **lead magnet card** (`ReportLockGate`) com CTA para abrir o `UnlockModal`.
+- Sem `BlockFeedback`, sem `ReportEndOfFreeBlock`, sem blocos 2–6.
 
-## Correção
+**B · Lead capturado** (`unlocked && !premiumUnlocked`)
+- Bloco 1 renderiza **inteiro** (`mode="all"`) → Identity + Engagement + Frequência + Formato + Best vs Worst posts.
+- `BlockFeedback` (emojis “breve pausa para te ouvirmos”) imediatamente a seguir.
+- `ReportEndOfFreeBlock` (“Há mais por trás deste perfil” → Premium) como fronteira final.
+- Sem blocos 2–6.
 
-Ficheiro único: `src/components/report-redesign/v2/report-shell-v2.tsx`.
+**C · Premium** (`premiumUnlocked`)
+- Tudo igual ao B, mais blocos 2–6 (Diagnóstico, Performance, Conteúdo, Procura, Benchmark).
 
-1. **Remover a duplicação do Bloco 1**: eliminar o `ReportOverviewBlock` em `mode="locked"` que está dentro do ramo `gated ? (...)`. O Bloco 1 já é renderizado uma única vez acima, com `mode="free"` quando `lockBoundary === "engagement" && !unlocked` e completo caso contrário.
+## Alterações (apenas `src/components/report-redesign/v2/report-shell-v2.tsx`)
 
-2. **Remover Diagnóstico Editorial (e restantes blocos premium) do render gratuito**: dentro do `gated ? (...)`, deixar de envolver `ReportDiagnosticBlock`, `ReportTemporalChart`/heatmap (Performance), Conteúdo, Procura e Benchmark no `ReportLockGate`. No fluxo público, esses blocos não devem aparecer no corpo — nem desfocados. A presença deles passa a ser comunicada apenas pela sidebar/tabs ("5 por desbloquear") e pelo `ReportEndOfFreeBlock` no fim.
+1. **Re-importar `ReportLockGate`** de `@/components/product/report-lock-gate`.
+2. **Bloco 1 condicional por estado:**
+   - Anónimo (`!unlocked`): `ReportOverviewBlock` com `mode="free"` (apenas Identity Card).
+   - Lead/Premium (`unlocked`): `ReportOverviewBlock` com `mode="all"`.
+3. **Lead magnet em estado A:**
+   - Logo após o Identity Card, renderizar uma `<section id="lead-magnet-card">` com o `ReportLockGate` (handle do perfil, `onUnlockClick={handleUnlockClick}`, `unlocked={false}`, `children` vazios ou um placeholder mínimo — não renderizamos os cards locked desfocados por baixo, para evitar a duplicação que o utilizador rejeitou).
+   - Alternativa mais limpa: usar o `ReportLockGate` apenas pela sua secção de CTA (card frosted), sem children blurred — fazer um wrapper local que aproveita só o card. Decisão final: passar children vazios e adicionar uma classe ao gate para esconder a coluna blurred quando não há conteúdo (mais simples: condicionar a render do bloco blurred a `children` truthy dentro do `ReportLockGate`, alteração mínima e retro-compatível).
+4. **`BlockFeedback`** passa a renderizar **só quando `unlocked === true`** (i.e. estados B e C).
+5. **`ReportEndOfFreeBlock`** passa a renderizar **só quando `unlocked === true && !premiumUnlocked`** (estado B). Em estado A o lead magnet substitui-o; em estado C não faz sentido.
+6. **Blocos 2–6** mantêm-se atrás de `premiumUnlocked` (sem alteração).
+7. **Anchor `#lead-magnet-card`** mantém-se: em estado A no wrapper do `ReportLockGate`; em estado B no wrapper do `ReportEndOfFreeBlock` (para deep-links existentes continuarem a funcionar).
 
-3. **Repor o pedido de avaliação no fim do Bloco 1**: alterar a condição actual `features.blockOverview !== "hidden" && !gated` para `features.blockOverview !== "hidden"`. Assim o `BlockFeedback` (emojis) volta a aparecer no fim do Bloco 1 também no fluxo público gratuito.
+## Pequena alteração paralela
 
-4. **Substituir o gate por uma única chamada ao Lead Magnet** mantendo o ancorador `#lead-magnet-card`: onde antes existia o `ReportLockGate` com 5 blocos por baixo, passa a existir uma simples `<section id="lead-magnet-card">` com o `ReportEndOfFreeBlock` (já existente) — que mostra "Fim da leitura pública / Há mais por trás deste perfil" e o CTA Premium. Antes da captura de lead, o CTA mantém o copy actual; após `unlocked=true`, evolui para "Desbloquear relatório completo" (i18n já previsto no plano anterior, mantém-se inalterado se já existir; caso contrário fica para outra iteração — não bloqueia esta correção).
-
-5. **Não tocar** em:
-   - `block-config.ts`, `report-block-nav.tsx` (sidebar e tabs já estão corretas)
-   - `report-overview-block.tsx`, `report-diagnostic-block.tsx`
-   - `report-lock-gate.tsx`, `report-end-of-free-block.tsx`
-   - Variantes não-public (`internal_lab`, `pro_preview`) — só o ramo `gated` é alterado
-   - Backend, providers, scoring, pricing, emails, lead-magnet steps
-
-## Resultado esperado
-
-Fluxo público (`/analyze/$username`):
-
-```
-Hero
-└─ Bloco 1 · Visão geral (única vez, completo)
-   └─ Feedback (emojis)
-   └─ Fim da leitura pública (#lead-magnet-card → CTA)
-Methodology
-```
-
-Sidebar: "1 de 6 secções acessíveis", 5 marcadas como "Premium · por desbloquear".
+Em `src/components/product/report-lock-gate.tsx`: condicionar a render da coluna blurred ao facto de existirem `children` (sem children, não desenha o bloco desfocado nem os gradientes — o card de CTA fica isolado). Mantém compatibilidade com qualquer outro chamador que ainda passe children.
 
 ## Validação
 
 - `bunx tsc --noEmit`
-- `bunx vitest run` (se existirem testes a tocar em `report-shell-v2`)
-- Inspecionar `/analyze/frederico.m.carvalho` no preview: confirmar que o Bloco 1 aparece **uma só vez**, que os emojis aparecem no fim do Bloco 1, e que não existe Bloco 2 desfocado no DOM.
+- QA manual no preview `/analyze/frederico.m.carvalho`:
+  1. Sem session unlock: ver Identity Card + lead magnet card; sem feedback emoji; sem CTA Premium; sem blocos 2–6.
+  2. Após submeter o lead no modal: ver Bloco 1 completo + BlockFeedback + “Há mais por trás deste perfil”; sem blocos 2–6.
+  3. `sessionStorage.removeItem("ib_unlock:<id>")` + reload volta ao estado A.
 
-## Checkpoint
+## Fora de âmbito
 
-- ☐ Bloco 1 renderizado uma única vez
-- ☐ Bloco 2 (Diagnóstico Editorial) ausente do corpo no fluxo público
-- ☐ Pedido de avaliação (emojis) visível no fim do Bloco 1
-- ☐ Sidebar mantém "1 de 6 secções acessíveis"
-- ☐ CTA Lead Magnet continua acessível via `#lead-magnet-card`
-- ☐ `tsc --noEmit` verde
+- Sem alterações ao Bloco 1 em si, ao fluxo de captura de lead, ao tracking, à i18n, ou a blocos premium.
+- Sem alterações de schema, copy ou pricing.
