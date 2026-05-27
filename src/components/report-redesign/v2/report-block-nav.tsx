@@ -417,11 +417,15 @@ function SidebarList({
   active,
   variant,
   onAccessibleClick,
+  unlocked = true,
+  onUnlockClick,
 }: {
   items: SidebarItem[];
   active: string | null;
   variant: ReportVariant;
   onAccessibleClick: (id: string) => void;
+  unlocked?: boolean;
+  onUnlockClick?: () => void;
 }) {
   const { t } = useTranslation("report");
   const { snapshotId, handle, variant: trackingVariant } = useReportTracking();
@@ -441,6 +445,27 @@ function SidebarList({
       },
     }).catch(() => {});
     setDialogOpen(true);
+  };
+
+  const focusLeadMagnet = () => {
+    trackEvent({
+      data: {
+        eventType: "unlock_clicked",
+        snapshotId: snapshotId ?? undefined,
+        handle: handle ?? undefined,
+        metadata: {
+          variant: trackingVariant,
+          source_component: "sidebar_continue_free",
+        },
+      },
+    }).catch(() => {});
+    if (typeof document === "undefined") return;
+    const el = document.getElementById("lead-magnet-card");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      onUnlockClick?.();
+    }
   };
 
   if (!isPublic) {
@@ -487,7 +512,11 @@ function SidebarList({
       )}
 
       {premium.length > 0 && (
-        <PremiumBlockCard items={premium} onOpenDialog={openDialog} />
+        unlocked ? (
+          <PremiumBlockCard items={premium} onOpenDialog={openDialog} />
+        ) : (
+          <ContinueReadingCard items={premium} onContinue={focusLeadMagnet} />
+        )
       )}
 
       <PremiumInterestDialog
@@ -504,7 +533,7 @@ function SidebarList({
 
 // ── Desktop sidebar ──────────────────────────────────────────────────
 
-export function ReportBlockSidebar({ variant, features, profile, profiles }: SidebarProps) {
+export function ReportBlockSidebar({ variant, features, profile, profiles, unlocked, onUnlockClick }: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
   const profileList = useMemo(
@@ -541,6 +570,8 @@ export function ReportBlockSidebar({ variant, features, profile, profiles }: Sid
         active={active}
         variant={variant}
         onAccessibleClick={scrollToBlock}
+        unlocked={unlocked}
+        onUnlockClick={onUnlockClick}
       />
     </nav>
   );
@@ -548,7 +579,7 @@ export function ReportBlockSidebar({ variant, features, profile, profiles }: Sid
 
 // ── Mobile bottom tabs + drawer ──────────────────────────────────────
 
-export function ReportBlockTopTabs({ variant, features, profile, profiles }: SidebarProps) {
+export function ReportBlockTopTabs({ variant, features, profile, profiles, unlocked, onUnlockClick }: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
   const profileList = useMemo(
@@ -684,6 +715,11 @@ export function ReportBlockTopTabs({ variant, features, profile, profiles }: Sid
                 onAccessibleClick={(id) => {
                   setSheetOpen(false);
                   setTimeout(() => scrollToBlock(id), 180);
+                }}
+                unlocked={unlocked}
+                onUnlockClick={() => {
+                  setSheetOpen(false);
+                  setTimeout(() => onUnlockClick?.(), 180);
                 }}
               />
             </div>
