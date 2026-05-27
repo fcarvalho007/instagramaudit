@@ -1,59 +1,79 @@
-## Problema
+## Objetivo
 
-Em `/analyze/webhspt`, na secção **Frequência de publicação**, o ratio do calendário aparece como **"12/629 dias"** (publicações / dias). 629 dias é absurdo para uma amostra de 12 posts e nada tem a ver com a janela editorial real.
+Aplicar a estrutura "foot-in-the-door" ao modal de lead magnet conforme os 3 mockups: nome primeiro, 3 perguntas rápidas a meio, **email como último passo**, e ecrã final reposicionado para destacar "grátis agora vs premium depois".
 
-## Causa-raiz
+## Nova ordem dos passos (visível ao utilizador)
 
-Ficheiro: `src/components/report-redesign/v2/overview/frequency-card.tsx` (linhas 383–402).
+| Passo | Conteúdo | Notas-chave |
+|------|----------|--------------|
+| 1/5 | Nome | Subtítulo passa a "Para personalizarmos a leitura." (sem "e te tratarmos pelo nome"). |
+| 2/5 | Relação com o perfil (`profile_ownership`) | Era o passo 3. |
+| 3/5 | Objetivo (`goal`) | Era o passo 4. |
+| 4/5 | Como te descreves (`user_type`) | Era o passo 5. |
+| 5/5 | Email + telemóvel + consentimentos | Era o passo 2. Submissão final. |
 
-1. `cadence.windowDays` vem **0** quando o cálculo de cadência cai em `insufficient` (acontece quando a amostra recente é demasiado fina para 30d/90d e o span ultrapassa 180 dias — exactamente o caso da @webhspt).
-2. Nesse cenário, o fallback do card é:
-   ```ts
-   effectiveWindowDays =
-     cadenceWindowDays > 0
-       ? cadenceWindowDays
-       : calendarDays.length > 0
-         ? calendarDays.length      // ← 629 (span total entre o post mais antigo e o mais recente)
-         : windowDays;
-   ```
-3. `calendarDays` é construído em `buildPostingTimeline` (`snapshot-to-report-data.ts`, linha 463) como **um dia por cada dia entre `minMs` e `maxMs`** dos posts já limpos. Mesmo com pruning de outliers, 12 posts reais podem cobrir 629 dias.
-4. Resultado: o calendário desenha 629 células, o `WeeklySummary` é escondido (`!isInsufficient`), mas a legenda usa `t("frequency.calendar.ratio", { published, total: windowedDays.length })` → **"12/629 dias"**.
+Barra de progresso continua com 5 segmentos; no passo 5 fica completa, reforçando "falta só isto".
 
-Adicionalmente, mostrar um heatmap de 629 dias num cartão pequeno é visualmente inútil e contradiz o subtítulo "Dados recentes insuficientes para medir o ritmo".
+## Ficheiros a tocar
 
-## Correcção (mínima, só frontend)
+1. **`src/i18n/locales/pt/gate.json`** e **`/en/gate.json`** — reescrever blocos `step1…step5`:
+   - `step1.subtitle` → "Para personalizarmos a leitura."
+   - `step2` agora descreve `profile_ownership` (texto actual do antigo step3).
+   - `step3` agora descreve `goal` (texto do antigo step4).
+   - `step4` agora descreve `user_type` (texto do antigo step5).
+   - `step5` (email) novo título: **"Onde queres receber o resumo do relatório?"**, subtítulo: **"Recebe o resumo por email e o acesso à tua conta privada, com todos os relatórios que pedires no futuro."**
+   - Novo `step5.phoneLabel` = "Telemóvel" + `phoneRequiredMark` = "*" + `phoneHint` = "* Ajuda-nos a confirmar o teu acesso, caso o email não chegue."
+   - `unlock.continueLong` ("Abrir relatório →") substituído no passo final por nova chave `unlock.openSummary` = **"Abrir resumo"** (com cadeado, como no mockup).
+   - Blocos `success.*` actualizados: novo eyebrow "ENVIÁMOS PARA {{email}} · GUARDADO NA TUA CONTA", título "Resumo desbloqueado", subtítulo "Já podes consultar a tua leitura gratuita. Fica associada ao teu email para voltares quando quiseres.", secção "DESBLOQUEADO AGORA · GRÁTIS" com chip "Visão Geral completa", e bloco premium com âncoras + lista de 5 secções (Diagnóstico editorial, Desempenho real da tua conta, Análise ao conteúdo, Procura: Google vs Instagram, Comparação com outros perfis). CTA primário "Ver resumo agora", link secundário "Ver opções premium".
+   - Versões EN equivalentes.
 
-Editar `src/components/report-redesign/v2/overview/frequency-card.tsx`:
+2. **`src/components/product/unlock-modal.tsx`**:
+   - Atualizar `STEP_FIELD` para o novo mapeamento:
+     ```ts
+     const STEP_FIELD: Record<2 | 3 | 4, QField> = {
+       2: "profile_ownership",
+       3: "goal",
+       4: "user_type",
+     };
+     ```
+   - `goNext`:
+     - Passo 1 → valida `full_name`.
+     - Passo 2 → valida `profile_ownership`.
+     - Passo 3 → valida `goal` (+ `goal_other_text` se "other").
+     - Passo 4 → valida `user_type` (+ `user_type_other_text` se "other").
+     - Passo 5 → valida `email`, `phone`, `gdpr_consent` e dispara `handleFinalSubmit`.
+   - `StepShellAndForm` renderiza, por passo: `Step1FullName`, `RadioCardField` (ownership), `RadioCardField` (goal), `RadioCardField` (user_type), `Step5EmailPhone` (renomeado a partir de `Step2EmailPhone`).
+   - Botão final: ícone cadeado + texto `t("unlock.openSummary")` em vez de "Continuar →".
+   - **Lookup de email (`/api/public/unlock-check`)** e o estado `"welcome-back"`: o lookup deixa de fazer sentido a meio do funil (email já é o último passo). Remover a chamada no `goNext`; o backend continua a marcar `returning_lead: true` quando aplicável e o ecrã de sucesso adapta-se na mesma. Manter `WelcomeBackState` como componente morto não vale o ruído — eliminamos. `submitMinimal` deixa de ter call-site e é removido.
+   - Atualizar `useStepHeader`: badge "~1 MIN" só no passo 1 (no passo 5 mostramos o badge "último passo" como no mockup; adicionar suporte para um badge alternativo via i18n `step5.badgeLast`).
+   - Telemóvel: `Label` com asterisco a azul + nota `phoneHint` por baixo; **continua opcional na validação** (nudge visual, não bloqueio). Não alterar `unlockFormSchema`.
 
-1. **Clampar a janela do calendário** quando `isInsufficient`:
-   - Definir `INSUFFICIENT_CALENDAR_MAX_DAYS = 90`.
-   - `effectiveWindowDays` passa a ser `min(calendarDays.length, 90)` em vez de `calendarDays.length` no ramo insuficiente.
-   - `windowedDays = calendarDays.slice(-effectiveWindowDays)` mantém-se, mas agora mostra no máximo os últimos 90 dias.
-2. **Esconder o ratio "X/Y dias"** quando `isInsufficient`, porque o denominador é uma janela artificial (90 dias sem posts reais leria "0/90 dias" ou "1/90 dias" — sinal enganador). Substituir, nesse estado, por um texto neutro já existente: a frase do `headline` insuficiente continua a aparecer no topo do cartão.
-3. Quando a cadência **é** suficiente, manter o comportamento actual (já está bem clampado pelo `cadence.windowDays` ≤ 180).
+3. **Novo ecrã de sucesso (`SuccessStep`)** reescrito de raiz no mesmo ficheiro:
+   - Header com check verde discreto + eyebrow "ENVIÁMOS PARA {{email}} · GUARDADO NA TUA CONTA".
+   - Título: "Resumo **desbloqueado**" (verde editorial).
+   - Bloco "DESBLOQUEADO AGORA · GRÁTIS" com chip verde "Visão Geral completa".
+   - Bloco premium (border subtle): eyebrow "O premium ainda acrescenta mais" + 2 âncoras com ícones (Comparação com concorrentes, Posição exata no teu escalão) + separador + eyebrow "ACESSO A MAIS 5 SECÇÕES" + 5 itens com cadeado.
+   - CTA primário: "Ver resumo agora →" (`onClose`).
+   - CTA secundário (link): "Ver opções premium" — leva a `/precos` em nova tab (placeholder mas link real para a página existente).
 
-Nada muda em:
-- `buildPostingTimeline` (continua a expor a timeline crua para outros consumidores)
-- `computeCadence` / lógica de cadência
-- Outros cards do overview
-- i18n strings (apenas deixamos de renderizar o `frequency.calendar.ratio` no estado insuficiente)
-- Backend, snapshots, providers, schema, premium gates
+## Fora do âmbito (não tocar)
+
+- `src/lib/unlock-flow.ts`, `src/lib/unlock.server.ts` e `parseFullName` — a payload submetida no passo final mantém-se idêntica.
+- `report-unlock` e `unlock-check` (endpoints) — não removemos as rotas, apenas deixamos de chamar `unlock-check` neste fluxo (continua disponível para outros consumidores).
+- Schema da BD, premium gates, lógica de pagamento, geração de relatório, emails do Brevo.
 
 ## Validação
 
-- Abrir `/analyze/webhspt` (estado actual: insufficient). Confirmar:
-  - Subtítulo: "Dados recentes insuficientes para medir o ritmo" (já existia)
-  - Calendário com no máximo ~13 semanas (90 dias) em vez de 629 dias
-  - Sem ratio "12/629 dias"
-- Abrir um perfil com cadência saudável (ex.: `/analyze/frederico.m.carvalho`):
-  - Subtítulo "X publicações em Y dias" mantém-se
-  - Ratio "X/Y dias" continua a aparecer normalmente
-- Mobile 390×844: heatmap clampado cabe sem scroll horizontal
-- `bunx tsc --noEmit`
+- Abrir `/analyze/<qualquer-handle>` em desktop e mobile 390×844; passar pelos 5 passos pela nova ordem.
+- Confirmar copy exacta dos 3 mockups (passos 1, 5 e ecrã de sucesso).
+- Confirmar que telemóvel é opcional na submissão (deixar vazio → submit deve passar).
+- Confirmar que `marketing_consent` desmarcado continua a permitir submit.
+- Returning lead: voltar a submeter com o mesmo email — sucesso aparece na mesma; sem `welcome-back` flow.
+- `bunx tsc --noEmit` ✅
+- `bunx vitest run` ✅ (não devem ser tocados testes existentes).
 
-## Output esperado da implementação
+## Output esperado
 
-- Ficheiros alterados: `src/components/report-redesign/v2/overview/frequency-card.tsx`
-- Causa-raiz documentada: `effectiveWindowDays` caía para `calendarDays.length` (span total) quando a cadência era insuficiente
-- Confirmação visual em `/analyze/webhspt` de que o ratio anómalo desaparece e o heatmap fica limitado a 90 dias
-- Resultado de `tsc`
+- Ficheiros alterados: `gate.json` (pt/en), `unlock-modal.tsx`.
+- Nova ordem confirmada em screenshot.
+- `tsc` + testes verdes.
