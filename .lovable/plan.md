@@ -1,65 +1,92 @@
-# Plano — Seletor de idioma no header + deteção automática
+# Plano — Auditoria + refinamentos do fluxo lead magnet (nome, telefone, Brevo)
 
-## Objetivo
+## Resumo da auditoria (sem alterar nada ainda)
 
-Tornar a troca PT/EN acessível diretamente no topo (desktop + mobile), mantendo o seletor no footer, e refinar a deteção inicial de idioma com fallback por timezone.
+### 1. Email safety — ✅ já garantido
+`sendLeadMagnetSequence` (`src/lib/email/lead-magnet-sequence.server.ts`) é totalmente independente de phone, `marketing_consent` e de `BREVO_NAME_PHONE_ATTRS_ENABLED`. Só `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED=false` bloqueia. `marketing_consent` apenas enriquece metadata. Os emails `welcome-beta` e `report-summary` são enviados qualquer que seja o estado do telefone. Nenhuma alteração necessária — apenas adicionar testes que congelem este comportamento.
+
+### 2. Personalização por primeiro nome — ✅ já garantido
+`deriveFirstName` em `src/lib/unlock.server.ts` (linhas 116-124) usa `first_name` direto se existir, senão `parseFullName(full_name).first_name`. `sendLeadMagnetSequence` recebe `firstName` (não `fullName`). `parseFullName` em `src/lib/names/parse-full-name.ts` já trata "Ana Marques" → "Ana", "Ana Rita Marques Silva" → "Ana", "Élia" → "Élia". Tests já existem em `src/lib/names/__tests__/parse-full-name.test.ts`. Sem alterações.
+
+### 3. Normalização de telefone — ❌ a corrigir
+`normalizePhone` em `src/lib/unlock.server.ts` (linhas 105-114) é mínimo: só mantém `+` e dígitos. Casos PT atuais:
+- "912345678" → `"912345678"` (sem `+`) → Brevo skip `PHONE_NOT_E164`
+- "912 345 678" → `"912345678"` → idem
+- "00351912345678" → `"00351912345678"` → idem (`00` não convertido para `+`)
+- "+351912345678" → `"+351912345678"` ✅
+
+**Ação**: extrair `normalizePhone` para `src/lib/phone/normalize-pt.ts` com regras seguras para PT móvel + mantendo passthrough internacional:
+- Se já começa por `+`: manter apenas `+` + dígitos.
+- Se começa por `00`: substituir `00` por `+`.
+- Se 9 dígitos e começa por `9` (móvel PT): prefixar `+351`.
+- Se 12 dígitos e começa por `351`: prefixar `+`.
+- Restantes casos: devolver `null` (e o sync Brevo logará `PHONE_NOT_E164` — já acontece).
+
+Substituir o uso em `unlock.server.ts` (2 call-sites) pelo novo helper. Nunca rejeita o lead.
+
+### 4. Mapeamento Brevo — ⚠️ ajuste menor
+`src/lib/brevo/sync.server.ts` já:
+- envia `FIRSTNAME`/`LASTNAME` quando `BREVO_NAME_PHONE_ATTRS_ENABLED=true` e nome existe;
+- envia `SMS` só com E.164 (começa por `+`);
+- regista `name_attrs_sent` e `sms_sent` no evento `brevo_contact_synced`;
+- regista evento `brevo_contact_sync_skipped` com `skipped_field: "phone"` + `reason: "PHONE_NOT_E164"` quando aplicável (não armazena telefone em bruto — ✅);
+- continua a sincronizar o contacto mesmo quando o SMS é saltado.
+
+**Ação mínima**: também adicionar `sms_skipped_reason` no metadata do evento `brevo_contact_synced` para auditoria num único evento (pedido pelo utilizador). Sem mudanças de schema. Continua a não guardar telefone em bruto em `product_events`.
+
+### 5. Admin — ✅ já garantido
+`src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` já mostra `lead.phone` com link `tel:` quando presente. `product_events` regista apenas `phone_provided: boolean` (linha 483 `unlock.server.ts`) e `skipped_field/reason` no skip event — nunca o número em bruto. Sem alterações.
+
+### 6. Testes a adicionar/atualizar
+
+**Novo**: `src/lib/phone/__tests__/normalize-pt.test.ts`
+- "912345678" → "+351912345678"
+- "912 345 678" → "+351912345678"
+- "+351912345678" → "+351912345678"
+- "00351912345678" → "+351912345678"
+- "351912345678" → "+351912345678"
+- "+44 7700 900000" (UK) → "+447700900000"
+- inputs vazios/curtos → null
+- nunca lança
+
+**Atualizar**: `src/lib/brevo/__tests__/sync.test.ts`
+- adicionar caso com `BREVO_NAME_PHONE_ATTRS_ENABLED=true`, nome "Ana Rita Marques" e `phone_normalized="+351912345678"` → atributos incluem `FIRSTNAME:"Ana"`, `LASTNAME:"Rita Marques"`, `SMS:"+351912345678"`; metadata do success event tem `name_attrs_sent:true` e `sms_sent:true`.
+- caso com flag ON e telefone inválido (`"912345678"` sem `+`) → contacto sincronizado, sem `SMS` no payload, evento `brevo_contact_sync_skipped` emitido com `reason:"PHONE_NOT_E164"`, success event tem `sms_sent:false` e `sms_skipped_reason:"PHONE_NOT_E164"`.
+- caso com flag OFF → nem `FIRSTNAME`/`LASTNAME`/`SMS` no payload (regression).
+
+**Atualizar**: `src/lib/email/__tests__/lead-magnet-sequence.test.ts`
+- caso explícito a chamar `sendLeadMagnetSequence` com `firstName: "Ana"` (e nada relacionado com phone) → `sendWelcomeBetaEmail` e `sendReportSummaryEmail` recebem `firstName: "Ana"`; nenhum dos mocks recebe `phone`/`fullName`. Garante que a sequência ignora telefone.
+- caso com `marketing_consent=false` → ambos emails enviados (já está coberto indiretamente; tornar explícito).
 
 ## Ficheiros a alterar
 
-1. **`src/components/layout/header.tsx`**
-   - Desktop: inserir `<LanguageSwitcher variant="compact" />` no cluster da direita, entre o botão de tema (Moon) e o botão "Entrar". Visível em `sm:` para cima; em ecrãs muito estreitos fica no drawer.
-   - Mobile drawer: já contém o `LanguageSwitcher variant="full"` (linha 202–207) — mantido sem alterações.
-
-2. **`src/components/layout/language-switcher.tsx`**
-   - Manter a API atual (`compact` / `full`).
-   - Acrescentar bandeira emoji (🇵🇹 / 🇬🇧) antes do código no trigger `compact` e antes do nome no menu, sem aumentar significativamente a largura.
-   - `aria-label` já existe (`t("aria.language")` → "Mudar idioma"/"Change language"). Confirmar foco visível (já vem do `Button ghost`).
-
-3. **`src/hooks/use-language.ts`**
-   - Refinar a lógica pós-mount (já corre só no cliente, evita hydration mismatch) com a prioridade pedida:
-     1. `localStorage[LANG_STORAGE_KEY]` se válido (`pt`|`en`).
-     2. `navigator.language` → começa por `pt` ⇒ `pt`; por `en` ⇒ `en`.
-     3. Fallback fraco: `Intl.DateTimeFormat().resolvedOptions().timeZone === "Europe/Lisbon"` ⇒ `pt`.
-     4. Default `pt` (já é o init do i18n; não força mudança).
-   - Continua a NÃO chamar nenhuma API externa nem geolocalização por IP.
-   - `setLanguage` mantém: `i18n.changeLanguage` + `localStorage.setItem` + `document.documentElement.lang` (já feito num `useEffect` separado).
-
-4. **`src/i18n/locales/pt/header.json`** e **`src/i18n/locales/en/header.json`**
-   - Já contêm `aria.language`, `language.label`, `language.pt`, `language.en`. Sem alterações de copy necessárias (os requisitos do prompt já estão satisfeitos: "Português"/"Inglês"/"Alterar idioma" e equivalentes EN). Nada a fazer aqui.
+1. **Novo** `src/lib/phone/normalize-pt.ts` — função `normalizePhonePT(raw)` pura.
+2. **Novo** `src/lib/phone/__tests__/normalize-pt.test.ts`.
+3. **Editar** `src/lib/unlock.server.ts` — substituir `normalizePhone` local pelo helper novo; manter assinatura (`string | null`).
+4. **Editar** `src/lib/brevo/sync.server.ts` — adicionar `sms_skipped_reason` ao metadata do evento `brevo_contact_synced` quando aplicável.
+5. **Editar** `src/lib/brevo/__tests__/sync.test.ts` — 3 casos novos.
+6. **Editar** `src/lib/email/__tests__/lead-magnet-sequence.test.ts` — 2 asserts adicionais sobre `firstName` e independência de phone.
 
 ## Ficheiros NÃO alterados
 
-- `src/components/layout/footer.tsx` (mantém o seletor secundário).
-- `src/i18n/index.ts` (init síncrono em `pt` mantém-se — crítico para SSR/hidratação).
-- Qualquer ficheiro de relatórios, pricing, backend, providers, lead magnet, emails ou schema.
-
-## Comportamento de deteção
-
-- SSR e primeiro render do cliente: sempre `pt` (igual ao atual → sem hydration mismatch).
-- Após mount, `useLanguage` aplica a prioridade acima e chama `i18n.changeLanguage` apenas se o resultado for diferente do atual.
-- Sem bloqueio de render; sem chamadas de rede.
-
-## UI desktop (cluster direito do header)
-
-```text
-[Moon] [🇵🇹 PT ▾] [Entrar] [Analisar agora →] [≡ mobile]
-```
-
-- `compact` usa `Button ghost size="sm"`, mantém densidade do header.
-- `hidden sm:inline-flex` para não competir com o hamburger em ecrãs muito estreitos (no drawer já existe).
+- Schema da BD, `leads` table, `product_events` shape.
+- Pricing, premium gates, geração de relatório.
+- Providers (Apify/OpenAI/DataForSEO).
+- Sender real de emails (mocks nos testes; não se envia nada real).
+- `parseFullName`, `deriveFirstName`, modais e UI do lead magnet.
 
 ## Validação
 
-- `bunx tsc --noEmit`.
-- `bunx vitest run` (não há testes específicos de language switcher; correr para garantir que nada quebra).
-- Smoke manual: trocar idioma no header desktop, verificar persistência após reload; abrir drawer mobile e confirmar seletor; confirmar que footer continua a funcionar; verificar consola sem warnings de hidratação.
+- `bunx tsc --noEmit`
+- `bunx vitest run` (com foco em `src/lib/phone`, `src/lib/brevo`, `src/lib/email`, `src/lib/names`)
 
 ## Checkpoint
 
-- ☐ Header desktop mostra seletor 🇵🇹 PT / 🇬🇧 EN entre tema e "Entrar"
-- ☐ Drawer mobile continua a expor o seletor (sem necessidade de footer)
-- ☐ Footer mantém seletor
-- ☐ Prioridade de deteção: localStorage → navigator.language → timezone Europe/Lisbon → pt
-- ☐ Sem IP geolocation, sem chamadas externas
-- ☐ Sem hydration warnings
+- ☐ Helper PT criado e testado (4+ casos)
+- ☐ `unlock.server.ts` usa o novo helper, sem mudança de comportamento internacional
+- ☐ Brevo sync: `sms_skipped_reason` presente no `brevo_contact_synced` quando aplicável
+- ☐ Sync continua mesmo com telefone inválido (SMS apenas é saltado)
+- ☐ Testes provam: emails enviados com phone vazio / inválido / consent OFF / flag ON ou OFF
+- ☐ Testes provam: emails usam só `first_name`
+- ☐ `product_events` continua sem telefone em bruto
 - ☐ `tsc` e `vitest` verdes

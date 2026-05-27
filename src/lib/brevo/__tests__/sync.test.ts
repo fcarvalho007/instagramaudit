@@ -71,6 +71,7 @@ beforeEach(() => {
   mockRecord.mockReset();
   fromMock.mockReset();
   leadsSelectSpy.mockReset();
+  delete process.env.BREVO_NAME_PHONE_ATTRS_ENABLED;
 });
 
 afterEach(() => {
@@ -202,5 +203,104 @@ describe("syncLeadToBrevo", () => {
     const out = await syncLeadToBrevo("lead-3", "report_unlock");
     expect(out.ok).toBe(false);
     if (!out.ok) expect(out.reason).toContain("SYNC_UNEXPECTED");
+  });
+
+  describe("BREVO_NAME_PHONE_ATTRS_ENABLED", () => {
+    it("sends FIRSTNAME/LASTNAME/SMS when flag is ON and phone is E.164", async () => {
+      process.env.BREVO_NAME_PHONE_ATTRS_ENABLED = "true";
+      setupSupabase({
+        lead: {
+          id: "lead-pn",
+          email: "ana@example.com",
+          name: "Ana Rita Marques",
+          phone: "+351912345678",
+          phone_normalized: "+351912345678",
+          marketing_consent: true,
+        },
+        latestRR: null,
+        count: 0,
+      });
+      mockUpsert.mockResolvedValue({ ok: true, brevoId: 11, status: 201 });
+
+      const out = await syncLeadToBrevo("lead-pn", "report_unlock");
+      expect(out.ok).toBe(true);
+      const payload = mockUpsert.mock.calls[0][0];
+      expect(payload.attributes.FIRSTNAME).toBe("Ana");
+      expect(payload.attributes.LASTNAME).toBe("Rita Marques");
+      expect(payload.attributes.SMS).toBe("+351912345678");
+
+      const successEvt = mockRecord.mock.calls.find(
+        (c) => c[0].eventType === "brevo_contact_synced",
+      )?.[0];
+      expect(successEvt?.metadata.name_attrs_sent).toBe(true);
+      expect(successEvt?.metadata.sms_sent).toBe(true);
+      expect(successEvt?.metadata.sms_skipped_reason).toBeUndefined();
+    });
+
+    it("syncs contact without SMS and logs sms_skipped_reason when phone is not E.164", async () => {
+      process.env.BREVO_NAME_PHONE_ATTRS_ENABLED = "true";
+      setupSupabase({
+        lead: {
+          id: "lead-bad-phone",
+          email: "bad@example.com",
+          name: "Ana",
+          phone: "912345678",
+          phone_normalized: "912345678",
+          marketing_consent: false,
+        },
+        latestRR: null,
+        count: 0,
+      });
+      mockUpsert.mockResolvedValue({ ok: true, brevoId: 12, status: 201 });
+
+      const out = await syncLeadToBrevo("lead-bad-phone", "report_unlock");
+      expect(out.ok).toBe(true);
+      const payload = mockUpsert.mock.calls[0][0];
+      expect(payload.attributes.SMS).toBeUndefined();
+      expect(payload.attributes.FIRSTNAME).toBe("Ana");
+
+      const skippedEvt = mockRecord.mock.calls.find(
+        (c) => c[0].eventType === "brevo_contact_sync_skipped",
+      )?.[0];
+      expect(skippedEvt?.metadata.skipped_field).toBe("phone");
+      expect(skippedEvt?.metadata.reason).toBe("PHONE_NOT_E164");
+      // Must NOT store the raw phone in product_events.
+      expect(JSON.stringify(skippedEvt?.metadata)).not.toContain("912345678");
+
+      const successEvt = mockRecord.mock.calls.find(
+        (c) => c[0].eventType === "brevo_contact_synced",
+      )?.[0];
+      expect(successEvt?.metadata.sms_sent).toBe(false);
+      expect(successEvt?.metadata.sms_skipped_reason).toBe("PHONE_NOT_E164");
+    });
+
+    it("does NOT send FIRSTNAME/LASTNAME/SMS when flag is OFF", async () => {
+      // flag defaults to OFF (deleted in beforeEach).
+      setupSupabase({
+        lead: {
+          id: "lead-off",
+          email: "off@example.com",
+          name: "Ana Marques",
+          phone: "+351912345678",
+          phone_normalized: "+351912345678",
+          marketing_consent: true,
+        },
+        latestRR: null,
+        count: 0,
+      });
+      mockUpsert.mockResolvedValue({ ok: true, brevoId: 13, status: 201 });
+
+      await syncLeadToBrevo("lead-off", "report_unlock");
+      const payload = mockUpsert.mock.calls[0][0];
+      expect(payload.attributes.FIRSTNAME).toBeUndefined();
+      expect(payload.attributes.LASTNAME).toBeUndefined();
+      expect(payload.attributes.SMS).toBeUndefined();
+
+      const successEvt = mockRecord.mock.calls.find(
+        (c) => c[0].eventType === "brevo_contact_synced",
+      )?.[0];
+      expect(successEvt?.metadata.name_attrs_sent).toBe(false);
+      expect(successEvt?.metadata.sms_sent).toBe(false);
+    });
   });
 });

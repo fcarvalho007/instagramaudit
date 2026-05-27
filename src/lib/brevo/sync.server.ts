@@ -237,6 +237,9 @@ export async function syncLeadToBrevo(
           marketing_consent: marketingConsent,
           sms_sent: !!phoneE164,
           name_attrs_sent: !!parsedName,
+          ...(phoneSkippedReason
+            ? { sms_skipped_reason: phoneSkippedReason }
+            : {}),
         },
       });
     } catch (eventErr) {
