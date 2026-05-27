@@ -530,6 +530,19 @@
       "cta": "Ver opções de acesso",
       "cta_aria": "Ver opções de acesso premium",
       "trust": "1 relatório ou pack de 5. Sem subscrição."
+    },
+    "access_locked": {
+      "cta": "Continuar leitura gratuita",
+      "cta_aria": "Continuar leitura gratuita",
+      "trust": "Desbloqueia o diagnóstico gratuito antes das secções premium."
+    },
+    "lead_magnet": {
+      "eyebrow": "Continuação gratuita",
+      "transition": "Esta é apenas a primeira leitura. Continua para ver o diagnóstico gratuito com mais contexto sobre este perfil.",
+      "title": "Continua a leitura gratuita do relatório",
+      "body": "Indica o nome e email e responde a 3 perguntas rápidas para abrir o diagnóstico gratuito.",
+      "cta": "Ver relatório gratuito",
+      "cta_aria": "Ver relatório gratuito"
     }
   },
   "shell": {
