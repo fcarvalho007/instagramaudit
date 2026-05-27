@@ -24,7 +24,7 @@
     "competitor1Aria": "Username do primeiro concorrente",
     "competitor2Placeholder": "@concorrente 2 (opcional)",
     "competitor2Aria": "Username do segundo concorrente",
-    "personalHint": "Funciona melhor com perfis públicos Creator ou Empresa. Alguns perfis pessoais podem não devolver publicações suficientes para análise.",
+    "personalHint": "Funciona melhor com perfis públicos Creator/Empresa. Alguns perfis pessoais podem não devolver publicações suficientes para análise.",
     "errors": {
       "empty": "Inserir um username válido para continuar",
       "invalid": "Insere um perfil público do Instagram, por exemplo @marca ou instagram.com/marca.",

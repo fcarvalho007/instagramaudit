@@ -24,7 +24,7 @@
     "competitor1Aria": "First competitor username",
     "competitor2Placeholder": "@competitor 2 (optional)",
     "competitor2Aria": "Second competitor username",
-    "personalHint": "Works best with public Creator or Business profiles. Some personal profiles may not return enough posts for analysis.",
+    "personalHint": "Works best with public Creator/Business profiles. Some personal profiles may not return enough posts for analysis.",
     "errors": {
       "empty": "Enter a valid username to continue",
       "invalid": "Enter a public Instagram profile, e.g. @brand or instagram.com/brand.",
