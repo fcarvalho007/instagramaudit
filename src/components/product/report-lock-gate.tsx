@@ -57,6 +57,16 @@ export function ReportLockGate({
         className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-surface-base via-surface-base/70 to-transparent"
       />
 
+      {/* Contrast veil over blurred content — gives the CTA something to land on */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-surface-base/40 via-surface-muted/55 to-surface-base/80"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_28%,color-mix(in_oklab,var(--accent-primary)_8%,transparent),transparent_55%)]"
+      />
+
       {/* CTA overlay */}
       <div className="pointer-events-none absolute inset-0 flex justify-center">
         <div
@@ -64,7 +74,7 @@ export function ReportLockGate({
           aria-label={t("lockGate.ariaRegion")}
           className={cn(
             "pointer-events-auto sticky self-start",
-            "top-20 mt-10 md:mt-14",
+            "top-4 md:top-6 mt-2 md:mt-4",
             "w-[calc(100%-32px)] max-w-lg",
             "relative isolate",
             "rounded-2xl border border-border-default bg-surface-card/95 backdrop-blur-xl",
@@ -73,20 +83,29 @@ export function ReportLockGate({
             "animate-in fade-in slide-in-from-bottom-2 duration-500",
           )}
         >
+          {/* Decorative "document stack" behind the card — md+ only */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 -z-10 hidden md:block"
+          >
+            <div className="absolute inset-0 translate-x-2.5 translate-y-2 -rotate-[2deg] rounded-2xl border border-border-default/70 bg-surface-muted shadow-[0_18px_40px_-22px_rgba(15,23,42,0.18)]" />
+            <div className="absolute inset-0 -translate-x-2 translate-y-1 rotate-[1.2deg] rounded-2xl border border-border-default/80 bg-surface-card shadow-[0_22px_50px_-24px_rgba(15,23,42,0.22)]" />
+          </div>
+
+          {/* Spine — left edge accent, evokes a dossier */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute left-0 top-3 bottom-3 w-1 rounded-l-2xl bg-gradient-to-b from-accent-primary/70 via-accent-primary/35 to-transparent"
+          />
+
           {/* Prismatic halo (decorative, behind the card) */}
           <div
             aria-hidden="true"
             className="pointer-events-none absolute -inset-10 -z-10 overflow-hidden rounded-[2rem]"
           >
-            <div className="absolute -top-10 -left-10 size-[320px] rounded-full blur-3xl opacity-60 bg-[radial-gradient(circle_at_30%_30%,color-mix(in_oklab,var(--accent-primary)_22%,transparent),transparent_70%)]" />
-            <div className="absolute -bottom-12 -right-8 size-[280px] rounded-full blur-3xl opacity-50 bg-[radial-gradient(circle_at_70%_70%,color-mix(in_oklab,var(--accent-secondary)_20%,transparent),transparent_70%)]" />
+            <div className="absolute -top-10 -left-10 size-[320px] rounded-full blur-3xl opacity-35 bg-[radial-gradient(circle_at_30%_30%,color-mix(in_oklab,var(--accent-primary)_22%,transparent),transparent_70%)]" />
+            <div className="absolute -bottom-12 -right-8 size-[280px] rounded-full blur-3xl opacity-30 bg-[radial-gradient(circle_at_70%_70%,color-mix(in_oklab,var(--accent-secondary)_20%,transparent),transparent_70%)]" />
           </div>
-
-          {/* Prism chip — decorative glass motif */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -top-3 -right-3 size-14 rounded-2xl bg-prism-chip rotate-[12deg] shadow-[0_8px_20px_-8px_color-mix(in_oklab,var(--accent-primary)_40%,transparent)] ring-1 ring-white/60"
-          />
 
           {/* Badge */}
           <span
