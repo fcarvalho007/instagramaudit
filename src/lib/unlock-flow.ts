@@ -83,11 +83,19 @@ export const PRICING_PREFERENCE_LABELS: Record<PricingPreference, string> = {
 
 export const unlockFormSchema = z
   .object({
-    // Optional in the schema (back-compat with server endpoint that takes a
-    // single `name`); the modal enforces non-empty values in step 1.
-    first_name: z.string().trim().max(60).optional(),
-    last_name: z.string().trim().max(60).optional(),
+    // Single "Primeiro e último nome" field — parsed into first/last via
+    // `parseFullName` before submission. Min 2 chars after trim; does NOT
+    // require two words (some users only enter a single name).
+    full_name: z
+      .string()
+      .trim()
+      .min(2, "Indica o teu nome (mínimo 2 caracteres)")
+      .max(120, "Nome demasiado longo")
+      .regex(/\S/, "Indica o teu nome"),
     email: z.string().trim().toLowerCase().email("Email inválido").max(255),
+    // Optional mobile phone — used only in exceptional cases (account /
+    // report-access validation). Not required to reduce friction at magnet.
+    phone: z.string().trim().max(40).optional(),
     profile_ownership: z.enum(PROFILE_OWNERSHIPS, {
       required_error: "Escolhe uma opção",
     }),
