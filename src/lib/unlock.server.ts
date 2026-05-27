@@ -14,6 +14,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { recordProductEvent } from "@/lib/tracking.server";
 import { ensureReportSnapshotForRequest } from "@/lib/report-snapshots/persist-report-snapshot.server";
 import { parseFullName } from "@/lib/names/parse-full-name";
+import { normalizePhonePT } from "@/lib/phone/normalize-pt";
 
 export const PROFILE_OWNERSHIPS = [
   "own_profile",
@@ -96,21 +97,12 @@ function maskEmail(email: string): string {
 }
 
 /**
- * Minimal phone normaliser — keeps a leading `+` and digits only.
- * Returns null when the result is empty or too short to be useful.
- * No libphonenumber dependency; we store the raw value in `leads.phone`
- * for CRM display and the cleaned value in `leads.phone_normalized` for
- * future dedup/match.
+ * Phone normaliser used when persisting/updating leads. PT-biased with a
+ * safe international passthrough — see `normalizePhonePT` for the rules.
+ * Phone remains optional; a null result never blocks the lead.
  */
 function normalizePhone(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  const hasPlus = trimmed.startsWith("+");
-  const digits = trimmed.replace(/[^\d]/g, "");
-  if (!digits) return null;
-  const out = hasPlus ? `+${digits}` : digits;
-  return out.length >= 4 ? out : null;
+  return normalizePhonePT(raw);
 }
 
 function deriveFirstName(data: {
