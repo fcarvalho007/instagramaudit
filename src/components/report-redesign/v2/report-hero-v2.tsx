@@ -41,6 +41,9 @@ export function ReportHeroV2({
   const enriched: ReportEnriched = result.enriched;
 
   const handle = `@${profile.username}`;
+  // Insert zero-width space after each "." so long handles wrap at dot
+  // boundaries instead of mid-word on narrow mobile viewports.
+  const handleWrappable = handle.replace(/\./g, ".\u200B");
   const fullName = profile.fullName?.trim() || "";
   const avatarUrl = enriched.profile.avatarUrl;
   const verified = Boolean(profile.verified);
@@ -75,8 +78,8 @@ export function ReportHeroV2({
                 t={t}
               />
               <div className="min-w-0 flex-1 space-y-1">
-                <h1 className="font-display text-[1.5rem] sm:text-[1.75rem] lg:text-[2.25rem] font-bold tracking-[-0.03em] text-content-primary leading-[1.1] break-all sm:break-words">
-                  {handle}
+                <h1 className="font-display text-[1.25rem] sm:text-[1.75rem] lg:text-[2.25rem] font-bold tracking-[-0.03em] text-content-primary leading-[1.1] [overflow-wrap:anywhere] min-w-0">
+                  {handleWrappable}
                 </h1>
                 {fullName && (
                   <p className="text-[15px] font-medium text-content-secondary leading-snug">
