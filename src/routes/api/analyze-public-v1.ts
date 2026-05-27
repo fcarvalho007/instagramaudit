@@ -117,6 +117,8 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
     "A análise automática está em validação. Para já, este teste está limitado aos perfis definidos.",
   PROFILE_PRIVATE:
     "Perfil privado. A análise pública só funciona com perfis abertos.",
+  PROFILE_PERSONAL_NO_FEED:
+    "Este perfil é público mas é uma conta pessoal. A análise automática só funciona com contas profissionais — Creator ou Empresa. Pedir ao dono do perfil para mudar em Definições → Conta → Mudar para conta profissional.",
   PROVIDER_DISABLED:
     "A análise automática ainda não está ativa. O sistema está preparado, mas a ligação ao fornecedor de dados está desligada.",
   BUDGET_EXCEEDED:
@@ -137,6 +139,7 @@ const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
   PROFILE_NOT_FOUND: 404,
   PROFILE_NOT_ALLOWED: 403,
   PROFILE_PRIVATE: 404,
+  PROFILE_PERSONAL_NO_FEED: 422,
   PROVIDER_DISABLED: 503,
   BUDGET_EXCEEDED: 503,
   RATE_LIMITED: 429,
@@ -563,6 +566,62 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           for (const c of allowedCompetitors) competitors.push(c);
         }
 
+        // 2b) Negative-cache short-circuit. If this handle was classified as
+        // PROFILE_PERSONAL_NO_FEED or PROFILE_PRIVATE within the past 24h,
+        // do NOT burn another Apify call — replay the same error so retries
+        // are cheap and the user-facing message stays consistent. This is a
+        // direct response to a real incident where one handle triggered 6
+        // back-to-back Apify runs in ~3h. `analysis_events` is the source of
+        // truth (no extra table needed).
+        if (!forceRefresh) {
+          try {
+            const { data: recentNegative } = await supabaseAdmin
+              .from("analysis_events")
+              .select("error_code")
+              .eq("handle", primary)
+              .eq("network", "instagram")
+              .in("error_code", [
+                "PROFILE_PERSONAL_NO_FEED",
+                "PROFILE_PRIVATE",
+              ])
+              .gte(
+                "created_at",
+                new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+              )
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            const cachedCode = recentNegative?.error_code as
+              | "PROFILE_PERSONAL_NO_FEED"
+              | "PROFILE_PRIVATE"
+              | undefined;
+            if (cachedCode) {
+              console.info(
+                "[analyze-public-v1] negative-cache hit — skipping Apify",
+                primary,
+                cachedCode,
+              );
+              await logEvent({
+                handle: primary,
+                competitorHandles: competitors,
+                cacheKey,
+                dataSource: "cache",
+                outcome: "not_found",
+                errorCode: cachedCode,
+                estimatedCostUsd: 0,
+              });
+              return failure(cachedCode);
+            }
+          } catch (err) {
+            // Negative cache is an optimization — never block the request.
+            console.warn(
+              "[analyze-public-v1] negative-cache lookup failed",
+              err,
+            );
+          }
+        }
+
         // 3) Hard kill-switch. After the cache lookup so cached snapshots
         // remain serveable, before any provider call so disabled mode never
         // burns Apify credits. Stale fallback below is also bypassed because
@@ -730,24 +789,19 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             return failure("PROFILE_NOT_FOUND");
           }
 
-          // Private profile: Apify returns the profile shell but no posts and
-          // marks `is_private`/`private` true. Treat as a distinct UX case.
+          // Classify the empty-feed case. Apify returns the profile shell but
+          // distinguishing between three real-world scenarios matters for UX:
+          //
+          //   1) Truly private account            → PROFILE_PRIVATE
+          //   2) Public PERSONAL (non-business)   → PROFILE_PERSONAL_NO_FEED
+          //      The `apify/instagram-scraper` actor reliably reads the public
+          //      feed of Creator/Business accounts but returns 0 posts for
+          //      personal accounts even when they are technically public,
+          //      because the underlying public endpoint is gated to
+          //      professional profiles. Showing "private" here is wrong and
+          //      frustrates users — see brunoremribeiro (May 2026).
+          //   3) Empty / brand-new public account → PROFILE_PRIVATE (fallback)
           const rawPrimary = primaryRow as Record<string, unknown>;
-          const isPrivate =
-            rawPrimary?.is_private === true || rawPrimary?.private === true;
-          if (isPrivate) {
-            await logEvent({
-              handle: primary,
-              competitorHandles: competitors,
-              cacheKey,
-              dataSource: "fresh",
-              outcome: "not_found",
-              errorCode: "PROFILE_PRIVATE",
-              providerCallLogId: providerCallIds[0] ?? null,
-            });
-            return failure("PROFILE_PRIVATE");
-          }
-
           const primaryPosts = Array.isArray(
             (primaryRow as { latestPosts?: unknown }).latestPosts,
           )
@@ -756,6 +810,33 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 unknown
               >[])
             : [];
+          const isPrivateFlag =
+            rawPrimary?.is_private === true || rawPrimary?.private === true;
+          const profilePostsCount = primaryProfile.posts_count ?? 0;
+          const isProfessional = primaryProfile.is_business;
+
+          if (primaryPosts.length === 0) {
+            // Personal-account heuristic: profile claims posts in its public
+            // shell (`postsCount > 0`) but the scraper returned none, AND the
+            // account is not flagged as business/creator → almost certainly a
+            // personal account whose feed the public endpoint cannot enumerate.
+            const looksPersonalNoFeed =
+              !isPrivateFlag && !isProfessional && profilePostsCount > 0;
+
+            const errorCode: "PROFILE_PERSONAL_NO_FEED" | "PROFILE_PRIVATE" =
+              looksPersonalNoFeed ? "PROFILE_PERSONAL_NO_FEED" : "PROFILE_PRIVATE";
+
+            await logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey,
+              dataSource: "fresh",
+              outcome: "not_found",
+              errorCode,
+              providerCallLogId: providerCallIds[0] ?? null,
+            });
+            return failure(errorCode);
+          }
           const primarySummary = computeContentSummary(
             primaryPosts,
             primaryProfile.followers_count,

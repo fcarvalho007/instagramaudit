@@ -3,6 +3,7 @@
   "PROFILE_NOT_FOUND": "We couldn't find this profile on Instagram.",
   "PROFILE_NOT_ALLOWED": "Public mode is not active for this profile yet.",
   "PROFILE_PRIVATE": "This profile appears to be private.",
+  "PROFILE_PERSONAL_NO_FEED": "This profile is public but it's a personal account. Automatic analysis only works with professional accounts — Creator or Business. Ask the profile owner to switch under Settings → Account → Switch to professional account.",
   "PROVIDER_DISABLED": "Automatic analysis is temporarily turned off.",
   "BUDGET_EXCEEDED": "Today's free analyses have reached the limit.",
   "RATE_LIMITED": "Too many analyses were made. Please try again later.",
