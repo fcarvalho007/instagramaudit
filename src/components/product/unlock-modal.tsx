@@ -11,6 +11,9 @@ import {
   Loader2,
   Lock,
   Search,
+  Sparkles,
+  Trophy,
+  Users,
   Star,
   User,
 } from "lucide-react";
@@ -38,12 +41,18 @@ import {
   type UnlockFormValues,
   type UserType,
 } from "@/lib/unlock-flow";
-import { trackEvent } from "@/lib/tracking.functions";
 import { parseFullName } from "@/lib/names/parse-full-name";
 
 const TOTAL_STEPS = 5;
 
-const UNLOCKED_ITEM_KEYS = ["overview", "diagnosis", "performance"] as const;
+const PREMIUM_ANCHOR_KEYS = ["compare", "rank"] as const;
+const MORE_SECTION_KEYS = [
+  "diagnosis",
+  "performance",
+  "content",
+  "search",
+  "compare",
+] as const;
 
 type IconCmp = typeof User;
 
@@ -91,10 +100,10 @@ function extractServerError(
 }
 
 type QField = "profile_ownership" | "goal" | "user_type";
-const STEP_FIELD: Record<3 | 4 | 5, QField> = {
-  3: "profile_ownership",
-  4: "goal",
-  5: "user_type",
+const STEP_FIELD: Record<2 | 3 | 4, QField> = {
+  2: "profile_ownership",
+  3: "goal",
+  4: "user_type",
 };
 
 export interface UnlockResult {
@@ -112,13 +121,18 @@ export interface UnlockModalProps {
   onUnlock: (result: UnlockResult) => void;
 }
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6 | "welcome-back";
+type Step = 1 | 2 | 3 | 4 | 5 | 6;
 
 function useStepHeader(step: 1 | 2 | 3 | 4 | 5) {
   const { t } = useTranslation("gate");
   const eyebrow = t(`unlock.step${step}.eyebrow`);
   const subtitle = t(`unlock.step${step}.subtitle`);
-  const badge = step === 1 || step === 2 ? t("unlock.stepBadgeMinute") : undefined;
+  const badge =
+    step === 1
+      ? t("unlock.stepBadgeMinute")
+      : step === 5
+        ? t("unlock.stepBadgeLast")
+        : undefined;
   const title =
     step === 1 ? (
       <>
@@ -146,10 +160,7 @@ export function UnlockModal({
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [result, setResult] = useState<UnlockResult | null>(null);
-  const [lookupPending, setLookupPending] = useState(false);
-  const [knownFields, setKnownFields] = useState<Set<QField>>(new Set());
-  const [returningFirstName, setReturningFirstName] = useState<string | null>(null);
-  const [partialBanner, setPartialBanner] = useState<string | null>(null);
+  const lookupPending = false;
 
   const form = useForm<UnlockFormValues>({
     resolver: zodResolver(unlockFormSchema),
@@ -179,130 +190,37 @@ export function UnlockModal({
     setServerError(null);
     let fields: (keyof UnlockFormValues)[] = [];
     if (step === 1) fields = ["full_name"];
-    if (step === 2) fields = ["email", "phone", "gdpr_consent"];
-    if (step === 3) fields = ["profile_ownership"];
-    if (step === 4) {
+    if (step === 2) fields = ["profile_ownership"];
+    if (step === 3) {
       fields = ["goal"];
       if (form.getValues("goal") === "other") fields.push("goal_other_text");
     }
+    if (step === 4) {
+      fields = ["user_type"];
+      if (form.getValues("user_type") === "other")
+        fields.push("user_type_other_text");
+    }
+    if (step === 5) fields = ["email", "phone", "gdpr_consent"];
     const ok = await form.trigger(fields, { shouldFocus: true });
     if (!ok) return;
 
-    if (step === 2) {
-      const email = form.getValues("email");
-      setLookupPending(true);
-      let exists = false;
-      let missing: QField[] = ["profile_ownership", "goal", "user_type"];
-      let firstName: string | null = null;
-      const knownSet = new Set<QField>();
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 4000);
-        const res = await fetch("/api/public/unlock-check", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
-          signal: controller.signal,
-        });
-        clearTimeout(timeout);
-        if (res.ok) {
-          const data = (await res.json().catch(() => ({}))) as {
-            exists?: boolean;
-            knownFields?: QField[];
-            missingFields?: QField[];
-            display?: { firstName?: string | null };
-          };
-          exists = Boolean(data.exists);
-          if (Array.isArray(data.knownFields)) {
-            for (const f of data.knownFields) knownSet.add(f);
-          }
-          if (Array.isArray(data.missingFields) && data.missingFields.length) {
-            missing = data.missingFields;
-          } else if (exists) {
-            missing = (["profile_ownership", "goal", "user_type"] as QField[])
-              .filter((f) => !knownSet.has(f));
-          }
-          firstName = data.display?.firstName ?? null;
-        }
-      } catch {
-        // fallback: full flow
-      } finally {
-        setLookupPending(false);
-      }
-
-      setKnownFields(knownSet);
-      setReturningFirstName(firstName);
-
-      if (exists) {
-        void trackEvent({
-          data: {
-            eventType: "unlock_check_returning_lead",
-            handle: instagramUsername,
-            snapshotId,
-            metadata: { knownCount: knownSet.size },
-          },
-        }).catch(() => {});
-        if (knownSet.size > 0) {
-          void trackEvent({
-            data: {
-              eventType: "unlock_check_skipped_steps",
-              handle: instagramUsername,
-              snapshotId,
-              metadata: { skipped: Array.from(knownSet) },
-            },
-          }).catch(() => {});
-        }
-      }
-
-      if (exists && missing.length === 0) {
-        setPartialBanner(null);
-        setStep("welcome-back");
-        return;
-      }
-
-      if (exists && missing.length > 0 && missing.length < 3) {
-        setPartialBanner(
-          t("unlock.partialBanner", { count: missing.length }),
-        );
-        const firstMissing = missing[0];
-        const targetStep = (Object.keys(STEP_FIELD) as Array<"3" | "4" | "5">)
-          .find((k) => STEP_FIELD[Number(k) as 3 | 4 | 5] === firstMissing);
-        setStep((Number(targetStep ?? "3") as Step));
-        return;
-      }
-
-      setPartialBanner(null);
+    if (step === 5) {
+      await handleFinalSubmit();
+      return;
     }
-
-    if (typeof step === "number" && step <= 5) {
-      let next = step + 1;
-      while (next <= 5 && knownFields.has(STEP_FIELD[next as 3 | 4 | 5])) {
-        next += 1;
-      }
-      if (next > 5) {
-        await handleFinalSubmit();
-        return;
-      }
-      setStep(next as Step);
+    if (step >= 1 && step <= 4) {
+      setStep((step + 1) as Step);
     }
   };
 
   const goBack = () => {
     setServerError(null);
-    if (step === "welcome-back") {
-      setStep(1);
-      return;
-    }
     if (step === 1) {
       onOpenChange(false);
       return;
     }
     if (typeof step === "number" && step > 1 && step < 6) {
-      let prev = step - 1;
-      while (prev >= 3 && knownFields.has(STEP_FIELD[prev as 3 | 4 | 5])) {
-        prev -= 1;
-      }
-      setStep((prev < 1 ? 1 : prev) as Step);
+      setStep((step - 1) as Step);
     }
   };
 
@@ -363,80 +281,22 @@ export function UnlockModal({
     }
   });
 
-  const submitMinimal = async (email: string) => {
-    setSubmitting(true);
-    setServerError(null);
-    try {
-      const res = await fetch("/api/public/report-unlock", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          instagram_username: instagramUsername,
-          analysis_snapshot_id: snapshotId,
-          gdpr_consent: true,
-        }),
-      });
-      const data = (await res.json().catch(() => ({}))) as {
-        success?: boolean;
-        lead_id?: string;
-        report_request_id?: string;
-        returning_lead?: boolean;
-      };
-      if (!res.ok || !data.success || !data.lead_id || !data.report_request_id) {
-        setStep(3);
-        setServerError(t("unlock.errors.needMoreDetails"));
-        return;
-      }
-      const r: UnlockResult = {
-        leadId: data.lead_id,
-        reportRequestId: data.report_request_id,
-        returningLead: Boolean(data.returning_lead),
-      };
-      setResult(r);
-      onUnlock(r);
-      setStep(6);
-    } catch {
-      setStep(3);
-      setServerError(t("unlock.errors.network"));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const stepNumForBar =
-    step === "welcome-back" ? 1 : (step as number);
+  const stepNumForBar = step as number;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[760px] max-h-[92vh] overflow-y-auto p-0 gap-0 border-border-default/60">
         {step === 6 ? (
           <SuccessStep
-            firstName={
-              returningFirstName ??
-              (parseFullName(form.getValues("full_name")).first_name || null) ??
-              firstNameFromEmail(form.getValues("email"))
-            }
             email={form.getValues("email")}
             returningLead={Boolean(result?.returningLead)}
             onClose={() => onOpenChange(false)}
           />
-        ) : step === "welcome-back" ? (
-          <div className="px-7 py-8 sm:px-9 sm:py-9">
-            <WelcomeBackState
-              firstName={returningFirstName}
-              submitting={submitting}
-              serverError={serverError}
-              onContinue={() => submitMinimal(form.getValues("email"))}
-              onBack={goBack}
-            />
-          </div>
         ) : (
           <StepShellAndForm
             step={step as 1 | 2 | 3 | 4 | 5}
             instagramUsername={instagramUsername}
             stepNumForBar={stepNumForBar}
-            partialBanner={partialBanner}
             form={form}
             serverError={serverError}
             submitting={submitting}
@@ -455,7 +315,6 @@ function StepShellAndForm({
   step,
   instagramUsername,
   stepNumForBar,
-  partialBanner,
   form,
   serverError,
   submitting,
@@ -467,7 +326,6 @@ function StepShellAndForm({
   step: 1 | 2 | 3 | 4 | 5;
   instagramUsername: string;
   stepNumForBar: number;
-  partialBanner: string | null;
   form: ReturnType<typeof useForm<UnlockFormValues>>;
   serverError: string | null;
   submitting: boolean;
@@ -515,14 +373,8 @@ function StepShellAndForm({
               }}
               className="space-y-6 mt-6"
             >
-              {partialBanner && step !== 1 ? (
-                <p className="text-[12px] text-content-tertiary border border-border-default/60 rounded-lg px-3 py-2 bg-surface-muted/40">
-                  {partialBanner}
-                </p>
-              ) : null}
               {step === 1 ? <Step1FullName form={form} /> : null}
-              {step === 2 ? <Step2EmailPhone form={form} /> : null}
-              {step === 3 ? (
+              {step === 2 ? (
                 <RadioCardField
                   legend=""
                   name="profile_ownership"
@@ -540,7 +392,7 @@ function StepShellAndForm({
                   error={form.formState.errors.profile_ownership?.message}
                 />
               ) : null}
-              {step === 4 ? (
+              {step === 3 ? (
                 <RadioCardField
                   legend=""
                   name="goal"
@@ -559,12 +411,12 @@ function StepShellAndForm({
                     form.setValue("goal_other_text", v, { shouldValidate: true })
                   }
                   otherError={form.formState.errors.goal_other_text?.message}
-                  otherPlaceholder={t("unlock.step4.otherPlaceholder")}
-                  otherEyebrow={t("unlock.step4.otherEyebrow")}
-                  otherHint={t("unlock.step4.otherHint")}
+                  otherPlaceholder={t("unlock.step3.otherPlaceholder")}
+                  otherEyebrow={t("unlock.step3.otherEyebrow")}
+                  otherHint={t("unlock.step3.otherHint")}
                 />
               ) : null}
-              {step === 5 ? (
+              {step === 4 ? (
                 <RadioCardField
                   legend=""
                   name="user_type"
@@ -589,10 +441,11 @@ function StepShellAndForm({
                     })
                   }
                   otherError={form.formState.errors.user_type_other_text?.message}
-                  otherPlaceholder={t("unlock.step5.otherPlaceholder")}
-                  otherEyebrow={t("unlock.step5.otherEyebrow")}
+                  otherPlaceholder={t("unlock.step4.otherPlaceholder")}
+                  otherEyebrow={t("unlock.step4.otherEyebrow")}
                 />
               ) : null}
+              {step === 5 ? <Step5EmailPhone form={form} /> : null}
 
               {serverError ? (
                 <Alert variant="destructive">
@@ -626,14 +479,17 @@ function StepShellAndForm({
                       {lookupPending ? t("unlock.verifying") : t("unlock.unlocking")}
                     </>
                   ) : step === 5 ? (
-                    t("unlock.continueLong")
+                    <>
+                      <Lock className="size-4" aria-hidden />
+                      {t("unlock.openSummary")}
+                    </>
                   ) : (
                     t("unlock.continue")
                   )}
                 </Button>
               </div>
 
-              {step === 1 || step === 2 ? (
+              {step === 1 || step === 5 ? (
                 <p className="flex items-center justify-center gap-1.5 text-[11px] text-content-tertiary">
                   <Lock className="size-3" aria-hidden="true" />
                   <Trans
@@ -654,15 +510,6 @@ function StepShellAndForm({
             </form>
     </div>
   );
-}
-
-function firstNameFromEmail(email: string | undefined): string | null {
-  if (!email) return null;
-  const handle = email.split("@")[0] ?? "";
-  const cleaned = handle.replace(/[._-]/g, " ").trim();
-  if (!cleaned) return null;
-  const first = cleaned.split(/\s+/)[0];
-  return first ? first.charAt(0).toUpperCase() + first.slice(1) : null;
 }
 
 function ProgressSegments({
@@ -726,7 +573,7 @@ function Step1FullName({
   );
 }
 
-function Step2EmailPhone({
+function Step5EmailPhone({
   form,
 }: {
   form: ReturnType<typeof useForm<UnlockFormValues>>;
@@ -769,19 +616,22 @@ function Step2EmailPhone({
 
       <div className="space-y-1.5">
         <Label htmlFor="unlock-phone" className="text-sm">
-          {t("unlock.step2.phoneLabel")}
+          {t("unlock.step5.phoneLabel")}{" "}
+          <span className="text-primary" aria-hidden>
+            *
+          </span>
         </Label>
         <Input
           id="unlock-phone"
           type="tel"
           inputMode="tel"
           autoComplete="tel"
-          placeholder={t("unlock.step2.phonePlaceholder")}
+          placeholder={t("unlock.step5.phonePlaceholder")}
           aria-invalid={Boolean(phoneError)}
           {...form.register("phone")}
         />
         <p className="text-[11px] text-content-tertiary">
-          {t("unlock.step2.phoneHint")}
+          {t("unlock.step5.phoneHint")}
         </p>
         {phoneError ? (
           <p className="text-xs text-destructive">{phoneError}</p>
@@ -1020,146 +870,111 @@ function RadioCardField({
 }
 
 function SuccessStep({
-  firstName,
   email,
   returningLead,
   onClose,
 }: {
-  firstName: string | null;
   email: string;
   returningLead: boolean;
   onClose: () => void;
 }) {
-  void email;
   void returningLead;
   const { t } = useTranslation("gate");
+
+  const ANCHOR_ICON: Record<(typeof PREMIUM_ANCHOR_KEYS)[number], IconCmp> = {
+    compare: Users,
+    rank: Trophy,
+  };
+
   return (
-    <div>
-      <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-emerald-50/40 px-6 pt-7 pb-5 sm:px-8">
-        <div
-          className="absolute right-0 top-0 size-40 rounded-full bg-emerald-200/30 blur-3xl pointer-events-none"
-          aria-hidden
-        />
-        <div className="relative space-y-3">
-          <div className="size-10 rounded-xl bg-emerald-500 flex items-center justify-center shadow-[0_0_0_4px_rgb(16_185_129_/_0.18)]">
-            <CheckCircle2 className="size-5 text-white" aria-hidden />
-          </div>
-          <p className="text-eyebrow-sm text-emerald-700">
-            {t("unlock.success.eyebrowAssoc")}
-            {firstName
-              ? ` · ${t("unlock.success.eyebrowThanks", { name: firstName.toUpperCase() })}`
-              : ""}
-          </p>
-          <h2 className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
-            {t("unlock.success.titlePrefix")}{" "}
-            <em className="not-italic font-display italic text-emerald-600">
-              {t("unlock.success.titleEm")}
-            </em>
-          </h2>
-          <p className="text-[13px] text-content-secondary leading-relaxed">
-            {t("unlock.success.subtitle")}
-          </p>
+    <div className="px-6 sm:px-8 py-7 space-y-6">
+      {/* Header */}
+      <div className="space-y-4">
+        <div className="size-10 rounded-full bg-emerald-100 flex items-center justify-center">
+          <Check className="size-5 text-emerald-700" aria-hidden />
+        </div>
+        <p className="text-eyebrow-sm text-content-tertiary uppercase">
+          {t("unlock.success.eyebrowEmail", { email })}
+        </p>
+        <h2 className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
+          {t("unlock.success.titlePrefix")}{" "}
+          <em className="not-italic font-display italic text-emerald-700">
+            {t("unlock.success.titleEm")}
+          </em>
+        </h2>
+        <p className="text-[13px] text-content-secondary leading-relaxed">
+          {t("unlock.success.subtitle")}
+        </p>
+      </div>
+
+      {/* Free chip */}
+      <div className="space-y-2">
+        <p className="text-eyebrow-sm text-content-tertiary">
+          {t("unlock.success.freeEyebrow")}
+        </p>
+        <div className="rounded-lg bg-emerald-100/70 border border-emerald-200/60 px-4 py-3">
+          <span className="text-[13px] font-medium text-emerald-900">
+            {t("unlock.success.freeChip")}
+          </span>
         </div>
       </div>
 
-      <div className="px-6 sm:px-8 py-6 space-y-5">
+      {/* Premium teaser */}
+      <div className="rounded-xl border border-border-default/60 bg-surface-muted/30 p-4 space-y-3">
+        <p className="text-[13px] font-medium text-content-primary flex items-center gap-1.5">
+          <Sparkles className="size-3.5 text-primary" aria-hidden />
+          {t("unlock.success.premiumEyebrow")}
+        </p>
         <ul className="space-y-2">
-          {UNLOCKED_ITEM_KEYS.map((key) => (
-            <li
-              key={key}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg border bg-emerald-50/70 border-emerald-200/70"
-            >
-              <Check className="size-4 text-emerald-600 shrink-0" aria-hidden />
-              <span className="text-[13px] text-content-primary flex-1">
-                {t(`unlock.success.items.${key}`)}
-              </span>
-            </li>
-          ))}
+          {PREMIUM_ANCHOR_KEYS.map((key) => {
+            const Icon = ANCHOR_ICON[key];
+            return (
+              <li
+                key={key}
+                className="flex items-center gap-2.5 text-[13px] text-content-primary"
+              >
+                <Icon className="size-4 text-primary shrink-0" aria-hidden />
+                <span>{t(`unlock.success.premium.${key}`)}</span>
+              </li>
+            );
+          })}
         </ul>
 
-        <div className="space-y-2 pt-2 border-t border-border-default/40">
-          <Button
-            size="lg"
-            className="w-full rounded-lg font-medium mt-4"
-            onClick={onClose}
-          >
-            {t("unlock.success.cta")}
-          </Button>
-          <p className="text-xs text-content-tertiary text-center">
-            {t("unlock.success.footnote")}
+        <div className="border-t border-dashed border-border-default/60 pt-3 space-y-2">
+          <p className="text-eyebrow-sm text-content-tertiary">
+            {t("unlock.success.moreSectionsEyebrow")}
           </p>
+          <ul className="space-y-1.5">
+            {MORE_SECTION_KEYS.map((key) => (
+              <li
+                key={key}
+                className="flex items-center gap-2.5 text-[12.5px] text-content-secondary"
+              >
+                <Lock className="size-3.5 text-content-tertiary shrink-0" aria-hidden />
+                <span>{t(`unlock.success.moreSections.${key}`)}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
-    </div>
-  );
-}
 
-function WelcomeBackState({
-  firstName,
-  submitting,
-  serverError,
-  onContinue,
-  onBack,
-}: {
-  firstName: string | null;
-  submitting: boolean;
-  serverError: string | null;
-  onContinue: () => void;
-  onBack: () => void;
-}) {
-  const { t } = useTranslation("gate");
-  return (
-    <div className="space-y-6">
-      <div className="size-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
-        <CheckCircle2 className="size-6 text-emerald-600" aria-hidden />
-      </div>
-      <DialogHeader className="text-left space-y-2">
-        <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
-          {t("unlock.welcomeBack.titlePrefix")}{" "}
-          <em className="not-italic font-display italic text-emerald-600">
-            {t("unlock.welcomeBack.titleEm")}
-          </em>
-          {firstName ? `, ${firstName}` : ""}
-        </DialogTitle>
-        <DialogDescription className="text-[13px] text-content-secondary leading-relaxed">
-          {t("unlock.welcomeBack.subtitle")}
-        </DialogDescription>
-      </DialogHeader>
-
-      {serverError ? (
-        <Alert variant="destructive">
-          <AlertDescription>{serverError}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      <div className="flex gap-3 pt-1 border-t border-border-default/40 -mx-7 sm:-mx-9 px-7 sm:px-9 pt-5 mt-2">
+      {/* CTAs */}
+      <div className="space-y-3 pt-1">
         <Button
-          type="button"
-          variant="outline"
           size="lg"
-          onClick={onBack}
-          disabled={submitting}
-          className="flex-shrink-0 rounded-lg"
+          className="w-full rounded-lg font-medium"
+          onClick={onClose}
         >
-          <ArrowLeft className="size-4" aria-hidden />
-          {t("unlock.back")}
+          {t("unlock.success.cta")}
         </Button>
-        <Button
-          type="button"
-          size="lg"
-          className="flex-1 rounded-lg font-medium"
-          onClick={onContinue}
-          disabled={submitting}
+        <a
+          href="/precos"
+          target="_blank"
+          rel="noopener"
+          className="block text-center text-[12.5px] text-primary hover:text-primary/80 underline-offset-4 hover:underline"
         >
-          {submitting ? (
-            <>
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-              {t("unlock.unlocking")}
-            </>
-          ) : (
-            t("unlock.continue").replace(/\s*→\s*$/, "")
-          )}
-        </Button>
+          {t("unlock.success.secondaryCta")}
+        </a>
       </div>
     </div>
   );

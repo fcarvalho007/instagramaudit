@@ -19,9 +19,11 @@
     },
     "stepEyebrow": "PASSO {{current}} DE {{total}}",
     "stepBadgeMinute": "~1 MIN",
+    "stepBadgeLast": "último passo",
     "verifying": "A verificar…",
     "unlocking": "A desbloquear…",
     "continueLong": "Abrir relatório  →",
+    "openSummary": "Abrir resumo",
     "continue": "Continuar  →",
     "back": "Voltar",
     "operatorLine": "Operador: <strong>{{name}}</strong> · {{city}} · Cancela quando quiseres.",
@@ -54,7 +56,7 @@
       "titlePrefix": "Como te",
       "titleEm": "tratamos",
       "titleSuffix": "?",
-      "subtitle": "Usamos estes dados para guardar o relatório e enviar o acesso por email.",
+      "subtitle": "Para personalizarmos a leitura.",
       "firstNameLabel": "Primeiro nome",
       "firstNamePlaceholder": "Ana",
       "firstNameRequired": "Indica o teu primeiro nome",
@@ -72,31 +74,31 @@
     },
     "step2": {
       "eyebrow": "PASSO 2 DE 5",
-      "title": "Onde te enviamos o relatório?",
-      "subtitle": "Email para guardar o acesso. Telemóvel opcional, apenas para casos excecionais.",
-      "phoneLabel": "Telemóvel (opcional)",
-      "phonePlaceholder": "+351 912 345 678",
-      "phoneHint": "Usamos apenas em casos excecionais, para validar o acesso ao relatório."
-    },
-    "step3": {
-      "eyebrow": "PASSO 3 DE 5",
       "title": "Que relação tens com este perfil?",
       "subtitle": "Ajuda-nos a ajustar o tom da análise."
     },
-    "step4": {
-      "eyebrow": "PASSO 4 DE 5",
+    "step3": {
+      "eyebrow": "PASSO 3 DE 5",
       "title": "O que queres perceber?",
       "subtitle": "Escolhe o que mais te interessa. Destacamos o que importa.",
       "otherPlaceholder": "ex: investigação académica sobre IA criativa",
       "otherEyebrow": "descreve em poucas palavras",
       "otherHint": "opcional · ajuda-nos a melhorar"
     },
-    "step5": {
-      "eyebrow": "PASSO 5 DE 5",
+    "step4": {
+      "eyebrow": "PASSO 4 DE 5",
       "title": "Como te descreves?",
-      "subtitle": "Última pergunta — depois abrimos o relatório.",
+      "subtitle": "Última pergunta antes de receberes o resumo.",
       "otherPlaceholder": "ex: jornalista, investigador, curador",
       "otherEyebrow": "selecciona para descrever"
+    },
+    "step5": {
+      "eyebrow": "PASSO 5 DE 5",
+      "title": "Onde queres receber o resumo do relatório?",
+      "subtitle": "Recebe o resumo por email e o acesso à tua conta privada, com todos os relatórios que pedires no futuro.",
+      "phoneLabel": "Telemóvel",
+      "phonePlaceholder": "+351 912 345 678",
+      "phoneHint": "* Ajuda-nos a confirmar o teu acesso, caso o email não chegue."
     },
     "options": {
       "chooseOne": "Escolhe uma opção",
@@ -127,18 +129,27 @@
       }
     },
     "success": {
-      "eyebrowAssoc": "RELATÓRIO ASSOCIADO",
-      "eyebrowThanks": "OBRIGADO {{name}}",
-      "titlePrefix": "Relatório",
+      "eyebrowEmail": "ENVIÁMOS PARA {{email}} · GUARDADO NA TUA CONTA",
+      "titlePrefix": "Resumo",
       "titleEm": "desbloqueado",
-      "subtitle": "O relatório ficou associado ao email indicado para poderes voltar a consultá-lo mais tarde.",
-      "items": {
-        "overview": "Visão geral desbloqueada",
-        "diagnosis": "Diagnóstico desbloqueado",
-        "performance": "Desempenho desbloqueado"
+      "subtitle": "Já podes consultar a tua leitura gratuita. Fica associada ao teu email para voltares quando quiseres.",
+      "freeEyebrow": "DESBLOQUEADO AGORA · GRÁTIS",
+      "freeChip": "Visão Geral completa",
+      "premiumEyebrow": "O premium ainda acrescenta mais",
+      "premium": {
+        "compare": "Comparação com concorrentes",
+        "rank": "Posição exata no teu escalão"
       },
-      "cta": "Ver relatório gratuito agora  →",
-      "footnote": "Este relatório foi associado diretamente à tua conta."
+      "moreSectionsEyebrow": "ACESSO A MAIS 5 SECÇÕES",
+      "moreSections": {
+        "diagnosis": "Diagnóstico editorial",
+        "performance": "Desempenho real da tua conta",
+        "content": "Análise ao conteúdo",
+        "search": "Procura: Google vs Instagram",
+        "compare": "Comparação com outros perfis"
+      },
+      "cta": "Ver resumo agora  →",
+      "secondaryCta": "Ver opções premium"
     },
     "welcomeBack": {
       "titlePrefix": "Bem-vindo de",
