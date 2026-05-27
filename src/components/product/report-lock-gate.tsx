@@ -64,7 +64,7 @@ export function ReportLockGate({
           aria-label={t("lockGate.ariaRegion")}
           className={cn(
             "pointer-events-auto sticky self-start",
-            "top-24 mt-24 md:mt-32",
+            "top-20 mt-10 md:mt-14",
             "w-[calc(100%-32px)] max-w-lg",
             "relative isolate",
             "rounded-2xl border border-border-default bg-surface-card/95 backdrop-blur-xl",
