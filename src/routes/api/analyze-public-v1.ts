@@ -117,6 +117,8 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
     "A análise automática está em validação. Para já, este teste está limitado aos perfis definidos.",
   PROFILE_PRIVATE:
     "Perfil privado. A análise pública só funciona com perfis abertos.",
+  PROFILE_PERSONAL_NO_FEED:
+    "Este perfil é público mas é uma conta pessoal. A análise automática só funciona com contas profissionais — Creator ou Empresa. Pedir ao dono do perfil para mudar em Definições → Conta → Mudar para conta profissional.",
   PROVIDER_DISABLED:
     "A análise automática ainda não está ativa. O sistema está preparado, mas a ligação ao fornecedor de dados está desligada.",
   BUDGET_EXCEEDED:
@@ -137,6 +139,7 @@ const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
   PROFILE_NOT_FOUND: 404,
   PROFILE_NOT_ALLOWED: 403,
   PROFILE_PRIVATE: 404,
+  PROFILE_PERSONAL_NO_FEED: 422,
   PROVIDER_DISABLED: 503,
   BUDGET_EXCEEDED: 503,
   RATE_LIMITED: 429,
