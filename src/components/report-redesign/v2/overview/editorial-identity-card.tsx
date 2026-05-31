@@ -579,8 +579,8 @@ function IndexBlock({
       dir: deltaPp >= 0 ? ("above" as const) : ("below" as const),
       strong:
         deltaPp >= 0
-          ? `${ppFormatted} pp ${t("identity.index.delta_above_word", { defaultValue: "acima" })}`
-          : `${ppFormatted} pp ${t("identity.index.delta_below_word", { defaultValue: "abaixo" })}`,
+          ? `${ppFormatted}% ${t("identity.index.delta_above_word", { defaultValue: "acima" })}`
+          : `${ppFormatted}% ${t("identity.index.delta_below_word", { defaultValue: "abaixo" })}`,
       tail: t("identity.index.delta_tail", {
         defaultValue: "do envolvimento típico do escalão",
       }),
