@@ -1,63 +1,63 @@
-## Objetivo
+## Problema
 
-Reorganizar o topo do `EditorialIdentityCard` para uma leitura sequencial mais clara: **título → número → régua → delta**, e substituir "pp" por "%" no delta.
+O cartão mostra **"2,3% abaixo do envolvimento típico do escalão"**, mas o número `2,3` é **pontos percentuais (pp)**, não percentagem relativa. A edição anterior trocou o rótulo `pp` → `%` sem trocar o cálculo, e isso é matematicamente inconsistente.
 
-Ficheiro: `src/components/report-redesign/v2/overview/editorial-identity-card.tsx`
+Exemplo deste perfil:
+- Envolvimento do perfil ≈ **0,7%**
+- Benchmark do escalão ≈ **3,0%**
+- Diferença em **pp**: 0,7 − 3,0 = **−2,3 pp** ✓ (é o que vemos)
+- Diferença em **%** (relativa): (−2,3 / 3,0) × 100 = **−76,7%**
 
-## Estrutura nova (mobile-first, full-width)
+Dizer "2,3% abaixo" sugere que o perfil está só 2,3% abaixo do benchmark (quase alinhado), quando na verdade está **~77% abaixo**. Isto contradiz tanto o índice (`31/100`, banda crítica) como o veredicto "Cadência forte, sinal fraco".
 
-Atualmente o topo do bloco está em duas linhas:
-1. eyebrow + ⓘ · parágrafo de delta lado a lado
-2. número 31 + régua lado a lado
+## Ficheiro
 
-Passa a ser uma stack vertical única, alinhada à esquerda:
+`src/components/report-redesign/v2/overview/editorial-identity-card.tsx`
 
-```text
-ÍNDICE DO PERFIL ⓘ          ← eyebrow + info (linha calma, sozinha)
+## Alteração
 
-31 /100                      ← número herói (mantém tamanho atual)
+**1. Calcular a diferença relativa (linhas 558–588)**
 
-────●──┊──────────           ← régua 0–100 (full-width, marcador esta marca + mediana)
- 0                  100
-
-↘ 2,3% abaixo do envolvimento  ← delta DEPOIS da régua, contextualiza o pin
-   típico do escalão
-```
-
-Justificação UX: o utilizador lê primeiro **o que é** (eyebrow), depois **o valor**, depois **onde está** (régua) e só no fim **a interpretação** (delta). Hoje o delta aparece antes da régua, o que obriga a olhar para cima e para baixo.
-
-## Alterações concretas
-
-**1. Reordenação JSX (linhas 626–732)**
-
-Substituir os dois blocos atuais (linha 1 = eyebrow+delta, linha 2 = número+régua) por quatro blocos empilhados num `<div className="flex flex-col gap-4">`:
-
-- **a)** Eyebrow + Popover ⓘ (extraído do bloco atual, sem o parágrafo de delta ao lado). Permanece em `gap-1.5`.
-- **b)** Número herói `31 / 100` (igual ao atual, mas já não dentro do row sm:flex-row — fica em linha própria com `mt-1`).
-- **c)** `IndexRuler` ocupa largura total (`w-full`), removendo o `sm:flex-row sm:items-center sm:gap-8`.
-- **d)** Linha de delta (igual ao atual `deltaInfo` paragraph, com `DeltaIcon`), agora `mt-1` por baixo da régua. Mantém `text-[17px] leading-[1.6]`, ícone alinhado ao baseline da primeira linha.
-
-A fallback microline (quando não há `deltaInfo`) também desce para a posição (d).
-
-**2. Trocar "pp" por "%" no delta (linhas 582–583)**
+Manter `deltaPp` (necessário para o pin da mediana no `IndexRuler` via `medianIndexFromBenchmark`, que continua a usar `deltaPp * 4.5`), e acrescentar:
 
 ```ts
-strong:
-  deltaPp >= 0
-    ? `${ppFormatted}% ${t("identity.index.delta_above_word", { defaultValue: "acima" })}`
-    : `${ppFormatted}% ${t("identity.index.delta_below_word", { defaultValue: "abaixo" })}`,
+const deltaRelPct =
+  hasBenchmark && (engagementBenchmarkPct as number) > 0
+    ? (deltaPp! / (engagementBenchmarkPct as number)) * 100
+    : null;
 ```
 
-Razão: o utilizador pediu percentagem; mantemos a precisão decimal já formatada (`2,3%`). Não tocamos no cálculo, só na unidade exibida.
+**2. Usar `deltaRelPct` no texto exibido**
 
-**3. Nada mais muda**
+Substituir `ppFormatted` (baseado em `deltaPp`) por um valor formatado a partir de `deltaRelPct`. Arredondar a 0 casas decimais quando ≥ 10%, 1 casa quando < 10%. Resultado para este perfil: **"77% abaixo do envolvimento típico do escalão"**.
 
-- Cálculo do índice, `medianIndexFromBenchmark`, `IndexRuler`, popover de método, tokens, cores: tudo intacto.
-- O resto do cartão (`Cadência forte, sinal fraco`, veredicto, evidence bullets, MetricsStrip) fica igual.
-- Sem alterações de i18n keys (`delta_above_word` / `delta_below_word` mantêm-se; só o glue muda de " pp " para "% ").
+**3. Recalibrar o limiar "alinhado"**
+
+Hoje: `abs(deltaPp) < 0.5` (meio ponto percentual).
+Passa a: `abs(deltaRelPct) < 10` — coincide com o `ALIGNED_THRESHOLD_PERCENT = 10` já usado em `src/lib/benchmark/engine.ts`, garantindo consistência entre motor e UI.
+
+**4. Nada mais muda**
+
+- `medianIndexFromBenchmark(clamped, deltaPp)` continua a usar `deltaPp` (pp absolutos) — o pin da régua mantém-se correto.
+- Índice `31/100`, banda, veredicto, popover de método, evidências, tokens, layout: intactos.
+- i18n keys (`delta_above_word`, `delta_below_word`, `delta_tail`, `delta_aligned_strong`): inalteradas.
+
+## Verificação esperada
+
+Para frederico.m.carvalho a 411×742, o cartão deve mostrar algo como:
+
+```
+ÍNDICE DO PERFIL ⓘ
+31 /100
+────●──┊──────────
+ 0              100
+↘ 77% abaixo do envolvimento típico do escalão
+```
+
+Coerente com `31/100` (banda crítica) e com o veredicto "Cadência forte, sinal fraco".
 
 ## Validação
 
 - `bunx tsc --noEmit`
-- Preview em `/analyze/frederico.m.carvalho` a 411×742: confirmar ordem eyebrow → 31 → régua → delta, e leitura "2,3% abaixo do envolvimento típico do escalão".
-- Desktop ≥1280px: confirmar que o stack continua a respirar (sem necessidade de voltar a coluna lateral).
+- Preview em `/analyze/frederico.m.carvalho` (411×742): número da diferença coerente com o índice e o veredicto.
+- Confirmar que o pin da mediana na régua não muda (continua a usar `deltaPp`).
