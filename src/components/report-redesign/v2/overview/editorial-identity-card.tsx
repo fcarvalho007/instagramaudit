@@ -152,6 +152,14 @@ function tierLabelFromFollowers(followers: number): string {
   return "Nano";
 }
 
+function tierRangeFromFollowers(followers: number): string {
+  if (followers >= 1_000_000) return "1M+";
+  if (followers >= 250_000) return "250K–1M";
+  if (followers >= 50_000) return "50K–250K";
+  if (followers >= 10_000) return "10K–50K";
+  return "<10K";
+}
+
 function formatNameSingular(fmt: string | undefined, t: TFunction): string {
   if (!fmt) return t("identity.format_singular.default");
   const known = ["Reels", "Carousels", "Imagens", "Video"] as const;
