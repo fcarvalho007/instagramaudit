@@ -561,18 +561,24 @@ export function EditorialIdentityCard({
   );
 }
 
-/* ── Index Block (header esquerdo) ─────────────────────────────────── */
+/* ── Index Block (linha herói full-width) ──────────────────────────── */
 
 /**
- * Bloco do índice do perfil. Mostra apenas dados reais:
- *   • número agregado (0–100) calculado a partir de 3 sinais do perfil
- *   • subtítulo dinâmico — só compara quando existe benchmark real
- *   • régua vertical com 4 estágios discretos (sem mediana inventada)
- *   • "Como foi calculado" colapsável com a fórmula real e a amostra
- *
- * Não inventa "mediana · 60" nem "4 sinais". Quando um dado falta,
- * a linha correspondente simplesmente não é renderizada.
+ * Traduz a distância em pontos percentuais de envolvimento (vs benchmark
+ * do escalão) para a escala 0–100 do índice agregado. Usa o peso do
+ * envolvimento (45%) e uma aproximação linear de 10 pontos de índice por
+ * 1 pp — suficiente para situar visualmente a mediana enquanto não
+ * temos mediana real do escalão. Helper isolada para troca futura.
  */
+function medianIndexFromBenchmark(
+  overall: number,
+  deltaPp: number | null,
+): number | null {
+  if (deltaPp === null) return null;
+  const deltaIndex = deltaPp * 4.5; // 45% peso × ~10 pts por pp
+  return Math.max(0, Math.min(100, overall - deltaIndex));
+}
+
 function IndexBlock({
   value,
   engagementRatePct,
@@ -580,6 +586,10 @@ function IndexBlock({
   followers,
   postsAnalyzed,
   cadenceWindowDays,
+  band,
+  bandLabelText,
+  bandBadgeClassName,
+  isProvisional: _isProvisional,
   t,
   locale,
 }: {
@@ -589,18 +599,20 @@ function IndexBlock({
   followers?: number;
   postsAnalyzed?: number;
   cadenceWindowDays: number | null;
+  band: Band;
+  bandLabelText: string;
+  bandBadgeClassName: string;
+  isProvisional: boolean;
   t: TFunction;
   locale: string;
 }) {
   const clamped = Math.max(0, Math.min(100, value));
   const hasValue = value > 0;
-  const stage = stageFromScore(clamped);
   const tier =
     typeof followers === "number" && followers > 0
       ? tierLabelFromFollowers(followers)
       : null;
 
-  // Subtítulo: só compara quando há benchmark real.
   const hasBenchmark =
     engagementBenchmarkPct !== null &&
     engagementBenchmarkPct > 0 &&
@@ -608,34 +620,36 @@ function IndexBlock({
   const deltaPp = hasBenchmark
     ? (engagementRatePct as number) - (engagementBenchmarkPct as number)
     : null;
-  const subtitle = (() => {
-    if (deltaPp === null) {
-      return t("identity.index.subtitle_no_benchmark", {
-        defaultValue: "Índice de atividade do perfil",
-      });
-    }
+
+  // Delta humano: "X pp abaixo/acima/alinhado".
+  const deltaInfo = (() => {
+    if (deltaPp === null) return null;
     const abs = Math.abs(deltaPp);
     const ppFormatted = formatDecimal(abs, locale, abs < 1 ? 2 : 1);
-    const dirKey = deltaPp >= 0 ? "above" : "below";
-    return t(`identity.index.subtitle_${dirKey}`, {
-      pp: ppFormatted,
-      defaultValue:
+    if (abs < 0.5) {
+      return {
+        dir: "aligned" as const,
+        strong: t("identity.index.delta_aligned_strong", {
+          defaultValue: "Alinhado",
+        }),
+        tail: t("identity.index.delta_tail", {
+          defaultValue: "com o envolvimento típico do escalão",
+        }),
+      };
+    }
+    return {
+      dir: deltaPp >= 0 ? ("above" as const) : ("below" as const),
+      strong:
         deltaPp >= 0
-          ? `${ppFormatted} pp acima da referência de envolvimento do escalão`
-          : `${ppFormatted} pp abaixo da referência de envolvimento do escalão`,
-    });
+          ? `${ppFormatted} pp ${t("identity.index.delta_above_word", { defaultValue: "acima" })}`
+          : `${ppFormatted} pp ${t("identity.index.delta_below_word", { defaultValue: "abaixo" })}`,
+      tail: t("identity.index.delta_tail", {
+        defaultValue: "do envolvimento típico do escalão",
+      }),
+    };
   })();
 
-  const stages: Array<{ key: Stage; label: string }> = [
-    { key: "leader", label: t("identity.index.stage.leader", { defaultValue: "Líder" }) },
-    { key: "competitive", label: t("identity.index.stage.competitive", { defaultValue: "Competitivo" }) },
-    { key: "progress", label: t("identity.index.stage.progress", { defaultValue: "Em progresso" }) },
-    { key: "emerging", label: t("identity.index.stage.emerging", { defaultValue: "Emergente" }) },
-  ];
-  const currentStageLabel =
-    stages.find((s) => s.key === stage)?.label ?? stage;
-
-  const [methodOpen, setMethodOpen] = useState(false);
+  const medianIndex = medianIndexFromBenchmark(clamped, deltaPp);
 
   const sampleParts = [
     tier
@@ -658,142 +672,222 @@ function IndexBlock({
       : null,
   ].filter(Boolean) as string[];
 
+  const DeltaIcon =
+    deltaInfo?.dir === "above"
+      ? ArrowUpRight
+      : deltaInfo?.dir === "below"
+        ? ArrowDownRight
+        : null;
+  const deltaIconClass =
+    deltaInfo?.dir === "above"
+      ? "text-signal-success"
+      : deltaInfo?.dir === "below"
+        ? "text-signal-warning"
+        : "text-content-tertiary";
+
   return (
-    <div className="shrink-0 sm:w-[300px] flex flex-col gap-5 h-full pb-6 mb-2 border-b border-border-default sm:pb-0 sm:mb-0 sm:border-b-0">
-      {/* Eyebrow + número + subtítulo + micro-linha */}
-      <div className="space-y-2">
-        <span className="text-eyebrow-sm text-content-tertiary">
-          {t("identity.index.eyebrow", { defaultValue: "Índice do perfil" })}
+    <div className="flex flex-col gap-4">
+      {/* Linha 1: eyebrow + ⓘ · delta · chip veredicto */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="text-eyebrow-sm text-content-tertiary">
+            {t("identity.index.eyebrow", { defaultValue: "Índice do perfil" })}
+          </span>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label={t("identity.method.toggle", {
+                  defaultValue: "Como foi calculado",
+                })}
+                className="inline-flex items-center justify-center rounded-full text-content-tertiary hover:text-content-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
+              >
+                <Info className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="bottom"
+              align="start"
+              className="max-w-sm text-[13px] leading-snug space-y-2 text-content-secondary"
+            >
+              <p className="text-eyebrow-sm text-content-tertiary">
+                {t("identity.method.toggle", {
+                  defaultValue: "Como foi calculado",
+                })}
+              </p>
+              <p>
+                {t("identity.method.signals_line", {
+                  defaultValue:
+                    "Construído a partir de 3 indicadores do perfil: envolvimento, ritmo de publicação e conversa nas legendas.",
+                })}
+              </p>
+              <p>
+                {t("identity.method.benchmark_line", {
+                  defaultValue:
+                    "Comparado com o benchmark de envolvimento do escalão de referência (Nano · Micro · Mid · Macro · Mega), com base na atividade recente observada.",
+                })}
+              </p>
+              {sampleParts.length > 0 ? (
+                <p className="text-content-tertiary">{sampleParts.join(" · ")}</p>
+              ) : null}
+              <p className="text-content-tertiary italic">
+                {t("identity.method.disclaimer", {
+                  defaultValue:
+                    "Leitura comparativa — não é uma métrica oficial do Instagram.",
+                })}
+              </p>
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {deltaInfo ? (
+          <p className="flex items-center gap-1.5 text-[13px] text-content-secondary min-w-0 flex-1">
+            {DeltaIcon ? (
+              <DeltaIcon
+                className={cn("h-3.5 w-3.5 shrink-0", deltaIconClass)}
+                aria-hidden="true"
+              />
+            ) : null}
+            <span className="truncate">
+              <span className="font-semibold text-content-primary">
+                {deltaInfo.strong}
+              </span>{" "}
+              {deltaInfo.tail}
+            </span>
+          </p>
+        ) : (
+          <p className="text-[13px] text-content-tertiary min-w-0 flex-1">
+            {t("identity.index.microline", {
+              defaultValue:
+                "Índice comparativo, calculado a partir de 3 sinais observados no perfil.",
+            })}
+          </p>
+        )}
+
+        <span
+          className={cn(
+            "inline-flex items-center rounded-full px-2.5 py-1 shrink-0",
+            "text-xs font-semibold tracking-wide uppercase leading-none",
+            bandBadgeClassName,
+          )}
+          aria-label={`${t("identity.eyebrow_verdict")}: ${bandLabelText}`}
+          data-band={band}
+        >
+          {bandLabelText}
         </span>
-        <div className="flex items-baseline gap-1.5">
-          <span className="font-display text-[3rem] leading-none font-semibold tabular-nums text-content-primary">
+      </div>
+
+      {/* Linha 2: número herói + régua full-width */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-8">
+        <div className="flex items-baseline gap-1.5 shrink-0">
+          <span className="font-display text-[4.5rem] sm:text-[5.5rem] leading-none font-bold tabular-nums text-content-primary tracking-[-0.03em]">
             {hasValue ? clamped : "—"}
           </span>
-          <span className="text-[15px] text-content-secondary tabular-nums">
+          <span className="text-[0.95rem] text-content-tertiary tabular-nums">
             / 100
           </span>
         </div>
-        <p className="text-[14px] leading-snug text-content-primary max-w-[260px]">
-          {hasValue
-            ? subtitle
-            : t("identity.index.no_value", {
-                defaultValue: "Sem dados suficientes para calcular o índice.",
-              })}
-        </p>
-        <p className="text-xs leading-snug text-content-tertiary max-w-[260px]">
-          {t("identity.index.microline", {
-            defaultValue:
-              "Índice comparativo, calculado a partir de 3 sinais observados no perfil.",
+
+        {hasValue ? (
+          <IndexRuler
+            value={clamped}
+            median={medianIndex}
+            t={t}
+            locale={locale}
+          />
+        ) : (
+          <p className="text-[14px] leading-snug text-content-secondary">
+            {t("identity.index.no_value", {
+              defaultValue: "Sem dados suficientes para calcular o índice.",
+            })}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Régua 0–100 com dois marcadores ───────────────────────────────── */
+
+function IndexRuler({
+  value,
+  median,
+  t,
+  locale,
+}: {
+  value: number;
+  median: number | null;
+  t: TFunction;
+  locale: string;
+}) {
+  const valuePct = Math.max(0, Math.min(100, value));
+  const medianPct = median !== null ? Math.max(0, Math.min(100, median)) : null;
+  const medianFormatted =
+    median !== null ? formatDecimal(median, locale, median < 10 ? 1 : 0) : null;
+
+  const ariaParts = [
+    t("identity.index.rail_aria_value", {
+      value: valuePct,
+      defaultValue: `esta marca ${valuePct} de 100`,
+    }),
+    medianPct !== null
+      ? t("identity.index.rail_aria_median", {
+          value: medianFormatted,
+          defaultValue: `mediana ${medianFormatted}`,
+        })
+      : null,
+  ].filter(Boolean) as string[];
+
+  return (
+    <div className="flex-1 min-w-0 w-full">
+      <div
+        className="relative h-1.5 rounded-full bg-surface-muted"
+        role="img"
+        aria-label={ariaParts.join(" · ")}
+      >
+        {/* Barra preenchida até ao pin */}
+        <div
+          className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-accent-primary/25 to-accent-primary/55"
+          style={{ width: `${valuePct}%` }}
+        />
+
+        {/* Marcador mediana */}
+        {medianPct !== null ? (
+          <span
+            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-4 w-px bg-content-tertiary"
+            style={{ left: `${medianPct}%` }}
+            aria-hidden="true"
+            title={t("identity.index.median_tooltip", {
+              value: medianFormatted,
+              defaultValue: `mediana · ${medianFormatted}`,
+            })}
+          />
+        ) : null}
+
+        {/* Marcador esta marca (pin sólido) */}
+        <span
+          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-3.5 w-3.5 rounded-full bg-accent-primary ring-2 ring-white shadow-[0_1px_3px_rgba(15,23,42,0.18)]"
+          style={{ left: `${valuePct}%` }}
+          aria-hidden="true"
+        />
+
+        {/* Label flutuante "esta marca" — desktop only */}
+        <span
+          className="hidden sm:inline-flex absolute -top-7 -translate-x-1/2 items-center rounded-md bg-accent-primary/10 px-2 py-0.5 text-[11px] font-medium text-accent-primary whitespace-nowrap"
+          style={{ left: `${valuePct}%` }}
+          aria-hidden="true"
+        >
+          {t("identity.index.this_brand_label", {
+            defaultValue: "esta marca",
           })}
-        </p>
+        </span>
       </div>
 
-      {/* Régua vertical de estágios */}
-      {hasValue ? (
-        <div
-          className="flex gap-3 flex-1 min-h-[200px]"
-          role="img"
-          aria-label={t("identity.index.rail_aria_full", {
-            value: clamped,
-            stage: currentStageLabel,
-            defaultValue: `Índice ${clamped} de 100, estágio ${currentStageLabel}`,
-          })}
-        >
-          <div className="flex flex-col w-2.5 gap-1 bg-surface-muted rounded-full p-0.5">
-            {stages.map((s) => {
-              const isCurrent = s.key === stage;
-              return (
-                <div
-                  key={s.key}
-                  className={cn(
-                    "flex-1 rounded-full",
-                    isCurrent ? "bg-accent-primary" : "bg-transparent",
-                  )}
-                />
-              );
-            })}
-          </div>
-          <ul className="flex flex-col justify-around text-[15px] leading-snug flex-1">
-            {stages.map((s) => {
-              const isCurrent = s.key === stage;
-              return (
-                <li
-                  key={s.key}
-                  className={cn(
-                    "flex flex-col",
-                    isCurrent ? "text-content-primary" : "text-content-tertiary",
-                  )}
-                >
-                  <span className={cn(isCurrent && "text-[16px] font-semibold")}>
-                    {s.label}
-                  </span>
-                  {isCurrent ? (
-                    <span className="text-accent-primary font-medium tabular-nums mt-1 inline-flex items-center gap-1 self-start bg-accent-primary/10 px-2.5 py-1 rounded-md text-[13px]">
-                      <span aria-hidden="true">▸</span>
-                      <span>
-                        {t("identity.index.this_brand", {
-                          value: clamped,
-                          defaultValue: `esta marca · ${clamped}`,
-                        })}
-                      </span>
-                    </span>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ) : null}
-
-      {/* "Como foi calculado" colapsável */}
-      <details
-        className="group mt-auto border-t border-border-default sm:-mx-7 sm:-mb-8"
-        onToggle={(e) => setMethodOpen((e.target as HTMLDetailsElement).open)}
-      >
-        <summary
-          aria-expanded={methodOpen}
-          className={cn(
-            "flex items-center gap-2 cursor-pointer list-none",
-            "py-3 sm:px-7 sm:py-3.5 text-[13px] font-medium text-content-secondary",
-            "hover:text-content-primary hover:bg-surface-muted/60 transition-colors",
-          )}
-        >
-          <Info
-            className="h-3.5 w-3.5 text-content-tertiary shrink-0"
-            aria-hidden="true"
-          />
-          <span>
-            {t("identity.method.toggle", { defaultValue: "Como foi calculado" })}
-          </span>
-          <ChevronDown
-            className="h-3.5 w-3.5 text-content-tertiary ml-auto transition-transform duration-200 group-open:rotate-180"
-            aria-hidden="true"
-          />
-        </summary>
-        <div className="pt-2 pb-4 sm:px-7 space-y-2.5 text-[13px] leading-snug text-content-secondary">
-          <p>
-            {t("identity.method.signals_line", {
-              defaultValue:
-                "Construído a partir de 3 indicadores do perfil: envolvimento, ritmo de publicação e conversa nas legendas.",
-            })}
-          </p>
-          <p>
-            {t("identity.method.benchmark_line", {
-              defaultValue:
-                "Comparado com o benchmark de envolvimento do escalão de referência (Nano · Micro · Mid · Macro · Mega), com base na atividade recente observada.",
-            })}
-          </p>
-          {sampleParts.length > 0 ? (
-            <p className="text-content-tertiary">{sampleParts.join(" · ")}</p>
-          ) : null}
-          <p className="text-content-tertiary italic">
-            {t("identity.method.disclaimer", {
-              defaultValue:
-                "Leitura comparativa — não é uma métrica oficial do Instagram.",
-            })}
-          </p>
-        </div>
-      </details>
+      {/* Endpoints 0 / 100 */}
+      <div className="flex justify-between mt-2 text-[11px] text-content-tertiary tabular-nums">
+        <span>0</span>
+        <span>100</span>
+      </div>
     </div>
   );
 }
