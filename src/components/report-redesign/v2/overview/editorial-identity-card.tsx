@@ -119,10 +119,6 @@ function verdictLabelToBand(label: EditorialVerdict["verdict_label"]): Band {
   return "warning"; // needs_work | limited_data
 }
 
-function bandLabel(band: Band, t: TFunction): string {
-  return t(`identity.bands.${band}`);
-}
-
 function bandTextClass(band: Band): string {
   if (band === "solid") return "text-signal-success";
   if (band === "developing") return "text-accent-primary";
@@ -133,12 +129,6 @@ function bandFillClass(band: Band): string {
   if (band === "solid") return "bg-signal-success";
   if (band === "developing") return "bg-accent-primary";
   return "bg-signal-warning";
-}
-
-function bandBadgeClass(band: Band): string {
-  if (band === "solid") return "bg-signal-success/10 text-signal-success";
-  if (band === "developing") return "bg-accent-primary/10 text-accent-primary";
-  return "bg-signal-warning/15 text-signal-warning";
 }
 
 /* ── Helpers numéricos ─────────────────────────────────────────────── */
