@@ -573,32 +573,36 @@ function IndexBlock({
     ? (engagementRatePct as number) - (engagementBenchmarkPct as number)
     : null;
 
-  // Delta relativo (%): (perfil - benchmark) / benchmark × 100.
-  // Usado APENAS no texto exibido. O pin da mediana na régua continua
-  // a usar `deltaPp` (pontos percentuais absolutos).
-  const deltaRelPct =
-    hasBenchmark && (engagementBenchmarkPct as number) > 0
-      ? ((deltaPp as number) / (engagementBenchmarkPct as number)) * 100
-      : null;
-
-  // Delta estruturado: linha 1 = valores absolutos (envolvimento perfil vs
-  // típico do escalão); linha 2 = comparação relativa (X% abaixo/acima ou
-  // alinhado). Ancora o leitor em números tangíveis antes do %.
-  const deltaInfo = (() => {
-    if (
-      engagementRatePct === null ||
-      engagementBenchmarkPct === null ||
-      engagementBenchmarkPct <= 0 ||
-      deltaRelPct === null
-    ) {
-      return null;
-    }
-    const absRel = Math.abs(deltaRelPct);
-    const relFormatted = formatDecimal(absRel, locale, absRel >= 10 ? 0 : 1);
-    const tierShort = tier ?? "escalão";
-    const dir: "above" | "below" | "aligned" =
-      absRel < 10 ? "aligned" : deltaRelPct >= 0 ? "above" : "below";
-    return { dir, relFormatted, tierShort };
+  // Leitura qualitativa do índice (sem números, sem percentagens) face ao
+  // escalão. Substitui o antigo bloco de delta numérico para manter um só
+  // número visível na caixa: o 31/100.
+  const qualitativeLine = (() => {
+    if (!hasValue || !tier) return null;
+    const tierShort = tier;
+    if (clamped < 25)
+      return t("identity.index.qual_very_low", {
+        tier: tierShort,
+        defaultValue: `Espaço claro para crescer face ao escalão ${tierShort}.`,
+      });
+    if (clamped < 45)
+      return t("identity.index.qual_below", {
+        tier: tierShort,
+        defaultValue: `Abaixo da mediana do escalão ${tierShort}.`,
+      });
+    if (clamped < 65)
+      return t("identity.index.qual_aligned", {
+        tier: tierShort,
+        defaultValue: `Em linha com a mediana do escalão ${tierShort}.`,
+      });
+    if (clamped < 85)
+      return t("identity.index.qual_above", {
+        tier: tierShort,
+        defaultValue: `Acima da mediana do escalão ${tierShort}.`,
+      });
+    return t("identity.index.qual_top", {
+      tier: tierShort,
+      defaultValue: `Destaque claro dentro do escalão ${tierShort}.`,
+    });
   })();
 
   const medianIndex = medianIndexFromBenchmark(clamped, deltaPp);
@@ -623,19 +627,6 @@ function IndexBlock({
         })
       : null,
   ].filter(Boolean) as string[];
-
-  const DeltaIcon =
-    deltaInfo?.dir === "above"
-      ? ArrowUpRight
-      : deltaInfo?.dir === "below"
-        ? ArrowDownRight
-        : null;
-  const deltaIconClass =
-    deltaInfo?.dir === "above"
-      ? "text-signal-success"
-      : deltaInfo?.dir === "below"
-        ? "text-signal-warning"
-        : "text-content-tertiary";
 
   return (
     <div className="flex flex-col gap-4">
@@ -726,58 +717,12 @@ function IndexBlock({
         </p>
       )}
 
-      {/* d) Delta interpretativo (depois da régua) */}
-      {deltaInfo ? (
-        <p className="flex items-start gap-1.5 text-[17px] leading-[1.5] text-content-secondary">
-          {DeltaIcon ? (
-            <DeltaIcon
-              className={cn("h-4 w-4 shrink-0 mt-[5px]", deltaIconClass)}
-              aria-hidden="true"
-            />
-          ) : null}
-          <span className="min-w-0">
-            {deltaInfo.dir === "aligned" ? (
-              t("identity.index.delta_aligned", {
-                tier: deltaInfo.tierShort,
-                defaultValue: `Envolvimento alinhado com o típico do escalão ${deltaInfo.tierShort}`,
-              })
-            ) : deltaInfo.dir === "above" ? (
-              <>
-                {t("identity.index.delta_above_prefix", {
-                  defaultValue: "Envolvimento ",
-                })}
-                <span className="font-semibold text-content-primary tabular-nums">
-                  {deltaInfo.relFormatted}%
-                </span>
-                {t("identity.index.delta_above_suffix", {
-                  tier: deltaInfo.tierShort,
-                  defaultValue: ` acima do típico do escalão ${deltaInfo.tierShort}`,
-                })}
-              </>
-            ) : (
-              <>
-                {t("identity.index.delta_below_prefix", {
-                  defaultValue: "Envolvimento ",
-                })}
-                <span className="font-semibold text-content-primary tabular-nums">
-                  {deltaInfo.relFormatted}%
-                </span>
-                {t("identity.index.delta_below_suffix", {
-                  tier: deltaInfo.tierShort,
-                  defaultValue: ` abaixo do típico do escalão ${deltaInfo.tierShort}`,
-                })}
-              </>
-            )}
-          </span>
+      {/* d) Leitura qualitativa do índice (sem números) */}
+      {qualitativeLine ? (
+        <p className="text-[14px] leading-snug text-content-secondary">
+          {qualitativeLine}
         </p>
-      ) : (
-        <p className="text-[17px] leading-[1.6] text-content-tertiary">
-          {t("identity.index.microline", {
-            defaultValue:
-              "Índice comparativo, calculado a partir de 3 sinais observados no perfil.",
-          })}
-        </p>
-      )}
+      ) : null}
     </div>
   );
 }
