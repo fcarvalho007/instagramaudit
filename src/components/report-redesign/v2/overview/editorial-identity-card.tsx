@@ -119,28 +119,6 @@ function verdictLabelToBand(label: EditorialVerdict["verdict_label"]): Band {
   return "warning"; // needs_work | limited_data
 }
 
-function bandLabel(band: Band, t: TFunction): string {
-  return t(`identity.bands.${band}`);
-}
-
-function bandTextClass(band: Band): string {
-  if (band === "solid") return "text-signal-success";
-  if (band === "developing") return "text-accent-primary";
-  return "text-signal-warning";
-}
-
-function bandFillClass(band: Band): string {
-  if (band === "solid") return "bg-signal-success";
-  if (band === "developing") return "bg-accent-primary";
-  return "bg-signal-warning";
-}
-
-function bandBadgeClass(band: Band): string {
-  if (band === "solid") return "bg-signal-success/10 text-signal-success";
-  if (band === "developing") return "bg-accent-primary/10 text-accent-primary";
-  return "bg-signal-warning/15 text-signal-warning";
-}
-
 /* ── Helpers numéricos ─────────────────────────────────────────────── */
 
 function formatDecimal(value: number, locale: string, digits = 1): string {
@@ -373,18 +351,6 @@ export function EditorialIdentityCard({
     fallbackVerdict,
   );
   const resolved = resolution.verdict;
-  const hasProvisionalWarning =
-    Array.isArray(resolved.warnings) &&
-    resolved.warnings.some((w) =>
-      [
-        "low_sample",
-        "stale_data",
-        "cadence_uncertain",
-        "benchmark_missing",
-        "no_market_signals",
-      ].includes(w),
-    );
-  const isProvisional = resolution.source !== "ai" || hasProvisionalWarning;
 
   // Nunca renderizamos `ai_insights_v2.sections.hero.text`. Quando a IA
   // não tem `editorial_verdict` válido, `resolved` é o fallback
@@ -442,33 +408,11 @@ export function EditorialIdentityCard({
           postsAnalyzed={postsAnalyzed}
           cadenceWindowDays={cadenceWindowDays ?? null}
           band={band}
-          bandLabelText={bandLabel(band, t)}
-          bandBadgeClassName={bandBadgeClass(band)}
-          isProvisional={isProvisional}
           t={t}
           locale={i18n.language}
         />
 
         <div className="min-w-0 space-y-3.5 border-t border-border-default pt-6">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-eyebrow-sm text-content-tertiary">
-              {t("identity.eyebrow_verdict")}
-            </span>
-            {isProvisional ? (
-              <span
-                className="inline-flex items-center rounded-full bg-surface-muted px-2 py-0.5 text-xs font-medium tracking-wide uppercase leading-none text-content-tertiary"
-                title={t("identity.verdict.provisional_hint", {
-                  defaultValue:
-                    "Leitura ajustada por divergência entre a interpretação editorial e os números observados.",
-                })}
-              >
-                {t("identity.verdict.provisional", {
-                  defaultValue: "Leitura provisória",
-                })}
-              </span>
-            ) : null}
-          </div>
-
           <h2 className="font-display text-[1.25rem] md:text-[1.5rem] font-semibold leading-snug tracking-tight text-content-primary max-w-3xl">
             {copy.title}
           </h2>
@@ -488,11 +432,11 @@ export function EditorialIdentityCard({
                 {resolved.evidence_used.slice(0, 3).map((ev) => (
                   <li
                     key={ev}
-                    className="text-sm text-content-secondary flex gap-2 items-start"
+                    className="text-[17px] leading-[1.65] text-content-secondary flex gap-2 items-start"
                   >
                     <span
                       aria-hidden="true"
-                      className="mt-2 inline-block w-1 h-1 rounded-full bg-content-tertiary/70 shrink-0"
+                      className="mt-[11px] inline-block w-1 h-1 rounded-full bg-content-tertiary/70 shrink-0"
                     />
                     <span>
                       {t(`identity.evidence.${ev}`, { defaultValue: ev })}
@@ -504,7 +448,7 @@ export function EditorialIdentityCard({
           ) : null}
 
           {resolved.warnings && resolved.warnings.length > 0 ? (
-            <p className="text-xs text-content-tertiary pt-1">
+            <p className="text-[15px] leading-[1.55] text-content-tertiary pt-1">
               {resolved.warnings
                 .map((w) =>
                   t(`identity.warnings.${w}`, {
@@ -523,7 +467,7 @@ export function EditorialIdentityCard({
                 .join(" · ")}
             </p>
           ) : lowConfidence ? (
-            <p className="text-xs text-content-tertiary pt-1">
+            <p className="text-[15px] leading-[1.55] text-content-tertiary pt-1">
               {t("identity.low_confidence", { count: postsAnalyzed })}
             </p>
           ) : null}
@@ -587,9 +531,6 @@ function IndexBlock({
   postsAnalyzed,
   cadenceWindowDays,
   band,
-  bandLabelText,
-  bandBadgeClassName,
-  isProvisional: _isProvisional,
   t,
   locale,
 }: {
@@ -600,9 +541,6 @@ function IndexBlock({
   postsAnalyzed?: number;
   cadenceWindowDays: number | null;
   band: Band;
-  bandLabelText: string;
-  bandBadgeClassName: string;
-  isProvisional: boolean;
   t: TFunction;
   locale: string;
 }) {
@@ -741,14 +679,14 @@ function IndexBlock({
         </div>
 
         {deltaInfo ? (
-          <p className="flex items-center gap-1.5 text-[13px] text-content-secondary min-w-0 flex-1">
+          <p className="flex items-start gap-1.5 text-[17px] leading-[1.6] text-content-secondary flex-1 min-w-0">
             {DeltaIcon ? (
               <DeltaIcon
-                className={cn("h-3.5 w-3.5 shrink-0", deltaIconClass)}
+                className={cn("h-4 w-4 shrink-0 mt-[3px]", deltaIconClass)}
                 aria-hidden="true"
               />
             ) : null}
-            <span className="truncate">
+            <span>
               <span className="font-semibold text-content-primary">
                 {deltaInfo.strong}
               </span>{" "}
@@ -756,7 +694,7 @@ function IndexBlock({
             </span>
           </p>
         ) : (
-          <p className="text-[13px] text-content-tertiary min-w-0 flex-1">
+          <p className="text-[17px] leading-[1.6] text-content-tertiary flex-1 min-w-0">
             {t("identity.index.microline", {
               defaultValue:
                 "Índice comparativo, calculado a partir de 3 sinais observados no perfil.",
@@ -764,22 +702,11 @@ function IndexBlock({
           </p>
         )}
 
-        <span
-          className={cn(
-            "inline-flex items-center rounded-full px-2.5 py-1 shrink-0",
-            "text-xs font-semibold tracking-wide uppercase leading-none",
-            bandBadgeClassName,
-          )}
-          aria-label={`${t("identity.eyebrow_verdict")}: ${bandLabelText}`}
-          data-band={band}
-        >
-          {bandLabelText}
-        </span>
       </div>
 
       {/* Linha 2: número herói + régua full-width */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-8">
-        <div className="flex items-baseline gap-1.5 shrink-0">
+        <div className="flex items-baseline gap-1.5 shrink-0" data-band={band}>
           <span className="font-display text-[4.5rem] sm:text-[5.5rem] leading-none font-bold tabular-nums text-content-primary tracking-[-0.03em]">
             {hasValue ? clamped : "—"}
           </span>
@@ -968,6 +895,7 @@ function MetricsStrip({
   locale: string;
 }) {
   const lang: "en" | "pt" = locale.startsWith("pt") ? "pt" : "en";
+  type MetricTone = "neutral" | "info" | "success" | "warning";
   const items: Array<{
     key: string;
     icon: typeof Heart;
@@ -975,6 +903,7 @@ function MetricsStrip({
     value: string;
     unit: string;
     subtitle: string;
+    tone: MetricTone;
   }> = [];
 
   if (typeof averageLikes === "number" && averageLikes >= 0) {
@@ -991,6 +920,7 @@ function MetricsStrip({
       value: formatAvgMetric(averageLikes, lang),
       unit: t("identity.metrics.per_post"),
       subtitle,
+      tone: "neutral",
     });
   }
 
@@ -1003,6 +933,7 @@ function MetricsStrip({
       value: formatAvgMetric(averageComments, lang),
       unit: t("identity.metrics.per_post"),
       subtitle: t(`identity.metrics.comments_${band}`),
+      tone: band === "active" ? "success" : band === "medium" ? "info" : "neutral",
     });
   }
 
@@ -1015,13 +946,21 @@ function MetricsStrip({
       value: formatDecimal(postingFrequencyWeekly, locale, 1),
       unit: t("identity.metrics.per_week"),
       subtitle: t(`identity.metrics.rhythm_${band}`),
+      tone: band === "excess" ? "warning" : band === "good" ? "info" : "neutral",
     });
   }
 
   if (items.length === 0) return null;
 
+  const toneClass: Record<MetricTone, string> = {
+    neutral: "bg-surface-muted text-content-secondary",
+    info: "bg-accent-primary/10 text-accent-primary",
+    success: "bg-signal-success/10 text-signal-success",
+    warning: "bg-signal-warning/15 text-signal-warning",
+  };
+
   return (
-    <div className="rounded-xl border border-border-default bg-white grid grid-cols-1 sm:grid-cols-3 overflow-hidden divide-y divide-border-default sm:divide-y-0">
+    <div className="rounded-xl border border-border-default bg-white grid grid-cols-1 sm:grid-cols-3 overflow-hidden divide-y divide-border-default/60 sm:divide-y-0">
       {items.map((it, idx) => {
         const Icon = it.icon;
         const isFirst = idx === 0;
@@ -1029,21 +968,34 @@ function MetricsStrip({
           <div
             key={it.key}
             className={cn(
-              "px-4 py-3.5 sm:px-6 sm:py-5",
+              "px-5 py-5 sm:px-6 sm:py-6",
               !isFirst && "sm:border-l sm:border-border-default/60",
             )}
           >
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <Icon className="h-3.5 w-3.5 text-accent-primary" aria-hidden="true" />
+            <div className="flex items-center gap-2.5 mb-3">
+              <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-accent-primary/10 shrink-0">
+                <Icon className="h-3.5 w-3.5 text-accent-primary" aria-hidden="true" />
+              </span>
               <span className="text-eyebrow-sm text-content-secondary">{it.label}</span>
             </div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="font-sans text-[1.5rem] sm:text-[1.75rem] md:text-[1.625rem] font-semibold tabular-nums text-content-primary leading-none">
+            <div className="flex items-baseline gap-2">
+              <span className="font-sans text-[2rem] sm:text-[2.25rem] font-semibold tabular-nums text-content-primary leading-none">
                 {it.value}
               </span>
-              <span className="text-[14px] sm:text-[15px] text-content-secondary">{it.unit}</span>
+              <span className="text-[15px] font-medium text-content-tertiary">{it.unit}</span>
             </div>
-            <p className="mt-1.5 sm:mt-2 text-[13px] text-content-secondary leading-snug">{it.subtitle}</p>
+            {it.key === "likes" ? (
+              <p className="mt-3 text-[15px] leading-[1.5] text-content-secondary">{it.subtitle}</p>
+            ) : (
+              <span
+                className={cn(
+                  "mt-3 inline-flex items-center rounded-full px-2.5 py-1 text-[13px] font-medium",
+                  toneClass[it.tone],
+                )}
+              >
+                {it.subtitle}
+              </span>
+            )}
           </div>
         );
       })}
