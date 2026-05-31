@@ -565,9 +565,6 @@ function IndexBlock({
   postsAnalyzed,
   cadenceWindowDays,
   band,
-  bandLabelText,
-  bandBadgeClassName,
-  isProvisional: _isProvisional,
   t,
   locale,
 }: {
@@ -578,9 +575,6 @@ function IndexBlock({
   postsAnalyzed?: number;
   cadenceWindowDays: number | null;
   band: Band;
-  bandLabelText: string;
-  bandBadgeClassName: string;
-  isProvisional: boolean;
   t: TFunction;
   locale: string;
 }) {
