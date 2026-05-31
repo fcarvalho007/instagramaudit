@@ -11,15 +11,18 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   CalendarDays,
-  ChevronDown,
   Heart,
   Info,
   MessageCircle,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useState } from "react";
 import type { TFunction } from "i18next";
 import { formatCompactNumber } from "@/lib/i18n/format";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import type { ScoreKey } from "./score-utils";
 import { computeGlobalScore } from "./score-utils";
 import type { EditorialVerdict } from "@/lib/insights/types";
@@ -33,16 +36,6 @@ import { buildFallbackVerdict } from "@/lib/report/editorial-verdict-fallback";
 
 type Band = "warning" | "developing" | "solid";
 type Tone = "success" | "warning";
-
-/** Stage rail (4 níveis discretos, apenas leitura visual). */
-type Stage = "leader" | "competitive" | "progress" | "emerging";
-
-function stageFromScore(value: number): Stage {
-  if (value >= 80) return "leader";
-  if (value >= 60) return "competitive";
-  if (value >= 40) return "progress";
-  return "emerging";
-}
 
 interface Bullet {
   destaque: string;
