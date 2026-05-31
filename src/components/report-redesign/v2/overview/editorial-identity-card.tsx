@@ -595,36 +595,10 @@ function IndexBlock({
     }
     const absRel = Math.abs(deltaRelPct);
     const relFormatted = formatDecimal(absRel, locale, absRel >= 10 ? 0 : 1);
-    const profileFmt = formatDecimal(
-      engagementRatePct,
-      locale,
-      engagementRatePct < 1 ? 2 : 1,
-    );
-    const benchFmt = formatDecimal(engagementBenchmarkPct, locale, 1);
     const tierShort = tier ?? "escalão";
     const dir: "above" | "below" | "aligned" =
       absRel < 10 ? "aligned" : deltaRelPct >= 0 ? "above" : "below";
-    const relative =
-      dir === "aligned"
-        ? t("identity.index.rel_aligned", {
-            defaultValue: "Alinhado com a referência do escalão",
-          })
-        : dir === "above"
-          ? t("identity.index.rel_above", {
-              pct: relFormatted,
-              defaultValue: `${relFormatted}% acima da referência do escalão`,
-            })
-          : t("identity.index.rel_below", {
-              pct: relFormatted,
-              defaultValue: `${relFormatted}% abaixo da referência do escalão`,
-            });
-    return {
-      dir,
-      profilePct: profileFmt,
-      benchPct: benchFmt,
-      tierShort,
-      relative,
-    };
+    return { dir, relFormatted, tierShort };
   })();
 
   const medianIndex = medianIndexFromBenchmark(clamped, deltaPp);
@@ -700,21 +674,15 @@ function IndexBlock({
                 })}
               </p>
               <p>
-                {t("identity.method.scales_line", {
+                {t("identity.method.engagement_line", {
                   defaultValue:
-                    "O índice (0–100) resume 3 sinais. O delta abaixo refere-se apenas ao envolvimento.",
+                    "Envolvimento é a taxa de interação média por publicação (likes + comentários ÷ alcance estimado). O valor absoluto aparece em \u201CIndicadores principais\u201D, logo abaixo.",
                 })}
               </p>
               <p>
-                {t("identity.method.signals_line", {
+                {t("identity.method.index_line", {
                   defaultValue:
-                    "Construído a partir de 3 indicadores do perfil: envolvimento, ritmo de publicação e conversa nas legendas.",
-                })}
-              </p>
-              <p>
-                {t("identity.method.benchmark_line", {
-                  defaultValue:
-                    "Comparado com o benchmark de envolvimento do escalão de referência (Nano · Micro · Mid · Macro · Mega), com base na atividade recente observada.",
+                    "Índice (0\u2013100) combina envolvimento (45%), cadência e conversa para uma leitura comparativa face ao escalão (Nano · Micro · Mid · Macro · Mega).",
                 })}
               </p>
               {sampleParts.length > 0 ? (
@@ -740,12 +708,6 @@ function IndexBlock({
             / 100
           </span>
         </div>
-        <p className="text-[12px] leading-snug text-content-tertiary">
-          {t("identity.index.composite_sublabel", {
-            defaultValue:
-              "índice composto · envolvimento + cadência + conversa",
-          })}
-        </p>
       </div>
 
       {/* c) Régua 0–100 full-width */}
@@ -766,35 +728,48 @@ function IndexBlock({
 
       {/* d) Delta interpretativo (depois da régua) */}
       {deltaInfo ? (
-        <div className="flex items-start gap-1.5">
+        <p className="flex items-start gap-1.5 text-[17px] leading-[1.5] text-content-secondary">
           {DeltaIcon ? (
             <DeltaIcon
               className={cn("h-4 w-4 shrink-0 mt-[5px]", deltaIconClass)}
               aria-hidden="true"
             />
           ) : null}
-          <div className="flex flex-col gap-0.5 min-w-0">
-            <p className="text-[17px] leading-[1.5] text-content-secondary">
-              <span className="font-semibold text-content-primary tabular-nums">
-                {t("identity.index.engagement_label", {
-                  defaultValue: "Envolvimento",
+          <span className="min-w-0">
+            {deltaInfo.dir === "aligned" ? (
+              t("identity.index.delta_aligned", {
+                tier: deltaInfo.tierShort,
+                defaultValue: `Envolvimento alinhado com o típico do escalão ${deltaInfo.tierShort}`,
+              })
+            ) : deltaInfo.dir === "above" ? (
+              <>
+                {t("identity.index.delta_above_prefix", {
+                  defaultValue: "Envolvimento ",
                 })}
-                : {deltaInfo.profilePct}%
-              </span>
-              <span className="text-content-tertiary">
-                {" · "}
-                {t("identity.index.engagement_typical", {
+                <span className="font-semibold text-content-primary tabular-nums">
+                  {deltaInfo.relFormatted}%
+                </span>
+                {t("identity.index.delta_above_suffix", {
                   tier: deltaInfo.tierShort,
-                  bench: deltaInfo.benchPct,
-                  defaultValue: `típico ${deltaInfo.tierShort} ~${deltaInfo.benchPct}%`,
+                  defaultValue: ` acima do típico do escalão ${deltaInfo.tierShort}`,
                 })}
-              </span>
-            </p>
-            <p className="text-[14px] leading-snug text-content-tertiary">
-              {deltaInfo.relative}
-            </p>
-          </div>
-        </div>
+              </>
+            ) : (
+              <>
+                {t("identity.index.delta_below_prefix", {
+                  defaultValue: "Envolvimento ",
+                })}
+                <span className="font-semibold text-content-primary tabular-nums">
+                  {deltaInfo.relFormatted}%
+                </span>
+                {t("identity.index.delta_below_suffix", {
+                  tier: deltaInfo.tierShort,
+                  defaultValue: ` abaixo do típico do escalão ${deltaInfo.tierShort}`,
+                })}
+              </>
+            )}
+          </span>
+        </p>
       ) : (
         <p className="text-[17px] leading-[1.6] text-content-tertiary">
           {t("identity.index.microline", {
@@ -888,6 +863,30 @@ function IndexRuler({
         <span>0</span>
         <span>100</span>
       </div>
+
+      {/* Legenda do pin vs mediana */}
+      {medianPct !== null ? (
+        <div className="flex items-center gap-3 mt-2 text-[12px] text-content-tertiary">
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="h-2 w-2 rounded-full bg-accent-primary"
+              aria-hidden="true"
+            />
+            {t("identity.index.legend_this", {
+              defaultValue: "este perfil",
+            })}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="h-3 w-px bg-content-tertiary"
+              aria-hidden="true"
+            />
+            {t("identity.index.legend_median", {
+              defaultValue: "mediana do escalão",
+            })}
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }
