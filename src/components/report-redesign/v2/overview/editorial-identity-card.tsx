@@ -559,12 +559,23 @@ function IndexBlock({
     ? (engagementRatePct as number) - (engagementBenchmarkPct as number)
     : null;
 
-  // Delta humano: "X pp abaixo/acima/alinhado".
+  // Delta relativo (%): (perfil - benchmark) / benchmark × 100.
+  // Usado APENAS no texto exibido. O pin da mediana na régua continua
+  // a usar `deltaPp` (pontos percentuais absolutos).
+  const deltaRelPct =
+    hasBenchmark && (engagementBenchmarkPct as number) > 0
+      ? ((deltaPp as number) / (engagementBenchmarkPct as number)) * 100
+      : null;
+
+  // Delta humano: "X% abaixo/acima/alinhado".
   const deltaInfo = (() => {
-    if (deltaPp === null) return null;
-    const abs = Math.abs(deltaPp);
-    const ppFormatted = formatDecimal(abs, locale, abs < 1 ? 2 : 1);
-    if (abs < 0.5) {
+    if (deltaRelPct === null || deltaPp === null) return null;
+    const absRel = Math.abs(deltaRelPct);
+    // 0 casas a partir de 10%; 1 casa abaixo de 10%.
+    const relFormatted = formatDecimal(absRel, locale, absRel >= 10 ? 0 : 1);
+    // Limiar "alinhado" coerente com ALIGNED_THRESHOLD_PERCENT (10%)
+    // usado em src/lib/benchmark/engine.ts.
+    if (absRel < 10) {
       return {
         dir: "aligned" as const,
         strong: t("identity.index.delta_aligned_strong", {
@@ -576,11 +587,11 @@ function IndexBlock({
       };
     }
     return {
-      dir: deltaPp >= 0 ? ("above" as const) : ("below" as const),
+      dir: deltaRelPct >= 0 ? ("above" as const) : ("below" as const),
       strong:
-        deltaPp >= 0
-          ? `${ppFormatted}% ${t("identity.index.delta_above_word", { defaultValue: "acima" })}`
-          : `${ppFormatted}% ${t("identity.index.delta_below_word", { defaultValue: "abaixo" })}`,
+        deltaRelPct >= 0
+          ? `${relFormatted}% ${t("identity.index.delta_above_word", { defaultValue: "acima" })}`
+          : `${relFormatted}% ${t("identity.index.delta_below_word", { defaultValue: "abaixo" })}`,
       tail: t("identity.index.delta_tail", {
         defaultValue: "do envolvimento típico do escalão",
       }),
