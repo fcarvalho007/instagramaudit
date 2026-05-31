@@ -428,8 +428,8 @@ export function EditorialIdentityCard({
       aria-label={t("identity.aria_label")}
       className="rounded-2xl border border-border-default bg-white shadow-card overflow-hidden"
     >
-      {/* Zona macro */}
-      <div className="px-6 py-7 sm:px-7 sm:py-8 flex flex-col sm:flex-row sm:items-stretch gap-6 sm:gap-10">
+      {/* Zona macro — empilhada: herói + régua em cima, veredicto a respirar abaixo */}
+      <div className="px-6 py-7 sm:px-7 sm:py-8 flex flex-col gap-7">
         <IndexBlock
           value={overall}
           engagementRatePct={keyMetrics?.engagementRate ?? null}
@@ -441,23 +441,18 @@ export function EditorialIdentityCard({
           followers={followers}
           postsAnalyzed={postsAnalyzed}
           cadenceWindowDays={cadenceWindowDays ?? null}
+          band={band}
+          bandLabelText={bandLabel(band, t)}
+          bandBadgeClassName={bandBadgeClass(band)}
+          isProvisional={isProvisional}
           t={t}
           locale={i18n.language}
         />
 
-        <div className="flex-1 min-w-0 space-y-3.5 sm:pl-8 sm:border-l sm:border-border-default">
+        <div className="min-w-0 space-y-3.5 border-t border-border-default pt-6">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-eyebrow-sm text-content-tertiary">
               {t("identity.eyebrow_verdict")}
-            </span>
-            <span
-              className={cn(
-                "inline-flex items-center rounded-full px-2 py-0.5",
-                "text-xs font-semibold tracking-wide uppercase leading-none",
-                bandBadgeClass(band),
-              )}
-            >
-              {bandLabel(band, t)}
             </span>
             {isProvisional ? (
               <span
@@ -474,16 +469,16 @@ export function EditorialIdentityCard({
             ) : null}
           </div>
 
-          <h2 className="font-display text-[1.25rem] md:text-[1.5rem] font-semibold leading-snug tracking-tight text-content-primary max-w-2xl">
+          <h2 className="font-display text-[1.25rem] md:text-[1.5rem] font-semibold leading-snug tracking-tight text-content-primary max-w-3xl">
             {copy.title}
           </h2>
 
-          <p className="text-[17px] leading-[1.65] text-content-primary max-w-2xl whitespace-pre-line">
+          <p className="text-[17px] leading-[1.65] text-content-primary max-w-3xl whitespace-pre-line">
             {copy.paragraph}
           </p>
 
           {resolution.source !== "fallback" && resolved.evidence_used.length >= 2 ? (
-            <div className="pt-1 max-w-2xl">
+            <div className="pt-1 max-w-3xl">
               <p className="text-eyebrow-sm text-content-tertiary mb-1.5">
                 {t("identity.evidence_title", {
                   defaultValue: "Sinais usados nesta leitura",
