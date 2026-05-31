@@ -863,6 +863,30 @@ function IndexRuler({
         <span>0</span>
         <span>100</span>
       </div>
+
+      {/* Legenda do pin vs mediana */}
+      {medianPct !== null ? (
+        <div className="flex items-center gap-3 mt-2 text-[12px] text-content-tertiary">
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="h-2 w-2 rounded-full bg-accent-primary"
+              aria-hidden="true"
+            />
+            {t("identity.index.legend_this", {
+              defaultValue: "este perfil",
+            })}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="h-3 w-px bg-content-tertiary"
+              aria-hidden="true"
+            />
+            {t("identity.index.legend_median", {
+              defaultValue: "mediana do escalão",
+            })}
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }
