@@ -595,36 +595,10 @@ function IndexBlock({
     }
     const absRel = Math.abs(deltaRelPct);
     const relFormatted = formatDecimal(absRel, locale, absRel >= 10 ? 0 : 1);
-    const profileFmt = formatDecimal(
-      engagementRatePct,
-      locale,
-      engagementRatePct < 1 ? 2 : 1,
-    );
-    const benchFmt = formatDecimal(engagementBenchmarkPct, locale, 1);
     const tierShort = tier ?? "escalão";
     const dir: "above" | "below" | "aligned" =
       absRel < 10 ? "aligned" : deltaRelPct >= 0 ? "above" : "below";
-    const relative =
-      dir === "aligned"
-        ? t("identity.index.rel_aligned", {
-            defaultValue: "Alinhado com a referência do escalão",
-          })
-        : dir === "above"
-          ? t("identity.index.rel_above", {
-              pct: relFormatted,
-              defaultValue: `${relFormatted}% acima da referência do escalão`,
-            })
-          : t("identity.index.rel_below", {
-              pct: relFormatted,
-              defaultValue: `${relFormatted}% abaixo da referência do escalão`,
-            });
-    return {
-      dir,
-      profilePct: profileFmt,
-      benchPct: benchFmt,
-      tierShort,
-      relative,
-    };
+    return { dir, relFormatted, tierShort };
   })();
 
   const medianIndex = medianIndexFromBenchmark(clamped, deltaPp);
