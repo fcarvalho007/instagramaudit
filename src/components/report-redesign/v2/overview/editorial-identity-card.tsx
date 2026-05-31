@@ -442,33 +442,11 @@ export function EditorialIdentityCard({
           postsAnalyzed={postsAnalyzed}
           cadenceWindowDays={cadenceWindowDays ?? null}
           band={band}
-          bandLabelText={bandLabel(band, t)}
-          bandBadgeClassName={bandBadgeClass(band)}
-          isProvisional={isProvisional}
           t={t}
           locale={i18n.language}
         />
 
         <div className="min-w-0 space-y-3.5 border-t border-border-default pt-6">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-eyebrow-sm text-content-tertiary">
-              {t("identity.eyebrow_verdict")}
-            </span>
-            {isProvisional ? (
-              <span
-                className="inline-flex items-center rounded-full bg-surface-muted px-2 py-0.5 text-xs font-medium tracking-wide uppercase leading-none text-content-tertiary"
-                title={t("identity.verdict.provisional_hint", {
-                  defaultValue:
-                    "Leitura ajustada por divergência entre a interpretação editorial e os números observados.",
-                })}
-              >
-                {t("identity.verdict.provisional", {
-                  defaultValue: "Leitura provisória",
-                })}
-              </span>
-            ) : null}
-          </div>
-
           <h2 className="font-display text-[1.25rem] md:text-[1.5rem] font-semibold leading-snug tracking-tight text-content-primary max-w-3xl">
             {copy.title}
           </h2>
