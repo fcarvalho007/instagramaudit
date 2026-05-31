@@ -119,12 +119,6 @@ function verdictLabelToBand(label: EditorialVerdict["verdict_label"]): Band {
   return "warning"; // needs_work | limited_data
 }
 
-function bandTextClass(band: Band): string {
-  if (band === "solid") return "text-signal-success";
-  if (band === "developing") return "text-accent-primary";
-  return "text-signal-warning";
-}
-
 function bandFillClass(band: Band): string {
   if (band === "solid") return "bg-signal-success";
   if (band === "developing") return "bg-accent-primary";
