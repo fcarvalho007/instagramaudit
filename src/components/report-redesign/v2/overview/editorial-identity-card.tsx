@@ -714,12 +714,6 @@ function IndexBlock({
             / 100
           </span>
         </div>
-        <p className="text-[12px] leading-snug text-content-tertiary">
-          {t("identity.index.composite_sublabel", {
-            defaultValue:
-              "índice composto · envolvimento + cadência + conversa",
-          })}
-        </p>
       </div>
 
       {/* c) Régua 0–100 full-width */}
@@ -740,35 +734,48 @@ function IndexBlock({
 
       {/* d) Delta interpretativo (depois da régua) */}
       {deltaInfo ? (
-        <div className="flex items-start gap-1.5">
+        <p className="flex items-start gap-1.5 text-[17px] leading-[1.5] text-content-secondary">
           {DeltaIcon ? (
             <DeltaIcon
               className={cn("h-4 w-4 shrink-0 mt-[5px]", deltaIconClass)}
               aria-hidden="true"
             />
           ) : null}
-          <div className="flex flex-col gap-0.5 min-w-0">
-            <p className="text-[17px] leading-[1.5] text-content-secondary">
-              <span className="font-semibold text-content-primary tabular-nums">
-                {t("identity.index.engagement_label", {
-                  defaultValue: "Envolvimento",
+          <span className="min-w-0">
+            {deltaInfo.dir === "aligned" ? (
+              t("identity.index.delta_aligned", {
+                tier: deltaInfo.tierShort,
+                defaultValue: `Envolvimento alinhado com o típico do escalão ${deltaInfo.tierShort}`,
+              })
+            ) : deltaInfo.dir === "above" ? (
+              <>
+                {t("identity.index.delta_above_prefix", {
+                  defaultValue: "Envolvimento ",
                 })}
-                : {deltaInfo.profilePct}%
-              </span>
-              <span className="text-content-tertiary">
-                {" · "}
-                {t("identity.index.engagement_typical", {
+                <span className="font-semibold text-content-primary tabular-nums">
+                  {deltaInfo.relFormatted}%
+                </span>
+                {t("identity.index.delta_above_suffix", {
                   tier: deltaInfo.tierShort,
-                  bench: deltaInfo.benchPct,
-                  defaultValue: `típico ${deltaInfo.tierShort} ~${deltaInfo.benchPct}%`,
+                  defaultValue: ` acima do típico do escalão ${deltaInfo.tierShort}`,
                 })}
-              </span>
-            </p>
-            <p className="text-[14px] leading-snug text-content-tertiary">
-              {deltaInfo.relative}
-            </p>
-          </div>
-        </div>
+              </>
+            ) : (
+              <>
+                {t("identity.index.delta_below_prefix", {
+                  defaultValue: "Envolvimento ",
+                })}
+                <span className="font-semibold text-content-primary tabular-nums">
+                  {deltaInfo.relFormatted}%
+                </span>
+                {t("identity.index.delta_below_suffix", {
+                  tier: deltaInfo.tierShort,
+                  defaultValue: ` abaixo do típico do escalão ${deltaInfo.tierShort}`,
+                })}
+              </>
+            )}
+          </span>
+        </p>
       ) : (
         <p className="text-[17px] leading-[1.6] text-content-tertiary">
           {t("identity.index.microline", {
