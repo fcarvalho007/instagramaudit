@@ -119,12 +119,6 @@ function verdictLabelToBand(label: EditorialVerdict["verdict_label"]): Band {
   return "warning"; // needs_work | limited_data
 }
 
-function bandFillClass(band: Band): string {
-  if (band === "solid") return "bg-signal-success";
-  if (band === "developing") return "bg-accent-primary";
-  return "bg-signal-warning";
-}
-
 /* ── Helpers numéricos ─────────────────────────────────────────────── */
 
 function formatDecimal(value: number, locale: string, digits = 1): string {
