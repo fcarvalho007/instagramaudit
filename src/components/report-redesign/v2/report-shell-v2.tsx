@@ -376,8 +376,9 @@ export function ReportShellV2({
           </div>
         </div>
 
-        {/* Pós-blocos (mantêm-se fora da numeração 1–6) */}
-        <ReportMethodology />
+        {/* Pós-blocos (mantêm-se fora da numeração 1–6).
+            Só após captura de lead — versão anónima fica mais enxuta. */}
+        {unlocked && <ReportMethodology />}
 
         {/* Espaço inferior mobile para a bottom nav bar não tapar conteúdo */}
         <div className="h-28 lg:hidden" aria-hidden="true" />
