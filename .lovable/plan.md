@@ -1,33 +1,63 @@
 ## Objetivo
 
-Refinar a caixa do lead magnet em `src/components/product/report-lock-gate.tsx` para leitura mais elegante e remover a linha "Construído em Leiria".
+Reorganizar o topo do `EditorialIdentityCard` para uma leitura sequencial mais clara: **título → número → régua → delta**, e substituir "pp" por "%" no delta.
 
-## Alterações
+Ficheiro: `src/components/report-redesign/v2/overview/editorial-identity-card.tsx`
 
-**1. Tipografia mais legível e hierarquia mais calma**
-- Título (h2): reduzir tamanho mobile de `text-[24px]` para `text-[22px]` (desktop mantém `text-[32px]`), apertar `tracking-[-0.015em]` e usar `leading-[1.15]`. Manter o handle quebrado em linha própria via `<br/>`, mas remover o sublinhado da palavra "gratuita" (componente `<free>`) — fica só negrito, mais limpo e elegante; o handle `@frederico…` mantém o destaque a azul.
-- Subtítulo: subir para `text-[15px] md:text-[16px] leading-[1.6]` para respiração consistente com o resto do relatório (17px corpo).
+## Estrutura nova (mobile-first, full-width)
 
-**2. Espaçamento e estrutura**
-- Padding: `p-6 md:p-7` → `p-7 md:p-8` para dar mais ar.
-- Badge → título: `mt-5` → `mt-6`.
-- Título → subtítulo: `mt-3` → `mt-4`.
-- Subtítulo → CTA: `mt-6` → `mt-7`.
+Atualmente o topo do bloco está em duas linhas:
+1. eyebrow + ⓘ · parágrafo de delta lado a lado
+2. número 31 + régua lado a lado
 
-**3. CTA mais sóbrio**
-- Trocar `bg-gradient-to-r from-accent-primary to-secondary` (gradiente azul→indigo que cria fade visível à direita) por cor sólida `bg-accent-primary hover:bg-accent-primary/92`, mantendo `rounded-lg`, `size="lg"` e a seta `→` no texto i18n. Resultado: botão mais limpo, sem efeito de "esbatimento" no canto direito.
+Passa a ser uma stack vertical única, alinhada à esquerda:
 
-**4. Footer**
-- Remover o `<span>` do item "Heart / Construído em Leiria" (linhas 189–191).
-- Remover import `Heart` de `lucide-react`.
-- Manter apenas: `~1 minuto` e `RGPD · sem spam`, ambos centrados numa única linha — fica mais sucinto.
-- (i18n) Não tocar em `gate.json`: a chave `lockGate.footer.made` deixa de ser referenciada mas pode ficar lá sem dano.
+```text
+ÍNDICE DO PERFIL ⓘ          ← eyebrow + info (linha calma, sozinha)
 
-**5. Não mexer**
-- Document stack decorativo, spine, halo prismático, blur de fundo: ficam intactos.
-- Lógica `unlocked`, `onUnlockClick`, `DevResetButton`: intactos.
-- Copy i18n (exceto deixar de usar `footer.made`).
+31 /100                      ← número herói (mantém tamanho atual)
+
+────●──┊──────────           ← régua 0–100 (full-width, marcador esta marca + mediana)
+ 0                  100
+
+↘ 2,3% abaixo do envolvimento  ← delta DEPOIS da régua, contextualiza o pin
+   típico do escalão
+```
+
+Justificação UX: o utilizador lê primeiro **o que é** (eyebrow), depois **o valor**, depois **onde está** (régua) e só no fim **a interpretação** (delta). Hoje o delta aparece antes da régua, o que obriga a olhar para cima e para baixo.
+
+## Alterações concretas
+
+**1. Reordenação JSX (linhas 626–732)**
+
+Substituir os dois blocos atuais (linha 1 = eyebrow+delta, linha 2 = número+régua) por quatro blocos empilhados num `<div className="flex flex-col gap-4">`:
+
+- **a)** Eyebrow + Popover ⓘ (extraído do bloco atual, sem o parágrafo de delta ao lado). Permanece em `gap-1.5`.
+- **b)** Número herói `31 / 100` (igual ao atual, mas já não dentro do row sm:flex-row — fica em linha própria com `mt-1`).
+- **c)** `IndexRuler` ocupa largura total (`w-full`), removendo o `sm:flex-row sm:items-center sm:gap-8`.
+- **d)** Linha de delta (igual ao atual `deltaInfo` paragraph, com `DeltaIcon`), agora `mt-1` por baixo da régua. Mantém `text-[17px] leading-[1.6]`, ícone alinhado ao baseline da primeira linha.
+
+A fallback microline (quando não há `deltaInfo`) também desce para a posição (d).
+
+**2. Trocar "pp" por "%" no delta (linhas 582–583)**
+
+```ts
+strong:
+  deltaPp >= 0
+    ? `${ppFormatted}% ${t("identity.index.delta_above_word", { defaultValue: "acima" })}`
+    : `${ppFormatted}% ${t("identity.index.delta_below_word", { defaultValue: "abaixo" })}`,
+```
+
+Razão: o utilizador pediu percentagem; mantemos a precisão decimal já formatada (`2,3%`). Não tocamos no cálculo, só na unidade exibida.
+
+**3. Nada mais muda**
+
+- Cálculo do índice, `medianIndexFromBenchmark`, `IndexRuler`, popover de método, tokens, cores: tudo intacto.
+- O resto do cartão (`Cadência forte, sinal fraco`, veredicto, evidence bullets, MetricsStrip) fica igual.
+- Sem alterações de i18n keys (`delta_above_word` / `delta_below_word` mantêm-se; só o glue muda de " pp " para "% ").
 
 ## Validação
+
 - `bunx tsc --noEmit`
-- Preview mobile 411×742 em `/analyze/frederico.m.carvalho` (estado bloqueado) para confirmar leitura e ausência de "Construído em Leiria".
+- Preview em `/analyze/frederico.m.carvalho` a 411×742: confirmar ordem eyebrow → 31 → régua → delta, e leitura "2,3% abaixo do envolvimento típico do escalão".
+- Desktop ≥1280px: confirmar que o stack continua a respirar (sem necessidade de voltar a coluna lateral).

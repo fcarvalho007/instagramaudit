@@ -579,8 +579,8 @@ function IndexBlock({
       dir: deltaPp >= 0 ? ("above" as const) : ("below" as const),
       strong:
         deltaPp >= 0
-          ? `${ppFormatted} pp ${t("identity.index.delta_above_word", { defaultValue: "acima" })}`
-          : `${ppFormatted} pp ${t("identity.index.delta_below_word", { defaultValue: "abaixo" })}`,
+          ? `${ppFormatted}% ${t("identity.index.delta_above_word", { defaultValue: "acima" })}`
+          : `${ppFormatted}% ${t("identity.index.delta_below_word", { defaultValue: "abaixo" })}`,
       tail: t("identity.index.delta_tail", {
         defaultValue: "do envolvimento típico do escalão",
       }),
@@ -625,9 +625,8 @@ function IndexBlock({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Linha 1: eyebrow + ⓘ · delta · chip veredicto */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <div className="flex items-center gap-1.5 shrink-0">
+      {/* a) Eyebrow + ⓘ */}
+      <div className="flex items-center gap-1.5">
           <span className="text-eyebrow-sm text-content-tertiary">
             {t("identity.index.eyebrow", { defaultValue: "Índice do perfil" })}
           </span>
@@ -676,60 +675,58 @@ function IndexBlock({
               </p>
             </PopoverContent>
           </Popover>
-        </div>
-
-        {deltaInfo ? (
-          <p className="flex items-start gap-1.5 text-[17px] leading-[1.6] text-content-secondary flex-1 min-w-0">
-            {DeltaIcon ? (
-              <DeltaIcon
-                className={cn("h-4 w-4 shrink-0 mt-[3px]", deltaIconClass)}
-                aria-hidden="true"
-              />
-            ) : null}
-            <span>
-              <span className="font-semibold text-content-primary">
-                {deltaInfo.strong}
-              </span>{" "}
-              {deltaInfo.tail}
-            </span>
-          </p>
-        ) : (
-          <p className="text-[17px] leading-[1.6] text-content-tertiary flex-1 min-w-0">
-            {t("identity.index.microline", {
-              defaultValue:
-                "Índice comparativo, calculado a partir de 3 sinais observados no perfil.",
-            })}
-          </p>
-        )}
-
       </div>
 
-      {/* Linha 2: número herói + régua full-width */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-8">
-        <div className="flex items-baseline gap-1.5 shrink-0" data-band={band}>
-          <span className="font-display text-[4.5rem] sm:text-[5.5rem] leading-none font-bold tabular-nums text-content-primary tracking-[-0.03em]">
-            {hasValue ? clamped : "—"}
-          </span>
-          <span className="text-[0.95rem] text-content-tertiary tabular-nums">
-            / 100
-          </span>
-        </div>
-
-        {hasValue ? (
-          <IndexRuler
-            value={clamped}
-            median={medianIndex}
-            t={t}
-            locale={locale}
-          />
-        ) : (
-          <p className="text-[14px] leading-snug text-content-secondary">
-            {t("identity.index.no_value", {
-              defaultValue: "Sem dados suficientes para calcular o índice.",
-            })}
-          </p>
-        )}
+      {/* b) Número herói */}
+      <div className="flex items-baseline gap-1.5" data-band={band}>
+        <span className="font-display text-[4.5rem] sm:text-[5.5rem] leading-none font-bold tabular-nums text-content-primary tracking-[-0.03em]">
+          {hasValue ? clamped : "—"}
+        </span>
+        <span className="text-[0.95rem] text-content-tertiary tabular-nums">
+          / 100
+        </span>
       </div>
+
+      {/* c) Régua 0–100 full-width */}
+      {hasValue ? (
+        <IndexRuler
+          value={clamped}
+          median={medianIndex}
+          t={t}
+          locale={locale}
+        />
+      ) : (
+        <p className="text-[14px] leading-snug text-content-secondary">
+          {t("identity.index.no_value", {
+            defaultValue: "Sem dados suficientes para calcular o índice.",
+          })}
+        </p>
+      )}
+
+      {/* d) Delta interpretativo (depois da régua) */}
+      {deltaInfo ? (
+        <p className="flex items-start gap-1.5 text-[17px] leading-[1.6] text-content-secondary">
+          {DeltaIcon ? (
+            <DeltaIcon
+              className={cn("h-4 w-4 shrink-0 mt-[3px]", deltaIconClass)}
+              aria-hidden="true"
+            />
+          ) : null}
+          <span>
+            <span className="font-semibold text-content-primary">
+              {deltaInfo.strong}
+            </span>{" "}
+            {deltaInfo.tail}
+          </span>
+        </p>
+      ) : (
+        <p className="text-[17px] leading-[1.6] text-content-tertiary">
+          {t("identity.index.microline", {
+            defaultValue:
+              "Índice comparativo, calculado a partir de 3 sinais observados no perfil.",
+          })}
+        </p>
+      )}
     </div>
   );
 }
