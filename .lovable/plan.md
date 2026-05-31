@@ -1,88 +1,81 @@
 ## Problema
 
-Na caixa "Índice do perfil" há duas escalas a competir pela leitura, sem o leitor perceber que medem coisas diferentes:
+A caixa "Índice do perfil" tem hoje **5 números** a competir entre si:
 
-- **31 / 100** — índice composto (envolvimento 45% + cadência + conversa)
-- **96% abaixo** — só envolvimento, em termos relativos vs benchmark do escalão
+1. `31 / 100` — índice composto (herói)
+2. Régua 0–100 com pin da mediana
+3. `Envolvimento: 0,09%` — valor absoluto do perfil
+4. `típico Micro ~2,4%` — benchmark do escalão
+5. `96% abaixo da referência do escalão` — leitura relativa
 
-Um leigo lê "96% abaixo" e pergunta-se porque é que então o índice não é ~4/100. Pior: a 96% soa catastrófico quando, em absoluto, pode ser apenas "0,1% vs 3,0%". E o **escalão** (Micro, Mid, etc.) só aparece escondido no popover ⓘ — o leitor não tem como ancorar a referência.
+O leitor leigo perde-se. Pior: o `0,09%` aparece **outra vez logo abaixo** no MetricsStrip ("Envolvimento médio"), o que cria duplicação e dúvida ("é a mesma coisa? porque está duas vezes?").
 
-## Objectivo
+## Princípio
 
-Tornar a caixa auto-explicativa em 3 segundos, sem mudar a matemática nem a estrutura visual já aprovada:
+A caixa do índice deve responder a **uma só pergunta**: *"Como é que este perfil se posiciona vs o seu escalão?"*
 
-1. Deixar claro **que** o 31/100 e o delta são leituras diferentes
-2. Mostrar o **escalão** logo no topo, como contexto
-3. Substituir o "96% abaixo" isolado por uma comparação **absoluta + relativa** que qualquer leigo entende
+Os números absolutos (0,09% de envolvimento, ~2,4% do benchmark) **pertencem ao MetricsStrip e ao bloco de Benchmark**, não aqui. Aqui basta a **leitura comparativa**.
 
 ## Alterações
 
-Ficheiro: `src/components/report-redesign/v2/overview/editorial-identity-card.tsx` (função `IndexBlock`, linhas ~526–743).
+Ficheiro: `src/components/report-redesign/v2/overview/editorial-identity-card.tsx` (função `IndexBlock`, linhas ~767–805).
 
-### 1. Eyebrow com escalão visível (linhas ~640–689)
+### 1. Colapsar o bloco do delta numa única linha clara
 
-Antes:
+Antes (3 linhas, 3 números):
 ```
-ÍNDICE DO PERFIL  ⓘ
-```
-
-Depois:
-```
-ÍNDICE DO PERFIL · MICRO (10K–50K)  ⓘ
+↘ Envolvimento: 0,09% · típico Micro ~2,4%
+   96% abaixo da referência do escalão
 ```
 
-Implementação: concatenar `tier` (já calculado em `tierLabelFromFollowers(followers)`, linha 551) ao texto do eyebrow, separado por `·`. Manter o ⓘ no fim. Quando `tier` for `null`, manter só "ÍNDICE DO PERFIL".
-
-### 2. Micro-label sob o "/ 100" para enquadrar a escala (linhas ~691–699)
-
-Adicionar uma linha mínima por baixo do número herói, em `text-content-tertiary text-[12px]`:
-
+Depois (1 linha, 1 número, com contexto):
 ```
-31 / 100
-índice composto · envolvimento + cadência + conversa
+↘ Envolvimento 96% abaixo do típico do escalão Micro
 ```
 
-Isto antecipa a pergunta "31 em quê?" antes do leitor chegar ao delta.
+- Mantém o ícone direccional (↘ amarelo / ↗ verde / — neutro)
+- `text-[17px]` em `text-content-secondary`, com `96%` em `font-semibold text-content-primary tabular-nums`
+- Tipografia consistente com o resto do card
+- Caso "alinhado" (`absRel < 10`): `→ Envolvimento alinhado com o típico do escalão Micro`
+- Caso sem benchmark: mantém o microline genérico actual
 
-### 3. Reformular o delta: absoluto primeiro, relativo como suporte (linhas ~571–599, ~717–740)
+### 2. Sublabel sob a régua: indicar que o pin é a mediana
 
-Hoje:
-> ↘ **96% abaixo** do envolvimento típico do escalão
+Hoje a régua tem um pin discreto sem legenda na caixa. Adicionar uma micro-legenda `text-[12px] text-content-tertiary` por baixo da régua:
 
-Proposta (duas linhas, hierarquia clara):
+```
+● este perfil   │ mediana do escalão
+```
 
-> ↘ **Envolvimento: 0,1%** · típico Micro ~3,0%
-> 96% abaixo da referência do escalão
+(usando os mesmos glifos visuais do pin). Ajuda o leitor a perceber porque é que aos 31/100 ainda está "abaixo" — a mediana fica mais à direita.
 
-Vantagens:
-- O número absoluto ancora o leitor (0,1% é tangível; 96% é abstracto)
-- Fica explícito que o delta refere-se a **envolvimento**, não ao índice
-- "típico Micro ~3,0%" mostra de onde vem o 96% — a matemática fica transparente
+### 3. Remover o sublabel "índice composto · envolvimento + cadência + conversa"
 
-Implementação em `deltaInfo`:
-- Linha 1 (forte): `Envolvimento: {engagementRatePct}%` + separador + `típico {tierShort} ~{engagementBenchmarkPct}%`
-- Linha 2 (suporte, mais pequena, `text-[14px] text-content-tertiary`): `{absRel}% {abaixo|acima} da referência do escalão`
-- Quando `absRel < 10`: linha 2 vira `Alinhado com a referência do escalão`
-- Quando não há benchmark: mostrar só linha 1 sem comparação
+Esta frase, debaixo do `31 / 100`, é informação técnica que o popover ⓘ já explica. Está a competir com o eyebrow ("Índice do perfil · MICRO (10K–50K)") e a engordar o card. Removê-la simplifica visualmente sem perder rigor — quem quiser detalhe abre o ⓘ.
 
-Usar `formatPercent` / `formatDecimal` já existentes para arredondamento (1 casa < 10%, 0 casas ≥ 10%).
+### 4. Popover ⓘ — actualizar para responder à dúvida nova
 
-### 4. Popover ⓘ — clarificar a distinção das escalas
+Reordenar para que a primeira frase responda directamente a "o que é Envolvimento?":
 
-Adicionar uma frase curta no topo do popover:
+> **Envolvimento** é a taxa de interacção média por publicação (likes + comentários ÷ alcance estimado). O valor absoluto aparece em "Indicadores principais", logo abaixo.
+>
+> **Índice (0–100)** combina envolvimento (45%), cadência e conversa para uma leitura comparativa face ao escalão.
 
-> "Índice (0–100) resume 3 sinais. O delta abaixo refere-se só ao envolvimento."
+## Resultado
 
-Mantém o resto da explicação intacta.
+A caixa passa de 5 para **2 números** (`31/100` + `96%`), cada um a comunicar uma ideia distinta:
+
+- `31/100` → leitura composta global
+- `96% abaixo` → leitura comparativa do envolvimento vs escalão
+
+O valor absoluto de envolvimento (`0,09%`) deixa de aparecer aqui e vive **apenas** no MetricsStrip — onde o leitor já espera ver números crus.
 
 ## Fora de scope
 
-- Não mexer no cálculo do índice nem na régua
-- Não mexer no MetricsStrip nem nas colunas de bullets
-- Não mexer i18n keys existentes além de acrescentar `identity.index.composite_sublabel` e ajustar defaults
+- Não mexer no cálculo do índice, na régua, no MetricsStrip nem no bloco de Benchmark
+- Não tocar i18n existentes além de ajustar `identity.index.rel_below/above/aligned` para a frase nova e remover `engagement_label`, `engagement_typical`, `composite_sublabel` (não usadas)
 
 ## Validação
 
 - `bunx tsc --noEmit`
-- Preview `/analyze/frederico.m.carvalho` em 411×742 (mobile do user) — confirmar que o escalão aparece, a linha "Envolvimento: 0,1% · típico ~3,0%" lê bem em 2 linhas máximo, e que a contradição desaparece visualmente
-- Verificar caso sem benchmark (esconde linha 2 corretamente)
+- Preview `/analyze/frederico.m.carvalho` em 411×742 — confirmar que o card "respira" mais, que a duplicação `0,09%` desapareceu, e que a régua agora tem legenda do pin
