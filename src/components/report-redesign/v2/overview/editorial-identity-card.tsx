@@ -363,18 +363,6 @@ export function EditorialIdentityCard({
     fallbackVerdict,
   );
   const resolved = resolution.verdict;
-  const hasProvisionalWarning =
-    Array.isArray(resolved.warnings) &&
-    resolved.warnings.some((w) =>
-      [
-        "low_sample",
-        "stale_data",
-        "cadence_uncertain",
-        "benchmark_missing",
-        "no_market_signals",
-      ].includes(w),
-    );
-  const isProvisional = resolution.source !== "ai" || hasProvisionalWarning;
 
   // Nunca renderizamos `ai_insights_v2.sections.hero.text`. Quando a IA
   // não tem `editorial_verdict` válido, `resolved` é o fallback
