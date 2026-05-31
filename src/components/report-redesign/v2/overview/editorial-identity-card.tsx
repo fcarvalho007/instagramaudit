@@ -736,22 +736,11 @@ function IndexBlock({
           </p>
         )}
 
-        <span
-          className={cn(
-            "inline-flex items-center rounded-full px-2.5 py-1 shrink-0",
-            "text-xs font-semibold tracking-wide uppercase leading-none",
-            bandBadgeClassName,
-          )}
-          aria-label={`${t("identity.eyebrow_verdict")}: ${bandLabelText}`}
-          data-band={band}
-        >
-          {bandLabelText}
-        </span>
       </div>
 
       {/* Linha 2: número herói + régua full-width */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-8">
-        <div className="flex items-baseline gap-1.5 shrink-0">
+        <div className="flex items-baseline gap-1.5 shrink-0" data-band={band}>
           <span className="font-display text-[4.5rem] sm:text-[5.5rem] leading-none font-bold tabular-nums text-content-primary tracking-[-0.03em]">
             {hasValue ? clamped : "—"}
           </span>
