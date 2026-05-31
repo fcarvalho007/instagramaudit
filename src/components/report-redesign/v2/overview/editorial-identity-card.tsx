@@ -921,7 +921,7 @@ function BulletColumn({
       </div>
       <ul className="space-y-2.5">
         {items.map((it, i) => (
-          <li key={i} className="flex gap-2.5 text-[15px] leading-[1.55]">
+          <li key={i} className="flex gap-2.5 text-[17px] leading-[1.65]">
             <span
               className={cn("mt-[7px] h-1.5 w-1.5 rounded-full shrink-0", dot)}
               aria-hidden="true"
