@@ -713,14 +713,14 @@ function IndexBlock({
         </div>
 
         {deltaInfo ? (
-          <p className="flex items-center gap-1.5 text-[13px] text-content-secondary min-w-0 flex-1">
+          <p className="flex items-start gap-1.5 text-[17px] leading-[1.6] text-content-secondary flex-1 min-w-0">
             {DeltaIcon ? (
               <DeltaIcon
-                className={cn("h-3.5 w-3.5 shrink-0", deltaIconClass)}
+                className={cn("h-4 w-4 shrink-0 mt-[3px]", deltaIconClass)}
                 aria-hidden="true"
               />
             ) : null}
-            <span className="truncate">
+            <span>
               <span className="font-semibold text-content-primary">
                 {deltaInfo.strong}
               </span>{" "}
@@ -728,7 +728,7 @@ function IndexBlock({
             </span>
           </p>
         ) : (
-          <p className="text-[13px] text-content-tertiary min-w-0 flex-1">
+          <p className="text-[17px] leading-[1.6] text-content-tertiary flex-1 min-w-0">
             {t("identity.index.microline", {
               defaultValue:
                 "Índice comparativo, calculado a partir de 3 sinais observados no perfil.",
