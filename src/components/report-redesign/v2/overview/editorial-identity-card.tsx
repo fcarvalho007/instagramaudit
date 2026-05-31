@@ -929,6 +929,7 @@ function MetricsStrip({
   locale: string;
 }) {
   const lang: "en" | "pt" = locale.startsWith("pt") ? "pt" : "en";
+  type MetricTone = "neutral" | "info" | "success" | "warning";
   const items: Array<{
     key: string;
     icon: typeof Heart;
@@ -936,6 +937,7 @@ function MetricsStrip({
     value: string;
     unit: string;
     subtitle: string;
+    tone: MetricTone;
   }> = [];
 
   if (typeof averageLikes === "number" && averageLikes >= 0) {
@@ -952,6 +954,7 @@ function MetricsStrip({
       value: formatAvgMetric(averageLikes, lang),
       unit: t("identity.metrics.per_post"),
       subtitle,
+      tone: "neutral",
     });
   }
 
@@ -964,6 +967,7 @@ function MetricsStrip({
       value: formatAvgMetric(averageComments, lang),
       unit: t("identity.metrics.per_post"),
       subtitle: t(`identity.metrics.comments_${band}`),
+      tone: band === "active" ? "success" : band === "medium" ? "info" : "neutral",
     });
   }
 
@@ -976,13 +980,21 @@ function MetricsStrip({
       value: formatDecimal(postingFrequencyWeekly, locale, 1),
       unit: t("identity.metrics.per_week"),
       subtitle: t(`identity.metrics.rhythm_${band}`),
+      tone: band === "excess" ? "warning" : band === "good" ? "info" : "neutral",
     });
   }
 
   if (items.length === 0) return null;
 
+  const toneClass: Record<MetricTone, string> = {
+    neutral: "bg-surface-muted text-content-secondary",
+    info: "bg-accent-primary/10 text-accent-primary",
+    success: "bg-signal-success/10 text-signal-success",
+    warning: "bg-signal-warning/15 text-signal-warning",
+  };
+
   return (
-    <div className="rounded-xl border border-border-default bg-white grid grid-cols-1 sm:grid-cols-3 overflow-hidden divide-y divide-border-default sm:divide-y-0">
+    <div className="rounded-xl border border-border-default bg-white grid grid-cols-1 sm:grid-cols-3 overflow-hidden divide-y divide-border-default/60 sm:divide-y-0">
       {items.map((it, idx) => {
         const Icon = it.icon;
         const isFirst = idx === 0;
@@ -990,21 +1002,34 @@ function MetricsStrip({
           <div
             key={it.key}
             className={cn(
-              "px-4 py-3.5 sm:px-6 sm:py-5",
+              "px-5 py-5 sm:px-6 sm:py-6",
               !isFirst && "sm:border-l sm:border-border-default/60",
             )}
           >
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <Icon className="h-3.5 w-3.5 text-accent-primary" aria-hidden="true" />
+            <div className="flex items-center gap-2.5 mb-3">
+              <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-accent-primary/10 shrink-0">
+                <Icon className="h-3.5 w-3.5 text-accent-primary" aria-hidden="true" />
+              </span>
               <span className="text-eyebrow-sm text-content-secondary">{it.label}</span>
             </div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="font-sans text-[1.5rem] sm:text-[1.75rem] md:text-[1.625rem] font-semibold tabular-nums text-content-primary leading-none">
+            <div className="flex items-baseline gap-2">
+              <span className="font-sans text-[2rem] sm:text-[2.25rem] font-semibold tabular-nums text-content-primary leading-none">
                 {it.value}
               </span>
-              <span className="text-[14px] sm:text-[15px] text-content-secondary">{it.unit}</span>
+              <span className="text-[15px] font-medium text-content-tertiary">{it.unit}</span>
             </div>
-            <p className="mt-1.5 sm:mt-2 text-[13px] text-content-secondary leading-snug">{it.subtitle}</p>
+            {it.key === "likes" ? (
+              <p className="mt-3 text-[15px] leading-[1.5] text-content-secondary">{it.subtitle}</p>
+            ) : (
+              <span
+                className={cn(
+                  "mt-3 inline-flex items-center rounded-full px-2.5 py-1 text-[13px] font-medium",
+                  toneClass[it.tone],
+                )}
+              >
+                {it.subtitle}
+              </span>
+            )}
           </div>
         );
       })}
