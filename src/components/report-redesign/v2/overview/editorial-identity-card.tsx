@@ -466,11 +466,11 @@ export function EditorialIdentityCard({
                 {resolved.evidence_used.slice(0, 3).map((ev) => (
                   <li
                     key={ev}
-                    className="text-sm text-content-secondary flex gap-2 items-start"
+                    className="text-[17px] leading-[1.65] text-content-secondary flex gap-2 items-start"
                   >
                     <span
                       aria-hidden="true"
-                      className="mt-2 inline-block w-1 h-1 rounded-full bg-content-tertiary/70 shrink-0"
+                      className="mt-[11px] inline-block w-1 h-1 rounded-full bg-content-tertiary/70 shrink-0"
                     />
                     <span>
                       {t(`identity.evidence.${ev}`, { defaultValue: ev })}
@@ -482,7 +482,7 @@ export function EditorialIdentityCard({
           ) : null}
 
           {resolved.warnings && resolved.warnings.length > 0 ? (
-            <p className="text-xs text-content-tertiary pt-1">
+            <p className="text-[15px] leading-[1.55] text-content-tertiary pt-1">
               {resolved.warnings
                 .map((w) =>
                   t(`identity.warnings.${w}`, {
@@ -501,7 +501,7 @@ export function EditorialIdentityCard({
                 .join(" · ")}
             </p>
           ) : lowConfidence ? (
-            <p className="text-xs text-content-tertiary pt-1">
+            <p className="text-[15px] leading-[1.55] text-content-tertiary pt-1">
               {t("identity.low_confidence", { count: postsAnalyzed })}
             </p>
           ) : null}
