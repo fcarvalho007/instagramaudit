@@ -558,6 +558,12 @@ function IndexBlock({
     typeof followers === "number" && followers > 0
       ? tierLabelFromFollowers(followers)
       : null;
+  const tierRange =
+    typeof followers === "number" && followers > 0
+      ? tierRangeFromFollowers(followers)
+      : null;
+  const tierWithRange =
+    tier && tierRange ? `${tier} (${tierRange})` : tier;
 
   const hasBenchmark =
     engagementBenchmarkPct !== null &&
@@ -575,34 +581,49 @@ function IndexBlock({
       ? ((deltaPp as number) / (engagementBenchmarkPct as number)) * 100
       : null;
 
-  // Delta humano: "X% abaixo/acima/alinhado".
+  // Delta estruturado: linha 1 = valores absolutos (envolvimento perfil vs
+  // típico do escalão); linha 2 = comparação relativa (X% abaixo/acima ou
+  // alinhado). Ancora o leitor em números tangíveis antes do %.
   const deltaInfo = (() => {
-    if (deltaRelPct === null || deltaPp === null) return null;
-    const absRel = Math.abs(deltaRelPct);
-    // 0 casas a partir de 10%; 1 casa abaixo de 10%.
-    const relFormatted = formatDecimal(absRel, locale, absRel >= 10 ? 0 : 1);
-    // Limiar "alinhado" coerente com ALIGNED_THRESHOLD_PERCENT (10%)
-    // usado em src/lib/benchmark/engine.ts.
-    if (absRel < 10) {
-      return {
-        dir: "aligned" as const,
-        strong: t("identity.index.delta_aligned_strong", {
-          defaultValue: "Alinhado",
-        }),
-        tail: t("identity.index.delta_tail", {
-          defaultValue: "com o envolvimento típico do escalão",
-        }),
-      };
+    if (
+      engagementRatePct === null ||
+      engagementBenchmarkPct === null ||
+      engagementBenchmarkPct <= 0 ||
+      deltaRelPct === null
+    ) {
+      return null;
     }
+    const absRel = Math.abs(deltaRelPct);
+    const relFormatted = formatDecimal(absRel, locale, absRel >= 10 ? 0 : 1);
+    const profileFmt = formatDecimal(
+      engagementRatePct,
+      locale,
+      engagementRatePct < 1 ? 2 : 1,
+    );
+    const benchFmt = formatDecimal(engagementBenchmarkPct, locale, 1);
+    const tierShort = tier ?? "escalão";
+    const dir: "above" | "below" | "aligned" =
+      absRel < 10 ? "aligned" : deltaRelPct >= 0 ? "above" : "below";
+    const relative =
+      dir === "aligned"
+        ? t("identity.index.rel_aligned", {
+            defaultValue: "Alinhado com a referência do escalão",
+          })
+        : dir === "above"
+          ? t("identity.index.rel_above", {
+              pct: relFormatted,
+              defaultValue: `${relFormatted}% acima da referência do escalão`,
+            })
+          : t("identity.index.rel_below", {
+              pct: relFormatted,
+              defaultValue: `${relFormatted}% abaixo da referência do escalão`,
+            });
     return {
-      dir: deltaRelPct >= 0 ? ("above" as const) : ("below" as const),
-      strong:
-        deltaRelPct >= 0
-          ? `${relFormatted}% ${t("identity.index.delta_above_word", { defaultValue: "acima" })}`
-          : `${relFormatted}% ${t("identity.index.delta_below_word", { defaultValue: "abaixo" })}`,
-      tail: t("identity.index.delta_tail", {
-        defaultValue: "do envolvimento típico do escalão",
-      }),
+      dir,
+      profilePct: profileFmt,
+      benchPct: benchFmt,
+      tierShort,
+      relative,
     };
   })();
 
@@ -647,7 +668,14 @@ function IndexBlock({
       {/* a) Eyebrow + ⓘ */}
       <div className="flex items-center gap-1.5">
           <span className="text-eyebrow-sm text-content-tertiary">
-            {t("identity.index.eyebrow", { defaultValue: "Índice do perfil" })}
+            {tierWithRange
+              ? t("identity.index.eyebrow_with_tier", {
+                  tier: tierWithRange,
+                  defaultValue: `Índice do perfil · ${tierWithRange}`,
+                })
+              : t("identity.index.eyebrow", {
+                  defaultValue: "Índice do perfil",
+                })}
           </span>
           <Popover>
             <PopoverTrigger asChild>
@@ -669,6 +697,12 @@ function IndexBlock({
               <p className="text-eyebrow-sm text-content-tertiary">
                 {t("identity.method.toggle", {
                   defaultValue: "Como foi calculado",
+                })}
+              </p>
+              <p>
+                {t("identity.method.scales_line", {
+                  defaultValue:
+                    "O índice (0–100) resume 3 sinais. O delta abaixo refere-se apenas ao envolvimento.",
                 })}
               </p>
               <p>
@@ -697,13 +731,21 @@ function IndexBlock({
       </div>
 
       {/* b) Número herói */}
-      <div className="flex items-baseline gap-1.5" data-band={band}>
-        <span className="font-display text-[4.5rem] sm:text-[5.5rem] leading-none font-bold tabular-nums text-content-primary tracking-[-0.03em]">
-          {hasValue ? clamped : "—"}
-        </span>
-        <span className="text-[0.95rem] text-content-tertiary tabular-nums">
-          / 100
-        </span>
+      <div className="flex flex-col gap-1" data-band={band}>
+        <div className="flex items-baseline gap-1.5">
+          <span className="font-display text-[4.5rem] sm:text-[5.5rem] leading-none font-bold tabular-nums text-content-primary tracking-[-0.03em]">
+            {hasValue ? clamped : "—"}
+          </span>
+          <span className="text-[0.95rem] text-content-tertiary tabular-nums">
+            / 100
+          </span>
+        </div>
+        <p className="text-[12px] leading-snug text-content-tertiary">
+          {t("identity.index.composite_sublabel", {
+            defaultValue:
+              "índice composto · envolvimento + cadência + conversa",
+          })}
+        </p>
       </div>
 
       {/* c) Régua 0–100 full-width */}
@@ -724,20 +766,35 @@ function IndexBlock({
 
       {/* d) Delta interpretativo (depois da régua) */}
       {deltaInfo ? (
-        <p className="flex items-start gap-1.5 text-[17px] leading-[1.6] text-content-secondary">
+        <div className="flex items-start gap-1.5">
           {DeltaIcon ? (
             <DeltaIcon
-              className={cn("h-4 w-4 shrink-0 mt-[3px]", deltaIconClass)}
+              className={cn("h-4 w-4 shrink-0 mt-[5px]", deltaIconClass)}
               aria-hidden="true"
             />
           ) : null}
-          <span>
-            <span className="font-semibold text-content-primary">
-              {deltaInfo.strong}
-            </span>{" "}
-            {deltaInfo.tail}
-          </span>
-        </p>
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <p className="text-[17px] leading-[1.5] text-content-secondary">
+              <span className="font-semibold text-content-primary tabular-nums">
+                {t("identity.index.engagement_label", {
+                  defaultValue: "Envolvimento",
+                })}
+                : {deltaInfo.profilePct}%
+              </span>
+              <span className="text-content-tertiary">
+                {" · "}
+                {t("identity.index.engagement_typical", {
+                  tier: deltaInfo.tierShort,
+                  bench: deltaInfo.benchPct,
+                  defaultValue: `típico ${deltaInfo.tierShort} ~${deltaInfo.benchPct}%`,
+                })}
+              </span>
+            </p>
+            <p className="text-[14px] leading-snug text-content-tertiary">
+              {deltaInfo.relative}
+            </p>
+          </div>
+        </div>
       ) : (
         <p className="text-[17px] leading-[1.6] text-content-tertiary">
           {t("identity.index.microline", {
