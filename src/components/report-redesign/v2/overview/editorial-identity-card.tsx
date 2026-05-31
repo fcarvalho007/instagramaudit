@@ -674,21 +674,15 @@ function IndexBlock({
                 })}
               </p>
               <p>
-                {t("identity.method.scales_line", {
+                {t("identity.method.engagement_line", {
                   defaultValue:
-                    "O índice (0–100) resume 3 sinais. O delta abaixo refere-se apenas ao envolvimento.",
+                    "Envolvimento é a taxa de interação média por publicação (likes + comentários ÷ alcance estimado). O valor absoluto aparece em \u201CIndicadores principais\u201D, logo abaixo.",
                 })}
               </p>
               <p>
-                {t("identity.method.signals_line", {
+                {t("identity.method.index_line", {
                   defaultValue:
-                    "Construído a partir de 3 indicadores do perfil: envolvimento, ritmo de publicação e conversa nas legendas.",
-                })}
-              </p>
-              <p>
-                {t("identity.method.benchmark_line", {
-                  defaultValue:
-                    "Comparado com o benchmark de envolvimento do escalão de referência (Nano · Micro · Mid · Macro · Mega), com base na atividade recente observada.",
+                    "Índice (0\u2013100) combina envolvimento (45%), cadência e conversa para uma leitura comparativa face ao escalão (Nano · Micro · Mid · Macro · Mega).",
                 })}
               </p>
               {sampleParts.length > 0 ? (
