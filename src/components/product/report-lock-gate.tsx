@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Clock, ShieldCheck, Heart } from "lucide-react";
+import { Clock, ShieldCheck } from "lucide-react";
 import { Trans, useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
@@ -91,7 +91,7 @@ export function ReportLockGate({
             "relative isolate",
             "rounded-2xl border border-border-default bg-surface-card/95 backdrop-blur-xl",
             "shadow-[0_24px_70px_-24px_rgba(15,23,42,0.28),inset_0_1px_0_0_rgba(255,255,255,0.7)]",
-            "p-6 md:p-7",
+            "p-7 md:p-8",
             "animate-in fade-in slide-in-from-bottom-2 duration-500",
           )}
         >
@@ -136,14 +136,14 @@ export function ReportLockGate({
           </span>
 
           {/* Title */}
-          <h2 className="mt-5 font-display text-[24px] md:text-[32px] leading-[1.1] tracking-[-0.01em] text-content-primary break-words [overflow-wrap:anywhere]">
+          <h2 className="mt-6 font-display text-[22px] md:text-[32px] leading-[1.15] tracking-[-0.015em] text-content-primary break-words [overflow-wrap:anywhere]">
             <Trans
               i18nKey="lockGate.title"
               ns="gate"
               values={{ handle: cleanedHandle }}
               components={{
                 free: (
-                  <span className="font-semibold text-content-primary underline decoration-2 underline-offset-4 decoration-accent-primary/70" />
+                  <span className="font-semibold text-content-primary" />
                 ),
                 accent: (
                   <em className="not-italic font-display italic text-accent-primary inline-block max-w-full [overflow-wrap:anywhere] break-words" />
@@ -154,7 +154,7 @@ export function ReportLockGate({
           </h2>
 
           {/* Subtitle */}
-          <p className="mt-3 text-[14px] md:text-[15px] leading-relaxed text-content-secondary">
+          <p className="mt-4 text-[15px] md:text-[16px] leading-[1.6] text-content-secondary">
             <Trans
               i18nKey="lockGate.subtitle"
               ns="gate"
@@ -169,9 +169,8 @@ export function ReportLockGate({
             type="button"
             onClick={onUnlockClick}
             className={cn(
-              "mt-6 w-full rounded-lg font-medium",
-              "bg-gradient-to-r from-accent-primary to-secondary",
-              "hover:opacity-95",
+              "mt-7 w-full rounded-lg font-medium",
+              "bg-accent-primary hover:bg-accent-primary/92",
             )}
             size="lg"
           >
@@ -185,9 +184,6 @@ export function ReportLockGate({
             </span>
             <span className="inline-flex items-center gap-1.5">
               <ShieldCheck className="size-3.5" aria-hidden /> {t("lockGate.footer.gdpr")}
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Heart className="size-3.5" aria-hidden /> {t("lockGate.footer.made")}
             </span>
           </div>
         </div>
