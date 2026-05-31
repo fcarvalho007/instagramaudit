@@ -573,14 +573,6 @@ function IndexBlock({
     ? (engagementRatePct as number) - (engagementBenchmarkPct as number)
     : null;
 
-  // Delta relativo (%): (perfil - benchmark) / benchmark × 100.
-  // Usado APENAS no texto exibido. O pin da mediana na régua continua
-  // a usar `deltaPp` (pontos percentuais absolutos).
-  const deltaRelPct =
-    hasBenchmark && (engagementBenchmarkPct as number) > 0
-      ? ((deltaPp as number) / (engagementBenchmarkPct as number)) * 100
-      : null;
-
   // Leitura qualitativa do índice (sem números, sem percentagens) face ao
   // escalão. Substitui o antigo bloco de delta numérico para manter um só
   // número visível na caixa: o 31/100.
