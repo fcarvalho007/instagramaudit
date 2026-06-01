@@ -1,144 +1,75 @@
-## Objectivo
+## Root cause (confirmed)
 
-Mostrar no relatório público gratuito um seletor de "Período analisado" visível mas bloqueado (teaser premium), e corrigir a contradição actual no header — o grátis é uma **amostra de 12 publicações**; os "X dias" são uma **consequência observada**, não uma janela escolhida.
+`POST /api/onboarding/start` returns 500 `INTERNAL_ERROR` ("Falha interna ao iniciar sessão.") because `setLeadCookie()` throws:
 
-Sem alterações a dados, scoring, Apify, OpenAI, DataForSEO, cache, pricing, PDF, e-mail ou onboarding.
-
----
-
-## 1. Corrigir o header (`report-hero-v2.tsx`)
-
-Hoje `MetricLine` mostra `10,1 mil seguidores · 2,6 mil publicações · 12 posts em 30 dias`. Vamos passar a mostrar apenas:
-
-`10,1 mil seguidores · 2,6 mil publicações · 12 publicações analisadas`
-
-- Remover o uso de `hero.metric_analyzed_window*` no header (ficam só na methodology line / outros sítios que já os usem — confirmar que `methodology-line.test.ts` continua verde; é noutro componente).
-- Usar sempre `hero.metric_analyzed` / `hero.metric_analyzed_one`, com cópia revista:
-  - PT: `publicações analisadas` / `publicação analisada`
-  - EN: `posts analyzed` / `post analyzed`
-- Os "X dias" passam para o **seletor**, como label metodológico (`período observado: X dias`), calculado a partir de `result.coverage.windowDays` (já existe; é `ceil(newest − oldest)`).
-
-Não tocar no `MethodologyLine` nem em outros componentes que já mostrem `windowDays` corretamente — só remover a duplicação do header.
-
----
-
-## 2. Novo componente `analysis-period-selector.tsx`
-
-Ficheiro: `src/components/report-redesign/v2/analysis-period-selector.tsx`.
-
-Props:
-- `observedDays: number` (de `result.coverage.windowDays`)
-- `onUnlockClick?: () => void` (reutiliza o handler já existente; fallback: abrir `PremiumInterestDialog` localmente — mesmo padrão usado noutros teasers)
-
-Layout (mobile-first, tokens existentes, sem cores hardcoded):
-
-```text
-┌──────────────────────────────────────────────────────────────┐
-│ 📅 PERÍODO ANALISADO          Amostra grátis · período       │
-│                               observado: 30 dias             │
-│                                                              │
-│ [✓ Últimas 12 publicações] [30 dias 🔒] [60 dias 🔒]          │
-│ [90 dias 🔒] [365 dias 🔒]                                    │
-│                                                              │
-│ A versão gratuita usa uma amostra recente. Janelas maiores   │
-│ ficam disponíveis no relatório premium.                      │
-└──────────────────────────────────────────────────────────────┘
+```
+[onboarding/start] cookie write failed
+Error: SESSION_SECRET missing or too short (need at least 16 chars).
+  at POST src/routes/api/onboarding/start.ts:208
 ```
 
-- Card branco, borda `border-default`, radius alinhado com `report-hero-v2`.
-- Eyebrow Inter uppercase (`text-eyebrow-sm`), conforme regra do projeto.
-- Chip activo: sólido `bg-content-primary text-white`, com check.
-- Chips bloqueados: `bg-surface-muted`, `text-content-tertiary`, ícone `Lock` (lucide), `cursor-pointer`, `aria-disabled="true"`.
-- Mobile (<640px): chips em scroll horizontal (`flex overflow-x-auto`, sem barra visível), eyebrow e badge "período observado" empilham.
-- Toda a copy via i18n; nada hardcoded.
+- `SESSION_SECRET` is configured in Lovable Cloud secrets, but the current value is **15 chars long** (verified via runtime check).
+- `src/lib/leads/lead-cookie.server.ts:28` enforces `secret.length < 16` → throws → handler returns the generic 500.
+- Upstream steps (Zod parse, `leads` upsert, `grantInitialCredits`, `getBalance`) all succeed — the lead is created and credits are granted, only the cookie write fails, so the user can't proceed.
 
-Interação dos chips bloqueados:
-- Hover/click abre `Popover` (shadcn já no projeto) com:
-  - Title: `selector.locked.title`
-  - Body: `selector.locked.body`
-  - CTA primário "Ver opções de acesso" → chama `onUnlockClick` (que abre o fluxo premium existente). Se `onUnlockClick` não estiver disponível (rota `/reports/:snapshotId`), abre `PremiumInterestDialog` local — mesma cópia, mesmo `pricing-interest-modal`.
-  - Secundário "Continuar com visão gratuita" → fecha o popover.
-- **Não muta nada**: sem `navigate`, sem alterar query params, sem fetch, sem snapshot diff, sem tracking de window change. Só emite `pricing_option_clicked` / equivalente se o handler partilhado já o fizer.
+Nothing else is broken: payload contract matches the Zod schema, `credit_ledger` / `credit_balance` exist, phone is optional in the backend and accepted, no migration needed.
 
-Acessibilidade:
-- Cada chip bloqueado é `<button type="button" aria-disabled="true" aria-label="30 dias — disponível no premium">`.
-- Popover com `role="dialog"` e foco devolvido ao chip ao fechar.
+## Fix
 
----
+### 1. Rotate `SESSION_SECRET` to ≥32 chars (required, blocks everything)
 
-## 3. Mount no `report-shell-v2.tsx`
+In build mode I'll call `update_secret` for `SESSION_SECRET`. You'll paste a new value (recommend 48+ random chars, e.g. `openssl rand -base64 48`). This is the only environment change needed. Rotating invalidates any existing `lead_session` cookies (acceptable — flow is still pre-launch).
 
-Inserir o seletor **entre o `ReportHeroV2` e o `ReportBlockTopTabs`** (linha ~182), dentro de um `section className="bg-surface-base"` e do mesmo container `max-w-[1520px] px-5 md:px-6` para alinhar com o hero. Passar `onUnlockClick={handleUnlockClick}` (já existe, default no-op).
+### 2. Harden `/api/onboarding/start` error handling
 
-`observedDays = result.coverage.windowDays ?? 0`. Se for 0, esconder o badge "período observado" mas manter o seletor.
+Currently any cookie-write failure returns the same generic message. After the secret is fixed, surface a clearer fallback and log distinct error codes so we don't repeat this diagnostic blind:
 
----
+- Replace the generic "Falha interna ao iniciar sessão." with:
+  - PT: "Não foi possível preparar o acesso ao relatório. Tenta novamente dentro de instantes."
+  - EN equivalent in `gate.json` (`onboarding.errors.generic`).
+- Add a startup-time guard: if `SESSION_SECRET` length < 16, log a single clear warning on the first request (`[onboarding/start] SESSION_SECRET misconfigured`) so future regressions are obvious in logs.
+- Keep behaviour identical otherwise — no changes to credit logic, payload shape, modal sequence, or downstream `/analyze/$username`.
 
-## 4. i18n
+### 3. Copy update
 
-Adicionar em `src/i18n/locales/{pt,en}/report.json` sob nova chave `selector`:
+Update `src/i18n/locales/{pt,en}/gate.json` `onboarding.errors.generic` to the new copy above. No other strings change.
 
-PT:
-```json
-"selector": {
-  "eyebrow": "Período analisado",
-  "observed_badge": "Amostra grátis · período observado: {{days}} dias",
-  "observed_badge_one": "Amostra grátis · período observado: {{days}} dia",
-  "active_sample": "Últimas {{count}} publicações",
-  "premium_30": "30 dias",
-  "premium_60": "60 dias",
-  "premium_90": "90 dias",
-  "premium_365": "365 dias",
-  "footnote": "A versão gratuita usa uma amostra recente. Janelas maiores ficam disponíveis no relatório premium.",
-  "locked": {
-    "title": "Disponível no relatório premium",
-    "body": "Analisa mais histórico para perceber evolução, consistência e padrões de conteúdo ao longo do tempo.",
-    "cta": "Ver opções de acesso",
-    "secondary": "Continuar com visão gratuita",
-    "aria": "{{window}} — disponível no premium"
-  }
-}
-```
+### 4. Tests
 
-EN: equivalente, mantendo as mesmas chaves; "days" / "day", "Latest {{count}} posts", "Available in the premium report", "Analyze more history…", "View access options", "Continue with free overview".
+Extend `src/lib/leads/__tests__/lead-cookie.test.ts` (already exists) to assert:
+- `encodeLeadCookie` throws clearly when `SESSION_SECRET` is missing/<16.
+- Round-trip encode/decode works with a 32-char secret.
 
-Ajustar também `hero.metric_analyzed` → "publicações analisadas" / "posts analyzed" (já é o fallback usado quando `windowDays === 0`; passa a ser o valor sempre usado no header).
+Add a focused server-route test for `/api/onboarding/start`:
+- Valid payload with valid secret → 200, `lead_id`, `credits >= 2`, `Set-Cookie: lead_session=...`.
+- Valid payload with short secret → 500 with the new copy (no PII leak).
+- Invalid payload → 400 `INVALID_PAYLOAD` (not generic 500).
+- Duplicate email → 200, credits not duplicated (idempotent grant).
 
----
+### 5. Validation
 
-## 5. Consistência sidebar
+- `bunx tsc --noEmit`
+- `bunx vitest run src/lib/leads src/routes/api/__tests__` (scoped)
+- Manual smoke: handle → modal → step 5 submit → 200 → cookie present → navigate to `/analyze/$username`.
 
-Confirmar que a sidebar diz "5 secções premium por desbloquear" (ou número actual baseado em `features`) e que o seletor mostra **4 janelas premium** (30/60/90/365) — são contagens semanticamente distintas (secções vs janelas temporais), não há ligação. Se for preciso desambiguar, refinar a cópia da sidebar para `"5 secções por desbloquear"` em vez de `"5 por desbloquear"` — só se já estiver ambíguo; não inventar copy nova fora deste plano.
+## Out of scope (unchanged)
 
----
+`analyze-public-v1`, credit grant/reserve logic, Apify/OpenAI/DataForSEO, pricing, premium gating, thumbnails, the report selector, modal layout/sequence, `/report.example`.
 
-## 6. Validação
+## Files touched
 
-- `bunx tsc --noEmit`.
-- Visual desktop (1460px) e mobile (375px) na rota `/report/example` (mock) e `/reports/:snapshotId` (real).
-- Confirmar:
-  - Header mostra "X publicações analisadas" sem "em N dias".
-  - Seletor visível entre header e Bloco 01.
-  - Chip activo: "Últimas 12 publicações".
-  - 4 chips bloqueados com cadeado abrem popover; CTA chama o mesmo handler premium dos outros teasers.
-  - "período observado: X dias" usa valor real de `coverage.windowDays`.
-  - Zero chamadas de rede ao clicar.
-  - `methodology-line.test.ts` e restantes testes continuam verdes.
+- (secret) `SESSION_SECRET` rotated via `update_secret`
+- `src/routes/api/onboarding/start.ts` — clearer logging + (optional) startup guard
+- `src/i18n/locales/pt/gate.json`, `src/i18n/locales/en/gate.json` — error copy
+- `src/lib/leads/__tests__/lead-cookie.test.ts` — extended assertions
+- `src/routes/api/__tests__/onboarding-start.test.ts` — new
 
----
+## Checkpoint
 
-## Ficheiros afectados
-
-- `src/components/report-redesign/v2/analysis-period-selector.tsx` (novo)
-- `src/components/report-redesign/v2/report-hero-v2.tsx` (simplificar MetricLine)
-- `src/components/report-redesign/v2/report-shell-v2.tsx` (mount)
-- `src/i18n/locales/pt/report.json`, `src/i18n/locales/en/report.json`
-
-## Fora de âmbito
-
-Geração real de janelas 30/60/90/365, mudanças em `analyze-public-v1`, scoring, cache, pricing, checkout, PDF, e-mail, onboarding, Apify, OpenAI, DataForSEO.
-
-## Riscos / follow-up
-
-- Quando as janelas premium reais forem activadas, o seletor passa a ter estados activos verdadeiros — precisará de `onSelectWindow` + nova query param e snapshots por janela. Não nesta fase.
-- Confirmar com o utilizador se quer que o `MethodologyLine` (outro componente) continue a referir "N dias" — não é tocado neste plano.
+☐ Rotate `SESSION_SECRET` (≥32 chars)
+☐ Update error copy PT/EN
+☐ Add logging guard in onboarding/start
+☐ Extend lead-cookie tests + add onboarding-start tests
+☐ `bunx tsc --noEmit` clean
+☐ Vitest scoped run green
+☐ Manual smoke: step 5 submit returns 200 and `lead_session` cookie is set
