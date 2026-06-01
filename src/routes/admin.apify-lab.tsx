@@ -243,7 +243,7 @@ function ApifyLabPage() {
           <code>leads</code> ou pipelines de produção.
         </section>
 
-        <section className="rounded-lg border border-border-default bg-surface-card p-5">
+        <section className="rounded-lg border border-border-default bg-surface-elevated p-5">
           <h2 className="text-base font-semibold text-content-primary">
             Matriz 3 × 5
           </h2>
@@ -285,7 +285,7 @@ function ApifyLabPage() {
           </div>
         </section>
 
-        <section className="rounded-lg border border-border-default bg-surface-card p-5">
+        <section className="rounded-lg border border-border-default bg-surface-elevated p-5">
           <h2 className="text-base font-semibold text-content-primary">
             Teste individual
           </h2>
@@ -333,7 +333,7 @@ function ApifyLabPage() {
           </div>
         </section>
 
-        <section className="rounded-lg border border-border-default bg-surface-card p-5">
+        <section className="rounded-lg border border-border-default bg-surface-elevated p-5">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-content-primary">
               Histórico ({runs.length})
