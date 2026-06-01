@@ -9,6 +9,7 @@ import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
 import { ReportShellV2 } from "@/components/report-redesign/v2/report-shell-v2";
 import { useReportShareActions } from "@/components/report-share/use-report-share-actions";
 import { UnlockModal } from "@/components/product/unlock-modal";
+import { OnboardingModal } from "@/components/onboarding/onboarding-modal";
 import { Toaster } from "@/components/ui/sonner";
 import { fetchPublicAnalysis } from "@/lib/analysis/client";
 import { getPublishedFeatures } from "@/server/admin/variant-overrides.functions";
@@ -205,6 +206,9 @@ function AnalyzePage() {
   const competitorsKey = competitors.join(",");
 
   const [state, setState] = useState<LoadState>({ status: "loading" });
+  // Fase 3: se o backend devolver ONBOARDING_REQUIRED (cookie em falta /
+  // expirado), reabrimos o modal de onboarding em vez de mostrar 402.
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
 
   const load = useCallback(async () => {
     setState({ status: "loading" });
@@ -233,6 +237,15 @@ function AnalyzePage() {
     // Step 1 — trigger the public analyze pipeline.
     const analysis = await fetchPublicAnalysis(cleaned, competitors);
     if (!analysis.success) {
+      if (analysis.error_code === "ONBOARDING_REQUIRED") {
+        setOnboardingOpen(true);
+        setState({
+          status: "error",
+          message: resolveErrorMessage("ONBOARDING_REQUIRED"),
+          errorCode: "ONBOARDING_REQUIRED",
+        });
+        return;
+      }
       setState({
         status: "error",
         message: resolveErrorMessage(analysis.error_code),
@@ -314,6 +327,15 @@ function AnalyzePage() {
         )}
       </div>
       <Toaster />
+      <OnboardingModal
+        open={onboardingOpen}
+        onOpenChange={setOnboardingOpen}
+        handle={cleaned}
+        onSuccess={() => {
+          setOnboardingOpen(false);
+          void load();
+        }}
+      />
     </ReportThemeWrapper>
   );
 }
