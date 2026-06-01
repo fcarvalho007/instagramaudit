@@ -4,7 +4,6 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Sparkles,
-  Lock,
   GalleryHorizontalEnd,
   Play,
   Image as ImageIcon,
