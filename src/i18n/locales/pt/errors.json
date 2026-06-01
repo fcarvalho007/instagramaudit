@@ -16,6 +16,9 @@
   "CACHE_ONLY_NO_DATA": "Ainda não temos dados guardados para este perfil.",
   "FALLBACK": "Não foi possível concluir a análise. Tenta novamente dentro de instantes.",
   "NETWORK_FETCH": "Falha de ligação. Tentar novamente.",
+  "ONBOARDING_REQUIRED": "Para gerar a análise, completa o registo rápido.",
+  "INSUFFICIENT_CREDITS": "Sem créditos disponíveis.",
+  "INSUFFICIENT_CREDITS_HELPER": "Já usaste os teus 2 relatórios gratuitos.",
   "snapshot": {
     "loadFailed": "Não foi possível carregar este relatório. Tenta novamente.",
     "networkFailed": "Falha de ligação.",
