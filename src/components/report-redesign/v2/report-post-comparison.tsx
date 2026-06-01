@@ -626,8 +626,11 @@ function DetailedPostCard({
   language: SupportedLanguage;
 }) {
   const [imgError, setImgError] = useState(false);
-  const toneAccent = tone === "best" ? "accent-primary" : "signal-warning";
   const arrowCls = tone === "best" ? "text-accent-primary" : "text-signal-warning";
+  const gradientCls =
+    tone === "best"
+      ? "bg-gradient-to-br from-accent-primary/10 to-accent-primary/5"
+      : "bg-gradient-to-br from-signal-warning/10 to-signal-warning/5";
   const ArrowIcon = tone === "best" ? ArrowUpRight : ArrowDownRight;
   const labelKey = tone === "best" ? "posts.hero.best_label" : "posts.hero.worst_label";
 
@@ -667,7 +670,7 @@ function DetailedPostCard({
           className={cn(
             "relative shrink-0 w-[88px] aspect-square rounded-lg overflow-hidden",
             "border border-border-subtle",
-            `bg-gradient-to-br from-${toneAccent}/10 to-${toneAccent}/5`,
+            gradientCls,
           )}
         >
           {showImg ? (
