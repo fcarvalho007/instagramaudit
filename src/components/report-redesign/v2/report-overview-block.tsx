@@ -201,6 +201,8 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
           <PostComparisonBlock
             topPosts={result.enriched.topPosts}
             bottomPosts={result.enriched.bottomPosts}
+            allPostsForScatter={result.enriched.allPostsScatter}
+            windowRange={result.enriched.windowRange}
             aiInsightText={result.enriched.aiInsightsV2?.sections.topPosts?.text ?? null}
             windowLabel={result.data.meta?.windowShortLabel}
           />
