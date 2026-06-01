@@ -742,10 +742,7 @@ function buildTopPosts(posts: SnapshotPost[]): ReportData["topPosts"] {
     // `persist-thumbnails.server.ts` no momento do snapshot. Quando o
     // download falhou (ex.: 403 do IG), o campo vem `null` e o card
     // cai no fallback (gradiente + ícone de formato).
-    const thumbnailUrl =
-      typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
-        ? p.thumbnail_url
-        : undefined;
+    const thumbnailUrl = pickThumbnailUrl(p) ?? undefined;
     // Permalink real para tornar o card clicável. Quando o snapshot só
     // traz o shortcode, derivamos o URL canónico do Instagram.
     const permalinkRaw =
