@@ -1146,12 +1146,17 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               analyzed_at: new Date().toISOString(),
             },
             benchmark_positioning: benchmarkPositioning,
+            freshness: deriveFreshnessJustNow(),
           };
           return jsonResponse(response, 200);
         } catch (err) {
           // 5) Stale-while-error: if provider failed but we have a recent
           // snapshot (≤ 7 days), serve it rather than breaking the page.
           if (existing && isWithinStaleWindow(existing)) {
+            console.info(
+              "[analyze-public-v1] refresh_fallback_to_cache",
+              JSON.stringify({ handle: primary, snapshot_id: existing.id }),
+            );
             console.warn(
               "[analyze-public-v1] serving stale snapshot after provider failure",
               cacheKey,
