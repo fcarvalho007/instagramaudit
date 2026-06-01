@@ -187,7 +187,6 @@ function WeeklySummary({ days, t }: { days: DayEntry[]; t: TFunction }) {
   const top = pickMostActive(buckets);
   const quiet = pickQuietest(buckets, t);
   const maxPosts = Math.max(...buckets.map((b) => b.posts));
-  const weekdayLong = (t("frequency.weekday_long", { returnObjects: true }) as string[]) ?? [];
   const weekdayShort = (t("frequency.weekday_short", { returnObjects: true }) as string[]) ?? [];
 
   return (
