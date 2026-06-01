@@ -44,6 +44,7 @@ import { ReportOverviewBlock } from "./report-overview-block";
 import { ReportDiagnosticBlock } from "./report-diagnostic-block";
 import { BlockFeedback } from "./feedback/block-feedback";
 import { ReportEndOfFreeBlock } from "./end-of-free-block";
+import { EndFeedbackStrip } from "./feedback/end-feedback-strip";
 import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useState } from "react";
 
@@ -368,8 +369,16 @@ export function ReportShellV2({
                   ReportLockGate, para deep-links e scrolls existentes.
                   Só renderiza em estado B (lead capturado, sem premium). */}
               {unlocked && !premiumUnlocked && (
-                <section id="lead-magnet-card">
+                <section
+                  id="lead-magnet-card"
+                  className="mt-12 sm:mt-16 mb-16 sm:mb-20"
+                >
                   <ReportEndOfFreeBlock />
+                  <EndFeedbackStrip
+                    handle={result.data.profile.username}
+                    snapshotId={snapshotId ?? null}
+                    className="mt-3 sm:mt-4"
+                  />
                 </section>
               )}
             </main>
