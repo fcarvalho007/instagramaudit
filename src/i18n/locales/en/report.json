@@ -317,7 +317,6 @@
       "legend_one_post": "1 post",
       "legend_many": "{{label}} posts",
       "ratio": "{{published}}/{{total}} days",
-      "interpretation_with_quiet_one_placeholder": "_",
       "window_summary": "Last {{days}} days · {{published}} with posts",
       "eyebrow": "CALENDAR · {{days}} DAYS",
       "published_one": "{{count}} day with posts",
@@ -353,9 +352,9 @@
       "title": "RHYTHM BY WEEKDAY",
       "peak_chip": "peak",
       "gap_chip": "gap",
-      "interpretation_with_quiet_one": "You concentrate on <b>{{peak}}</b>. <b>{{quiet}}</b> is the void — {{count}} day without posts.",
-      "interpretation_with_quiet_other": "You concentrate on <b>{{peak}}</b>. <b>{{quiet}}</b> is the void — {{count}} days without posts.",
-      "interpretation_peak_only": "You concentrate on <b>{{peak}}</b>. The rest of the week is balanced.",
+      "interpretation_with_quiet_one": "Posting concentrated on <b>{{peak}}</b>. <b>{{quiet}}</b> is the weak point — {{count}} day without posts.",
+      "interpretation_with_quiet_other": "Posting concentrated on <b>{{peak}}</b>. <b>{{quiet}}</b> is the weak point — {{count}} days without posts.",
+      "interpretation_peak_only": "Posting concentrated on <b>{{peak}}</b>. Remaining weekdays are balanced.",
       "interpretation_uniform": "Uniform cadence — no weekday stands out as a gap.",
       "aria_distribution": "Distribution of posts by weekday"
     }
