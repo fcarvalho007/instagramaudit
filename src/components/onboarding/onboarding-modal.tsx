@@ -289,6 +289,7 @@ export function OnboardingModal({
             submitting={submitting}
             goBack={goBack}
             goNext={goNext}
+            honeypotRef={honeypotRef}
           />
         )}
       </DialogContent>
@@ -428,6 +429,7 @@ function FormStepBody({
   submitting,
   goBack,
   goNext,
+  honeypotRef,
 }: {
   step: FormStep;
   handle: string;
@@ -436,6 +438,7 @@ function FormStepBody({
   submitting: boolean;
   goBack: () => void;
   goNext: () => Promise<void> | void;
+  honeypotRef: React.RefObject<HTMLInputElement>;
 }) {
   const { t } = useTranslation("gate");
   const stepKey = String(step) as "1" | "2" | "3";
@@ -483,7 +486,9 @@ function FormStepBody({
             type="text"
             tabIndex={-1}
             autoComplete="off"
-            {...form.register("website" as never)}
+            ref={honeypotRef}
+            name="website"
+            defaultValue=""
           />
         </div>
 
@@ -497,7 +502,7 @@ function FormStepBody({
           </Alert>
         ) : null}
 
-        <div className="flex gap-3 pt-1 border-t border-border-default/40 -mx-7 sm:-mx-9 px-7 sm:px-9 pt-5 mt-2">
+        <div className="flex gap-3 border-t border-border-default/40 -mx-7 sm:-mx-9 px-7 sm:px-9 pt-5 mt-2">
           <Button
             type="button"
             variant="outline"
