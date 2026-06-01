@@ -204,6 +204,9 @@ export async function storeSnapshot(params: {
     // ficam `null` e o componente cai no fallback visual.
     try {
       const t0 = Date.now();
+      console.log(
+        `[thumbnails] start handle=${params.instagramUsername} cache_key=${params.cacheKey}`,
+      );
       const s = await persistThumbnailsInPayload(
         params.cacheKey,
         params.normalizedPayload,
