@@ -1,93 +1,65 @@
-# Plano — Validação controlada da pipeline de persistência de thumbnails
+# Confirmação de isolamento — `/admin/apify-lab`
 
-## Objetivo
+Auditei `src/routes/api/admin/apify-lab.ts`, `src/lib/security/apify-budget.server.ts` e `src/routes/admin.apify-lab.tsx`. Resultado abaixo, ponto por ponto.
 
-Executar **uma única corrida fresh** para `frederico.m.carvalho`, recolher os contadores de persistência do novo pipeline e decidir entre (A) esperar rotação natural da cache, (B) backfill seletivo, (C) investigar fonte alternativa de media.
+## 1–7. Isolamento do endpoint
 
-Sem alterações de código, sem migrações, sem backfill, sem mexer em gates/prompts/UI.
+| # | Requisito | Estado | Evidência |
+|---|---|---|---|
+| 1 | Só chama Apify | ✅ | `apify-lab.ts:259` — única chamada externa é `runActorWithMetadata(UNIFIED_ACTOR=apify/instagram-scraper, …)`. Nenhum outro provider importado. |
+| 2 | Não chama OpenAI | ✅ | Sem `import openai` / `generateInsights` no ficheiro. Comentário cabeçalho (linhas 8–13) declara explicitamente. |
+| 3 | Não chama DataForSEO | ✅ | Sem `import` de dataforseo ou `marketSignals`. |
+| 4 | Não envia emails | ✅ | Sem `sendEmail` / `resend` / template. |
+| 5 | Não cria leads / report_requests | ✅ | Sem `from("leads")`, `from("report_requests")`, `from("report_snapshots")`. Insert único é em `apify_lab_runs` (`persistRun`, linhas 383–393). |
+| 6 | Não escreve em `analysis_snapshots` nem em `social_profiles` | ✅ | Sem `storeSnapshot`, sem `record_analysis_event`, sem cache mutation. `enrichPosts` é chamado apenas em memória para validar normalização (linha 289), o resultado é descartado. |
+| 7 | Resultados ficam em `apify_lab_runs` (dados de teste) | ✅ | Tabela dedicada com colunas `window_kind`, `guardrails`, `apify_run_id`, `actual_cost_usd`, etc. Não é lida por nenhuma pipeline de produção. |
 
----
+## 8. Guardrails por corrida
 
-## 1. O que já está no repositório (verificado)
+Confirmados em `WINDOW_CONFIGS` (linhas 50–90) e passados a `runActorWithMetadata`:
 
-- `src/lib/report-snapshots/persist-thumbnails.server.ts` — implementa `persistThumbnailsInPayload`, com contadores: `attempted`, `stored`, `failed_403`, `failed_timeout`, `failed_invalid_content_type`, `failed_upload`, `failed_other`, `avatar`, `duration_ms`.
-- `src/lib/analysis/cache.ts:184-198` — chama o persistor dentro de `storeSnapshot` (corre apenas em escritas fresh) e imprime no log a linha:
-  `[thumbnails] handle=… cache_key=… attempted=… stored=… failed_403=… failed_timeout=… failed_invalid_content_type=… failed_upload=… failed_other=… avatar=… duration_ms=…`
-- `src/routes/api/admin/refresh-profile.ts` — endpoint admin que invoca `/api/analyze-public-v1?refresh=1` com `INTERNAL_API_TOKEN`, bypassando a cache e os guards de execution mode. Tem pre-flights: `APIFY_ENABLED`, allowlist se `APIFY_TESTING_MODE`, lock por handle, sessão admin.
-- `analyze-public-v1?refresh=1` (linhas 431–446 + 460): bypass de cache + bypass do stale fallback quando autenticado com o token interno. Custos Apify reais incorrem.
-- Bucket público `post-thumbnails` já existe (visível em `<storage-buckets>`).
-- Rendering priority em `pick-thumbnail.ts`: `thumbnail_storage_url → thumbnail_url → thumbnailUrl → null` (fallback icon). Não há alteração necessária.
+| window | resultsLimit | onlyPostsNewerThan | maxTotalChargeUsd | apifyTimeoutSecs | timeoutMs | memoryMbytes |
+|---|---:|---|---:|---:|---:|---:|
+| baseline | 12 | — | **$0.10** | 55 | 60 000 | 1024 |
+| 30d | 100 | 30 days | **$0.10** | 55 | 60 000 | 1024 |
+| 60d | 200 | 60 days | **$0.20** | 55 | 60 000 | 1024 |
+| 90d | 300 | 90 days | **$0.30** | 120 | 130 000 | 2048 |
+| 365d | 1000 | 365 days | **$1.00** | 240 | 260 000 | 2048 |
 
-## 2. Execução do teste (passos manuais via ferramentas)
+Cada corrida tem timeout duplo (Apify-side + Worker-side) e charge cap próprio.
 
-1. **Estado prévio** — `supabase--read_query` para registar baseline:
-   - último snapshot atual de `frederico.m.carvalho` (`id`, `created_at`, `expires_at`, contagem de `posts[*].thumbnail_storage_url` no `normalized_payload`).
-   - último `provider_call_logs` para o handle (para isolar o novo `apify_run_id` após o teste).
-2. **Disparar a corrida fresh** — `stack_modern--invoke-server-function` com:
-   - `path: /api/admin/refresh-profile`
-   - `method: POST`
-   - `body: {"handle":"frederico.m.carvalho"}`
-   - **Pré-requisito:** o utilizador tem de estar com sessão admin no preview (o endpoint chama `requireAdminSession`). Se não estiver, paro e peço para fazer login antes de continuar.
-3. **Aguardar conclusão** (Apify costuma demorar 20–60 s para um perfil). Polling em `supabase--read_query` ao `analysis_snapshots` filtrando por `created_at > baseline`.
-4. **Recolher snapshot novo** — `supabase--read_query` para extrair:
-   - `id`, `created_at`, `cache_key`
-   - `jsonb_array_length(normalized_payload->'posts')` → posts retornados
-   - `COUNT` de posts com `thumbnail_url` não-nulo
-   - `COUNT` de posts com `thumbnail_storage_url` não-nulo
-   - `normalized_payload->'profile'->>'avatar_url'` (para confirmar persistência do avatar)
-5. **Recolher contadores** — `stack_modern--server-function-logs` filtrando por `search: "[thumbnails] handle=frederico.m.carvalho"` no deployment correto (preview, já que o refresh corre no ambiente onde o teste é disparado). Extrair: `attempted, stored, failed_403, failed_timeout, failed_invalid_content_type, failed_upload, failed_other, avatar, duration_ms`.
-6. **Custo Apify** — `supabase--read_query` ao `provider_call_logs` para o `apify_run_id` desta corrida: `estimated_cost_usd`, `actual_cost_usd`, `posts_returned`, `http_status`, `status`.
-7. **OpenAI / DataForSEO** — `supabase--read_query`:
-   - `enrichment_jobs` criados nos últimos 5 minutos para este snapshot (`snapshot_id` = novo) — confirma se foram agendados.
-   - `provider_call_logs` com `provider IN ('openai','dataforseo')` desde o baseline — confirma se efectivamente chamaram. (Os jobs são assíncronos e podem ainda não ter corrido no momento da observação — reportar estado parcial é aceitável.)
-8. **Validação visual no browser**:
-   - `browser--navigate_to_sandbox` em `/analyze/frederico.m.carvalho` com viewport 1280×900.
-   - `browser--list_network_requests` filtrando por `storage/v1/object/public/post-thumbnails` — contar requests 200 vs 4xx.
-   - `browser--screenshot` do bloco "Melhores e piores publicações" para confirmar visualmente se aparecem imagens reais ou icons.
+## 9. Hard cap diário (365 d incluído)
 
-## 3. Constraints respeitadas (nada será tocado)
+- `apify-budget.server.ts:10–41`: `APIFY_DAILY_CAP_USD` (soft, default 5) e `APIFY_HARD_CAP_USD` (hard, default 10).
+- `apify-lab.ts:237` — pre-flight `assertApifyDailyBudgetAvailable()` antes de cada chamada Apify.
+- Se o hard cap estiver atingido, o endpoint persiste a tentativa com `status:"budget_block"`, `semantic_code:"daily_budget_exceeded"` e **não chama Apify**.
+- Conclusão: mesmo que o 365 d custe $1, ele só corre se `gastos_do_dia + 1 ≤ APIFY_HARD_CAP_USD`. Não há forma de uma corrida individual ultrapassar o cap diário.
 
-- Sem alteração ao `thumbnail_url` original (o persistor já é aditivo — só escreve `thumbnail_storage_url`).
-- Sem envio de emails (a rota `/api/analyze-public-v1` não dispara emails neste caminho; o envio só ocorre via `report_requests` quando o utilizador faz o gate de lead — não vai acontecer aqui).
-- Sem criação de `leads` nem `report_requests` (o gate de lead é client-side e só dispara em `/report/…`, não em `/analyze/…`).
-- Sem backfill, sem mudar provider settings, sem migração, sem alteração de prompts/scoring/UI.
-- Sem desactivar fallback icon (mantido tal como está).
+**Secrets atuais (verifica no Cloud):** `APIFY_DAILY_CAP_USD` e `APIFY_HARD_CAP_USD` existem como secrets — confirma os valores antes de correres a matriz inteira (matriz completa ≈ $1.70 cumulativos).
 
-## 4. Riscos / notas de honestidade
+## 10. Output / tabela
 
-- **Custo real Apify** (~$0.01–0.02 para 1 perfil + ~12 posts) é incorrido. Único custo previsto.
-- **Async enrichment jobs**: depois da corrida fresh, o sistema agenda jobs OpenAI/DataForSEO. Não posso impedi-los sem mexer em código (o que o utilizador proibiu). Vou apenas **reportar** se correram, em vez de bloquear.
-- **Logs do worker**: `server-function-logs` pode não conter a linha `[thumbnails]` se a corrida acontecer no preview e os logs forem só da published deployment. Em caso de ausência, faço fallback para `deployment: 'preview'`.
-- **Sessão admin necessária**: se a chamada ao endpoint admin devolver 401/403, paro e peço ao utilizador para autenticar no preview antes de re-disparar.
+`apify_lab_runs` persiste e a UI (`admin.apify-lab.tsx`) renderiza:
 
-## 5. Output final que vais receber
+| Campo no requisito | Coluna persistida | UI |
+|---|---|---|
+| input window | `window_kind` | ✅ |
+| resultsLimit (e onlyPostsNewerThan) | `input_params` (JSON com `resultsLimit`, `onlyPostsNewerThan`) | parcial — o resumo mostra `window_kind`; o `resultsLimit` está no JSON do `input_params`. CSV export inclui o JSON cru. |
+| posts returned | `posts_returned` | ✅ |
+| newest post date | `newest_post_at` | ✅ |
+| oldest post date | `oldest_post_at` | ✅ |
+| observed days | `observed_days` | ✅ |
+| duration | `duration_ms` | ✅ |
+| actual cost | `actual_cost_usd` | ✅ |
+| usageTotalUsd | mesmo campo (`actual_cost_usd` vem de `result.actualCostUsd` no Apify run-info) | ✅ |
+| failure reason | `semantic_code` + `error_excerpt` + `status` | ✅ |
 
-1. **Resumo da fresh run**: snapshot id, data_source=fresh, posts retornados, duração total, apify_run_id.
-2. **Tabela de contadores de thumbnail**: attempted, stored, failed_403, failed_timeout, failed_invalid_content_type, failed_upload, failed_other, avatar, duration_ms.
-3. **Taxa de sucesso de thumbnail** = `stored / attempted` em %.
-4. **Inventário no payload**: nº posts com `thumbnail_url`, nº posts com `thumbnail_storage_url`.
-5. **Verificação visual**: nº de imagens carregadas via `post-thumbnails` (200) vs fallbacks visíveis.
-6. **Custo**: `estimated_cost_usd` e `actual_cost_usd` do `provider_call_logs`.
-7. **OpenAI/DataForSEO**: chamados? (sim/não/parcial, com contagem de jobs).
-8. **Razões de falha dominantes** (se as houver).
-9. **Recomendação GO/NO-GO**:
-   - **A (esperar)** se `stored/attempted ≥ 80 %` e `failed_403 < 20 %`.
-   - **B (backfill seletivo)** se taxa ≥ 80 % e há snapshots em cache afetados que justificam re-persistir só esses.
-   - **C (fonte alternativa)** se `failed_403 ≥ 50 %` (CDN do IG está a rejeitar requests do nosso worker) — então o storage não resolve sozinho e é preciso outra estratégia (proxy autenticado, base64 inline, oEmbed, etc.).
+Estimativa local (`estimated_cost_usd`) é guardada em paralelo para comparação contra o `actual_cost_usd` real reportado pelo Apify.
 
-## 6. Ficheiros tocados pelo plano
+## Veredicto
 
-Nenhum. Esta tarefa é puramente de observação/medição. Se for aprovado, na execução só uso tools de leitura + uma única chamada POST admin.
+**GO.** Os 10 pontos confirmam-se. Podes correr a matriz manualmente em `/admin/apify-lab`. Recomendação operacional:
 
-## Checkpoint
-
-- ☐ Sessão admin confirmada no preview
-- ☐ Baseline registado (snapshot anterior + último provider_call_log)
-- ☐ POST /api/admin/refresh-profile devolve `success: true` com `snapshot_id`
-- ☐ Linha `[thumbnails]` capturada nos logs
-- ☐ Counts no payload extraídos via SQL
-- ☐ Network tab do preview verificado (`post-thumbnails` 200)
-- ☐ Screenshot do bloco "Melhores e piores" guardado
-- ☐ Custo Apify extraído
-- ☐ Estado OpenAI/DataForSEO reportado
-- ☐ Recomendação A/B/C entregue com critério numérico
+1. Antes de começar, verifica `APIFY_HARD_CAP_USD` no Cloud (default 10). A matriz completa baseline + 30d + 60d + 90d + 365d gasta ≈ $1.70 no pior caso (somatório dos `maxTotalChargeUsd`), bem abaixo do default.
+2. Corre as janelas em ordem crescente (baseline → 365d) para apanhares cedo qualquer regressão.
+3. Se quiseres ver `resultsLimit` diretamente na tabela sem abrir o JSON, posso adicionar a coluna numa próxima iteração (out of scope agora).
