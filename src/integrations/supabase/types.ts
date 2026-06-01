@@ -368,6 +368,45 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_ledger: {
+        Row: {
+          analysis_snapshot_id: string | null
+          cache_key: string | null
+          created_at: string
+          delta: number
+          handle: string | null
+          id: string
+          lead_id: string
+          metadata: Json
+          reason: string
+          reservation_id: string | null
+        }
+        Insert: {
+          analysis_snapshot_id?: string | null
+          cache_key?: string | null
+          created_at?: string
+          delta: number
+          handle?: string | null
+          id?: string
+          lead_id: string
+          metadata?: Json
+          reason: string
+          reservation_id?: string | null
+        }
+        Update: {
+          analysis_snapshot_id?: string | null
+          cache_key?: string | null
+          created_at?: string
+          delta?: number
+          handle?: string | null
+          id?: string
+          lead_id?: string
+          metadata?: Json
+          reason?: string
+          reservation_id?: string | null
+        }
+        Relationships: []
+      }
       email_template_history: {
         Row: {
           action: string
@@ -1520,6 +1559,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      credit_balance: { Args: { p_lead_id: string }; Returns: number }
       get_knowledge_context: {
         Args: { p_format: string; p_tier: string; p_vertical?: string }
         Returns: Json
