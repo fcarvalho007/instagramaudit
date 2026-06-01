@@ -1,93 +1,61 @@
-## Objetivo
+# Plano: smoke test Apify Lab + recolha de dados para decisão premium
 
-Adicionar monitorização ligeira da persistência de thumbnails (já existe a função `persistThumbnailsInPayload` com contadores estruturados — só faltam persistência + visualização).
+## Contexto
 
-Sem mexer em UI de relatório, providers ou lógica de persistência em si.
+O `/admin/apify-lab` já está completo para este teste:
+- Aceita 3 handles (um por segmento) + 5 janelas: `baseline`, `30d`, `60d`, `90d`, `365d`.
+- Tem botão "Correr matriz" que executa os 3 × 5 = 15 runs em sequência, com 2s de pausa entre cada e progresso visível.
+- Tem botão "Descarregar CSV" com todas as colunas pedidas (`handle`, `window`, `resultsLimit`, `onlyPostsNewerThan`, `posts_returned`, `oldest_post_at`, `newest_post_at`, `observed_days`, `duration_ms`, `actual_cost_usd`, `status`, `semantic_code`, e ainda `estimated_cost_usd`, `apify_run_id`, `normalize_ok`, `notes`, `error_excerpt`).
+- Cada janela tem guardrails próprios (`maxTotalChargeUsd` 0.1 → 1.0; `apifyTimeoutSecs` 55s → 240s; memória até 2GB).
 
-## 1. Migration — tabela `thumbnail_persistence_runs`
+Não é preciso mexer em código. O passo é executar e recolher.
 
-Aditiva, só admin/service_role lê. Campos:
+## Passos (tu corres no browser)
 
-- `id uuid PK`
-- `created_at timestamptz default now()`
-- `cache_key text not null`
-- `handle text not null`
-- `attempted int not null`
-- `stored int not null`
-- `failed_403 int not null default 0`
-- `failed_timeout int not null default 0`
-- `failed_invalid_content_type int not null default 0`
-- `failed_upload int not null default 0`
-- `failed_other int not null default 0`
-- `avatar text not null` (`'ok' | 'fail' | 'none'`)
-- `duration_ms int`
+1. **Confirma pré-requisitos** em `/admin/sistema` (ou `/admin/apify-lab` topo):
+   - `APIFY_ENABLED=true`
+   - `testing_mode_active: true`
+   - 3 handles na allowlist: `frederico.m.carvalho`, `martimsilvai`, `mariiana.ai`
+   - cap diário 5 USD / hard cap 10 USD (já confirmado)
 
-GRANT a `service_role` apenas. RLS enabled, sem policies (acesso só via `supabaseAdmin`).
+2. **Mapeia os handles a segmentos** no formulário do Lab. Sugestão (qualquer mapeamento serve, é só rótulo analítico):
+   - `personal` → `frederico.m.carvalho`
+   - `creator`  → `martimsilvai`
+   - `business` → `mariiana.ai`
 
-Índice `(created_at desc)` para listar últimas 10.
+3. **Corre a matriz completa** com "Correr matriz" (15 runs).
+   - Custo máximo teórico (soma dos `maxTotalChargeUsd` × 3 handles): 3 × (0.1 + 0.1 + 0.2 + 0.3 + 1.0) = **5.10 USD**. Está alinhado com o cap diário de 5 USD — se o cap rejeitar a última run, corre o `365d` no dia seguinte ou aumenta o cap para 6 USD temporariamente.
+   - Tempo estimado: ~15 × (run + 2s) ≈ 8–15 min, dominado pelos `365d`.
+   - Mantém a aba aberta; o loop é client-side.
 
-## 2. Escrita — `src/lib/analysis/cache.ts`
+4. **Vigia falhas** durante a corrida: se um run der `failed` ou `timeout`, anota `semantic_code` e segue. Não relances automaticamente — corro o post-mortem depois.
 
-No bloco onde já corre `persistThumbnailsInPayload(...)` e loga `[thumbnails]`, adicionar um `supabaseAdmin.from("thumbnail_persistence_runs").insert({...})` best-effort dentro do mesmo try (com `.then().catch(() => {})` ou try/catch isolado para nunca falhar a análise). Sem novo módulo separado — mantém o contexto perto do uso.
+5. **Exporta CSV** com "Descarregar CSV" assim que terminar e cola-o (ou anexa-o) na próxima mensagem.
 
-Nada muda em `persist-thumbnails.server.ts`. `PersistSummary` já tem todos os campos necessários.
+## O que eu faço com os dados
 
-## 3. ServerFn de leitura — `src/lib/admin/thumbnail-monitor.functions.ts`
+Para cada combinação handle × janela vou avaliar:
 
-`createServerFn({ method: "GET" })` com `requireAdminAuth` (mesmo padrão dos restantes admin functions). Devolve:
+| Pergunta | Métricas-chave |
+|---|---|
+| 30/60/90d são viáveis? | `status=success`, `posts_returned`, `observed_days` ≥ janela esperada, `actual_cost_usd`, `duration_ms` |
+| 365d é demasiado caro/lento? | `actual_cost_usd` vs cap, `duration_ms` vs timeout, completude (`oldest_post_at` ≈ −365d) |
+| Qual a janela premium? | Custo marginal por dia adicional de histórico; saturação de `posts_returned` (curva de retorno decrescente) |
+| `resultsLimit` por plano | Ratio `posts_returned / resultsLimit` por janela e perfil (saturado vs folgado) |
+| `maxTotalChargeUsd` por plano | p95 do `actual_cost_usd` observado × margem de segurança 1.5× |
 
-```ts
-{
-  recent: Array<{ created_at, handle, cache_key, attempted, stored, failed_403, failed_timeout, failed_invalid_content_type, failed_upload, failed_other, avatar, duration_ms }>,  // últimas 10
-  aggregate: {
-    runs: number,                  // últimos 50 ou últimos 7 dias
-    total_attempted: number,
-    total_stored: number,
-    success_rate: number,          // stored / attempted
-    failures_by_reason: { failed_403, failed_timeout, failed_invalid_content_type, failed_upload, failed_other }
-  }
-}
-```
+Output final: tabela de recomendação por plano (free / paid / premium) com janela, `resultsLimit`, `maxTotalChargeUsd` e justificação por dados.
 
-Janela do agregado: últimos 7 dias (`created_at >= now() - interval '7 days'`).
+## Riscos a vigiar
 
-## 4. Card admin — `src/components/admin/v2/sistema/thumbnail-persistence-card.tsx`
+- **Conta personal sem feed** (`frederico.m.carvalho` ou `mariiana.ai` podem estar privadas/sem posts): runs vão devolver `PROFILE_PERSONAL_NO_FEED` ou similar. Não é falha do Lab; é input. Substituímos o handle se acontecer nos 3.
+- **Cap diário 5 USD**: se atingires, o `365d` do 3.º handle pode ser rejeitado. Aceitável — registamos e completamos amanhã.
+- **Timeouts no `365d`** (240s): se acontecer, é sinal de que `365d` em 1 run é arquitectura errada para premium e precisamos de paginação/janela acumulativa. Exactamente o que queremos descobrir.
 
-Card pequeno seguindo padrão dos restantes (`visual-cover-debug-card.tsx` como referência). Mostra:
+## Checkpoint
 
-- KPI: taxa de sucesso média (7d) + total tentados/armazenados
-- Breakdown de falhas por razão (lista compacta)
-- Tabela das últimas 10 runs: `handle`, `attempted`, `stored`, razão de falha dominante, `avatar`, idade relativa
-
-Inter / tabular-nums para números, tokens semânticos (sem cores hardcoded). Sem mudar copy do relatório.
-
-## 5. Montagem em `src/routes/admin.sistema.tsx`
-
-Adicionar `<ThumbnailPersistenceCard />` na secção "Estado do sistema" (junto ao `HealthSection`/`visual-cover-debug-card`).
-
-## 6. Validação
-
-- `bunx tsc --noEmit`
-- `bunx vitest run` (testes existentes de persist-thumbnails continuam a passar — sem alterar a função)
-
-## Ficheiros tocados
-
-- Nova migration `supabase/migrations/<ts>_thumbnail_persistence_runs.sql`
-- `src/lib/analysis/cache.ts` (insert best-effort após persistência)
-- Novo `src/lib/admin/thumbnail-monitor.functions.ts`
-- Novo `src/components/admin/v2/sistema/thumbnail-persistence-card.tsx`
-- `src/routes/admin.sistema.tsx` (montar card)
-
-## Fora de âmbito
-
-- UI do relatório
-- Lógica de providers / `persistOne`
-- Schema do `PersistSummary`
-
-## Checklist
-
-- ☐ Migration aplicada
-- ☐ Insert best-effort no cache (nunca falha análise)
-- ☐ ServerFn admin com auth
-- ☐ Card no /admin/sistema
-- ☐ tsc + vitest verdes
+- ☐ Confirmaste pré-requisitos no admin
+- ☐ Mapeaste os 3 handles aos segmentos
+- ☐ Corres "Correr matriz" (15 runs)
+- ☐ Exportas e colas o CSV
+- ☐ Eu devolvo tabela de viabilidade por janela + recomendação premium
