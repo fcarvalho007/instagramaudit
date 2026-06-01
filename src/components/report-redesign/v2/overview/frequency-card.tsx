@@ -179,104 +179,147 @@ function pickQuietest(
   };
 }
 
-function WeeklySummary({ days, t }: { days: DayEntry[]; t: TFunction }) {
+/**
+ * Unified rhythm visual: 7 weekday bars with "pico" / "falha" chips
+ * annotating peak and quietest weekday, followed by a single
+ * interpretive sentence. Replaces the older two-block layout.
+ */
+function WeeklyRhythm({ days, t }: { days: DayEntry[]; t: TFunction }) {
   const buckets = aggregateByWeekday(days);
   const totalPosts = buckets.reduce((s, b) => s + b.posts, 0);
   if (totalPosts === 0) return null;
 
   const top = pickMostActive(buckets);
-  const quiet = pickQuietest(buckets, t);
+  const quietPick = pickQuietest(buckets, t);
+  // Resolve quiet weekday index from the long label (when not "weekend").
+  const weekdayLong =
+    (t("frequency.weekday_long", { returnObjects: true }) as string[]) ?? [];
+  const quietIdx = quietPick
+    ? weekdayLong.findIndex((w) => w === quietPick.label)
+    : -1;
   const maxPosts = Math.max(...buckets.map((b) => b.posts));
-  const weekdayShort = (t("frequency.weekday_short", { returnObjects: true }) as string[]) ?? [];
+  const weekdayShort =
+    (t("frequency.weekday_short", { returnObjects: true }) as string[]) ?? [];
+
+  // Bar heights: peak full, others scaled, quiet bar collapsed to ~3px.
+  const BAR_MAX = 36;
+  const BAR_MIN = 6;
+  const BAR_QUIET = 3;
+
+  const interpretation = (() => {
+    const peakLabel = weekdayLong[top.weekday] ?? "";
+    if (quietPick && quietIdx >= 0) {
+      const silentCount = buckets[quietIdx].daysSilent;
+      return t(
+        silentCount === 1
+          ? "frequency.weekly_rhythm.interpretation_with_quiet_one"
+          : "frequency.weekly_rhythm.interpretation_with_quiet_other",
+        { peak: peakLabel, quiet: quietPick.label, count: silentCount },
+      );
+    }
+    if (quietPick) {
+      // Weekend label case — no single index; use the generic phrasing.
+      return t("frequency.weekly_rhythm.interpretation_peak_only", {
+        peak: peakLabel,
+      });
+    }
+    return t("frequency.weekly_rhythm.interpretation_uniform");
+  })();
 
   return (
     <div className="px-4 sm:px-5 md:px-6 mt-4">
-      <div className="rounded-xl border border-border-default bg-surface-muted/60 p-3.5 sm:p-4">
-        <span className="text-eyebrow-sm text-content-tertiary block mb-3">
-          {t("frequency.weekly_summary.title")}
+      <div className="rounded-xl border border-border-default bg-surface-muted/60 px-4 py-4 sm:px-5 sm:py-5">
+        <span className="text-eyebrow-sm text-content-tertiary block mb-4">
+          {t("frequency.weekly_rhythm.title")}
         </span>
 
-        {quiet ? (
-          <div className="flex items-start gap-2.5">
-            <span
-              aria-hidden
-              className="flex size-7 shrink-0 items-center justify-center rounded-full"
-              style={{ background: "rgba(163,45,45,0.10)" }}
-            >
-              <ArrowDown
-                className="size-3.5"
-                style={{ color: "rgba(163,45,45,0.85)" }}
-              />
-            </span>
-            <div className="min-w-0">
-              <p className="text-eyebrow-sm text-content-tertiary leading-none mb-1">
-                {t("frequency.weekly_summary.quietest_label")}
-              </p>
-              <p className="text-[15px] text-content-primary leading-relaxed">
-                <span className="font-semibold">{quiet.label}</span>{" "}
-                <span className="text-content-secondary tabular-nums">
-                  · {quiet.detail}
-                </span>
-              </p>
-            </div>
-          </div>
-        ) : (
-          <p className="text-[15px] text-content-secondary leading-relaxed">
-            {t("frequency.weekly_summary.no_silent")}
-          </p>
-        )}
-
-        {/* Mini bars S T Q Q S S D */}
-        <div className="mt-4">
-          <div
-            className="grid gap-1.5 items-end"
-            style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
-            role="img"
-            aria-label={t("frequency.weekly_summary.aria_distribution")}
-          >
-            {buckets.map((b) => {
-              const isTop = b.weekday === top.weekday && b.posts > 0;
-              const isWeekend = b.weekday >= 5;
-              const ratio = maxPosts > 0 ? b.posts / maxPosts : 0;
-              const height = b.posts > 0 ? 8 + Math.round(ratio * 18) : 5;
-              const bg =
-                b.posts === 0
-                  ? isWeekend
-                    ? "rgba(163,45,45,0.12)"
-                    : "rgba(148,163,184,0.25)"
-                  : isTop
-                    ? "rgba(29,158,117,0.90)"
-                    : "rgba(29,158,117,0.45)";
-              return (
+        {/* Bars + chips row */}
+        <div
+          className="grid gap-1.5 items-end"
+          style={{ gridTemplateColumns: "repeat(7, 1fr)", minHeight: `${BAR_MAX + 22}px` }}
+          role="img"
+          aria-label={t("frequency.weekly_rhythm.aria_distribution")}
+        >
+          {buckets.map((b) => {
+            const isPeak = b.weekday === top.weekday && b.posts > 0;
+            const isGap = quietIdx === b.weekday;
+            const ratio = maxPosts > 0 ? b.posts / maxPosts : 0;
+            const height = isGap
+              ? BAR_QUIET
+              : b.posts > 0
+                ? Math.max(BAR_MIN, Math.round(ratio * BAR_MAX))
+                : BAR_MIN;
+            const bg = isPeak
+              ? "rgba(29,158,117,0.95)"
+              : isGap
+                ? "rgba(186,117,23,0.35)"
+                : b.posts > 0
+                  ? "rgba(29,158,117,0.45)"
+                  : "rgba(148,163,184,0.25)";
+            return (
+              <div key={b.weekday} className="flex flex-col items-center gap-1">
+                {isPeak ? (
+                  <span
+                    className="text-[10px] font-semibold leading-none px-1.5 py-[2px] rounded-sm"
+                    style={{
+                      color: "rgba(29,158,117,0.95)",
+                      background: "rgba(29,158,117,0.12)",
+                    }}
+                  >
+                    {t("frequency.weekly_rhythm.peak_chip")}
+                  </span>
+                ) : isGap ? (
+                  <span
+                    className="text-[10px] font-semibold leading-none px-1.5 py-[2px] rounded-sm"
+                    style={{
+                      color: "rgba(186,117,23,0.95)",
+                      background: "rgba(186,117,23,0.12)",
+                    }}
+                  >
+                    {t("frequency.weekly_rhythm.gap_chip")}
+                  </span>
+                ) : (
+                  <span className="text-[10px] leading-none" aria-hidden>
+                    &nbsp;
+                  </span>
+                )}
                 <span
-                  key={b.weekday}
                   className="rounded-[3px] w-full"
                   style={{ height: `${height}px`, background: bg }}
                 />
-              );
-            })}
-          </div>
-          <div
-            className="grid gap-1.5 mt-1.5"
-            style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
-          >
-            {weekdayShort.map((wd, i) => {
-              const isTop = i === top.weekday && buckets[i].posts > 0;
-              return (
-                <span
-                  key={i}
-                  className={`text-xs text-center leading-none select-none ${
-                    isTop
-                      ? "font-semibold text-content-primary"
-                      : "text-content-tertiary"
-                  }`}
-                >
-                  {wd}
-                </span>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
+
+        {/* Weekday labels */}
+        <div
+          className="grid gap-1.5 mt-2"
+          style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
+        >
+          {weekdayShort.map((wd, i) => {
+            const isPeak = i === top.weekday && buckets[i].posts > 0;
+            const isGap = i === quietIdx;
+            return (
+              <span
+                key={i}
+                className={`text-xs text-center leading-none select-none ${
+                  isPeak || isGap
+                    ? "font-semibold text-content-primary"
+                    : "text-content-tertiary"
+                }`}
+              >
+                {wd}
+              </span>
+            );
+          })}
+        </div>
+
+        {/* Single interpretive sentence */}
+        <p
+          className="text-[14px] text-content-secondary leading-relaxed mt-4 pt-3 border-t border-border-default/60 [&_b]:font-semibold [&_b]:text-content-primary"
+          dangerouslySetInnerHTML={{ __html: interpretation }}
+        />
       </div>
     </div>
   );
