@@ -163,6 +163,28 @@ export function isWithinStaleWindow(snapshot: SnapshotRow): boolean {
 }
 
 /**
+ * Estado de frescura derivado da idade do snapshot. Usado pelo endpoint
+ * público para decidir se mostra o CTA "Actualizar análise" e pelo
+ * frontend para textos como "Actualizado hoje".
+ */
+export type FreshnessState =
+  | "fresh_under_12h"
+  | "fresh_12_to_24h"
+  | "expired";
+
+export function getFreshnessState(snapshot: SnapshotRow): FreshnessState {
+  const age = Date.now() - new Date(snapshot.created_at).getTime();
+  if (age < REFRESH_BUTTON_AFTER_MS) return "fresh_under_12h";
+  if (age < CACHE_REUSE_MAX_MS) return "fresh_12_to_24h";
+  return "expired";
+}
+
+export function getSnapshotAgeHours(snapshot: SnapshotRow): number {
+  const ageMs = Date.now() - new Date(snapshot.created_at).getTime();
+  return Math.max(0, Math.round((ageMs / 3_600_000) * 10) / 10);
+}
+
+/**
  * Upsert a fresh snapshot keyed by cache_key.
  * Returns the snapshot's id so callers can echo it back to the client and
  * link future report requests to this exact row. Errors are logged but never
