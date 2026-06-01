@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InstagramGlyph } from "./instagram-glyph";
 import { normalizeInstagramHandle } from "@/lib/instagram/normalize-handle";
+import { OnboardingModal } from "@/components/onboarding/onboarding-modal";
 
 /**
  * Re-export do helper canónico em `@/lib/instagram/normalize-handle`,
@@ -25,6 +26,11 @@ export function HeroActionBar() {
   const [competitor1, setCompetitor1] = useState("");
   const [competitor2, setCompetitor2] = useState("");
   const [competitorError, setCompetitorError] = useState<string | null>(null);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [pendingNav, setPendingNav] = useState<{
+    username: string;
+    competitors: string[];
+  } | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,14 +59,15 @@ export function HeroActionBar() {
     }
     setCompetitorError(null);
 
-    navigate({
-      to: "/analyze/$username",
-      params: { username },
-      search: competitors.length > 0 ? { vs: competitors.join(",") } : {},
-    });
+    // Fase 3: NÃO navegar directamente — abrir onboarding modal primeiro.
+    // O modal vai submeter a /api/onboarding/start (cookie + créditos)
+    // antes de qualquer chamada ao provider.
+    setPendingNav({ username, competitors });
+    setOnboardingOpen(true);
   };
 
   return (
+    <>
     <div className="relative w-full max-w-3xl mx-auto">
       {/* Micro-label above the bar */}
       <div className="mb-3 flex items-center justify-center gap-2 text-content-secondary">
@@ -203,5 +210,24 @@ export function HeroActionBar() {
         }
       `}</style>
     </div>
+    {pendingNav ? (
+      <OnboardingModal
+        open={onboardingOpen}
+        onOpenChange={setOnboardingOpen}
+        handle={pendingNav.username}
+        onSuccess={(handle) => {
+          setOnboardingOpen(false);
+          navigate({
+            to: "/analyze/$username",
+            params: { username: handle },
+            search:
+              pendingNav.competitors.length > 0
+                ? { vs: pendingNav.competitors.join(",") }
+                : {},
+          });
+        }}
+      />
+    ) : null}
+    </>
   );
 }

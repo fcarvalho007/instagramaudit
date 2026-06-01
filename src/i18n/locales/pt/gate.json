@@ -156,5 +156,31 @@
       "titleEm": "volta",
       "subtitle": "Podes voltar a consultar este relatório na tua área pessoal."
     }
+  },
+  "onboarding": {
+    "intro": {
+      "eyebrow": "ANTES DE COMEÇAR",
+      "title": "Cria a tua conta e abre o relatório",
+      "subtitle": "São algumas perguntas rápidas para personalizar a análise e guardar o relatório.",
+      "handleContext": "Vais analisar @{{handle}}",
+      "creditNote": "Esta análise usa 1 crédito. Começas com 2 créditos gratuitos.",
+      "freeValueTitle": "O que recebes grátis",
+      "freeValue": [
+        "Índice geral do perfil",
+        "Métricas-base da visão geral",
+        "Amostra analisada e período observado",
+        "Relatório guardado para rever depois"
+      ],
+      "premiumNote": "As secções avançadas fazem parte do relatório premium.",
+      "cta": "Começar",
+      "trustLine": "~1 min · RGPD · sem spam",
+      "personalHint": "Funciona melhor com perfis públicos Creator ou Empresa. Alguns perfis pessoais podem não devolver publicações suficientes."
+    },
+    "submitting": "A preparar o teu acesso…",
+    "preparingAnalysis": "A preparar a análise do perfil…",
+    "errors": {
+      "generic": "Não foi possível concluir agora. Tenta novamente em instantes.",
+      "network": "Erro de ligação. Verifica a internet e tenta novamente."
+    }
   }
 }
