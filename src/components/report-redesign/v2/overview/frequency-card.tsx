@@ -468,6 +468,7 @@ export function FrequencyCard({
   socialinsiderRef,
 }: FrequencyCardProps) {
   const { t, i18n } = useTranslation("report");
+  const [calendarOpen, setCalendarOpen] = useState(false);
   // Prefer cadence-derived sample (pinned-excluded) for subtitle counts.
   const effectiveSampleSize =
     typeof cadenceSampleSize === "number" && cadenceSampleSize > 0
