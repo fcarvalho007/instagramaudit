@@ -410,7 +410,7 @@ function FrequencyKpiStrip({
           </span>
           <span
             className={`block font-sans text-[1.25rem] sm:text-[1.5rem] font-semibold leading-none ${
-              hasPeak ? "text-accent-primary" : "text-content-tertiary"
+              hasPeak ? "text-content-primary" : "text-content-tertiary"
             }`}
           >
             {peakLabel}
