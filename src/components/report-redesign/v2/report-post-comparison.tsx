@@ -23,11 +23,16 @@ import { useReportTracking } from "./report-tracking-context";
 import { trackEvent } from "@/lib/tracking.functions";
 
 type EnrichedPost = ReportEnriched["topPosts"][number];
+type ScatterPost = ReportEnriched["allPostsScatter"][number];
 type TR = TFunction<"report", undefined>;
 
 interface PostComparisonBlockProps {
   topPosts: EnrichedPost[];
   bottomPosts: EnrichedPost[];
+  /** Todas as publicações da janela, para o scatter de distribuição. */
+  allPostsForScatter?: ScatterPost[];
+  /** Janela de análise (ISO YYYY-MM-DD) — domínio do eixo X do scatter. */
+  windowRange?: { startIso: string; endIso: string };
   /** Raw AI insight text for the comparative diagnostic. */
   aiInsightText?: string | null;
   windowLabel?: string;
