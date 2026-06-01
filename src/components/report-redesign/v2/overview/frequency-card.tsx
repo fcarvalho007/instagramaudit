@@ -9,7 +9,7 @@ import { computeFrequencia } from "./score-utils";
 import { InsightCallout } from "./insight-callout";
 import type { SocialinsiderInstagramContext } from "@/lib/knowledge/socialinsider-context";
 import { ExternalSourceNote, formatDateRange } from "./external-source-note";
-import { formatDecimal } from "@/lib/i18n/format";
+import { formatNumber } from "@/lib/i18n/format";
 
 function getFrequencyStatusKey(score: number): "high" | "medium" | "low" {
   if (score >= 70) return "high";
