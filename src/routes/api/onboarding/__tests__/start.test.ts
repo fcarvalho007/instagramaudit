@@ -35,7 +35,7 @@ function leadsBuilder() {
   let pendingInsert: Record<string, unknown> | null = null;
   let pendingUpdate: Record<string, unknown> | null = null;
 
-  const api: Record<string, (...args: unknown[]) => unknown> = {
+  const api: Record<string, (...args: any[]) => unknown> = {
     select() {
       return api;
     },
