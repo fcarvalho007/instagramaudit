@@ -87,6 +87,29 @@ export function getLeadFromCookie(): string | null {
   return decodeLeadCookie(raw)?.leadId ?? null;
 }
 
+/**
+ * Read + verify the lead cookie directly from a `Request` object. Used by
+ * handlers that prefer to keep the request explicit (e.g. server routes
+ * that don't rely on AsyncLocalStorage-bound `getCookie`).
+ *
+ * Returns the verified `leadId` or `null` for missing / invalid / tampered
+ * cookies.
+ */
+export function readLeadIdFromRequest(request: Request): string | null {
+  const header = request.headers.get("cookie");
+  if (!header) return null;
+  const target = `${LEAD_COOKIE_NAME}=`;
+  // Cookie header is `name=value; name=value; ...`. Parse without external
+  // deps so we stay free of brittle cookie libraries.
+  for (const segment of header.split(";")) {
+    const trimmed = segment.trim();
+    if (!trimmed.startsWith(target)) continue;
+    const raw = decodeURIComponent(trimmed.slice(target.length));
+    return decodeLeadCookie(raw)?.leadId ?? null;
+  }
+  return null;
+}
+
 /** Write the signed cookie on the current server response. */
 export function setLeadCookie(leadId: string): void {
   setCookie(LEAD_COOKIE_NAME, encodeLeadCookie(leadId), {
