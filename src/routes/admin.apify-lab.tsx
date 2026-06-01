@@ -361,6 +361,11 @@ function ApifyLabPage() {
           ajustam <code>resultsLimit</code> e <code>onlyPostsNewerThan</code>.
         </section>
 
+        <section className="rounded-lg border border-default bg-surface-muted p-4 text-sm text-content-secondary">
+          Janelas mais longas podem demorar 1–3 minutos. Os timeouts aqui são
+          guardrails do Lab e não afectam o relatório gratuito de produção.
+        </section>
+
         {stuckHandles.size > 0 ? (
           <section className="rounded-lg border border-red-300/60 bg-red-50 p-4 text-sm text-red-900">
             <strong>Aviso de janelas estáticas:</strong> os seguintes handles
