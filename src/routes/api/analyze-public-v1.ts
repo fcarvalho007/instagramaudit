@@ -620,6 +620,8 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 displayName: stalePayload.profile?.display_name ?? null,
                 followersLastSeen: stalePayload.profile?.followers_count ?? null,
               });
+              creditOutcome = "confirm";
+              snapshotForConfirm = existing.id;
               return jsonResponse(
                 buildCachedResponse(existing, "stale", benchmarkData),
                 200,
