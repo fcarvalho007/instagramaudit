@@ -473,10 +473,14 @@ export function FrequencyCard({
   // (which may span months from the oldest sample post) to the active
   // cadence window so the calendar, weekly summary and legend all match
   // the "X publicações em Y dias" subtitle.
-  const windowedDays =
+  const slicedDays =
     effectiveWindowDays > 0
       ? calendarDays.slice(-effectiveWindowDays)
       : calendarDays;
+  // If the upstream timeline ended before today (Apify snapshot, last post
+  // older than today), back-fill empty trailing days so the calendar always
+  // covers the full effectiveWindowDays window we promised in the subtitle.
+  const windowedDays = backFillToWindow(slicedDays, effectiveWindowDays);
   const headline = isInsufficient
     ? t("frequency.headline.insufficient")
     : t(getFrequencyHeadlineKey(postsPerDay));
