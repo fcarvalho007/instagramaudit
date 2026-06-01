@@ -761,12 +761,13 @@
     }
   },
   "posts": {
-    "title": "Melhores e Piores Publicações",
-    "subtitle": "Os extremos do conteúdo",
+    "title": "Melhores e piores publicações",
+    "subtitle": "O contraste editorial dos últimos 30 dias",
+    "subtitle_with_window": "O contraste editorial dos últimos {{window}}",
     "rank": {
-      "best_1": "Melhor performance",
+      "best_1": "Melhor desempenho",
       "best_2": "Segundo melhor",
-      "worst_1": "Pior performance",
+      "worst_1": "Pior desempenho",
       "worst_2": "Segundo pior"
     },
     "vs": {
@@ -776,16 +777,37 @@
     "diff": "diferença",
     "no_caption": "Sem legenda",
     "format_chip": {
-      "carousel": "CARROSSEL"
+      "carousel": "CARROSSEL",
+      "reel": "REEL",
+      "image": "IMAGEM"
     },
     "callout_label": "DIAGNÓSTICO COMPARATIVO",
+    "hero": {
+      "best_label": "MELHOR PUBLICAÇÃO",
+      "worst_label": "PIOR PUBLICAÇÃO",
+      "diff_label": "DIFERENÇA"
+    },
+    "scatter": {
+      "title": "DISTRIBUIÇÃO DAS {{count}} PUBLICAÇÕES AO LONGO DO PERÍODO",
+      "avg_label": "média {{value}}%",
+      "best_pill": "Melhor · {{value}}%",
+      "worst_pill": "Pior · {{value}}%",
+      "locked_tooltip": "Publicação · disponível no premium",
+      "aria": "Distribuição de {{count}} publicações ao longo do período. Melhor {{best}}%, pior {{worst}}%."
+    },
+    "premium": {
+      "body": "Vês os 2 extremos. As outras {{count}} publicações — onde estão os padrões — desbloqueiam-se no premium.",
+      "cta": "Ver análise completa"
+    },
+    "vs_avg": {
+      "value": "{{sign}}{{value}}% vs média"
+    },
     "ai_fallback": {
-      "default": "O formato e a legenda fazem a diferença.",
-      "reels": "Reels superam formatos estáticos nesta conta.",
-      "carousel": "Carrosséis geram mais engagement do que posts simples.",
-      "caption": "Legendas descritivas vencem publicações sem contexto.",
-      "body_mult": "O conteúdo com melhor desempenho atingiu {{best}}% de engagement, {{mult}} acima do pior resultado.",
-      "body_plain": "O conteúdo com melhor desempenho atingiu {{best}}% de engagement contra {{worst}}% do pior."
+      "default": "O formato e o gancho fazem a diferença.",
+      "reels": "Reels com gancho forte são o que mais move este perfil.",
+      "carousel": "Carrosséis são o formato que mais puxa envolvimento.",
+      "caption": "Legendas com contexto vencem publicações sem texto.",
+      "body_prescriptive": "Replicar o padrão do melhor ({{bestFormat}}) e fechar sempre com uma pergunta clara para puxar comentários."
     }
   },
   "insightLabels": {
