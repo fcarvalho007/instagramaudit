@@ -929,24 +929,18 @@ function DetailedPostCard({
 
         {/* Right: metric + caption */}
         <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="tabular-nums text-[22px] font-bold text-content-primary leading-none">
-              {formatNumber(post.engagementPct, language, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              <span className="text-content-tertiary text-sm font-medium ml-0.5">%</span>
+          {deltaRounded !== 0 && (
+            <span
+              className={cn(
+                "inline-flex items-center self-start text-[12px] font-semibold tabular-nums px-2 py-0.5 rounded-full",
+                tone === "best"
+                  ? "bg-accent-primary/10 text-accent-primary"
+                  : "bg-signal-warning/10 text-signal-warning",
+              )}
+            >
+              {deltaLabel}
             </span>
-            {deltaRounded !== 0 && (
-              <span
-                className={cn(
-                  "inline-flex items-center text-[11px] font-semibold tabular-nums px-1.5 py-0.5 rounded",
-                  tone === "best"
-                    ? "bg-accent-primary/10 text-accent-primary"
-                    : "bg-signal-warning/10 text-signal-warning",
-                )}
-              >
-                {deltaLabel}
-              </span>
-            )}
-          </div>
+          )}
           <p className="text-[12px] text-content-primary leading-snug line-clamp-3">
             {post.caption || t("posts.no_caption")}
           </p>
