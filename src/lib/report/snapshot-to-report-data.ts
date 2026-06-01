@@ -27,6 +27,7 @@ import {
   type EditorialVerdictEvidence,
   type EditorialVerdictWarning,
 } from "@/lib/insights/types";
+import { pickThumbnailUrl } from "@/lib/report/pick-thumbnail";
 
 import { resolveReportTier } from "./tiers";
 import {
