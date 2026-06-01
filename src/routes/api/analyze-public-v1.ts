@@ -1281,5 +1281,47 @@ function buildCachedResponse(
       analyzed_at: snapshot.updated_at,
     },
     benchmark_positioning,
+    freshness: deriveFreshnessFromSnapshot(snapshot, source),
+  };
+}
+
+/**
+ * Deriva o bloco `freshness` para uma resposta servida da cache (ou
+ * stale-fallback). Fresh-just-scraped usa `deriveFreshnessJustNow`.
+ */
+function deriveFreshnessFromSnapshot(
+  snapshot: SnapshotRow,
+  source: "cache" | "stale",
+): PublicAnalysisFreshness {
+  const state = getFreshnessState(snapshot);
+  const isFallback = source === "stale";
+  // Stale = provider failed após snapshot já estar expired → state="expired".
+  // Reportamos como "fallback_stale" no payload para a UI mostrar aviso.
+  const reportedState: PublicAnalysisFreshness["state"] = isFallback
+    ? "fallback_stale"
+    : state === "expired"
+      ? "fresh_12_to_24h" // defensivo: cache servida nunca devia estar expirada
+      : state;
+  return {
+    state: reportedState,
+    snapshot_created_at: snapshot.created_at,
+    snapshot_age_hours: getSnapshotAgeHours(snapshot),
+    refresh_available: !isFallback && state === "fresh_12_to_24h",
+    // Sem tabela de créditos ainda — ver §6 do plano de cache 24h.
+    refresh_requires_credit: false,
+    is_fallback: isFallback,
+  };
+}
+
+/** Bloco de frescura para resposta acabada de scrape (estado "just now"). */
+function deriveFreshnessJustNow(): PublicAnalysisFreshness {
+  const nowIso = new Date().toISOString();
+  return {
+    state: "fresh_just_now",
+    snapshot_created_at: nowIso,
+    snapshot_age_hours: 0,
+    refresh_available: false,
+    refresh_requires_credit: false,
+    is_fallback: false,
   };
 }
