@@ -116,6 +116,78 @@ export type Database = {
         }
         Relationships: []
       }
+      apify_lab_runs: {
+        Row: {
+          actual_cost_usd: number | null
+          admin_email: string | null
+          apify_run_id: string | null
+          created_at: string
+          duration_ms: number | null
+          error_excerpt: string | null
+          estimated_cost_usd: number | null
+          guardrails: Json
+          id: string
+          input_params: Json
+          newest_post_at: string | null
+          normalize_ok: boolean | null
+          notes: string | null
+          observed_days: number | null
+          oldest_post_at: string | null
+          posts_returned: number | null
+          profile_handle: string
+          profile_segment: string | null
+          semantic_code: string | null
+          status: string
+          window_kind: string
+        }
+        Insert: {
+          actual_cost_usd?: number | null
+          admin_email?: string | null
+          apify_run_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_excerpt?: string | null
+          estimated_cost_usd?: number | null
+          guardrails?: Json
+          id?: string
+          input_params?: Json
+          newest_post_at?: string | null
+          normalize_ok?: boolean | null
+          notes?: string | null
+          observed_days?: number | null
+          oldest_post_at?: string | null
+          posts_returned?: number | null
+          profile_handle: string
+          profile_segment?: string | null
+          semantic_code?: string | null
+          status: string
+          window_kind: string
+        }
+        Update: {
+          actual_cost_usd?: number | null
+          admin_email?: string | null
+          apify_run_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_excerpt?: string | null
+          estimated_cost_usd?: number | null
+          guardrails?: Json
+          id?: string
+          input_params?: Json
+          newest_post_at?: string | null
+          normalize_ok?: boolean | null
+          notes?: string | null
+          observed_days?: number | null
+          oldest_post_at?: string | null
+          posts_returned?: number | null
+          profile_handle?: string
+          profile_segment?: string | null
+          semantic_code?: string | null
+          status?: string
+          window_kind?: string
+        }
+        Relationships: []
+      }
       app_config: {
         Row: {
           key: string

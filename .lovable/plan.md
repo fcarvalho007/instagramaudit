@@ -1,87 +1,125 @@
 ## Objetivo
 
-Refinar o bloco `PostComparisonBlock` (`src/components/report-redesign/v2/report-post-comparison.tsx`) seguindo o mockup. Só alteração visual e de interação — sem mexer em dados, sampling, ou backend.
+Construir um laboratório controlado para validar empiricamente o suporte de janelas temporais (30/60/90/365 dias) do actor `apify/instagram-scraper`, sem alterar o relatório free, preços, UI ou `PUBLIC_INSTAGRAM_POSTS_LIMIT`. O lab corre testes isolados e regista resultados estruturados.
 
-## Mudanças
+## Arquitetura
 
-### 1. Scatter — eliminar repetição do número
+**3 ficheiros novos, 0 ficheiros de produção alterados.**
 
-Remover as `ScatterPill` azul/laranja com `0,15%` e `0,04%`. No lugar:
+### 1. Migração: `apify_lab_runs`
 
-- Melhor → marcador `★` discreto acima do ponto, com label `melhor` em accent-primary
-- Pior → marcador `▾` discreto abaixo do ponto, com label `pior` em signal-warning
-- Manter aura + dot coloridos
-- Sem nunca mostrar o número diretamente no scatter (fica só no hero e no tooltip)
+Tabela isolada do pipeline de produção (não toca em `report_snapshots`, `provider_call_logs`, `leads`, etc.):
 
-### 2. Hover/tap funcional em todos os pontos
+```text
+apify_lab_runs (
+  id uuid pk
+  created_at timestamptz
+  admin_email text                -- quem executou
+  profile_handle text             -- @username testado
+  profile_segment text            -- 'medium' | 'high' | 'low'
+  window_kind text                -- 'baseline' | '30d' | '60d' | '90d' | '365d'
+  input_params jsonb              -- input completo enviado ao actor
+  guardrails jsonb                -- maxItems, maxTotalChargeUsd, timeoutMs
+  status text                     -- 'success' | 'timeout' | 'failed' | 'budget_block'
+  semantic_code text              -- ApifySemanticCode quando aplicável
+  apify_run_id text               -- run id retornado
+  posts_returned int
+  newest_post_at timestamptz
+  oldest_post_at timestamptz
+  observed_days int               -- (newest - oldest) em dias
+  duration_ms int
+  estimated_cost_usd numeric(12,5)
+  actual_cost_usd numeric(12,5)   -- usageTotalUsd do Apify
+  normalize_ok boolean            -- enrichPosts() não rebenta
+  notes text
+  error_excerpt text
+)
+```
 
-Implementar tooltip via estado React (hover desktop + tap mobile):
+RLS: admin-only (service_role full; nenhuma policy anon/authenticated). GRANT apenas service_role.
 
-- Adicionar `<rect>` invisível por ponto (r≈12, `cursor-pointer`) para hit-target generoso
-- `onMouseEnter` / `onFocus` / `onClick` → set `hoveredId`
-- `onMouseLeave` / `onBlur` → clear (no desktop); no mobile mantém até tap fora ou noutro ponto
-- Tooltip flutuante (div HTML posicionado por `foreignObject` ou overlay absoluto sobre o SVG, usando coordenadas convertidas) com:
-  - **Pontos extremos (best/worst)**: data, formato (chip), `engagementPct` formatado, delta vs média, excerto da legenda (≤80 chars), gostos + comentários
-  - **Pontos bloqueados (cinzentos)**: apenas `🔒 publicação bloqueada · desbloqueia no premium` (sem valor real, sem blur de número — evita extração via DOM)
-- Tooltip auto-flip horizontal/vertical quando perto das bordas
-- Acessibilidade: `tabIndex={0}` em cada hit-target + `aria-describedby`
+### 2. Server route: `src/routes/api/admin/apify-lab.ts`
 
-Para isto, o `ConstellationScatter` passa a precisar dos posts completos (legenda, likes, comments) só para os 2 extremos. Os pontos bloqueados ficam apenas com tooltip genérico, por isso continuam a usar `ScatterPost` minimal.
+Protegida por `requireAdminSession()` (allowlist por email).
 
-### 3. Cartões — remover redundância do número grande
+**POST `/api/admin/apify-lab/run`** — corre 1 teste e devolve o registo:
+```text
+body: { profile_handle, profile_segment, window_kind }
+```
 
-No `DetailedPostCard`:
+Lógica:
+1. `requireAdminSession()` + `isApifyEnabled()` + `isAllowed(handle)` + `assertApifyDailyBudgetAvailable()`.
+2. Constrói input por janela:
+   - `baseline`: `{ resultsType: "details", resultsLimit: 12, addParentData: false }` (replica produção exatamente)
+   - `30d/60d/90d/365d`: `{ resultsType: "details", onlyPostsNewerThan: "<N> days", resultsLimit: <safety_cap>, addParentData: false }`
+     - safety_cap: 30→100, 60→200, 90→300, 365→1000
+3. Guardrails passados a `runActorWithMetadata`:
+   - `maxItems: 1` (1 perfil por run)
+   - `maxTotalChargeUsd` por janela: baseline→$0.10, 30d→$0.10, 60d→$0.20, 90d→$0.30, 365d→$1.00
+   - `apifyTimeoutSecs`: baseline/30d/60d→55, 90d→120, 365d→240
+   - `timeoutMs`: baseline/30d/60d→60_000, 90d→130_000, 365d→260_000
+   - `memoryMbytes`: 2048 para 90d/365d, 1024 caso contrário
+4. Cronometra com `Date.now()`.
+5. Apanha `ApifyUpstreamError` / `BudgetExceededError` / `ApifyConfigError` — preenche `status`, `semantic_code`, `actual_cost_usd` (quando o erro o carrega), `error_excerpt` via `sanitizeErrorExcerpt`.
+6. Em sucesso: extrai `latestPosts[]`, calcula `newest_post_at`/`oldest_post_at`/`observed_days`, computa `estimated_cost_usd` via `estimateApifyCost`, e corre `enrichPosts(rawPosts)` num try/catch para `normalize_ok`.
+7. **Não cria**: snapshot, comment-scraper run, lead, request, email, OpenAI call, DFS call.
+8. Insere uma linha em `apify_lab_runs` via `supabaseAdmin`.
+9. Devolve a linha gravada.
 
-- **Remover** o `<span>` com `0,15%` grande (linhas 731–735)
-- Manter **apenas** o chip de contexto (`+68% vs média` / `−55% vs média`) — promovido para cima como elemento principal da linha de métrica
-- A imagem real (`thumbUrl`) já está implementada — manter, com badge de formato sobreposto (já existe)
-- Reordenar: chip delta no topo do bloco direito, depois caption, depois likes/comments
+**GET `/api/admin/apify-lab/runs`** — lista as últimas 200 linhas para a UI (filtros opt: handle, window_kind).
 
-### 4. Copy (i18n)
+### 3. Página admin: `src/routes/admin.apify-lab.tsx`
 
-Atualizar `src/i18n/locales/pt/report.json` e `en/report.json`:
+UI simples (sem mexer em design system existente):
+- **Topo**: aviso destacado a explicar que isto consome créditos Apify reais e está protegido pelo allowlist diário.
+- **Form**: 3 inputs `<input>` para os 3 handles (medium / high / low), com sugestão de defaults editáveis e botão `Correr matriz completa` que dispara 15 chamadas sequenciais (3 perfis × 5 janelas) com pausa de 2s entre cada, mostrando progresso. Botão individual `Correr um teste` para casos pontuais.
+- **Tabela de resultados**: lê de `GET /runs`, colunas exatamente como pedido:
+  `Perfil | Segmento | Janela | Posts | Observed days | Newest | Oldest | Cost (est/real) | Duration | Status | Normalize | Notas`
+- **Botão Export CSV** da tabela visível.
 
-- `posts.scatter.best_marker`: `"melhor"`
-- `posts.scatter.worst_marker`: `"pior"`
-- `posts.scatter.locked_tooltip`: `"🔒 Publicação bloqueada · desbloqueia no premium"`
-- Remover (ou deixar não-usadas) `posts.scatter.best_pill` / `worst_pill`
-- Novas keys do tooltip:
-  - `posts.tooltip.delta`: `"{{sign}}{{value}}% vs média"`
-  - `posts.tooltip.engagement`: `"{{value}}% envolvimento"`
+## Guardrails reaproveitados (não alterados)
 
-### 5. Mobile
+- `isApifyEnabled()` (`APIFY_ENABLED=true`)
+- `isAllowed(handle)` (`APIFY_ALLOWLIST`)
+- `assertApifyDailyBudgetAvailable()` (`APIFY_HARD_CAP_USD`)
+- `requireAdminSession()` (`ADMIN_ALLOWED_EMAILS`)
+- `sanitizeErrorExcerpt()`
 
-Comportamento tap-to-reveal (decisão recomendada pelo user): mesmo tooltip em mobile. Implementado naturalmente porque o handler é `onClick`, não só `onMouseEnter`. Tap fora do ponto fecha.
+## Fora do âmbito (não tocar)
 
-## Ficheiros alterados
-
-- `src/components/report-redesign/v2/report-post-comparison.tsx` — refactor do `ConstellationScatter` (markers + tooltip state + hit-targets) e do `DetailedPostCard` (remover número grande)
-- `src/i18n/locales/pt/report.json` — novas keys
-- `src/i18n/locales/en/report.json` — espelhar
-
-## Não tocado
-
-- `snapshot-to-report-data.ts`, `block01-sample.ts`, scoring, sampling
-- Pipeline de thumbnails (`persist-thumbnails.server.ts`)
-- `ComparativeHero` (hero mantém os números grandes — fonte única do valor)
-- `PremiumReveal`, `AiReading`
+- `src/routes/api/analyze-public-v1.ts`
+- `src/lib/analysis/constants.ts` (`PUBLIC_INSTAGRAM_POSTS_LIMIT` fica em 12)
+- `src/lib/analysis/cost.ts` (rates inalteradas)
+- Pipeline OpenAI, DataForSEO, Resend
+- Schema `report_snapshots`, `provider_call_logs`, `leads`
+- UI do relatório free, pricing, planos
 
 ## Validação
 
 - `bunx tsc --noEmit`
-- Inspeção visual no preview (desktop + 375px) — confirmar que:
-  - Hero é o único sítio com `0,15%` / `0,04%`
-  - Scatter mostra só ★ melhor / ▾ pior sem número
-  - Hover/tap funciona em todos os pontos com tooltips corretos
-  - Cartões mostram só o chip delta, sem o número grande
-  - Pontos bloqueados não revelam valor real
+- Sanity check com a tabela vazia, RLS bloqueia leitura anon
+- Após user correr a matriz no admin, recolhem-se os resultados reais
+
+## Output esperado após execução
+
+A página devolve a tabela. Depois sintetizo em chat:
+
+```text
+Perfil | Janela | Posts | Observed | Cost real | Duration | Status | Notas
+```
+
+Conclusões inferidas dos dados reais:
+- viabilidade técnica por janela (sucesso vs timeout vs custo)
+- recomendação de janelas premium a expor
+- recomendação de `resultsLimit` cap por janela
+- recomendação de `maxTotalChargeUsd` por janela como guardrail final
 
 ## Checkpoint
 
-- ☐ Scatter sem pills com número
-- ☐ Marcadores ★ / ▾ visíveis e legíveis
-- ☐ Tooltip extremos com 6 campos (data, formato, %, delta, caption, likes+comments)
-- ☐ Tooltip bloqueados vago, sem valor
-- ☐ Tap-to-reveal funciona em mobile
-- ☐ Cartões sem número grande, chip delta como métrica principal
+- ☐ Migração `apify_lab_runs` criada com RLS service-role-only
+- ☐ Route `POST /api/admin/apify-lab/run` corre 1 teste com guardrails completos
+- ☐ Route `GET /api/admin/apify-lab/runs` lista histórico
+- ☐ Página `/admin/apify-lab` dispara matriz 3×5 e mostra tabela
+- ☐ Nenhum ficheiro de produção (analyze-public-v1, constants, normalize) tocado
 - ☐ `bunx tsc --noEmit` passa
+- ☐ User executa matriz, partilha resultados, eu sintetizo conclusões
