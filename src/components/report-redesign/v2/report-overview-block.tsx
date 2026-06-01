@@ -11,6 +11,7 @@ import {
   type ScoreKey,
 } from "./overview/score-utils";
 import { EditorialIdentityCard } from "./overview/editorial-identity-card";
+import { MethodologyLine } from "./overview/methodology-line";
 import { EngagementCardRefined } from "./report-overview-engagement";
 import { FrequencyCard } from "./overview/frequency-card";
 import { FormatCard, type FormatEntry } from "./overview/format-card";
@@ -55,16 +56,22 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
   // excluded). Falls back to `content_summary` only when the snapshot has
   // no usable posts. Passing `excludePinned: false` because the sample is
   // already pinned-filtered upstream.
-  const postAverages = useMemo(() => {
+  // Single source of truth: derive Block 1 sample once and reuse it for
+  // (a) averages and (b) the methodology line.
+  const sample = useMemo(() => {
     const posts = payload?.posts ?? null;
     if (!Array.isArray(posts) || posts.length === 0) return null;
-    const sample = buildBlock01Sample(posts);
+    return buildBlock01Sample(posts);
+  }, [payload?.posts]);
+
+  const postAverages = useMemo(() => {
+    if (!sample) return null;
     const source =
       sample.performancePosts.length > 0
         ? sample.performancePosts
         : sample.analyzedPosts;
     return computePostAverages(source, { excludePinned: false });
-  }, [payload?.posts]);
+  }, [sample]);
 
   const avgLikes =
     postAverages?.averageLikes ?? payload?.content_summary?.average_likes ?? 0;
@@ -174,6 +181,18 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
         />
       )}
 
+      {(mode === "all" || mode === "free") && (
+        /* Linha de transparência da metodologia — discreta, abaixo do
+         * cartão editorial, visível tanto no modo free como no completo. */
+        <MethodologyLine
+          count={sample?.performancePosts.length ?? 0}
+          observedDays={enriched.cadence.windowDays}
+          sufficient={enriched.cadence.sufficient}
+          pinnedExcluded={sample?.pinnedPostsExcluded ?? 0}
+          outliersExcluded={sample?.dateOutliersExcluded ?? 0}
+        />
+      )}
+
       {(mode === "all" || mode === "locked") && (
         <>
           {/* Zona C — Card de Taxa de Envolvimento (lock boundary) */}
@@ -208,7 +227,9 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
             allPostsForScatter={result.enriched.allPostsScatter}
             windowRange={result.enriched.windowRange}
             aiInsightText={result.enriched.aiInsightsV2?.sections.topPosts?.text ?? null}
-            windowLabel={result.data.meta?.windowShortLabel}
+            cadenceMethod={enriched.cadence.method}
+            cadenceWindowDays={enriched.cadence.windowDays}
+            sampleSize={sample?.performancePosts.length ?? 0}
           />
         </>
       )}
