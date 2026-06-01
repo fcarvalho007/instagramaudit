@@ -13,6 +13,8 @@ export interface PublicAnalysisProfile {
   username: string;
   display_name: string;
   avatar_url: string | null;
+  /** Persisted Supabase Storage URL for the avatar; `null` until persistence runs. */
+  avatar_storage_url?: string | null;
   bio: string | null;
   followers_count: number;
   following_count: number | null;
