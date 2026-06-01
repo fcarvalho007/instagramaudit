@@ -55,6 +55,18 @@ interface FailBody {
   message: string;
 }
 
+const GENERIC_FALLBACK_MESSAGE =
+  "Não foi possível preparar o acesso ao relatório. Tenta novamente dentro de instantes.";
+
+function warnIfSecretMisconfigured(): void {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret || secret.length < 16) {
+    console.warn(
+      "[onboarding/start] SESSION_SECRET misconfigured (missing or <16 chars) — cookie write will fail.",
+    );
+  }
+}
+
 function json(body: OkBody | FailBody, status: number): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -144,6 +156,7 @@ export const Route = createFileRoute("/api/onboarding/start")({
         }),
 
       POST: async ({ request }) => {
+        warnIfSecretMisconfigured();
         let raw: unknown;
         try {
           raw = await request.json();
@@ -177,7 +190,7 @@ export const Route = createFileRoute("/api/onboarding/start")({
             {
               ok: false,
               error_code: "PERSISTENCE_FAILED",
-              message: "Não foi possível guardar o pedido. Tentar novamente.",
+              message: GENERIC_FALLBACK_MESSAGE,
             },
             500,
           );
@@ -191,7 +204,7 @@ export const Route = createFileRoute("/api/onboarding/start")({
             {
               ok: false,
               error_code: "INTERNAL_ERROR",
-              message: "Falha interna ao atribuir créditos.",
+              message: GENERIC_FALLBACK_MESSAGE,
             },
             500,
           );
@@ -212,7 +225,7 @@ export const Route = createFileRoute("/api/onboarding/start")({
             {
               ok: false,
               error_code: "INTERNAL_ERROR",
-              message: "Falha interna ao iniciar sessão.",
+              message: GENERIC_FALLBACK_MESSAGE,
             },
             500,
           );

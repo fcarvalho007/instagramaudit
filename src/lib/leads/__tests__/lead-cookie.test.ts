@@ -65,4 +65,28 @@ describe("lead-cookie", () => {
     });
     expect(readLeadIdFromRequest(req)).toBeNull();
   });
+
+  it("encodeLeadCookie throws when SESSION_SECRET is missing", () => {
+    const original = process.env.SESSION_SECRET;
+    delete process.env.SESSION_SECRET;
+    try {
+      expect(() => encodeLeadCookie(LEAD_ID)).toThrowError(
+        /SESSION_SECRET/,
+      );
+    } finally {
+      process.env.SESSION_SECRET = original;
+    }
+  });
+
+  it("encodeLeadCookie throws when SESSION_SECRET is shorter than 16 chars", () => {
+    const original = process.env.SESSION_SECRET;
+    process.env.SESSION_SECRET = "too-short-123"; // 13 chars
+    try {
+      expect(() => encodeLeadCookie(LEAD_ID)).toThrowError(
+        /SESSION_SECRET/,
+      );
+    } finally {
+      process.env.SESSION_SECRET = original;
+    }
+  });
 });

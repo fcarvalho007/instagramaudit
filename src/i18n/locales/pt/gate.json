@@ -179,7 +179,7 @@
     "submitting": "A preparar o teu acesso…",
     "preparingAnalysis": "A preparar a análise do perfil…",
     "errors": {
-      "generic": "Não foi possível concluir agora. Tenta novamente em instantes.",
+      "generic": "Não foi possível preparar o acesso ao relatório. Tenta novamente dentro de instantes.",
       "network": "Erro de ligação. Verifica a internet e tenta novamente."
     }
   }
