@@ -51,7 +51,6 @@ export function ReportHeroV2({
   const followers = profile.followers ?? 0;
   const postsCount = profile.postsCount ?? 0;
   const postsAnalyzed = profile.postsAnalyzed ?? 0;
-  const windowDays = result.coverage.windowDays ?? 0;
 
   const [compareOpen, setCompareOpen] = useState(false);
 
@@ -90,7 +89,6 @@ export function ReportHeroV2({
                   followers={followers}
                   postsCount={postsCount}
                   postsAnalyzed={postsAnalyzed}
-                  windowDays={windowDays}
                   language={language}
                   t={t}
                 />
@@ -186,14 +184,12 @@ function MetricLine({
   followers,
   postsCount,
   postsAnalyzed,
-  windowDays,
   language,
   t,
 }: {
   followers: number;
   postsCount: number;
   postsAnalyzed: number;
-  windowDays: number;
   language: "pt" | "en";
   t: (k: string, opts?: Record<string, unknown>) => string;
 }) {
@@ -212,18 +208,12 @@ function MetricLine({
     });
   }
   if (postsAnalyzed > 0) {
-    let label: string;
-    if (windowDays > 0) {
-      const key =
-        postsAnalyzed === 1
-          ? "hero.metric_analyzed_window_one"
-          : windowDays === 1
-            ? "hero.metric_analyzed_window_days_one"
-            : "hero.metric_analyzed_window";
-      label = t(key, { days: windowDays });
-    } else {
-      label = t(postsAnalyzed === 1 ? "hero.metric_analyzed_one" : "hero.metric_analyzed");
-    }
+    // Sample size only — the observed-days information lives in the
+    // analysis-period selector mounted right below the hero, so the header
+    // doesn't promise a temporal window the free tier doesn't deliver.
+    const label = t(
+      postsAnalyzed === 1 ? "hero.metric_analyzed_one" : "hero.metric_analyzed",
+    );
     parts.push({
       value: String(postsAnalyzed),
       label,
