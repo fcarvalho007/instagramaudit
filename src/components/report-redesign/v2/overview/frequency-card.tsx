@@ -390,6 +390,12 @@ function FrequencyKpiStrip({
  */
 function buildWeekGrid(days: DayEntry[]): (DayEntry | null)[][] {
   if (days.length === 0) return [];
+  // (logic continues below)
+  return _buildWeekGridImpl(days);
+}
+
+function _buildWeekGridImpl(days: DayEntry[]): (DayEntry | null)[][] {
+  if (days.length === 0) return [];
 
   const firstDate = new Date(days[0].date);
   // JS getUTCDay: 0=Sun. Shift to Mon=0: (day+6)%7
