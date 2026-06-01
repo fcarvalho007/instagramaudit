@@ -1224,7 +1224,14 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     }
   }
 
-  const topPosts = buildTopPosts(posts);
+  // Best/worst selection must use the same canonical sample as Block 1
+  // (pinned + date outliers excluded) — otherwise a stale pinned post can
+  // be elected "melhor publicação" and contradict the engagement card.
+  // Fallback: when the sample is empty, keep the raw `posts` so legacy
+  // snapshots without timestamps still render something.
+  const eligiblePosts =
+    sample.performancePosts.length > 0 ? sample.performancePosts : posts;
+  const topPosts = buildTopPosts(eligiblePosts);
   // Pinned excluded + date-outliers pruned — delegated to `buildBlock01Sample`.
   // Block 1 modules (cadence, heatmap, best-days, temporal series) all read
   // from the same `sample.performancePosts` to stay consistent.
@@ -1448,8 +1455,9 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   })();
 
   // Top posts enriquecidos: preserva permalink/shortcode/mentions e mantém a
-  // mesma ordenação por engagement do `topPosts` editorial.
-  const enrichedTopPosts: ReportEnriched["topPosts"] = [...posts]
+  // mesma ordenação por engagement do `topPosts` editorial. Usa
+  // `eligiblePosts` (sample.performancePosts) para coerência com o Bloco 1.
+  const enrichedTopPosts: ReportEnriched["topPosts"] = [...eligiblePosts]
     .sort((a, b) => num(b.engagement_pct, 0) - num(a.engagement_pct, 0))
     .slice(0, 5)
     .map((p, idx) => {
@@ -1518,11 +1526,12 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
 
   // Bottom 2 posts by engagement (worst performers).
   // Only populated when we have >= 4 posts to avoid overlap with top posts.
-  const sortedForBottom = [...posts].sort(
+  // Mirrors the eligible-sample rule used by `enrichedTopPosts`.
+  const sortedForBottom = [...eligiblePosts].sort(
     (a, b) => num(a.engagement_pct, 0) - num(b.engagement_pct, 0),
   );
   const enrichedBottomPosts: ReportEnriched["bottomPosts"] =
-    posts.length >= 4
+    eligiblePosts.length >= 4
       ? sortedForBottom.slice(0, 2).map((p, idx) => {
           const shortcode =
             typeof p.shortcode === "string" && p.shortcode.trim().length > 0

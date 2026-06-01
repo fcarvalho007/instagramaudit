@@ -21,6 +21,7 @@ import {
   pickHashtagsForVerdict,
 } from "@/lib/report/cadence-label";
 import { computePostAverages } from "@/lib/report/post-aggregates";
+import { buildBlock01Sample } from "@/lib/report/block01-sample";
 
 export interface Props {
   result: AdapterResult;
@@ -48,13 +49,22 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
   const k = result.data.keyMetrics;
   const enriched = result.enriched;
 
-  // Single source of truth: derive likes/comments averages from the full
-  // `payload.posts` array (same data P05 / classifyAudienceResponse uses).
-  // Falls back to `content_summary` only when the snapshot has no posts.
-  const postAverages = useMemo(
-    () => computePostAverages(payload?.posts ?? null),
-    [payload?.posts],
-  );
+  // Single source of truth: derive likes/comments averages from the same
+  // canonical Block 1 sample that feeds the engagement rate
+  // (`buildBlock01Sample.performancePosts` — pinned + date outliers
+  // excluded). Falls back to `content_summary` only when the snapshot has
+  // no usable posts. Passing `excludePinned: false` because the sample is
+  // already pinned-filtered upstream.
+  const postAverages = useMemo(() => {
+    const posts = payload?.posts ?? null;
+    if (!Array.isArray(posts) || posts.length === 0) return null;
+    const sample = buildBlock01Sample(posts);
+    const source =
+      sample.performancePosts.length > 0
+        ? sample.performancePosts
+        : sample.analyzedPosts;
+    return computePostAverages(source, { excludePinned: false });
+  }, [payload?.posts]);
 
   const avgLikes =
     postAverages?.averageLikes ?? payload?.content_summary?.average_likes ?? 0;
