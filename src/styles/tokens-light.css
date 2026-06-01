@@ -25,9 +25,11 @@
   --accent-soft:     144 224 239;    /* #90E0EF aqua (chip bg / ring)     */
   --accent-soft-pale: 202 240 248;   /* #CAF0F8 aqua-pale (selected bg)   */
   --accent-gold:     186 117  23;    /* #BA7517 amber alert (rare)        */
-  --accent-violet:     0 119 182;    /* collapsed to ocean for reports    */
-  --accent-violet-luminous: 0 180 216;
-  --accent-violet-deep:    3   4  94; /* #03045E navy                     */
+  /* Primary CTA gradient family (Button variant="primary"):
+     ocean → mid-ocean → navy. Cyan stays reserved for data/hover only. */
+  --accent-violet:           1  80 130; /* #015082 mid-ocean              */
+  --accent-violet-luminous:  0 119 182; /* #0077B6 ocean (gradient start) */
+  --accent-violet-deep:      3   4  94; /* #03045E navy   (gradient end)  */
 
   /* === COLORS — Semantic === */
   --signal-success:  29 158 117;     /* #1D9E75 calmer, more editorial    */
