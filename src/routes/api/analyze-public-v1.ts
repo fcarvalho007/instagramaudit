@@ -83,6 +83,14 @@ import {
   shouldRunCommentScraper,
   isValidInstagramPostUrl,
 } from "@/lib/analysis/comment-scraper.server";
+import {
+  confirmReservation,
+  InsufficientCreditsError,
+  releaseReservation,
+  reserveCredit,
+  type ReserveResult,
+} from "@/lib/credits/credits.server";
+import { readLeadIdFromRequest } from "@/lib/leads/lead-cookie.server";
 import { getAnalysisExecutionMode } from "@/lib/admin/execution-mode.server";
 import {
   ALL_ENRICHMENT_TYPES,
@@ -135,6 +143,10 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
   NETWORK_ERROR: "Falha de ligação. Tentar novamente.",
   CACHE_ONLY_NO_DATA:
     "Sem snapshot disponível em modo cache-only. Ative o modo Fresh para gerar dados novos.",
+  NO_CREDITS_LEAD_REQUIRED:
+    "Precisamos do teu nome e email para gerar o relatório.",
+  INSUFFICIENT_CREDITS:
+    "Já usaste os teus 2 relatórios gratuitos.",
 };
 
 const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
@@ -150,6 +162,8 @@ const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
   UPSTREAM_FAILED: 502,
   NETWORK_ERROR: 502,
   CACHE_ONLY_NO_DATA: 503,
+  NO_CREDITS_LEAD_REQUIRED: 402,
+  INSUFFICIENT_CREDITS: 402,
 };
 
 /**
@@ -451,7 +465,90 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           }
         }
 
+        // Internal smoke-test bypass: a valid `Authorization: Bearer
+        // $INTERNAL_API_TOKEN` short-circuits the lead/credit gating below.
+        // This is the same gate `forceRefresh` already requires, so admin
+        // tooling can hit the endpoint without burning lead credits.
+        const internalToken = process.env.INTERNAL_API_TOKEN;
+        const authHeader = request.headers.get("authorization") ?? "";
+        const isInternalBypass =
+          !!internalToken && authHeader === `Bearer ${internalToken}`;
+
         const cacheKey = buildCacheKey(primary, competitors);
+
+        // ── Credit gate (Fase 2, Opção A) ──────────────────────────────
+        // Every confirmed request consumes 1 credit (even cache hits).
+        // Failures before snapshot delivery release the reservation.
+        let leadId: string | null = null;
+        let reservation: ReserveResult | null = null;
+        if (!isInternalBypass) {
+          leadId = readLeadIdFromRequest(request);
+          if (!leadId) {
+            await logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey,
+              dataSource: "none",
+              outcome: "blocked_credits",
+              errorCode: "NO_CREDITS_LEAD_REQUIRED",
+              estimatedCostUsd: 0,
+            });
+            return failure("NO_CREDITS_LEAD_REQUIRED");
+          }
+          try {
+            reservation = await reserveCredit({
+              leadId,
+              handle: primary,
+              cacheKey,
+            });
+          } catch (err) {
+            if (err instanceof InsufficientCreditsError) {
+              await logEvent({
+                handle: primary,
+                competitorHandles: competitors,
+                cacheKey,
+                dataSource: "none",
+                outcome: "blocked_credits",
+                errorCode: "INSUFFICIENT_CREDITS",
+                estimatedCostUsd: 0,
+              });
+              return failure("INSUFFICIENT_CREDITS");
+            }
+            console.error("[analyze-public-v1] reserveCredit failed", err);
+            throw err;
+          }
+        }
+
+        // Lifecycle bookkeeping. Default to "release" so any unexpected
+        // early return refunds the credit; success/cache/stale paths flip
+        // this to "confirm" right before returning.
+        type CreditOutcome = "confirm" | "release";
+        let creditOutcome: CreditOutcome = "release";
+        let snapshotForConfirm: string | null = null;
+        const finalizeCredit = async () => {
+          if (!reservation || !leadId) return;
+          const r = reservation;
+          reservation = null;
+          try {
+            if ((creditOutcome as CreditOutcome) === "confirm") {
+              await confirmReservation({
+                leadId,
+                reservationId: r.reservationId,
+                analysisSnapshotId: snapshotForConfirm,
+              });
+            } else {
+              await releaseReservation({
+                leadId,
+                reservationId: r.reservationId,
+                reason: "auto_release",
+              });
+            }
+          } catch (e) {
+            console.error("[analyze-public-v1] credit finalize failed", e);
+          }
+        };
+
+        try {
 
         // Load benchmark references upfront (cached in-memory for 10 min) so
         // both cache-hit and fresh-path responses can embed a positioning
@@ -484,6 +581,8 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             displayName: cachedPayload.profile?.display_name ?? null,
             followersLastSeen: cachedPayload.profile?.followers_count ?? null,
           });
+          creditOutcome = "confirm";
+          snapshotForConfirm = existing.id;
           return jsonResponse(
             buildCachedResponse(existing, "cache", benchmarkData),
             200,
@@ -521,6 +620,8 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 displayName: stalePayload.profile?.display_name ?? null,
                 followersLastSeen: stalePayload.profile?.followers_count ?? null,
               });
+              creditOutcome = "confirm";
+              snapshotForConfirm = existing.id;
               return jsonResponse(
                 buildCachedResponse(existing, "stale", benchmarkData),
                 200,
@@ -658,6 +759,8 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               displayName: stalePayload.profile?.display_name ?? null,
               followersLastSeen: stalePayload.profile?.followers_count ?? null,
             });
+            creditOutcome = "confirm";
+            snapshotForConfirm = existing.id;
             return jsonResponse(
               buildCachedResponse(existing, "stale", benchmarkData),
               200,
@@ -705,6 +808,8 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 displayName: stalePayload.profile?.display_name ?? null,
                 followersLastSeen: stalePayload.profile?.followers_count ?? null,
               });
+              creditOutcome = "confirm";
+              snapshotForConfirm = existing.id;
               return jsonResponse(
                 buildCachedResponse(existing, "stale", benchmarkData),
                 200,
@@ -1148,6 +1253,8 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             benchmark_positioning: benchmarkPositioning,
             freshness: deriveFreshnessJustNow(),
           };
+          creditOutcome = "confirm";
+          snapshotForConfirm = snapshotId ?? null;
           return jsonResponse(response, 200);
         } catch (err) {
           // 5) Stale-while-error: if provider failed but we have a recent
@@ -1174,6 +1281,8 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               displayName: stalePayload.profile?.display_name ?? null,
               followersLastSeen: stalePayload.profile?.followers_count ?? null,
             });
+            creditOutcome = "confirm";
+            snapshotForConfirm = existing.id;
             return jsonResponse(
               buildCachedResponse(existing, "stale", benchmarkData),
               200,
@@ -1231,6 +1340,11 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             errorCode: "UPSTREAM_FAILED",
           });
           return failure("UPSTREAM_FAILED");
+        }
+        } finally {
+          // Always settles the reservation (confirm/release) before the
+          // response is flushed. No-op when isInternalBypass=true.
+          await finalizeCredit();
         }
       },
     },
