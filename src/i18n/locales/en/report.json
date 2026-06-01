@@ -753,8 +753,9 @@
     }
   },
   "posts": {
-    "title": "Best and Worst Posts",
-    "subtitle": "Content extremes",
+    "title": "Best and worst posts",
+    "subtitle": "The editorial contrast of the last 30 days",
+    "subtitle_with_window": "The editorial contrast of the last {{window}}",
     "rank": {
       "best_1": "Best performance",
       "best_2": "Second best",
@@ -768,16 +769,37 @@
     "diff": "difference",
     "no_caption": "No caption",
     "format_chip": {
-      "carousel": "CAROUSEL"
+      "carousel": "CAROUSEL",
+      "reel": "REEL",
+      "image": "IMAGE"
     },
     "callout_label": "COMPARATIVE DIAGNOSIS",
+    "hero": {
+      "best_label": "BEST POST",
+      "worst_label": "WORST POST",
+      "diff_label": "DIFFERENCE"
+    },
+    "scatter": {
+      "title": "DISTRIBUTION OF {{count}} POSTS ACROSS THE PERIOD",
+      "avg_label": "avg {{value}}%",
+      "best_pill": "Best · {{value}}%",
+      "worst_pill": "Worst · {{value}}%",
+      "locked_tooltip": "Post · available in premium",
+      "aria": "Distribution of {{count}} posts across the period. Best {{best}}%, worst {{worst}}%."
+    },
+    "premium": {
+      "body": "You see the 2 extremes. The other {{count}} posts — where the patterns live — unlock in premium.",
+      "cta": "See full analysis"
+    },
+    "vs_avg": {
+      "value": "{{sign}}{{value}}% vs avg"
+    },
     "ai_fallback": {
-      "default": "Format and caption make the difference.",
-      "reels": "Reels outperform static formats on this account.",
-      "carousel": "Carousels generate more engagement than single posts.",
-      "caption": "Descriptive captions beat posts without context.",
-      "body_mult": "Top-performing content reached {{best}}% engagement, {{mult}} above the worst result.",
-      "body_plain": "Top-performing content reached {{best}}% engagement against {{worst}}% from the worst."
+      "default": "Format and hook make the difference.",
+      "reels": "Reels with a strong hook drive this account the most.",
+      "carousel": "Carousels are the format that pulls the most engagement.",
+      "caption": "Captions with context beat posts without text.",
+      "body_prescriptive": "Replicate the winning pattern ({{bestFormat}}) and always close with a clear question to drive comments."
     }
   },
   "insightLabels": {

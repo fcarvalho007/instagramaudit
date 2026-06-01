@@ -1,74 +1,142 @@
 
-## Auditoria rápida (o que se passa)
+## Refinamento do card "Melhores e piores publicações"
 
-### 1. Avatar do perfil no hero não aparece
-**Existe** em `report-hero-v2.tsx:264-326` (`Avatar` component). Bug:
-```ts
-onError={(e) => { e.currentTarget.style.display = "none" }}
+Mock-up perfeitamente alinhado com o ADN editorial Iconosquare/Ocean Breeze do projeto. A direção é forte e única — implemento como direção principal, e mantenho **dois variants opcionais do scatter** disponíveis por feature-flag para decidirmos depois.
+
+## Estrutura do novo card (top → bottom)
+
+```text
+┌────────────────────────────────────────────────────────┐
+│ H2 "Melhores e piores publicações"                     │
+│ Eyebrow "O contraste editorial dos últimos 30 dias"    │
+├────────────────────────────────────────────────────────┤
+│ HERO COMPARATIVO                                       │
+│  ↗ MELHOR PUB.   ●  4×  ●   PIOR PUB. ↘               │
+│   0,15 %        DIFERENÇA       0,04 %                 │
+│   19 mai · car.                 21 mai · reel longo    │
+├────────────────────────────────────────────────────────┤
+│ SCATTER TEMPORAL — "Distribuição das 38 publicações"  │
+│   ··· · · ●Melhor · ·· ·· · · · ·· · · ·  (38 dots)   │
+│   ·· ·· ·············· ····························   │
+│   ·· · · · · · · · ·● Pior · · · · · · · · · · · ·   │
+│   1 mai ────────── 15 mai ────────── 30 mai            │
+│   Linha tracejada na média (0,08 %)                    │
+├────────────────────────────────────────────────────────┤
+│ ✦ REVEAL PREMIUM                                       │
+│ "Vês os 2 extremos. As outras 36 publicações — onde   │
+│  estão os padrões — desbloqueiam-se no premium."      │
+│                                  [ Ver análise → ]     │
+├────────────────────────────────────────────────────────┤
+│ CARDS DETALHADOS (2 col)                              │
+│ ┌─ ↗ MELHOR ──┐    ┌─ ↘ PIOR ─────┐                  │
+│ │ [CARROSSEL] │    │ [REEL]       │                  │
+│ │ 0,15% +87%  │    │ 0,04% −50%   │                  │
+│ │ caption…    │    │ caption…     │                  │
+│ │ ♥15  💬0    │    │ ♥3  💬0      │                  │
+│ └─────────────┘    └──────────────┘                  │
+├────────────────────────────────────────────────────────┤
+│ ✦ DIAGNÓSTICO COMPARATIVO (insight callout)           │
+│  Prescritivo: "Testar mais carrosséis e fechar com    │
+│  pergunta para puxar comentários."                    │
+└────────────────────────────────────────────────────────┘
 ```
-Quando o proxy `/api/public/ig-thumb` falha (URL Instagram CDN assinado expira em horas/dias), a imagem é simplesmente escondida — **sem fallback** para as iniciais. Resultado: espaço vazio ao lado do handle.
 
-Causa raiz provável: o avatarUrl guardado no snapshot é um URL CDN do Instagram com assinatura temporária. Quando o relatório é re-renderizado dias depois, a assinatura já expirou → 403 do proxy.
+## Decisões de design (alinhadas ao memory do projeto)
 
-### 2. Thumbnails do card "Formato" não aparecem
-Os thumbnails já são proxied (`snapshot-to-report-data.ts:1467`: `thumbnail_url` envolvido em `/api/public/ig-thumb?url=...`). **Mesmo problema do avatar**: URLs do Instagram são assinados e curto prazo. Quando expiram, `PostThumb.onError` cai para o ícone genérico (linha 411). É **comportamento esperado mas a UX é fraca** — 12 ícones placeholder cinzentos.
+- **Tokens Ocean Breeze**: melhor = `accent-primary` (#0077B6 ocean); pior = `signal-warning` (amber #BA7517) ou um novo `signal-danger`-friendly em vez de laranja saturado. Confirmar com tokens existentes.
+- **Tipografia**: H2 Fraunces; números 0,15% / 0,04% em Inter SemiBold tabular-nums; eyebrows em `.text-eyebrow-sm` (Inter uppercase). Zero JetBrains Mono.
+- **Medalha "4× DIFERENÇA"**: círculo `surface-muted` com border-default; "4×" Inter Bold tabular-nums; "DIFERENÇA" eyebrow-sm.
+- **Chips direcionais**: setas `ArrowUpRight` / `ArrowDownRight` (lucide) em vez das atuais TrendingUp/Down — mais editoriais.
+- **Chip "+87% vs média"**: `bg-accent-primary/10` + `text-accent-primary` para o melhor; `bg-signal-warning/10` + `text-signal-warning` para o pior. Sentence case "vs média", sem uppercase.
+- **Thumbnails substituídos por gradiente + ícone do formato em grande**: `bg-gradient-to-br from-accent-primary/10 to-accent-primary/5` + ícone `GalleryHorizontalEnd` (carrossel) / `Play` (reel) / `Image` (imagem) na cor do formato. Mantém o `<img>` real (proxy `/api/public/ig-thumb`) por cima quando disponível; o gradiente é o fallback quando o URL expira.
 
-### 3. Card "Frequência de publicação" — duplicação
-**"Pico semanal"** (KPI strip, linha 397-413) e **"Mais ativo"** (WeeklySummary, linha 202-232) mostram exactamente a mesma informação (`pickMostActive(buckets).weekday`). Decisão: **manter o Pico semanal no KPI strip** (mais visível, melhor enquadrado) e **remover só o "Mais ativo"** do `WeeklySummary`, deixando só o **"Mais parado"** com um enquadramento mais editorial.
+## Scatter temporal — implementação
 
-### 4. Calendário "Quando publicou" vs janela analisada
-Verifiquei o código (linhas 484-508 de `frequency-card.tsx`):
-- A análise é mesmo de **30 dias** (`cadenceWindowDays = 30`).
-- `windowedDays = calendarDays.slice(-30)` → tem 30 entradas.
-- `buildWeekGrid` (linha 424) gera ~5 semanas × 7 colunas com padding inicial.
+Componente novo `<ConstellationScatter>`, SVG puro (sem libs novas):
 
-Na captura aparecem **apenas 2 semanas (~14 células)** porque `calendarDays` vindo do snapshot pode estar a vir já clipped à actividade real (não aos 30 dias). É um bug de dados, não de UI — o calendário promete 30 dias e mostra ~14.
+- **Dados**: `enriched.topPosts` (tem TODOS os posts da janela, não só top — já confirmado em `snapshot-to-report-data.ts:1361`). Cada ponto tem `date`, `engagementPct`, `format`.
+- **Eixo X**: datas linearmente espaçadas; ticks "1 mai · 15 mai · 30 mai" (3 marcas, Inter 12px, `text-content-tertiary`).
+- **Eixo Y**: % de engagement; ticks mínimos `worst · média · best` (3 marcas à esquerda, Inter 12px tabular-nums).
+- **Linha tracejada da média**: `stroke-dasharray="3 3"`, cor `border-default`, com label "média 0,08%" alinhado à direita.
+- **Pontos "não-extremos" (36)**: `<circle r="3" fill="rgba(3,4,94,0.22)">` — visíveis mas sem peso.
+- **Melhor**: `<circle r="6" fill="var(--accent-primary)" />` + aura `<circle r="10" fill="var(--accent-primary)" opacity="0.18" />` + pill "Melhor · 0,15%" acima.
+- **Pior**: igual com `signal-warning`, pill "Pior · 0,04%" abaixo.
+- **Hover**: nos 36 pontos cinza, tooltip mostra só "premium" (chip lock) — reforça o teaser.
+- **Acessibilidade**: `role="img"` + `aria-label` descritivo; lista oculta `<ul class="sr-only">` com data+%.
 
----
+**Variants opcionais a escolher depois** (mantenho a versão sóbria por default):
+- (a) **Blur progressivo**: pontos não-extremos em `filter: blur(0.6px)` que aumenta para `blur(2px)` nas extremidades horizontais — efeito "neblina".
+- (b) **Glass overlay com cadeado**: `<rect>` semi-transparente sobre os 36 pontos + ícone `Lock` central; melhor/pior ficam de fora do glass.
 
-## Plano de mudanças (apenas frontend + uma pequena correcção de dados no transformador)
+Já fica preparado o componente para receber `variant: "sober" | "fog" | "glass"`; defaulto a `"sober"`. Quando quiseres testar (a) ou (b), trocas a prop.
 
-### A. Fix avatar fallback (`report-hero-v2.tsx`)
-- Trocar o `onError` que faz `display: none` por um estado `failed` (como já existe no `PostThumb`) e renderizar o bloco de iniciais (`fullName.split(...).map(p=>p[0])`) quando falha.
-- Mantém UX consistente mesmo quando o URL CDN do Instagram expira.
+## Cálculo da média & chips "+X% vs média"
 
-### B. Fix thumbnails do format card (`format-card.tsx` + `snapshot-to-report-data.ts`)
-- **Não tentar revalidar URLs expirados em runtime** — fora do escopo (cache do Apify).
-- Melhorar o fallback do `PostThumb` (linha 408-422): em vez do ícone `<Image>` minúsculo cinzento, mostrar um **placeholder com gradiente subtil + ícone do formato** (Reels / Carrossel / Imagem) — mantém o ritmo visual da grelha sem parecer "broken".
-- Substituir `text-slate-400` (proibido por design tokens) por `text-content-tertiary`.
+```ts
+const allPosts = enriched.topPosts;
+const avgEng = allPosts.reduce((s, p) => s + p.engagementPct, 0) / allPosts.length;
+const bestDelta = ((bestEng - avgEng) / avgEng) * 100;  // +87
+const worstDelta = ((worstEng - avgEng) / avgEng) * 100; // -50
+```
 
-### C. Card "Frequência de publicação" — remover duplicação
-- Em `WeeklySummary` (linha 181-316): **remover o bloco "Mais ativo"** (linhas 202-232) — fica só "Mais parado" + as mini-bars S-T-Q-Q-S-S-D.
-- Ajustar o grid: passa a ser sempre `grid-cols-1` (sem `sm:grid-cols-2`).
-- Renomear o título de `frequency.weekly_summary.title` ("Resumo da semana") para algo mais focado: **"Dias sem publicação"** ou **"Onde o ritmo falha"** (i18n pt + en).
+Formatado com `formatNumber(..., { maximumFractionDigits: 0 })` + sinal explícito (`+87% vs média` / `−50% vs média`).
 
-### D. Calendário "Quando publicou" — garantir 30 dias + toggle colapsar
-1. **Garantir 30 dias completos**: na `buildWeekGrid` (linha 424), preencher também à direita (padding final) para que `windowedDays.length === 30` resulte sempre em ≥4 linhas completas — mostrar exactamente a janela prometida.
-2. **Toggle colapsável**: adicionar botão "Ver dias exactos" / "Esconder" (sentence case, design system) que mostra/esconde o bloco do calendário + legenda. Default = **colapsado** (mais limpo, KPIs e WeeklySummary já dão a leitura macro). Usar `useState` local, `aria-expanded`.
-3. Adicionar pequeno texto sob o título a confirmar a janela: "Últimos 30 dias · 12 publicações".
+## Reveal premium integrado
 
-### Ficheiros tocados
-- `src/components/report-redesign/v2/report-hero-v2.tsx` — fallback do avatar
-- `src/components/report-redesign/v2/overview/format-card.tsx` — fallback dos thumbs
-- `src/components/report-redesign/v2/overview/frequency-card.tsx` — remover "Mais ativo", toggle calendário, padding final
-- `src/i18n/locales/pt/report.json` + `en/report.json` — novas chaves: `weekly_summary.title` (renomear), `calendar.toggle_show`, `calendar.toggle_hide`, `calendar.window_summary`
+Bloco entre scatter e cards detalhados, NÃO um botão isolado:
+- `<div>` com `bg-accent-primary/[0.06]` + border-l `accent-primary` (2px)
+- Ícone ✦ (`Sparkles`) em `accent-primary`
+- Copy: **"Vês os 2 extremos. As outras {{count}} publicações — onde estão os padrões — desbloqueiam-se no premium."** (parametrizado por `count = total - 2`)
+- CTA primário Ocean (`bg-accent-primary text-white`) "Ver análise completa →" — reutiliza o handler de premium-interest já existente (`PremiumInterestDialog`).
 
-### Validação
+## Diagnóstico comparativo (callout final)
+
+Substitui o atual `<AiReading>` por um `<InsightCallout tone="ai">` com:
+- Headline em Inter SemiBold: padrão emergente (ex.: *"Carrosséis sobre IA são o que mais move o envolvimento."*)
+- Body prescritivo: *"O pior resultado vem de um reel longo sem gancho inicial. Testar mais carrosséis e fechar sempre com uma pergunta para puxar comentários."*
+
+Mantenho o AI fallback determinístico que já existe (linha 60-83 de `report-post-comparison.tsx`), mas reescrevo as templates de copy para serem prescritivas em vez de descritivas. Quando há `aiInsightText` real do GPT-5.4-mini, usa-o; caso contrário, fallback.
+
+## Ficheiros tocados
+
+- `src/components/report-redesign/v2/report-post-comparison.tsx` — refactor completo, com sub-componentes: `<ComparativeHero>`, `<ConstellationScatter>`, `<PremiumReveal>`, `<DetailedPostCard>` (substitui `<PostCard>`), `<DiagnosticCallout>`.
+- `src/i18n/locales/pt/report.json` + `en/report.json` — novas chaves: `posts.eyebrow_subtitle`, `posts.hero.best_label`, `posts.hero.worst_label`, `posts.hero.diff_label`, `posts.scatter.title`, `posts.scatter.avg_label`, `posts.scatter.best_pill`, `posts.scatter.worst_pill`, `posts.scatter.axis_*`, `posts.premium.body`, `posts.premium.cta`, `posts.vs_avg.positive`, `posts.vs_avg.negative`, `posts.diagnostic.*` (prescritivos).
+- Re-escrever copy do `ai_fallback.*` (mesmo ficheiro) em modo prescritivo.
+
+## Validação
+
 - `bunx tsc --noEmit`
-- Preview 1460×905 e 411×742 — confirmar avatar fallback (testar URL inválido), thumbnails fallback, calendário colapsado por defeito, sem duplicação no card de frequência.
+- Preview 1460×905 (desktop) e 411×742 (mobile) — verificar:
+  - Hero comparativo simétrico, números legíveis a 16/24px;
+  - Scatter renderiza com 38 pontos (mock + real), ticks 1/15/30, linha média visível;
+  - Reveal premium clicável e abre o `PremiumInterestDialog`;
+  - Cards detalhados com gradiente quando thumb expira;
+  - Diagnóstico com tone editorial.
+- Inspeccionar com diferentes amostras: 5 posts, 12 posts, 38 posts — o scatter degrada bem em volumes baixos.
 
-### Fora de escopo
-- Re-validação de URLs do Instagram (problema do Apify/CDN, fora do frontend)
-- Outros blocos, sidebar, `/report.example`, dark mode, admin
-- Investigar/alterar o pipeline de snapshot (`snapshot-to-report-data.ts`) para além do fallback dos thumbs
+## Fora de escopo
+
+- Outros blocos (Frequência, Formato, Identidade, etc.)
+- `/report.example`, sidebar, hero do topo, lead-magnet, admin
+- Backend / prompts do GPT (aiInsightText continua a vir do pipeline existente)
+- Implementação dos variants (a) blur e (b) glass — código preparado mas inactivo até decisão
+- Dark mode
+- Alterar a fonte de dados — usa `enriched.topPosts` que já contém todos os posts ordenados por engagement (logo cobre a janela toda)
+
+## Decisão a tomar antes de implementar
+
+A versão sóbria do scatter (default) é a mais legível e honra o ADN Iconosquare clean. Os variants (a) e (b) são mais cinematográficos e poderiam fazer mais sentido **no card de comparação com concorrentes** (onde ainda não estamos), conforme indicaste no briefing. Sugestão: ficar na versão sóbria aqui e guardar (a)/(b) para o módulo de comparação. **Confirmas?**
 
 ---
 
 ## ☐ Checkpoint
-- [ ] Avatar: fallback com iniciais quando img falha
-- [ ] Thumbnails: placeholder melhor (gradiente + ícone do formato, sem `slate-*`)
-- [ ] Frequência: remover "Mais ativo" do WeeklySummary, manter só "Mais parado"
-- [ ] Calendário: garantir 30 células completas + toggle colapsar (default colapsado)
-- [ ] i18n: chaves novas pt/en
+
+- [ ] Hero comparativo simétrico (0,15% · 4× DIFERENÇA · 0,04%)
+- [ ] `<ConstellationScatter>` SVG com 38 pontos, média tracejada, extremos com aura
+- [ ] Cálculo de `+87% vs média` / `−50% vs média` e chips correspondentes
+- [ ] `<PremiumReveal>` integrado entre scatter e cards, reutiliza `PremiumInterestDialog`
+- [ ] Cards detalhados com gradiente + ícone do formato como fallback
+- [ ] Diagnóstico reescrito em modo prescritivo (i18n pt + en)
+- [ ] Sem `slate-*`, sem JetBrains Mono, tokens Ocean Breeze respeitados
 - [ ] `bunx tsc --noEmit` passa
 - [ ] Screenshots desktop + mobile confirmam
