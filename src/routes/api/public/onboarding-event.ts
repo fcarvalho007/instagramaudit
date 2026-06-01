@@ -20,10 +20,12 @@ const Schema = z.object({
     "onboarding_step_complete",
     "onboarding_abandon",
     "onboarding_success",
+    "onboarding_error",
   ]),
   step: z.number().int().min(0).max(3),
   handle: z.string().trim().max(60).optional(),
   marketing_consent: z.boolean().optional(),
+  error_code: z.string().trim().max(80).optional(),
 });
 
 // Per-isolate, best-effort rate limit: 120 events/min por IP hash.
@@ -89,6 +91,7 @@ export const Route = createFileRoute("/api/public/onboarding-event")({
             metadata: {
               step: parsed.data.step,
               marketing_consent: parsed.data.marketing_consent ?? null,
+              error_code: parsed.data.error_code ?? null,
             },
           });
         } catch (err) {

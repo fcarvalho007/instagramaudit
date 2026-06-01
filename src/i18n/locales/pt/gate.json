@@ -203,7 +203,7 @@
         "phoneLabel": "Telemóvel",
         "phoneOptional": "opcional",
         "phonePlaceholder": "+351 912 345 678",
-        "phoneHint": "Opcional · ajuda-nos a confirmar o acesso em casos excepcionais.",
+        "phoneHint": "Só usamos se o email falhar, em casos excepcionais.",
         "consentText": "Aceito o <a>tratamento de dados</a> e a <a2>política de privacidade</a2>.",
         "consentMandatory": "(obrigatório)",
         "marketingText": "Quero receber dicas e benchmarks.",
