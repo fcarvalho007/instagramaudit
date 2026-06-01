@@ -60,9 +60,9 @@ const GENERIC_FALLBACK_MESSAGE =
 
 function warnIfSecretMisconfigured(): void {
   const secret = process.env.SESSION_SECRET;
-  if (!secret || secret.length < 16) {
+  if (!secret || secret.length < 32) {
     console.warn(
-      "[onboarding/start] SESSION_SECRET misconfigured (missing or <16 chars) — cookie write will fail.",
+      "[onboarding/start] SESSION_SECRET misconfigured (missing or <32 chars) — cookie write will fail.",
     );
   }
 }
@@ -210,13 +210,6 @@ export const Route = createFileRoute("/api/onboarding/start")({
           );
         }
 
-        let credits = 0;
-        try {
-          credits = await getBalance(upserted.leadId);
-        } catch (err) {
-          console.error("[onboarding/start] balance read failed", err);
-        }
-
         try {
           setLeadCookie(upserted.leadId);
         } catch (err) {
@@ -229,6 +222,13 @@ export const Route = createFileRoute("/api/onboarding/start")({
             },
             500,
           );
+        }
+
+        let credits = 0;
+        try {
+          credits = await getBalance(upserted.leadId);
+        } catch (err) {
+          console.error("[onboarding/start] balance read failed", err);
         }
 
         return json(

@@ -1,75 +1,59 @@
-## Root cause (confirmed)
+## Avaliação: o Step 5 ainda NÃO está resolvido
 
-`POST /api/onboarding/start` returns 500 `INTERNAL_ERROR` ("Falha interna ao iniciar sessão.") because `setLeadCookie()` throws:
+Testei o endpoint agora (`POST /api/onboarding/start`) e confirmei no log do dev-server:
 
 ```
-[onboarding/start] cookie write failed
+[stderr] [onboarding/start] cookie write failed
 Error: SESSION_SECRET missing or too short (need at least 16 chars).
-  at POST src/routes/api/onboarding/start.ts:208
+    at POST (/dev-server/src/routes/api/onboarding/start.ts:208:11)
 ```
 
-- `SESSION_SECRET` is configured in Lovable Cloud secrets, but the current value is **15 chars long** (verified via runtime check).
-- `src/lib/leads/lead-cookie.server.ts:28` enforces `secret.length < 16` → throws → handler returns the generic 500.
-- Upstream steps (Zod parse, `leads` upsert, `grantInitialCredits`, `getBalance`) all succeed — the lead is created and credits are granted, only the cookie write fails, so the user can't proceed.
+### O que está bem
+- Código em `src/routes/api/onboarding/start.ts` correcto: `warnIfSecretMisconfigured()`, `GENERIC_FALLBACK_MESSAGE`, try/catch à volta de `setLeadCookie`.
+- Copy de fallback em `pt/gate.json` e `en/gate.json` actualizado.
+- Testes de `lead-cookie` verdes (10/10).
+- `SESSION_SECRET` existe na lista de secrets do projeto.
 
-Nothing else is broken: payload contract matches the Zod schema, `credit_ledger` / `credit_balance` exist, phone is optional in the backend and accepted, no migration needed.
+### O que falta
+A rotação do `SESSION_SECRET` para ≥16 chars (proposta na ronda anterior) **nunca chegou a ser aplicada** — o valor em runtime continua <16 chars, por isso `setLeadCookie` continua a lançar e o endpoint devolve 500 com a nova mensagem genérica. O fix de código sozinho não desbloqueia o Step 5; precisa da rotação do segredo.
 
-## Fix
+### Refinamentos adicionais detectados
 
-### 1. Rotate `SESSION_SECRET` to ≥32 chars (required, blocks everything)
+1. **Recomendar ≥32 chars, não só ≥16.** O mínimo no código é 16, mas para HMAC de cookies de sessão o standard é 32+ bytes de entropia. Subir o limite mínimo em `lead-cookie.server.ts` para 32 evita falsos "passou" com segredos fracos.
 
-In build mode I'll call `update_secret` for `SESSION_SECRET`. You'll paste a new value (recommend 48+ random chars, e.g. `openssl rand -base64 48`). This is the only environment change needed. Rotating invalidates any existing `lead_session` cookies (acceptable — flow is still pre-launch).
+2. **Falha silenciosa do `getBalance`.** Se `getBalance` falhar, devolvemos `credits = 0` sem avisar o cliente. Para Step 5 não é bloqueador, mas convém um log mais visível (já existe `console.error`, está OK — só mencionar).
 
-### 2. Harden `/api/onboarding/start` error handling
+3. **Cookie write devia correr ANTES do `getBalance`** — se o cookie falha, gastámos uma leitura de saldo à toa. Reordenar para: upsert → grant → setCookie → getBalance. Optimização menor.
 
-Currently any cookie-write failure returns the same generic message. After the secret is fixed, surface a clearer fallback and log distinct error codes so we don't repeat this diagnostic blind:
+4. **Sem teste E2E do endpoint.** O `onboarding-start.test.ts` referido na ronda anterior não foi criado. Continua a ser uma lacuna útil mas não bloqueante para destrancar o Step 5.
 
-- Replace the generic "Falha interna ao iniciar sessão." with:
-  - PT: "Não foi possível preparar o acesso ao relatório. Tenta novamente dentro de instantes."
-  - EN equivalent in `gate.json` (`onboarding.errors.generic`).
-- Add a startup-time guard: if `SESSION_SECRET` length < 16, log a single clear warning on the first request (`[onboarding/start] SESSION_SECRET misconfigured`) so future regressions are obvious in logs.
-- Keep behaviour identical otherwise — no changes to credit logic, payload shape, modal sequence, or downstream `/analyze/$username`.
+## Plano
 
-### 3. Copy update
+### 1. Rodar `SESSION_SECRET` (bloqueador)
+Pedir ao utilizador uma nova string ≥32 chars via `secrets--update_secret`. Sem isto, Step 5 continua quebrado. Sugestão: gerar com `openssl rand -base64 48` ou equivalente. **Atenção:** rotação invalida cookies existentes — utilizadores em sessão precisam de fazer login outra vez (impacto baixo em pré-launch).
 
-Update `src/i18n/locales/{pt,en}/gate.json` `onboarding.errors.generic` to the new copy above. No other strings change.
+### 2. Subir o mínimo em `lead-cookie.server.ts` (refinamento)
+Mudar a validação de `< 16` para `< 32` e actualizar a mensagem de erro. Actualizar os 2 testes correspondentes em `lead-cookie.test.ts` (caso de 15 chars vs caso de 31 chars).
 
-### 4. Tests
+### 3. Reordenar `setLeadCookie` antes de `getBalance` (refinamento)
+Trocar ordem em `start.ts`. Cookie é crítico para a navegação; saldo é informativo.
 
-Extend `src/lib/leads/__tests__/lead-cookie.test.ts` (already exists) to assert:
-- `encodeLeadCookie` throws clearly when `SESSION_SECRET` is missing/<16.
-- Round-trip encode/decode works with a 32-char secret.
+### 4. (Opcional, recomendado) Criar `onboarding-start.test.ts`
+Cobertura: payload válido → 200, payload inválido → 400, email duplicado → 200 com update, falha de cookie → 500 com `GENERIC_FALLBACK_MESSAGE`. Usa mocks de `supabaseAdmin`, `grantInitialCredits`, `getBalance`, `setLeadCookie`.
 
-Add a focused server-route test for `/api/onboarding/start`:
-- Valid payload with valid secret → 200, `lead_id`, `credits >= 2`, `Set-Cookie: lead_session=...`.
-- Valid payload with short secret → 500 with the new copy (no PII leak).
-- Invalid payload → 400 `INVALID_PAYLOAD` (not generic 500).
-- Duplicate email → 200, credits not duplicated (idempotent grant).
+### Out of scope
+`analyze-public-v1`, créditos, Apify/OpenAI/DataForSEO, pricing, premium gating, thumbnails, selector do report, sequência do modal, `/report.example`.
 
-### 5. Validation
+### Validação após implementação
+- `stack_modern--invoke-server-function` POST `/api/onboarding/start` → esperar 200 + `Set-Cookie: lead_session=…`
+- `bunx vitest run src/lib/leads src/routes/api/__tests__/onboarding-start` → verde
+- `bunx tsc --noEmit` → 0 erros
+- Smoke manual no preview: handle → modal → Step 5 → "Abrir resumo" → navega para `/analyze/$username` sem mensagem de erro
 
-- `bunx tsc --noEmit`
-- `bunx vitest run src/lib/leads src/routes/api/__tests__` (scoped)
-- Manual smoke: handle → modal → step 5 submit → 200 → cookie present → navigate to `/analyze/$username`.
-
-## Out of scope (unchanged)
-
-`analyze-public-v1`, credit grant/reserve logic, Apify/OpenAI/DataForSEO, pricing, premium gating, thumbnails, the report selector, modal layout/sequence, `/report.example`.
-
-## Files touched
-
-- (secret) `SESSION_SECRET` rotated via `update_secret`
-- `src/routes/api/onboarding/start.ts` — clearer logging + (optional) startup guard
-- `src/i18n/locales/pt/gate.json`, `src/i18n/locales/en/gate.json` — error copy
-- `src/lib/leads/__tests__/lead-cookie.test.ts` — extended assertions
-- `src/routes/api/__tests__/onboarding-start.test.ts` — new
-
-## Checkpoint
-
-☐ Rotate `SESSION_SECRET` (≥32 chars)
-☐ Update error copy PT/EN
-☐ Add logging guard in onboarding/start
-☐ Extend lead-cookie tests + add onboarding-start tests
-☐ `bunx tsc --noEmit` clean
-☐ Vitest scoped run green
-☐ Manual smoke: step 5 submit returns 200 and `lead_session` cookie is set
+### Checkpoint
+- ☐ `SESSION_SECRET` rodado para ≥32 chars
+- ☐ Mínimo em `lead-cookie.server.ts` subido para 32
+- ☐ Testes `lead-cookie.test.ts` actualizados
+- ☐ Ordem `setCookie` → `getBalance` em `start.ts`
+- ☐ (opcional) `onboarding-start.test.ts` criado
+- ☐ Endpoint devolve 200 + cookie em teste real
