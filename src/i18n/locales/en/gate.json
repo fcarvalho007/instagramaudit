@@ -161,20 +161,74 @@
     "intro": {
       "eyebrow": "BEFORE WE START",
       "title": "Create your account and open the report",
-      "subtitle": "Just a few quick questions to personalise the analysis and save the report.",
+      "subtitle": "3 quick questions (~1 min) and your account is ready — with this report and all future ones saved.",
       "handleContext": "You'll analyse @{{handle}}",
-      "creditNote": "This analysis uses 1 credit. You start with 2 free credits.",
+      "creditNote": "You start with <strong>2 free credits</strong>. This analysis uses 1.",
+      "freeBadge": "Free",
       "freeValueTitle": "What you get for free",
       "freeValue": [
-        "Overall profile index",
-        "Base overview metrics",
-        "Analysed sample and observed period",
-        "Report saved for later review"
+        "Overall index and diagnosis",
+        "Base metrics vs tier",
+        "Account to review anytime"
       ],
       "premiumNote": "The advanced sections are part of the premium report.",
       "cta": "Get started",
-      "trustLine": "~1 min · GDPR · no spam",
+      "trustLine": "GDPR · no spam · {{operator}}",
       "personalHint": "Works best with public Creator or Business profiles. Some personal profiles may not return enough posts."
+    },
+    "steps": {
+      "1": {
+        "eyebrow": "STEP 1 OF 3",
+        "title": "How should we <em>address you</em>?",
+        "subtitle": "So we use your name in the report and emails.",
+        "nameLabel": "First and last name",
+        "namePlaceholder": "Ana Marques",
+        "nameHint": "We never share this with third parties."
+      },
+      "2": {
+        "eyebrow": "STEP 2 OF 3",
+        "title": "Let's tune the analysis",
+        "subtitle": "Two quick picks — they adjust the tone and focus of the report.",
+        "relationshipQuestion": "What's your relationship with @{{handle}}?",
+        "goalQuestion": "What matters most to you?",
+        "consequenceLine": "We'll use this to improve the product and personalise future reports."
+      },
+      "3": {
+        "eyebrow": "STEP 3 OF 3",
+        "badge": "last step",
+        "title": "Where do we save your report?",
+        "subtitle": "You'll receive it by email and get access to your private account with all future reports.",
+        "emailLabel": "Email",
+        "emailPlaceholder": "ana@company.com",
+        "phoneLabel": "Phone",
+        "phoneOptional": "optional",
+        "phonePlaceholder": "+351 912 345 678",
+        "phoneHint": "Only used if the email bounces (rare).",
+        "consentText": "I accept the <a>data processing terms</a> and the <a2>privacy policy</a2>.",
+        "consentMandatory": "(required)",
+        "marketingText": "I'd like to receive tips and benchmarks.",
+        "marketingOptional": "Optional."
+      }
+    },
+    "compactOptions": {
+      "profileOwnership": {
+        "own_profile": "It's mine",
+        "client_profile": "A client's",
+        "brand_profile": "My brand",
+        "competitor_research": "A competitor"
+      },
+      "goal": {
+        "improve_content": "Improve content",
+        "benchmark_competitors": "Compare competitors",
+        "grow_audience": "Grow audience",
+        "validate_brand": "Validate the brand"
+      }
+    },
+    "cta": {
+      "back": "Back",
+      "continue": "Continue  →",
+      "final": "Generate my report",
+      "microPostCta": "Analysing @{{handle}} (~30s) · +2 credits in your account"
     },
     "submitting": "Preparing your access…",
     "preparingAnalysis": "Preparing the profile analysis…",

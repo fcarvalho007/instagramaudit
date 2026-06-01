@@ -62,6 +62,7 @@ import { Route as ApiPublicReportUnlockRouteImport } from './routes/api/public/r
 import { Route as ApiPublicPublicReportPdfRouteImport } from './routes/api/public/public-report-pdf'
 import { Route as ApiPublicPricingInterestRouteImport } from './routes/api/public/pricing-interest'
 import { Route as ApiPublicPricingFeedbackRouteImport } from './routes/api/public/pricing-feedback'
+import { Route as ApiPublicOnboardingEventRouteImport } from './routes/api/public/onboarding-event'
 import { Route as ApiPublicLookupLeadRouteImport } from './routes/api/public/lookup-lead'
 import { Route as ApiPublicInlineFeedbackRouteImport } from './routes/api/public/inline-feedback'
 import { Route as ApiPublicEnrichSnapshotRouteImport } from './routes/api/public/enrich-snapshot'
@@ -416,6 +417,12 @@ const ApiPublicPricingFeedbackRoute =
   ApiPublicPricingFeedbackRouteImport.update({
     id: '/api/public/pricing-feedback',
     path: '/api/public/pricing-feedback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicOnboardingEventRoute =
+  ApiPublicOnboardingEventRouteImport.update({
+    id: '/api/public/onboarding-event',
+    path: '/api/public/onboarding-event',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicLookupLeadRoute = ApiPublicLookupLeadRouteImport.update({
@@ -985,6 +992,7 @@ export interface FileRoutesByFullPath {
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
   '/api/public/inline-feedback': typeof ApiPublicInlineFeedbackRoute
   '/api/public/lookup-lead': typeof ApiPublicLookupLeadRoute
+  '/api/public/onboarding-event': typeof ApiPublicOnboardingEventRoute
   '/api/public/pricing-feedback': typeof ApiPublicPricingFeedbackRoute
   '/api/public/pricing-interest': typeof ApiPublicPricingInterestRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
@@ -1125,6 +1133,7 @@ export interface FileRoutesByTo {
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
   '/api/public/inline-feedback': typeof ApiPublicInlineFeedbackRoute
   '/api/public/lookup-lead': typeof ApiPublicLookupLeadRoute
+  '/api/public/onboarding-event': typeof ApiPublicOnboardingEventRoute
   '/api/public/pricing-feedback': typeof ApiPublicPricingFeedbackRoute
   '/api/public/pricing-interest': typeof ApiPublicPricingInterestRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
@@ -1268,6 +1277,7 @@ export interface FileRoutesById {
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
   '/api/public/inline-feedback': typeof ApiPublicInlineFeedbackRoute
   '/api/public/lookup-lead': typeof ApiPublicLookupLeadRoute
+  '/api/public/onboarding-event': typeof ApiPublicOnboardingEventRoute
   '/api/public/pricing-feedback': typeof ApiPublicPricingFeedbackRoute
   '/api/public/pricing-interest': typeof ApiPublicPricingInterestRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
@@ -1412,6 +1422,7 @@ export interface FileRouteTypes {
     | '/api/public/enrich-snapshot'
     | '/api/public/inline-feedback'
     | '/api/public/lookup-lead'
+    | '/api/public/onboarding-event'
     | '/api/public/pricing-feedback'
     | '/api/public/pricing-interest'
     | '/api/public/public-report-pdf'
@@ -1552,6 +1563,7 @@ export interface FileRouteTypes {
     | '/api/public/enrich-snapshot'
     | '/api/public/inline-feedback'
     | '/api/public/lookup-lead'
+    | '/api/public/onboarding-event'
     | '/api/public/pricing-feedback'
     | '/api/public/pricing-interest'
     | '/api/public/public-report-pdf'
@@ -1694,6 +1706,7 @@ export interface FileRouteTypes {
     | '/api/public/enrich-snapshot'
     | '/api/public/inline-feedback'
     | '/api/public/lookup-lead'
+    | '/api/public/onboarding-event'
     | '/api/public/pricing-feedback'
     | '/api/public/pricing-interest'
     | '/api/public/public-report-pdf'
@@ -1816,6 +1829,7 @@ export interface RootRouteChildren {
   ApiPublicEnrichSnapshotRoute: typeof ApiPublicEnrichSnapshotRoute
   ApiPublicInlineFeedbackRoute: typeof ApiPublicInlineFeedbackRoute
   ApiPublicLookupLeadRoute: typeof ApiPublicLookupLeadRoute
+  ApiPublicOnboardingEventRoute: typeof ApiPublicOnboardingEventRoute
   ApiPublicPricingFeedbackRoute: typeof ApiPublicPricingFeedbackRoute
   ApiPublicPricingInterestRoute: typeof ApiPublicPricingInterestRoute
   ApiPublicPublicReportPdfRoute: typeof ApiPublicPublicReportPdfRoute
@@ -2230,6 +2244,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/pricing-feedback'
       fullPath: '/api/public/pricing-feedback'
       preLoaderRoute: typeof ApiPublicPricingFeedbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/onboarding-event': {
+      id: '/api/public/onboarding-event'
+      path: '/api/public/onboarding-event'
+      fullPath: '/api/public/onboarding-event'
+      preLoaderRoute: typeof ApiPublicOnboardingEventRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/lookup-lead': {
@@ -3131,6 +3152,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicEnrichSnapshotRoute: ApiPublicEnrichSnapshotRoute,
   ApiPublicInlineFeedbackRoute: ApiPublicInlineFeedbackRoute,
   ApiPublicLookupLeadRoute: ApiPublicLookupLeadRoute,
+  ApiPublicOnboardingEventRoute: ApiPublicOnboardingEventRoute,
   ApiPublicPricingFeedbackRoute: ApiPublicPricingFeedbackRoute,
   ApiPublicPricingInterestRoute: ApiPublicPricingInterestRoute,
   ApiPublicPublicReportPdfRoute: ApiPublicPublicReportPdfRoute,
