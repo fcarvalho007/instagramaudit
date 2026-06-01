@@ -147,7 +147,7 @@ function ProfileAvatar({
     <div
       aria-hidden="true"
       className={cn(
-        "rounded-full bg-blue-600 text-white font-semibold flex items-center justify-center",
+        "rounded-full bg-[rgb(var(--accent-primary))] text-white font-semibold flex items-center justify-center",
         sizeCls,
         ringCls,
       )}
@@ -210,7 +210,7 @@ function ProgressSummary({ items }: { items: SidebarItem[] }) {
             className={cn(
               "h-[5px] flex-1 rounded-sm",
               item.accessBadge === "free" && "bg-emerald-500",
-              item.accessBadge === "included" && "bg-blue-500",
+              item.accessBadge === "included" && "bg-[rgb(var(--accent-primary))]",
               item.access === "locked" && "bg-border-default",
             )}
           />
@@ -247,7 +247,7 @@ function ItemRow({
         "rounded-lg pl-3 pr-2.5 py-2.5 text-left",
         "transition-colors duration-150",
         "focus-visible:outline-none focus-visible:ring-2",
-        "focus-visible:ring-blue-400 focus-visible:ring-offset-1",
+        "focus-visible:ring-[rgb(var(--accent-primary))] focus-visible:ring-offset-1",
         "focus-visible:ring-offset-white",
         isActive
           ? "bg-surface-muted/70 text-content-primary"
@@ -629,20 +629,20 @@ export function ReportBlockTopTabs({ variant, features, profile, profiles, unloc
                 className={cn(
                   "relative flex flex-1 flex-col items-center justify-center gap-1",
                   "py-2.5 min-h-[64px] transition-colors duration-200",
-                  "focus-visible:outline-none focus-visible:bg-blue-50/60",
-                  isActive ? "text-blue-600" : "text-content-tertiary active:text-content-secondary",
+                  "focus-visible:outline-none focus-visible:bg-[rgb(var(--accent-soft-pale))]/60",
+                  isActive ? "text-[rgb(var(--accent-primary))]" : "text-content-tertiary active:text-content-secondary",
                 )}
               >
                 {isActive && (
                   <span
                     aria-hidden="true"
-                    className="absolute top-0 left-1/2 -translate-x-1/2 h-[2.5px] w-10 rounded-b-full bg-blue-500 transition-all duration-300"
+                    className="absolute top-0 left-1/2 -translate-x-1/2 h-[2.5px] w-10 rounded-b-full bg-[rgb(var(--accent-primary))] transition-all duration-300"
                   />
                 )}
                 <Icon
                   className={cn(
                     "size-7 transition-colors duration-200",
-                    isActive ? "text-blue-600" : "text-content-tertiary",
+                    isActive ? "text-[rgb(var(--accent-primary))]" : "text-content-tertiary",
                   )}
                   strokeWidth={isActive ? 2.2 : 1.6}
                   aria-hidden="true"
@@ -651,7 +651,7 @@ export function ReportBlockTopTabs({ variant, features, profile, profiles, unloc
                   className={cn(
                     "text-xs leading-tight truncate max-w-full px-1",
                     isActive
-                      ? "text-blue-600 font-semibold"
+                      ? "text-[rgb(var(--accent-primary))] font-semibold"
                       : "text-content-secondary font-medium",
                   )}
                 >
@@ -673,7 +673,7 @@ export function ReportBlockTopTabs({ variant, features, profile, profiles, unloc
                 "flex flex-col items-center justify-center gap-1",
                 "w-[72px] min-h-[64px] transition-colors duration-200",
                 "text-content-tertiary active:text-content-secondary",
-                "focus-visible:outline-none focus-visible:bg-blue-50/60",
+                "focus-visible:outline-none focus-visible:bg-[rgb(var(--accent-soft-pale))]/60",
               )}
             >
               <Menu className="size-7" strokeWidth={1.6} aria-hidden="true" />
