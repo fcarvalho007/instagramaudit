@@ -4,7 +4,6 @@
  */
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { useState } from "react";
 import { computeFrequencia } from "./score-utils";
 import { InsightCallout } from "./insight-callout";
 import type { SocialinsiderInstagramContext } from "@/lib/knowledge/socialinsider-context";
@@ -510,7 +509,6 @@ export function FrequencyCard({
   socialinsiderRef,
 }: FrequencyCardProps) {
   const { t, i18n } = useTranslation("report");
-  const [calendarOpen, setCalendarOpen] = useState(false);
   // Prefer cadence-derived sample (pinned-excluded) for subtitle counts.
   const effectiveSampleSize =
     typeof cadenceSampleSize === "number" && cadenceSampleSize > 0
