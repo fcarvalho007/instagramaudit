@@ -1,9 +1,15 @@
 import { useState } from "react";
-import { Sparkles } from "lucide-react";
+import { ArrowRight, BarChart3, Bell, FileText, Users } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/tracking.functions";
 import { PremiumInterestDialog } from "./premium-interest-dialog";
 import { useReportTracking } from "./report-tracking-context";
+
+// Preços do lançamento (waitlist). Hardcoded até existir checkout real.
+const LAUNCH_PRICE = "7";
+const LIST_PRICE = "19";
+const CURRENCY = "€";
 
 /**
  * Marca o fim do relatório público (gratuito). Sinaliza ao leitor que
@@ -18,6 +24,7 @@ import { useReportTracking } from "./report-tracking-context";
 export function ReportEndOfFreeBlock({ className }: { className?: string }) {
   const { snapshotId, handle, variant } = useReportTracking();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const { t } = useTranslation("report");
 
   const openInterest = () => {
     trackEvent({
@@ -27,45 +34,35 @@ export function ReportEndOfFreeBlock({ className }: { className?: string }) {
         handle: handle ?? undefined,
         metadata: {
           variant,
-          source_component: "end_of_free_block",
+          source_component: "end_of_free_teaser",
+          cta: "guarantee_launch_price",
         },
       },
     }).catch(() => {});
     setDialogOpen(true);
   };
 
+  const chips = [
+    { icon: Users, label: t("end_of_free.chips.competitors") },
+    { icon: BarChart3, label: t("end_of_free.chips.rank") },
+    { icon: FileText, label: t("end_of_free.chips.more_sections") },
+  ];
+
   return (
     <section
-      aria-label="Fim do relatório público"
-      className={cn("py-16 sm:py-20", className)}
+      aria-label={t("end_of_free.eyebrow")}
+      className={cn(className)}
     >
-      {/* Hairline com glyph central — fronteira editorial */}
-      <div
-        aria-hidden="true"
-        className="mx-auto max-w-4xl flex items-center gap-4 mb-12"
-      >
-        <span className="h-px flex-1 bg-border-default" />
-        <span
-          className={cn(
-            "inline-flex h-8 w-8 items-center justify-center rounded-full",
-            "bg-surface-secondary ring-1 ring-border-default",
-          )}
-        >
-          <Sparkles className="size-3.5 text-accent-gold" aria-hidden="true" />
-        </span>
-        <span className="h-px flex-1 bg-border-default" />
-      </div>
-
       <div
         className={cn(
           "mx-auto max-w-3xl text-center",
-          "bg-surface-secondary border border-border-default rounded-2xl",
-          "px-6 py-10 sm:px-12 sm:py-14",
+          "bg-white border border-border-default rounded-2xl",
+          "px-6 py-10 sm:px-12 sm:py-12",
           "shadow-[0_2px_15px_rgba(15,23,42,0.03)]",
         )}
       >
         <p className="text-eyebrow-sm text-content-tertiary">
-          Fim da leitura pública
+          {t("end_of_free.eyebrow")}
         </p>
 
         <h2
@@ -74,39 +71,70 @@ export function ReportEndOfFreeBlock({ className }: { className?: string }) {
             "text-content-primary text-3xl sm:text-4xl md:text-[2.5rem]",
           )}
         >
-          Há mais por trás deste perfil
+          {t("end_of_free.title")}
         </h2>
 
-        <p className="mt-6 mx-auto max-w-xl text-[15px] leading-relaxed text-content-secondary">
-          Esta é a leitura pública do perfil. No relatório completo entra a
-          análise temporal, a leitura editorial do ritmo de publicação e o
-          confronto detalhado com os concorrentes — material que ainda
-          estamos a afinar.
+        <p className="mt-5 mx-auto max-w-xl text-[15px] leading-relaxed text-content-secondary">
+          {t("end_of_free.description")}
         </p>
 
-        <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-amber-50 ring-1 ring-amber-200/60 px-3 py-1">
-          <span className="size-1.5 rounded-full bg-amber-500" aria-hidden="true" />
-          <span className="text-eyebrow-sm text-amber-700">
-            Premium · em desenvolvimento
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+          {chips.map(({ icon: Icon, label }) => (
+            <span
+              key={label}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full",
+                "bg-surface-muted text-content-secondary",
+                "ring-1 ring-border-default px-3 py-1.5",
+                "text-[12px] font-medium",
+              )}
+            >
+              <Icon className="size-3.5 text-accent-primary/80" aria-hidden="true" />
+              {label}
+            </span>
+          ))}
+        </div>
+
+        <div className="mt-8 flex items-baseline justify-center gap-3">
+          <span className="font-display text-[3.25rem] sm:text-[3.75rem] leading-none text-content-primary">
+            {LAUNCH_PRICE}
+            {CURRENCY}
+          </span>
+          <span className="text-lg text-content-tertiary line-through tabular-nums">
+            {LIST_PRICE}
+            {CURRENCY}
           </span>
         </div>
 
-        <div className="mt-8">
+        <p className="mt-2 text-[13px] text-content-tertiary">
+          {t("end_of_free.price.caption_prefix")}{" "}
+          <span className="text-content-secondary">
+            {t("end_of_free.price.caption_suffix")}
+          </span>
+        </p>
+
+        <div className="mt-7">
           <button
             type="button"
             onClick={openInterest}
             className={cn(
-              "inline-flex items-center gap-1.5 text-sm font-medium",
-              "text-accent-primary hover:text-accent-primary/80",
-              "underline underline-offset-4 decoration-accent-primary/30",
-              "hover:decoration-accent-primary transition-colors",
-              "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40 rounded-sm",
+              "inline-flex items-center gap-2 rounded-full",
+              "bg-accent-primary text-white",
+              "px-6 py-3 text-sm font-semibold",
+              "hover:bg-accent-primary/90 transition-colors",
+              "shadow-[0_8px_24px_-12px_rgba(55,114,229,0.55)]",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40 focus-visible:ring-offset-2",
             )}
           >
-            Avisa-me quando estiver pronto
-            <span aria-hidden="true">→</span>
+            {t("end_of_free.cta")}
+            <ArrowRight className="size-4" aria-hidden="true" />
           </button>
         </div>
+
+        <p className="mt-5 inline-flex items-center gap-2 text-[12px] text-content-tertiary">
+          <Bell className="size-3.5" aria-hidden="true" />
+          {t("end_of_free.footnote")}
+        </p>
       </div>
 
       <PremiumInterestDialog
@@ -115,7 +143,7 @@ export function ReportEndOfFreeBlock({ className }: { className?: string }) {
         snapshotId={snapshotId}
         handle={handle}
         variant={variant}
-        sourceComponent="end_of_free_block"
+        sourceComponent="end_of_free_teaser"
       />
     </section>
   );
