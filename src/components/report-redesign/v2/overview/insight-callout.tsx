@@ -124,12 +124,7 @@ export function InsightCallout({
       </span>
 
       <div className="min-w-0 flex-1 space-y-1">
-        <p
-          className={cn(
-            "text-xs font-semibold uppercase tracking-[0.06em] leading-none",
-            cfg.labelColor,
-          )}
-        >
+        <p className={cn("text-eyebrow-sm", cfg.labelColor)}>
           {displayLabel}
         </p>
         <div className="text-[15px] text-content-primary leading-relaxed">
