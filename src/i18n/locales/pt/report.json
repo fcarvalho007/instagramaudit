@@ -785,10 +785,12 @@
       "insufficient": "O contraste editorial na amostra recolhida."
     },
     "methodology": {
-      "line_one": "Análise baseada na última publicação disponível · Período observado: {{days}} dia(s).",
-      "line_other": "Análise baseada nas últimas {{count}} publicações disponíveis · Período observado: {{days}} dias.",
+      "line_one": "Amostra analisada: última publicação disponível · período observado: {{days}} dias.",
+      "line_other": "Amostra analisada: últimas {{count}} publicações disponíveis · período observado: {{days}} dias.",
       "insufficient": "Amostra reduzida: poucos dados disponíveis para uma leitura conclusiva.",
-      "exclusions_note": "Publicações fixadas ou demasiado antigas podem ser excluídas dos cálculos de desempenho."
+      "pinned_one": "1 publicação fixada excluída dos cálculos de desempenho.",
+      "pinned_other": "{{count}} publicações fixadas excluídas dos cálculos de desempenho.",
+      "exclusions_tooltip": "Para evitar distorções, publicações fixadas ou muito antigas podem ser excluídas das médias de desempenho e cadência."
     },
     "rank": {
       "best_1": "Melhor desempenho",

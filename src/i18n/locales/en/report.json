@@ -777,10 +777,12 @@
       "insufficient": "The editorial contrast in the collected sample."
     },
     "methodology": {
-      "line_one": "Analysis based on the latest available post · Observed period: {{days}} day(s).",
-      "line_other": "Analysis based on the latest {{count}} available posts · Observed period: {{days}} days.",
+      "line_one": "Analyzed sample: latest available post · observed period: {{days}} days.",
+      "line_other": "Analyzed sample: latest {{count}} available posts · observed period: {{days}} days.",
       "insufficient": "Limited sample: not enough data for a conclusive reading.",
-      "exclusions_note": "Pinned or unusually old posts may be excluded from performance calculations."
+      "pinned_one": "1 pinned post excluded from performance calculations.",
+      "pinned_other": "{{count}} pinned posts excluded from performance calculations.",
+      "exclusions_tooltip": "To avoid distortion, pinned or unusually old posts may be excluded from performance averages and posting rhythm."
     },
     "rank": {
       "best_1": "Best performance",
