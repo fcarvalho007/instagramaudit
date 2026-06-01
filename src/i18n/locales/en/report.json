@@ -14,6 +14,24 @@
     "top": "Back to top",
     "help": "Show shortcuts"
   },
+  "selector": {
+    "eyebrow": "Analysis period",
+    "observed_badge": "Free sample · observed period: {{days}} days",
+    "observed_badge_one": "Free sample · observed period: {{days}} day",
+    "active_sample": "Latest {{count}} posts",
+    "premium_30": "30 days",
+    "premium_60": "60 days",
+    "premium_90": "90 days",
+    "premium_365": "365 days",
+    "footnote": "The free version uses a recent sample. Larger windows are available in the premium report.",
+    "locked": {
+      "title": "Available in the premium report",
+      "body": "Analyze more history to understand evolution, consistency and content patterns over time.",
+      "cta": "View access options",
+      "secondary": "Continue with free overview",
+      "aria": "{{window}} — available in premium"
+    }
+  },
   "hero": {
     "verified": "Verified account",
     "metric_followers": "followers",
