@@ -319,7 +319,13 @@
       "ratio": "{{published}}/{{total}} days",
       "toggle_show": "Show daily breakdown",
       "toggle_hide": "Hide",
-      "window_summary": "Last {{days}} days · {{published}} with posts"
+      "window_summary": "Last {{days}} days · {{published}} with posts",
+      "eyebrow": "CALENDAR · {{days}} DAYS",
+      "published_one": "{{count}} day with posts",
+      "published_other": "{{count}} days with posts",
+      "legend_none": "no post",
+      "legend_one": "1 post",
+      "legend_two": "2 posts"
     },
     "weekday_short": [
       "M",
@@ -343,6 +349,16 @@
       "intro": "Socialinsider external reference is per format (Reels ≈{{reel}}/mo, Carousels ≈{{carousel}}/mo, Images ≈{{image}}/mo — {{range}}). It is not a fixed rule nor a prescribed total.",
       "opportunity_mix": "The opportunity may be in the format mix, not the volume.",
       "profile_line": "Current cadence: {{cadence}} · {{posts}} in {{days}} days."
+    },
+    "weekly_rhythm": {
+      "title": "RHYTHM BY WEEKDAY",
+      "peak_chip": "peak",
+      "gap_chip": "gap",
+      "interpretation_with_quiet_one": "You concentrate on <b>{{peak}}</b>. <b>{{quiet}}</b> is the void — {{count}} day without posts.",
+      "interpretation_with_quiet_other": "You concentrate on <b>{{peak}}</b>. <b>{{quiet}}</b> is the void — {{count}} days without posts.",
+      "interpretation_peak_only": "You concentrate on <b>{{peak}}</b>. The rest of the week is balanced.",
+      "interpretation_uniform": "Uniform cadence — no weekday stands out as a gap.",
+      "aria_distribution": "Distribution of posts by weekday"
     }
   },
   "format": {
