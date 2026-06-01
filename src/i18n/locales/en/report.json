@@ -768,8 +768,20 @@
   },
   "posts": {
     "title": "Best and worst posts",
-    "subtitle": "The editorial contrast of the last 30 days",
-    "subtitle_with_window": "The editorial contrast of the last {{window}}",
+    "subtitle": "The editorial contrast in the collected sample.",
+    "subtitle_variants": {
+      "window_30d": "The editorial contrast over the last 30 days.",
+      "window_90d": "The editorial contrast over the last 90 days.",
+      "sample_span_one": "The editorial contrast across the latest post.",
+      "sample_span_other": "The editorial contrast across the latest {{count}} posts.",
+      "insufficient": "The editorial contrast in the collected sample."
+    },
+    "methodology": {
+      "line_one": "Analysis based on the latest available post · Observed period: {{days}} day(s).",
+      "line_other": "Analysis based on the latest {{count}} available posts · Observed period: {{days}} days.",
+      "insufficient": "Limited sample: not enough data for a conclusive reading.",
+      "exclusions_note": "Pinned or unusually old posts may be excluded from performance calculations."
+    },
     "rank": {
       "best_1": "Best performance",
       "best_2": "Second best",

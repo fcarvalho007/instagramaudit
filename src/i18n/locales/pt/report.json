@@ -776,8 +776,20 @@
   },
   "posts": {
     "title": "Melhores e piores publicações",
-    "subtitle": "O contraste editorial dos últimos 30 dias",
-    "subtitle_with_window": "O contraste editorial dos últimos {{window}}",
+    "subtitle": "O contraste editorial na amostra recolhida.",
+    "subtitle_variants": {
+      "window_30d": "O contraste editorial dos últimos 30 dias.",
+      "window_90d": "O contraste editorial dos últimos 90 dias.",
+      "sample_span_one": "O contraste editorial na última publicação.",
+      "sample_span_other": "O contraste editorial nas últimas {{count}} publicações.",
+      "insufficient": "O contraste editorial na amostra recolhida."
+    },
+    "methodology": {
+      "line_one": "Análise baseada na última publicação disponível · Período observado: {{days}} dia(s).",
+      "line_other": "Análise baseada nas últimas {{count}} publicações disponíveis · Período observado: {{days}} dias.",
+      "insufficient": "Amostra reduzida: poucos dados disponíveis para uma leitura conclusiva.",
+      "exclusions_note": "Publicações fixadas ou demasiado antigas podem ser excluídas dos cálculos de desempenho."
+    },
     "rank": {
       "best_1": "Melhor desempenho",
       "best_2": "Segundo melhor",
