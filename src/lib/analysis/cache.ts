@@ -204,8 +204,24 @@ export async function storeSnapshot(params: {
     // ficam `null` e o componente cai no fallback visual.
     try {
       const t0 = Date.now();
+      const payload = params.normalizedPayload as {
+        posts?: Array<{ thumbnail_url?: unknown }>;
+        profile?: { avatar_url?: unknown };
+      };
+      const postsArr = Array.isArray(payload?.posts) ? payload.posts : [];
+      const postsWithThumb = postsArr.filter(
+        (p) => typeof p?.thumbnail_url === "string" && p.thumbnail_url,
+      ).length;
+      const hasAvatar =
+        typeof payload?.profile?.avatar_url === "string" &&
+        !!payload.profile.avatar_url;
+      const deployMarker =
+        process.env.CF_PAGES_COMMIT_SHA?.slice(0, 7) ??
+        process.env.WORKER_VERSION ??
+        process.env.NODE_ENV ??
+        "unknown";
       console.log(
-        `[thumbnails] start handle=${params.instagramUsername} cache_key=${params.cacheKey}`,
+        `[thumbnails] start handle=${params.instagramUsername} cache_key=${params.cacheKey} posts=${postsArr.length} posts_with_thumb=${postsWithThumb} has_avatar=${hasAvatar} deploy=${deployMarker}`,
       );
       const s = await persistThumbnailsInPayload(
         params.cacheKey,
