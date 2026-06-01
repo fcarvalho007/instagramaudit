@@ -128,14 +128,22 @@ export type Database = {
           guardrails: Json
           id: string
           input_params: Json
+          mode: string | null
           newest_post_at: string | null
           normalize_ok: boolean | null
           notes: string | null
           observed_days: number | null
           oldest_post_at: string | null
+          only_posts_newer_than: string | null
+          posts_extracted: number | null
           posts_returned: number | null
           profile_handle: string
+          profile_metadata_present: boolean | null
           profile_segment: string | null
+          purpose: string | null
+          raw_items_returned: number | null
+          results_limit: number | null
+          results_type: string | null
           semantic_code: string | null
           status: string
           window_kind: string
@@ -151,14 +159,22 @@ export type Database = {
           guardrails?: Json
           id?: string
           input_params?: Json
+          mode?: string | null
           newest_post_at?: string | null
           normalize_ok?: boolean | null
           notes?: string | null
           observed_days?: number | null
           oldest_post_at?: string | null
+          only_posts_newer_than?: string | null
+          posts_extracted?: number | null
           posts_returned?: number | null
           profile_handle: string
+          profile_metadata_present?: boolean | null
           profile_segment?: string | null
+          purpose?: string | null
+          raw_items_returned?: number | null
+          results_limit?: number | null
+          results_type?: string | null
           semantic_code?: string | null
           status: string
           window_kind: string
@@ -174,14 +190,22 @@ export type Database = {
           guardrails?: Json
           id?: string
           input_params?: Json
+          mode?: string | null
           newest_post_at?: string | null
           normalize_ok?: boolean | null
           notes?: string | null
           observed_days?: number | null
           oldest_post_at?: string | null
+          only_posts_newer_than?: string | null
+          posts_extracted?: number | null
           posts_returned?: number | null
           profile_handle?: string
+          profile_metadata_present?: boolean | null
           profile_segment?: string | null
+          purpose?: string | null
+          raw_items_returned?: number | null
+          results_limit?: number | null
+          results_type?: string | null
           semantic_code?: string | null
           status?: string
           window_kind?: string
