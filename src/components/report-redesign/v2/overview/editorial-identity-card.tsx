@@ -59,10 +59,6 @@ interface EditorialIdentityCardProps {
   postsAnalyzed?: number;
   averageLikes?: number;
   averageComments?: number;
-  /** Janela observada em dias (derivada da amostra Block 1). */
-  observedPeriodDays?: number | null;
-  /** Publicações fixadas excluídas dos cálculos (Block 1). */
-  pinnedPostsExcluded?: number | null;
   /** Cadência considerada suficiente pelo módulo de cadence. Usado pelo
    *  guard determinístico para rejeitar veredictos que contradigam o ritmo. */
   cadenceSufficient?: boolean;
