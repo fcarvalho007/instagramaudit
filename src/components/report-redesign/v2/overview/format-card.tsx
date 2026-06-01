@@ -8,7 +8,7 @@
  *   Image legend dot:    bg-amber-200
  *   Video legend dot:    bg-sky-200
  */
-import { Fragment, useState } from "react";
+import { Fragment, useState, type ComponentType } from "react";
 import { Play, Image, GalleryHorizontalEnd } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -418,7 +418,7 @@ function PostThumb({
 }: {
   src: string;
   alt: string;
-  fallbackIcon?: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  fallbackIcon?: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
   fallbackIconColor?: string;
 }) {
   const [failed, setFailed] = useState(false);
