@@ -410,6 +410,24 @@ export interface ReportEnriched {
    * on `cadence.sufficient` and surface `cadence.notePt` when false.
    */
   cadence: CadenceResult;
+  /**
+   * Todas as publicações da janela (não só top 5) ordenadas por engagement
+   * desc, com `takenAtIso` real — alimenta gráficos de dispersão temporal
+   * onde se quer mostrar a "constelação" completa.
+   */
+  allPostsScatter: Array<{
+    id: string;
+    format: "Reel" | "Carousel" | "Imagem";
+    engagementPct: number;
+    date: string;
+    takenAtIso?: string;
+  }>;
+  /**
+   * Limites ISO (UTC, YYYY-MM-DD) da janela de análise. `endIso` é a data
+   * da publicação mais recente; `startIso = endIso - (windowDays-1)`.
+   * Fallback: hoje − (windowDays-1) dias quando não há publicações.
+   */
+  windowRange: { startIso: string; endIso: string };
 }
 
 // ============================================================================
