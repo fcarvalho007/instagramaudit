@@ -398,6 +398,10 @@ function buildWeekGrid(days: DayEntry[]): (DayEntry | null)[][] {
   const padded: (DayEntry | null)[] = Array.from<null>({ length: startDow }).fill(null);
   for (const d of days) padded.push(d);
 
+  // Pad right so the last row is always a complete week — keeps the grid
+  // visually aligned with the analysis window (e.g. 30 days = 5 rows).
+  while (padded.length % 7 !== 0) padded.push(null);
+
   const weeks: (DayEntry | null)[][] = [];
   for (let i = 0; i < padded.length; i += 7) {
     weeks.push(padded.slice(i, i + 7));
