@@ -93,6 +93,7 @@ import { Route as ApiAdminCacheStatsRouteImport } from './routes/api/admin/cache
 import { Route as ApiAdminBillingReconciliationRouteImport } from './routes/api/admin/billing-reconciliation'
 import { Route as ApiAdminBetaFunnelRouteImport } from './routes/api/admin/beta-funnel'
 import { Route as ApiAdminAutomationFlowRouteImport } from './routes/api/admin/automation-flow'
+import { Route as ApiAdminApifyLabRouteImport } from './routes/api/admin/apify-lab'
 import { Route as ApiAdminAnalysisCostBreakdownRouteImport } from './routes/api/admin/analysis-cost-breakdown'
 import { Route as AdminSistemaCockpitLegadoRouteImport } from './routes/admin.sistema.cockpit-legado'
 import { Route as AdminReportPreviewUsernameRouteImport } from './routes/admin.report-preview.$username'
@@ -575,6 +576,11 @@ const ApiAdminAutomationFlowRoute = ApiAdminAutomationFlowRouteImport.update({
   path: '/api/admin/automation-flow',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminApifyLabRoute = ApiAdminApifyLabRouteImport.update({
+  id: '/api/admin/apify-lab',
+  path: '/api/admin/apify-lab',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminAnalysisCostBreakdownRoute =
   ApiAdminAnalysisCostBreakdownRouteImport.update({
     id: '/api/admin/analysis-cost-breakdown',
@@ -917,6 +923,7 @@ export interface FileRoutesByFullPath {
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
   '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
+  '/api/admin/apify-lab': typeof ApiAdminApifyLabRoute
   '/api/admin/automation-flow': typeof ApiAdminAutomationFlowRoute
   '/api/admin/beta-funnel': typeof ApiAdminBetaFunnelRoute
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
@@ -1052,6 +1059,7 @@ export interface FileRoutesByTo {
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
   '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
+  '/api/admin/apify-lab': typeof ApiAdminApifyLabRoute
   '/api/admin/automation-flow': typeof ApiAdminAutomationFlowRoute
   '/api/admin/beta-funnel': typeof ApiAdminBetaFunnelRoute
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
@@ -1190,6 +1198,7 @@ export interface FileRoutesById {
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
   '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
+  '/api/admin/apify-lab': typeof ApiAdminApifyLabRoute
   '/api/admin/automation-flow': typeof ApiAdminAutomationFlowRoute
   '/api/admin/beta-funnel': typeof ApiAdminBetaFunnelRoute
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
@@ -1329,6 +1338,7 @@ export interface FileRouteTypes {
     | '/admin/report-preview/$username'
     | '/admin/sistema/cockpit-legado'
     | '/api/admin/analysis-cost-breakdown'
+    | '/api/admin/apify-lab'
     | '/api/admin/automation-flow'
     | '/api/admin/beta-funnel'
     | '/api/admin/billing-reconciliation'
@@ -1464,6 +1474,7 @@ export interface FileRouteTypes {
     | '/admin/report-preview/$username'
     | '/admin/sistema/cockpit-legado'
     | '/api/admin/analysis-cost-breakdown'
+    | '/api/admin/apify-lab'
     | '/api/admin/automation-flow'
     | '/api/admin/beta-funnel'
     | '/api/admin/billing-reconciliation'
@@ -1601,6 +1612,7 @@ export interface FileRouteTypes {
     | '/admin/report-preview/$username'
     | '/admin/sistema/cockpit-legado'
     | '/api/admin/analysis-cost-breakdown'
+    | '/api/admin/apify-lab'
     | '/api/admin/automation-flow'
     | '/api/admin/beta-funnel'
     | '/api/admin/billing-reconciliation'
@@ -1719,6 +1731,7 @@ export interface RootRouteChildren {
   ReportExampleRoute: typeof ReportExampleRoute
   ReportsSnapshotIdRoute: typeof ReportsSnapshotIdRoute
   ApiAdminAnalysisCostBreakdownRoute: typeof ApiAdminAnalysisCostBreakdownRoute
+  ApiAdminApifyLabRoute: typeof ApiAdminApifyLabRoute
   ApiAdminAutomationFlowRoute: typeof ApiAdminAutomationFlowRoute
   ApiAdminBetaFunnelRoute: typeof ApiAdminBetaFunnelRoute
   ApiAdminBillingReconciliationRoute: typeof ApiAdminBillingReconciliationRoute
@@ -2384,6 +2397,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminAutomationFlowRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/apify-lab': {
+      id: '/api/admin/apify-lab'
+      path: '/api/admin/apify-lab'
+      fullPath: '/api/admin/apify-lab'
+      preLoaderRoute: typeof ApiAdminApifyLabRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/analysis-cost-breakdown': {
       id: '/api/admin/analysis-cost-breakdown'
       path: '/api/admin/analysis-cost-breakdown'
@@ -2993,6 +3013,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReportExampleRoute: ReportExampleRoute,
   ReportsSnapshotIdRoute: ReportsSnapshotIdRoute,
   ApiAdminAnalysisCostBreakdownRoute: ApiAdminAnalysisCostBreakdownRoute,
+  ApiAdminApifyLabRoute: ApiAdminApifyLabRoute,
   ApiAdminAutomationFlowRoute: ApiAdminAutomationFlowRoute,
   ApiAdminBetaFunnelRoute: ApiAdminBetaFunnelRoute,
   ApiAdminBillingReconciliationRoute: ApiAdminBillingReconciliationRoute,
