@@ -640,39 +640,23 @@ export function FrequencyCard({
       {/* Ritmo por dia da semana — hidden when cadence is insufficient */}
       {!isInsufficient && <WeeklyRhythm days={windowedDays} t={t} />}
 
-      {/* Calendar grid */}
+      {/* Calendar grid — always visible */}
       {weeks.length > 0 && (
         <div className="px-4 sm:px-5 md:px-6 mt-4 sm:mt-6">
-          <button
-            type="button"
-            onClick={() => setCalendarOpen((v) => !v)}
-            aria-expanded={calendarOpen}
-            className="w-full flex items-center justify-between gap-3 text-left group"
-          >
-            <span className="flex flex-col gap-0.5 min-w-0">
-              <span className="text-eyebrow-sm text-content-tertiary">
-                {t("frequency.calendar.eyebrow", { days: effectiveWindowDays })}
-              </span>
-              <span className="text-xs text-content-tertiary leading-snug">
-                {t(
-                  publishedCount === 1
-                    ? "frequency.calendar.published_one"
-                    : "frequency.calendar.published_other",
-                  { count: publishedCount },
-                )}
-              </span>
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-eyebrow-sm text-content-tertiary">
+              {t("frequency.calendar.eyebrow", { days: effectiveWindowDays })}
             </span>
-            <span className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-content-secondary group-hover:text-content-primary transition-colors">
-              {calendarOpen
-                ? t("frequency.calendar.toggle_hide")
-                : t("frequency.calendar.toggle_show")}
-              <span aria-hidden="true" className="text-[10px]">
-                {calendarOpen ? "▴" : "▾"}
-              </span>
+            <span className="text-xs text-content-tertiary leading-snug">
+              {t(
+                publishedCount === 1
+                  ? "frequency.calendar.published_one"
+                  : "frequency.calendar.published_other",
+                { count: publishedCount },
+              )}
             </span>
-          </button>
+          </div>
 
-          {calendarOpen && (
           <div className="mt-3">
           {/* Weekday headers */}
           <div className="grid grid-cols-7 gap-1 md:gap-1.5 mb-1 md:mb-1.5">
@@ -700,7 +684,7 @@ export function FrequencyCard({
                   return (
                     <span
                       key={`pad-${wi}-${di}`}
-                      className="aspect-square rounded-md"
+                      className="aspect-[5/3] rounded-md"
                     />
                   );
                 }
@@ -717,7 +701,7 @@ export function FrequencyCard({
                   <span
                     key={day.date}
                     title={`${dateLabel} · ${tooltipPosts}`}
-                    className="relative aspect-square rounded-md flex items-center justify-center transition-colors"
+                    className="relative aspect-[5/3] rounded-md flex items-center justify-center transition-colors"
                     style={{ background: cellStyle(day.postCount).bg, border: cellStyle(day.postCount).border }}
                   >
                     {day.postCount > 1 && (
@@ -762,7 +746,6 @@ export function FrequencyCard({
             </span>
           </div>
           </div>
-          )}
         </div>
       )}
 
