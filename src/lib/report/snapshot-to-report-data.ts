@@ -433,6 +433,13 @@ export interface ReportEnriched {
    * Fallback: hoje − (windowDays-1) dias quando não há publicações.
    */
   windowRange: { startIso: string; endIso: string };
+  /**
+   * Official Block 1 sample summary (counts + observed window). The full
+   * post arrays live server-side only; the client gets counts so it can
+   * render the "X publicações · Y dias observados" caption and the
+   * pinned-exclusion note when applicable.
+   */
+  block01Sample: Block01SampleSummary;
 }
 
 // ============================================================================
