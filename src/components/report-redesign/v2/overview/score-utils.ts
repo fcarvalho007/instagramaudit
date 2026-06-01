@@ -3,7 +3,7 @@
  * Each function returns a 0–100 integer score.
  */
 
-export type ScoreKey = "envolvimento" | "frequencia" | "interaccao";
+export type ScoreKey = "envolvimento" | "frequencia";
 export type ScoreFamily = "danger" | "warning" | "success";
 
 export function getScoreFamily(score: number): ScoreFamily {
@@ -63,24 +63,10 @@ export function frequenciaSubtitle(postsPerWeek: number): string {
 
 // ─── Score 3: Interação nos Posts ───────────────────────────────────
 
-export function computeInteraccao(
-  avgComments: number,
-  postCount: number,
-  tierCommentRate: number,
-  brandResponseRate: number,
-): number {
-  const a = tierCommentRate > 0
-    ? Math.min(50, ((avgComments / Math.max(postCount, 1)) / tierCommentRate) * 50)
-    : 25;
-  const b = (Math.min(brandResponseRate, 100) * 0.5);
-  return Math.round(a + b);
-}
-
-export function interaccaoSubtitle(avgComments: number): string {
-  if (avgComments <= 0) return "↘ 0 · sem dados";
-  const val = avgComments.toFixed(1).replace(".", ",");
-  return `${val} coment./post`;
-}
+// Removed: the previous `computeInteraccao` resolved to a constant ~25 in
+// production because we never had a reliable `tierCommentRate` /
+// `brandResponseRate` source. The global index now combines only the two
+// sub-scores we can compute honestly (envolvimento + frequência).
 
 // ─── Score metadata ─────────────────────────────────────────────────
 
@@ -112,29 +98,19 @@ export const SCORE_DEFINITIONS: readonly ScoreDefinition[] = [
     ariaLabel: (s, f) => `Frequência de Posts: ${s} em 100, ${FAMILY_PT[f]}.`,
     tooltip: "Avalia o ritmo de publicação face ao ideal de 3-5 publicações por semana.",
   },
-  {
-    key: "interaccao",
-    label: "Interação nos Posts",
-    ariaLabel: (s, f) => `Interação nos Posts: ${s} em 100, ${FAMILY_PT[f]}.`,
-    tooltip: "Mede o volume de comentários e a taxa de resposta do perfil.",
-  },
 ] as const;
 
 // ─── Global Score (weighted average) ────────────────────────────────
 
 /**
- * Weighted average of the three sub-scores.
+ * Weighted average of the two sub-scores we can compute honestly.
  * Engagement carries the most weight as the primary health signal.
+ * Cadence is the secondary editorial-rhythm signal.
  */
 export function computeGlobalScore(
   envolvimento: number,
   frequencia: number,
-  interaccao: number,
 ): number {
-  const w = { envolvimento: 0.45, frequencia: 0.25, interaccao: 0.30 };
-  return Math.round(
-    envolvimento * w.envolvimento +
-    frequencia * w.frequencia +
-    interaccao * w.interaccao,
-  );
+  const w = { envolvimento: 0.6, frequencia: 0.4 };
+  return Math.round(envolvimento * w.envolvimento + frequencia * w.frequencia);
 }
