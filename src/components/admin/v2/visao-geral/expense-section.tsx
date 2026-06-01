@@ -749,3 +749,267 @@ function DarkTooltip({
     </div>
   );
 }
+
+/* ══════════════════════════════════════════════════════════════════════ */
+/*  DIAGNÓSTICO — compact subcomponents                                 */
+/* ══════════════════════════════════════════════════════════════════════ */
+
+function OpenAiOperationsCard({ actors }: { actors: OpenAiActorBreakdown[] }) {
+  const totalFailures = actors.reduce((s, a) => s + a.error_count, 0);
+  // Worst operation: highest error_count, and where errors >= calls (anormal)
+  const worst = actors
+    .filter((a) => a.error_count > 0 && a.error_count >= a.call_count)
+    .sort((a, b) => b.error_count - a.error_count)[0];
+
+  return (
+    <AdminCard variant="accent-left" accent="info">
+      <header className="flex items-center justify-between gap-3 mb-3">
+        <div className="flex items-center gap-2">
+          <span
+            className="h-2.5 w-2.5 rounded-sm shrink-0"
+            style={{ backgroundColor: ADMIN_LITERAL.expenseChartOpenAI }}
+          />
+          <h4 className="text-[14px] font-semibold text-admin-text-primary">
+            OpenAI · por operação
+          </h4>
+        </div>
+        {totalFailures > 0 && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[12px] font-semibold text-amber-700">
+            ⚠ {totalFailures} {totalFailures === 1 ? "falha" : "falhas"}
+          </span>
+        )}
+      </header>
+
+      <ul className="divide-y divide-admin-border/50">
+        {actors.map((a) => {
+          const op = openaiOpLabel(a.actor);
+          const noCalls = a.call_count === 0 && a.error_count === 0;
+          return (
+            <li key={a.actor} className="flex items-baseline justify-between gap-4 py-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-medium text-admin-text-primary truncate">
+                  {op.name}
+                  <span className="ml-1.5 admin-code text-admin-text-tertiary font-normal">
+                    · {a.model ?? "—"}
+                  </span>
+                </p>
+                <p className="mt-0.5 text-[12px] text-admin-text-tertiary admin-code">
+                  {noCalls
+                    ? "sem chamadas"
+                    : `${a.call_count} chamadas · ${a.total_prompt_tokens.toLocaleString("pt-PT")}+${a.total_completion_tokens.toLocaleString("pt-PT")} tokens`}
+                </p>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="font-mono tabular-nums text-[14px] font-semibold text-admin-text-primary">
+                  {noCalls ? "—" : `$${a.total_cost_usd.toFixed(2)}`}
+                </span>
+                {a.error_count > 0 && (
+                  <span
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${a.error_count >= a.call_count ? "bg-amber-500/20 text-amber-800" : "bg-amber-500/10 text-amber-700"}`}
+                  >
+                    {a.error_count} {a.error_count === 1 ? "falha" : "falhas"}
+                  </span>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      {worst && (
+        <div className="mt-4 flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-[12px] leading-relaxed text-amber-900">
+          <span aria-hidden="true" className="mt-0.5">⚠</span>
+          <span>
+            <span className="font-semibold">{worst.error_count} falhas em {worst.call_count} chamadas</span> de{" "}
+            <span className="font-semibold">{openaiOpLabel(worst.actor).name}</span> é anormal — estás a pagar retries. Investigar antes de escalar.
+          </span>
+        </div>
+      )}
+    </AdminCard>
+  );
+}
+
+function ApifyActorsCard({ actors }: { actors: ApifyActorBreakdown[] }) {
+  return (
+    <AdminCard variant="accent-left" accent="expense">
+      <header className="flex items-center gap-2 mb-3">
+        <span
+          className="h-2.5 w-2.5 rounded-sm shrink-0"
+          style={{ backgroundColor: ADMIN_LITERAL.expenseChartApify }}
+        />
+        <h4 className="text-[14px] font-semibold text-admin-text-primary">Apify · por actor</h4>
+      </header>
+
+      <ul className="divide-y divide-admin-border/50">
+        {actors.map((a) => {
+          const friendly = ACTOR_FRIENDLY[a.actor];
+          const noRuns = a.run_count === 0 && a.error_count === 0;
+          const source = COST_SOURCE_LABEL[a.cost_source];
+          const perEvent = a.run_count > 0 ? a.total_cost_usd / a.run_count : null;
+          const name = friendly?.name ?? a.label;
+          const desc = friendly?.desc ?? "";
+          return (
+            <li key={a.actor} className="flex items-baseline justify-between gap-4 py-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-medium text-admin-text-primary truncate">
+                  {name}
+                  {desc && <span className="text-admin-text-tertiary font-normal"> · {desc}</span>}
+                </p>
+                <p className="mt-0.5 text-[12px] text-admin-text-tertiary admin-code">
+                  {noRuns
+                    ? "sem runs"
+                    : `${a.run_count} eventos${perEvent != null ? ` · $${perEvent.toFixed(4)}/evento` : ""}`}
+                </p>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="font-mono tabular-nums text-[14px] font-semibold text-admin-text-primary">
+                  {noRuns ? "—" : `$${a.total_cost_usd.toFixed(2)}`}
+                </span>
+                {!noRuns && (
+                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${source.cls}`}>
+                    {source.text.toLowerCase()}
+                  </span>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </AdminCard>
+  );
+}
+
+function ReconciliationCompact({ rows, pendingCount }: { rows: ReconRow[]; pendingCount: number }) {
+  const allPending = pendingCount === rows.length;
+  return (
+    <AdminCard>
+      <header className="flex items-baseline justify-between gap-2 mb-3">
+        <h4 className="text-[14px] font-semibold text-admin-text-primary">Reconciliação</h4>
+        <span className="text-[11px] uppercase tracking-wider text-admin-text-tertiary">interno vs real</span>
+      </header>
+
+      <ul className="space-y-2.5">
+        {rows.map((r) => {
+          const pillCls = r.status === "OK"
+            ? "bg-emerald-500/15 text-emerald-700"
+            : r.status === "REVER"
+              ? "bg-red-500/15 text-red-700"
+              : r.status === "ARRED"
+                ? "bg-amber-500/15 text-amber-700"
+                : "bg-neutral-200 text-neutral-600";
+          const pillLabel = r.status === "PENDENTE" ? "pendente" : r.status.toLowerCase();
+          return (
+            <li key={r.provider} className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-2 min-w-0">
+                <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
+                <span className="text-[13px] font-medium text-admin-text-primary truncate">{r.provider}</span>
+              </span>
+              <span className="flex items-center gap-3 shrink-0">
+                <span className="font-mono tabular-nums text-[13px] text-admin-text-primary">
+                  ${r.internal.toFixed(2)}
+                </span>
+                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${pillCls}`}>
+                  {pillLabel}
+                </span>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+
+      <p className="mt-4 text-[12px] text-admin-text-tertiary leading-relaxed">
+        {allPending
+          ? `${pendingCount} fornecedores sem faturação externa ligada. Valores baseados em estimativas internas.`
+          : pendingCount > 0
+            ? `${pendingCount} fornecedor${pendingCount > 1 ? "es" : ""} ainda sem faturação externa.`
+            : "Todos os fornecedores têm faturação externa reconciliada."}
+      </p>
+    </AdminCard>
+  );
+}
+
+function DailyEvolutionCompact({
+  chartData,
+  hasChartData,
+  hasActorBreakdown,
+  allActorKeys,
+  hasOpenaiActorBreakdown,
+  allOpenaiActorKeys,
+}: {
+  chartData: Array<Record<string, string | number>>;
+  hasChartData: boolean;
+  hasActorBreakdown: boolean;
+  allActorKeys: string[];
+  hasOpenaiActorBreakdown: boolean;
+  allOpenaiActorKeys: string[];
+}) {
+  return (
+    <AdminCard>
+      <header className="flex items-baseline justify-between gap-2 mb-1">
+        <h4 className="text-[14px] font-semibold text-admin-text-primary">Evolução diária</h4>
+        <span className="text-[11px] uppercase tracking-wider text-admin-text-tertiary">
+          limite ${DAILY_COST_LIMIT.toFixed(2)}/dia
+        </span>
+      </header>
+      <div className="flex flex-wrap items-center gap-3 text-[11px] text-admin-text-secondary mb-2">
+        <LegendDot color={ADMIN_LITERAL.expenseChartApify} label="Apify" />
+        <LegendDot color={ADMIN_LITERAL.expenseChartOpenAI} label="OpenAI" />
+        <LegendDot color={ADMIN_LITERAL.expenseChartDataForSeo} label="DFS" />
+      </div>
+
+      {!hasChartData ? (
+        <div className="flex h-44 items-center justify-center text-center text-[13px] text-admin-text-tertiary">
+          Sem dados ainda — primeira sincronização decorre à meia-noite UTC.
+        </div>
+      ) : (
+        <div role="img" aria-label="Custos diários por fornecedor" className="relative w-full h-44">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="2 4" stroke="rgba(136,135,128,0.18)" vertical={false} />
+              <XAxis
+                dataKey="day"
+                tick={{ fontSize: 11, fill: "rgb(var(--admin-neutral-400))" }}
+                tickLine={false}
+                axisLine={{ stroke: "rgba(136,135,128,0.2)" }}
+                interval={Math.max(0, Math.floor(chartData.length / 5))}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: "rgb(var(--admin-neutral-400))" }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v) => `$${(v as number).toFixed(2)}`}
+                width={46}
+              />
+              <Tooltip cursor={{ fill: "rgba(136,135,128,0.06)" }} content={<DarkTooltip />} />
+              {hasActorBreakdown ? (
+                allActorKeys.map((actor) => (
+                  <Bar key={actor} dataKey={`apify_${actor}`} stackId="c" fill={actorColor(actor)} name={`apify_${actor}`} />
+                ))
+              ) : (
+                <Bar dataKey="apify" stackId="c" fill={ADMIN_LITERAL.expenseChartApify} />
+              )}
+              {hasOpenaiActorBreakdown ? (
+                allOpenaiActorKeys.map((actor) => (
+                  <Bar key={`openai_${actor}`} dataKey={`openai_${actor}`} stackId="c" fill={openaiActorColor(actor)} name={`openai_${actor}`} />
+                ))
+              ) : (
+                <Bar dataKey="openai" stackId="c" fill={ADMIN_LITERAL.expenseChartOpenAI} />
+              )}
+              <Bar dataKey="dataforseo" stackId="c" fill={ADMIN_LITERAL.expenseChartDataForSeo} radius={[3, 3, 0, 0]} />
+              <ReferenceLine y={DAILY_COST_LIMIT} stroke={ADMIN_LITERAL.capLine} strokeDasharray="5 4" strokeWidth={1.2} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </AdminCard>
+  );
+}
+
+function LegendDot({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: color }} />
+      <span>{label}</span>
+    </span>
+  );
+}
