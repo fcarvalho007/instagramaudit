@@ -1,76 +1,211 @@
-## Audit Findings — Thumbnail Persistence (frederico.m.carvalho)
+## Resumo
 
-### 1. Confirmed failure reason
+Bloquear chamadas Apify/OpenAI até o utilizador passar por um modal de onboarding que cria um lead e consome 1 crédito (de 2 grátis). O fluxo da homepage e a rota `/analyze/$username` passam a respeitar este gate.
 
-**Latest fresh run found**: snapshot `683e4c21-60e0-4045-b43a-dfcd85fe9896`, analysis_event de `2026-06-01 14:23:37 UTC`, `data_source=fresh`, `posts_returned=12`, triggered via `POST https://auditprofiles.com/api/analyze-public-v1?refresh=1`.
+## 1 · Mapa do fluxo actual (auditoria)
 
-**Storage**: bucket `post-thumbnails` existe e é `public=true`, mas tem **0 objects** em `storage.objects` (todos os tempos, não só este run).
+```text
+homepage (HeroActionBar)
+  └─ submit handle → navigate /analyze/$username
+       └─ analyze.$username mount
+            └─ useEffect → fetchPublicAnalysis()
+                 └─ POST /api/analyze-public-v1   ◀── PÚBLICO, sem auth, sem créditos
+                      ├─ rate-limit por IP
+                      ├─ Apify (perfil + posts)   ◀── CUSTO REAL
+                      ├─ normalize + benchmark
+                      ├─ storeSnapshot (cache 24h)
+                      └─ OpenAI insights (background/server)  ◀── CUSTO REAL
+            └─ fetch /api/public/analysis-snapshot/:handle → renderiza relatório
+            └─ UnlockModal só aparece DEPOIS do relatório, como gate premium
+```
 
-**Worker logs (last hour, ambos deployments)**:
-- ✅ `[thumbnail-cache] prefetched 12/12 thumbnails` @ 14:23:36.713Z
-- ✅ `[analyze-public-v1] base snapshot persisted ... ai_insights_v1=pending` @ 14:23:37.149Z
-- ❌ `[thumbnails] handle=... attempted=... stored=...` — **AUSENTE**
-- ❌ `[analysis/cache] thumbnail persistence failed (continuing)` — **AUSENTE**
+**Resposta às perguntas-chave do brief:**
+- Apify é chamado em `src/routes/api/analyze-public-v1.ts` (via `runActorWithMetadata`), antes de qualquer captura de lead.
+- OpenAI/enriquecimento é disparado pelo mesmo endpoint / jobs ligados ao snapshot.
+- Sim, custo provider acontece antes do submit do formulário.
+- A cache pode ser consultada sem chamar provider (`lookupSnapshot` em `src/lib/analysis/cache.ts`).
 
-**Interpretação**: a função `persistThumbnailsInPayload` (em `src/lib/report-snapshots/persist-thumbnails.server.ts`, chamada a partir de `storeSnapshot` em `src/lib/analysis/cache.ts:207`) tem dois logs garantidos — o resumo final OU o warning do catch. Nenhum dos dois apareceu. Possíveis causas:
+**Modelo actual de identidade:**
+- `leads` (email, name, user_type, purpose, profile_ownership, marketing/beta consent) — captura de lead já existe e a `UnlockModal` já recolhe estes campos.
+- `profiles` (Supabase auth, opcional `lead_id`) — usado para área autenticada, não para gerar relatórios.
+- `report_requests` liga `lead_id` → `analysis_snapshot_id`.
+- Decisão confirmada: **manter só lead** nesta task (sem conta Supabase / magic link).
 
-- **(mais provável) o código persist-thumbnails não está presente no deployment publicado** que serviu o run de 14:23 (auditprofiles.com / Worker prod). Foi adicionado depois do último publish, ou o publish não incluiu este módulo. O `storeSnapshot` antigo grava a linha sem invocar persist.
-- alternativa menos provável: o Worker terminou o request antes do upload settled (mas o `await` está dentro do try, então o log de resumo teria saído antes do `[base snapshot persisted]`).
+**Modelo actual de créditos:** não existe. Nenhuma migration de `user_credits` foi aplicada.
 
-**O storage estar a 0 objects desde sempre confirma**: este pipeline nunca produziu sequer 1 upload com sucesso em produção. Não é "12/12 falharam por 403"; é "0/0 sequer tentaram" (no path que correu).
+## 2 · Política aprovada (esta task)
 
-### 2. Direct Worker fetch test — INVALIDA a hipótese 403
+- Cada **lead novo** começa com 2 créditos grátis (one-shot, sem grant mensal).
+- Submeter o modal de onboarding **NÃO** consome crédito (só cria o lead).
+- 1 crédito é consumido quando o backend aceita um pedido de geração de relatório (cache miss ou refresh forçado).
+- Ver snapshot em cache para um handle já analisado pelo mesmo lead: **não consome** crédito extra.
+- Se preflight bloqueia (handle inválido, provider disabled, budget exceeded, allowlist): **não consome**.
+- Se Apify falha antes de criar snapshot utilizável: **refund automático** via ledger entry de compensação.
+- Ledger é auditável (uma linha por evento; saldo derivado, nunca mutado in-place).
 
-**A própria run de 14:23 já contém o teste empírico**: `prefetchThumbnailsAsBase64` (`src/lib/analysis/thumbnail-cache.server.ts`) usa exactamente os mesmos headers (UA Chrome 124, `Referer: https://www.instagram.com/`, `Accept: image/...`) que `persistOne`, faz GET ao mesmo `thumbnail_url` do IG CDN, e logou `prefetched 12/12 thumbnails`. **12 em 12 succeed**. O fetch é convertido em base64 (≤ 500 KB) e guardado em `_thumbnail_base64`.
+## 3 · Modelo de dados (migration nova)
 
-Logo: **o Worker → IG CDN NÃO é 403**. A premissa "Cloudflare Worker → Instagram CDN likely returns 403" não se sustenta para este actor / este handle / este momento. Não é preciso run de diagnóstico adicional — já temos a evidência num log do mesmo run.
+```sql
+-- Saldo derivado: SUM(delta) por lead
+CREATE TABLE public.credit_ledger (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  lead_id         uuid NOT NULL,                  -- FK lógica para leads.id
+  delta           integer NOT NULL,               -- +grant, -consume, +refund
+  reason          text NOT NULL,                  -- 'signup_grant'|'analysis_request'|'refund_provider_failure'|'admin_adjust'
+  analysis_event_id uuid,                         -- liga ao evento provider
+  analysis_snapshot_id uuid,                      -- snapshot resultante
+  handle          text,
+  metadata        jsonb NOT NULL DEFAULT '{}',
+  created_at      timestamptz NOT NULL DEFAULT now()
+);
 
-(Caveat: tokens IG CDN expiram em ~horas. O sucesso é só na janela em que o thumbnail_url vem fresco do actor.)
+CREATE INDEX idx_credit_ledger_lead ON public.credit_ledger(lead_id, created_at DESC);
+CREATE INDEX idx_credit_ledger_event ON public.credit_ledger(analysis_event_id);
 
-### 3. Apify media source audit
+-- Sem RLS (servidor usa supabaseAdmin); GRANTs:
+GRANT SELECT ON public.credit_ledger TO authenticated;
+GRANT ALL    ON public.credit_ledger TO service_role;
 
-**Actor em uso**: `apify/instagram-scraper`, `resultsType: "details"`, `resultsLimit: 12`, `maxItems: 1`, `addParentData: false` (`src/routes/api/analyze-public-v1.ts:217-250`).
+-- Função de saldo (SECURITY DEFINER, search_path = public):
+CREATE FUNCTION public.credit_balance(p_lead_id uuid) RETURNS integer ...
+  → SELECT COALESCE(SUM(delta),0) FROM credit_ledger WHERE lead_id = p_lead_id;
+```
 
-**Campos de media que o normalizer já conhece** (`src/lib/analysis/normalize.ts:430-438`): `displayUrl`, `display_url`, `imageUrl`, `thumbnailUrl`, `thumbnail_url`. **Todos apontam para `*.cdninstagram.com` / `*.fbcdn.net`** — não há um campo alternativo "hospedado pela Apify".
+Sem alteração às tabelas existentes. O lead continua a ser criado em `leads`; o crédito de signup é inserido na mesma transacção do `upsert` em `unlock.server.ts`.
 
-**KV Store / dataset attachments**: este actor, por default, **não baixa media para o Apify Key-Value Store**. Não há setting `downloadMedia` / `saveImages` documentado para `apify/instagram-scraper`. Os outputs são JSON com URLs do CDN do IG.
+## 4 · Fluxo novo
 
-**Childrens de carrossel / video**: vêm também como URLs do IG CDN, não como blobs Apify.
+```text
+homepage submit handle
+  └─ valida formato (zod já existe)
+  └─ NÃO chama API; abre OnboardingModal (cliente-side)
+       ├─ contexto: @handle, "Grátis", "1 crédito de 2"
+       ├─ 4 perguntas (user_type, purpose, profile_ownership, email+name)
+       ├─ caixa "O que recebes grátis" + nota premium
+       └─ CTA "Começar"
+  └─ submit modal
+       └─ POST /api/onboarding/start    ◀── NOVO server route
+            ├─ valida zod
+            ├─ rate-limit IP/email
+            ├─ upsert lead (reutiliza unlock.server.ts)
+            ├─ se lead novo → INSERT credit_ledger (+2, signup_grant)
+            ├─ guarda cookie httpOnly de sessão lead (assinado, 30d)
+            └─ retorna { lead_id, credits_remaining }
+  └─ navigate /analyze/$username?onboarded=1
+       └─ analyze.$username
+            └─ chama /api/analyze-public-v1 (agora exige cookie lead)
+                 ├─ verifica cookie lead → 401 se ausente
+                 ├─ lookupSnapshot (sem provider)
+                 │    └─ se fresh (<24h) → devolve cache, NÃO consome crédito
+                 ├─ credit_balance(lead) <= 0 → 402 NO_CREDITS
+                 ├─ INSERT credit_ledger (-1, 'analysis_request', pendente)
+                 ├─ corre Apify + OpenAI
+                 ├─ se falha antes de snapshot → INSERT compensação (+1, refund_provider_failure)
+                 └─ devolve snapshot
+       └─ "A preparar a análise do perfil…" durante loading
+```
 
-**Conclusão**: Apify **não fornece** uma fonte de media alternativa ao IG CDN com este actor. Mudar para um actor que descarrega media (ex.: `apify/instagram-post-scraper` com flag de download) é possível mas requer avaliação e custo por imagem.
+## 5 · Mudanças backend
 
-### 4. Backfill feasibility (não implementar agora)
+- **Novo** `src/routes/api/onboarding/start.ts` (server route POST). Reaproveita `upsertLeadFromForm` de `unlock.server.ts`. Devolve `Set-Cookie: ib_lead=<signed>; HttpOnly; SameSite=Lax; Max-Age=2592000`.
+- **Novo** `src/lib/credits/credits.server.ts`: `getBalance(leadId)`, `consume(leadId, ctx)`, `refund(eventId, reason)`, `grantSignup(leadId)`.
+- **Novo** `src/lib/leads/lead-cookie.server.ts`: assina/verifica cookie com `INTERNAL_API_TOKEN` (HMAC).
+- **Modificar** `src/routes/api/analyze-public-v1.ts`:
+  - Início: ler cookie lead. Se ausente → `403 NOT_ONBOARDED`.
+  - Após `lookupSnapshot`: se cache fresh → devolve sem consumir; caso contrário, `consume(leadId)` antes de chamar Apify. Se saldo 0 → `402 NO_CREDITS`.
+  - Em `catch` (após consume, antes de snapshot ok) → refund.
+  - Anexar `lead_id` ao `recordAnalysisEvent`.
 
-| Opção | Sucesso | Risco | Custo | Complexidade | Preserva `thumbnail_url` |
-|---|---|---|---|---|---|
-| A) Worker-based (mesmo runtime) | **Alto se thumbnail_url ainda fresco** (<1-3h); ~0% para snapshots antigos | Baixo. Já há provas que Worker→IG funciona com headers corretos. | ~grátis (Worker CPU + storage egress). | Baixa — reaproveita `persistOne`. | Sim |
-| B) Local/admin script (service_role, fetch a partir do meu IP) | Alto em snapshots **frescos**; baixo em snapshots **antigos** (URLs IG já expiradas) | Baixo. Service-role só local. | Grátis. | Média — precisa CLI + leitura de snapshots + upload. | Sim |
-| C) Apify media / KV-based | **Não aplicável** — actor atual não guarda imagens. | N/A | N/A sem mudar actor. | Alta (mudar actor, re-orquestrar). | Sim |
+## 6 · Mudanças UI
 
-Observações:
-- Para snapshots já existentes em DB, tokens IG do `thumbnail_url` podem já estar expirados (typically 1-24h). Backfill A/B serve maioritariamente para snapshots criados nas últimas horas.
-- O `_thumbnail_base64` map que já é persistido no payload **resolve o problema retroativo sem backfill** para o snapshot atual de `frederico.m.carvalho` (basta o componente passar a usar a base64 como fallback antes do CDN URL).
+- **Novo** `src/components/onboarding/onboarding-modal.tsx`: variante do `UnlockModal` mas focada em pré-análise (visual idêntico ao screenshot — header "Cria a tua conta e abre o relatório", chip @handle, badge Grátis, caixa "O que recebes grátis", CTA "Começar", trust row "~1 min · RGPD · sem spam", nota secundária sobre Creator/Empresa). Reutiliza `unlockFormSchema` (mesmas 4 perguntas).
+- **Modificar** `src/components/landing/hero-action-bar.tsx`: em vez de `navigate(...)`, abre o `OnboardingModal`. Só navega após `onboarding/start` ok.
+- **Modificar** `src/routes/analyze.$username.tsx`:
+  - Guard de entrada: se sem cookie lead → redirect home com `?onboard=<handle>` (homepage detecta e reabre modal). Evita atalho via URL directo.
+  - Loading copy: "A preparar a análise do perfil…".
+  - Mapear novos códigos de erro (`NO_CREDITS`, `NOT_ONBOARDED`).
+- **Modificar** `src/lib/analysis/client.ts`: tipa as novas respostas (`NO_CREDITS`, `NOT_ONBOARDED`).
+- i18n: chaves novas em `pt`/`en` para todas as strings do modal e dos estados de erro.
 
-### 5. Recommendation
+## 7 · Protecção contra abuso
 
-**Recomendação: D — fix do pipeline existente antes de qualquer backfill.**
+- Rate-limit por IP em `/api/onboarding/start` (reaproveitar `assertWithinPublicRateLimit`).
+- Rate-limit por email normalizado (max 1 onboarding/h/email).
+- Bloquear domínios disposable (lista mínima inicial: mailinator, tempmail, 10minutemail, guerrillamail, yopmail).
+- Cookie HMAC: impossível forjar `lead_id` sem `INTERNAL_API_TOKEN`.
+- Saldo em DB (não em cookie) → não há como "renovar" créditos a trocar email no mesmo cookie.
+- Mantém os limites Apify (`APIFY_DAILY_CAP_USD`, allowlist em testing mode).
 
-Sequência proposta:
+## 8 · Estados de erro (UX)
 
-1. **Provar que o código persist está deployado**. Se `auditprofiles.com` ainda corre um build sem `persist-thumbnails.server.ts` invocado, basta publicar. Verificar com um novo refresh controlado e confirmar que aparecem `[thumbnails] handle=... attempted=12 stored=N ...` nos worker logs.
-2. **Se o log aparecer com `stored=12`**: pipeline está funcional, basta esperar próximas runs frescas (sem backfill, conforme pedido).
-3. **Se o log aparecer com falhas (403 / upload / outro)**: aí sim, partir para diagnóstico fino daquela classe específica (ajustar headers, content-type detection, política do bucket, etc.).
-4. **Se o log continuar ausente**: investigar se `storeSnapshot` está mesmo a chamar `persistThumbnailsInPayload` no bundle final (tree-shaking, dynamic import, etc.).
+| Código | Copy PT |
+|---|---|
+| `NOT_ONBOARDED` | Redirect silencioso para homepage com modal aberto |
+| `NO_CREDITS` | "Sem créditos disponíveis. Já usaste os 2 créditos gratuitos." |
+| `INSUFFICIENT_DATA` | "Este perfil pode não devolver publicações suficientes para análise." |
+| `PRIVATE_PROFILE` | "Perfil privado — não é possível analisar." |
+| `BUDGET_EXCEEDED` | "Sistema temporariamente em pausa. Tenta novamente mais tarde." (sem consumir crédito) |
+| `UPSTREAM_FAILED` | "Não foi possível gerar a análise agora. O crédito foi devolvido." |
+| `INVALID_HANDLE` | "Handle inválido." |
 
-Não recomendo agora: B (backfill local) — não vale a pena enquanto não soubermos se o pipeline live funciona; C (mudar actor) — custo desproporcionado quando a hipótese 403 está invalidada; E (aceitar ícones) — temos `_thumbnail_base64` no payload, dá para extrair melhor UX sem persistência permanente.
+## 9 · Ficheiros prováveis
 
-### Outputs do audit
+**Novos**
+- `supabase/migrations/<ts>_credit_ledger.sql`
+- `src/lib/credits/credits.server.ts`
+- `src/lib/credits/__tests__/credits.test.ts`
+- `src/lib/leads/lead-cookie.server.ts`
+- `src/routes/api/onboarding/start.ts`
+- `src/routes/api/__tests__/onboarding-start.test.ts`
+- `src/components/onboarding/onboarding-modal.tsx`
+- `src/components/onboarding/__tests__/onboarding-modal.test.tsx`
 
-- **Confirmed failure reason**: persist-thumbnails **não emitiu log de resumo nem log de warning** no run de 14:23 UTC; bucket tem 0 objects históricos. Hipótese: a função não foi invocada no deployment que serviu o run.
-- **Worker fetch blocked?** **Não.** Mesma run logou `[thumbnail-cache] prefetched 12/12 thumbnails` com os mesmos headers — Worker → IG CDN funciona quando o token IG está fresco.
-- **Apify alt media?** **Não** com o actor atual (`apify/instagram-scraper`). Todos os campos apontam ao CDN do IG. Sem KV / sem download nativo.
-- **Recommended path**: validar primeiro se o pipeline persist está realmente a correr em prod; só depois decidir entre backfill ou mudança.
+**Modificados**
+- `src/routes/api/analyze-public-v1.ts` (cookie + créditos + refund)
+- `src/components/landing/hero-action-bar.tsx` (abre modal em vez de navegar)
+- `src/routes/index.tsx` (suporte a `?onboard=<handle>` para reabrir modal após redirect)
+- `src/routes/analyze.$username.tsx` (guard cookie, loading copy, novos erros)
+- `src/lib/analysis/client.ts` (novos códigos)
+- `src/i18n/locales/{pt,en}/landing.json` e `gate.json` (strings novas)
 
-### Next implementation prompt (se aprovado)
+**Intocados** (constraints do brief): report rendering, Block 1, premium gating, pricing, Apify actor settings, OpenAI prompts, thumbnails, emails.
 
-> "Use Build Mode. Adiciona um log de entrada `[thumbnails] start handle=... cache_key=...` na linha 206 de `src/lib/analysis/cache.ts` (imediatamente antes do `await persistThumbnailsInPayload`). Não muda mais nada. Em seguida, dispara um refresh manual de `frederico.m.carvalho` via `POST /api/analyze-public-v1?refresh=1` no domínio publicado e regista os worker logs filtrados por `[thumbnails]`. Reporta: (a) se aparece o `start`, (b) se aparece o resumo final com contadores discriminados, (c) os números exactos por categoria de falha."
+## 10 · Riscos
+
+- **Bookmark de `/analyze/<handle>`** por utilizadores que nunca passaram no modal → mitigado pelo guard de cookie + redirect com `?onboard=`.
+- **Race condition** consume/refund se Apify falhar entre o INSERT e a snapshot → mitigado por refund explícito no `catch`, e por janela onde balance pode aparecer 1 abaixo durante segundos.
+- **Cookie perdido** (browser limpa cookies) → utilizador refaz onboarding; se mesmo email, lead é reutilizado, credit_ledger preserva saldo.
+- **Falsificação de email** com domínios diferentes → custo limitado por rate-limit IP + cap diário Apify.
+- Migration: garantir `GRANT` + função `credit_balance` no mesmo file.
+
+## 11 · Plano de testes
+
+Automatizados (vitest):
+- `credits.test.ts`: grant +2, consume -1, refund +1, saldo correcto, idempotência de signup_grant.
+- `onboarding-start.test.ts`: lead novo → +2 créditos; lead existente → não duplica grant; rate-limit; disposable email bloqueado.
+- `analyze-public-v1` (extensão dos testes existentes): sem cookie → 403; cache fresh → não consome; cache miss + saldo 0 → 402; Apify falha → refund visível no ledger.
+
+Manual:
+- Submit handle homepage → modal abre, Apify não dispara (verificar logs).
+- Submit modal → lead criado + 2 créditos + redirect.
+- Primeiro relatório consome 1 (saldo 1).
+- Refresh imediato (cache <24h) não consome.
+- Mobile 375px: modal scroll ok.
+
+Validação final:
+- `bunx tsc --noEmit`
+- `bunx vitest run`
+
+## 12 · Checkpoint para aprovação
+
+☐ Política créditos: 2 one-shot ao criar lead — confirmado
+☐ Identidade: só lead (sem Supabase auth) — confirmado
+☐ Cache: só verificada depois do submit do modal — confirmado
+☐ Migration `credit_ledger` + função `credit_balance` + GRANTs
+☐ Cookie HMAC para identificar lead em chamadas subsequentes
+☐ `analyze-public-v1` passa a exigir cookie e a consumir crédito
+☐ `OnboardingModal` novo, com copy exacto do brief, sem alterar `UnlockModal` premium
+☐ Sem alterações em report rendering, pricing, prompts OpenAI, actor Apify
+☐ Testes vitest + tsc verdes
+
+Aprovar para passar a Build Mode?
