@@ -26,6 +26,7 @@ interface LabRun {
   normalize_ok: boolean | null;
   notes: string | null;
   error_excerpt: string | null;
+  input_params?: Record<string, unknown> | null;
 }
 
 const ALL_WINDOWS: WindowKind[] = ["baseline", "30d", "60d", "90d", "365d"];
@@ -60,6 +61,22 @@ function fmtDuration(ms: number | null): string {
   if (ms === null || ms === undefined) return "—";
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function pickResultsLimit(
+  input: Record<string, unknown> | null | undefined,
+): number | null {
+  if (!input) return null;
+  const v = input.resultsLimit;
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+function pickOnlyPostsNewerThan(
+  input: Record<string, unknown> | null | undefined,
+): string | null {
+  if (!input) return null;
+  const v = input.onlyPostsNewerThan;
+  return typeof v === "string" && v.length > 0 ? v : null;
 }
 
 function ApifyLabPage() {
@@ -171,6 +188,8 @@ function ApifyLabPage() {
       "profile",
       "segment",
       "window",
+      "resultsLimit",
+      "onlyPostsNewerThan",
       "posts",
       "observed_days",
       "newest",
@@ -191,6 +210,8 @@ function ApifyLabPage() {
         r.profile_handle,
         r.profile_segment ?? "",
         r.window_kind,
+        pickResultsLimit(r.input_params) ?? "",
+        pickOnlyPostsNewerThan(r.input_params) ?? "",
         r.posts_returned ?? "",
         r.observed_days ?? "",
         r.newest_post_at ?? "",
@@ -365,6 +386,8 @@ function ApifyLabPage() {
                   <th className="py-2 pr-3">Perfil</th>
                   <th className="py-2 pr-3">Seg</th>
                   <th className="py-2 pr-3">Janela</th>
+                  <th className="py-2 pr-3 text-right">resultsLimit</th>
+                  <th className="py-2 pr-3">onlyPostsNewerThan</th>
                   <th className="py-2 pr-3 text-right">Posts</th>
                   <th className="py-2 pr-3 text-right">Obs. days</th>
                   <th className="py-2 pr-3">Newest</th>
@@ -389,6 +412,12 @@ function ApifyLabPage() {
                     <td className="py-1.5 pr-3">@{r.profile_handle}</td>
                     <td className="py-1.5 pr-3">{r.profile_segment ?? "—"}</td>
                     <td className="py-1.5 pr-3">{r.window_kind}</td>
+                    <td className="py-1.5 pr-3 text-right">
+                      {pickResultsLimit(r.input_params) ?? "—"}
+                    </td>
+                    <td className="py-1.5 pr-3">
+                      {pickOnlyPostsNewerThan(r.input_params) ?? "—"}
+                    </td>
                     <td className="py-1.5 pr-3 text-right">
                       {r.posts_returned ?? "—"}
                     </td>
@@ -429,7 +458,7 @@ function ApifyLabPage() {
                 {runs.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={14}
+                      colSpan={16}
                       className="py-6 text-center text-content-tertiary"
                     >
                       Sem execuções ainda.
