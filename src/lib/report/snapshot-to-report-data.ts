@@ -1224,7 +1224,14 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     }
   }
 
-  const topPosts = buildTopPosts(posts);
+  // Best/worst selection must use the same canonical sample as Block 1
+  // (pinned + date outliers excluded) — otherwise a stale pinned post can
+  // be elected "melhor publicação" and contradict the engagement card.
+  // Fallback: when the sample is empty, keep the raw `posts` so legacy
+  // snapshots without timestamps still render something.
+  const eligiblePosts =
+    sample.performancePosts.length > 0 ? sample.performancePosts : posts;
+  const topPosts = buildTopPosts(eligiblePosts);
   // Pinned excluded + date-outliers pruned — delegated to `buildBlock01Sample`.
   // Block 1 modules (cadence, heatmap, best-days, temporal series) all read
   // from the same `sample.performancePosts` to stay consistent.
