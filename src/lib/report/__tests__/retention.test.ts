@@ -1,7 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
+  CACHE_REUSE_MAX_HOURS,
+  CACHE_REUSE_MAX_MS,
   CACHE_TTL_DAYS,
   CACHE_TTL_MS,
+  REFRESH_BUTTON_AFTER_HOURS,
+  REFRESH_BUTTON_AFTER_MS,
   REPORT_RETENTION_DAYS,
   REPORT_RETENTION_MS,
   formatRetentionMessage,
@@ -13,17 +17,25 @@ import {
 import { CACHE_TTL_MS as CACHE_TTL_MS_FROM_ANALYSIS } from "@/lib/analysis/cache";
 
 const MS_PER_DAY = 86_400_000;
+const MS_PER_HOUR = 3_600_000;
 
 describe("retention constants", () => {
-  it("usa 15 dias para retenção e cache TTL", () => {
+  it("usa 15 dias para retenção / janela de histórico", () => {
     expect(REPORT_RETENTION_DAYS).toBe(15);
     expect(CACHE_TTL_DAYS).toBe(15);
     expect(REPORT_RETENTION_MS).toBe(15 * MS_PER_DAY);
     expect(CACHE_TTL_MS).toBe(15 * MS_PER_DAY);
   });
 
-  it("é a única fonte de verdade — analysis/cache re-exporta o mesmo valor", () => {
-    expect(CACHE_TTL_MS_FROM_ANALYSIS).toBe(CACHE_TTL_MS);
+  it("cache de reutilização é 24h / botão refresh aparece após 12h", () => {
+    expect(CACHE_REUSE_MAX_HOURS).toBe(24);
+    expect(CACHE_REUSE_MAX_MS).toBe(24 * MS_PER_HOUR);
+    expect(REFRESH_BUTTON_AFTER_HOURS).toBe(12);
+    expect(REFRESH_BUTTON_AFTER_MS).toBe(12 * MS_PER_HOUR);
+  });
+
+  it("analysis/cache re-exporta a janela de reutilização de 24h", () => {
+    expect(CACHE_TTL_MS_FROM_ANALYSIS).toBe(CACHE_REUSE_MAX_MS);
   });
 });
 
