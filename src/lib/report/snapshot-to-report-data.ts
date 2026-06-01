@@ -1417,6 +1417,9 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
         comments: num(p.comments, 0),
         engagementPct: round2(num(p.engagement_pct, 0)),
         date: formatPtDateShort(p.taken_at_iso ?? null),
+        ...(typeof p.taken_at_iso === "string" && p.taken_at_iso.length > 0
+          ? { takenAtIso: p.taken_at_iso }
+          : {}),
         mentions,
         isPinned: p.is_pinned === true,
         ...(typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
@@ -1484,6 +1487,9 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
             comments: num(p.comments, 0),
             engagementPct: round2(num(p.engagement_pct, 0)),
             date: formatPtDateShort(p.taken_at_iso ?? null),
+            ...(typeof p.taken_at_iso === "string" && p.taken_at_iso.length > 0
+              ? { takenAtIso: p.taken_at_iso }
+              : {}),
             mentions,
             ...(typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
               ? { thumbnailUrl: `/api/public/ig-thumb?url=${encodeURIComponent(p.thumbnail_url)}` }
@@ -1491,6 +1497,35 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
           };
         })
       : [];
+
+  // Scatter dataset — TODAS as publicações da janela (não só top 5).
+  // Ordenado por engagement desc para que o caller possa simplesmente iterar.
+  const enrichedAllPostsScatter: ReportEnriched["allPostsScatter"] = [...posts]
+    .sort((a, b) => num(b.engagement_pct, 0) - num(a.engagement_pct, 0))
+    .map((p, idx) => ({
+      id: p.id ?? `scatter-${idx}`,
+      format: formatLabelForCard(p.format),
+      engagementPct: round2(num(p.engagement_pct, 0)),
+      date: formatPtDateShort(p.taken_at_iso ?? null),
+      ...(typeof p.taken_at_iso === "string" && p.taken_at_iso.length > 0
+        ? { takenAtIso: p.taken_at_iso }
+        : {}),
+    }));
+
+  // Window range — usar a publicação mais recente como `endIso` e recuar
+  // `windowDays - 1` dias. Quando não há publicações, fica hoje − (N-1).
+  const enrichedWindowRange: ReportEnriched["windowRange"] = (() => {
+    const isoList = posts
+      .map((p) => p.taken_at_iso)
+      .filter((iso): iso is string => typeof iso === "string" && iso.length > 0)
+      .sort();
+    const endRef = isoList.length > 0 ? new Date(isoList[isoList.length - 1]!) : new Date();
+    if (Number.isNaN(endRef.getTime())) endRef.setTime(Date.now());
+    const startRef = new Date(endRef);
+    startRef.setUTCDate(startRef.getUTCDate() - Math.max(0, windowDays - 1));
+    const fmtIso = (d: Date) => d.toISOString().slice(0, 10);
+    return { startIso: fmtIso(startRef), endIso: fmtIso(endRef) };
+  })();
 
   const enriched: ReportEnriched = {
     profile: {
@@ -1513,6 +1548,8 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     postingTimeline: buildPostingTimeline(posts),
     analysedPostFormats: buildAnalysedPostFormats(posts),
     cadence,
+    allPostsScatter: enrichedAllPostsScatter,
+    windowRange: enrichedWindowRange,
   };
 
   const data: ReportData = {
