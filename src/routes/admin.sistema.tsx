@@ -28,6 +28,7 @@ import { TestProfilesCard } from "@/components/admin/v2/sistema/test-profiles-ca
 import { CacheMaintenanceCard } from "@/components/admin/v2/sistema/cache-maintenance-card";
 import { AdminSectionHeader } from "@/components/admin/v2/admin-section-header";
 import { ThumbnailPersistenceCard } from "@/components/admin/v2/sistema/thumbnail-persistence-card";
+import { OnboardingFunnelCard } from "@/components/admin/v2/sistema/onboarding-funnel-card";
 
 export const Route = createFileRoute("/admin/sistema")({
   component: SistemaPage,
@@ -139,6 +140,7 @@ function SistemaPage() {
 
         <HealthSection />
         <ThumbnailPersistenceCard />
+        <OnboardingFunnelCard />
         <SecretsConfigSection />
         <CostsDetailSection />
         <AnalysisCostBreakdown />
