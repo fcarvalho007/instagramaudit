@@ -1,0 +1,823 @@
+/**
+ * OnboardingModal — Fase 3 (redesenho 3 passos).
+ *
+ * Fluxo: Intro (0) → Nome (1) → Contexto: relação + objetivo (2) → Email/GDPR (3).
+ *
+ * Liga-se a:
+ *  - `useOnboardingDraft` (sessionStorage debounced; clear no sucesso)
+ *  - `trackOnboardingEvent` (step_view / step_complete / abandon / success)
+ *  - `/api/onboarding/start` com `_t` (timing ≥2s) e `website` (honeypot)
+ *
+ * Copy vive em `gate.json` em `onboarding.*` — `unlock.*` é legado do
+ * `unlock-modal` antigo e não é aqui consumido.
+ *
+ * `user_type` não é recolhido na UI; o payload omite o campo. A coluna
+ * `leads.user_type` mantém-se nullable.
+ */
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Trans, useTranslation } from "react-i18next";
+import { ArrowLeft, Check, Loader2, Lock, Sparkles } from "lucide-react";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  unlockFormSchema,
+  type Goal,
+  type ProfileOwnership,
+  type UnlockFormValues,
+} from "@/lib/unlock-flow";
+import { parseFullName } from "@/lib/names/parse-full-name";
+import { useOnboardingDraft } from "@/lib/leads/use-onboarding-draft";
+import { trackOnboardingEvent } from "@/lib/tracking/onboarding-events";
+
+const TOTAL_STEPS = 3;
+
+const RELATIONSHIP_VALUES = [
+  "own_profile",
+  "client_profile",
+  "brand_profile",
+  "competitor_research",
+] as const satisfies readonly ProfileOwnership[];
+
+const GOAL_VALUES = [
+  "improve_content",
+  "benchmark_competitors",
+  "grow_audience",
+  "validate_brand",
+] as const satisfies readonly Goal[];
+
+export interface OnboardingSuccess {
+  leadId: string;
+  credits: number;
+}
+
+export interface OnboardingModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** Handle that will be analysed after onboarding succeeds. */
+  handle: string;
+  /**
+   * Called AFTER `/api/onboarding/start` returns ok=true and the
+   * `lead_session` cookie is set. Caller should then navigate to
+   * `/analyze/$username` to trigger provider work.
+   */
+  onSuccess: (handle: string, result: OnboardingSuccess) => void;
+}
+
+type IntroStep = 0;
+type FormStep = 1 | 2 | 3;
+type Step = IntroStep | FormStep;
+
+interface OnboardingApiOk {
+  ok: true;
+  lead_id: string;
+  credits: number;
+}
+interface OnboardingApiFail {
+  ok: false;
+  error_code: string;
+  message: string;
+}
+type OnboardingApiResponse = OnboardingApiOk | OnboardingApiFail;
+
+export function OnboardingModal({
+  open,
+  onOpenChange,
+  handle,
+  onSuccess,
+}: OnboardingModalProps) {
+  const { t } = useTranslation("gate");
+  const [step, setStep] = useState<Step>(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const formStartedAtRef = useRef<number>(Date.now());
+  const succeededRef = useRef<boolean>(false);
+
+  const form = useForm<UnlockFormValues>({
+    resolver: zodResolver(unlockFormSchema),
+    mode: "onChange",
+    defaultValues: {
+      full_name: "",
+      email: "",
+      phone: "",
+      profile_ownership: undefined as unknown as ProfileOwnership,
+      goal: undefined as unknown as Goal,
+      // user_type mantém-se no schema (legado) mas nunca é editado nem enviado.
+      // O zodResolver vai aceitar o default seguinte porque tornamos o submit
+      // imune a esse erro (ver handleFinalSubmit que envia sem o campo).
+      user_type: "creator",
+      goal_other_text: "",
+      user_type_other_text: "",
+      gdpr_consent: false as unknown as true,
+      marketing_consent: false,
+    },
+  });
+
+  const { clear: clearDraft } = useOnboardingDraft(form);
+
+  // Reset state quando o modal abre (não quando fecha — assim o `abandon`
+  // ainda pode ler `step`). `formStartedAt` reinicia para garantir ≥2s reais.
+  useEffect(() => {
+    if (!open) return;
+    succeededRef.current = false;
+    formStartedAtRef.current = Date.now();
+    setStep(0);
+    setServerError(null);
+    trackOnboardingEvent({
+      event_type: "onboarding_step_view",
+      step: 0,
+      handle,
+    });
+    // intencional: handle estável por sessão do modal
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const fireStepView = useCallback(
+    (s: Step) => {
+      trackOnboardingEvent({
+        event_type: "onboarding_step_view",
+        step: s,
+        handle,
+      });
+    },
+    [handle],
+  );
+
+  const handleClose = (next: boolean) => {
+    if (submitting) return;
+    if (!next && open && !succeededRef.current) {
+      trackOnboardingEvent({
+        event_type: "onboarding_abandon",
+        step,
+        handle,
+      });
+    }
+    onOpenChange(next);
+  };
+
+  const goNext = async () => {
+    setServerError(null);
+    if (step === 0) {
+      setStep(1);
+      fireStepView(1);
+      return;
+    }
+    let fields: (keyof UnlockFormValues)[] = [];
+    if (step === 1) fields = ["full_name"];
+    if (step === 2) fields = ["profile_ownership", "goal"];
+    if (step === 3) fields = ["email", "phone", "gdpr_consent"];
+    const ok = await form.trigger(fields, { shouldFocus: true });
+    if (!ok) return;
+
+    trackOnboardingEvent({
+      event_type: "onboarding_step_complete",
+      step,
+      handle,
+    });
+
+    if (step === 3) {
+      await handleFinalSubmit();
+      return;
+    }
+    const nextStep = (step + 1) as FormStep;
+    setStep(nextStep);
+    fireStepView(nextStep);
+  };
+
+  const goBack = () => {
+    setServerError(null);
+    if (step === 0) {
+      onOpenChange(false);
+      return;
+    }
+    if (step === 1) {
+      setStep(0);
+      return;
+    }
+    const prev = (step - 1) as FormStep;
+    setStep(prev);
+  };
+
+  const handleFinalSubmit = form.handleSubmit(async (values) => {
+    // Timing guard cliente — espelha o servidor, mas evita request inútil.
+    const elapsed = Date.now() - formStartedAtRef.current;
+    if (elapsed < 2_000) {
+      setServerError(t("onboarding.errors.generic"));
+      return;
+    }
+    setSubmitting(true);
+    setServerError(null);
+    try {
+      const parsed = parseFullName(values.full_name);
+      const honeypot = (form.getValues() as { website?: string }).website ?? "";
+      const res = await fetch("/api/onboarding/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: parsed.full_name || values.full_name,
+          email: values.email,
+          phone: values.phone?.trim() ? values.phone.trim() : undefined,
+          marketing_consent: values.marketing_consent === true,
+          beta_consent: false,
+          // user_type intencionalmente omitido (coluna nullable na BD).
+          purpose: values.goal,
+          profile_ownership: values.profile_ownership,
+          website: honeypot,
+          _t: formStartedAtRef.current,
+        }),
+      });
+      const data = (await res
+        .json()
+        .catch(() => null)) as OnboardingApiResponse | null;
+      if (!res.ok || !data || data.ok !== true) {
+        const msg =
+          (data && "message" in data && data.message) ||
+          t("onboarding.errors.generic");
+        setServerError(msg);
+        return;
+      }
+      succeededRef.current = true;
+      trackOnboardingEvent({
+        event_type: "onboarding_success",
+        step: 3,
+        handle,
+        marketing_consent: values.marketing_consent === true,
+      });
+      clearDraft();
+      onSuccess(handle, { leadId: data.lead_id, credits: data.credits });
+    } catch {
+      setServerError(t("onboarding.errors.network"));
+    } finally {
+      setSubmitting(false);
+    }
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent
+        className="sm:max-w-[760px] max-h-[92vh] overflow-y-auto p-0 gap-0 border-border-default/60"
+        data-testid="onboarding-modal"
+      >
+        {step === 0 ? (
+          <IntroStepBody
+            handle={handle}
+            onContinue={() => {
+              setStep(1);
+              fireStepView(1);
+            }}
+          />
+        ) : (
+          <FormStepBody
+            step={step as FormStep}
+            handle={handle}
+            form={form}
+            serverError={serverError}
+            submitting={submitting}
+            goBack={goBack}
+            goNext={goNext}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function IntroStepBody({
+  handle,
+  onContinue,
+}: {
+  handle: string;
+  onContinue: () => void;
+}) {
+  const { t } = useTranslation("gate");
+  const freeValue = t("onboarding.intro.freeValue", {
+    returnObjects: true,
+  }) as unknown;
+  const items: string[] = Array.isArray(freeValue)
+    ? (freeValue as string[])
+    : [];
+  const operator = useMemo(() => t("unlock.operator.name"), [t]);
+
+  return (
+    <div
+      className="px-7 py-8 sm:px-9 sm:py-9"
+      data-testid="onboarding-intro-step"
+    >
+      <DialogHeader className="text-left space-y-3">
+        <p className="text-eyebrow-sm text-content-tertiary">
+          {t("onboarding.intro.eyebrow")}
+        </p>
+        <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
+          {t("onboarding.intro.title")}
+        </DialogTitle>
+        <DialogDescription className="text-[13px] text-content-secondary leading-relaxed">
+          {t("onboarding.intro.subtitle")}
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="mt-6 space-y-4">
+        <div
+          className="rounded-xl border border-primary/20 bg-primary/[0.04] px-4 py-3.5 space-y-1.5"
+          data-testid="onboarding-handle-context"
+        >
+          <p className="text-[13px] font-medium text-content-primary">
+            <Trans
+              i18nKey="onboarding.intro.handleContext"
+              ns="gate"
+              values={{ handle }}
+              components={{ 1: <span className="text-primary" /> }}
+            >
+              {`Vais analisar @${handle}`}
+            </Trans>
+          </p>
+          <p className="text-[12.5px] text-content-secondary leading-relaxed">
+            <Trans
+              i18nKey="onboarding.intro.creditNote"
+              ns="gate"
+              components={{ strong: <strong className="text-content-primary" /> }}
+            />
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-border-default/60 bg-surface-muted/30 p-4 space-y-3">
+          <p className="text-eyebrow-sm text-content-tertiary flex items-center gap-1.5">
+            <Sparkles className="size-3.5 text-primary" aria-hidden />
+            {t("onboarding.intro.freeValueTitle")}
+          </p>
+          <ul className="space-y-2">
+            {items.map((label, idx) => (
+              <li
+                key={idx}
+                className="flex items-start gap-2.5 text-[13px] text-content-primary"
+              >
+                <Check
+                  className="size-4 text-emerald-600 shrink-0 mt-0.5"
+                  aria-hidden
+                />
+                <span>{label}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="border-t border-dashed border-border-default/50 pt-3">
+            <p className="text-[12px] text-content-tertiary leading-relaxed flex items-start gap-1.5">
+              <Lock className="size-3 mt-0.5 shrink-0" aria-hidden />
+              <span>{t("onboarding.intro.premiumNote")}</span>
+            </p>
+          </div>
+        </div>
+
+        <p className="text-[12px] text-content-tertiary leading-relaxed">
+          {t("onboarding.intro.personalHint")}
+        </p>
+
+        <Button
+          type="button"
+          size="lg"
+          className="w-full rounded-lg font-medium"
+          onClick={onContinue}
+          data-testid="onboarding-intro-cta"
+        >
+          {t("onboarding.intro.cta")}
+        </Button>
+        <p className="text-center text-[11px] text-content-tertiary">
+          {t("onboarding.intro.trustLine", { operator })}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ProgressSegments({ current, total }: { current: number; total: number }) {
+  return (
+    <div className="flex gap-1.5 pt-1" aria-hidden>
+      {Array.from({ length: total }).map((_, i) => {
+        const filled = i < current;
+        return (
+          <span
+            key={i}
+            className={
+              "h-[3px] flex-1 rounded-full transition-colors " +
+              (filled ? "bg-primary" : "bg-border-default/60")
+            }
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function FormStepBody({
+  step,
+  handle,
+  form,
+  serverError,
+  submitting,
+  goBack,
+  goNext,
+}: {
+  step: FormStep;
+  handle: string;
+  form: ReturnType<typeof useForm<UnlockFormValues>>;
+  serverError: string | null;
+  submitting: boolean;
+  goBack: () => void;
+  goNext: () => Promise<void> | void;
+}) {
+  const { t } = useTranslation("gate");
+  const stepKey = String(step) as "1" | "2" | "3";
+  const eyebrow = t(`onboarding.steps.${stepKey}.eyebrow`);
+  const title = t(`onboarding.steps.${stepKey}.title`);
+  const subtitle = t(`onboarding.steps.${stepKey}.subtitle`);
+  const badge =
+    step === 3 ? t("onboarding.steps.3.badge", { defaultValue: "" }) : "";
+
+  return (
+    <div className="px-7 py-8 sm:px-9 sm:py-9">
+      <DialogHeader className="text-left space-y-3">
+        <div className="flex items-center gap-2">
+          <p className="text-eyebrow-sm text-content-tertiary">{eyebrow}</p>
+          {badge ? (
+            <span className="inline-flex items-center rounded-full bg-primary/10 text-primary px-2 py-[1px] text-[10px] font-semibold tracking-wide">
+              {badge}
+            </span>
+          ) : null}
+        </div>
+        <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
+          <Trans i18nKey={`onboarding.steps.${stepKey}.title`} ns="gate" components={{ em: <em className="not-italic text-primary" /> }}>
+            {title}
+          </Trans>
+        </DialogTitle>
+        <DialogDescription className="text-[13px] text-content-secondary leading-relaxed">
+          {subtitle}
+        </DialogDescription>
+        <ProgressSegments current={step} total={TOTAL_STEPS} />
+      </DialogHeader>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void goNext();
+        }}
+        className="space-y-6 mt-6"
+        noValidate
+      >
+        {/* Honeypot — invisível para humanos, atrai bots */}
+        <div className="absolute -left-[9999px] top-auto h-0 w-0 overflow-hidden" aria-hidden>
+          <label htmlFor="onb-website">Website</label>
+          <input
+            id="onb-website"
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+            {...form.register("website" as never)}
+          />
+        </div>
+
+        {step === 1 ? <Step1Name form={form} /> : null}
+        {step === 2 ? <Step2Context form={form} handle={handle} /> : null}
+        {step === 3 ? <Step3EmailGdpr form={form} /> : null}
+
+        {serverError ? (
+          <Alert variant="destructive">
+            <AlertDescription>{serverError}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        <div className="flex gap-3 pt-1 border-t border-border-default/40 -mx-7 sm:-mx-9 px-7 sm:px-9 pt-5 mt-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            onClick={goBack}
+            disabled={submitting}
+            className="flex-shrink-0 rounded-lg"
+          >
+            <ArrowLeft className="size-4" aria-hidden />
+            {t("onboarding.cta.back")}
+          </Button>
+          <Button
+            type="submit"
+            size="lg"
+            className="flex-1 rounded-lg font-medium"
+            disabled={submitting}
+            data-testid={
+              step === 3 ? "onboarding-submit" : "onboarding-continue"
+            }
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+                {t("onboarding.submitting")}
+              </>
+            ) : step === 3 ? (
+              <>
+                <Sparkles className="size-4" aria-hidden />
+                {t("onboarding.cta.final")}
+              </>
+            ) : (
+              t("onboarding.cta.continue")
+            )}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function Step1Name({
+  form,
+}: {
+  form: ReturnType<typeof useForm<UnlockFormValues>>;
+}) {
+  const { t } = useTranslation("gate");
+  const error = form.formState.errors.full_name?.message;
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor="onb-full-name" className="text-sm">
+        {t("onboarding.steps.1.nameLabel")}
+      </Label>
+      <Input
+        id="onb-full-name"
+        type="text"
+        autoFocus
+        autoComplete="name"
+        placeholder={t("onboarding.steps.1.namePlaceholder")}
+        aria-invalid={Boolean(error)}
+        {...form.register("full_name")}
+      />
+      <p className="text-[11px] text-content-tertiary">
+        {t("onboarding.steps.1.nameHint")}
+      </p>
+      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+    </div>
+  );
+}
+
+function ChipGroup<T extends string>({
+  name,
+  options,
+  value,
+  onChange,
+  error,
+}: {
+  name: string;
+  options: { value: T; label: string }[];
+  value: T | undefined;
+  onChange: (v: T) => void;
+  error?: string;
+}) {
+  return (
+    <div>
+      <div
+        role="radiogroup"
+        aria-label={name}
+        className="grid grid-cols-2 gap-2"
+      >
+        {options.map((o) => {
+          const selected = value === o.value;
+          return (
+            <button
+              key={o.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => onChange(o.value)}
+              className={
+                "rounded-lg border px-3 py-2.5 text-left text-[13px] font-medium transition-colors " +
+                (selected
+                  ? "border-primary bg-primary/[0.06] text-content-primary"
+                  : "border-border-default/60 bg-card text-content-secondary hover:border-primary/40 hover:text-content-primary")
+              }
+              data-testid={`chip-${name}-${o.value}`}
+            >
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+      {error ? <p className="text-xs text-destructive mt-1.5">{error}</p> : null}
+    </div>
+  );
+}
+
+function Step2Context({
+  form,
+  handle,
+}: {
+  form: ReturnType<typeof useForm<UnlockFormValues>>;
+  handle: string;
+}) {
+  const { t } = useTranslation("gate");
+  const ownership = form.watch("profile_ownership");
+  const goal = form.watch("goal");
+  const ownershipError = form.formState.errors.profile_ownership?.message;
+  const goalError = form.formState.errors.goal?.message;
+
+  return (
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <p className="text-[13px] font-medium text-content-primary">
+          <Trans
+            i18nKey="onboarding.steps.2.relationshipQuestion"
+            ns="gate"
+            values={{ handle }}
+            components={{ 1: <span className="text-primary" /> }}
+          />
+        </p>
+        <ChipGroup
+          name="profile_ownership"
+          options={RELATIONSHIP_VALUES.map((v) => ({
+            value: v,
+            label: t(`onboarding.compactOptions.profileOwnership.${v}`),
+          }))}
+          value={ownership as ProfileOwnership | undefined}
+          onChange={(v) =>
+            form.setValue("profile_ownership", v as ProfileOwnership, {
+              shouldValidate: true,
+            })
+          }
+          error={ownershipError}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-[13px] font-medium text-content-primary">
+          {t("onboarding.steps.2.goalQuestion")}
+        </p>
+        <ChipGroup
+          name="goal"
+          options={GOAL_VALUES.map((v) => ({
+            value: v,
+            label: t(`onboarding.compactOptions.goal.${v}`),
+          }))}
+          value={goal as Goal | undefined}
+          onChange={(v) =>
+            form.setValue("goal", v as Goal, { shouldValidate: true })
+          }
+          error={goalError}
+        />
+      </div>
+
+      <p className="text-[12px] text-content-tertiary leading-relaxed">
+        {t("onboarding.steps.2.consequenceLine")}
+      </p>
+    </div>
+  );
+}
+
+function Step3EmailGdpr({
+  form,
+}: {
+  form: ReturnType<typeof useForm<UnlockFormValues>>;
+}) {
+  const { t } = useTranslation("gate");
+  const error = form.formState.errors.email?.message;
+  const phoneError = form.formState.errors.phone?.message;
+  const consentError = form.formState.errors.gdpr_consent?.message;
+  const consent = form.watch("gdpr_consent");
+  const marketing = form.watch("marketing_consent");
+  const emailValue = form.watch("email");
+  const emailIsValid = !error && emailValue && /\S+@\S+\.\S+/.test(emailValue);
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1.5">
+        <Label htmlFor="onb-email" className="text-sm">
+          {t("onboarding.steps.3.emailLabel")}
+        </Label>
+        <div className="relative">
+          <Input
+            id="onb-email"
+            type="email"
+            autoFocus
+            autoComplete="email"
+            placeholder={t("onboarding.steps.3.emailPlaceholder")}
+            aria-invalid={Boolean(error)}
+            className="pr-9"
+            {...form.register("email")}
+          />
+          {emailIsValid ? (
+            <Check
+              className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-emerald-600"
+              aria-hidden
+            />
+          ) : null}
+        </div>
+        {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="onb-phone" className="text-sm">
+          {t("onboarding.steps.3.phoneLabel")}{" "}
+          <span className="text-content-tertiary text-[12px] font-normal">
+            — {t("onboarding.steps.3.phoneOptional")}
+          </span>
+        </Label>
+        <Input
+          id="onb-phone"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          placeholder={t("onboarding.steps.3.phonePlaceholder")}
+          aria-invalid={Boolean(phoneError)}
+          {...form.register("phone")}
+        />
+        <p className="text-[11px] text-content-tertiary">
+          {t("onboarding.steps.3.phoneHint")}
+        </p>
+        {phoneError ? (
+          <p className="text-xs text-destructive">{phoneError}</p>
+        ) : null}
+      </div>
+
+      <div className="rounded-xl border border-border-default/40 bg-surface-muted/40 p-4 space-y-3">
+        <label
+          htmlFor="onb-gdpr"
+          className="flex items-start gap-2.5 cursor-pointer"
+        >
+          <Checkbox
+            id="onb-gdpr"
+            checked={consent === true}
+            onCheckedChange={(v) =>
+              form.setValue(
+                "gdpr_consent",
+                v === true ? true : (false as unknown as true),
+                { shouldValidate: true },
+              )
+            }
+            aria-invalid={Boolean(consentError)}
+            className="mt-0.5"
+          />
+          <span className="text-[12.5px] text-content-secondary leading-relaxed flex-1">
+            <Trans
+              i18nKey="onboarding.steps.3.consentText"
+              ns="gate"
+              components={{
+                a: (
+                  <a
+                    href="/aviso-legal"
+                    target="_blank"
+                    rel="noopener"
+                    className="underline text-primary hover:text-primary/80"
+                  />
+                ),
+                a2: (
+                  <a
+                    href="/privacidade"
+                    target="_blank"
+                    rel="noopener"
+                    className="underline text-primary hover:text-primary/80"
+                  />
+                ),
+              }}
+            />{" "}
+            <span className="text-content-tertiary">
+              {t("onboarding.steps.3.consentMandatory")}
+            </span>
+          </span>
+        </label>
+
+        <div className="border-t border-dashed border-border-default/50" />
+
+        <label
+          htmlFor="onb-marketing"
+          className="flex items-start gap-2.5 cursor-pointer"
+        >
+          <Checkbox
+            id="onb-marketing"
+            checked={marketing === true}
+            onCheckedChange={(v) =>
+              form.setValue("marketing_consent", v === true, {
+                shouldValidate: false,
+              })
+            }
+            className="mt-0.5"
+          />
+          <span className="text-[12.5px] text-content-secondary leading-relaxed flex-1">
+            {t("onboarding.steps.3.marketingText")}{" "}
+            <span className="text-content-tertiary">
+              {t("onboarding.steps.3.marketingOptional")}
+            </span>
+          </span>
+        </label>
+      </div>
+
+      {consentError ? (
+        <p className="text-xs text-destructive">{consentError}</p>
+      ) : null}
+    </div>
+  );
+}
