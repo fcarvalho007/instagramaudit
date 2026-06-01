@@ -91,6 +91,10 @@ import {
   type ReserveResult,
 } from "@/lib/credits/credits.server";
 import { readLeadIdFromRequest } from "@/lib/leads/lead-cookie.server";
+import {
+  leadOwnsReport,
+  upsertLeadReport,
+} from "@/lib/credits/lead-reports.server";
 import { getAnalysisExecutionMode } from "@/lib/admin/execution-mode.server";
 import {
   ALL_ENRICHMENT_TYPES,
