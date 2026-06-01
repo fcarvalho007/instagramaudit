@@ -591,6 +591,7 @@ export function enrichPosts(
       comments,
       video_views: pickVideoViews(raw),
       thumbnail_url: pickThumbnail(raw),
+      thumbnail_storage_url: null,
       is_video: isVideo,
       engagement_pct: engagementPct,
       video_duration: pickNumber(raw.videoDuration, raw.video_duration),
