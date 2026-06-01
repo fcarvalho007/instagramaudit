@@ -1,89 +1,76 @@
-## Âmbito
 
-Refinar Bloco 1 (Visão geral) — `frequency-card.tsx` + `report-overview-engagement.tsx`. Sem alterar lógica de dados, scores ou copy fora dos títulos/status.
+## Parte 1 — Auditoria: como é gerado o card "Índice do perfil"
 
----
+O card é o **EditorialIdentityCard** (`src/components/report-redesign/v2/overview/editorial-identity-card.tsx`) e tem **três camadas de conteúdo**, cada uma com origem diferente:
 
-## 1. KPI strip no card "Frequência de publicação"
+### A. Score "31 / 100" e a régua
+**100% determinístico, sem IA.** Calculado em `computeOverall` → `computeGlobalScore` (`score-utils.ts`) com pesos fixos:
+- Envolvimento 45% · Ritmo 25% · Conversa 30%
 
-A informação proposta na imagem já existe no relatório, mas espalhada:
+Inputs vêm dos `scores` derivados do snapshot Apify (likes, comentários, posts, frequência semanal). A régua mostra a posição vs. mediana do escalão (tier Nano/Micro/Mid/Macro), também determinística a partir do benchmark da Knowledge Base.
 
-| KPI proposto       | Valor                 | Fonte (já calculada)                                      |
-| ------------------ | --------------------- | --------------------------------------------------------- |
-| Cadência           | `3,0 posts/sem`       | `postingFrequencyWeekly` (prop existente)                 |
-| Consistência       | `41,4% dias activos`  | `publishedCount / windowedDays.length` (já no rodapé)     |
-| Pico semanal       | `Terça`               | `pickMostActive(buckets).weekday` (já no WeeklySummary)   |
+### B. Título ("Cadência forte, sinal fraco") + parágrafo
+**Gerado pela OpenAI** (com fallback determinístico).
 
-**Decisão de design:** consolidar num `KpiStrip` (3 colunas) imediatamente abaixo do header (acima do `WeeklySummary`), reaproveitando o padrão visual do `MetricsStrip` do `editorial-identity-card`:
+Pipeline:
+1. **Snapshot Apify** → `build-context.ts` constrói o `InsightsContext` (perfil, content_summary, cadence, top_posts, benchmark, market_signals, editorial_patterns, top_hashtags, caption_intelligence, visual_cover).
+2. **Prompt** em `src/lib/insights/prompt-v2.ts` → `SYSTEM_PROMPT_BASE` (linhas 34–134). A secção que produz este card é **`editorial_verdict`** (linhas 100–134).
+3. **Chamada OpenAI** em `src/lib/insights/openai-insights.server.ts`. Modelo default: **`gpt-5.4-mini`** (`cost.ts:13`, `DEFAULT_OPENAI_MODEL`). URL `https://api.openai.com/v1/chat/completions`. Protegido por kill-switch `isOpenAiEnabled()` + allowlist `isOpenAiAllowed(handle)`.
+4. **Validação** em `src/lib/insights/validate-v2.ts`. Rejeita o output se:
+   - parágrafo fora de 90–140 palavras ou >4 frases
+   - contém `N%` ou `N,N%`
+   - menciona métricas privadas (alcance, reach, saves…)
+   - usa verbos prescritivos ("publicar", "testar", "aumente"…)
+   - não cita hashtag ou frase de ausência de hashtags
+   - menciona capas/visual sem `visual_cover.*` em evidence
+5. **Resolução IA vs determinístico** em `src/lib/report/editorial-verdict.ts` → `deriveEditorialVerdict`. Se IA falhar/contradizer (ex.: afirma "ritmo forte" quando `cadence.reliability === "low"`, ou cita concorrentes inexistentes), o paragraph é substituído pelo `buildFallbackVerdict` (`editorial-verdict-fallback.ts`), que lê templates de `i18n/locales/pt/report.json` → `identity.fallback.<key>.paragraph`.
 
-- Card branco, border `border-default`, `divide-x` entre colunas, sem ícones (já há ícones no WeeklySummary mais abaixo).
-- Eyebrow Inter uppercase (`text-eyebrow-sm`) → valor em Inter SemiBold tabular-nums (`text-[1.5rem]` desktop / `text-[1.25rem]` mobile) → micro-label Inter `text-xs` content-tertiary.
-- "Pico semanal" usa cor `text-accent-primary` (#0077B6 Ocean) — único acento, alinhado com a nova paleta Ocean Breeze; sem cyan neon.
-- Esconder o KPI strip quando `isInsufficient === true` (já há fallback de copy neutro).
-- Como passa a haver KPI "Consistência (X% dias activos)" no topo, **remover** o `frequency.calendar.ratio` ("12/29") da legenda do calendário para evitar duplicação — fica só a legenda das cores.
+### Regras-chave do prompt (resumo, linhas 100–134 do `prompt-v2.ts`)
+- `verdict_label`: strong | promising | needs_work | limited_data
+- `title`: 4–8 palavras, sem dígitos, sem ponto final
+- `paragraph`: 90–140 palavras, 4 frases máx., **DIAGNÓSTICO não solução**
+- Deve cobrir nesta ordem: actividade → cadência (com `cadence_label_pt` verbatim) → envolvimento (sem imprimir %) → likes vs comentários → hashtags (estado `recurring`/`weak`/`absent`)
+- `evidence_used`: allowlist fechada (`EDITORIAL_VERDICT_EVIDENCE_ALLOWLIST` em `types.ts:395`)
 
-**Cálculos (todos com dados já disponíveis no componente):**
+### C. "Sinais usados", "Pontos fortes", "Limitações", "Warnings"
+Vêm do mesmo JSON da IA (`strengths`, `limitations`, `evidence_used`, `warnings`). `warnings` é preenchido pelo backend, não pela IA.
 
-```text
-cadenciaSemanal     = postingFrequencyWeekly                  // formatDecimal(_, locale, 1)
-consistenciaPct     = publishedCount / windowedDays.length    // 0–100, 1 casa
-picoSemanalLabel    = weekdayLong[pickMostActive(buckets).weekday]
-picoSemanalSubtitle = `${top.posts} posts` ou "—" se top.posts === 0
-```
-
-Ordem visual no card: Header → **KPI strip (novo)** → WeeklySummary → Calendar → Verdict.
-
----
-
-## 2. Uniformizar títulos do Bloco 1
-
-Padrão escolhido: **status inline a seguir ao título, palavra sublinhada com underline colorido** (igual ao que já está em `Frequência de publicação Alta` e `Formato Pouco variado`).
-
-Mudança no `report-overview-engagement.tsx`:
-
-- Remover o pill arredondado uppercase (`BAIXA`/`MÉDIA`/`ALTA`).
-- Render: `Taxa de Engagement <span>Baixa</span>` com sublinhado colorido (verde/âmbar/vermelho) — mesma técnica de `frequency-card`.
-- Manter eyebrow "ENGAGEMENT" por cima (consistente com o padrão dos outros dois cards).
-- Garantir que o status em pt-PT está em **Title Case** (`Baixa`, `Média`, `Alta`), não uppercase — já existem chaves `engagement.status.*` em pt/report.json; verificar e ajustar se vierem em maiúsculas.
-
-Resultado: os três cards do Bloco 1 partilham o mesmo padrão de header (`Título + <status sublinhado>` + subtitle), sem pills nem caps-lock.
+### Custo
+`gpt-5.4-mini` a $0,25/M tokens input · $2,0/M output (registado em `provider_call_logs`).
 
 ---
 
-## Ficheiros a tocar
+## Parte 2 — Fix do texto desalinhado no card
 
-1. `src/components/report-redesign/v2/overview/frequency-card.tsx`
-   - Novo subcomponente `FrequencyKpiStrip` (cadência / consistência / pico).
-   - Render entre header e `WeeklySummary`, gated em `!isInsufficient`.
-   - Remover `frequency.calendar.ratio` da legenda do calendário.
-2. `src/components/report-redesign/v2/report-overview-engagement.tsx`
-   - Substituir o `<span>` pill por um `<span>` sublinhado inline dentro do `<h3>`.
-   - Eliminar `pillClass` (deixa de ser usado).
-3. `src/i18n/locales/pt/report.json` + `src/i18n/locales/en/report.json`
-   - Novas chaves: `frequency.kpi.cadence_label`, `frequency.kpi.cadence_unit`, `frequency.kpi.consistency_label`, `frequency.kpi.consistency_caption`, `frequency.kpi.peak_label`, `frequency.kpi.peak_caption_posts_{one,other}`, `frequency.kpi.peak_caption_none`.
-   - Confirmar `engagement.status.low/medium/high` em Title Case (`Baixa`/`Média`/`Alta`).
+**Causa:** em `editorial-identity-card.tsx:428`, o `<p>` do parágrafo tem `max-w-3xl` (≈768px) enquanto o card ocupa ≈1040px no desktop. O título (`h2`) também tem `max-w-3xl`. Isso cria a zona vazia à direita visível na captura.
 
-## Fora de âmbito
+**Mesma situação** afecta:
+- `h2` do título (linha 424)
+- container "Sinais usados nesta leitura" (linha 433)
+- `p` de warnings (linha 459)
 
-- Bloco 2+ (diagnóstico, top posts, capas, comentários).
-- Sidebar, hero, ruler, lead-magnet.
-- `/report.example`, dark mode, admin.
-- Alterar lógica de cálculo de cadence/consistency (usar valores já calculados).
+### Mudança proposta (mínima, escopo: este card apenas)
 
-## Validação
+1. **Remover `max-w-3xl`** das 4 ocorrências (linhas 424, 428, 433, 459) → o texto passa a usar toda a largura do container interior (`px-6/sm:px-7` já dá respiração horizontal natural).
+2. **Adicionar `text-pretty`** ao `h2` e `<p>` para melhor quebra de linhas (evita órfãs).
+3. **Manter** `whitespace-pre-line` no parágrafo (preserva quebras `\n` da IA).
+4. **Não tocar** em prompt, validador, fallback, lógica de score ou régua.
 
-- `bunx tsc --noEmit`.
-- Preview `/analyze/frederico.m.carvalho` a 1460×905 e 411×742.
-- Verificar:
-  - [ ] KPI strip aparece com 3 colunas, valores Inter tabular-nums, "Terça" em Ocean.
-  - [ ] Calendário deixa de mostrar "12/29" na legenda.
-  - [ ] Engagement card tem "Taxa de Engagement Baixa" inline (sem pill).
-  - [ ] Três cards do Bloco 1 partilham padrão de header.
-  - [ ] Mobile: KPI strip stack-a em 1 coluna; sem overflow.
+### Ficheiros tocados
+- `src/components/report-redesign/v2/overview/editorial-identity-card.tsx` (4 linhas)
 
-## Checkpoint
-☐ KPI strip implementado e gated em isInsufficient
-☐ Legenda do calendário sem "X/Y"
-☐ Engagement card sem pill, com status sublinhado inline
-☐ i18n pt + en atualizado
-☐ tsc verde + preview QA desktop e mobile
+### Validação
+- `bunx tsc --noEmit`
+- Preview em 1460×905 (desktop) e 411×742 (mobile) para confirmar que o parágrafo enche o card no desktop e que mobile não fica afectado.
+
+### Fora de escopo
+- Bloco 2+, sidebar, hero, lead-magnet, `/report.example`, prompts da IA, validador, fallback, modelo, custo, knowledge base.
+
+---
+
+## ☐ Checkpoint
+- [ ] Remover `max-w-3xl` das 4 ocorrências no `editorial-identity-card.tsx`
+- [ ] Adicionar `text-pretty` ao `h2` e `<p>`
+- [ ] `bunx tsc --noEmit` passa
+- [ ] Screenshot desktop confirma texto a usar largura completa
+- [ ] Screenshot mobile confirma que nada partiu

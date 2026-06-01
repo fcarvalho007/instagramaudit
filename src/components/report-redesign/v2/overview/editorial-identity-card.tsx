@@ -421,16 +421,16 @@ export function EditorialIdentityCard({
         />
 
         <div className="min-w-0 space-y-3.5 border-t border-border-default pt-6">
-          <h2 className="font-display text-[1.25rem] md:text-[1.5rem] font-semibold leading-snug tracking-tight text-content-primary max-w-3xl">
+          <h2 className="font-display text-[1.25rem] md:text-[1.5rem] font-semibold leading-snug tracking-tight text-content-primary text-pretty">
             {copy.title}
           </h2>
 
-          <p className="text-[17px] leading-[1.65] text-content-primary max-w-3xl whitespace-pre-line">
+          <p className="text-[17px] leading-[1.65] text-content-primary whitespace-pre-line text-pretty">
             {copy.paragraph}
           </p>
 
           {resolution.source !== "fallback" && resolved.evidence_used.length >= 2 ? (
-            <div className="pt-1 max-w-3xl">
+            <div className="pt-1">
               <p className="text-eyebrow-sm text-content-tertiary mb-1.5">
                 {t("identity.evidence_title", {
                   defaultValue: "Sinais usados nesta leitura",
@@ -456,7 +456,7 @@ export function EditorialIdentityCard({
           ) : null}
 
           {resolved.warnings && resolved.warnings.length > 0 ? (
-            <p className="text-[15px] leading-[1.55] text-content-tertiary pt-1">
+            <p className="text-[15px] leading-[1.55] text-content-tertiary pt-1 text-pretty">
               {resolved.warnings
                 .map((w) =>
                   t(`identity.warnings.${w}`, {
