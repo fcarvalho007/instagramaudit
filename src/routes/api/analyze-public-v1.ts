@@ -1253,6 +1253,8 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             benchmark_positioning: benchmarkPositioning,
             freshness: deriveFreshnessJustNow(),
           };
+          creditOutcome = "confirm";
+          snapshotForConfirm = snapshotId ?? null;
           return jsonResponse(response, 200);
         } catch (err) {
           // 5) Stale-while-error: if provider failed but we have a recent
@@ -1279,6 +1281,8 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               displayName: stalePayload.profile?.display_name ?? null,
               followersLastSeen: stalePayload.profile?.followers_count ?? null,
             });
+            creditOutcome = "confirm";
+            snapshotForConfirm = existing.id;
             return jsonResponse(
               buildCachedResponse(existing, "stale", benchmarkData),
               200,
