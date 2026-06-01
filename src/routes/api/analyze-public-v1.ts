@@ -530,7 +530,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           const r = reservation;
           reservation = null;
           try {
-            if (creditOutcome === "confirm") {
+            if ((creditOutcome as CreditOutcome) === "confirm") {
               await confirmReservation({
                 leadId,
                 reservationId: r.reservationId,
