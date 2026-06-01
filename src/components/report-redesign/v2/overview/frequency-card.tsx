@@ -2,9 +2,10 @@
  * Zone D — Card 1: Frequência de publicação.
  * Human-readable headline → stats → posting calendar → verdict.
  */
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
+import { useState } from "react";
 import { computeFrequencia } from "./score-utils";
 import { InsightCallout } from "./insight-callout";
 import type { SocialinsiderInstagramContext } from "@/lib/knowledge/socialinsider-context";
@@ -196,43 +197,7 @@ function WeeklySummary({ days, t }: { days: DayEntry[]; t: TFunction }) {
           {t("frequency.weekly_summary.title")}
         </span>
 
-        <div
-          className={`grid gap-3 ${quiet ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}
-        >
-          {/* Mais ativo */}
-          <div className="flex items-start gap-2.5">
-            <span
-              aria-hidden
-              className="flex size-7 shrink-0 items-center justify-center rounded-full"
-              style={{ background: "rgba(29,158,117,0.15)" }}
-            >
-              <ArrowUp
-                className="size-3.5"
-                style={{ color: "rgb(29,158,117)" }}
-              />
-            </span>
-            <div className="min-w-0">
-              <p className="text-xs uppercase tracking-[0.04em] text-content-tertiary leading-none mb-1">
-                {t("frequency.weekly_summary.most_active")}
-              </p>
-              <p className="text-[15px] text-content-primary leading-relaxed">
-                <span className="font-semibold">
-                  {weekdayLong[top.weekday]}
-                </span>{" "}
-                <span className="text-content-secondary tabular-nums">
-                  · {t(
-                    top.posts === 1
-                      ? "frequency.weekly_summary.posts_one"
-                      : "frequency.weekly_summary.posts_other",
-                    { count: top.posts },
-                  )}
-                </span>
-              </p>
-            </div>
-          </div>
-
-          {/* Mais parado — only when sample qualifies */}
-          {quiet && (
+        {quiet ? (
           <div className="flex items-start gap-2.5">
             <span
               aria-hidden
@@ -245,8 +210,8 @@ function WeeklySummary({ days, t }: { days: DayEntry[]; t: TFunction }) {
               />
             </span>
             <div className="min-w-0">
-              <p className="text-xs uppercase tracking-[0.04em] text-content-tertiary leading-none mb-1">
-                {t("frequency.weekly_summary.quietest")}
+              <p className="text-eyebrow-sm text-content-tertiary leading-none mb-1">
+                {t("frequency.weekly_summary.quietest_label")}
               </p>
               <p className="text-[15px] text-content-primary leading-relaxed">
                 <span className="font-semibold">{quiet.label}</span>{" "}
@@ -256,8 +221,11 @@ function WeeklySummary({ days, t }: { days: DayEntry[]; t: TFunction }) {
               </p>
             </div>
           </div>
-          )}
-        </div>
+        ) : (
+          <p className="text-[15px] text-content-secondary leading-relaxed">
+            {t("frequency.weekly_summary.no_silent")}
+          </p>
+        )}
 
         {/* Mini bars S T Q Q S S D */}
         <div className="mt-4">
