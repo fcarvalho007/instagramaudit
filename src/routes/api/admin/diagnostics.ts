@@ -24,6 +24,10 @@ import {
 } from "@/lib/security/apify-allowlist";
 import { getCostRates } from "@/lib/analysis/cost";
 import { getAlertThresholds } from "@/lib/admin/alerts";
+import {
+  getApifyDailyCapUsd,
+  getApifyHardCapUsd,
+} from "@/lib/security/apify-budget.server";
 
 interface SnapshotsBlock {
   total: number | null;
