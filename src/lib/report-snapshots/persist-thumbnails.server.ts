@@ -17,6 +17,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 const BUCKET = "post-thumbnails";
 const CONCURRENCY = 4;
 const FETCH_TIMEOUT_MS = 8000;
+const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 const IG_HOSTS = [".cdninstagram.com", ".fbcdn.net"];
 
 const UA =
@@ -44,15 +45,27 @@ function extFromContentType(ct: string): string {
   return "jpg";
 }
 
+export type PersistFailureReason =
+  | "ok"
+  | "failed_403"
+  | "failed_timeout"
+  | "failed_invalid_content_type"
+  | "failed_upload"
+  | "failed_other";
+
+export interface PersistOneResult {
+  publicUrl: string | null;
+  reason: PersistFailureReason;
+}
+
 /**
  * Faz fetch da imagem no CDN do Instagram com cabeçalhos credíveis e faz
- * upload para o bucket. Devolve o URL público estável ou `null` em caso
- * de falha.
+ * upload para o bucket. Devolve `{ publicUrl, reason }`. Nunca lança.
  */
-async function persistOne(
+export async function persistOne(
   rawUrl: string,
   storagePath: string,
-): Promise<string | null> {
+): Promise<PersistOneResult> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
@@ -68,19 +81,19 @@ async function persistOne(
       signal: controller.signal,
     });
     if (!res.ok) {
-      console.warn(
-        `[persist-thumbnails] upstream ${res.status} for ${storagePath}`,
-      );
-      return null;
+      return {
+        publicUrl: null,
+        reason: res.status === 403 ? "failed_403" : "failed_other",
+      };
     }
     const contentType = res.headers.get("content-type") ?? "image/jpeg";
     if (!contentType.startsWith("image/")) {
-      console.warn(
-        `[persist-thumbnails] non-image content-type ${contentType} for ${storagePath}`,
-      );
-      return null;
+      return { publicUrl: null, reason: "failed_invalid_content_type" };
     }
     const buf = await res.arrayBuffer();
+    if (buf.byteLength > MAX_BYTES) {
+      return { publicUrl: null, reason: "failed_invalid_content_type" };
+    }
     const ext = extFromContentType(contentType);
     const finalPath = `${storagePath}.${ext}`;
     const { error: upErr } = await supabaseAdmin.storage
@@ -91,19 +104,20 @@ async function persistOne(
         cacheControl: "31536000",
       });
     if (upErr) {
-      console.warn(
-        `[persist-thumbnails] upload error for ${finalPath}: ${upErr.message}`,
-      );
-      return null;
+      return { publicUrl: null, reason: "failed_upload" };
     }
     const { data } = supabaseAdmin.storage
       .from(BUCKET)
       .getPublicUrl(finalPath);
-    return data.publicUrl ?? null;
+    return data.publicUrl
+      ? { publicUrl: data.publicUrl, reason: "ok" }
+      : { publicUrl: null, reason: "failed_upload" };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`[persist-thumbnails] fetch failed for ${storagePath}: ${msg}`);
-    return null;
+    const name = err instanceof Error ? err.name : "";
+    return {
+      publicUrl: null,
+      reason: name === "AbortError" ? "failed_timeout" : "failed_other",
+    };
   } finally {
     clearTimeout(timer);
   }
@@ -131,19 +145,69 @@ async function mapWithConcurrency<T, R>(
   return results;
 }
 
+export interface PersistSummary {
+  attempted: number;
+  stored: number;
+  failed_403: number;
+  failed_timeout: number;
+  failed_invalid_content_type: number;
+  failed_upload: number;
+  failed_other: number;
+  avatar: "ok" | "fail" | "none";
+}
+
+function emptySummary(): PersistSummary {
+  return {
+    attempted: 0,
+    stored: 0,
+    failed_403: 0,
+    failed_timeout: 0,
+    failed_invalid_content_type: 0,
+    failed_upload: 0,
+    failed_other: 0,
+    avatar: "none",
+  };
+}
+
+function bump(summary: PersistSummary, reason: PersistFailureReason) {
+  if (reason === "ok") {
+    summary.stored += 1;
+    return;
+  }
+  // TS-safe increment without index signature.
+  switch (reason) {
+    case "failed_403":
+      summary.failed_403 += 1;
+      break;
+    case "failed_timeout":
+      summary.failed_timeout += 1;
+      break;
+    case "failed_invalid_content_type":
+      summary.failed_invalid_content_type += 1;
+      break;
+    case "failed_upload":
+      summary.failed_upload += 1;
+      break;
+    case "failed_other":
+      summary.failed_other += 1;
+      break;
+  }
+}
+
 /**
- * Reescreve in-place o `normalized_payload`:
- *  - `posts[*].thumbnail_url` (se for URL do CDN do IG) → URL do bucket.
- *  - `profile.avatar_url` (se for URL do CDN do IG) → URL do bucket.
+ * Aditivo, não destrutivo: escreve em `posts[*].thumbnail_storage_url` e
+ * `profile.avatar_storage_url` quando o upload é bem-sucedido. O URL original
+ * do CDN (`thumbnail_url`/`avatar_url`) NUNCA é alterado — o browser ainda
+ * consegue carregá-lo mesmo quando o fetch server-to-server é 403.
  *
- * Mantém URLs já persistidas ou de outros domínios intactas.
- * Devolve um resumo para logs.
+ * Devolve contadores estruturados para logging.
  */
 export async function persistThumbnailsInPayload(
   cacheKey: string,
   payload: Record<string, unknown>,
-): Promise<{ posts_total: number; posts_success: number; avatar_success: boolean | null }> {
+): Promise<PersistSummary> {
   const folder = safeKeySegment(cacheKey);
+  const summary = emptySummary();
 
   // Posts
   const postsRaw = (payload as { posts?: unknown }).posts;
@@ -152,8 +216,9 @@ export async function persistThumbnailsInPayload(
   const targets = posts
     .map((p, idx) => ({ post: p, idx }))
     .filter(({ post }) => isIgCdnUrl(post.thumbnail_url));
+  summary.attempted = targets.length;
 
-  const postResults = await mapWithConcurrency(
+  await mapWithConcurrency(
     targets,
     async ({ post, idx }) => {
       const shortcodeRaw =
@@ -163,35 +228,23 @@ export async function persistThumbnailsInPayload(
             ? post.id
             : `idx-${idx}`;
       const path = `${folder}/${safeKeySegment(shortcodeRaw)}`;
-      const publicUrl = await persistOne(post.thumbnail_url as string, path);
-      if (publicUrl) {
-        post.thumbnail_url = publicUrl;
-      } else {
-        post.thumbnail_url = null;
-      }
-      return Boolean(publicUrl);
+      const result = await persistOne(post.thumbnail_url as string, path);
+      bump(summary, result.reason);
+      // Aditivo: nunca tocamos em `thumbnail_url`.
+      post.thumbnail_storage_url = result.publicUrl;
+      return result.publicUrl;
     },
     CONCURRENCY,
   );
 
   // Avatar
   const profile = (payload as { profile?: Record<string, unknown> }).profile;
-  let avatarSuccess: boolean | null = null;
   if (profile && isIgCdnUrl(profile.avatar_url)) {
     const path = `${folder}/avatar`;
-    const publicUrl = await persistOne(profile.avatar_url as string, path);
-    if (publicUrl) {
-      profile.avatar_url = publicUrl;
-      avatarSuccess = true;
-    } else {
-      profile.avatar_url = null;
-      avatarSuccess = false;
-    }
+    const result = await persistOne(profile.avatar_url as string, path);
+    profile.avatar_storage_url = result.publicUrl;
+    summary.avatar = result.publicUrl ? "ok" : "fail";
   }
 
-  return {
-    posts_total: targets.length,
-    posts_success: postResults.filter(Boolean).length,
-    avatar_success: avatarSuccess,
-  };
+  return summary;
 }
