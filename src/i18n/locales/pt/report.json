@@ -790,6 +790,7 @@
     },
     "diff": "diferença",
     "no_caption": "Sem legenda",
+    "thumb_alt": "Miniatura da publicação {{format}} de {{date}}",
     "format_chip": {
       "carousel": "CARROSSEL",
       "reel": "REEL",

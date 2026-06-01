@@ -854,10 +854,6 @@ function DetailedPostCard({
 }) {
   const [imgError, setImgError] = useState(false);
   const arrowCls = tone === "best" ? "text-accent-primary" : "text-signal-warning";
-  const gradientCls =
-    tone === "best"
-      ? "bg-gradient-to-br from-accent-primary/10 to-accent-primary/5"
-      : "bg-gradient-to-br from-signal-warning/10 to-signal-warning/5";
   const ArrowIcon = tone === "best" ? ArrowUpRight : ArrowDownRight;
   const labelKey = tone === "best" ? "posts.hero.best_label" : "posts.hero.worst_label";
 
@@ -872,84 +868,125 @@ function DetailedPostCard({
     value: deltaAbs,
   });
 
+  const toneSoftBg = tone === "best" ? "bg-accent-primary/[0.08]" : "bg-signal-warning/[0.08]";
+  const toneGradient =
+    tone === "best"
+      ? "bg-gradient-to-r from-accent-primary/40 via-accent-primary/15 to-transparent"
+      : "bg-gradient-to-r from-signal-warning/40 via-signal-warning/15 to-transparent";
+  const formatLabel = formatChipLabel(post.format, t);
+  const engagementPctFmt = formatNumber(post.engagementPct, language, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
   return (
     <div
       className={cn(
-        "flex flex-col rounded-xl bg-white border border-border-default",
-        "border-t-2",
-        tone === "best" ? "border-t-accent-primary" : "border-t-signal-warning",
+        "group flex flex-col rounded-xl bg-white border border-border-default",
         "shadow-[0_1px_4px_-2px_rgba(0,0,0,0.05)] overflow-hidden",
+        "transition-shadow hover:shadow-md",
       )}
     >
+      {/* Tonal gradient strip — substitutes the flat colored top border */}
+      <div className={cn("h-1 w-full", toneGradient)} aria-hidden="true" />
+
       {/* Header strip */}
-      <div className="flex items-center justify-between px-3 pt-2.5 pb-2">
-        <div className="flex items-center gap-1.5">
+      <div className="flex items-center justify-between gap-2 px-3 pt-3 pb-2.5">
+        <span
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5",
+            toneSoftBg,
+          )}
+        >
           <ArrowIcon className={cn("size-3", arrowCls)} aria-hidden="true" />
           <span className={cn("text-eyebrow-sm", arrowCls)}>{t(labelKey)}</span>
-        </div>
-        <span className="text-xs text-content-tertiary">{post.date}</span>
+        </span>
+        <span className="text-xs text-content-tertiary tabular-nums">{post.date}</span>
       </div>
 
       {/* Body */}
-      <div className="flex gap-3 px-3 pb-3">
+      <div className="flex gap-3.5 px-3 pb-3">
         {/* Thumb / gradient fallback */}
         <div
           className={cn(
-            "relative shrink-0 w-[88px] aspect-square rounded-lg overflow-hidden",
-            "border border-border-subtle",
-            gradientCls,
+            "relative shrink-0 w-[120px] sm:w-[132px] aspect-[4/5] rounded-lg overflow-hidden",
+            "border border-border-subtle bg-surface-muted",
           )}
         >
           {/* Base fallback — always rendered behind the image so a slow
               network or a transparent thumbnail still shows the icon. */}
-          <div className="absolute inset-0 flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center justify-center text-content-tertiary">
             <FormatIcon
               format={post.format}
-              className={cn("size-9", arrowCls)}
+              className="size-10 opacity-60"
             />
           </div>
-          {/* Real thumbnail — sits on top when available. The Instagram CDN
-              proxy (/api/public/ig-thumb) can return 404 if the URL
-              expired; in that case we hide the <img> and the fallback
-              above shows through. */}
+          {/* Real thumbnail — sits on top when available. IG CDN URLs can
+              expire or 403 — onError hides the <img> and the fallback icon
+              above shows through. referrerPolicy=no-referrer reduces 403s
+              from CDNs that reject requests carrying a referer header. */}
           {showImg && (
             <img
               src={thumbUrl}
-              alt=""
+              alt={t("posts.thumb_alt", { format: formatLabel.toLowerCase(), date: post.date })}
               loading="lazy"
+              referrerPolicy="no-referrer"
               onError={() => setImgError(true)}
-              className="absolute inset-0 size-full object-cover"
+              className="absolute inset-0 size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
             />
           )}
-          <span className="absolute top-1 left-1 z-10 text-[7px] font-bold uppercase tracking-[0.04em] px-1.5 py-[2px] rounded bg-white/85 backdrop-blur-sm text-content-primary leading-none shadow-sm">
-            {formatChipLabel(post.format, t)}
+          {/* Format chip — navy translucent capsule, top-left */}
+          <span
+            className={cn(
+              "absolute top-1.5 left-1.5 z-10 inline-flex items-center gap-1",
+              "rounded-full px-1.5 py-[3px]",
+              "bg-content-primary/85 text-white backdrop-blur-sm",
+              "text-[9px] font-semibold uppercase tracking-[0.06em] leading-none",
+              "shadow-sm",
+            )}
+          >
+            <FormatIcon format={post.format} className="size-2.5" />
+            {formatLabel}
           </span>
         </div>
 
         {/* Right: metric + caption */}
-        <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-          {deltaRounded !== 0 && (
-            <span
-              className={cn(
-                "inline-flex items-center self-start text-[12px] font-semibold tabular-nums px-2 py-0.5 rounded-full",
-                tone === "best"
-                  ? "bg-accent-primary/10 text-accent-primary"
-                  : "bg-signal-warning/10 text-signal-warning",
-              )}
-            >
-              {deltaLabel}
+        <div className="flex-1 min-w-0 flex flex-col gap-2">
+          {/* Primary metric — engagement rate of this very post */}
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className="tabular-nums text-lg font-semibold text-content-primary leading-none">
+              {engagementPctFmt}
+              <span className="text-content-tertiary text-sm font-medium ml-0.5">%</span>
             </span>
+            {deltaRounded !== 0 && (
+              <span
+                className={cn(
+                  "inline-flex items-center text-[11px] font-semibold tabular-nums px-1.5 py-0.5 rounded-full",
+                  tone === "best"
+                    ? "bg-accent-primary/10 text-accent-primary"
+                    : "bg-signal-warning/10 text-signal-warning",
+                )}
+              >
+                {deltaLabel}
+              </span>
+            )}
+          </div>
+          {post.caption ? (
+            <p className="text-[13px] text-content-primary leading-[1.45] line-clamp-3">
+              {post.caption}
+            </p>
+          ) : (
+            <p className="text-[13px] italic text-content-tertiary leading-[1.45]">
+              {t("posts.no_caption")}
+            </p>
           )}
-          <p className="text-[12px] text-content-primary leading-snug line-clamp-3">
-            {post.caption || t("posts.no_caption")}
-          </p>
-          <div className="flex items-center gap-2.5 mt-auto pt-1.5 border-t border-border-subtle/60">
-            <span className="inline-flex items-center gap-1 text-xs text-content-secondary">
-              <Heart className="size-3" aria-hidden="true" />
+          <div className="flex items-center gap-3 mt-auto pt-2 border-t border-border-subtle/60">
+            <span className="inline-flex items-center gap-1 text-sm text-content-secondary">
+              <Heart className="size-3.5" aria-hidden="true" />
               <span className="tabular-nums">{formatNumber(post.likes, language)}</span>
             </span>
-            <span className="inline-flex items-center gap-1 text-xs text-content-secondary">
-              <MessageCircle className="size-3" aria-hidden="true" />
+            <span className="inline-flex items-center gap-1 text-sm text-content-secondary">
+              <MessageCircle className="size-3.5" aria-hidden="true" />
               <span className="tabular-nums">{formatNumber(post.comments, language)}</span>
             </span>
           </div>
