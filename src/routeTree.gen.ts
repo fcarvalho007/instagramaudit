@@ -52,6 +52,7 @@ import { Route as AdminClientesRouteImport } from './routes/admin.clientes'
 import { Route as AdminBetaRequestsRouteImport } from './routes/admin.beta-requests'
 import { Route as AdminBetaLeadsRouteImport } from './routes/admin.beta-leads'
 import { Route as AdminAutomacoesRouteImport } from './routes/admin.automacoes'
+import { Route as AdminApifyLabRouteImport } from './routes/admin.apify-lab'
 import { Route as AdminAutomacoesIndexRouteImport } from './routes/admin.automacoes.index'
 import { Route as ReportPrintSnapshotIdRouteImport } from './routes/report.print.$snapshotId'
 import { Route as BetaSubmittedRequestIdRouteImport } from './routes/beta.submitted.$requestId'
@@ -359,6 +360,11 @@ const AdminBetaLeadsRoute = AdminBetaLeadsRouteImport.update({
 const AdminAutomacoesRoute = AdminAutomacoesRouteImport.update({
   id: '/automacoes',
   path: '/automacoes',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminApifyLabRoute = AdminApifyLabRouteImport.update({
+  id: '/apify-lab',
+  path: '/apify-lab',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminAutomacoesIndexRoute = AdminAutomacoesIndexRouteImport.update({
@@ -892,6 +898,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/termos': typeof TermosRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/admin/apify-lab': typeof AdminApifyLabRoute
   '/admin/automacoes': typeof AdminAutomacoesRouteWithChildren
   '/admin/beta-leads': typeof AdminBetaLeadsRoute
   '/admin/beta-requests': typeof AdminBetaRequestsRoute
@@ -1029,6 +1036,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/termos': typeof TermosRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/admin/apify-lab': typeof AdminApifyLabRoute
   '/admin/beta-leads': typeof AdminBetaLeadsRoute
   '/admin/beta-requests': typeof AdminBetaRequestsRoute
   '/admin/clientes': typeof AdminClientesRoute
@@ -1167,6 +1175,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/termos': typeof TermosRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/admin/apify-lab': typeof AdminApifyLabRoute
   '/admin/automacoes': typeof AdminAutomacoesRouteWithChildren
   '/admin/beta-leads': typeof AdminBetaLeadsRoute
   '/admin/beta-requests': typeof AdminBetaRequestsRoute
@@ -1307,6 +1316,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/termos'
     | '/unsubscribe'
+    | '/admin/apify-lab'
     | '/admin/automacoes'
     | '/admin/beta-leads'
     | '/admin/beta-requests'
@@ -1444,6 +1454,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/termos'
     | '/unsubscribe'
+    | '/admin/apify-lab'
     | '/admin/beta-leads'
     | '/admin/beta-requests'
     | '/admin/clientes'
@@ -1581,6 +1592,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/termos'
     | '/unsubscribe'
+    | '/admin/apify-lab'
     | '/admin/automacoes'
     | '/admin/beta-leads'
     | '/admin/beta-requests'
@@ -2108,6 +2120,13 @@ declare module '@tanstack/react-router' {
       path: '/automacoes'
       fullPath: '/admin/automacoes'
       preLoaderRoute: typeof AdminAutomacoesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/apify-lab': {
+      id: '/admin/apify-lab'
+      path: '/apify-lab'
+      fullPath: '/admin/apify-lab'
+      preLoaderRoute: typeof AdminApifyLabRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/automacoes/': {
@@ -2791,6 +2810,7 @@ const AdminSistemaRouteWithChildren = AdminSistemaRoute._addFileChildren(
 )
 
 interface AdminRouteChildren {
+  AdminApifyLabRoute: typeof AdminApifyLabRoute
   AdminAutomacoesRoute: typeof AdminAutomacoesRouteWithChildren
   AdminBetaLeadsRoute: typeof AdminBetaLeadsRoute
   AdminBetaRequestsRoute: typeof AdminBetaRequestsRoute
@@ -2811,6 +2831,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminApifyLabRoute: AdminApifyLabRoute,
   AdminAutomacoesRoute: AdminAutomacoesRouteWithChildren,
   AdminBetaLeadsRoute: AdminBetaLeadsRoute,
   AdminBetaRequestsRoute: AdminBetaRequestsRoute,
