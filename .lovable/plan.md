@@ -1,125 +1,131 @@
-## Objetivo
+# Plan — Safe thumbnail persistence & rendering
 
-Construir um laboratório controlado para validar empiricamente o suporte de janelas temporais (30/60/90/365 dias) do actor `apify/instagram-scraper`, sem alterar o relatório free, preços, UI ou `PUBLIC_INSTAGRAM_POSTS_LIMIT`. O lab corre testes isolados e regista resultados estruturados.
+## Audit findings (read-only)
 
-## Arquitetura
+**Current state:**
+- `/api/public/ig-thumb` **does not exist** in the codebase. The reference in `report-post-comparison.tsx:912` is a stale comment. Nothing to remove.
+- `persistThumbnailsInPayload` (in `src/lib/report-snapshots/persist-thumbnails.server.ts`) is called from `storeSnapshot` (cache.ts:185) and **overwrites** `post.thumbnail_url` with the storage URL on success, or with `null` on failure. This is destructive — exactly the anti-pattern the user wants fixed.
+- DB check on 5 most recent snapshots: 12/12 posts each still hold raw `cdninstagram.com` URLs; 0 storage URLs. So either the helper never ran for these (likely — they predate it or it crashed silently) or every fetch failed and was reset to IG CDN (impossible, since failure sets `null`). Net: **today's snapshots ship raw IG CDN URLs to the browser**; the browser loads them directly. The "format icon fallback" reproduces when the browser also can't load that URL (expired signed URL, region block, etc.).
+- Normalize stage (`normalize.ts:422 pickThumbnail`) already considers all relevant Apify fields: `displayUrl`, `display_url`, `imageUrl`, `thumbnailUrl`, `thumbnail_url`.
+- Components currently used:
+  - `caption-diagnostics-card.tsx` → reads `p.thumbnail_url`
+  - `visual-cover-analysis-card.tsx` → reads `post.thumbnail_url`
+  - `report-post-comparison.tsx` → reads `post.thumbnailUrl` (camelCase shim via `EnrichedPost`)
+  - `format-card.tsx` / `report-diagnostic-card.tsx` → read `thumbnailUrl`
+  - `pdf/report-document.tsx` → reads `thumbnail_url`
+- Storage bucket `post-thumbnails` already exists (migration `20260601115104`): public read, service-role write, image/* only. **No new bucket needed.**
 
-**3 ficheiros novos, 0 ficheiros de produção alterados.**
+## Root cause (confirmed)
 
-### 1. Migração: `apify_lab_runs`
+Server-to-server fetch of `*.cdninstagram.com` from the Cloudflare Worker returns 403 (Instagram blocks the Worker IP range / missing browser-only signed-headers). The current helper masks this by **nulling out the original URL**, which removes the browser's only working fallback.
 
-Tabela isolada do pipeline de produção (não toca em `report_snapshots`, `provider_call_logs`, `leads`, etc.):
+## Cache vs fresh
 
-```text
-apify_lab_runs (
-  id uuid pk
-  created_at timestamptz
-  admin_email text                -- quem executou
-  profile_handle text             -- @username testado
-  profile_segment text            -- 'medium' | 'high' | 'low'
-  window_kind text                -- 'baseline' | '30d' | '60d' | '90d' | '365d'
-  input_params jsonb              -- input completo enviado ao actor
-  guardrails jsonb                -- maxItems, maxTotalChargeUsd, timeoutMs
-  status text                     -- 'success' | 'timeout' | 'failed' | 'budget_block'
-  semantic_code text              -- ApifySemanticCode quando aplicável
-  apify_run_id text               -- run id retornado
-  posts_returned int
-  newest_post_at timestamptz
-  oldest_post_at timestamptz
-  observed_days int               -- (newest - oldest) em dias
-  duration_ms int
-  estimated_cost_usd numeric(12,5)
-  actual_cost_usd numeric(12,5)   -- usageTotalUsd do Apify
-  normalize_ok boolean            -- enrichPosts() não rebenta
-  notes text
-  error_excerpt text
-)
+The affected report is served from a **cached** `analysis_snapshot` (5 newest snapshots audited, all `posts_storage = 0`, all `posts_ig_cdn = 12`). No fresh Apify call needed to validate the fix path — we can drive the helper with a single approved fresh run later (Task 9).
+
+## Changes
+
+### 1. Schema (additive, non-breaking)
+
+`src/lib/analysis/normalize.ts`:
+- Add `thumbnail_storage_url: string | null` to `NormalizedPost`.
+- `normalizePosts` sets it to `null` initially; `thumbnail_url` keeps the original Apify URL.
+- Same for `profile.avatar_url` → add `avatar_storage_url`.
+
+`src/lib/report-snapshots/schema.ts`:
+- Add optional `thumbnail_storage_url: httpsUrl.nullable().optional()` to `PostSchema`.
+
+### 2. Rewrite `persist-thumbnails.server.ts` to be additive
+
+- **Do not overwrite** `post.thumbnail_url` or `profile.avatar_url`.
+- Write the persisted URL (or `null`) into `post.thumbnail_storage_url` / `profile.avatar_storage_url`.
+- Add structured counters in the return value:
+  ```ts
+  { attempted, stored, failed_403, failed_timeout, failed_invalid_content_type, failed_upload, failed_other }
+  ```
+- Keep existing concurrency (4), timeout (8s), MIME allowlist (`image/*`), 2 MB size cap (new — count as `failed_invalid_content_type`).
+- Keep best-effort: any throw is caught; analysis continues.
+- Storage path stays `post-thumbnails/{cacheKey}/{shortcode|id|idx-N}.{jpg|png|webp}`.
+
+### 3. Instrumentation
+
+In `cache.ts:storeSnapshot`, replace the existing single-line `console.log` with one structured log:
 ```
-
-RLS: admin-only (service_role full; nenhuma policy anon/authenticated). GRANT apenas service_role.
-
-### 2. Server route: `src/routes/api/admin/apify-lab.ts`
-
-Protegida por `requireAdminSession()` (allowlist por email).
-
-**POST `/api/admin/apify-lab/run`** — corre 1 teste e devolve o registo:
-```text
-body: { profile_handle, profile_segment, window_kind }
+[thumbnails] handle=... cache_key=... attempted=N stored=N failed_403=N failed_timeout=N failed_invalid_content_type=N failed_upload=N failed_other=N avatar=ok|fail|none duration_ms=N
 ```
+No `product_events`, no URLs in logs.
 
-Lógica:
-1. `requireAdminSession()` + `isApifyEnabled()` + `isAllowed(handle)` + `assertApifyDailyBudgetAvailable()`.
-2. Constrói input por janela:
-   - `baseline`: `{ resultsType: "details", resultsLimit: 12, addParentData: false }` (replica produção exatamente)
-   - `30d/60d/90d/365d`: `{ resultsType: "details", onlyPostsNewerThan: "<N> days", resultsLimit: <safety_cap>, addParentData: false }`
-     - safety_cap: 30→100, 60→200, 90→300, 365→1000
-3. Guardrails passados a `runActorWithMetadata`:
-   - `maxItems: 1` (1 perfil por run)
-   - `maxTotalChargeUsd` por janela: baseline→$0.10, 30d→$0.10, 60d→$0.20, 90d→$0.30, 365d→$1.00
-   - `apifyTimeoutSecs`: baseline/30d/60d→55, 90d→120, 365d→240
-   - `timeoutMs`: baseline/30d/60d→60_000, 90d→130_000, 365d→260_000
-   - `memoryMbytes`: 2048 para 90d/365d, 1024 caso contrário
-4. Cronometra com `Date.now()`.
-5. Apanha `ApifyUpstreamError` / `BudgetExceededError` / `ApifyConfigError` — preenche `status`, `semantic_code`, `actual_cost_usd` (quando o erro o carrega), `error_excerpt` via `sanitizeErrorExcerpt`.
-6. Em sucesso: extrai `latestPosts[]`, calcula `newest_post_at`/`oldest_post_at`/`observed_days`, computa `estimated_cost_usd` via `estimateApifyCost`, e corre `enrichPosts(rawPosts)` num try/catch para `normalize_ok`.
-7. **Não cria**: snapshot, comment-scraper run, lead, request, email, OpenAI call, DFS call.
-8. Insere uma linha em `apify_lab_runs` via `supabaseAdmin`.
-9. Devolve a linha gravada.
+### 4. Build-report mapper
 
-**GET `/api/admin/apify-lab/runs`** — lista as últimas 200 linhas para a UI (filtros opt: handle, window_kind).
+`src/lib/report/snapshot-to-report-data.ts` (and the post-aggregates pipeline that feeds `EnrichedPost`): propagate `thumbnail_storage_url` alongside `thumbnail_url`.
 
-### 3. Página admin: `src/routes/admin.apify-lab.tsx`
+### 5. Rendering — single helper
 
-UI simples (sem mexer em design system existente):
-- **Topo**: aviso destacado a explicar que isto consome créditos Apify reais e está protegido pelo allowlist diário.
-- **Form**: 3 inputs `<input>` para os 3 handles (medium / high / low), com sugestão de defaults editáveis e botão `Correr matriz completa` que dispara 15 chamadas sequenciais (3 perfis × 5 janelas) com pausa de 2s entre cada, mostrando progresso. Botão individual `Correr um teste` para casos pontuais.
-- **Tabela de resultados**: lê de `GET /runs`, colunas exatamente como pedido:
-  `Perfil | Segmento | Janela | Posts | Observed days | Newest | Oldest | Cost (est/real) | Duration | Status | Normalize | Notas`
-- **Botão Export CSV** da tabela visível.
+Add `src/lib/report/pick-thumbnail.ts`:
+```ts
+export function pickThumbnailUrl(p: {
+  thumbnail_storage_url?: string | null;
+  thumbnail_url?: string | null;
+  thumbnailUrl?: string | null;
+}): string | null {
+  return p.thumbnail_storage_url || p.thumbnail_url || p.thumbnailUrl || null;
+}
+```
+Use it in:
+- `report-post-comparison.tsx` (replace `thumbUrl = ...thumbnailUrl` line)
+- `caption-diagnostics-card.tsx`
+- `visual-cover-analysis-card.tsx`
+- `overview/format-card.tsx`
+- `report-diagnostic-card.tsx`
+- `pdf/report-document.tsx`
 
-## Guardrails reaproveitados (não alterados)
+All existing `<img onError>` → fallback icon behavior is preserved unchanged.
 
-- `isApifyEnabled()` (`APIFY_ENABLED=true`)
-- `isAllowed(handle)` (`APIFY_ALLOWLIST`)
-- `assertApifyDailyBudgetAvailable()` (`APIFY_HARD_CAP_USD`)
-- `requireAdminSession()` (`ADMIN_ALLOWED_EMAILS`)
-- `sanitizeErrorExcerpt()`
+### 6. Legacy proxy
 
-## Fora do âmbito (não tocar)
+No file exists. Update the stale comment in `report-post-comparison.tsx:912` to point at the new storage URL flow. Nothing to delete.
 
-- `src/routes/api/analyze-public-v1.ts`
-- `src/lib/analysis/constants.ts` (`PUBLIC_INSTAGRAM_POSTS_LIMIT` fica em 12)
-- `src/lib/analysis/cost.ts` (rates inalteradas)
-- Pipeline OpenAI, DataForSEO, Resend
-- Schema `report_snapshots`, `provider_call_logs`, `leads`
-- UI do relatório free, pricing, planos
+### 7. Tests
 
-## Validação
+New `src/lib/report-snapshots/__tests__/persist-thumbnails.test.ts`:
+- 403 from upstream → `thumbnail_storage_url = null`, `thumbnail_url` preserved, counter `failed_403 = 1`.
+- `content-type: text/html` → rejected, `failed_invalid_content_type = 1`.
+- 2xx image → uploaded, returns public storage URL, original preserved.
+- Throw inside fetch → caught, counters incremented, no rethrow.
+
+New `src/lib/report/__tests__/pick-thumbnail.test.ts`:
+- Prefers `thumbnail_storage_url` over `thumbnail_url`.
+- Falls back to `thumbnail_url` when storage is `null`.
+- Returns `null` when both missing (component then shows icon).
+
+### 8. Validation
 
 - `bunx tsc --noEmit`
-- Sanity check com a tabela vazia, RLS bloqueia leitura anon
-- Após user correr a matriz no admin, recolhem-se os resultados reais
+- `bunx vitest run src/lib/report-snapshots/__tests__/persist-thumbnails.test.ts src/lib/report/__tests__/pick-thumbnail.test.ts src/lib/report-snapshots/__tests__/build-report-snapshot-payload.test.ts`
+- **No Apify call** in this implementation step. Task 9 (one fresh controlled run + browser Network check for `storage/v1/object/public/post-thumbnails/...` 200s) requires explicit go-ahead in a follow-up message.
+- No backfill of existing snapshots (Task 10). Decide after live success-rate is measured.
 
-## Output esperado após execução
+## Files touched
 
-A página devolve a tabela. Depois sintetizo em chat:
+- `src/lib/analysis/normalize.ts` — add `thumbnail_storage_url`, `avatar_storage_url` fields
+- `src/lib/report-snapshots/schema.ts` — add optional field
+- `src/lib/report-snapshots/persist-thumbnails.server.ts` — rewrite to be additive + counters
+- `src/lib/analysis/cache.ts` — structured log line
+- `src/lib/report/snapshot-to-report-data.ts` + `src/lib/report/post-aggregates.ts` — propagate field
+- `src/lib/report/pick-thumbnail.ts` — new helper
+- 6 render sites listed in §5 — switch to `pickThumbnailUrl`
+- 2 new test files
 
-```text
-Perfil | Janela | Posts | Observed | Cost real | Duration | Status | Notas
-```
+## Not touched
 
-Conclusões inferidas dos dados reais:
-- viabilidade técnica por janela (sucesso vs timeout vs custo)
-- recomendação de janelas premium a expor
-- recomendação de `resultsLimit` cap por janela
-- recomendação de `maxTotalChargeUsd` por janela como guardrail final
+Apify limits, scoring, OpenAI, prompts, pricing, gates, emails, leads, report layout, existing fallback icons, bucket migration.
 
-## Checkpoint
+## Open question (one decision needed)
 
-- ☐ Migração `apify_lab_runs` criada com RLS service-role-only
-- ☐ Route `POST /api/admin/apify-lab/run` corre 1 teste com guardrails completos
-- ☐ Route `GET /api/admin/apify-lab/runs` lista histórico
-- ☐ Página `/admin/apify-lab` dispara matriz 3×5 e mostra tabela
-- ☐ Nenhum ficheiro de produção (analyze-public-v1, constants, normalize) tocado
-- ☐ `bunx tsc --noEmit` passa
-- ☐ User executa matriz, partilha resultados, eu sintetizo conclusões
+Right now persistence runs only when `storeSnapshot` writes a fresh snapshot. **Existing cached snapshots will keep raw IG CDN URLs until they expire (~15 days)** and naturally rotate. Three options for handling them in the same loop:
+
+1. **Do nothing.** Wait for natural cache rotation. Lowest risk, slowest fix.
+2. **Lazy on-read.** When `report-snapshot.by-id` reads a snapshot missing `thumbnail_storage_url`, kick off persistence asynchronously. Adds a code path and needs care to avoid duplicate uploads.
+3. **One-off backfill script** later (Task 10), gated on live success rate.
+
+I recommend **option 1** for this PR (matches user's "do not backfill yet") and revisit after Task 9 measurements. Confirm or override before I implement.
