@@ -164,7 +164,9 @@ export type PublicAnalysisErrorCode =
   | "UPSTREAM_FAILED"
   | "UPSTREAM_UNAVAILABLE"
   | "NETWORK_ERROR"
-  | "CACHE_ONLY_NO_DATA";
+  | "CACHE_ONLY_NO_DATA"
+  | "NO_CREDITS_LEAD_REQUIRED"
+  | "INSUFFICIENT_CREDITS";
 
 export interface PublicAnalysisFailure {
   success: false;
