@@ -1,106 +1,144 @@
-## Objetivo
+## Objectivo
 
-Correr a matriz `/admin/apify-lab` 3 handles × 4 janelas (sem 365d), exportar CSV, analisar resultados e recomendar a janela para o produto pago inicial. Sem qualquer alteração de código.
+Mostrar no relatório público gratuito um seletor de "Período analisado" visível mas bloqueado (teaser premium), e corrigir a contradição actual no header — o grátis é uma **amostra de 12 publicações**; os "X dias" são uma **consequência observada**, não uma janela escolhida.
 
-## Pré-flight (sem chamar Apify)
+Sem alterações a dados, scoring, Apify, OpenAI, DataForSEO, cache, pricing, PDF, e-mail ou onboarding.
 
-Os valores dos secrets (`APIFY_ENABLED`, `APIFY_ALLOWLIST`, `APIFY_DAILY_CAP_USD`) não são visíveis directamente — só os nomes. Validação indirecta:
+---
 
-1. `cost_daily` para `apify` hoje (2026-06-01) está a 0 USD → cap diário tem margem total.
-2. Janela 90d para `frederico.m.carvalho` já correu com sucesso há horas → `APIFY_ENABLED=true` e esse handle está no allowlist.
-3. Guardrails novos confirmados em `WINDOW_CONFIGS` (30d=90s/100s, 60d=120s/130s, 90d=150s/160s).
-4. Para `martimsilvai` e `mariiana.ai` o allowlist não está visível. Estratégia: a primeira chamada (baseline) a cada handle revela `blocked` + `semantic_code=allowlist_block` sem custo. Se acontecer, abortamos esse handle e seguimos com os restantes; reportamos no fim.
+## 1. Corrigir o header (`report-hero-v2.tsx`)
 
-## Ordem de execução (12 células sequenciais)
+Hoje `MetricLine` mostra `10,1 mil seguidores · 2,6 mil publicações · 12 posts em 30 dias`. Vamos passar a mostrar apenas:
 
-```
-1.  baseline  frederico.m.carvalho
-2.  baseline  martimsilvai
-3.  baseline  mariiana.ai
-4.  30d       frederico.m.carvalho
-5.  30d       martimsilvai
-6.  30d       mariiana.ai
-7.  60d       frederico.m.carvalho
-8.  60d       martimsilvai
-9.  60d       mariiana.ai
-10. 90d       frederico.m.carvalho
-11. 90d       martimsilvai
-12. 90d       mariiana.ai
-```
+`10,1 mil seguidores · 2,6 mil publicações · 12 publicações analisadas`
 
-Sequencial (nunca paralelo). Pausa curta entre chamadas. Cada cell via `POST /api/admin/apify-lab` com `{profile_handle, profile_segment, window_kind}`.
+- Remover o uso de `hero.metric_analyzed_window*` no header (ficam só na methodology line / outros sítios que já os usem — confirmar que `methodology-line.test.ts` continua verde; é noutro componente).
+- Usar sempre `hero.metric_analyzed` / `hero.metric_analyzed_one`, com cópia revista:
+  - PT: `publicações analisadas` / `publicação analisada`
+  - EN: `posts analyzed` / `post analyzed`
+- Os "X dias" passam para o **seletor**, como label metodológico (`período observado: X dias`), calculado a partir de `result.coverage.windowDays` (já existe; é `ceil(newest − oldest)`).
 
-`profile_segment`:
-- `frederico.m.carvalho` → `medium`
-- `martimsilvai` → `medium`
-- `mariiana.ai` → `medium`
+Não tocar no `MethodologyLine` nem em outros componentes que já mostrem `windowDays` corretamente — só remover a duplicação do header.
 
-(Sem efeito funcional; só metadado para o log.)
+---
 
-## Política de retry
+## 2. Novo componente `analysis-period-selector.tsx`
 
-- 1 retry apenas em: `apify_timeout`, ou HTTP 502/503 do upstream (mapeado a `apify_actor_failed`/`apify_network_error` com excerpt 502/503).
-- Sem retry em: `allowlist_block`, `apify_disabled`, `daily_budget_exceeded`, `invalid_input`, `apify_actor_failed` sem 502/503.
+Ficheiro: `src/components/report-redesign/v2/analysis-period-selector.tsx`.
 
-## Custo previsto (worst case)
+Props:
+- `observedDays: number` (de `result.coverage.windowDays`)
+- `onUnlockClick?: () => void` (reutiliza o handler já existente; fallback: abrir `PremiumInterestDialog` localmente — mesmo padrão usado noutros teasers)
 
-| Janela | $/handle est. | 3 handles |
-|---|---|---|
-| baseline | 0.005 | 0.015 |
-| 30d | 0.05 | 0.15 |
-| 60d | 0.10 | 0.30 |
-| 90d | 0.15 | 0.45 |
-| **Total** | | **≈ 0.92 USD** |
+Layout (mobile-first, tokens existentes, sem cores hardcoded):
 
-Bem abaixo de qualquer cap razoável.
-
-## Recolha e exportação
-
-Após as 12 corridas, ler `apify_lab_runs` filtrando pelos 12 IDs retornados, ordenar por `window_kind` então `profile_handle`, exportar para:
-
-```
-/mnt/documents/apify-lab-matrix-3x4.csv
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ 📅 PERÍODO ANALISADO          Amostra grátis · período       │
+│                               observado: 30 dias             │
+│                                                              │
+│ [✓ Últimas 12 publicações] [30 dias 🔒] [60 dias 🔒]          │
+│ [90 dias 🔒] [365 dias 🔒]                                    │
+│                                                              │
+│ A versão gratuita usa uma amostra recente. Janelas maiores   │
+│ ficam disponíveis no relatório premium.                      │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-Colunas (na ordem):
+- Card branco, borda `border-default`, radius alinhado com `report-hero-v2`.
+- Eyebrow Inter uppercase (`text-eyebrow-sm`), conforme regra do projeto.
+- Chip activo: sólido `bg-content-primary text-white`, com check.
+- Chips bloqueados: `bg-surface-muted`, `text-content-tertiary`, ícone `Lock` (lucide), `cursor-pointer`, `aria-disabled="true"`.
+- Mobile (<640px): chips em scroll horizontal (`flex overflow-x-auto`, sem barra visível), eyebrow e badge "período observado" empilham.
+- Toda a copy via i18n; nada hardcoded.
 
+Interação dos chips bloqueados:
+- Hover/click abre `Popover` (shadcn já no projeto) com:
+  - Title: `selector.locked.title`
+  - Body: `selector.locked.body`
+  - CTA primário "Ver opções de acesso" → chama `onUnlockClick` (que abre o fluxo premium existente). Se `onUnlockClick` não estiver disponível (rota `/reports/:snapshotId`), abre `PremiumInterestDialog` local — mesma cópia, mesmo `pricing-interest-modal`.
+  - Secundário "Continuar com visão gratuita" → fecha o popover.
+- **Não muta nada**: sem `navigate`, sem alterar query params, sem fetch, sem snapshot diff, sem tracking de window change. Só emite `pricing_option_clicked` / equivalente se o handler partilhado já o fizer.
+
+Acessibilidade:
+- Cada chip bloqueado é `<button type="button" aria-disabled="true" aria-label="30 dias — disponível no premium">`.
+- Popover com `role="dialog"` e foco devolvido ao chip ao fechar.
+
+---
+
+## 3. Mount no `report-shell-v2.tsx`
+
+Inserir o seletor **entre o `ReportHeroV2` e o `ReportBlockTopTabs`** (linha ~182), dentro de um `section className="bg-surface-base"` e do mesmo container `max-w-[1520px] px-5 md:px-6` para alinhar com o hero. Passar `onUnlockClick={handleUnlockClick}` (já existe, default no-op).
+
+`observedDays = result.coverage.windowDays ?? 0`. Se for 0, esconder o badge "período observado" mas manter o seletor.
+
+---
+
+## 4. i18n
+
+Adicionar em `src/i18n/locales/{pt,en}/report.json` sob nova chave `selector`:
+
+PT:
+```json
+"selector": {
+  "eyebrow": "Período analisado",
+  "observed_badge": "Amostra grátis · período observado: {{days}} dias",
+  "observed_badge_one": "Amostra grátis · período observado: {{days}} dia",
+  "active_sample": "Últimas {{count}} publicações",
+  "premium_30": "30 dias",
+  "premium_60": "60 dias",
+  "premium_90": "90 dias",
+  "premium_365": "365 dias",
+  "footnote": "A versão gratuita usa uma amostra recente. Janelas maiores ficam disponíveis no relatório premium.",
+  "locked": {
+    "title": "Disponível no relatório premium",
+    "body": "Analisa mais histórico para perceber evolução, consistência e padrões de conteúdo ao longo do tempo.",
+    "cta": "Ver opções de acesso",
+    "secondary": "Continuar com visão gratuita",
+    "aria": "{{window}} — disponível no premium"
+  }
+}
 ```
-profile_handle, window_kind, mode, results_type, results_limit,
-status, semantic_code,
-raw_items_returned, posts_extracted, posts_returned,
-newest_post_at, oldest_post_at, observed_days,
-duration_ms, estimated_cost_usd, actual_cost_usd,
-normalize_ok, error_excerpt, apify_run_id, created_at
-```
 
-## Análise entregue em chat
+EN: equivalente, mantendo as mesmas chaves; "days" / "day", "Latest {{count}} posts", "Available in the premium report", "Analyze more history…", "View access options", "Continue with free overview".
 
-1. **Tabela 3×4** — por célula: `posts_extracted` / `observed_days` / `duration_ms` / `actual_cost_usd` / `status`.
-2. **Custo médio por janela** (média de `actual_cost_usd` em runs `success`).
-3. **Duração** — média, máx e ratio vs `timeoutMs` por janela. Sinalizar células > 80 % do timeout.
-4. **Cobertura temporal** — `observed_days / window_target` (30/60/90).
-5. **Falhas e timeouts** — por janela e handle, com retries aplicados.
-6. **Recomendação** para a janela do produto pago inicial, com critérios:
-   - cobertura ≥ 80 % do alvo em 3/3 handles;
-   - p95 duração < 70 % do `timeoutMs`;
-   - custo unitário compatível com pricing;
-   - estabilidade (0 timeouts não recuperados).
+Ajustar também `hero.metric_analyzed` → "publicações analisadas" / "posts analyzed" (já é o fallback usado quando `windowDays === 0`; passa a ser o valor sempre usado no header).
 
-## Garantias
+---
 
-- Apenas `POST /api/admin/apify-lab` é chamado (já existente).
-- Nada escreve em `analysis_snapshots`, `report_snapshots`, `report_requests`, `leads`, `analysis_events`, `comment_enrichment_jobs`.
-- Não chama OpenAI, DataForSEO, Brevo, Resend.
-- Não envia emails.
-- Não toca em `/api/analyze-public-v1`, produção, pricing, thumbnails, onboarding.
-- Sem alterações de código nem migrações.
+## 5. Consistência sidebar
 
-## Checkpoint
+Confirmar que a sidebar diz "5 secções premium por desbloquear" (ou número actual baseado em `features`) e que o seletor mostra **4 janelas premium** (30/60/90/365) — são contagens semanticamente distintas (secções vs janelas temporais), não há ligação. Se for preciso desambiguar, refinar a cópia da sidebar para `"5 secções por desbloquear"` em vez de `"5 por desbloquear"` — só se já estiver ambíguo; não inventar copy nova fora deste plano.
 
-- ☐ Pré-flight indirecto OK (`cost_daily` apify hoje = 0; guardrails novos confirmados).
-- ☐ 12 corridas sequenciais executadas com política de retry definida.
-- ☐ Linhas correspondentes lidas de `apify_lab_runs`.
-- ☐ CSV exportado para `/mnt/documents/apify-lab-matrix-3x4.csv` com `<presentation-artifact>`.
-- ☐ Tabela 3×4 + métricas agregadas entregues em chat.
-- ☐ Recomendação fundamentada para a janela do produto pago inicial.
-- ☐ Produção, OpenAI, DataForSEO, leads, snapshots e emails intactos.
+---
+
+## 6. Validação
+
+- `bunx tsc --noEmit`.
+- Visual desktop (1460px) e mobile (375px) na rota `/report/example` (mock) e `/reports/:snapshotId` (real).
+- Confirmar:
+  - Header mostra "X publicações analisadas" sem "em N dias".
+  - Seletor visível entre header e Bloco 01.
+  - Chip activo: "Últimas 12 publicações".
+  - 4 chips bloqueados com cadeado abrem popover; CTA chama o mesmo handler premium dos outros teasers.
+  - "período observado: X dias" usa valor real de `coverage.windowDays`.
+  - Zero chamadas de rede ao clicar.
+  - `methodology-line.test.ts` e restantes testes continuam verdes.
+
+---
+
+## Ficheiros afectados
+
+- `src/components/report-redesign/v2/analysis-period-selector.tsx` (novo)
+- `src/components/report-redesign/v2/report-hero-v2.tsx` (simplificar MetricLine)
+- `src/components/report-redesign/v2/report-shell-v2.tsx` (mount)
+- `src/i18n/locales/pt/report.json`, `src/i18n/locales/en/report.json`
+
+## Fora de âmbito
+
+Geração real de janelas 30/60/90/365, mudanças em `analyze-public-v1`, scoring, cache, pricing, checkout, PDF, e-mail, onboarding, Apify, OpenAI, DataForSEO.
+
+## Riscos / follow-up
+
+- Quando as janelas premium reais forem activadas, o seletor passa a ter estados activos verdadeiros — precisará de `onSelectWindow` + nova query param e snapshots por janela. Não nesta fase.
+- Confirmar com o utilizador se quer que o `MethodologyLine` (outro componente) continue a referir "N dias" — não é tocado neste plano.

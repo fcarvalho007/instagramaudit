@@ -14,6 +14,24 @@
     "top": "Voltar ao topo",
     "help": "Mostrar atalhos"
   },
+  "selector": {
+    "eyebrow": "Período analisado",
+    "observed_badge": "Amostra grátis · período observado: {{days}} dias",
+    "observed_badge_one": "Amostra grátis · período observado: {{days}} dia",
+    "active_sample": "Últimas {{count}} publicações",
+    "premium_30": "30 dias",
+    "premium_60": "60 dias",
+    "premium_90": "90 dias",
+    "premium_365": "365 dias",
+    "footnote": "A versão gratuita usa uma amostra recente. Janelas maiores ficam disponíveis no relatório premium.",
+    "locked": {
+      "title": "Disponível no relatório premium",
+      "body": "Analisa mais histórico para perceber evolução, consistência e padrões de conteúdo ao longo do tempo.",
+      "cta": "Ver opções de acesso",
+      "secondary": "Continuar com visão gratuita",
+      "aria": "{{window}} — disponível no premium"
+    }
+  },
   "hero": {
     "verified": "Conta verificada",
     "metric_followers": "seguidores",
@@ -23,8 +41,8 @@
     "metric_analyzed_window": "posts em {{days}} dias",
     "metric_analyzed_window_one": "post em {{days}} dias",
     "metric_analyzed_window_days_one": "posts em {{days}} dia",
-    "metric_analyzed": "posts analisados",
-    "metric_analyzed_one": "post analisado",
+    "metric_analyzed": "publicações analisadas",
+    "metric_analyzed_one": "publicação analisada",
     "actions": {
       "new_report": "Novo relatório",
       "compare": "Comparar concorrente",
