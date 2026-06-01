@@ -700,7 +700,19 @@ function DetailedPostCard({
             gradientCls,
           )}
         >
-          {showImg ? (
+          {/* Base fallback — always rendered behind the image so a slow
+              network or a transparent thumbnail still shows the icon. */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <FormatIcon
+              format={post.format}
+              className={cn("size-9", arrowCls)}
+            />
+          </div>
+          {/* Real thumbnail — sits on top when available. The Instagram CDN
+              proxy (/api/public/ig-thumb) can return 404 if the URL
+              expired; in that case we hide the <img> and the fallback
+              above shows through. */}
+          {showImg && (
             <img
               src={thumbUrl}
               alt=""
@@ -708,13 +720,6 @@ function DetailedPostCard({
               onError={() => setImgError(true)}
               className="absolute inset-0 size-full object-cover"
             />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <FormatIcon
-                format={post.format}
-                className={cn("size-9", arrowCls)}
-              />
-            </div>
           )}
           <span className="absolute top-1 left-1 z-10 text-[7px] font-bold uppercase tracking-[0.04em] px-1.5 py-[2px] rounded bg-white/85 backdrop-blur-sm text-content-primary leading-none shadow-sm">
             {formatChipLabel(post.format, t)}
