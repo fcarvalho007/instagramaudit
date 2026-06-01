@@ -1,25 +1,25 @@
 /**
- * /admin/visao-geral — executive dashboard tab.
+ * /admin/visao-geral — executive dashboard.
  *
- * Compact status strip + 5 secções: funil → receita → despesa → kanban → sinais.
+ * Topo responde às 4 perguntas da manhã (KPIs), alerta de margem,
+ * funil + custos lado a lado, operacional em baixo. Detalhe pesado
+ * vive em /admin/sistema e /admin/receita.
  */
 
- import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
- import { Link } from "@tanstack/react-router";
-  import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AdminPageHeader } from "@/components/admin/v2/admin-page-header";
 import { PeriodSelect, type AdminPeriod } from "@/components/admin/v2/period-select";
 import { AdminActionButton } from "@/components/admin/v2/admin-action-button";
-import { FunnelSection } from "@/components/admin/v2/visao-geral/funnel-section";
-import { BetaConversionFunnel } from "@/components/admin/v2/visao-geral/beta-conversion-funnel";
+import { OverviewKpiRow } from "@/components/admin/v2/visao-geral/overview-kpi-row";
+import { MarginAlert } from "@/components/admin/v2/visao-geral/margin-alert";
+import { AcquisitionFunnel } from "@/components/admin/v2/visao-geral/acquisition-funnel";
+import { CostSummaryCard } from "@/components/admin/v2/visao-geral/cost-summary-card";
 import { PriorityFollowups } from "@/components/admin/v2/visao-geral/priority-followups";
-import { RevenueSection } from "@/components/admin/v2/visao-geral/revenue-section";
-import { ExpenseSection } from "@/components/admin/v2/visao-geral/expense-section";
-import { KanbanSection } from "@/components/admin/v2/visao-geral/kanban-section";
 import { IntentSection } from "@/components/admin/v2/visao-geral/intent-section";
- import { getExecutionMode } from "@/server/admin/execution-mode.functions";
- import { adminFetch } from "@/lib/admin/fetch";
+import { getExecutionMode } from "@/server/admin/execution-mode.functions";
+import { adminFetch } from "@/lib/admin/fetch";
 
 export const Route = createFileRoute("/admin/visao-geral")({
   component: VisaoGeralPage,
@@ -110,7 +110,7 @@ function VisaoGeralPage() {
     <>
       <AdminPageHeader
         title="Visão geral"
-        subtitle="Receita, conversão e sinais de intenção dos últimos 30 dias"
+        subtitle="O essencial do negócio · últimos 30 dias"
         actions={
           <>
             <PeriodSelect value={period} onChange={setPeriod} />
@@ -120,14 +120,15 @@ function VisaoGeralPage() {
           </>
         }
       />
-      <div className="flex flex-col gap-14">
-         <ExecutionModeStrip />
-        <BetaConversionFunnel />
+      <div className="flex flex-col gap-8">
+        <ExecutionModeStrip />
+        <OverviewKpiRow />
+        <MarginAlert />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <AcquisitionFunnel />
+          <CostSummaryCard />
+        </div>
         <PriorityFollowups />
-        <FunnelSection period={period} />
-        <RevenueSection />
-        <ExpenseSection />
-        <KanbanSection />
         <IntentSection />
       </div>
     </>
