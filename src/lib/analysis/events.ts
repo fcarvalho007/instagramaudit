@@ -18,7 +18,8 @@ export type AnalysisOutcome =
   | "blocked_allowlist"
   | "provider_disabled"
   | "invalid_input"
-  | "blocked_cache_only";
+  | "blocked_cache_only"
+  | "blocked_credits";
 
 export type AnalysisDataSource = "fresh" | "cache" | "stale" | "none";
 
