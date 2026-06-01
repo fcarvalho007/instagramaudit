@@ -35,8 +35,11 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 const UNIFIED_ACTOR = "apify/instagram-scraper";
 
 type WindowKind = "baseline" | "30d" | "60d" | "90d" | "365d";
+type LabMode = "details" | "posts";
 
 interface WindowConfig {
+  mode: LabMode;
+  purpose: string;
   // Apify actor input keys.
   resultsLimit: number;
   onlyPostsNewerThan?: string;
@@ -45,47 +48,63 @@ interface WindowConfig {
   apifyTimeoutSecs: number;
   timeoutMs: number;
   memoryMbytes: number;
+  maxItems: number;
 }
 
 const WINDOW_CONFIGS: Record<WindowKind, WindowConfig> = {
   baseline: {
+    mode: "details",
+    purpose: "current_free_report_baseline",
     resultsLimit: 12,
     maxTotalChargeUsd: 0.1,
     apifyTimeoutSecs: 55,
     timeoutMs: 60_000,
     memoryMbytes: 1024,
+    maxItems: 1,
   },
   "30d": {
+    mode: "posts",
+    purpose: "window_test",
     resultsLimit: 100,
     onlyPostsNewerThan: "30 days",
     maxTotalChargeUsd: 0.1,
     apifyTimeoutSecs: 55,
     timeoutMs: 60_000,
     memoryMbytes: 1024,
+    maxItems: 100,
   },
   "60d": {
+    mode: "posts",
+    purpose: "window_test",
     resultsLimit: 200,
     onlyPostsNewerThan: "60 days",
     maxTotalChargeUsd: 0.2,
     apifyTimeoutSecs: 55,
     timeoutMs: 60_000,
     memoryMbytes: 1024,
+    maxItems: 200,
   },
   "90d": {
+    mode: "posts",
+    purpose: "window_test",
     resultsLimit: 300,
     onlyPostsNewerThan: "90 days",
     maxTotalChargeUsd: 0.3,
     apifyTimeoutSecs: 120,
     timeoutMs: 130_000,
     memoryMbytes: 2048,
+    maxItems: 300,
   },
   "365d": {
+    mode: "posts",
+    purpose: "window_test",
     resultsLimit: 1000,
     onlyPostsNewerThan: "365 days",
     maxTotalChargeUsd: 1.0,
     apifyTimeoutSecs: 240,
     timeoutMs: 260_000,
     memoryMbytes: 2048,
+    maxItems: 1000,
   },
 };
 
@@ -103,7 +122,7 @@ const RunBodySchema = z.object({
 function buildActorInput(handle: string, cfg: WindowConfig): Record<string, unknown> {
   const input: Record<string, unknown> = {
     directUrls: [`https://www.instagram.com/${handle}/`],
-    resultsType: "details",
+    resultsType: cfg.mode === "posts" ? "posts" : "details",
     resultsLimit: cfg.resultsLimit,
     addParentData: false,
   };
