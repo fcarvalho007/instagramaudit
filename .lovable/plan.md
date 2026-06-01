@@ -1,127 +1,59 @@
 ## Objetivo
 
-Aproximar o fecho do relatório público ao mockup: um cartão de teaser premium mais "comercial" (preço + CTA forte) seguido, em proximidade visual, de uma faixa fina de feedback. Mantém-se o gating atual (estado B — lead capturado, sem premium).
+Refinar o card **Frequência de publicação**: calendário sempre visível com células retangulares (mais compacto), e corrigir a linguagem do bloco "Ritmo por dia da semana" para tom de analista terceiro (sem "tu", sem "Concentras-te").
 
-## Onde mexer
+## Ficheiros a tocar
 
-- `src/components/report-redesign/v2/end-of-free-block.tsx` — refundir conteúdo + visual.
-- `src/components/report-redesign/v2/feedback/end-feedback-strip.tsx` — **novo** ficheiro: variante compacta da `BlockFeedback` para o fecho.
-- `src/components/report-redesign/v2/report-shell-v2.tsx` — encostar a nova strip imediatamente abaixo do `ReportEndOfFreeBlock`, partilhando o mesmo wrapper (`section#lead-magnet-card`), sem section própria com `py-16`.
-- `src/i18n/locales/pt/report.json` + `en/report.json` — chaves novas para o teaser e para a strip.
+- `src/components/report-redesign/v2/overview/frequency-card.tsx`
+- `src/i18n/locales/pt/report.json`
+- `src/i18n/locales/en/report.json`
 
-Não mexer em: `BlockFeedback` original (continua a servir o feedback do Bloco 1), `PremiumInterestDialog`, gating do relatório, restantes blocos.
+## 1 · Calendário sempre visível + células retangulares
 
-## Cartão de teaser (refinado)
+`src/components/report-redesign/v2/overview/frequency-card.tsx`:
 
-Layout (mantém `max-w-3xl`, fundo branco, ring suave — alinhado com o resto do report light):
+- **Remover o toggle**: apagar o estado `const [calendarOpen, setCalendarOpen] = useState(false)`, o `<button>` com `Esconder/Mostrar` (linhas ~648–675) e o wrapper `{calendarOpen && (...)}`. O cabeçalho do calendário (eyebrow `CALENDÁRIO · 30 DIAS` + sub-linha `X dias com publicação`) passa a ser um simples `<div>` não-interativo.
+- **Células retangulares**:
+  - Cells dos dias: trocar `aspect-square` por `aspect-[5/3]` (~h ≈ 60% da largura), mantendo `rounded-md` e os mesmos `gap-1 md:gap-1.5`. Padding cells idem.
+  - Mantém os 7 dias por linha (grid alignment semanal preservado — os "buracos" no início/fim ficam como padding vazio, como já está, porque sem esses padding o calendário deixa de ler como calendário). Resultado: a grelha encolhe verticalmente ~40% sem sacrificar a leitura semanal.
+- **Manter** legenda (sem post / 1 post / 2 posts) e cabeçalhos dos dias da semana.
+- **Limpar i18n não utilizado**: as chaves `frequency.calendar.toggle_show` e `frequency.calendar.toggle_hide` deixam de ser referenciadas — removo-as do PT e EN.
 
-```text
-                    FIM DA LEITURA PÚBLICA              (eyebrow, Inter caps)
-              Há mais por trás deste perfil             (H2 Fraunces italic)
-   No relatório completo entra a análise temporal, a    (Inter 15px)
-   leitura editorial do ritmo e o confronto detalhado
-                  com os concorrentes.
+## 2 · Linguagem agnóstica (analista, não 2ª pessoa)
 
-      [👥 Concorrentes]  [📊 Posição no escalão]  [📄 +5 secções]
+Princípio: somos uma ferramenta de diagnóstico externa. Não tratamos por "tu", não assumimos que o leitor é o gestor do perfil. Reportamos o que os dados mostram.
 
-                          7€   ̶1̶9̶€̶                     (Fraunces 48px + struck)
-              Preço de lançamento · sobe para 19€        (caption ocean)
-                       após a beta
+`weekly_rhythm.interpretation_*` — reescrita em PT e EN:
 
-           [ Garantir preço de lançamento  → ]           (botão primário cheio)
+PT (atual → novo):
+- `interpretation_with_quiet_one`:
+  `"Concentras-te à <b>{{peak}}</b>. <b>{{quiet}}</b> é o vazio — esteve {{count}} dia sem publicação."`
+  → `"Publicação concentrada à <b>{{peak}}</b>. <b>{{quiet}}</b> é o ponto mais fraco — {{count}} dia sem publicação."`
+- `interpretation_with_quiet_other`:
+  `"Concentras-te à <b>{{peak}}</b>. <b>{{quiet}}</b> é o vazio — esteve {{count}} dias sem publicação."`
+  → `"Publicação concentrada à <b>{{peak}}</b>. <b>{{quiet}}</b> é o ponto mais fraco — {{count}} dias sem publicação."`
+- `interpretation_peak_only`:
+  `"Concentras-te à <b>{{peak}}</b>. Os restantes dias estão equilibrados."`
+  → `"Publicação concentrada à <b>{{peak}}</b>. Restantes dias da semana equilibrados."`
+- `interpretation_uniform`: já está em tom impessoal, mantém.
 
-   🔔  Entras na lista e avisamos-te quando abrir ·
-              pagamento único, sem subscrição
-```
+EN (atual → novo):
+- `interpretation_with_quiet_one`:
+  `"You concentrate on <b>{{peak}}</b>. <b>{{quiet}}</b> is the void — {{count}} day without posts."`
+  → `"Posting concentrated on <b>{{peak}}</b>. <b>{{quiet}}</b> is the weak point — {{count}} day without posts."`
+- `interpretation_with_quiet_other`:
+  → `"Posting concentrated on <b>{{peak}}</b>. <b>{{quiet}}</b> is the weak point — {{count}} days without posts."`
+- `interpretation_peak_only`:
+  → `"Posting concentrated on <b>{{peak}}</b>. Remaining weekdays are balanced."`
+- `interpretation_uniform`: mantém.
 
-Decisões:
-- Pílula "Premium · em desenvolvimento" e botão-link "Avisa-me quando estiver pronto" → **removidos** (substituídos pela CTA primária).
-- Hairline com glyph central (Sparkles) → **removido** (o fecho ganha presença sozinho; a strip de feedback vem a seguir).
-- 3 chips de features com ícones (`Users`, `BarChart3`/`TrendingUp`, `FileText`) num tom neutro com ring fininho — coerentes com os chips já existentes no header.
-- Preço grande em Fraunces (não Inter) para criar âncora editorial; 19€ riscado em Inter `tabular-nums`. Preço HARDCODED por agora (`7` / `19`), mas extraído para constantes no topo do ficheiro para futura ligação a config.
-- CTA principal: botão sólido `bg-accent-primary` (ocean blue), label "Garantir preço de lançamento", abre o mesmo `PremiumInterestDialog` (reuso integral). `trackEvent` com `source_component: "end_of_free_teaser"` e `metadata.cta: "guarantee_launch_price"`.
-- Footnote com `Bell` icon, `text-content-tertiary`, mesmo style que o resto do report.
+## Fora de scope (sinalizar, não corrigir agora)
 
-## Faixa de feedback (nova, compacta)
-
-`EndFeedbackStrip` — variante "linha única" da `BlockFeedback`:
-- Fundo `bg-amber-50/40` com ring `ring-amber-200/50` (faixa quente, contrasta subtilmente com o branco do cartão acima).
-- Conteúdo numa linha (em mobile quebra para 2 linhas):
-  - À esquerda: `Esta leitura foi útil?` (Inter 14px medium).
-  - Centro: 4 emojis horizontais (😔 😐 🙂 😍) — botões circulares pequenos (h-9 w-9).
-  - À direita: caption `beta · ajuda-nos a afinar` (Inter caps, `text-content-tertiary`).
-- Lógica de submissão: reusa `/api/public/inline-feedback` com `block: "overview"` (mesmo endpoint, mesmo localStorage key family — adiciona sufixo `:end` para não colidir). 4 valores mapeados para rating 1/2/4/5 (salta o 3 neutro do meio — o mockup mostra 4 emojis, não 5).
-- Estados pós-clique colapsa para uma linha: `Obrigado pelo teu sinal.` no mesmo container, sem CTA de comentário (para não competir com o teaser logo acima).
-- Sem padding vertical grande — o objetivo é proximidade ao cartão de teaser (gap ~12px).
-
-## Aproximação visual ("proximidade")
-
-No `report-shell-v2.tsx`, substituir:
-
-```tsx
-{unlocked && !premiumUnlocked && (
-  <section id="lead-magnet-card">
-    <ReportEndOfFreeBlock />
-  </section>
-)}
-```
-
-por:
-
-```tsx
-{unlocked && !premiumUnlocked && (
-  <section id="lead-magnet-card" className="mt-12 sm:mt-16">
-    <ReportEndOfFreeBlock />
-    <EndFeedbackStrip
-      handle={result.data.profile.username}
-      snapshotId={snapshotId ?? null}
-      className="mt-3 sm:mt-4"
-    />
-  </section>
-)}
-```
-
-E remover o `py-16 sm:py-20` interno do `ReportEndOfFreeBlock` (margem fica agora na `section` envolvente) para os dois componentes encostarem com `mt-3/4` controlado.
-
-## i18n (chaves novas)
-
-```jsonc
-"end_of_free": {
-  "eyebrow": "Fim da leitura pública",
-  "title": "Há mais por trás deste perfil",
-  "description": "No relatório completo entra a análise temporal, a leitura editorial do ritmo e o confronto detalhado com os concorrentes.",
-  "chips": {
-    "competitors": "Concorrentes",
-    "rank": "Posição no escalão",
-    "more_sections": "+ 5 secções"
-  },
-  "price": {
-    "launch": "7",
-    "list": "19",
-    "currency": "€",
-    "caption": "Preço de lançamento · sobe para 19€ após a beta"
-  },
-  "cta": "Garantir preço de lançamento",
-  "footnote": "Entras na lista e avisamos-te quando abrir · pagamento único, sem subscrição"
-},
-"end_feedback": {
-  "question": "Esta leitura foi útil?",
-  "tag": "beta · ajuda-nos a afinar",
-  "thanks": "Obrigado pelo teu sinal."
-}
-```
-
-Mesma estrutura em `en/report.json` (traduzido).
-
-## Riscos / coisas a confirmar
-
-1. **Preço hardcoded (7€ / 19€).** O projeto está em modo "private/admin testing" sem pagamentos — a CTA é só waitlist via `PremiumInterestDialog`, não cobra. Tudo bem para já?
-2. **Duplicação de feedback.** A `BlockFeedback` continua a aparecer logo após o Bloco 1 (estado B/C). A nova `EndFeedbackStrip` aparece no fecho. São dois pedidos de feedback no mesmo scroll. Mantemos os dois (pontos de medida diferentes — Bloco 1 vs leitura inteira) ou queres que retire o do Bloco 1 quando o fecho aparece?
-3. **Strip de feedback sempre visível?** Decisão proposta: aparece sempre que `unlocked && !premiumUnlocked` (mesmo gate do teaser).
+Vi outras strings com 2ª pessoa pelo relatório (`Esta leitura foi útil?`, `Obrigado pelo teu sinal.`, `O teu clique ajuda…`, `Guarda a tua visão geral…`, `Continuar a explorar`). **Não toco neles neste prompt** — o pedido foca-se no card de frequência. Posso abrir um prompt seguinte com uma varredura completa pt-PT/EN para tom de analista agnóstico, se aprovares.
 
 ## Checkpoint
 
-- ☐ Confirmas preço `7€ / 19€` hardcoded por agora?
-- ☐ Manter `BlockFeedback` (Bloco 1) **e** `EndFeedbackStrip` (fecho), ou só o do fecho?
-- ☐ CTA "Garantir preço de lançamento" abre o `PremiumInterestDialog` existente (waitlist), sem checkout — ok?
-- ☐ Aprovas o plano para passar a Build Mode?
+- ☐ Aprovas remover por completo o toggle "Esconder" (calendário sempre visível)?
+- ☐ Aprovas células `aspect-[5/3]` (retangulares horizontais), mantendo a grelha de 7 colunas por semana?
+- ☐ Aprovas a reescrita "Publicação concentrada à <Sexta>. <Quarta> é o ponto mais fraco — 4 dias sem publicação."?
+- ☐ Passar a Build Mode?

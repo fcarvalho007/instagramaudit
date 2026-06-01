@@ -323,8 +323,6 @@
       "legend_one_post": "1 post",
       "legend_many": "{{label}} posts",
       "ratio": "{{published}}/{{total}} dias",
-      "toggle_show": "Ver dias exactos",
-      "toggle_hide": "Esconder",
       "window_summary": "Últimos {{days}} dias · {{published}} com publicação",
       "eyebrow": "CALENDÁRIO · {{days}} DIAS",
       "published_one": "{{count}} dia com publicação",
@@ -360,9 +358,9 @@
       "title": "RITMO POR DIA DA SEMANA",
       "peak_chip": "pico",
       "gap_chip": "falha",
-      "interpretation_with_quiet_one": "Concentras-te à <b>{{peak}}</b>. <b>{{quiet}}</b> é o vazio — esteve {{count}} dia sem publicação.",
-      "interpretation_with_quiet_other": "Concentras-te à <b>{{peak}}</b>. <b>{{quiet}}</b> é o vazio — esteve {{count}} dias sem publicação.",
-      "interpretation_peak_only": "Concentras-te à <b>{{peak}}</b>. Os restantes dias estão equilibrados.",
+      "interpretation_with_quiet_one": "Publicação concentrada à <b>{{peak}}</b>. <b>{{quiet}}</b> é o ponto mais fraco — {{count}} dia sem publicação.",
+      "interpretation_with_quiet_other": "Publicação concentrada à <b>{{peak}}</b>. <b>{{quiet}}</b> é o ponto mais fraco — {{count}} dias sem publicação.",
+      "interpretation_peak_only": "Publicação concentrada à <b>{{peak}}</b>. Restantes dias da semana equilibrados.",
       "interpretation_uniform": "Cadência uniforme — nenhum dia da semana se destaca pela negativa.",
       "aria_distribution": "Distribuição de publicações por dia da semana"
     }
