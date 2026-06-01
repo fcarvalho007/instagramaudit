@@ -1,61 +1,180 @@
-# Plano: smoke test Apify Lab + recolha de dados para decisão premium
+# Plano: Fase 3 — onboarding modal antes da geração da análise
 
-## Contexto
+## Resumo do fluxo final
 
-O `/admin/apify-lab` já está completo para este teste:
-- Aceita 3 handles (um por segmento) + 5 janelas: `baseline`, `30d`, `60d`, `90d`, `365d`.
-- Tem botão "Correr matriz" que executa os 3 × 5 = 15 runs em sequência, com 2s de pausa entre cada e progresso visível.
-- Tem botão "Descarregar CSV" com todas as colunas pedidas (`handle`, `window`, `resultsLimit`, `onlyPostsNewerThan`, `posts_returned`, `oldest_post_at`, `newest_post_at`, `observed_days`, `duration_ms`, `actual_cost_usd`, `status`, `semantic_code`, e ainda `estimated_cost_usd`, `apify_run_id`, `normalize_ok`, `notes`, `error_excerpt`).
-- Cada janela tem guardrails próprios (`maxTotalChargeUsd` 0.1 → 1.0; `apifyTimeoutSecs` 55s → 240s; memória até 2GB).
+```
+Homepage → handle no HeroActionBar
+   ↓ submit (sem navegar)
+   ↓ valida formato client-side
+OnboardingModal abre  (NOVO componente)
+   ├─ Step 0 (intro): "Vais analisar @{handle}" + créditos + valor grátis
+   ├─ Steps 1–5: nome / profile_ownership / goal / user_type / email+phone+RGPD
+   │             (reutiliza schema e copy do UnlockModal existente)
+   └─ Submit final → POST /api/onboarding/start
+                     ↓ ok=true ⇒ cookie lead_session + 2 créditos atribuídos
+                     ↓
+                     navigate({ to: "/analyze/$username", params: { username }, search: { vs } })
+/analyze/$username monta
+   └─ fetchPublicAnalysis(handle) → POST /api/analyze-public-v1
+                                       ↓ cookie presente, saldo ≥ 1
+                                       ↓ reserve → run → confirm → consome 1 crédito
+                                       ↓
+        AnalysisSkeleton (já existe, mostra "A preparar a análise…" via i18n)
+        → ReportShellV2 (inalterado)
+        → UnlockModal post-report continua a gerir gating premium (INALTERADO)
+```
 
-Não é preciso mexer em código. O passo é executar e recolher.
+## Decisões de arquitectura
 
-## Passos (tu corres no browser)
+### 1. Onboarding modal é um componente novo, NÃO uma alteração ao UnlockModal
 
-1. **Confirma pré-requisitos** em `/admin/sistema` (ou `/admin/apify-lab` topo):
-   - `APIFY_ENABLED=true`
-   - `testing_mode_active: true`
-   - 3 handles na allowlist: `frederico.m.carvalho`, `martimsilvai`, `mariiana.ai`
-   - cap diário 5 USD / hard cap 10 USD (já confirmado)
+Razão: `UnlockModal` submete a `/api/public/report-unlock` e exige `snapshotId` + `instagramUsername` para ser uma "open report unlock". Mudar o seu submit endpoint quebraria o gating premium pós-relatório, que o user explicitamente pediu para não mexer.
 
-2. **Mapeia os handles a segmentos** no formulário do Lab. Sugestão (qualquer mapeamento serve, é só rótulo analítico):
-   - `personal` → `frederico.m.carvalho`
-   - `creator`  → `martimsilvai`
-   - `business` → `mariiana.ai`
+**Solução**: criar `src/components/onboarding/onboarding-modal.tsx` que:
+- Reutiliza `unlockFormSchema`, `GOALS`, `PROFILE_OWNERSHIPS`, `USER_TYPES` de `@/lib/unlock-flow` (sem alterações).
+- Reutiliza a copy de `gate.json` para os 5 passos (chaves `unlock.step1..step5`). Não duplica copy.
+- Prepende um Step 0 de "expectation management" com copy nova em `gate.json` (`onboarding.intro.*`).
+- Substitui o submit final: chama `/api/onboarding/start` com o payload mapeado:
+  - `name` ← `full_name`
+  - `email` ← `email`
+  - `phone` ← `phone`
+  - `marketing_consent` ← `marketing_consent`
+  - `beta_consent` ← `false` (não pedido nesta modal)
+  - `user_type`, `purpose` ← `goal`, `profile_ownership`
+- Não passa `snapshotId` / `instagramUsername` ao endpoint (não existem ainda).
+- No Step 0 mostra o handle que vai ser analisado (prop `handle`).
+- Sucesso → `onSuccess(handle)` callback ⇒ caller navega para `/analyze/$username`.
 
-3. **Corre a matriz completa** com "Correr matriz" (15 runs).
-   - Custo máximo teórico (soma dos `maxTotalChargeUsd` × 3 handles): 3 × (0.1 + 0.1 + 0.2 + 0.3 + 1.0) = **5.10 USD**. Está alinhado com o cap diário de 5 USD — se o cap rejeitar a última run, corre o `365d` no dia seguinte ou aumenta o cap para 6 USD temporariamente.
-   - Tempo estimado: ~15 × (run + 2s) ≈ 8–15 min, dominado pelos `365d`.
-   - Mantém a aba aberta; o loop é client-side.
+**Refactor mínimo opcional**: extrair os corpos dos `Step1Body..Step5Body` do `unlock-modal.tsx` para `src/components/onboarding/steps/` e importar de ambos. Recomendo NÃO fazer agora (risco de regressão no premium gating); fazer numa Fase 4 de dedup.
 
-4. **Vigia falhas** durante a corrida: se um run der `failed` ou `timeout`, anota `semantic_code` e segue. Não relances automaticamente — corro o post-mortem depois.
+### 2. HeroActionBar deixa de navegar directamente
 
-5. **Exporta CSV** com "Descarregar CSV" assim que terminar e cola-o (ou anexa-o) na próxima mensagem.
+Em `src/components/landing/hero-action-bar.tsx`, no `handleSubmit`:
+- Mantém validação client-side do handle e dos competitors.
+- Em vez de `navigate(...)`, guarda `{ handle, competitors }` em estado local e abre o `OnboardingModal`.
+- Passa `onSuccess` que faz o `navigate({ to: "/analyze/$username", ... })` com competitors.
 
-## O que eu faço com os dados
+### 3. AnalyzePage trata `ONBOARDING_REQUIRED` reabrindo a modal
 
-Para cada combinação handle × janela vou avaliar:
+Em `src/routes/analyze.$username.tsx`:
+- No `load()`, se `analysis.error_code === "ONBOARDING_REQUIRED"`, em vez de mostrar erro genérico, abre o `OnboardingModal` no próprio AnalyzePage (caso o user entre directamente via URL sem cookie). Após sucesso da modal, refaz `load()`.
+- Para `INSUFFICIENT_CREDITS`, mostra mensagem amigável via `errors.json` (chave nova `INSUFFICIENT_CREDITS`).
+- `PROFILE_PERSONAL_NO_FEED` já tem copy — manter.
 
-| Pergunta | Métricas-chave |
-|---|---|
-| 30/60/90d são viáveis? | `status=success`, `posts_returned`, `observed_days` ≥ janela esperada, `actual_cost_usd`, `duration_ms` |
-| 365d é demasiado caro/lento? | `actual_cost_usd` vs cap, `duration_ms` vs timeout, completude (`oldest_post_at` ≈ −365d) |
-| Qual a janela premium? | Custo marginal por dia adicional de histórico; saturação de `posts_returned` (curva de retorno decrescente) |
-| `resultsLimit` por plano | Ratio `posts_returned / resultsLimit` por janela e perfil (saturado vs folgado) |
-| `maxTotalChargeUsd` por plano | p95 do `actual_cost_usd` observado × margem de segurança 1.5× |
+### 4. Copy i18n (novo em `gate.json` + `errors.json`)
 
-Output final: tabela de recomendação por plano (free / paid / premium) com janela, `resultsLimit`, `maxTotalChargeUsd` e justificação por dados.
+`pt/gate.json` adicionar:
+```json
+"onboarding": {
+  "intro": {
+    "title": "Cria a tua conta e abre o relatório",
+    "subtitle": "São algumas perguntas rápidas para personalizar a análise e guardar o relatório.",
+    "handleContext": "Vais analisar @{{handle}}",
+    "creditNote": "Esta análise usa 1 crédito. Começas com 2 créditos gratuitos.",
+    "freeValueTitle": "O que recebes grátis",
+    "freeValue": [
+      "Índice geral do perfil",
+      "Métricas-base da visão geral",
+      "Amostra analisada e período observado",
+      "Relatório guardado para rever depois"
+    ],
+    "premiumNote": "As secções avançadas fazem parte do relatório premium.",
+    "cta": "Começar",
+    "trustLine": "~1 min · RGPD · sem spam",
+    "personalHint": "Funciona melhor com perfis públicos Creator ou Empresa. Alguns perfis pessoais podem não devolver publicações suficientes."
+  }
+}
+```
 
-## Riscos a vigiar
+`pt/errors.json` adicionar:
+- `"INSUFFICIENT_CREDITS": "Sem créditos disponíveis."`
+- `"INSUFFICIENT_CREDITS_HELPER": "Já usaste os teus 2 relatórios gratuitos."`
+- `"ONBOARDING_REQUIRED": "Para gerar a análise, completa o registo rápido."` (fallback caso a modal não consiga abrir)
+- `pt/analyze.json` — chave `loading.preparing: "A preparar a análise do perfil…"` (usada por `AnalysisSkeleton` se ainda não tiver).
 
-- **Conta personal sem feed** (`frederico.m.carvalho` ou `mariiana.ai` podem estar privadas/sem posts): runs vão devolver `PROFILE_PERSONAL_NO_FEED` ou similar. Não é falha do Lab; é input. Substituímos o handle se acontecer nos 3.
-- **Cap diário 5 USD**: se atingires, o `365d` do 3.º handle pode ser rejeitado. Aceitável — registamos e completamos amanhã.
-- **Timeouts no `365d`** (240s): se acontecer, é sinal de que `365d` em 1 run é arquitectura errada para premium e precisamos de paginação/janela acumulativa. Exactamente o que queremos descobrir.
+Espelhos em `en/`. Mantenho "Construído em Leiria" e outras strings como estão.
+
+### 5. Endpoint `/api/onboarding/start` — sem alterações
+
+Confirmado em `src/routes/api/onboarding/start.ts`:
+- Aceita o payload que vou mandar.
+- Faz upsert do lead, atribui créditos idempotentes, escreve cookie.
+- Retorna `{ ok, lead_id, credits }`.
+
+Pequena nuance: o endpoint trata `purpose` e `user_type` separadamente. No `unlockFormSchema` actual temos `goal` (→ mapeio para `purpose`) e `user_type`. OK.
+
+## Ficheiros afectados
+
+**Novos**
+- `src/components/onboarding/onboarding-modal.tsx`
+- `src/components/onboarding/onboarding-intro-step.tsx`
+- `src/components/onboarding/__tests__/onboarding-modal.test.tsx`
+- `src/components/landing/__tests__/hero-action-bar.test.tsx` (ou estender existente)
+
+**Editados**
+- `src/components/landing/hero-action-bar.tsx` — abrir modal em vez de navegar.
+- `src/routes/analyze.$username.tsx` — tratar `ONBOARDING_REQUIRED` reabrindo modal; tratar `INSUFFICIENT_CREDITS` com copy amigável.
+- `src/i18n/locales/pt/gate.json` + `src/i18n/locales/en/gate.json` — bloco `onboarding.intro`.
+- `src/i18n/locales/pt/errors.json` + `src/i18n/locales/en/errors.json` — `INSUFFICIENT_CREDITS`, `ONBOARDING_REQUIRED`.
+- `src/i18n/locales/pt/analyze.json` + `en/analyze.json` — `loading.preparing` se faltar.
+
+**Não tocar** (lock list para esta fase)
+- `src/components/product/unlock-modal.tsx`
+- `src/routes/api/public/report-unlock.ts`
+- `src/routes/api/analyze-public-v1.ts` (Phase 2 já fechou)
+- `src/routes/api/onboarding/start.ts` (Phase 1 já fechou)
+- Qualquer componente em `src/components/report-redesign/v2/`
+- `src/lib/analysis/cache.ts`, `src/lib/credits/credits.server.ts`
+- Apify actor, OpenAI prompts, thumbnails, emails, pricing
+
+## Testes a adicionar
+
+1. **`hero-action-bar.test.tsx`**
+   - Handle vazio → mostra erro de validação, NÃO chama `fetch` nem `navigate`.
+   - Handle inválido → idem.
+   - Handle válido → abre `OnboardingModal` e não navega.
+2. **`onboarding-modal.test.tsx`**
+   - Step 0 mostra `@{handle}` correctamente.
+   - Submit final faz POST a `/api/onboarding/start` com payload esperado (mock `fetch`).
+   - Resposta `ok: true` chama `onSuccess(handle)`.
+   - Resposta 500 mostra erro amigável; não chama `onSuccess`.
+3. **Integração `analyze.$username.tsx`** (test simples):
+   - `fetchPublicAnalysis` devolve `ONBOARDING_REQUIRED` → modal abre.
+   - `fetchPublicAnalysis` devolve `INSUFFICIENT_CREDITS` → mostra copy + helper.
+4. **Tests existentes do `UnlockModal` e `analyze-public-v1`** continuam a passar (regressão).
+
+## Validação
+
+- `bunx tsc --noEmit`
+- `bunx vitest run`
+- Manual em preview (sessão fresh, browser anónimo):
+  1. `/` → escrever `frederico.m.carvalho` → submit
+  2. modal abre no Step 0 com "@frederico.m.carvalho"
+  3. completar 5 passos
+  4. confirmar request `/api/onboarding/start` 200 nas devtools
+  5. confirmar cookie `lead_session` Set-Cookie
+  6. navegação para `/analyze/frederico.m.carvalho`
+  7. skeleton com "A preparar a análise do perfil…"
+  8. relatório abre, sem 402 visível
+  9. recarregar — análise vem de cache, não pede onboarding outra vez
+
+## Riscos remanescentes
+
+1. **Duplicação visual entre OnboardingModal e UnlockModal pós-relatório**: o user pede para ambos os flows existirem (não mexer em premium gating). Resultado: utilizador grátis vê o mesmo tipo de modal duas vezes (uma antes de analisar, outra ao tentar abrir secções premium). Aceitável nesta fase; flag para Fase 4 (unificar lead capture, ou tornar o segundo unlock só "upgrade premium").
+2. **Lead session sem créditos a tentar nova análise**: após esgotar 2 créditos, `INSUFFICIENT_CREDITS` aparece. Mensagem amigável existe; não há ainda fluxo de checkout — é o estado terminal definido no plano. UI deve apontar para "upgrade premium" futuramente.
+3. **Bypass via URL directa**: utilizador anónimo que cola `/analyze/<handle>` sem passar pela homepage. Tratado pelo handler de `ONBOARDING_REQUIRED` que reabre a modal no AnalyzePage.
+4. **Direct navigation com cookie inválido**: cookie expirado → backend devolve `ONBOARDING_REQUIRED` → mesma rota de tratamento.
+5. **Mobile**: `UnlockModal` (que vamos espelhar) já é mobile-first (`px-7 sm:px-9`, `max-h-[92vh] overflow-y-auto`). Mantemos a mesma estrutura.
 
 ## Checkpoint
 
-- ☐ Confirmaste pré-requisitos no admin
-- ☐ Mapeaste os 3 handles aos segmentos
-- ☐ Corres "Correr matriz" (15 runs)
-- ☐ Exportas e colas o CSV
-- ☐ Eu devolvo tabela de viabilidade por janela + recomendação premium
+- ☐ criar `OnboardingModal` reusando `unlockFormSchema` e copy do `gate.json`
+- ☐ adicionar Step 0 (intro) com copy nova
+- ☐ POST a `/api/onboarding/start` no submit final, com mapeamento de campos
+- ☐ alterar `HeroActionBar` para abrir modal em vez de navegar
+- ☐ tratar `ONBOARDING_REQUIRED` e `INSUFFICIENT_CREDITS` em `analyze.$username.tsx`
+- ☐ copy i18n em pt + en (`gate.json`, `errors.json`, `analyze.json`)
+- ☐ testes novos (HeroActionBar, OnboardingModal, AnalyzePage)
+- ☐ `bunx tsc --noEmit` limpo
+- ☐ `bunx vitest run` — só falhas pré-existentes nos email templates
+- ☐ smoke manual em preview com sessão fresh
