@@ -203,7 +203,7 @@
         "phoneLabel": "Phone",
         "phoneOptional": "optional",
         "phonePlaceholder": "+351 912 345 678",
-        "phoneHint": "Optional · helps us confirm access in exceptional cases.",
+        "phoneHint": "Only used if email delivery fails, in exceptional cases.",
         "consentText": "I accept the <a>data processing terms</a> and the <a2>privacy policy</a2>.",
         "consentMandatory": "(required)",
         "marketingText": "I'd like to receive tips and benchmarks.",

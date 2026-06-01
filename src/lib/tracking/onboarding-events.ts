@@ -10,13 +10,15 @@ export type OnboardingEventType =
   | "onboarding_step_view"
   | "onboarding_step_complete"
   | "onboarding_abandon"
-  | "onboarding_success";
+  | "onboarding_success"
+  | "onboarding_error";
 
 export interface OnboardingEventPayload {
   event_type: OnboardingEventType;
   step: 0 | 1 | 2 | 3;
   handle?: string;
   marketing_consent?: boolean;
+  error_code?: string;
 }
 
 const ENDPOINT = "/api/public/onboarding-event";
