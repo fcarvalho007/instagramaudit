@@ -156,5 +156,31 @@
       "titleEm": "back",
       "subtitle": "You can come back to this report from your personal area."
     }
+  },
+  "onboarding": {
+    "intro": {
+      "eyebrow": "BEFORE WE START",
+      "title": "Create your account and open the report",
+      "subtitle": "Just a few quick questions to personalise the analysis and save the report.",
+      "handleContext": "You'll analyse @{{handle}}",
+      "creditNote": "This analysis uses 1 credit. You start with 2 free credits.",
+      "freeValueTitle": "What you get for free",
+      "freeValue": [
+        "Overall profile index",
+        "Base overview metrics",
+        "Analysed sample and observed period",
+        "Report saved for later review"
+      ],
+      "premiumNote": "The advanced sections are part of the premium report.",
+      "cta": "Get started",
+      "trustLine": "~1 min · GDPR · no spam",
+      "personalHint": "Works best with public Creator or Business profiles. Some personal profiles may not return enough posts."
+    },
+    "submitting": "Preparing your access…",
+    "preparingAnalysis": "Preparing the profile analysis…",
+    "errors": {
+      "generic": "We couldn't complete this right now. Please try again in a moment.",
+      "network": "Connection error. Check your internet and try again."
+    }
   }
 }
