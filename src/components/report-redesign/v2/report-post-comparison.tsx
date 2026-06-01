@@ -74,6 +74,8 @@ function FormatIcon({
 export function PostComparisonBlock({
   topPosts,
   bottomPosts,
+  allPostsForScatter,
+  windowRange,
   aiInsightText,
   windowLabel,
   scatterVariant = "sober",
@@ -93,13 +95,22 @@ export function PostComparisonBlock({
   );
   const multiplierLabel = multiplier > 1 ? `${multiplier}×` : "";
 
-  // All posts visible in the window (already sorted by engagement desc).
-  const allPosts = topPosts;
-  const total = allPosts.length;
+  // Universe for the scatter: prefer the full scatter dataset (all posts of
+  // the window); fall back to topPosts when caller has not wired it yet.
+  const scatterPosts: ScatterPost[] = allPostsForScatter && allPostsForScatter.length > 0
+    ? allPostsForScatter
+    : topPosts.map((p) => ({
+        id: p.id,
+        format: p.format,
+        engagementPct: p.engagementPct,
+        date: p.date,
+        takenAtIso: p.takenAtIso,
+      }));
+  const total = scatterPosts.length;
   const avgEng = useMemo(() => {
     if (total === 0) return 0;
-    return allPosts.reduce((s, p) => s + p.engagementPct, 0) / total;
-  }, [allPosts, total]);
+    return scatterPosts.reduce((s, p) => s + p.engagementPct, 0) / total;
+  }, [scatterPosts, total]);
 
   const bestDelta = avgEng > 0 ? ((bestEng - avgEng) / avgEng) * 100 : 0;
   const worstDelta = avgEng > 0 ? ((worstEng - avgEng) / avgEng) * 100 : 0;
@@ -154,7 +165,7 @@ export function PostComparisonBlock({
           {/* 2. Constellation Scatter */}
           {total >= 3 && (
             <ConstellationScatter
-              posts={allPosts}
+              posts={scatterPosts}
               best={best}
               worst={worst}
               avg={avgEng}
@@ -162,6 +173,7 @@ export function PostComparisonBlock({
               t={t}
               language={language}
               variant={scatterVariant}
+              windowRange={windowRange}
             />
           )}
 
