@@ -315,6 +315,106 @@ function WeeklySummary({ days, t }: { days: DayEntry[]; t: TFunction }) {
   );
 }
 
+// ─── KPI strip (Cadência · Consistência · Pico semanal) ─────────────
+
+function FrequencyKpiStrip({
+  postingFrequencyWeekly,
+  publishedCount,
+  totalDays,
+  days,
+  t,
+  lang,
+}: {
+  postingFrequencyWeekly: number;
+  publishedCount: number;
+  totalDays: number;
+  days: DayEntry[];
+  t: TFunction;
+  lang: string;
+}) {
+  const cadenceValue = formatNumber(postingFrequencyWeekly, lang, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+  const consistencyPct =
+    totalDays > 0 ? (publishedCount / totalDays) * 100 : 0;
+  const consistencyValue = formatNumber(consistencyPct, lang, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+
+  const buckets = aggregateByWeekday(days);
+  const top = pickMostActive(buckets);
+  const weekdayLong =
+    (t("frequency.weekday_long", { returnObjects: true }) as string[]) ?? [];
+  const hasPeak = top.posts > 0;
+  const peakLabel = hasPeak ? weekdayLong[top.weekday] ?? "—" : "—";
+  const peakCaption = hasPeak
+    ? t(
+        top.posts === 1
+          ? "frequency.kpi.peak_caption_posts_one"
+          : "frequency.kpi.peak_caption_posts_other",
+        { count: top.posts },
+      )
+    : t("frequency.kpi.peak_caption_none");
+
+  return (
+    <div className="px-4 sm:px-5 md:px-6 mt-4">
+      <div className="rounded-xl border border-border-default bg-white grid grid-cols-1 sm:grid-cols-3 overflow-hidden divide-y divide-border-default/60 sm:divide-y-0">
+        {/* Cadência */}
+        <div className="px-4 py-4 sm:px-5 sm:py-5">
+          <span className="text-eyebrow-sm text-content-secondary block mb-2">
+            {t("frequency.kpi.cadence_label")}
+          </span>
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-sans text-[1.25rem] sm:text-[1.5rem] font-semibold tabular-nums text-content-primary leading-none">
+              {cadenceValue}
+            </span>
+            <span className="text-xs text-content-tertiary">
+              {t("frequency.kpi.cadence_unit")}
+            </span>
+          </div>
+        </div>
+
+        {/* Consistência */}
+        <div className="px-4 py-4 sm:px-5 sm:py-5 sm:border-l sm:border-border-default/60">
+          <span className="text-eyebrow-sm text-content-secondary block mb-2">
+            {t("frequency.kpi.consistency_label")}
+          </span>
+          <div className="flex items-baseline gap-1">
+            <span className="font-sans text-[1.25rem] sm:text-[1.5rem] font-semibold tabular-nums text-content-primary leading-none">
+              {consistencyValue}
+            </span>
+            <span className="font-sans text-[1.25rem] sm:text-[1.5rem] font-semibold text-content-secondary/60 leading-none">
+              %
+            </span>
+          </div>
+          <span className="block text-xs text-content-tertiary mt-1.5 leading-snug">
+            {t("frequency.kpi.consistency_caption")}
+          </span>
+        </div>
+
+        {/* Pico semanal */}
+        <div className="px-4 py-4 sm:px-5 sm:py-5 sm:border-l sm:border-border-default/60">
+          <span className="text-eyebrow-sm text-content-secondary block mb-2">
+            {t("frequency.kpi.peak_label")}
+          </span>
+          <span
+            className={`block font-sans text-[1.25rem] sm:text-[1.5rem] font-semibold leading-none ${
+              hasPeak ? "text-accent-primary" : "text-content-tertiary"
+            }`}
+          >
+            {peakLabel}
+          </span>
+          <span className="block text-xs text-content-tertiary mt-1.5 leading-snug">
+            {peakCaption}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Calendar grid helpers ──────────────────────────────────────────
 
 /**
