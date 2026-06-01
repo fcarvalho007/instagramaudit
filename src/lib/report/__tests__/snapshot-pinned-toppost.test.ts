@@ -1,7 +1,9 @@
 /**
- * Snapshot adapter — pinned posts must remain visible in `topPosts` /
- * enriched.topPosts (with the `isPinned` flag) while staying out of the
- * temporal series / heatmap / best-days.
+ * Snapshot adapter — pinned posts must be EXCLUDED from `topPosts` /
+ * enriched.topPosts / enriched.bottomPosts so the Block 1 "melhor /
+ * pior publicação" comparison never crowns a stale pinned post (audit
+ * fix P1 #2). They also stay out of temporal series / heatmap /
+ * best-days, as before.
  */
 import { describe, it, expect } from "vitest";
 import {
@@ -37,8 +39,8 @@ function makePost(
   };
 }
 
-describe("snapshotToReportData — pinned exposure in topPosts", () => {
-  it("keeps pinned in top posts with isPinned=true when engagement wins", () => {
+describe("snapshotToReportData — pinned exclusion from topPosts", () => {
+  it("excludes pinned posts from top/bottom posts even when their engagement is highest", () => {
     const posts: SnapshotPost[] = [
       // 2 pinned with very high engagement
       makePost("2023-05-11T18:00:00.000Z", { pinned: true, engagement: 9.5 }),
@@ -53,14 +55,20 @@ describe("snapshotToReportData — pinned exposure in topPosts", () => {
     const payload: SnapshotPayload = { posts };
     const { data, enriched } = snapshotToReportData({ payload });
 
-    // Pinned posts win the top slots and carry the flag.
-    const dataTop = data.topPosts[0] as typeof data.topPosts[number] & {
-      isPinned?: boolean;
-    };
-    expect(dataTop.isPinned).toBe(true);
-    expect(enriched.topPosts[0].isPinned).toBe(true);
-    // At least one of the top three is pinned.
-    expect(enriched.topPosts.slice(0, 3).some((p) => p.isPinned)).toBe(true);
+    // Pinned posts must NOT appear in topPosts / enriched.topPosts /
+    // enriched.bottomPosts — the Block 1 best/worst comparison only
+    // considers the canonical sample (pinned + date outliers excluded).
+    for (const p of data.topPosts) {
+      const flag = (p as { isPinned?: boolean }).isPinned;
+      expect(flag).not.toBe(true);
+    }
+    for (const p of enriched.topPosts) expect(p.isPinned).not.toBe(true);
+    for (const p of enriched.bottomPosts) {
+      const flag = (p as { isPinned?: boolean }).isPinned;
+      expect(flag).not.toBe(true);
+    }
+    // Best post is the highest-engagement non-pinned one (1.2%).
+    expect(enriched.topPosts[0]?.engagementPct).toBe(1.2);
   });
 
   it("does NOT leak 2023 pinned dates into temporalSeries / bestDays", () => {
