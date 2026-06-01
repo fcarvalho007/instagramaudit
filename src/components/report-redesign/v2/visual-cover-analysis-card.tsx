@@ -19,6 +19,7 @@ import type {
 } from "@/lib/report/visual-cover-types";
 import { InsightCallout } from "./insight-callout";
 import type { SnapshotPost } from "@/lib/report/snapshot-to-report-data";
+import { pickThumbnailUrl } from "@/lib/report/pick-thumbnail";
 
 // ─── Props ──────────────────────────────────────────────────────────
 
