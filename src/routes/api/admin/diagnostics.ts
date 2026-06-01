@@ -544,11 +544,21 @@ export const Route = createFileRoute("/api/admin/diagnostics")({
         // Apify no runtime publicado. Apenas booleanos derivados; nunca expõe
         // valores de segredos.
         const TEST_HANDLE = "frederico.m.carvalho" as const;
+        const EXPECTED_HANDLES = [
+          "frederico.m.carvalho",
+          "martimsilvai",
+          "mariiana.ai",
+        ] as const;
         const apifyTokenPresent = hasSecret("APIFY_TOKEN");
         const apifyEnabledRawIsTrue = process.env.APIFY_ENABLED === "true";
         const testingActive = isTestingModeActive();
         const allowlist = getAllowlist();
         const allowlistIncludesTestHandle = allowlist.includes(TEST_HANDLE);
+        const expectedHandlesMissing = EXPECTED_HANDLES.filter(
+          (h) => !allowlist.includes(h),
+        );
+        const dailyCapUsd = getApifyDailyCapUsd();
+        const hardCapUsd = getApifyHardCapUsd();
         const readyForSmokeTest =
           apifyTokenPresent &&
           apifyEnabledRawIsTrue &&
@@ -578,6 +588,13 @@ export const Route = createFileRoute("/api/admin/diagnostics")({
           test_handle: TEST_HANDLE,
           ready_for_smoke_test: readyForSmokeTest,
           blocking_reason: blockingReason,
+          daily_cap_usd: dailyCapUsd,
+          hard_cap_usd: hardCapUsd,
+          daily_cap_meets_min_5: dailyCapUsd >= 5,
+          hard_cap_meets_min_5: hardCapUsd >= 5,
+          expected_handles: EXPECTED_HANDLES,
+          expected_handles_present: expectedHandlesMissing.length === 0,
+          expected_handles_missing: expectedHandlesMissing,
         };
 
         const body = {
