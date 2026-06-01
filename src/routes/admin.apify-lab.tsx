@@ -27,6 +27,14 @@ interface LabRun {
   notes: string | null;
   error_excerpt: string | null;
   input_params?: Record<string, unknown> | null;
+  mode?: string | null;
+  purpose?: string | null;
+  results_type?: string | null;
+  results_limit?: number | null;
+  only_posts_newer_than?: string | null;
+  raw_items_returned?: number | null;
+  posts_extracted?: number | null;
+  profile_metadata_present?: boolean | null;
 }
 
 const ALL_WINDOWS: WindowKind[] = ["baseline", "30d", "60d", "90d", "365d"];
@@ -77,6 +85,72 @@ function pickOnlyPostsNewerThan(
   if (!input) return null;
   const v = input.onlyPostsNewerThan;
   return typeof v === "string" && v.length > 0 ? v : null;
+}
+
+function csvEscape(v: unknown): string {
+  if (v === null || v === undefined) return "";
+  let s: string;
+  if (typeof v === "number" || typeof v === "boolean") s = String(v);
+  else s = String(v);
+  s = s.replace(/[\r\n\t]+/g, " ").slice(0, 500);
+  if (/[",\s]/.test(s)) {
+    s = `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+function resolveMode(r: LabRun): string {
+  if (r.mode) return r.mode;
+  const rt = r.results_type ?? (r.input_params?.resultsType as string | undefined);
+  if (rt === "posts") return "posts";
+  if (rt === "details") return "details";
+  return "—";
+}
+
+function resolveResultsType(r: LabRun): string {
+  return (
+    r.results_type ??
+    ((r.input_params?.resultsType as string | undefined) ?? "—")
+  );
+}
+
+function resolveResultsLimit(r: LabRun): number | null {
+  if (typeof r.results_limit === "number") return r.results_limit;
+  return pickResultsLimit(r.input_params);
+}
+
+function resolveOnlyPostsNewerThan(r: LabRun): string | null {
+  if (r.only_posts_newer_than) return r.only_posts_newer_than;
+  return pickOnlyPostsNewerThan(r.input_params);
+}
+
+/**
+ * Por handle, verifica se todas as runs success de janelas != baseline têm
+ * posts_returned / oldest_post_at / newest_post_at idênticos — sinal de que
+ * onlyPostsNewerThan / resultsLimit não estão a ter efeito.
+ */
+function handlesWithStuckWindows(runs: LabRun[]): Set<string> {
+  const byHandle = new Map<string, LabRun[]>();
+  for (const r of runs) {
+    if (r.status !== "success") continue;
+    if (r.window_kind === "baseline") continue;
+    const list = byHandle.get(r.profile_handle) ?? [];
+    list.push(r);
+    byHandle.set(r.profile_handle, list);
+  }
+  const stuck = new Set<string>();
+  for (const [handle, list] of byHandle) {
+    if (list.length < 2) continue;
+    const first = list[0];
+    const allSame = list.every(
+      (x) =>
+        x.posts_returned === first.posts_returned &&
+        x.oldest_post_at === first.oldest_post_at &&
+        x.newest_post_at === first.newest_post_at,
+    );
+    if (allSame) stuck.add(handle);
+  }
+  return stuck;
 }
 
 function ApifyLabPage() {
@@ -188,8 +262,14 @@ function ApifyLabPage() {
       "profile",
       "segment",
       "window",
+      "mode",
+      "purpose",
+      "results_type",
       "resultsLimit",
       "onlyPostsNewerThan",
+      "raw_items_returned",
+      "posts_extracted",
+      "profile_metadata_present",
       "posts",
       "observed_days",
       "newest",
@@ -206,29 +286,37 @@ function ApifyLabPage() {
     ];
     const lines = runs.map((r) =>
       [
-        r.created_at,
-        r.profile_handle,
-        r.profile_segment ?? "",
-        r.window_kind,
-        pickResultsLimit(r.input_params) ?? "",
-        pickOnlyPostsNewerThan(r.input_params) ?? "",
-        r.posts_returned ?? "",
-        r.observed_days ?? "",
-        r.newest_post_at ?? "",
-        r.oldest_post_at ?? "",
-        r.estimated_cost_usd ?? "",
-        r.actual_cost_usd ?? "",
-        r.duration_ms ?? "",
-        r.status,
-        r.semantic_code ?? "",
-        r.normalize_ok ?? "",
-        r.apify_run_id ?? "",
-        (r.notes ?? "").replace(/[\n,]/g, " "),
-        (r.error_excerpt ?? "").replace(/[\n,]/g, " "),
+        csvEscape(r.created_at),
+        csvEscape(r.profile_handle),
+        csvEscape(r.profile_segment),
+        csvEscape(r.window_kind),
+        csvEscape(resolveMode(r)),
+        csvEscape(r.purpose),
+        csvEscape(resolveResultsType(r)),
+        csvEscape(resolveResultsLimit(r)),
+        csvEscape(resolveOnlyPostsNewerThan(r)),
+        csvEscape(r.raw_items_returned),
+        csvEscape(r.posts_extracted),
+        csvEscape(r.profile_metadata_present),
+        csvEscape(r.posts_returned),
+        csvEscape(r.observed_days),
+        csvEscape(r.newest_post_at),
+        csvEscape(r.oldest_post_at),
+        csvEscape(r.estimated_cost_usd),
+        csvEscape(r.actual_cost_usd),
+        csvEscape(r.duration_ms),
+        csvEscape(r.status),
+        csvEscape(r.semantic_code),
+        csvEscape(r.normalize_ok),
+        csvEscape(r.apify_run_id),
+        csvEscape(r.notes),
+        csvEscape(r.error_excerpt),
       ].join(","),
     );
     return [header.join(","), ...lines].join("\n");
   }, [runs]);
+
+  const stuckHandles = useMemo(() => handlesWithStuckWindows(runs), [runs]);
 
   function downloadCsv() {
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -263,6 +351,29 @@ function ApifyLabPage() {
           Nada é escrito em <code>report_snapshots</code>, <code>provider_call_logs</code>,
           <code>leads</code> ou pipelines de produção.
         </section>
+
+        <section className="rounded-lg border border-blue-300/60 bg-blue-50 p-4 text-sm text-blue-900">
+          <strong>Modos do Lab:</strong> o relatório gratuito de produção usa{" "}
+          <code>details</code> mode com os ~12 posts mais recentes (linha{" "}
+          <code>baseline</code>, <code>purpose = current_free_report_baseline</code>).
+          As janelas temporais (<code>30d</code>, <code>60d</code>, <code>90d</code>,{" "}
+          <code>365d</code>) usam <code>posts</code> mode e são experimentais —
+          ajustam <code>resultsLimit</code> e <code>onlyPostsNewerThan</code>.
+        </section>
+
+        {stuckHandles.size > 0 ? (
+          <section className="rounded-lg border border-red-300/60 bg-red-50 p-4 text-sm text-red-900">
+            <strong>Aviso de janelas estáticas:</strong> os seguintes handles
+            devolveram exactamente os mesmos <code>posts_returned</code>,{" "}
+            <code>oldest_post_at</code> e <code>newest_post_at</code> em todas
+            as janelas testadas (excluindo baseline). Os parâmetros de janela
+            podem não estar a ter efeito:{" "}
+            {Array.from(stuckHandles)
+              .map((h) => `@${h}`)
+              .join(", ")}
+            .
+          </section>
+        ) : null}
 
         <section className="rounded-lg border border-border-default bg-surface-elevated p-5">
           <h2 className="text-base font-semibold text-content-primary">
@@ -386,8 +497,13 @@ function ApifyLabPage() {
                   <th className="py-2 pr-3">Perfil</th>
                   <th className="py-2 pr-3">Seg</th>
                   <th className="py-2 pr-3">Janela</th>
+                  <th className="py-2 pr-3">Mode</th>
+                  <th className="py-2 pr-3">resultsType</th>
                   <th className="py-2 pr-3 text-right">resultsLimit</th>
                   <th className="py-2 pr-3">onlyPostsNewerThan</th>
+                  <th className="py-2 pr-3 text-right">Raw items</th>
+                  <th className="py-2 pr-3 text-right">Posts extr.</th>
+                  <th className="py-2 pr-3">Perfil meta?</th>
                   <th className="py-2 pr-3 text-right">Posts</th>
                   <th className="py-2 pr-3 text-right">Obs. days</th>
                   <th className="py-2 pr-3">Newest</th>
@@ -412,11 +528,27 @@ function ApifyLabPage() {
                     <td className="py-1.5 pr-3">@{r.profile_handle}</td>
                     <td className="py-1.5 pr-3">{r.profile_segment ?? "—"}</td>
                     <td className="py-1.5 pr-3">{r.window_kind}</td>
+                    <td className="py-1.5 pr-3">{resolveMode(r)}</td>
+                    <td className="py-1.5 pr-3">{resolveResultsType(r)}</td>
                     <td className="py-1.5 pr-3 text-right">
-                      {pickResultsLimit(r.input_params) ?? "—"}
+                      {resolveResultsLimit(r) ?? "—"}
                     </td>
                     <td className="py-1.5 pr-3">
-                      {pickOnlyPostsNewerThan(r.input_params) ?? "—"}
+                      {resolveOnlyPostsNewerThan(r) ?? "—"}
+                    </td>
+                    <td className="py-1.5 pr-3 text-right">
+                      {r.raw_items_returned ?? "—"}
+                    </td>
+                    <td className="py-1.5 pr-3 text-right">
+                      {r.posts_extracted ?? "—"}
+                    </td>
+                    <td className="py-1.5 pr-3">
+                      {r.profile_metadata_present === null ||
+                      r.profile_metadata_present === undefined
+                        ? "—"
+                        : r.profile_metadata_present
+                          ? "sim"
+                          : "não"}
                     </td>
                     <td className="py-1.5 pr-3 text-right">
                       {r.posts_returned ?? "—"}
@@ -458,7 +590,7 @@ function ApifyLabPage() {
                 {runs.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={16}
+                      colSpan={21}
                       className="py-6 text-center text-content-tertiary"
                     >
                       Sem execuções ainda.
