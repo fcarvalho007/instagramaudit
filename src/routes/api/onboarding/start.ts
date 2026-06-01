@@ -60,9 +60,9 @@ const GENERIC_FALLBACK_MESSAGE =
 
 function warnIfSecretMisconfigured(): void {
   const secret = process.env.SESSION_SECRET;
-  if (!secret || secret.length < 16) {
+  if (!secret || secret.length < 32) {
     console.warn(
-      "[onboarding/start] SESSION_SECRET misconfigured (missing or <16 chars) — cookie write will fail.",
+      "[onboarding/start] SESSION_SECRET misconfigured (missing or <32 chars) — cookie write will fail.",
     );
   }
 }

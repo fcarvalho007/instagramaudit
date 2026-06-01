@@ -10,7 +10,7 @@ import {
 const LEAD_ID = "11111111-2222-3333-4444-555555555555";
 
 beforeAll(() => {
-  process.env.SESSION_SECRET = "test-session-secret-with-enough-length-1234";
+  process.env.SESSION_SECRET = "test-session-secret-with-enough-length-1234-abcdef";
 });
 
 describe("lead-cookie", () => {
@@ -78,9 +78,9 @@ describe("lead-cookie", () => {
     }
   });
 
-  it("encodeLeadCookie throws when SESSION_SECRET is shorter than 16 chars", () => {
+  it("encodeLeadCookie throws when SESSION_SECRET is shorter than 32 chars", () => {
     const original = process.env.SESSION_SECRET;
-    process.env.SESSION_SECRET = "too-short-123"; // 13 chars
+    process.env.SESSION_SECRET = "only-31-chars-not-enough-12345a"; // 31 chars
     try {
       expect(() => encodeLeadCookie(LEAD_ID)).toThrowError(
         /SESSION_SECRET/,

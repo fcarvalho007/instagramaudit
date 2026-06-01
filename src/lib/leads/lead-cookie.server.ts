@@ -25,9 +25,9 @@ const UUID_RE =
 
 function getSecret(): string {
   const secret = process.env.SESSION_SECRET;
-  if (!secret || secret.length < 16) {
+  if (!secret || secret.length < 32) {
     throw new Error(
-      "SESSION_SECRET missing or too short (need at least 16 chars).",
+      "SESSION_SECRET missing or too short (need at least 32 chars).",
     );
   }
   return secret;
