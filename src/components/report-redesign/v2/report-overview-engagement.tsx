@@ -103,31 +103,34 @@ export function EngagementCardRefined({ result }: Props) {
     readingText = t("engagement.reading.above", { mult: aboveMultLabel });
   }
 
-  // Status pill styling
-  const pillClass =
+  // Inline status underline colour — mirrors the pattern used in
+  // FrequencyCard / FormatCard so the three Block-1 cards share the
+  // same header treatment (no pill, no uppercase).
+  const statusUnderline =
     engagementStatus === t("engagement.status.high")
-      ? "bg-signal-success/8 text-signal-success border-signal-success/20"
+      ? "rgba(29,158,117,0.50)"
       : engagementStatus === t("engagement.status.medium")
-        ? "bg-signal-warning/8 text-signal-warning border-signal-warning/20"
-        : "bg-signal-danger/8 text-signal-danger border-signal-danger/20";
+        ? "rgba(217,119,6,0.50)"
+        : "rgba(163,45,45,0.50)";
 
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
       {/* Header */}
       <div className="px-4 sm:px-5 md:px-6 pt-6 sm:pt-8 md:pt-10 pb-4 sm:pb-5 space-y-3">
         <p className="text-eyebrow-sm text-content-secondary">{t("engagement.eyebrow")}</p>
-        <div className="flex items-center gap-3 flex-wrap">
-          <h3 className="font-display text-[1.25rem] sm:text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight">
-            {t("engagement.title")}
+        <div className="flex items-start gap-3">
+          <h3 className="font-display text-[1.25rem] sm:text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight break-words">
+            {t("engagement.title")}{" "}
+            <span
+              className="font-semibold"
+              style={{
+                borderBottom: `2px solid ${statusUnderline}`,
+                paddingBottom: "1px",
+              }}
+            >
+              {engagementStatus}
+            </span>
           </h3>
-          <span
-            className={cn(
-              "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide",
-              pillClass,
-            )}
-          >
-            {engagementStatus}
-          </span>
         </div>
         <p className="text-[15px] text-content-secondary leading-relaxed">
           {t("engagement.subtitle")}
