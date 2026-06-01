@@ -1,82 +1,131 @@
-# Auditoria do sistema de créditos + proposta mínima
+# Block 1 — Correções P2 de transparência (copy + linha de metodologia)
 
-## 1. Resultado da auditoria (factual)
+## Estado actual auditado
 
-**Não existe sistema de créditos implementado no backend.** Confirmado por inspecção de código e da base de dados:
+- `posts.subtitle` (PT/EN) tem fallback hardcoded em "últimos 30 dias / last 30 days" em `src/i18n/locales/{pt,en}/report.json`.
+- `report-post-comparison.tsx:149` escolhe entre `subtitle_with_window` (quando `windowShortLabel` existe) ou o fallback fixo — sem distinguir o método de amostra.
+- O adapter (`snapshot-to-report-data.ts`) já expõe tudo o que precisamos: `enriched.cadence.method` ∈ {`window_30d`, `window_90d`, `sample_span`, `insufficient`}, `enriched.cadence.windowDays`, `enriched.cadence.sampleSize`, e `buildBlock01Sample(payload.posts).performancePosts.length` (já calculado no Bloco 1).
+- Block 1 (`report-overview-block.tsx`) **não tem** linha visível de metodologia. `pinnedPostsExcluded` / `dateOutliersExcluded` estão disponíveis via `buildBlock01Sample`.
 
-- **Base de dados**: nenhuma tabela com `credit` no nome no schema `public`. Não existe `user_credits` nem `credit_ledger`. Não existe coluna de saldo em `profiles` (só `plan: 'free'`).
-- **Endpoint de refresh** (`src/routes/api/analyze/refresh.ts`):
-  - Exige sessão autenticada (`verifyUserSession` via `supabaseAdmin.auth.getUser`).
-  - Comentário explícito linhas 18-20: *"this endpoint does NOT consume credits today — the credits table is not implemented yet"*.
-  - Loga `refresh_credit_not_consumed` com `reason: "credits_not_implemented"` em cada chamada bem-sucedida (linhas 278, 300-301).
-- **API pública** (`analyze-public-v1.ts`): devolve `refresh_requires_credit: false` hardcoded em ambos os ramos (linhas 1326 e 1339). Campo já existe no contrato `FreshnessInfo` (`src/lib/analysis/types.ts:83`).
-- **UI** (`app-topbar.tsx`, `app-sidebar.tsx`, `lead-detail-sheet.tsx`): referências a "credit" são apenas copy/placeholder, sem leitura de saldo real.
-- **Outras menções** (`apify-allowlist`, `cost-sync`, `pdfshift`): referem-se a *créditos do provider* (Apify, PDFShift), não a créditos do utilizador.
+## Mudanças
 
-**Conclusão**: o caminho de débito está pré-cabado (endpoint protegido, flag no contrato, log de "not consumed"), mas o estado persistente não existe. Implementar agora é aditivo e de baixo risco.
+### 1. i18n — `posts.subtitle` method-safe
 
-## 2. Proposta mínima (3 créditos / mês, requer aprovação)
+Em `src/i18n/locales/pt/report.json` e `en/report.json`, dentro de `"posts"`, substituir as duas chaves actuais por um bloco de variantes:
 
-Regra de produto sugerida (a confirmar contigo):
-- Cada utilizador autenticado recebe **3 créditos por mês civil**.
-- **1 refresh manual = 1 crédito** (apenas quando o snapshot tem 12-24h e o utilizador clica em "Recolher dados novos").
-- Leitura de cache (<12h ou >24h com fallback) **não consome**.
-- Análise inicial de um handle novo **não consome** (mantém funil free actual).
-- Sem rollover entre meses. Sem compra avulsa nesta fase.
-
-### Schema (uma migração, aditivo)
-
-```text
-public.user_credits
-  user_id        uuid PK  → auth.users
-  period_month   date     (primeiro dia do mês, UTC)
-  granted        int  default 3
-  consumed       int  default 0
-  updated_at     timestamptz
-  PK (user_id, period_month)
-
-public.credit_ledger
-  id             uuid PK
-  user_id        uuid
-  period_month   date
-  delta          int      (-1 débito, +N crédito/grant)
-  reason         text     ('refresh' | 'monthly_grant' | 'admin_adjust')
-  ref_handle     text null
-  ref_snapshot   uuid null
-  created_at     timestamptz
+```json
+"subtitle_variants": {
+  "window_30d": "O contraste editorial dos últimos 30 dias.",
+  "window_90d": "O contraste editorial dos últimos 90 dias.",
+  "sample_span_one": "O contraste editorial na última publicação.",
+  "sample_span_other": "O contraste editorial nas últimas {{count}} publicações.",
+  "insufficient": "O contraste editorial na amostra recolhida."
+}
 ```
 
-- RLS: `SELECT` próprio em ambas; sem `INSERT/UPDATE/DELETE` directo do cliente.
-- Função `consume_refresh_credit(p_user, p_handle, p_snapshot)` SECURITY DEFINER que:
-  1. Faz `upsert` da linha do mês corrente com `granted=3` se não existir.
-  2. Verifica `consumed < granted`; se não, devolve `insufficient`.
-  3. Incrementa `consumed` e escreve linha no `credit_ledger` numa só transacção.
-  4. Devolve `{ ok, remaining }`.
-- Sem cron job: o grant é *lazy* na primeira chamada do mês (mais simples e idempotente).
+(Equivalente EN com "across the latest" e singular/plural.) Manter `subtitle` como alias de `insufficient` para retro-compatibilidade caso algo importe directamente.
 
-### Wiring mínimo no código
+Notas:
+- Resolver singular/plural com sufixo `_one` / `_other` baseado em `count` (evita "últimos 8 publicações"). Como o projecto não usa i18next-icu, faço o select manualmente em código: `count === 1 ? sample_span_one : sample_span_other`.
+- Remover `subtitle_with_window` (não há outro consumidor além de `report-post-comparison`).
 
-- `src/routes/api/analyze/refresh.ts`: antes do delegate para `analyze-public-v1?refresh=1`, chamar `consume_refresh_credit`. Se `insufficient`, devolver `402` com mensagem PT. Em caso de erro do refresh, **não** reverter o débito nesta primeira versão (decisão a confirmar — alternativa abaixo).
-- `src/routes/api/analyze-public-v1.ts`: passar `refresh_requires_credit: true` no payload de `freshness` para utilizadores autenticados quando o estado é `refresh_available`. Mantém `false` para anónimos.
-- Novo serverFn `getCreditsBalance` (read-only, `requireSupabaseAuth`) devolvendo `{ granted, consumed, remaining, period_month }`.
-- **Sem alterações de UI nesta tarefa**: a copy do CTA de refresh já existe; o badge de saldo fica para PR seguinte.
+### 2. `report-post-comparison.tsx` — selector method-safe
 
-### Riscos e decisões pendentes
+- Trocar prop `windowLabel?: string` por `cadenceMethod`, `cadenceWindowDays`, `sampleSize` (ou um único objecto `methodology`).
+- Função pura `pickSubtitleKey(method, count)`:
+  - `window_30d` → `posts.subtitle_variants.window_30d`
+  - `window_90d` → `posts.subtitle_variants.window_90d`
+  - `sample_span` → `_one` se `count===1`, senão `_other` com `{ count }`
+  - `insufficient` ou desconhecido → `posts.subtitle_variants.insufficient`
+- Linha 149 passa a renderizar o resultado desta função.
 
-1. **Reembolso em falha**: se o refresh delegate falhar depois do débito, perdemos 1 crédito. Opções: (a) débito antes (simples, risco de "engolir" 1 crédito por falha de provider — raro); (b) débito após sucesso (race condition se utilizador clicar 2x); (c) débito antes + crédito compensatório se delegate devolver erro de provider. **Recomendação**: (c) — implementação ~10 linhas extra.
-2. **Concorrência**: lock-by-handle já existe em `refreshingHandles`. Suficiente para evitar duplo débito do mesmo handle.
-3. **Admin override**: precisamos de UI admin para adicionar/repor créditos? Proposta: deixar fora desta tarefa — `admin_adjust` via SQL directo na fase beta.
-4. **Definição de "mês"**: UTC vs Europe/Lisbon. Recomendação: UTC para alinhar com `created_at` da BD.
+### 3. `report-overview-block.tsx` — linha de metodologia + nota de exclusões
 
-## 3. Checkpoint — preciso da tua aprovação antes de avançar
+Logo após o `EditorialIdentityCard` (ainda dentro do `mode === "all" | "free"`), adicionar um pequeno bloco:
 
-Confirma, ponto a ponto:
+```tsx
+<MethodologyLine
+  count={sample.performancePosts.length}
+  observedDays={enriched.cadence.windowDays}
+  sufficient={enriched.cadence.sufficient}
+  pinnedExcluded={sample.pinnedPostsExcluded}
+  outliersExcluded={sample.dateOutliersExcluded}
+/>
+```
 
-- ☐ **Modelo**: 3 créditos/mês, só debitados em refresh manual entre 12-24h?
-- ☐ **Schema**: aprovar `user_credits` + `credit_ledger` aditivos (sem tocar `profiles`)?
-- ☐ **Grant**: lazy na primeira chamada do mês (sem cron)?
-- ☐ **Reembolso em falha de provider**: opção (c) — débito antes + crédito compensatório se delegate falhar?
-- ☐ **Scope**: backend + débito no `/api/analyze/refresh` apenas. UI (badge de saldo, mensagem quando esgotado) fica para PR separado?
-- ☐ **Mês**: UTC?
+`sample` já é computado no componente para `postAverages`; reaproveitar (extrair `useMemo` único). Novo componente `overview/methodology-line.tsx` (~40 linhas):
 
-Se aprovares, em build mode entrego: 1 migração SQL, 1 função `consume_refresh_credit`, ajuste em `refresh.ts` (~30 linhas), ajuste em `analyze-public-v1.ts` para `refresh_requires_credit`, 1 serverFn `getCreditsBalance`, testes.
+- Texto pequeno (`text-xs text-content-tertiary`), sem card, sem ícone novo.
+- Quando `sufficient`:
+  - PT: `Análise baseada nas últimas {{count}} publicações disponíveis · Período observado: {{days}} dias.`
+  - PT, count===1: `Análise baseada na última publicação disponível · Período observado: {{days}} dia(s).`
+  - EN equivalentes.
+- Quando `!sufficient`:
+  - PT: `Amostra reduzida: poucos dados disponíveis para uma leitura conclusiva.`
+  - EN: `Limited sample: not enough data for a conclusive reading.`
+- Se `pinnedExcluded + outliersExcluded > 0`, segundo span (mesmo parágrafo, separado por ` · `) com tooltip nativo (`title=`) — sem `<Tooltip>` shadcn para manter zero novas deps:
+  - PT: `Publicações fixadas ou demasiado antigas podem ser excluídas dos cálculos de desempenho.`
+  - EN equivalente.
+
+### 4. Novas chaves i18n para a linha
+
+Em `posts` ou novo namespace `methodology` dentro de `report.json`:
+
+```json
+"methodology": {
+  "line_one": "Análise baseada na última publicação disponível · Período observado: {{days}} dia(s).",
+  "line_other": "Análise baseada nas últimas {{count}} publicações disponíveis · Período observado: {{days}} dias.",
+  "insufficient": "Amostra reduzida: poucos dados disponíveis para uma leitura conclusiva.",
+  "exclusions_note": "Publicações fixadas ou demasiado antigas podem ser excluídas dos cálculos de desempenho."
+}
+```
+
+### 5. Wiring no `report-overview-block.tsx`
+
+- Passar para `<PostComparisonBlock>` os novos props: `cadenceMethod={enriched.cadence.method}`, `cadenceWindowDays={enriched.cadence.windowDays}`, `sampleSize={sample.performancePosts.length}`. Remover `windowLabel`.
+
+## Ficheiros a alterar
+
+1. `src/i18n/locales/pt/report.json` — substituir `posts.subtitle` / `subtitle_with_window` + adicionar `posts.subtitle_variants` + `posts.methodology`.
+2. `src/i18n/locales/en/report.json` — idem.
+3. `src/components/report-redesign/v2/report-post-comparison.tsx` — nova assinatura de props, função `pickSubtitleKey`, render linha 149.
+4. `src/components/report-redesign/v2/report-overview-block.tsx` — extrair `sample` para useMemo único, montar `<MethodologyLine>`, actualizar props de `<PostComparisonBlock>`.
+5. `src/components/report-redesign/v2/overview/methodology-line.tsx` — novo componente.
+6. `src/components/report-redesign/v2/__tests__/post-comparison-subtitle.test.tsx` — novo (4 casos: 30d, 90d, sample_span singular/plural, insufficient).
+7. `src/components/report-redesign/v2/__tests__/methodology-line.test.tsx` — novo (sufficient com count/days, count=1, insufficient, exclusões on/off).
+
+## Testes
+
+```text
+post-comparison-subtitle.test:
+  ✓ window_30d → "últimos 30 dias"
+  ✓ window_90d → "últimos 90 dias"
+  ✓ sample_span count=8 → "últimas 8 publicações" (sem "30 dias")
+  ✓ sample_span count=1 → "última publicação" (sem "1 publicações")
+  ✓ insufficient → "amostra recolhida"
+  ✓ nenhuma variante excepto window_30d contém "30 dias"
+
+methodology-line.test:
+  ✓ sufficient + count=12 + days=42 → "últimas 12 publicações" + "42 dias"
+  ✓ sufficient + count=1 → "última publicação"
+  ✓ insufficient → "Amostra reduzida"
+  ✓ pinnedExcluded=2 → renderiza nota de exclusões
+  ✓ pinnedExcluded=0 && outliers=0 → não renderiza
+```
+
+Validação final: `bunx tsc --noEmit` + `bunx vitest run`.
+
+## Fora de scope (confirmar)
+
+Não toco em:
+- Outros `"últimos 30 dias"` em landing, admin, mock data, prompts OpenAI, cadence headers do overview-cards (são contextos diferentes, com método já garantido por outras vias).
+- `report-top-posts.tsx` / `report-temporal-chart.tsx` / `report-competitors.tsx` (são da versão `report-redesign/v1` legacy, fallback `?? "últimos 30 dias"`).
+
+Se quiseres que estenda a higienização aos 3 ficheiros legacy `report/*`, diz e adiciono ao mesmo PR.
+
+## Checkpoint
+
+- ☐ Aprovar substituição de `posts.subtitle` + `subtitle_with_window` pelo bloco `subtitle_variants` (breaking interno, mas só um consumidor).
+- ☐ Aprovar posição da linha de metodologia: **logo abaixo do `EditorialIdentityCard`**, dentro de Zona B (visível tanto no `free` como no `all`).
+- ☐ Aprovar tooltip nativo (`title=`) em vez de `<Tooltip>` shadcn para a nota de exclusões.
+- ☐ Confirmar se estendo aos 3 ficheiros legacy `report/report-{top-posts,temporal-chart,competitors}.tsx` ou deixo só Block 1 v2.
