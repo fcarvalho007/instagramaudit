@@ -833,6 +833,36 @@ export type Database = {
           },
         ]
       }
+      lead_reports: {
+        Row: {
+          analysis_snapshot_id: string | null
+          cache_key: string
+          created_at: string
+          handle: string
+          id: string
+          lead_id: string
+          source: string
+        }
+        Insert: {
+          analysis_snapshot_id?: string | null
+          cache_key: string
+          created_at?: string
+          handle: string
+          id?: string
+          lead_id: string
+          source?: string
+        }
+        Update: {
+          analysis_snapshot_id?: string | null
+          cache_key?: string
+          created_at?: string
+          handle?: string
+          id?: string
+          lead_id?: string
+          source?: string
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           archived_at: string | null

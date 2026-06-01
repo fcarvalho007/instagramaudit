@@ -91,6 +91,10 @@ import {
   type ReserveResult,
 } from "@/lib/credits/credits.server";
 import { readLeadIdFromRequest } from "@/lib/leads/lead-cookie.server";
+import {
+  leadOwnsReport,
+  upsertLeadReport,
+} from "@/lib/credits/lead-reports.server";
 import { getAnalysisExecutionMode } from "@/lib/admin/execution-mode.server";
 import {
   ALL_ENRICHMENT_TYPES,
@@ -143,7 +147,7 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
   NETWORK_ERROR: "Falha de ligação. Tentar novamente.",
   CACHE_ONLY_NO_DATA:
     "Sem snapshot disponível em modo cache-only. Ative o modo Fresh para gerar dados novos.",
-  NO_CREDITS_LEAD_REQUIRED:
+  ONBOARDING_REQUIRED:
     "Precisamos do teu nome e email para gerar o relatório.",
   INSUFFICIENT_CREDITS:
     "Já usaste os teus 2 relatórios gratuitos.",
@@ -162,7 +166,7 @@ const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
   UPSTREAM_FAILED: 502,
   NETWORK_ERROR: 502,
   CACHE_ONLY_NO_DATA: 503,
-  NO_CREDITS_LEAD_REQUIRED: 402,
+  ONBOARDING_REQUIRED: 402,
   INSUFFICIENT_CREDITS: 402,
 };
 
@@ -476,11 +480,30 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
 
         const cacheKey = buildCacheKey(primary, competitors);
 
-        // ── Credit gate (Fase 2, Opção A) ──────────────────────────────
-        // Every confirmed request consumes 1 credit (even cache hits).
-        // Failures before snapshot delivery release the reservation.
+        // ── Credit gate (Fase 2) ───────────────────────────────────────
+        // Política:
+        //   • Sem cookie de lead → ONBOARDING_REQUIRED (PT-PT: "Para gerar a
+        //     análise, começa por criar a tua conta gratuita.")
+        //   • Saldo 0 → INSUFFICIENT_CREDITS (PT-PT: "Sem créditos
+        //     disponíveis." / "Este pedido usa 1 crédito. Já não tens
+        //     créditos gratuitos disponíveis.")
+        //   • Cache <24h JÁ associado a este lead → 0 créditos.
+        //   • Cache <24h novo para o lead, fresh, stale: reserva 1 crédito;
+        //     confirma + associa em lead_reports só após snapshot utilizável;
+        //     liberta a reserva em qualquer falha (provider_error,
+        //     PROFILE_NOT_ALLOWED, PROFILE_PRIVATE, PROFILE_PERSONAL_NO_FEED,
+        //     PROVIDER_DISABLED, CACHE_ONLY_NO_DATA, RATE_LIMITED,
+        //     BUDGET_EXCEEDED, validação, exceções).
+        //   • Bypass com Authorization: Bearer $INTERNAL_API_TOKEN (admin /
+        //     /api/analyze/refresh / /api/admin/refresh-profile).
         let leadId: string | null = null;
         let reservation: ReserveResult | null = null;
+        let alreadyAssociated = false;
+        // Lookup adiantado: necessário para decidir se vamos cobrar crédito
+        // antes de reservar. Reutilizado mais à frente como `existing`.
+        const existingEarly = await lookupSnapshot(cacheKey);
+        const cacheFreshHit =
+          !!existingEarly && !forceRefresh && isFresh(existingEarly);
         if (!isInternalBypass) {
           leadId = readLeadIdFromRequest(request);
           if (!leadId) {
@@ -490,32 +513,37 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               cacheKey,
               dataSource: "none",
               outcome: "blocked_credits",
-              errorCode: "NO_CREDITS_LEAD_REQUIRED",
+              errorCode: "ONBOARDING_REQUIRED",
               estimatedCostUsd: 0,
             });
-            return failure("NO_CREDITS_LEAD_REQUIRED");
+            return failure("ONBOARDING_REQUIRED");
           }
-          try {
-            reservation = await reserveCredit({
-              leadId,
-              handle: primary,
-              cacheKey,
-            });
-          } catch (err) {
-            if (err instanceof InsufficientCreditsError) {
-              await logEvent({
+          alreadyAssociated = await leadOwnsReport(leadId, cacheKey);
+          // Cache fresh + relatório já atribuído a este lead → 0 créditos.
+          const skipReserve = cacheFreshHit && alreadyAssociated;
+          if (!skipReserve) {
+            try {
+              reservation = await reserveCredit({
+                leadId,
                 handle: primary,
-                competitorHandles: competitors,
                 cacheKey,
-                dataSource: "none",
-                outcome: "blocked_credits",
-                errorCode: "INSUFFICIENT_CREDITS",
-                estimatedCostUsd: 0,
               });
-              return failure("INSUFFICIENT_CREDITS");
+            } catch (err) {
+              if (err instanceof InsufficientCreditsError) {
+                await logEvent({
+                  handle: primary,
+                  competitorHandles: competitors,
+                  cacheKey,
+                  dataSource: "none",
+                  outcome: "blocked_credits",
+                  errorCode: "INSUFFICIENT_CREDITS",
+                  estimatedCostUsd: 0,
+                });
+                return failure("INSUFFICIENT_CREDITS");
+              }
+              console.error("[analyze-public-v1] reserveCredit failed", err);
+              throw err;
             }
-            console.error("[analyze-public-v1] reserveCredit failed", err);
-            throw err;
           }
         }
 
@@ -534,6 +562,15 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               await confirmReservation({
                 leadId,
                 reservationId: r.reservationId,
+                analysisSnapshotId: snapshotForConfirm,
+              });
+              // Persiste associação lead↔relatório para que futuras
+              // aberturas do mesmo cache_key pelo mesmo lead sejam
+              // gratuitas. Idempotente via UNIQUE(lead_id, cache_key).
+              await upsertLeadReport({
+                leadId,
+                handle: primary,
+                cacheKey,
                 analysisSnapshotId: snapshotForConfirm,
               });
             } else {
@@ -556,7 +593,8 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         const benchmarkData = await loadBenchmarkReferences();
 
         // 1) Cache lookup. A non-expired snapshot short-circuits everything.
-        const existing = await lookupSnapshot(cacheKey);
+        //    Já calculado acima como `existingEarly` para o gate de créditos.
+        const existing = existingEarly;
         if (existing && !forceRefresh && isFresh(existing)) {
           const cachedPayload = existing.normalized_payload as unknown as {
             profile?: { display_name?: string; followers_count?: number };
