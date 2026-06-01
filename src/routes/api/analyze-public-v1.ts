@@ -22,6 +22,8 @@ import {
 } from "@/lib/analysis/apify-client";
 import {
   buildCacheKey,
+  getFreshnessState,
+  getSnapshotAgeHours,
   isFresh,
   isWithinStaleWindow,
   lookupSnapshot,
@@ -62,6 +64,7 @@ import {
 } from "@/lib/security/public-rate-limit.server";
 import type {
   CompetitorAnalysis,
+  PublicAnalysisFreshness,
   PublicAnalysisErrorCode,
   PublicAnalysisProfile,
   PublicAnalysisResponse,
