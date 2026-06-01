@@ -281,18 +281,3 @@ export const Route = createFileRoute("/api/onboarding/start")({
     },
   },
 });
-
-// (handler-only code below is dead after the refactor — Route definition is the entrypoint)
-/* eslint-disable */
-function _unused_legacy_marker() {
-  return (
-    json(
-            {
-              ok: false,
-              error_code: "INVALID_PAYLOAD",
-              message: "Pedido inválido.",
-            },
-            400,
-    )
-  );
-}
