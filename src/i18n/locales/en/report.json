@@ -1232,5 +1232,30 @@
   "snapshot": {
     "metaTitle": "Report · AuditProfiles",
     "retentionMessage": "Reports remain available for {{days}} days after generation."
+  },
+  "end_of_free": {
+    "eyebrow": "End of public reading",
+    "title": "There's more behind this profile",
+    "description": "The full report adds temporal analysis, an editorial reading of the rhythm and a detailed comparison with competitors.",
+    "chips": {
+      "competitors": "Competitors",
+      "rank": "Tier ranking",
+      "more_sections": "+ 5 sections"
+    },
+    "price": {
+      "launch": "7",
+      "list": "19",
+      "currency": "€",
+      "caption_prefix": "Launch price ·",
+      "caption_suffix": "rises to 19€ after beta"
+    },
+    "cta": "Lock in launch price",
+    "footnote": "Join the list and we'll let you know when it opens · one-time payment, no subscription"
+  },
+  "end_feedback": {
+    "question": "Was this reading useful?",
+    "tag": "beta · help us refine it",
+    "thanks": "Thanks for the signal.",
+    "error": "Could not record. Try again later."
   }
 }
