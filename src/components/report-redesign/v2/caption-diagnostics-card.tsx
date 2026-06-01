@@ -38,6 +38,7 @@ type PostLike = {
   taken_at_iso?: string | null;
   permalink?: string | null;
   thumbnail_url?: string | null;
+  thumbnail_storage_url?: string | null;
 };
 import {
   Collapsible,
