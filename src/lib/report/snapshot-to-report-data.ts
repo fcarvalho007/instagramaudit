@@ -511,13 +511,14 @@ function buildAnalysedPostFormats(
 
   return posts
     .filter((p) => isoDateOnly(p.taken_at_iso) !== null)
-    .map((p) => ({
-      date: isoDateOnly(p.taken_at_iso)!,
-      type: normaliseFormat(p.format),
-      ...(typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
-        ? { thumbnailUrl: p.thumbnail_url }
-        : {}),
-    }))
+    .map((p) => {
+      const thumb = pickThumbnailUrl(p);
+      return {
+        date: isoDateOnly(p.taken_at_iso)!,
+        type: normaliseFormat(p.format),
+        ...(thumb ? { thumbnailUrl: thumb } : {}),
+      };
+    })
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
