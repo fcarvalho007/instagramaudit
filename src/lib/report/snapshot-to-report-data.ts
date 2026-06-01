@@ -1148,26 +1148,88 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   const meta = input.meta;
   const posts: SnapshotPost[] = Array.isArray(payload.posts) ? payload.posts : [];
 
+  // Official Block 1 sample — single source of truth for performance,
+  // cadence, format share and the "X publicações · Y dias" caption.
+  // Pinned-excluded by default; date outliers pruned defensively.
+  const sample = buildBlock01Sample(posts);
+  const sampleSummary = toSampleSummary(sample);
+
   const profile = buildProfileSection(payload, meta, posts.length);
   const keyMetrics = buildKeyMetrics(payload, input.benchmark);
+
+  // Override `keyMetrics` with sample-derived values so every Block 1
+  // metric (engagement, posts analysed, dominant format share) sees the
+  // same denominator. Falls back to `content_summary` only when the
+  // sample has zero usable posts.
+  if (sample.performancePosts.length > 0) {
+    const perfPosts = sample.performancePosts;
+    const totalEngagement = perfPosts.reduce(
+      (acc, p) => acc + num(p.engagement_pct, 0),
+      0,
+    );
+    keyMetrics.engagementRate = round2(
+      totalEngagement / perfPosts.length,
+    );
+    keyMetrics.postsAnalyzed = sample.analyzedPosts.length;
+
+    if (sample.formatPosts.length > 0) {
+      const counts = new Map<"Reels" | "Carousels" | "Imagens", number>();
+      for (const p of sample.formatPosts) {
+        const canonical = normaliseFormatLabel(p.format ?? "");
+        counts.set(canonical, (counts.get(canonical) ?? 0) + 1);
+      }
+      let topFormat: "Reels" | "Carousels" | "Imagens" = "Carousels";
+      let topCount = -1;
+      for (const [k, c] of counts.entries()) {
+        if (c > topCount) {
+          topCount = c;
+          topFormat = k;
+        }
+      }
+      keyMetrics.dominantFormat = topFormat;
+      keyMetrics.dominantFormatShare =
+        sample.formatPosts.length > 0
+          ? Math.round((topCount / sample.formatPosts.length) * 100)
+          : 0;
+    }
+
+    // Also recompute the engagement delta vs benchmark with the new rate.
+    if (
+      input.benchmark?.positioning?.status === "available" &&
+      input.benchmark.positioning.benchmarkValue > 0
+    ) {
+      const bm = input.benchmark.positioning.benchmarkValue;
+      keyMetrics.engagementDeltaPct = round1(
+        ((keyMetrics.engagementRate - bm) / bm) * 100,
+      );
+    }
+  }
+
   const formatBreakdown = buildFormatBreakdown(payload, input.benchmark);
+  // Recompute format breakdown shares from `sample.formatPosts` so the
+  // breakdown agrees with `keyMetrics.dominantFormatShare`. We keep the
+  // benchmark + engagement columns from the original snapshot stats
+  // because those don't change with the pinned filter.
+  if (sample.formatPosts.length > 0) {
+    const counts = new Map<"Reels" | "Carousels" | "Imagens", number>();
+    for (const p of sample.formatPosts) {
+      const canonical = normaliseFormatLabel(p.format ?? "");
+      counts.set(canonical, (counts.get(canonical) ?? 0) + 1);
+    }
+    const denom = sample.formatPosts.length;
+    for (const row of formatBreakdown) {
+      const key = row.format as "Reels" | "Carousels" | "Imagens";
+      const c = counts.get(key) ?? 0;
+      (row as { sharePct: number }).sharePct = Math.round((c / denom) * 100);
+    }
+  }
+
   const topPosts = buildTopPosts(posts);
-  // Exclude pinned posts from any time-based statistic: Instagram allows up
-  // to 3 pinned posts that stay at the top of the grid independently of
-  // their date, so they distort window/cadence/heatmap/best-days when the
-  // pinned content is months or years older than the live feed. They are
-  // kept for content extraction (topPosts, hashtags, themes) since they
-  // remain legitimate content the profile chose to highlight.
-  const cadencePostsRaw = posts.filter((p) => !p.is_pinned);
-  // Fallback: if every post is pinned, use the full set so we still emit
-  // something instead of an empty cadence/timeline.
-  const cadencePosts = cadencePostsRaw.length > 0 ? cadencePostsRaw : posts;
-  // Apply the same defensive outlier guard the cadence module uses, so the
-  // heatmap / best-days / timeline don't get skewed by a single stale post
-  // that the actor failed to flag as pinned. We compute the cutoff from the
-  // 10 most-recent valid timestamps and drop anything > 180d older than the
-  // median of that cluster.
-  const cadencePostsClean = pruneDateOutliers(cadencePosts);
+  // Pinned excluded + date-outliers pruned — delegated to `buildBlock01Sample`.
+  // Block 1 modules (cadence, heatmap, best-days, temporal series) all read
+  // from the same `sample.performancePosts` to stay consistent.
+  const cadencePosts = sample.analyzedPosts;
+  const cadencePostsClean = sample.performancePosts;
   const temporalSeries = buildTemporalSeries(cadencePostsClean);
   const postingHeatmap = buildPostingHeatmap(cadencePostsClean);
   const bestDays = buildBestDays(cadencePostsClean);
