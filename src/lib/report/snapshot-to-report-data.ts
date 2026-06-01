@@ -1561,9 +1561,10 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
               ? { takenAtIso: p.taken_at_iso }
               : {}),
             mentions,
-            ...(typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
-              ? { thumbnailUrl: p.thumbnail_url }
-              : {}),
+            ...((): { thumbnailUrl?: string } => {
+              const t = pickThumbnailUrl(p);
+              return t ? { thumbnailUrl: t } : {};
+            })(),
           };
         })
       : [];
