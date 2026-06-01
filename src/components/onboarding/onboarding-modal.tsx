@@ -438,7 +438,7 @@ function FormStepBody({
   submitting: boolean;
   goBack: () => void;
   goNext: () => Promise<void> | void;
-  honeypotRef: React.RefObject<HTMLInputElement>;
+  honeypotRef: React.RefObject<HTMLInputElement | null>;
 }) {
   const { t } = useTranslation("gate");
   const stepKey = String(step) as "1" | "2" | "3";
