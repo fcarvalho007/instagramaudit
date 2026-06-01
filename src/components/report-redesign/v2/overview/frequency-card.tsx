@@ -330,7 +330,7 @@ function FrequencyKpiStrip({
   totalDays: number;
   days: DayEntry[];
   t: TFunction;
-  lang: string;
+  lang: "en" | "pt";
 }) {
   const cadenceValue = formatNumber(postingFrequencyWeekly, lang, {
     minimumFractionDigits: 1,
