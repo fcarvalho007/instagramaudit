@@ -736,34 +736,32 @@ export function FrequencyCard({
             )}
           </div>
 
-          {/* Legend */}
-          <div className="flex items-center gap-3 md:gap-4 mt-2.5 md:mt-3">
+          {/* Legend — fixed 3 states: sem post / 1 post / 2 posts */}
+          <div className="flex items-center gap-4 md:gap-5 mt-3 md:mt-3.5">
             <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
               <span
-                className="size-[9px] md:size-[10px] rounded-[3px] shrink-0"
+                className="size-[10px] rounded-[3px] shrink-0"
                 aria-hidden="true"
                 style={{ background: legendBg(0), border: "1px solid rgba(148,163,184,0.35)" }}
               />
-              {t("frequency.calendar.legend_stopped", { count: pausedCount })}
+              {t("frequency.calendar.legend_none")}
             </span>
             <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
               <span
-                className="size-[9px] md:size-[10px] rounded-[3px] shrink-0"
+                className="size-[10px] rounded-[3px] shrink-0"
                 aria-hidden="true"
                 style={{ background: legendBg(1) }}
               />
-              {t("frequency.calendar.legend_one_post")}
+              {t("frequency.calendar.legend_one")}
             </span>
-            {maxPosts >= 2 && (
-              <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
-                <span
-                  className="size-[9px] md:size-[10px] rounded-[3px] shrink-0"
-                  aria-hidden="true"
-                  style={{ background: legendBg(maxPosts >= 3 ? 3 : 2) }}
-                />
-                {t("frequency.calendar.legend_many", { label: maxPosts >= 3 ? "3+" : "2" })}
-              </span>
-            )}
+            <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
+              <span
+                className="size-[10px] rounded-[3px] shrink-0"
+                aria-hidden="true"
+                style={{ background: legendBg(2) }}
+              />
+              {t("frequency.calendar.legend_two")}
+            </span>
           </div>
           </div>
           )}
