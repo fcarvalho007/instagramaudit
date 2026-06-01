@@ -23,8 +23,8 @@
     "metric_analyzed_window": "posts in {{days}} days",
     "metric_analyzed_window_one": "post in {{days}} days",
     "metric_analyzed_window_days_one": "posts in {{days}} day",
-    "metric_analyzed": "analyzed posts",
-    "metric_analyzed_one": "analyzed post",
+    "metric_analyzed": "posts analyzed",
+    "metric_analyzed_one": "post analyzed",
     "actions": {
       "new_report": "New report",
       "compare": "Compare competitor",
