@@ -348,221 +348,42 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
         </div>
       </div>
 
-      {/* ════ ZONA 3 — RECONCILIAÇÃO ═══════════════════════════════════ */}
-      <div>
-        <div className="flex items-baseline justify-between">
-          <ZoneLabel symbol="⇆" label="RECONCILIAÇÃO · INTERNO ESTIMADO vs FATURAÇÃO REAL" />
-          <span className="text-[12px] text-admin-text-tertiary">reconciliação automática</span>
-        </div>
-        <AdminCard className="mt-3 overflow-hidden" variant="accent-left" accent="expense">
-          <div className="overflow-x-auto">
-            <table className="w-full text-[13px]">
-              <thead>
-                <tr className="text-left admin-table-header border-b border-admin-border">
-                  <th className="pb-2 pr-4 font-medium">Fornecedor</th>
-                  <th className="pb-2 pr-4 font-medium text-right">Interno registado</th>
-                  <th className="pb-2 pr-4 font-medium text-right">Externo (dashboard)</th>
-                  <th className="pb-2 pr-4 font-medium text-right">Δ arredondamento</th>
-                  <th className="pb-2 pr-4 font-medium text-right">Δ interno vs externo</th>
-                  <th className="pb-2 font-medium text-right">Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reconRows.map((row) => (
-                  <tr key={row.provider} className="border-b border-admin-border/50">
-                    <td className="py-3 pr-4">
-                      <span className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: row.color }} />
-                        <span className="font-medium text-admin-text-primary">{row.provider}</span>
-                      </span>
-                    </td>
-                    <td className="py-3 pr-4 text-right tabular-nums text-admin-text-primary">
-                      ${row.internal.toFixed(2)}
-                    </td>
-                    <td className="py-3 pr-4 text-right">
-                      {row.externalLabel ? (
-                        <div>
-                          <span className="tabular-nums text-admin-text-primary">${row.external!.toFixed(2)}</span>
-                          <br />
-                          <span className="text-[12px] text-admin-text-tertiary">
-                            {row.externalLabel}
-                            {row.displayedRowSum != null && row.displayedRowSum !== row.external && (
-                              <> · linhas ${row.displayedRowSum.toFixed(2)}</>
-                            )}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-admin-text-tertiary">— pendente</span>
-                      )}
-                    </td>
-                    <td className="py-3 pr-4 text-right tabular-nums">
-                      {row.roundingDelta != null ? (
-                        <span className={`font-medium ${Math.abs(row.roundingDelta) >= 0.005 ? "text-amber-600" : "text-admin-text-tertiary"}`}>
-                          {row.roundingDelta < 0 ? "−" : "+"}${Math.abs(row.roundingDelta).toFixed(2)}
-                        </span>
-                      ) : (
-                        <span className="text-admin-text-tertiary">—</span>
-                      )}
-                    </td>
-                    <td className="py-3 pr-4 text-right tabular-nums">
-                      {row.delta != null ? (
-                        <div>
-                          <span className={`tabular-nums font-medium ${row.delta < 0 ? "text-red-600" : "text-admin-text-primary"}`}>
-                            {row.delta < 0 ? "−" : "+"}${Math.abs(row.delta).toFixed(2)}
-                          </span>
-                          {row.deltaPct != null && (
-                            <span className="ml-1 text-[12px] text-admin-text-tertiary">
-                              {row.deltaPct < 0 ? "−" : "+"}{Math.abs(row.deltaPct).toFixed(0)}%
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-admin-text-tertiary">—</span>
-                      )}
-                    </td>
-                    <td className="py-3 text-right">
-                      <ReconStatusBadge status={row.status} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="flex items-center justify-between border-t border-admin-border px-0 pt-4 pb-1">
-            <p className="text-[12px] text-admin-text-tertiary">
-              {pendingCount > 0
-                ? `${pendingCount} fornecedor${pendingCount > 1 ? "es" : ""} sem faturação externa. Dados baseados em estimativas internas.`
-                : "Todos os fornecedores têm faturação externa reconciliada."}
-            </p>
-          </div>
-        </AdminCard>
+      {/* ════════════════════════════════════════════════════════════════ */}
+      {/*  DIAGNÓSTICO DE CUSTOS — investigar (não decidir)               */}
+      {/* ════════════════════════════════════════════════════════════════ */}
+      <div className="pt-2 border-t border-admin-border/60">
+        <p className="text-eyebrow-sm uppercase tracking-wider text-admin-text-tertiary mb-1">
+          <span className="text-admin-info-500 mr-1">│</span>SISTEMA · DIAGNÓSTICO
+        </p>
+        <h3 className="text-base font-semibold text-admin-text-primary leading-tight flex items-center gap-2">
+          <span aria-hidden="true">🩺</span> Diagnóstico de custos
+        </h3>
+        <p className="text-[13px] text-admin-text-tertiary mt-0.5">
+          Detalhe por fornecedor, reconciliação e evolução — para investigar, não para decidir.
+        </p>
       </div>
 
-      {/* ════ ZONA 4 — APIFY · DETALHE POR ACTOR ═════════════════════ */}
-      {data.apify_actors.length > 0 && (
-        <div>
-          <ZoneLabel symbol="⊙" label="APIFY · DETALHE POR ACTOR" />
-          <AdminCard className="mt-3 overflow-hidden" variant="accent-left" accent="expense">
-            <div className="overflow-x-auto">
-              <table className="w-full text-[12px]">
-                <thead>
-                  <tr className="text-left admin-table-header border-b border-admin-border">
-                    <th className="pb-2 pr-4 font-medium">Actor · nome amigável</th>
-                    <th className="pb-2 pr-4 font-medium text-right">Eventos</th>
-                    <th className="pb-2 pr-4 font-medium text-right">€/Evento</th>
-                    <th className="pb-2 pr-4 font-medium text-right">Calculado</th>
-                    <th className="pb-2 pr-4 font-medium text-right">Real Apify</th>
-                    <th className="pb-2 font-medium text-right">Origem</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.apify_actors.map((actor) => (
-                    <ApifyActorRow key={actor.actor} actor={actor} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </AdminCard>
-        </div>
-      )}
-
-      {/* ════ ZONA 5 — OPENAI · DETALHE POR OPERAÇÃO ═════════════════ */}
+      {/* ── Bloco A — OpenAI por operação (FIRST) ──────────────────── */}
       {data.openai_actors && data.openai_actors.length > 0 && (
-        <div>
-          <ZoneLabel symbol="⊙" label="OPENAI · DETALHE POR OPERAÇÃO" />
-          <AdminCard className="mt-3 overflow-hidden" variant="accent-left" accent="info">
-            <div className="overflow-x-auto">
-              <table className="w-full text-[12px]">
-                <thead>
-                  <tr className="text-left admin-table-header border-b border-admin-border">
-                    <th className="pb-2 pr-4 font-medium">Operação · modelo</th>
-                    <th className="pb-2 pr-4 font-medium text-right">Chamadas</th>
-                    <th className="pb-2 pr-4 font-medium text-right">Custo</th>
-                    <th className="pb-2 pr-4 font-medium text-right">Tokens (P+C)</th>
-                    <th className="pb-2 pr-4 font-medium text-right">$/Chamada</th>
-                    <th className="pb-2 font-medium text-right">Falhas</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.openai_actors.map((actor) => (
-                    <OpenAiActorRow key={actor.actor} actor={actor} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </AdminCard>
-        </div>
+        <OpenAiOperationsCard actors={data.openai_actors} />
       )}
 
-      {/* ════ ZONA 6 — EVOLUÇÃO DIÁRIA ═══════════════════════════════ */}
-      <div>
-        <ZoneLabel symbol="⟨" label={`EVOLUÇÃO DIÁRIA · ÚLTIMOS ${MONTH_DAYS} DIAS`} />
-        <p className="mt-1 text-[12px] text-admin-text-tertiary leading-relaxed">
-          Custos internos atribuídos por dia. Linha horizontal mostra o limite diário equivalente (
-          <span className="font-medium text-red-600">${DAILY_COST_LIMIT.toFixed(2)}</span>
-          ) calculado a partir do total mensal de $29.
-        </p>
-        <div className="mt-3 flex flex-wrap items-center gap-5 text-[12px] text-admin-text-secondary">
-          <span className="font-medium text-admin-text-tertiary">LEGENDA:</span>
-          <LegendSwatch color={ADMIN_LITERAL.expenseChartApify} label="Apify" />
-          <LegendSwatch color={ADMIN_LITERAL.expenseChartOpenAI} label="OpenAI" />
-          <LegendSwatch color={ADMIN_LITERAL.expenseChartDataForSeo} label="DataForSEO" />
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block w-5 border-t-2 border-dashed" style={{ borderColor: ADMIN_LITERAL.capLine }} />
-            <span>Limite diário <span className="font-medium text-red-600">${DAILY_COST_LIMIT.toFixed(2)}</span></span>
-          </span>
-        </div>
-        <p className="mt-1 text-[12px] text-admin-text-tertiary italic">tooltip por barra ao passar com o rato</p>
+      {/* ── Bloco B — Apify por actor ──────────────────────────────── */}
+      {data.apify_actors.length > 0 && (
+        <ApifyActorsCard actors={data.apify_actors} />
+      )}
 
-        <AdminCard className="mt-3">
-          {!hasChartData ? (
-            <div className="flex h-48 items-center justify-center text-center text-[13px] text-admin-text-tertiary">
-              Sem dados ainda — primeira sincronização decorre à meia-noite UTC.
-            </div>
-          ) : (
-            <div role="img" aria-label="Custos diários por fornecedor" className="relative w-full h-52">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="2 4" stroke="rgba(136,135,128,0.18)" vertical={false} />
-                  <XAxis
-                    dataKey="day"
-                    tick={{ fontSize: 12, fill: "rgb(var(--admin-neutral-400))" }}
-                    tickLine={false}
-                    axisLine={{ stroke: "rgba(136,135,128,0.2)" }}
-                    interval={2}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 12, fill: "rgb(var(--admin-neutral-400))" }}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(v) => `$${(v as number).toFixed(2)}`}
-                    width={50}
-                  />
-                  <Tooltip
-                    cursor={{ fill: "rgba(136,135,128,0.06)" }}
-                    content={<DarkTooltip />}
-                  />
-                  {hasActorBreakdown ? (
-                    allActorKeys.map((actor) => (
-                      <Bar key={actor} dataKey={`apify_${actor}`} stackId="c" fill={actorColor(actor)} name={`apify_${actor}`} />
-                    ))
-                  ) : (
-                    <Bar dataKey="apify" stackId="c" fill={ADMIN_LITERAL.expenseChartApify} />
-                  )}
-                  {hasOpenaiActorBreakdown ? (
-                    allOpenaiActorKeys.map((actor) => (
-                      <Bar key={`openai_${actor}`} dataKey={`openai_${actor}`} stackId="c" fill={openaiActorColor(actor)} name={`openai_${actor}`} />
-                    ))
-                  ) : (
-                    <Bar dataKey="openai" stackId="c" fill={ADMIN_LITERAL.expenseChartOpenAI} />
-                  )}
-                  <Bar dataKey="dataforseo" stackId="c" fill={ADMIN_LITERAL.expenseChartDataForSeo} radius={[3, 3, 0, 0]} />
-                  <ReferenceLine y={DAILY_COST_LIMIT} stroke={ADMIN_LITERAL.capLine} strokeDasharray="5 4" strokeWidth={1.2} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </AdminCard>
+      {/* ── Bloco C + D — Reconciliação | Evolução diária ──────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ReconciliationCompact rows={reconRows} pendingCount={pendingCount} />
+        <DailyEvolutionCompact
+          chartData={chartData}
+          hasChartData={hasChartData}
+          hasActorBreakdown={hasActorBreakdown}
+          allActorKeys={allActorKeys}
+          hasOpenaiActorBreakdown={hasOpenaiActorBreakdown}
+          allOpenaiActorKeys={allOpenaiActorKeys}
+        />
       </div>
 
       {/* ════ RODAPÉ METODOLÓGICO ═════════════════════════════════════ */}
