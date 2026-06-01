@@ -1455,8 +1455,9 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   })();
 
   // Top posts enriquecidos: preserva permalink/shortcode/mentions e mantém a
-  // mesma ordenação por engagement do `topPosts` editorial.
-  const enrichedTopPosts: ReportEnriched["topPosts"] = [...posts]
+  // mesma ordenação por engagement do `topPosts` editorial. Usa
+  // `eligiblePosts` (sample.performancePosts) para coerência com o Bloco 1.
+  const enrichedTopPosts: ReportEnriched["topPosts"] = [...eligiblePosts]
     .sort((a, b) => num(b.engagement_pct, 0) - num(a.engagement_pct, 0))
     .slice(0, 5)
     .map((p, idx) => {
