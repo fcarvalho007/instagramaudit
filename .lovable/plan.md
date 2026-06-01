@@ -1,32 +1,55 @@
-# Apify Lab — minimal smoke (baseline + 30d)
+## Objetivo
 
-The lab endpoint `/api/admin/apify-lab` is admin-gated (`requireAdminSession`) and triggers real Apify calls + DB writes. I cannot invoke it from here without your admin session — so this is a **collaborative** smoke:
+Reduzir falsos negativos por timeout em `/admin/apify-lab` ajustando apenas os guardrails das janelas `30d`, `60d` e `90d`. Produção, `analyze-public-v1`, OpenAI, DataForSEO, report, pricing, thumbnails e onboarding ficam intocados.
 
-## Steps
+## Ficheiros alterados
 
-1. **You** go to `/admin/apify-lab` and trigger exactly two runs for handle `frederico.m.carvalho`:
-   - `baseline` (details mode, current production free-report shape)
-   - `30d` (posts mode, `onlyPostsNewerThan: "30 days"`, `resultsLimit: 100`)
-   Do **not** trigger 60d / 90d / 365d.
-2. **Me**, right after: query `public.apify_lab_runs` for the two rows just inserted and produce the comparison table with all the requested columns (mode, resultsType, resultsLimit, onlyPostsNewerThan, raw_items_returned, posts_extracted, newest_post_at, oldest_post_at, observed_days, duration_ms, actual_cost_usd, status, semantic_code, error_excerpt).
-3. **Me**: apply the decision rule:
-   - If `30d` shows a clearly different `raw_items_returned` and/or wider date span vs `baseline` → fix is working, safe to plan the 3×5 matrix in a follow-up.
-   - If `30d` still returns exactly 12 posts with the same `newest_post_at` / `oldest_post_at` as `baseline` → stop. Investigate whether `apify/instagram-scraper` actually honours `resultsType: "posts"` + `onlyPostsNewerThan` for this handle, or whether the actor input shape in `buildActorInput` needs adjustment. Do **not** run the 3×5 matrix.
+### 1) `src/routes/api/admin/apify-lab.ts` — `WINDOW_CONFIGS`
 
-## Why I can't just run it
+| Janela | Campo | Antes | Depois |
+|---|---|---|---|
+| 30d (posts) | apifyTimeoutSecs | 55 | **90** |
+| 30d (posts) | timeoutMs | 60 000 | **100 000** |
+| 60d (posts) | apifyTimeoutSecs | 55 | **120** |
+| 60d (posts) | timeoutMs | 60 000 | **130 000** |
+| 90d (posts) | apifyTimeoutSecs | 120 | **150** |
+| 90d (posts) | timeoutMs | 130 000 | **160 000** |
+| 365d (posts) | apifyTimeoutSecs | 240 | inalterado |
+| 365d (posts) | timeoutMs | 260 000 | inalterado |
+| baseline (details) | — | — | inalterado |
 
-- The lab route requires an admin session cookie I don't have.
-- It charges real Apify credits — gating on your manual trigger is correct.
+`maxTotalChargeUsd`, `resultsLimit`, `maxItems`, `memoryMbytes` ficam todos inalterados.
 
-## What I will NOT do in this turn
+### 2) `src/routes/admin.apify-lab.tsx` — nota informativa
 
-- No production code changes.
-- No 3×5 matrix.
-- No changes to `analyze-public-v1`, OpenAI, DataForSEO, snapshots, leads, emails, thumbnails.
+Adicionar uma nova `<section>` (estilo neutro, a seguir à secção azul de "Modos do Lab") com o texto:
+
+> Janelas mais longas podem demorar 1–3 minutos. Os timeouts aqui são guardrails do Lab e não afectam o relatório gratuito de produção.
+
+Sem alterações de tokens, layout ou copy noutras zonas.
+
+## Tabela final de guardrails
+
+| Janela | mode | resultsLimit | apifyTimeoutSecs | timeoutMs | maxTotalChargeUsd |
+|---|---|---|---|---|---|
+| baseline | details | 12 | 55 | 60 000 | 0.10 |
+| 30d | posts | 100 | **90** | **100 000** | 0.10 |
+| 60d | posts | 200 | **120** | **130 000** | 0.20 |
+| 90d | posts | 300 | **150** | **160 000** | 0.30 |
+| 365d | posts | 1 000 | 240 | 260 000 | 1.00 |
+
+## Verificação
+
+- `bunx tsc --noEmit`
+- Confirmar que apenas `src/routes/api/admin/apify-lab.ts` (bloco `WINDOW_CONFIGS`) e `src/routes/admin.apify-lab.tsx` (nova secção informativa) foram tocados.
+- Sem chamadas Apify. Sem migrações. Sem mudanças em produção.
 
 ## Checkpoint
 
-- ☐ You trigger `baseline` + `30d` for `frederico.m.carvalho` in `/admin/apify-lab`
-- ☐ You tell me "done" (or just send another message)
-- ☐ I read `apify_lab_runs` and output the comparison table
-- ☐ I issue the go / no-go verdict on the full matrix
+- ☐ 30d: apifyTimeoutSecs=90, timeoutMs=100 000
+- ☐ 60d: apifyTimeoutSecs=120, timeoutMs=130 000
+- ☐ 90d: apifyTimeoutSecs=150, timeoutMs=160 000
+- ☐ 365d inalterado, baseline inalterado, caps inalterados
+- ☐ Nota UI adicionada em `admin.apify-lab.tsx`
+- ☐ `bunx tsc --noEmit` limpo
+- ☐ Produção e `analyze-public-v1` intactos
