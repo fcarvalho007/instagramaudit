@@ -182,12 +182,13 @@ export async function storeSnapshot(params: {
     // `normalizedPayload.profile.avatar_url`. Best-effort — falhas individuais
     // ficam `null` e o componente cai no fallback visual.
     try {
-      const summary = await persistThumbnailsInPayload(
+      const t0 = Date.now();
+      const s = await persistThumbnailsInPayload(
         params.cacheKey,
         params.normalizedPayload,
       );
       console.log(
-        `[analysis/cache] thumbnails persisted handle=${params.instagramUsername} posts=${summary.posts_success}/${summary.posts_total} avatar=${summary.avatar_success}`,
+        `[thumbnails] handle=${params.instagramUsername} cache_key=${params.cacheKey} attempted=${s.attempted} stored=${s.stored} failed_403=${s.failed_403} failed_timeout=${s.failed_timeout} failed_invalid_content_type=${s.failed_invalid_content_type} failed_upload=${s.failed_upload} failed_other=${s.failed_other} avatar=${s.avatar} duration_ms=${Date.now() - t0}`,
       );
     } catch (thumbErr) {
       console.warn(
