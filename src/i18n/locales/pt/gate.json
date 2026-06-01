@@ -88,7 +88,7 @@
     "step4": {
       "eyebrow": "PASSO 4 DE 5",
       "title": "Como te descreves?",
-      "subtitle": "Última pergunta antes de receberes o resumo.",
+      "subtitle": "Quase terminado.",
       "otherPlaceholder": "ex: jornalista, investigador, curador",
       "otherEyebrow": "selecciona para descrever"
     },
@@ -98,7 +98,7 @@
       "subtitle": "Recebe o resumo por email e o acesso à tua conta privada, com todos os relatórios que pedires no futuro.",
       "phoneLabel": "Telemóvel",
       "phonePlaceholder": "+351 912 345 678",
-      "phoneHint": "* Ajuda-nos a confirmar o teu acesso, caso o email não chegue."
+      "phoneHint": "Opcional · ajuda-nos a confirmar o acesso em casos excepcionais."
     },
     "options": {
       "chooseOne": "Escolhe uma opção",
@@ -203,7 +203,7 @@
         "phoneLabel": "Telemóvel",
         "phoneOptional": "opcional",
         "phonePlaceholder": "+351 912 345 678",
-        "phoneHint": "Só usamos se o email falhar (raro).",
+        "phoneHint": "Opcional · ajuda-nos a confirmar o acesso em casos excepcionais.",
         "consentText": "Aceito o <a>tratamento de dados</a> e a <a2>política de privacidade</a2>.",
         "consentMandatory": "(obrigatório)",
         "marketingText": "Quero receber dicas e benchmarks.",
