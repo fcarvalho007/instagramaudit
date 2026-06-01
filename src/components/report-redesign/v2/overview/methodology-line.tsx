@@ -29,7 +29,10 @@ export function MethodologyLine({
   outliersExcluded,
 }: MethodologyLineProps) {
   const { t } = useTranslation("report");
-  const totalExcluded = Math.max(0, pinnedExcluded) + Math.max(0, outliersExcluded);
+  // `outliersExcluded` é mantido na API para uso futuro (premium); não é
+  // exposto na free para evitar sobrecarregar o utilizador.
+  void outliersExcluded;
+  const pinnedCount = Math.max(0, pinnedExcluded);
   const safeDays = Math.max(0, observedDays);
 
   let mainText: string;
@@ -41,17 +44,22 @@ export function MethodologyLine({
     mainText = t("posts.methodology.line_other", { count, days: safeDays });
   }
 
+  const pinnedText =
+    pinnedCount === 1
+      ? t("posts.methodology.pinned_one")
+      : t("posts.methodology.pinned_other", { count: pinnedCount });
+
   return (
     <p className="text-xs text-content-tertiary leading-relaxed">
       <span>{mainText}</span>
-      {totalExcluded > 0 && (
+      {pinnedCount > 0 && (
         <>
           {" · "}
           <span
             className="underline decoration-dotted underline-offset-2 cursor-help"
-            title={t("posts.methodology.exclusions_note")}
+            title={t("posts.methodology.exclusions_tooltip")}
           >
-            {t("posts.methodology.exclusions_note")}
+            {pinnedText}
           </span>
         </>
       )}

@@ -50,24 +50,42 @@ function render(args: { count: number; observedDays: number; sufficient: boolean
   };
 }
 
+function pickPinned(pinnedExcluded: number):
+  | { key: string; params?: Record<string, unknown> }
+  | null {
+  const n = Math.max(0, pinnedExcluded);
+  if (n <= 0) return null;
+  if (n === 1) return { key: "posts.methodology.pinned_one" };
+  return { key: "posts.methodology.pinned_other", params: { count: n } };
+}
+
+function renderPinned(pinnedExcluded: number) {
+  const picked = pickPinned(pinnedExcluded);
+  if (!picked) return null;
+  return {
+    pt: interpolate(resolve(ptReport, picked.key), picked.params),
+    en: interpolate(resolve(enReport, picked.key), picked.params),
+  };
+}
+
 describe("Block 1 methodology line copy", () => {
   it("sufficient + count=12 + days=42 → menciona contagem e dias", () => {
     const { pt, en } = render({ count: 12, observedDays: 42, sufficient: true });
     expect(pt).toBe(
-      "Análise baseada nas últimas 12 publicações disponíveis · Período observado: 42 dias.",
+      "Amostra analisada: últimas 12 publicações disponíveis · período observado: 42 dias.",
     );
     expect(en).toBe(
-      "Analysis based on the latest 12 available posts · Observed period: 42 days.",
+      "Analyzed sample: latest 12 available posts · observed period: 42 days.",
     );
   });
 
   it("sufficient + count=1 → variante singular", () => {
     const { pt, en } = render({ count: 1, observedDays: 3, sufficient: true });
     expect(pt).toBe(
-      "Análise baseada na última publicação disponível · Período observado: 3 dia(s).",
+      "Amostra analisada: última publicação disponível · período observado: 3 dias.",
     );
     expect(en).toBe(
-      "Analysis based on the latest available post · Observed period: 3 day(s).",
+      "Analyzed sample: latest available post · observed period: 3 days.",
     );
   });
 
@@ -81,13 +99,31 @@ describe("Block 1 methodology line copy", () => {
     const { pt } = render({ count: 0, observedDays: 30, sufficient: true });
     expect(pt).toBe("Amostra reduzida: poucos dados disponíveis para uma leitura conclusiva.");
   });
+});
 
-  it("nota de exclusões existe em ambos os idiomas", () => {
-    expect(resolve(ptReport, "posts.methodology.exclusions_note")).toBe(
-      "Publicações fixadas ou demasiado antigas podem ser excluídas dos cálculos de desempenho.",
+describe("Block 1 pinned-posts note", () => {
+  it("pinnedExcluded=0 → não renderiza nota (mesmo com outliers)", () => {
+    expect(renderPinned(0)).toBeNull();
+  });
+
+  it("pinnedExcluded=1 → singular PT/EN", () => {
+    const out = renderPinned(1)!;
+    expect(out.pt).toBe("1 publicação fixada excluída dos cálculos de desempenho.");
+    expect(out.en).toBe("1 pinned post excluded from performance calculations.");
+  });
+
+  it("pinnedExcluded=2 → plural com contagem interpolada", () => {
+    const out = renderPinned(2)!;
+    expect(out.pt).toBe("2 publicações fixadas excluídas dos cálculos de desempenho.");
+    expect(out.en).toBe("2 pinned posts excluded from performance calculations.");
+  });
+
+  it("tooltip de exclusões disponível em ambos os idiomas", () => {
+    expect(resolve(ptReport, "posts.methodology.exclusions_tooltip")).toBe(
+      "Para evitar distorções, publicações fixadas ou muito antigas podem ser excluídas das médias de desempenho e cadência.",
     );
-    expect(resolve(enReport, "posts.methodology.exclusions_note")).toBe(
-      "Pinned or unusually old posts may be excluded from performance calculations.",
+    expect(resolve(enReport, "posts.methodology.exclusions_tooltip")).toBe(
+      "To avoid distortion, pinned or unusually old posts may be excluded from performance averages and posting rhythm.",
     );
   });
 });

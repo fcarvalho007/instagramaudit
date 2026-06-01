@@ -1,86 +1,85 @@
-# Block 1 — Final Consistency Smoke Test
+# Block 1 — Discreet sample + pinned-posts methodology note
 
-Read-only verification pass. No code changes unless a regression is found (in which case I stop and report before fixing).
+The existing `MethodologyLine` (added last turn) already shows analyzed count + observed period and an exclusions hint via a native `title=` tooltip. This task refines the copy to match the new spec and splits the exclusions hint into a dedicated, **counted** pinned-posts note.
 
-## 1. Pick the two fixtures
+## Scope
 
-Query the DB for one cached snapshot that contains pinned posts and one regular snapshot (no pinned, healthy date distribution):
+Only `MethodologyLine` + its i18n keys + its tests. No formulas, no Apify, no other blocks.
 
-```sql
--- candidates with pinned
-select profile_username, captured_at, jsonb_array_length(payload->'posts') as n
-from public.profile_snapshots
-where exists (
-  select 1 from jsonb_array_elements(payload->'posts') p
-  where (p->>'isPinned')::bool = true
-)
-order by captured_at desc limit 5;
+## Changes
 
--- candidates without pinned
-select profile_username, captured_at, jsonb_array_length(payload->'posts') as n
-from public.profile_snapshots
-where not exists (
-  select 1 from jsonb_array_elements(payload->'posts') p
-  where (p->>'isPinned')::bool = true
-)
-order by captured_at desc limit 5;
-```
+### 1. i18n copy (`posts.methodology`)
 
-Pick one of each (prefer `frederico.m.carvalho` for the pinned case if present).
+Replace current strings and add new `pinned_*` keys.
 
-## 2. Headless adapter check (no UI)
+`src/i18n/locales/pt/report.json` → `report.posts.methodology`:
 
-Write a throwaway script in `/tmp/block1-smoke.ts` that:
+- `line_one` → `"Amostra analisada: última publicação disponível · período observado: {{days}} dias."`
+- `line_other` → `"Amostra analisada: últimas {{count}} publicações disponíveis · período observado: {{days}} dias."`
+- `insufficient` → unchanged
+- `pinned_one` (new) → `"1 publicação fixada excluída dos cálculos de desempenho."`
+- `pinned_other` (new) → `"{{count}} publicações fixadas excluídas dos cálculos de desempenho."`
+- `exclusions_tooltip` (renamed from `exclusions_note`) → `"Para evitar distorções, publicações fixadas ou muito antigas podem ser excluídas das médias de desempenho e cadência."`
 
-1. Loads each snapshot payload via `supabase--read_query`.
-2. Runs `snapshotToReportData(payload)` and `buildBlock01Sample(payload.posts)`.
-3. Asserts and prints:
-   - `averages.likes` / `averages.comments` recomputed from `sample.performancePosts` match the values exposed to the UI.
-   - `best.id` and `worst.id` are members of `eligiblePosts` (= `performancePosts`) and are NOT in `pinnedExcluded` nor `dateOutliersExcluded`.
-   - `cadence.method`, `cadence.windowDays`, `cadence.sampleSize`, `performancePosts.length`.
-   - `pickSubtitleKey(method, count)` returns the expected variant key.
+`src/i18n/locales/en/report.json` → `report.posts.methodology`:
 
-Output a compact table per fixture so we can eyeball it.
+- `line_one` → `"Analyzed sample: latest available post · observed period: {{days}} days."`
+- `line_other` → `"Analyzed sample: latest {{count}} available posts · observed period: {{days}} days."`
+- `insufficient` → unchanged
+- `pinned_one` → `"1 pinned post excluded from performance calculations."`
+- `pinned_other` → `"{{count}} pinned posts excluded from performance calculations."`
+- `exclusions_tooltip` → `"To avoid distortion, pinned or unusually old posts may be excluded from performance averages and posting rhythm."`
 
-## 3. UI copy check
+Old `exclusions_note` key is removed (only consumer is `MethodologyLine`).
 
-For each fixture, render via the dev preview (`/analyze/$username` with `?snapshot=<id>` if supported, otherwise the live route after confirming cache hit) and capture screenshots desktop (1440) + mobile (375):
+### 2. Component — `src/components/report-redesign/v2/overview/methodology-line.tsx`
 
-- `posts.subtitle` reflects the right variant (no "últimos 30 dias" unless `method === 'window_30d'`).
-- `MethodologyLine` shows `count` + observed `days`, singular/plural correct.
-- Exclusions hint appears (native `title`) when `pinnedExcluded > 0` or `dateOutliersExcluded > 0`.
-- "Amostra reduzida" copy only when `method === 'insufficient'`.
+- Keep the main line behavior (sample/insufficient).
+- Replace the single "exclusions" hint with a **conditional pinned note** that:
+  - Renders only when `pinnedExcluded > 0`.
+  - Uses `pinned_one` for `pinnedExcluded === 1`, `pinned_other` otherwise.
+  - Wraps the note in a `<span title={t('posts.methodology.exclusions_tooltip')}>` with dotted underline for the native tooltip.
+  - When `pinnedExcluded === 0` but `outliersExcluded > 0`, render no extra text (outliers are a silent defensive guard — not user-facing per spec).
+- Continue rendering as a single muted `<p class="text-xs text-content-tertiary">` separated by ` · `.
+- Continue accepting `outliersExcluded` in the prop type (data stays available for future premium copy) but no longer rendered.
 
-Grep guard for stray hardcoded strings:
+### 3. Tests — `src/components/report-redesign/v2/__tests__/methodology-line.test.ts`
 
-```bash
-rg -n "últimos 30 dias|last 30 days" src/components/report-redesign/v2 src/i18n/locales
-```
+Update / add cases:
+- Renders count + observed days in the sample line (plural).
+- Singular form when `count === 1`.
+- Insufficient copy when `sufficient=false`.
+- Pinned note appears when `pinnedExcluded > 0` (plural copy + count interpolation).
+- Pinned note in singular form when `pinnedExcluded === 1`.
+- No pinned note when `pinnedExcluded === 0`, even if `outliersExcluded > 0`.
+- Tooltip text present on the pinned note via `title` attribute.
 
-Expect zero hits outside the `window_30d` i18n keys.
+### 4. Caller — `src/components/report-redesign/v2/report-overview-block.tsx`
 
-## 4. Type + test gates
+No changes needed. It already passes `pinnedExcluded` and `outliersExcluded` from `buildBlock01Sample`.
+
+## Out of scope
+
+- No new premium section.
+- No changes to `pickSubtitleKey`, `posts.subtitle_variants`, scoring, or other blocks.
+- No changes to `outliersExcluded` data path — kept available for future detailed methodology.
+
+## Validation
 
 - `bunx tsc --noEmit`
-- `bunx vitest run` (full suite). Confirm the 12 Block 1 tests still pass and that the 9 pre-existing email/follow-up failures are unchanged (no new failures introduced).
+- `bunx vitest run` (expect 12 → ~14 Block 1 tests green; baseline 9 email failures unchanged)
+- Visual check desktop + mobile via preview on a snapshot with pinned posts (`pedrocaramez`, has 2) and one without (`susanatrigobarros`).
 
-## 5. Deliverable
+## Files changed
 
-A short report containing:
-
-- The two fixture IDs used (profile + captured_at).
-- Per-fixture: method, windowDays, sampleSize, performancePosts.length, pinnedExcluded, dateOutliersExcluded, averages parity (pass/fail), best/worst membership (pass/fail), selected subtitle key, methodology line text PT+EN.
-- Screenshots: 2 fixtures × 2 viewports = 4 images under `/mnt/documents/block1-smoke/`.
-- `tsc` result, `vitest` summary (passed/failed counts with diff vs baseline).
-- Any regression found, with file + line, and a proposed minimal fix (NOT applied in this pass).
-
-## Files touched
-
-None expected. Only `/tmp/block1-smoke.ts` (throwaway) and `/mnt/documents/block1-smoke/*` (artifacts).
+1. `src/i18n/locales/pt/report.json`
+2. `src/i18n/locales/en/report.json`
+3. `src/components/report-redesign/v2/overview/methodology-line.tsx`
+4. `src/components/report-redesign/v2/__tests__/methodology-line.test.ts`
 
 ## Checkpoint
 
-- ☐ Approve fixture selection criteria (latest pinned + latest non-pinned snapshot)
-- ☐ Approve running full `vitest` (≈ pre-existing 9 failures will still show)
-- ☐ Approve writing screenshots to `/mnt/documents/block1-smoke/`
-- ☐ Approve "report only, do not fix" policy if a regression is found
+- ☐ Approve copy rewording ("Amostra analisada: …" instead of "Análise baseada nas …")
+- ☐ Approve dropping the silent outliers hint from the user-facing line (data stays in props)
+- ☐ Approve replacing `exclusions_note` key with `exclusions_tooltip` + `pinned_one/other`
+- ☐ Approve keeping the native `title=` tooltip (no shadcn Tooltip dependency added)
