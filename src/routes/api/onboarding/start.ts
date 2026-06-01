@@ -36,6 +36,10 @@ const PayloadSchema = z.object({
   purpose: z.string().trim().max(120).optional(),
   profile_ownership: z.string().trim().max(40).optional(),
   pricing_preference: z.string().trim().max(40).optional(),
+  // Anti-bot — campos opcionais; honeypot deve permanecer vazio e `_t`
+  // (timestamp do form start em ms) deve estar pelo menos 2s no passado.
+  website: z.string().max(0).optional(),
+  _t: z.number().int().positive().optional(),
 });
 
 type Payload = z.infer<typeof PayloadSchema>;
@@ -181,6 +185,39 @@ export const Route = createFileRoute("/api/onboarding/start")({
             },
             400,
           );
+        }
+
+        // Honeypot tripped → drena silenciosamente. Devolve forma de
+        // sucesso com lead_id sintético e 0 créditos; nada vai à DB.
+        const rawWebsite =
+          typeof raw === "object" && raw && "website" in raw
+            ? (raw as { website?: unknown }).website
+            : undefined;
+        if (typeof rawWebsite === "string" && rawWebsite.length > 0) {
+          console.warn("[onboarding/start] honeypot tripped — draining");
+          return json(
+            {
+              ok: true,
+              lead_id: "00000000-0000-0000-0000-000000000000",
+              credits: 0,
+            },
+            200,
+          );
+        }
+
+        // Timing check: rejeita submits <2s após carregamento.
+        if (typeof parsed.data._t === "number") {
+          const ageMs = Date.now() - parsed.data._t;
+          if (ageMs >= 0 && ageMs < 2_000) {
+            return json(
+              {
+                ok: false,
+                error_code: "INVALID_PAYLOAD",
+                message: "Dados inválidos. Verificar os campos.",
+              },
+              400,
+            );
+          }
         }
 
         const upserted = await upsertLead(parsed.data);
