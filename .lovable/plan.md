@@ -1,119 +1,58 @@
+## Auditoria
 
-# Redesenho do onboarding modal (4 ecrãs)
+Restaurei o modal antigo (5 passos) só para resolver os erros TS. A infraestrutura do redesenho aprovado já está toda no projeto, **mas não está ligada**:
 
-Implementa os mockups anexados: fundir Passos 2/3/4 antigos num só ecrã de contexto, corrigir bugs de copy do antigo Step 5, e adicionar persistência + anti-bot + tracking. Tudo sem mexer em Apify, OpenAI, report, pricing, thumbnails, selector temporal ou emails.
+| Peça | Estado |
+|---|---|
+| `gate.json` PT/EN com copy de 3 passos (`onboarding.steps.1/2/3`, `compactOptions`, `cta`) | Pronto, **não usado** |
+| `landing.json` trust bar "Conta grátis em 1 min" | Pronto |
+| `src/lib/leads/use-onboarding-draft.ts` (sessionStorage debounced) | Pronto, **não usado** |
+| `src/lib/tracking/onboarding-events.ts` (sendBeacon) + rota `/api/public/onboarding-event` | Pronto, **não usado** |
+| `/api/onboarding/start` com honeypot + `_t` timing | Pronto, **não recebe os campos do modal** |
+| `OnboardingModal` componente | Versão antiga de 5 passos restaurada do git |
 
-## Estrutura final do funil
+Resultado: experiência atual ainda é a longa (6 ecrãs, incluindo `user_type`), sem persistência de rascunho, sem honeypot/anti-bot enviado, sem eventos de funil, e com copy a prometer "tom de consultor" que não é entregue.
 
-```
-Intro (Passo 0)  →  Passo 1 (nome)  →  Passo 2 (relação + objetivo)  →  Passo 3 (email + telefone + GDPR)
-```
+## Plano: terminar o redesenho 3 passos
 
-`user_type` sai da UI mas a coluna `leads.user_type` permanece nullable (legado, sem migração).
+### 1. Reescrever `src/components/onboarding/onboarding-modal.tsx` (Intro + 3 passos)
 
-## 1. `src/components/onboarding/onboarding-modal.tsx` — reescrita do shell
+- `TOTAL_STEPS = 3`. Estados: `0` (intro), `1` (nome), `2` (relação + objetivo), `3` (email + telemóvel + GDPR).
+- Importar e ligar `useOnboardingDraft(form)` para persistir em `sessionStorage`; chamar `clear()` no `onSuccess`.
+- Importar `trackOnboardingEvent` e disparar:
+  - `onboarding_step_view` ao entrar em cada passo (incluindo 0);
+  - `onboarding_step_complete` ao validar e avançar;
+  - `onboarding_abandon` no `onOpenChange(false)` antes do sucesso (`sendBeacon`);
+  - `onboarding_success` após `/api/onboarding/start` 200.
+- Capturar `formStartedAt = Date.now()` no primeiro mount, enviar como `_t`.
+- Honeypot: input `name="website"` invisível (`tabIndex={-1}`, `aria-hidden`, `autoComplete="off"`, `absolute -left-[9999px]`). Se preenchido, **não bloquear UX** — apenas envia; o servidor já drena.
+- Submit final: validar todos os campos, parar se `Date.now() - formStartedAt < 2000` (mensagem genérica), e POST a `/api/onboarding/start` **sem `user_type`** (campo continua nullable na BD).
+- Passo 2 mostra dois grupos lado-a-lado em ≥sm, empilhados em mobile:
+  - "Que relação tens com @{{handle}}?" → 4 chips compactos (`compactOptions.profileOwnership`): `own_profile`, `client_profile`, `brand_profile`, `competitor_research`. Sem ícones pesados; chips Inter SemiBold.
+  - "O que mais te interessa perceber?" → 4 chips (`compactOptions.goal`): `improve_content`, `benchmark_competitors`, `grow_audience`, `validate_brand`. Sem campo "Outro" no funil.
+  - Linha de consequência: `onboarding.steps.2.consequenceLine` (copy já suavizada).
+- Passo 3 reutiliza `Step5EmailPhone` (ou versão local equivalente) com label "Telemóvel — opcional", hint "Só usamos se o email falhar (raro)". Consentimento GDPR com dois links distintos (`/aviso-legal` e `/privacidade`).
+- CTA final: `cta.final` ("Gerar o meu relatório") com ícone `Sparkles`.
+- Botão "Voltar" mantém-se em todos os passos do form; no passo 1, volta ao intro.
 
-- `TOTAL_STEPS = 3` (era 5).
-- Mapping interno: `Step 0` intro, `Step 1` nome, `Step 2` contexto (relação + objetivo no mesmo formulário), `Step 3` email/telefone/GDPR.
-- `goNext` valida em Passo 2 ambos os campos (`profile_ownership`, `goal`, + `goal_other_text` se aplicável). Em Passo 3, valida `email`, `phone`, `gdpr_consent`, `honeypot`, e o `formStartedAt` (rejeita se <2s).
-- Payload para `/api/onboarding/start` deixa de enviar `user_type` e `user_type_other_text`.
-- Botão final: `t("onboarding.cta.final")` = "Gerar o meu relatório", ícone `Sparkles`.
+### 2. Ajustes mínimos noutros ficheiros
 
-## 2. Intro (Passo 0)
+- `src/lib/unlock-flow.ts`: **não** remover `user_type` do schema (mantém-se para o módulo `unlock-modal` legado e para `Step5EmailPhone` reutilizado). O modal novo simplesmente não envia. Sem migração de BD.
+- `src/routes/api/onboarding/start.ts`: nada a mudar — já aceita `user_type` opcional.
+- `src/i18n/__tests__/onboarding-copy.test.ts`: já valida `intro.handleContext`, `creditNote`, `freeValue`, `cta`. Adicionar 3 asserções:
+  - `steps.1/2/3.eyebrow`, `title`, `subtitle` existem;
+  - `steps.2.consequenceLine` **não** contém "consultor" nem "concorrentes" (proteção anti-overpromise);
+  - `compactOptions.profileOwnership` e `compactOptions.goal` têm exatamente 4 entradas cada.
 
-- Eyebrow: "VAIS ANALISAR" + chip `@handle`.
-- Badge à direita: "Grátis" (substitui o asterisco vermelho/badge OBRIG. de tom alarmante).
-- Título e subtítulo segundo o mockup. Trustline com operador ("Fomentar Sonhos, Lda.") em vez de repetir "~1 min".
-- Bloco "2 créditos grátis · esta análise usa 1" com tom calmo.
-- Lista a 3 itens (corta o 4º).
+### 3. Verificações finais (sem alterar código)
 
-## 3. Passo 2 (contexto fundido)
+- `bun run typecheck` limpa.
+- Testes existentes (`onboarding-copy`, `unlock-flow`) verdes.
+- Smoke manual no preview: abrir modal, navegar 0→3, fechar a meio (evento `abandon`), reabrir e confirmar hidratação do rascunho, submeter e confirmar redirect para `/analyze/$username`.
 
-- Dois grupos lado a lado (md: 2 colunas, mobile: empilhado).
-- Grupo 1 "Que relação tens com @handle?" — 4 chips (own / client / brand / competitor).
-  Reduz "Concorrência" para "Concorrente" e remove "Explorar" para eliminar sobreposição.
-- Grupo 2 "O que mais te interessa perceber?" — 4 chips (improve_content / compare_competitors / grow_audience / validate_brand).
-- Banda viva por baixo (`bg-primary/[0.04]`, ícone `Sparkles`) com microcopy **suavizada** (decisão do utilizador):
-  > "Vamos usar isto para evoluir o produto e personalizar próximos relatórios."
-  Texto é estático (não muda por seleção) — evita overpromise enquanto o report não ajusta enquadramento.
+## Fora de âmbito (explicitamente)
 
-## 4. Passo 3 (email + telefone + GDPR)
-
-- Label telefone: `Telemóvel — opcional` (sem asterisco). Hint: "Só usamos se o email falhar (raro)."
-- GDPR consent: dois links distintos
-  - "tratamento de dados" → `/aviso-legal`
-  - "política de privacidade" → `/privacidade`
-- Marker "(obrigatório)" em texto calmo `text-content-tertiary`, não badge rosa.
-- Marketing consent fica como `(Opcional.)` inline, sem destaque.
-- Honeypot field (`name="website"`, `tabIndex={-1}`, `aria-hidden`, posição `absolute -left-[9999px]`).
-- Microcopy por baixo do CTA: "Vamos analisar @handle (~30s) · +2 créditos na tua conta".
-
-## 5. Persistência (sessionStorage)
-
-Novo hook `src/lib/leads/use-onboarding-draft.ts`:
-- Chave: `onboarding_draft_v1` no `sessionStorage`.
-- Persiste em cada mudança de campo (debounced 300ms).
-- Hidrata defaults do `useForm` no mount se existir draft válido (Zod safeParse — se falhar, limpa).
-- Limpa em sucesso do submit (após `onSuccess`).
-
-## 6. Anti-bot (honeypot only — decisão do utilizador)
-
-Em `src/routes/api/onboarding/start.ts`:
-- Schema aceita `website: z.string().max(0).optional()` (qualquer valor preenchido falha).
-- Schema aceita `_t: z.number().int().positive()` (timestamp do form start enviado pelo cliente).
-- Validação: se `Date.now() - _t < 2000`, devolve `INVALID_PAYLOAD` (mensagem genérica, sem revelar a regra).
-- Se honeypot preenchido, devolve `200 ok=true` com `lead_id` fake e `credits:0` (não escreve nada na DB) — drena bots silenciosamente.
-
-## 7. Tracking de funil
-
-Novo helper `src/lib/tracking/onboarding-events.ts` que insere em `product_events` via novo endpoint público `POST /api/public/onboarding-event` (TanStack server route, `supabaseAdmin`).
-
-- Eventos: `onboarding_step_view`, `onboarding_step_complete`, `onboarding_abandon`, `onboarding_success`.
-- Payload mínimo: `{ step: 0|1|2|3, handle, marketing_consent? }`. Sem PII.
-- Disparo:
-  - `step_view` quando `step` muda.
-  - `step_complete` em `goNext` válido.
-  - `abandon` em `onOpenChange(false)` antes de `step === 3` completo (usa `navigator.sendBeacon` para sobreviver à navegação).
-  - `success` após resposta 200 de `/api/onboarding/start`.
-- Endpoint sem assinatura — só aceita `event_type` do enum onboarding. Rate-limit simples por IP hash (max 60/min).
-
-## 8. Copy i18n
-
-Atualiza `src/i18n/locales/{pt,en}/gate.json` em `onboarding.*`:
-- Remove `unlock.step3/4/5` headers reaproveitados.
-- Adiciona `onboarding.steps.1/2/3.{eyebrow,title,subtitle}`.
-- Adiciona `onboarding.context.relationshipQuestion`, `goalQuestion`, `consequenceLine`.
-- Adiciona `onboarding.final.phoneLabel`, `phoneHint`, `gdprMandatoryMarker`, `marketingOptional`, `submitCta`, `microPostCta`.
-- Remove copy "Última pergunta" e "OBRIG.".
-
-## 9. Trust bar da homepage
-
-Em `src/components/landing/` (o componente da hero trust bar — confirmar nome ao implementar):
-- Substituir "SEM REGISTO NECESSÁRIO" por "CONTA GRÁTIS EM 1 MIN".
-- Manter pt/en consistentes em `landing.json`.
-
-## 10. Testes
-
-- Atualizar `src/i18n/__tests__/onboarding-copy.test.ts` para nova estrutura de chaves.
-- Novo `src/lib/leads/__tests__/use-onboarding-draft.test.ts` (hydrate/persist/clear).
-- Novo `src/routes/api/__tests__/onboarding-start-honeypot.test.ts` cobrindo:
-  - honeypot preenchido → drena (ok=true credits=0, sem insert).
-  - submit <2s → INVALID_PAYLOAD.
-  - submit válido sem `user_type` → 200 + credits=2.
-
-## Fora de scope (confirmado)
-
-Apify, OpenAI, report rendering, pricing, thumbnails, selector temporal, emails. Coluna `leads.user_type` mantida. Sem Turnstile. Sem alteração ao `report.example`.
-
-## Checkpoint
-
-- ☐ Modal redesenhado com 3 form steps + intro.
-- ☐ Passo 2 com 2 grupos + linha de consequência suavizada.
-- ☐ Bugs do antigo Step 5 corrigidos (asterisco, links GDPR, badge, CTA).
-- ☐ Intro com prova de créditos + trustline operador.
-- ☐ sessionStorage draft hook a hidratar/persistir/limpar.
-- ☐ Honeypot + timing check no endpoint, drenagem silenciosa.
-- ☐ 4 eventos de tracking via endpoint público + `sendBeacon`.
-- ☐ Trust bar homepage corrigida.
-- ☐ Testes verdes: i18n, draft hook, honeypot, fluxo completo.
-- ☐ Validação manual: `/api/onboarding/start` continua a devolver 200 + `lead_session` + 2 créditos.
+- Apify, OpenAI, report, pricing, thumbnails, selector temporal, emails.
+- `/report.example` e `unlock-modal` legado (continuam a usar o fluxo de 5 passos antigo se for chamado de outro sítio).
+- Migrações de BD. `leads.user_type` permanece nullable, sem UI a preencher.
+- Cloudflare Turnstile.

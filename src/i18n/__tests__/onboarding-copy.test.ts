@@ -24,6 +24,19 @@ type Gate = {
       cta: string;
     };
     errors: { generic: string; network: string };
+    steps: Record<
+      "1" | "2" | "3",
+      {
+        eyebrow: string;
+        title: string;
+        subtitle: string;
+        consequenceLine?: string;
+      }
+    >;
+    compactOptions: {
+      profileOwnership: Record<string, string>;
+      goal: Record<string, string>;
+    };
   };
 };
 
@@ -75,5 +88,29 @@ describe.each(LOCALES)("[%s] onboarding gate copy", (locale, errors, gate) => {
     expect(gate.onboarding.errors.network).toBeTruthy();
     expect(gate.onboarding.errors.generic).not.toMatch(RAW_LEAK);
     expect(gate.onboarding.errors.network).not.toMatch(RAW_LEAK);
+  });
+
+  it("steps 1/2/3 have eyebrow, title, subtitle", () => {
+    for (const k of ["1", "2", "3"] as const) {
+      const s = gate.onboarding.steps[k];
+      expect(s.eyebrow, `steps.${k}.eyebrow missing`).toBeTruthy();
+      expect(s.title, `steps.${k}.title missing`).toBeTruthy();
+      expect(s.subtitle, `steps.${k}.subtitle missing`).toBeTruthy();
+    }
+  });
+
+  it("steps.2.consequenceLine não promete tom de consultor nem comparação direta", () => {
+    const line = gate.onboarding.steps["2"].consequenceLine ?? "";
+    expect(line, `steps.2.consequenceLine missing for ${locale}`).toBeTruthy();
+    // Anti-overpromise: o relatório ainda não ajusta tom por relação/objetivo.
+    expect(line).not.toMatch(/\bconsultor\b/i);
+    expect(line).not.toMatch(/\bconsultant\b/i);
+    expect(line).not.toMatch(/\bconcorrent/i);
+    expect(line).not.toMatch(/\bcompetitor/i);
+  });
+
+  it("compactOptions.profileOwnership e goal têm 4 entradas cada", () => {
+    expect(Object.keys(gate.onboarding.compactOptions.profileOwnership)).toHaveLength(4);
+    expect(Object.keys(gate.onboarding.compactOptions.goal)).toHaveLength(4);
   });
 });
