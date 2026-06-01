@@ -1,60 +1,89 @@
-## Objetivo
+## Âmbito
 
-Refinar visualmente o Bloco 1 (Visão geral) + sidebar do relatório `/analyze/$username`, aproximando do Iconosquare:
+Refinar Bloco 1 (Visão geral) — `frequency-card.tsx` + `report-overview-engagement.tsx`. Sem alterar lógica de dados, scores ou copy fora dos títulos/status.
 
-1. Adotar a paleta **Ocean Breeze** como base do azul.
-2. Unificar os botões em **sentence case** (manter eyebrows/labels uppercase — são chips, não botões; a regra core de eyebrow Inter uppercase mantém-se).
+---
 
-Âmbito limitado: tokens de azul + componentes da sidebar (`report-block-nav.tsx`) + hero/ações do Bloco 1 (`report-hero.tsx` / `report-hero-v2.tsx`) + cards "Continuar leitura" / "Premium". **Não toca** noutros blocos, landing, admin nem `/report.example`.
+## 1. KPI strip no card "Frequência de publicação"
 
-## Paleta Ocean Breeze → tokens
+A informação proposta na imagem já existe no relatório, mas espalhada:
 
-Mapeamento em `src/styles/tokens-light.css` (override `[data-theme="light"]`, scoped a relatórios):
+| KPI proposto       | Valor                 | Fonte (já calculada)                                      |
+| ------------------ | --------------------- | --------------------------------------------------------- |
+| Cadência           | `3,0 posts/sem`       | `postingFrequencyWeekly` (prop existente)                 |
+| Consistência       | `41,4% dias activos`  | `publishedCount / windowedDays.length` (já no rodapé)     |
+| Pico semanal       | `Terça`               | `pickMostActive(buckets).weekday` (já no WeeklySummary)   |
 
+**Decisão de design:** consolidar num `KpiStrip` (3 colunas) imediatamente abaixo do header (acima do `WeeklySummary`), reaproveitando o padrão visual do `MetricsStrip` do `editorial-identity-card`:
+
+- Card branco, border `border-default`, `divide-x` entre colunas, sem ícones (já há ícones no WeeklySummary mais abaixo).
+- Eyebrow Inter uppercase (`text-eyebrow-sm`) → valor em Inter SemiBold tabular-nums (`text-[1.5rem]` desktop / `text-[1.25rem]` mobile) → micro-label Inter `text-xs` content-tertiary.
+- "Pico semanal" usa cor `text-accent-primary` (#0077B6 Ocean) — único acento, alinhado com a nova paleta Ocean Breeze; sem cyan neon.
+- Esconder o KPI strip quando `isInsufficient === true` (já há fallback de copy neutro).
+- Como passa a haver KPI "Consistência (X% dias activos)" no topo, **remover** o `frequency.calendar.ratio` ("12/29") da legenda do calendário para evitar duplicação — fica só a legenda das cores.
+
+**Cálculos (todos com dados já disponíveis no componente):**
+
+```text
+cadenciaSemanal     = postingFrequencyWeekly                  // formatDecimal(_, locale, 1)
+consistenciaPct     = publishedCount / windowedDays.length    // 0–100, 1 casa
+picoSemanalLabel    = weekdayLong[pickMostActive(buckets).weekday]
+picoSemanalSubtitle = `${top.posts} posts` ou "—" se top.posts === 0
 ```
-#03045E navy        → --text-primary, --border-strong (titulos/CTAs escuros)
-#0077B6 ocean       → --accent-primary (azul principal Iconosquare-like)
-#00B4D8 cyan        → --accent-luminous (hover, data accent secundário)
-#90E0EF aqua        → chips/badges suaves (bg de pills "Premium", ring sutil)
-#CAF0F8 aqua-pale   → surface accent (highlight de selected items na sidebar)
-```
 
-Mantém-se: `--surface-base #FAFBFD`, `--surface-secondary #FFFFFF`, `--surface-muted #F1F4F9`. Substituem-se as classes hardcoded `bg-blue-50 / text-blue-700 / ring-blue-200 / focus:ring-blue-400` em `report-block-nav.tsx` por equivalentes via tokens (`bg-accent-soft`, `text-accent-primary`, `ring-accent-soft`). Sem `slate-*`.
+Ordem visual no card: Header → **KPI strip (novo)** → WeeklySummary → Calendar → Verdict.
 
-## Botões → sentence case
+---
 
-Converter para sentence case (label + remover `uppercase tracking-[…]`):
+## 2. Uniformizar títulos do Bloco 1
 
-- `nav.access.cta` (PremiumBlockCard): `"DESBLOQUEAR ACESSO PREMIUM"` → `"Desbloquear acesso premium"`
-- `nav.access_locked.cta` (ContinueReadingCard, "CONTINUAR LEITURA GRATUITA"): → `"Continuar leitura gratuita"`
-- Botões internos do hero do Bloco 1 (`Novo relatório`, `Comparar concorrente`, `PDF`, `Partilhar`): já estão em sentence case; só normalizar weight/tracking para o mesmo padrão Inter SemiBold sem `uppercase`.
+Padrão escolhido: **status inline a seguir ao título, palavra sublinhada com underline colorido** (igual ao que já está em `Frequência de publicação Alta` e `Formato Pouco variado`).
 
-**Mantêm-se uppercase (são eyebrows/chips, não botões — respeita a regra core):**
-- `ANÁLISE DE PERFIL`, `DISPONÍVEL AGORA`, `GRÁTIS`, `EM BREVE · Julho 2026`, `ACESSO GRATUITO · BETA`, `01 / 02 / 03…`
-- Badges `VariantBadge` (`internal_lab`, `pro_active`)
-- Badge "5 por desbloquear" (já é chip)
+Mudança no `report-overview-engagement.tsx`:
 
-Aplica-se a regra `.text-eyebrow` (Inter uppercase) — sem alterações.
+- Remover o pill arredondado uppercase (`BAIXA`/`MÉDIA`/`ALTA`).
+- Render: `Taxa de Engagement <span>Baixa</span>` com sublinhado colorido (verde/âmbar/vermelho) — mesma técnica de `frequency-card`.
+- Manter eyebrow "ENGAGEMENT" por cima (consistente com o padrão dos outros dois cards).
+- Garantir que o status em pt-PT está em **Title Case** (`Baixa`, `Média`, `Alta`), não uppercase — já existem chaves `engagement.status.*` em pt/report.json; verificar e ajustar se vierem em maiúsculas.
+
+Resultado: os três cards do Bloco 1 partilham o mesmo padrão de header (`Título + <status sublinhado>` + subtitle), sem pills nem caps-lock.
+
+---
 
 ## Ficheiros a tocar
 
-1. `src/styles/tokens-light.css` — novos valores `--accent-*` + `--text-primary` (Ocean Breeze).
-2. `src/components/report-redesign/v2/report-block-nav.tsx` — substituir `bg-blue-50 / text-blue-700 / ring-blue-200` por tokens; remover `uppercase tracking-[0.08em]` dos 2 botões CTA; novo `rounded-full` consistente.
-3. `src/i18n/locales/pt/report.json` (+ `en/report.json`) — converter os 2 labels CTA para sentence case.
-4. `src/components/report-redesign/report-hero.tsx` + `v2/report-hero-v2.tsx` — garantir que os botões de ação usam o mesmo estilo (sentence case, Inter SemiBold, sem `uppercase`); pill "EM BREVE · Julho 2026" mantém-se eyebrow.
-5. `mem://design/report-light-tokens` — atualizar nota da paleta (Ocean Breeze) para futuras sessões.
-
-## Validação
-
-- `bunx tsc --noEmit`
-- Preview `/analyze/frederico.m.carvalho` a 1460×905 e 411×742; confirmar:
-  - Sidebar: azul navy (#03045E) no item ativo, ocean (#0077B6) no botão "Continuar leitura gratuita" (sentence case), aqua suave (#CAF0F8) no fundo do item selecionado.
-  - Hero: `@frederico.m.carvalho` em navy; botão "+ Novo relatório" navy escuro consistente; `EM BREVE` continua uppercase pill.
-  - Card lead-magnet ("Continua a leitura gratuita…"): CTA "Ver relatório gratuito" em sentence case e azul ocean.
-  - Nenhum outro bloco do relatório alterado (mantém o azul atual onde não chega o override — visto que o override é em `[data-theme="light"]` que cobre o report inteiro, validar visualmente blocos 5–10 para evitar regressões; se houver desvio indesejado, restringe-se via classe wrapper no Bloco 1).
+1. `src/components/report-redesign/v2/overview/frequency-card.tsx`
+   - Novo subcomponente `FrequencyKpiStrip` (cadência / consistência / pico).
+   - Render entre header e `WeeklySummary`, gated em `!isInsufficient`.
+   - Remover `frequency.calendar.ratio` da legenda do calendário.
+2. `src/components/report-redesign/v2/report-overview-engagement.tsx`
+   - Substituir o `<span>` pill por um `<span>` sublinhado inline dentro do `<h3>`.
+   - Eliminar `pillClass` (deixa de ser usado).
+3. `src/i18n/locales/pt/report.json` + `src/i18n/locales/en/report.json`
+   - Novas chaves: `frequency.kpi.cadence_label`, `frequency.kpi.cadence_unit`, `frequency.kpi.consistency_label`, `frequency.kpi.consistency_caption`, `frequency.kpi.peak_label`, `frequency.kpi.peak_caption_posts_{one,other}`, `frequency.kpi.peak_caption_none`.
+   - Confirmar `engagement.status.low/medium/high` em Title Case (`Baixa`/`Média`/`Alta`).
 
 ## Fora de âmbito
 
-- Landing, admin, `/report.example`, restantes blocos visuais.
-- Mudar tipografia, espaçamento, ou re-arquitetura da sidebar (shadcn `Sidebar`).
-- Dark mode.
+- Bloco 2+ (diagnóstico, top posts, capas, comentários).
+- Sidebar, hero, ruler, lead-magnet.
+- `/report.example`, dark mode, admin.
+- Alterar lógica de cálculo de cadence/consistency (usar valores já calculados).
+
+## Validação
+
+- `bunx tsc --noEmit`.
+- Preview `/analyze/frederico.m.carvalho` a 1460×905 e 411×742.
+- Verificar:
+  - [ ] KPI strip aparece com 3 colunas, valores Inter tabular-nums, "Terça" em Ocean.
+  - [ ] Calendário deixa de mostrar "12/29" na legenda.
+  - [ ] Engagement card tem "Taxa de Engagement Baixa" inline (sem pill).
+  - [ ] Três cards do Bloco 1 partilham padrão de header.
+  - [ ] Mobile: KPI strip stack-a em 1 coluna; sem overflow.
+
+## Checkpoint
+☐ KPI strip implementado e gated em isInsufficient
+☐ Legenda do calendário sem "X/Y"
+☐ Engagement card sem pill, com status sublinhado inline
+☐ i18n pt + en atualizado
+☐ tsc verde + preview QA desktop e mobile
