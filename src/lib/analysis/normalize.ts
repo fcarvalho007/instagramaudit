@@ -122,6 +122,7 @@ export function normalizeProfile(raw: RawProfile): PublicAnalysisProfile | null 
       raw.profilePicUrl,
       raw.profile_pic_url,
     ),
+    avatar_storage_url: null,
     bio: pickString(raw.biography, raw.bio),
     followers_count: followers,
     following_count: pickNumber(raw.followsCount, raw.following),
