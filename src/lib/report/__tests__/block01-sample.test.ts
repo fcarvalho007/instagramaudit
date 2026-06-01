@@ -85,3 +85,76 @@ describe("computeGlobalScore (interaction removed)", () => {
     expect(computeGlobalScore(0, 0)).toBe(0);
   });
 });
+
+describe("Block 1 sample — avg likes/comments aligned with engagement rate (P1 #1)", () => {
+  it("computePostAverages over performancePosts excludes pinned AND date outliers", async () => {
+    const { computePostAverages } = await import("../post-aggregates");
+    // 1 pinned (2023, likes 9999) + 1 stale outlier (2024, likes 9999)
+    // + 3 recent posts with likes 10. The canonical sample should leave
+    // only the 3 recent posts, so the average is 10 — not skewed by the
+    // two contaminated entries.
+    const posts: SnapshotPost[] = [
+      {
+        id: "pinned",
+        taken_at: Math.floor(new Date("2023-01-01T10:00:00Z").getTime() / 1000),
+        taken_at_iso: "2023-01-01T10:00:00Z",
+        likes: 9999,
+        comments: 9999,
+        is_pinned: true,
+        engagement_pct: 5,
+        format: "Reels",
+      },
+      {
+        id: "stale",
+        taken_at: Math.floor(new Date("2024-06-01T10:00:00Z").getTime() / 1000),
+        taken_at_iso: "2024-06-01T10:00:00Z",
+        likes: 9999,
+        comments: 9999,
+        is_pinned: false,
+        engagement_pct: 5,
+        format: "Reels",
+      },
+      {
+        id: "r1",
+        taken_at: Math.floor(new Date("2026-05-20T10:00:00Z").getTime() / 1000),
+        taken_at_iso: "2026-05-20T10:00:00Z",
+        likes: 10,
+        comments: 1,
+        is_pinned: false,
+        engagement_pct: 1,
+        format: "Reels",
+      },
+      {
+        id: "r2",
+        taken_at: Math.floor(new Date("2026-05-22T10:00:00Z").getTime() / 1000),
+        taken_at_iso: "2026-05-22T10:00:00Z",
+        likes: 10,
+        comments: 1,
+        is_pinned: false,
+        engagement_pct: 1,
+        format: "Reels",
+      },
+      {
+        id: "r3",
+        taken_at: Math.floor(new Date("2026-05-24T10:00:00Z").getTime() / 1000),
+        taken_at_iso: "2026-05-24T10:00:00Z",
+        likes: 10,
+        comments: 1,
+        is_pinned: false,
+        engagement_pct: 1,
+        format: "Reels",
+      },
+    ];
+    const sample = buildBlock01Sample(posts);
+    expect(sample.pinnedPostsExcluded).toBe(1);
+    // Stale 2024 post is > 180 days older than the May 2026 cluster.
+    expect(sample.dateOutliersExcluded).toBeGreaterThanOrEqual(1);
+    const avg = computePostAverages(sample.performancePosts, {
+      excludePinned: false,
+    });
+    expect(avg).not.toBeNull();
+    expect(avg!.averageLikes).toBe(10);
+    expect(avg!.averageComments).toBe(1);
+    expect(avg!.postsAnalyzed).toBe(3);
+  });
+});
