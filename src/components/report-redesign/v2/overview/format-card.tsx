@@ -8,7 +8,7 @@
  *   Image legend dot:    bg-amber-200
  *   Video legend dot:    bg-sky-200
  */
-import { Fragment, useState } from "react";
+import { Fragment, useState, type ComponentType } from "react";
 import { Play, Image, GalleryHorizontalEnd } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -340,11 +340,16 @@ export function FormatCard({
                 <span
                   key={`${post.date}-${idx}`}
                   title={t("format.thumb_aria", { label, date: post.date })}
-                  className="relative rounded-[4px] overflow-hidden bg-slate-50 border border-border-subtle/40"
+                  className="relative rounded-[4px] overflow-hidden bg-surface-muted border border-border-subtle/40"
                   style={{ aspectRatio: "3/4" }}
                 >
                   {post.thumbnailUrl ? (
-                    <PostThumb src={post.thumbnailUrl} alt={label} />
+                    <PostThumb
+                      src={post.thumbnailUrl}
+                      alt={label}
+                      fallbackIcon={Icon}
+                      fallbackIconColor={style.iconColor}
+                    />
                   ) : (
                     <span className="absolute inset-0 flex items-center justify-center">
                       <Icon className={`size-3.5 ${style.iconColor}`} aria-hidden="true" />
@@ -405,10 +410,31 @@ export function FormatCard({
 }
 
 /** Tiny thumbnail with graceful fallback to icon. */
-function PostThumb({ src, alt }: { src: string; alt: string }) {
+function PostThumb({
+  src,
+  alt,
+  fallbackIcon: FallbackIcon,
+  fallbackIconColor,
+}: {
+  src: string;
+  alt: string;
+  fallbackIcon?: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  fallbackIconColor?: string;
+}) {
   const [failed, setFailed] = useState(false);
   if (failed) {
-    return <Image className="size-3.5 text-slate-400" aria-hidden="true" />;
+    const Icon = FallbackIcon ?? Image;
+    return (
+      <span
+        className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-surface-muted to-surface-base"
+        aria-hidden="true"
+      >
+        <Icon
+          className={`size-3.5 ${fallbackIconColor ?? "text-content-tertiary"}`}
+          aria-hidden
+        />
+      </span>
+    );
   }
   return (
     <img

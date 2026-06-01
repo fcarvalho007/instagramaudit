@@ -1,76 +1,74 @@
 
-## Parte 1 — Auditoria: como é gerado o card "Índice do perfil"
+## Auditoria rápida (o que se passa)
 
-O card é o **EditorialIdentityCard** (`src/components/report-redesign/v2/overview/editorial-identity-card.tsx`) e tem **três camadas de conteúdo**, cada uma com origem diferente:
+### 1. Avatar do perfil no hero não aparece
+**Existe** em `report-hero-v2.tsx:264-326` (`Avatar` component). Bug:
+```ts
+onError={(e) => { e.currentTarget.style.display = "none" }}
+```
+Quando o proxy `/api/public/ig-thumb` falha (URL Instagram CDN assinado expira em horas/dias), a imagem é simplesmente escondida — **sem fallback** para as iniciais. Resultado: espaço vazio ao lado do handle.
 
-### A. Score "31 / 100" e a régua
-**100% determinístico, sem IA.** Calculado em `computeOverall` → `computeGlobalScore` (`score-utils.ts`) com pesos fixos:
-- Envolvimento 45% · Ritmo 25% · Conversa 30%
+Causa raiz provável: o avatarUrl guardado no snapshot é um URL CDN do Instagram com assinatura temporária. Quando o relatório é re-renderizado dias depois, a assinatura já expirou → 403 do proxy.
 
-Inputs vêm dos `scores` derivados do snapshot Apify (likes, comentários, posts, frequência semanal). A régua mostra a posição vs. mediana do escalão (tier Nano/Micro/Mid/Macro), também determinística a partir do benchmark da Knowledge Base.
+### 2. Thumbnails do card "Formato" não aparecem
+Os thumbnails já são proxied (`snapshot-to-report-data.ts:1467`: `thumbnail_url` envolvido em `/api/public/ig-thumb?url=...`). **Mesmo problema do avatar**: URLs do Instagram são assinados e curto prazo. Quando expiram, `PostThumb.onError` cai para o ícone genérico (linha 411). É **comportamento esperado mas a UX é fraca** — 12 ícones placeholder cinzentos.
 
-### B. Título ("Cadência forte, sinal fraco") + parágrafo
-**Gerado pela OpenAI** (com fallback determinístico).
+### 3. Card "Frequência de publicação" — duplicação
+**"Pico semanal"** (KPI strip, linha 397-413) e **"Mais ativo"** (WeeklySummary, linha 202-232) mostram exactamente a mesma informação (`pickMostActive(buckets).weekday`). Decisão: **manter o Pico semanal no KPI strip** (mais visível, melhor enquadrado) e **remover só o "Mais ativo"** do `WeeklySummary`, deixando só o **"Mais parado"** com um enquadramento mais editorial.
 
-Pipeline:
-1. **Snapshot Apify** → `build-context.ts` constrói o `InsightsContext` (perfil, content_summary, cadence, top_posts, benchmark, market_signals, editorial_patterns, top_hashtags, caption_intelligence, visual_cover).
-2. **Prompt** em `src/lib/insights/prompt-v2.ts` → `SYSTEM_PROMPT_BASE` (linhas 34–134). A secção que produz este card é **`editorial_verdict`** (linhas 100–134).
-3. **Chamada OpenAI** em `src/lib/insights/openai-insights.server.ts`. Modelo default: **`gpt-5.4-mini`** (`cost.ts:13`, `DEFAULT_OPENAI_MODEL`). URL `https://api.openai.com/v1/chat/completions`. Protegido por kill-switch `isOpenAiEnabled()` + allowlist `isOpenAiAllowed(handle)`.
-4. **Validação** em `src/lib/insights/validate-v2.ts`. Rejeita o output se:
-   - parágrafo fora de 90–140 palavras ou >4 frases
-   - contém `N%` ou `N,N%`
-   - menciona métricas privadas (alcance, reach, saves…)
-   - usa verbos prescritivos ("publicar", "testar", "aumente"…)
-   - não cita hashtag ou frase de ausência de hashtags
-   - menciona capas/visual sem `visual_cover.*` em evidence
-5. **Resolução IA vs determinístico** em `src/lib/report/editorial-verdict.ts` → `deriveEditorialVerdict`. Se IA falhar/contradizer (ex.: afirma "ritmo forte" quando `cadence.reliability === "low"`, ou cita concorrentes inexistentes), o paragraph é substituído pelo `buildFallbackVerdict` (`editorial-verdict-fallback.ts`), que lê templates de `i18n/locales/pt/report.json` → `identity.fallback.<key>.paragraph`.
+### 4. Calendário "Quando publicou" vs janela analisada
+Verifiquei o código (linhas 484-508 de `frequency-card.tsx`):
+- A análise é mesmo de **30 dias** (`cadenceWindowDays = 30`).
+- `windowedDays = calendarDays.slice(-30)` → tem 30 entradas.
+- `buildWeekGrid` (linha 424) gera ~5 semanas × 7 colunas com padding inicial.
 
-### Regras-chave do prompt (resumo, linhas 100–134 do `prompt-v2.ts`)
-- `verdict_label`: strong | promising | needs_work | limited_data
-- `title`: 4–8 palavras, sem dígitos, sem ponto final
-- `paragraph`: 90–140 palavras, 4 frases máx., **DIAGNÓSTICO não solução**
-- Deve cobrir nesta ordem: actividade → cadência (com `cadence_label_pt` verbatim) → envolvimento (sem imprimir %) → likes vs comentários → hashtags (estado `recurring`/`weak`/`absent`)
-- `evidence_used`: allowlist fechada (`EDITORIAL_VERDICT_EVIDENCE_ALLOWLIST` em `types.ts:395`)
-
-### C. "Sinais usados", "Pontos fortes", "Limitações", "Warnings"
-Vêm do mesmo JSON da IA (`strengths`, `limitations`, `evidence_used`, `warnings`). `warnings` é preenchido pelo backend, não pela IA.
-
-### Custo
-`gpt-5.4-mini` a $0,25/M tokens input · $2,0/M output (registado em `provider_call_logs`).
+Na captura aparecem **apenas 2 semanas (~14 células)** porque `calendarDays` vindo do snapshot pode estar a vir já clipped à actividade real (não aos 30 dias). É um bug de dados, não de UI — o calendário promete 30 dias e mostra ~14.
 
 ---
 
-## Parte 2 — Fix do texto desalinhado no card
+## Plano de mudanças (apenas frontend + uma pequena correcção de dados no transformador)
 
-**Causa:** em `editorial-identity-card.tsx:428`, o `<p>` do parágrafo tem `max-w-3xl` (≈768px) enquanto o card ocupa ≈1040px no desktop. O título (`h2`) também tem `max-w-3xl`. Isso cria a zona vazia à direita visível na captura.
+### A. Fix avatar fallback (`report-hero-v2.tsx`)
+- Trocar o `onError` que faz `display: none` por um estado `failed` (como já existe no `PostThumb`) e renderizar o bloco de iniciais (`fullName.split(...).map(p=>p[0])`) quando falha.
+- Mantém UX consistente mesmo quando o URL CDN do Instagram expira.
 
-**Mesma situação** afecta:
-- `h2` do título (linha 424)
-- container "Sinais usados nesta leitura" (linha 433)
-- `p` de warnings (linha 459)
+### B. Fix thumbnails do format card (`format-card.tsx` + `snapshot-to-report-data.ts`)
+- **Não tentar revalidar URLs expirados em runtime** — fora do escopo (cache do Apify).
+- Melhorar o fallback do `PostThumb` (linha 408-422): em vez do ícone `<Image>` minúsculo cinzento, mostrar um **placeholder com gradiente subtil + ícone do formato** (Reels / Carrossel / Imagem) — mantém o ritmo visual da grelha sem parecer "broken".
+- Substituir `text-slate-400` (proibido por design tokens) por `text-content-tertiary`.
 
-### Mudança proposta (mínima, escopo: este card apenas)
+### C. Card "Frequência de publicação" — remover duplicação
+- Em `WeeklySummary` (linha 181-316): **remover o bloco "Mais ativo"** (linhas 202-232) — fica só "Mais parado" + as mini-bars S-T-Q-Q-S-S-D.
+- Ajustar o grid: passa a ser sempre `grid-cols-1` (sem `sm:grid-cols-2`).
+- Renomear o título de `frequency.weekly_summary.title` ("Resumo da semana") para algo mais focado: **"Dias sem publicação"** ou **"Onde o ritmo falha"** (i18n pt + en).
 
-1. **Remover `max-w-3xl`** das 4 ocorrências (linhas 424, 428, 433, 459) → o texto passa a usar toda a largura do container interior (`px-6/sm:px-7` já dá respiração horizontal natural).
-2. **Adicionar `text-pretty`** ao `h2` e `<p>` para melhor quebra de linhas (evita órfãs).
-3. **Manter** `whitespace-pre-line` no parágrafo (preserva quebras `\n` da IA).
-4. **Não tocar** em prompt, validador, fallback, lógica de score ou régua.
+### D. Calendário "Quando publicou" — garantir 30 dias + toggle colapsar
+1. **Garantir 30 dias completos**: na `buildWeekGrid` (linha 424), preencher também à direita (padding final) para que `windowedDays.length === 30` resulte sempre em ≥4 linhas completas — mostrar exactamente a janela prometida.
+2. **Toggle colapsável**: adicionar botão "Ver dias exactos" / "Esconder" (sentence case, design system) que mostra/esconde o bloco do calendário + legenda. Default = **colapsado** (mais limpo, KPIs e WeeklySummary já dão a leitura macro). Usar `useState` local, `aria-expanded`.
+3. Adicionar pequeno texto sob o título a confirmar a janela: "Últimos 30 dias · 12 publicações".
 
 ### Ficheiros tocados
-- `src/components/report-redesign/v2/overview/editorial-identity-card.tsx` (4 linhas)
+- `src/components/report-redesign/v2/report-hero-v2.tsx` — fallback do avatar
+- `src/components/report-redesign/v2/overview/format-card.tsx` — fallback dos thumbs
+- `src/components/report-redesign/v2/overview/frequency-card.tsx` — remover "Mais ativo", toggle calendário, padding final
+- `src/i18n/locales/pt/report.json` + `en/report.json` — novas chaves: `weekly_summary.title` (renomear), `calendar.toggle_show`, `calendar.toggle_hide`, `calendar.window_summary`
 
 ### Validação
 - `bunx tsc --noEmit`
-- Preview em 1460×905 (desktop) e 411×742 (mobile) para confirmar que o parágrafo enche o card no desktop e que mobile não fica afectado.
+- Preview 1460×905 e 411×742 — confirmar avatar fallback (testar URL inválido), thumbnails fallback, calendário colapsado por defeito, sem duplicação no card de frequência.
 
 ### Fora de escopo
-- Bloco 2+, sidebar, hero, lead-magnet, `/report.example`, prompts da IA, validador, fallback, modelo, custo, knowledge base.
+- Re-validação de URLs do Instagram (problema do Apify/CDN, fora do frontend)
+- Outros blocos, sidebar, `/report.example`, dark mode, admin
+- Investigar/alterar o pipeline de snapshot (`snapshot-to-report-data.ts`) para além do fallback dos thumbs
 
 ---
 
 ## ☐ Checkpoint
-- [ ] Remover `max-w-3xl` das 4 ocorrências no `editorial-identity-card.tsx`
-- [ ] Adicionar `text-pretty` ao `h2` e `<p>`
+- [ ] Avatar: fallback com iniciais quando img falha
+- [ ] Thumbnails: placeholder melhor (gradiente + ícone do formato, sem `slate-*`)
+- [ ] Frequência: remover "Mais ativo" do WeeklySummary, manter só "Mais parado"
+- [ ] Calendário: garantir 30 células completas + toggle colapsar (default colapsado)
+- [ ] i18n: chaves novas pt/en
 - [ ] `bunx tsc --noEmit` passa
-- [ ] Screenshot desktop confirma texto a usar largura completa
-- [ ] Screenshot mobile confirma que nada partiu
+- [ ] Screenshots desktop + mobile confirmam

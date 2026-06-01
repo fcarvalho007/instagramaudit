@@ -293,9 +293,11 @@
       "alert": "ALERTA"
     },
     "weekly_summary": {
-      "title": "Resumo da semana",
+      "title": "Onde o ritmo falha",
       "most_active": "Mais ativo",
       "quietest": "Mais parado",
+      "quietest_label": "Dia mais parado",
+      "no_silent": "Sem dia notoriamente parado nesta janela.",
       "weekend_label": "Fim-de-semana",
       "silent_one": "{{count}} dia s/ post",
       "silent_other": "{{count}} dias s/ post",
@@ -320,7 +322,10 @@
       "legend_stopped": "parou ({{count}})",
       "legend_one_post": "1 post",
       "legend_many": "{{label}} posts",
-      "ratio": "{{published}}/{{total}} dias"
+      "ratio": "{{published}}/{{total}} dias",
+      "toggle_show": "Ver dias exactos",
+      "toggle_hide": "Esconder",
+      "window_summary": "Últimos {{days}} dias · {{published}} com publicação"
     },
     "weekday_short": [
       "S",

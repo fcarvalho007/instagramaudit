@@ -274,6 +274,7 @@ function Avatar({
   language: "pt" | "en";
   t: (k: string, opts?: Record<string, unknown>) => string;
 }) {
+  const [failed, setFailed] = useState(false);
   const initials = fullName
     .replace(/^@/, "")
     .split(/[\s.]+/)
@@ -284,16 +285,15 @@ function Avatar({
 
   const sizeClass = "size-16 md:size-28";
 
-  const inner = avatarUrl ? (
+  const showImage = Boolean(avatarUrl) && !failed;
+  const inner = showImage ? (
     <img
-      src={`/api/public/ig-thumb?url=${encodeURIComponent(avatarUrl)}`}
+      src={`/api/public/ig-thumb?url=${encodeURIComponent(avatarUrl as string)}`}
       alt={t("hero.avatar_alt", { name: fullName })}
       loading="eager"
       decoding="async"
       className={cn("rounded-full object-cover bg-surface-muted", sizeClass)}
-      onError={(e) => {
-        (e.currentTarget as HTMLImageElement).style.display = "none";
-      }}
+      onError={() => setFailed(true)}
     />
   ) : (
     <div

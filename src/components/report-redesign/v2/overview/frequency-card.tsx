@@ -2,9 +2,10 @@
  * Zone D — Card 1: Frequência de publicação.
  * Human-readable headline → stats → posting calendar → verdict.
  */
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
+import { useState } from "react";
 import { computeFrequencia } from "./score-utils";
 import { InsightCallout } from "./insight-callout";
 import type { SocialinsiderInstagramContext } from "@/lib/knowledge/socialinsider-context";
@@ -186,7 +187,6 @@ function WeeklySummary({ days, t }: { days: DayEntry[]; t: TFunction }) {
   const top = pickMostActive(buckets);
   const quiet = pickQuietest(buckets, t);
   const maxPosts = Math.max(...buckets.map((b) => b.posts));
-  const weekdayLong = (t("frequency.weekday_long", { returnObjects: true }) as string[]) ?? [];
   const weekdayShort = (t("frequency.weekday_short", { returnObjects: true }) as string[]) ?? [];
 
   return (
@@ -196,43 +196,7 @@ function WeeklySummary({ days, t }: { days: DayEntry[]; t: TFunction }) {
           {t("frequency.weekly_summary.title")}
         </span>
 
-        <div
-          className={`grid gap-3 ${quiet ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}
-        >
-          {/* Mais ativo */}
-          <div className="flex items-start gap-2.5">
-            <span
-              aria-hidden
-              className="flex size-7 shrink-0 items-center justify-center rounded-full"
-              style={{ background: "rgba(29,158,117,0.15)" }}
-            >
-              <ArrowUp
-                className="size-3.5"
-                style={{ color: "rgb(29,158,117)" }}
-              />
-            </span>
-            <div className="min-w-0">
-              <p className="text-xs uppercase tracking-[0.04em] text-content-tertiary leading-none mb-1">
-                {t("frequency.weekly_summary.most_active")}
-              </p>
-              <p className="text-[15px] text-content-primary leading-relaxed">
-                <span className="font-semibold">
-                  {weekdayLong[top.weekday]}
-                </span>{" "}
-                <span className="text-content-secondary tabular-nums">
-                  · {t(
-                    top.posts === 1
-                      ? "frequency.weekly_summary.posts_one"
-                      : "frequency.weekly_summary.posts_other",
-                    { count: top.posts },
-                  )}
-                </span>
-              </p>
-            </div>
-          </div>
-
-          {/* Mais parado — only when sample qualifies */}
-          {quiet && (
+        {quiet ? (
           <div className="flex items-start gap-2.5">
             <span
               aria-hidden
@@ -245,8 +209,8 @@ function WeeklySummary({ days, t }: { days: DayEntry[]; t: TFunction }) {
               />
             </span>
             <div className="min-w-0">
-              <p className="text-xs uppercase tracking-[0.04em] text-content-tertiary leading-none mb-1">
-                {t("frequency.weekly_summary.quietest")}
+              <p className="text-eyebrow-sm text-content-tertiary leading-none mb-1">
+                {t("frequency.weekly_summary.quietest_label")}
               </p>
               <p className="text-[15px] text-content-primary leading-relaxed">
                 <span className="font-semibold">{quiet.label}</span>{" "}
@@ -256,8 +220,11 @@ function WeeklySummary({ days, t }: { days: DayEntry[]; t: TFunction }) {
               </p>
             </div>
           </div>
-          )}
-        </div>
+        ) : (
+          <p className="text-[15px] text-content-secondary leading-relaxed">
+            {t("frequency.weekly_summary.no_silent")}
+          </p>
+        )}
 
         {/* Mini bars S T Q Q S S D */}
         <div className="mt-4">
@@ -431,11 +398,36 @@ function buildWeekGrid(days: DayEntry[]): (DayEntry | null)[][] {
   const padded: (DayEntry | null)[] = Array.from<null>({ length: startDow }).fill(null);
   for (const d of days) padded.push(d);
 
+  // Pad right so the last row is always a complete week — keeps the grid
+  // visually aligned with the analysis window (e.g. 30 days = 5 rows).
+  while (padded.length % 7 !== 0) padded.push(null);
+
   const weeks: (DayEntry | null)[][] = [];
   for (let i = 0; i < padded.length; i += 7) {
     weeks.push(padded.slice(i, i + 7));
   }
   return weeks;
+}
+
+/**
+ * Ensure the day series spans exactly `window` days. If the upstream
+ * timeline is shorter (e.g. last post older than today, or no posts in the
+ * last few days), append empty trailing entries so the calendar/legend
+ * always match the "X publicações em Y dias" subtitle.
+ */
+function backFillToWindow(days: DayEntry[], windowDays: number): DayEntry[] {
+  if (windowDays <= 0 || days.length >= windowDays) return days;
+  if (days.length === 0) return days;
+  const lastDateStr = days[days.length - 1].date;
+  // Date strings are ISO "YYYY-MM-DD". Build successive dates in UTC.
+  const lastDate = new Date(`${lastDateStr}T00:00:00Z`);
+  const filled: DayEntry[] = [...days];
+  for (let i = filled.length; i < windowDays; i++) {
+    lastDate.setUTCDate(lastDate.getUTCDate() + 1);
+    const iso = lastDate.toISOString().slice(0, 10);
+    filled.push({ date: iso, published: false, postCount: 0 });
+  }
+  return filled;
 }
 
 /**
@@ -476,6 +468,7 @@ export function FrequencyCard({
   socialinsiderRef,
 }: FrequencyCardProps) {
   const { t, i18n } = useTranslation("report");
+  const [calendarOpen, setCalendarOpen] = useState(false);
   // Prefer cadence-derived sample (pinned-excluded) for subtitle counts.
   const effectiveSampleSize =
     typeof cadenceSampleSize === "number" && cadenceSampleSize > 0
@@ -502,10 +495,14 @@ export function FrequencyCard({
   // (which may span months from the oldest sample post) to the active
   // cadence window so the calendar, weekly summary and legend all match
   // the "X publicações em Y dias" subtitle.
-  const windowedDays =
+  const slicedDays =
     effectiveWindowDays > 0
       ? calendarDays.slice(-effectiveWindowDays)
       : calendarDays;
+  // If the upstream timeline ended before today (Apify snapshot, last post
+  // older than today), back-fill empty trailing days so the calendar always
+  // covers the full effectiveWindowDays window we promised in the subtitle.
+  const windowedDays = backFillToWindow(slicedDays, effectiveWindowDays);
   const headline = isInsufficient
     ? t("frequency.headline.insufficient")
     : t(getFrequencyHeadlineKey(postsPerDay));
@@ -606,10 +603,35 @@ export function FrequencyCard({
       {/* Calendar grid */}
       {weeks.length > 0 && (
         <div className="px-4 sm:px-5 md:px-6 mt-4 sm:mt-6">
-          <span className="text-xs uppercase tracking-[0.04em] text-content-tertiary block mb-2">
-            {t("frequency.calendar.title")}
-          </span>
+          <button
+            type="button"
+            onClick={() => setCalendarOpen((v) => !v)}
+            aria-expanded={calendarOpen}
+            className="w-full flex items-center justify-between gap-3 text-left group"
+          >
+            <span className="flex flex-col gap-0.5 min-w-0">
+              <span className="text-eyebrow-sm text-content-tertiary">
+                {t("frequency.calendar.title")}
+              </span>
+              <span className="text-xs text-content-tertiary leading-snug">
+                {t("frequency.calendar.window_summary", {
+                  days: effectiveWindowDays,
+                  published: publishedCount,
+                })}
+              </span>
+            </span>
+            <span className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-content-secondary group-hover:text-content-primary transition-colors">
+              {calendarOpen
+                ? t("frequency.calendar.toggle_hide")
+                : t("frequency.calendar.toggle_show")}
+              <span aria-hidden="true" className="text-[10px]">
+                {calendarOpen ? "▴" : "▾"}
+              </span>
+            </span>
+          </button>
 
+          {calendarOpen && (
+          <div className="mt-3">
           {/* Weekday headers */}
           <div className="grid grid-cols-7 gap-1 md:gap-1.5 mb-1 md:mb-1.5">
             {weekdayShort.map((wd, i) => (
@@ -699,6 +721,8 @@ export function FrequencyCard({
               </span>
             )}
           </div>
+          </div>
+          )}
         </div>
       )}
 
