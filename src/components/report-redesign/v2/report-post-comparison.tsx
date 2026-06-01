@@ -12,6 +12,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import type { ReportEnriched } from "@/lib/report/snapshot-to-report-data";
+import type { CadenceMethod } from "@/lib/report/cadence";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/hooks/use-language";
 import { formatNumber } from "@/lib/i18n/format";
@@ -34,9 +35,45 @@ interface PostComparisonBlockProps {
   windowRange?: { startIso: string; endIso: string };
   /** Raw AI insight text for the comparative diagnostic. */
   aiInsightText?: string | null;
-  windowLabel?: string;
+  /**
+   * Método de amostra usado no Bloco 1 — determina a copy do subtítulo
+   * para evitar implicações falsas de "últimos 30 dias".
+   */
+  cadenceMethod?: CadenceMethod;
+  /** Janela observada em dias (usada apenas quando relevante para copy). */
+  cadenceWindowDays?: number;
+  /** Nº de publicações da amostra de performance (eligiblePosts). */
+  sampleSize?: number;
   /** Variant for the scatter rendering. Default sober. */
   scatterVariant?: "sober" | "fog" | "glass";
+}
+
+/**
+ * Devolve a chave i18n e os params do subtítulo do bloco "Melhores e piores"
+ * em função do método real da amostra. Evita strings hardcoded como
+ * "últimos 30 dias" quando a janela observada não é de 30 dias.
+ */
+export function pickSubtitleKey(
+  method: CadenceMethod | undefined,
+  count: number,
+): { key: string; params?: Record<string, unknown> } {
+  if (method === "window_30d") {
+    return { key: "posts.subtitle_variants.window_30d" };
+  }
+  if (method === "window_90d") {
+    return { key: "posts.subtitle_variants.window_90d" };
+  }
+  if (method === "sample_span") {
+    if (count === 1) {
+      return { key: "posts.subtitle_variants.sample_span_one" };
+    }
+    return {
+      key: "posts.subtitle_variants.sample_span_other",
+      params: { count },
+    };
+  }
+  // insufficient ou desconhecido
+  return { key: "posts.subtitle_variants.insufficient" };
 }
 
 /** Map internal format to pt-PT chip label */
@@ -76,7 +113,9 @@ export function PostComparisonBlock({
   allPostsForScatter,
   windowRange,
   aiInsightText,
-  windowLabel,
+  cadenceMethod,
+  cadenceWindowDays: _cadenceWindowDays,
+  sampleSize,
   scatterVariant = "sober",
 }: PostComparisonBlockProps) {
   const { t } = useTranslation("report");
