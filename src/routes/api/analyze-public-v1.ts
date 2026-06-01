@@ -465,7 +465,89 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           }
         }
 
+        // Internal smoke-test bypass: a valid `Authorization: Bearer
+        // $INTERNAL_API_TOKEN` short-circuits the lead/credit gating below.
+        // This is the same gate `forceRefresh` already requires, so admin
+        // tooling can hit the endpoint without burning lead credits.
+        const internalToken = process.env.INTERNAL_API_TOKEN;
+        const authHeader = request.headers.get("authorization") ?? "";
+        const isInternalBypass =
+          !!internalToken && authHeader === `Bearer ${internalToken}`;
+
         const cacheKey = buildCacheKey(primary, competitors);
+
+        // ── Credit gate (Fase 2, Opção A) ──────────────────────────────
+        // Every confirmed request consumes 1 credit (even cache hits).
+        // Failures before snapshot delivery release the reservation.
+        let leadId: string | null = null;
+        let reservation: ReserveResult | null = null;
+        if (!isInternalBypass) {
+          leadId = readLeadIdFromRequest(request);
+          if (!leadId) {
+            await logEvent({
+              handle: primary,
+              competitorHandles: competitors,
+              cacheKey,
+              dataSource: "none",
+              outcome: "blocked_credits",
+              errorCode: "NO_CREDITS_LEAD_REQUIRED",
+              estimatedCostUsd: 0,
+            });
+            return failure("NO_CREDITS_LEAD_REQUIRED");
+          }
+          try {
+            reservation = await reserveCredit({
+              leadId,
+              handle: primary,
+              cacheKey,
+            });
+          } catch (err) {
+            if (err instanceof InsufficientCreditsError) {
+              await logEvent({
+                handle: primary,
+                competitorHandles: competitors,
+                cacheKey,
+                dataSource: "none",
+                outcome: "blocked_credits",
+                errorCode: "INSUFFICIENT_CREDITS",
+                estimatedCostUsd: 0,
+              });
+              return failure("INSUFFICIENT_CREDITS");
+            }
+            console.error("[analyze-public-v1] reserveCredit failed", err);
+            throw err;
+          }
+        }
+
+        // Lifecycle bookkeeping. Default to "release" so any unexpected
+        // early return refunds the credit; success/cache/stale paths flip
+        // this to "confirm" right before returning.
+        let creditOutcome: "confirm" | "release" = "release";
+        let snapshotForConfirm: string | null = null;
+        const finalizeCredit = async () => {
+          if (!reservation || !leadId) return;
+          const r = reservation;
+          reservation = null;
+          try {
+            if (creditOutcome === "confirm") {
+              await confirmReservation({
+                leadId,
+                reservationId: r.reservationId,
+                analysisSnapshotId: snapshotForConfirm,
+              });
+            } else {
+              await releaseReservation({
+                leadId,
+                reservationId: r.reservationId,
+                reason: "auto_release",
+              });
+            }
+          } catch (e) {
+            console.error("[analyze-public-v1] credit finalize failed", e);
+          }
+        };
+
+        try {
 
         // Load benchmark references upfront (cached in-memory for 10 min) so
         // both cache-hit and fresh-path responses can embed a positioning
