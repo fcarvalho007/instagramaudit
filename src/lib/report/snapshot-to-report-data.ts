@@ -27,6 +27,7 @@ import {
   type EditorialVerdictEvidence,
   type EditorialVerdictWarning,
 } from "@/lib/insights/types";
+import { pickThumbnailUrl } from "@/lib/report/pick-thumbnail";
 
 import { resolveReportTier } from "./tiers";
 import {
@@ -101,6 +102,7 @@ export interface SnapshotPost {
   comments?: number | null;
   video_views?: number | null;
   thumbnail_url?: string | null;
+  thumbnail_storage_url?: string | null;
   is_video?: boolean | null;
   engagement_pct?: number | null;
   // Optional richer signals (R4-A). Always defensive in the adapter.
@@ -509,13 +511,14 @@ function buildAnalysedPostFormats(
 
   return posts
     .filter((p) => isoDateOnly(p.taken_at_iso) !== null)
-    .map((p) => ({
-      date: isoDateOnly(p.taken_at_iso)!,
-      type: normaliseFormat(p.format),
-      ...(typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
-        ? { thumbnailUrl: p.thumbnail_url }
-        : {}),
-    }))
+    .map((p) => {
+      const thumb = pickThumbnailUrl(p);
+      return {
+        date: isoDateOnly(p.taken_at_iso)!,
+        type: normaliseFormat(p.format),
+        ...(thumb ? { thumbnailUrl: thumb } : {}),
+      };
+    })
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
@@ -739,10 +742,7 @@ function buildTopPosts(posts: SnapshotPost[]): ReportData["topPosts"] {
     // `persist-thumbnails.server.ts` no momento do snapshot. Quando o
     // download falhou (ex.: 403 do IG), o campo vem `null` e o card
     // cai no fallback (gradiente + ícone de formato).
-    const thumbnailUrl =
-      typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
-        ? p.thumbnail_url
-        : undefined;
+    const thumbnailUrl = pickThumbnailUrl(p) ?? undefined;
     // Permalink real para tornar o card clicável. Quando o snapshot só
     // traz o shortcode, derivamos o URL canónico do Instagram.
     const permalinkRaw =
@@ -1491,9 +1491,10 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
           : {}),
         mentions,
         isPinned: p.is_pinned === true,
-        ...(typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
-          ? { thumbnailUrl: p.thumbnail_url }
-          : {}),
+        ...((): { thumbnailUrl?: string } => {
+          const t = pickThumbnailUrl(p);
+          return t ? { thumbnailUrl: t } : {};
+        })(),
       };
     });
 
@@ -1560,9 +1561,10 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
               ? { takenAtIso: p.taken_at_iso }
               : {}),
             mentions,
-            ...(typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
-              ? { thumbnailUrl: p.thumbnail_url }
-              : {}),
+            ...((): { thumbnailUrl?: string } => {
+              const t = pickThumbnailUrl(p);
+              return t ? { thumbnailUrl: t } : {};
+            })(),
           };
         })
       : [];

@@ -19,6 +19,7 @@ import type {
 } from "@/lib/report/visual-cover-types";
 import { InsightCallout } from "./insight-callout";
 import type { SnapshotPost } from "@/lib/report/snapshot-to-report-data";
+import { pickThumbnailUrl } from "@/lib/report/pick-thumbnail";
 
 // ─── Props ──────────────────────────────────────────────────────────
 
@@ -65,7 +66,7 @@ const METHODOLOGY_AXES_KEYS = [
 export function VisualCoverAnalysisCard({ posts, analysis }: Props) {
   const { t } = useTranslation("report");
   const thumbPosts = posts
-    .filter((p) => typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0)
+    .filter((p) => pickThumbnailUrl(p) !== null)
     .slice(0, 12);
 
   const analyzedCount = analysis?.analyzedCount ?? thumbPosts.length;
@@ -219,7 +220,7 @@ function ThumbnailGrid({
       {posts.map((post, idx) => (
         <ThumbnailCell
           key={post.id ?? idx}
-          thumbnailUrl={post.thumbnail_url!}
+          thumbnailUrl={pickThumbnailUrl(post)!}
           status={analysis?.thumbnails[idx]?.status ?? null}
         />
       ))}

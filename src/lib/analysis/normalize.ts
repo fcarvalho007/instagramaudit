@@ -122,6 +122,7 @@ export function normalizeProfile(raw: RawProfile): PublicAnalysisProfile | null 
       raw.profilePicUrl,
       raw.profile_pic_url,
     ),
+    avatar_storage_url: null,
     bio: pickString(raw.biography, raw.bio),
     followers_count: followers,
     following_count: pickNumber(raw.followsCount, raw.following),
@@ -299,6 +300,13 @@ export interface EnrichedPost {
   comments: number;
   video_views: number | null;
   thumbnail_url: string | null;
+  /**
+   * Persisted Supabase Storage URL for the thumbnail. `null` until persistence
+   * runs successfully. UI renders `thumbnail_storage_url ?? thumbnail_url ??
+   * fallbackIcon`. We never overwrite `thumbnail_url` — Instagram CDN URLs
+   * still work from the browser even when our server fetch is 403'd.
+   */
+  thumbnail_storage_url?: string | null;
   is_video: boolean;
   /** (likes + comments) / followers * 100, rounded to 2 decimals. 0 if no followers. */
   engagement_pct: number;
@@ -584,6 +592,7 @@ export function enrichPosts(
       comments,
       video_views: pickVideoViews(raw),
       thumbnail_url: pickThumbnail(raw),
+      thumbnail_storage_url: null,
       is_video: isVideo,
       engagement_pct: engagementPct,
       video_duration: pickNumber(raw.videoDuration, raw.video_duration),

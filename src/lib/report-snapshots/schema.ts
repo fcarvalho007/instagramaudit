@@ -22,6 +22,7 @@ const ProfileSchema = z.object({
   following_count: z.number().nullable().optional(),
   posts_count: z.number().nullable().optional(),
   avatar_url: httpsUrl.nullable().optional(),
+  avatar_storage_url: httpsUrl.nullable().optional(),
 });
 
 const PostSchema = z.object({
@@ -42,6 +43,7 @@ const PostSchema = z.object({
   video_duration: z.number().nullable().optional(),
   engagement_pct: z.number().nullable().optional(),
   thumbnail_url: httpsUrl.nullable().optional(),
+  thumbnail_storage_url: httpsUrl.nullable().optional(),
   is_pinned: z.boolean().nullable().optional(),
 });
 

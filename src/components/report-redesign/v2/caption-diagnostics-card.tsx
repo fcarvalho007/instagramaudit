@@ -27,6 +27,7 @@ import type {
 import { INSTAGRAM_CAPTION_CONTEXT } from "@/lib/knowledge/instagram-caption-context";
 import type { CaptionSemanticAnalysis } from "@/lib/report/caption-semantic-types";
 import type { EnrichedPost } from "@/lib/analysis/normalize";
+import { pickThumbnailUrl } from "@/lib/report/pick-thumbnail";
 
 /** Accept both EnrichedPost and the looser SnapshotPost shape. */
 type PostLike = {
@@ -38,6 +39,7 @@ type PostLike = {
   taken_at_iso?: string | null;
   permalink?: string | null;
   thumbnail_url?: string | null;
+  thumbnail_storage_url?: string | null;
 };
 import {
   Collapsible,
@@ -280,14 +282,17 @@ function EvidenceRow({ match }: { match: MatchedEvidence }) {
     : null;
   return (
     <div className="rounded-xl border border-border-subtle bg-surface-muted/30 p-3 flex items-start gap-3">
-      {p.thumbnail_url && p.thumbnail_url.length > 0 && (
-        <img
-          src={p.thumbnail_url}
-          alt=""
-          className="w-10 h-10 rounded-lg object-cover shrink-0"
-          loading="lazy"
-        />
-      )}
+      {(() => {
+        const src = pickThumbnailUrl(p);
+        return src ? (
+          <img
+            src={src}
+            alt=""
+            className="w-10 h-10 rounded-lg object-cover shrink-0"
+            loading="lazy"
+          />
+        ) : null;
+      })()}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap mb-1.5">
           <FormatBadge format={p.format ?? "Imagens"} />
