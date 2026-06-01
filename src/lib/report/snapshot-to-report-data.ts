@@ -101,6 +101,7 @@ export interface SnapshotPost {
   comments?: number | null;
   video_views?: number | null;
   thumbnail_url?: string | null;
+  thumbnail_storage_url?: string | null;
   is_video?: boolean | null;
   engagement_pct?: number | null;
   // Optional richer signals (R4-A). Always defensive in the adapter.
