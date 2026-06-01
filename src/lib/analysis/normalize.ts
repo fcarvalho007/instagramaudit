@@ -299,6 +299,13 @@ export interface EnrichedPost {
   comments: number;
   video_views: number | null;
   thumbnail_url: string | null;
+  /**
+   * Persisted Supabase Storage URL for the thumbnail. `null` until persistence
+   * runs successfully. UI renders `thumbnail_storage_url ?? thumbnail_url ??
+   * fallbackIcon`. We never overwrite `thumbnail_url` — Instagram CDN URLs
+   * still work from the browser even when our server fetch is 403'd.
+   */
+  thumbnail_storage_url?: string | null;
   is_video: boolean;
   /** (likes + comments) / followers * 100, rounded to 2 decimals. 0 if no followers. */
   engagement_pct: number;
