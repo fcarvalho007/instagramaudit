@@ -22,6 +22,7 @@ const ProfileSchema = z.object({
   following_count: z.number().nullable().optional(),
   posts_count: z.number().nullable().optional(),
   avatar_url: httpsUrl.nullable().optional(),
+  avatar_storage_url: httpsUrl.nullable().optional(),
 });
 
 const PostSchema = z.object({
