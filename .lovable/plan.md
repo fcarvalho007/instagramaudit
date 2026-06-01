@@ -1,162 +1,87 @@
+## Objetivo
 
-# Block 1 — Amostra oficial e consistência matemática
+Refinar o bloco `PostComparisonBlock` (`src/components/report-redesign/v2/report-post-comparison.tsx`) seguindo o mockup. Só alteração visual e de interação — sem mexer em dados, sampling, ou backend.
 
-Objetivo: definir UMA amostra canónica para o Bloco 1 (Visão Geral) do relatório gratuito, alinhar todas as métricas a essa amostra, clarificar a copy e remover do índice global o sub-score de interação que hoje é praticamente constante (25).
+## Mudanças
 
-Sem mexer em: limites do Apify, pricing, pagamentos, e-mails, gates, prompts OpenAI, `/report.example`.
+### 1. Scatter — eliminar repetição do número
 
----
+Remover as `ScatterPill` azul/laranja com `0,15%` e `0,04%`. No lugar:
 
-## 1. Amostra oficial do Bloco 1
+- Melhor → marcador `★` discreto acima do ponto, com label `melhor` em accent-primary
+- Pior → marcador `▾` discreto abaixo do ponto, com label `pior` em signal-warning
+- Manter aura + dot coloridos
+- Sem nunca mostrar o número diretamente no scatter (fica só no hero e no tooltip)
 
-Novo módulo puro: `src/lib/report/block01-sample.ts`
+### 2. Hover/tap funcional em todos os pontos
 
-```ts
-export interface Block01Sample {
-  totalReturnedPosts: number;     // posts.length
-  analyzedPosts: SnapshotPost[];  // = não-fixados (fallback: todos)
-  performancePosts: SnapshotPost[]; // = analyzedPosts limpos de outliers de data
-  cadencePosts: SnapshotPost[];     // = idem performancePosts
-  formatPosts: SnapshotPost[];      // = analyzedPosts (opção A)
-  pinnedPostsExcluded: number;
-  dateOutliersExcluded: number;
-  observedPeriodDays: number;       // ceil((newest-oldest)/86400000)+1, mínimo 1
-  newestPostDateIso: string | null;
-  oldestPostDateIso: string | null;
-  sampleLabel: string;              // PT/EN curado por i18n no consumidor
-}
-export function buildBlock01Sample(posts: SnapshotPost[]): Block01Sample;
-```
+Implementar tooltip via estado React (hover desktop + tap mobile):
 
-Regras:
-- Base: `posts` já vem capado por `PUBLIC_INSTAGRAM_POSTS_LIMIT = 12` (sem alterar).
-- Excluir `is_pinned === true` para `analyzedPosts`. Se tudo vier fixado, fallback = todos.
-- Aplicar `pruneDateOutliers` (já existe em `snapshot-to-report-data.ts`) para `performancePosts/cadencePosts`.
-- Formato (opção A, escolhida): distribuição calculada a partir de `analyzedPosts` (sem pinned). Mais consistente — likes/comments/engagement já vão excluir pinned.
-- `observedPeriodDays` calculado a partir de `performancePosts` reais; nunca usar "30 dias" como default.
+- Adicionar `<rect>` invisível por ponto (r≈12, `cursor-pointer`) para hit-target generoso
+- `onMouseEnter` / `onFocus` / `onClick` → set `hoveredId`
+- `onMouseLeave` / `onBlur` → clear (no desktop); no mobile mantém até tap fora ou noutro ponto
+- Tooltip flutuante (div HTML posicionado por `foreignObject` ou overlay absoluto sobre o SVG, usando coordenadas convertidas) com:
+  - **Pontos extremos (best/worst)**: data, formato (chip), `engagementPct` formatado, delta vs média, excerto da legenda (≤80 chars), gostos + comentários
+  - **Pontos bloqueados (cinzentos)**: apenas `🔒 publicação bloqueada · desbloqueia no premium` (sem valor real, sem blur de número — evita extração via DOM)
+- Tooltip auto-flip horizontal/vertical quando perto das bordas
+- Acessibilidade: `tabIndex={0}` em cada hit-target + `aria-describedby`
 
-## 2. Alinhamento de métricas em `snapshotToReportData`
+Para isto, o `ConstellationScatter` passa a precisar dos posts completos (legenda, likes, comments) só para os 2 extremos. Os pontos bloqueados ficam apenas com tooltip genérico, por isso continuam a usar `ScatterPost` minimal.
 
-Ficheiro: `src/lib/report/snapshot-to-report-data.ts`
+### 3. Cartões — remover redundância do número grande
 
-- Chamar `buildBlock01Sample(posts)` uma única vez no topo de `snapshotToReportData`.
-- Passar `sample.performancePosts` em vez de `posts` para:
-  - `buildKeyMetrics` (médias de likes/comments/engagement re-calculadas a partir do sample, não de `content_summary` legacy).
-  - `buildTopPosts` (não-pinned, ordenados por engagement) — pinned continua disponível no payload, mas sai do "best vs worst" para não distorcer.
-  - `buildFormatBreakdown` (recalcular shares a partir de `sample.formatPosts`, ignorando `format_stats` legacy quando há posts suficientes).
-- `cadencePostsRaw`/`cadencePostsClean` passam a vir de `sample.cadencePosts` (remove duplicação atual).
-- Expor `sample` no `coverage`/`enriched`:
-  - `coverage.windowDays = sample.observedPeriodDays`
-  - novo: `enriched.block01Sample` (subset serializável).
+No `DetailedPostCard`:
 
-## 3. Médias canónicas
+- **Remover** o `<span>` com `0,15%` grande (linhas 731–735)
+- Manter **apenas** o chip de contexto (`+68% vs média` / `−55% vs média`) — promovido para cima como elemento principal da linha de métrica
+- A imagem real (`thumbUrl`) já está implementada — manter, com badge de formato sobreposto (já existe)
+- Reordenar: chip delta no topo do bloco direito, depois caption, depois likes/comments
 
-Ficheiro: `src/lib/report/post-aggregates.ts`
+### 4. Copy (i18n)
 
-- `computePostAverages(posts, { excludePinned = true })` — passar a aceitar opção e usar pinned-excluded por defeito.
-- Chamadores: `report-overview-block.tsx`, qualquer card P05 que use a função. P05 continua a poder pedir `excludePinned: false` se quiser comparar.
+Atualizar `src/i18n/locales/pt/report.json` e `en/report.json`:
 
-## 4. Copy clara e sem "30 dias" implícito
+- `posts.scatter.best_marker`: `"melhor"`
+- `posts.scatter.worst_marker`: `"pior"`
+- `posts.scatter.locked_tooltip`: `"🔒 Publicação bloqueada · desbloqueia no premium"`
+- Remover (ou deixar não-usadas) `posts.scatter.best_pill` / `worst_pill`
+- Novas keys do tooltip:
+  - `posts.tooltip.delta`: `"{{sign}}{{value}}% vs média"`
+  - `posts.tooltip.engagement`: `"{{value}}% envolvimento"`
 
-`src/i18n/locales/pt/report.json` e `src/i18n/locales/en/report.json`:
+### 5. Mobile
 
-Novos strings (chave sugerida `overview.sample.*`):
-- PT:
-  - `caption`: "Análise baseada nas últimas {{count}} publicações disponíveis."
-  - `period`: "Período observado: {{days}} dias."
-  - `pinnedExcluded`: "{{count}} publicações fixadas foram excluídas dos cálculos de cadência e desempenho."
-- EN (espelhar).
+Comportamento tap-to-reveal (decisão recomendada pelo user): mesmo tooltip em mobile. Implementado naturalmente porque o handler é `onClick`, não só `onMouseEnter`. Tap fora do ponto fecha.
 
-Auditar e substituir / remover qualquer frase com "30 dias" / "last 30 days" no Bloco 1 a menos que o card tenha `cadence.method === "window_30d"` (que é o único caso legítimo). Locais a varrer:
-- `editorial-identity-card.tsx` (tooltip "Como foi calculado", subtítulos)
-- `frequency-card.tsx`
-- `format-card.tsx`
-- `report-overview-engagement.tsx`
-- `cadence-label.ts`
-- chaves `overview.*` / `frequency.*` / `format.*` nos dois ficheiros i18n.
+## Ficheiros alterados
 
-Render: pequena nota discreta no rodapé do `EditorialIdentityCard` (acima do MetricsStrip), 11–12px, `text-content-tertiary`.
+- `src/components/report-redesign/v2/report-post-comparison.tsx` — refactor do `ConstellationScatter` (markers + tooltip state + hit-targets) e do `DetailedPostCard` (remover número grande)
+- `src/i18n/locales/pt/report.json` — novas keys
+- `src/i18n/locales/en/report.json` — espelhar
 
-## 5. Resolver sub-score de interação (Opção A)
+## Não tocado
 
-`src/components/report-redesign/v2/overview/score-utils.ts`:
-- Remover `computeInteraccao`, `interaccaoSubtitle`, `"interaccao"` de `ScoreKey`, e a entrada em `SCORE_DEFINITIONS`.
-- Novo `computeGlobalScore(envolvimento, frequencia)` com pesos:
-  - `envolvimento: 0.60`
-  - `frequencia: 0.40`
-- Tipo `ScoreKey = "envolvimento" | "frequencia"`.
+- `snapshot-to-report-data.ts`, `block01-sample.ts`, scoring, sampling
+- Pipeline de thumbnails (`persist-thumbnails.server.ts`)
+- `ComparativeHero` (hero mantém os números grandes — fonte única do valor)
+- `PremiumReveal`, `AiReading`
 
-`src/components/report-redesign/v2/report-overview-block.tsx`:
-- Remover entrada `interaccao` em `scores`.
-- Passar 2 valores para `computeGlobalScore`.
-
-`src/components/report-redesign/v2/overview/editorial-identity-card.tsx`:
-- Atualizar `EditorialIdentityCardProps.scores` para o novo `ScoreKey`.
-- Remover qualquer leitura de `scores.interaccao`.
-- Atualizar a guard determinística de `deriveEditorialVerdict` se depender de `interaccao` (verificar `editorial-verdict.ts`).
-
-## 6. "Como foi calculado" — popover
-
-`editorial-identity-card.tsx` (linha ~676) e chave i18n correspondente em `overview.global_score.tooltip`:
-
-- PT: "O índice combina envolvimento (60%) e cadência de publicação (40%), comparados com referências de perfis semelhantes."
-- EN: "The index combines engagement (60%) and posting rhythm (40%), compared with references from similar profiles."
-
-Remover qualquer menção a "conversa" / "interação" / "comentários" no tooltip do índice global.
-
-## 7. Benchmark — consistência mínima
-
-Não rebuild. Apenas:
-- Garantir que `EngagementCardRefined` e o `computeEnvolvimento` no `report-overview-block` lêem `k.engagementBenchmark` (mesma origem `benchmark-input.server.ts → positioning.benchmarkValue`).
-- Auditar `format-card.tsx` para não mostrar um benchmark de formato com origem diferente sem label. Se houver dois (per-format vs global), prefixar com "Ref. formato" / "Ref. escalão" no caption.
-
-## 8. Testes
-
-Novos / atualizados (Vitest):
-
-- `src/lib/report/__tests__/block01-sample.test.ts` (novo)
-  - exclui pinned de `performancePosts`/`cadencePosts`;
-  - fallback quando todos os posts são pinned;
-  - `observedPeriodDays` = ceil((newest-oldest)/dia)+1;
-  - dropa outlier > 180d.
-- `src/lib/report/__tests__/post-aggregates.test.ts` (atualizar)
-  - `excludePinned: true` ignora pinned;
-  - médias batem com `performancePosts`.
-- `src/lib/report/__tests__/snapshot-pinned-window.test.ts` (atualizar)
-  - asserts `keyMetrics.engagementRate`, `averageLikes`, `averageComments` calculados a partir do sample sem pinned.
-- `src/components/report-redesign/v2/overview/__tests__/score-utils.test.ts` (novo / substituir existente)
-  - `computeGlobalScore(env, freq)` com pesos 0.6 / 0.4;
-  - não exporta nenhuma referência a `interaccao`.
-- `src/components/report-redesign/v2/__tests__/cadence-copy.test.ts` (atualizar)
-  - copy não contém "30 dias" quando `cadence.method !== "window_30d"`.
-
-## 9. Validação
+## Validação
 
 - `bunx tsc --noEmit`
-- `bunx vitest run`
+- Inspeção visual no preview (desktop + 375px) — confirmar que:
+  - Hero é o único sítio com `0,15%` / `0,04%`
+  - Scatter mostra só ★ melhor / ▾ pior sem número
+  - Hover/tap funciona em todos os pontos com tooltips corretos
+  - Cartões mostram só o chip delta, sem o número grande
+  - Pontos bloqueados não revelam valor real
 
-## 10. Files changed (esperado)
+## Checkpoint
 
-- `src/lib/report/block01-sample.ts` (novo)
-- `src/lib/report/snapshot-to-report-data.ts` (chamar sample, alinhar métricas, expor `enriched.block01Sample`)
-- `src/lib/report/post-aggregates.ts` (`excludePinned` opt)
-- `src/components/report-redesign/v2/overview/score-utils.ts` (remover interação, novos pesos)
-- `src/components/report-redesign/v2/report-overview-block.tsx`
-- `src/components/report-redesign/v2/overview/editorial-identity-card.tsx`
-- `src/i18n/locales/pt/report.json`, `src/i18n/locales/en/report.json`
-- testes acima
-
-Não tocados (locked / fora de scope): `report-mock-data.ts`, `/report.example`, normalize/cap do Apify, prompts OpenAI, `block02-diagnostic.ts`, persistência de thumbnails.
-
-## Checkpoint final
-
-- [ ] `buildBlock01Sample` puro + tipado
-- [ ] `snapshotToReportData` usa o sample para todas as métricas Bloco 1
-- [ ] `computePostAverages` exclui pinned por defeito
-- [ ] `computeInteraccao` removido; índice = env 60% + freq 40%
-- [ ] Tooltip "Como foi calculado" atualizado (PT + EN)
-- [ ] Caption "últimas N publicações · X dias" visível no card
-- [ ] Aviso "publicações fixadas excluídas" quando `pinnedPostsExcluded > 0`
-- [ ] Nenhuma copy do Bloco 1 menciona "30 dias" fora de `window_30d`
-- [ ] Testes novos/atualizados verdes
-- [ ] `tsc --noEmit` + `vitest run` limpos
+- ☐ Scatter sem pills com número
+- ☐ Marcadores ★ / ▾ visíveis e legíveis
+- ☐ Tooltip extremos com 6 campos (data, formato, %, delta, caption, likes+comments)
+- ☐ Tooltip bloqueados vago, sem valor
+- ☐ Tap-to-reveal funciona em mobile
+- ☐ Cartões sem número grande, chip delta como métrica principal
+- ☐ `bunx tsc --noEmit` passa

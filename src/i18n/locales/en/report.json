@@ -796,9 +796,12 @@
     "scatter": {
       "title": "DISTRIBUTION OF {{count}} POSTS ACROSS THE PERIOD",
       "avg_label": "avg {{value}}%",
-      "best_pill": "Best · {{value}}%",
-      "worst_pill": "Worst · {{value}}%",
-      "locked_tooltip": "Post · available in premium",
+      "best_marker": "best",
+      "worst_marker": "worst",
+      "locked_tooltip": "🔒 Locked post · unlock in premium",
+      "hint": "hover over the points",
+      "tooltip_delta": "{{sign}}{{value}}% vs avg",
+      "tooltip_engagement": "{{value}}% engagement",
       "aria": "Distribution of {{count}} posts across the period. Best {{best}}%, worst {{worst}}%."
     },
     "premium": {

@@ -804,9 +804,12 @@
     "scatter": {
       "title": "DISTRIBUIÇÃO DAS {{count}} PUBLICAÇÕES AO LONGO DO PERÍODO",
       "avg_label": "média {{value}}%",
-      "best_pill": "Melhor · {{value}}%",
-      "worst_pill": "Pior · {{value}}%",
-      "locked_tooltip": "Publicação · disponível no premium",
+      "best_marker": "melhor",
+      "worst_marker": "pior",
+      "locked_tooltip": "🔒 Publicação bloqueada · desbloqueia no premium",
+      "hint": "passa o rato sobre os pontos",
+      "tooltip_delta": "{{sign}}{{value}}% vs média",
+      "tooltip_engagement": "{{value}}% envolvimento",
       "aria": "Distribuição de {{count}} publicações ao longo do período. Melhor {{best}}%, pior {{worst}}%."
     },
     "premium": {

@@ -4,12 +4,11 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Sparkles,
-  Lock,
   GalleryHorizontalEnd,
   Play,
   Image as ImageIcon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import type { ReportEnriched } from "@/lib/report/snapshot-to-report-data";
@@ -174,6 +173,8 @@ export function PostComparisonBlock({
               language={language}
               variant={scatterVariant}
               windowRange={windowRange}
+              bestDelta={bestDelta}
+              worstDelta={worstDelta}
             />
           )}
 
@@ -305,6 +306,8 @@ function ConstellationScatter({
   language,
   variant,
   windowRange,
+  bestDelta,
+  worstDelta,
 }: {
   posts: ScatterPost[];
   best: EnrichedPost;
@@ -315,6 +318,8 @@ function ConstellationScatter({
   language: SupportedLanguage;
   variant: "sober" | "fog" | "glass";
   windowRange?: { startIso: string; endIso: string };
+  bestDelta: number;
+  worstDelta: number;
 }) {
   // Layout (viewBox units — scales fluidly).
   const W = 600;
@@ -386,12 +391,46 @@ function ConstellationScatter({
   const bestFmt = formatNumber(best.engagementPct, language, { maximumFractionDigits: 2 });
   const worstFmt = formatNumber(worst.engagementPct, language, { maximumFractionDigits: 2 });
 
+  // Tooltip state — works for both hover (desktop) and tap (mobile).
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Click-outside / tap-outside to dismiss tooltip.
+  useEffect(() => {
+    if (!hoveredId) return;
+    const onDocPointer = (e: PointerEvent) => {
+      const el = containerRef.current;
+      if (el && e.target instanceof Node && !el.contains(e.target)) {
+        setHoveredId(null);
+      }
+    };
+    document.addEventListener("pointerdown", onDocPointer);
+    return () => document.removeEventListener("pointerdown", onDocPointer);
+  }, [hoveredId]);
+
+  const fmtDelta = (delta: number) => {
+    const rounded = Math.round(delta);
+    const sign = rounded > 0 ? "+" : rounded < 0 ? "−" : "";
+    return t("posts.scatter.tooltip_delta", { sign, value: Math.abs(rounded) });
+  };
+
+  const hoveredPoint = hoveredId ? points.find((p) => p.post.id === hoveredId) : null;
+  const hoveredIsBest = hoveredId === best.id;
+  const hoveredIsWorst = hoveredId === worst.id;
+  const hoveredIsExtreme = hoveredIsBest || hoveredIsWorst;
+
+  // Convert viewBox coords to percentage so the overlay div tracks the SVG
+  // regardless of rendered width (viewBox preserves aspect ratio).
+  const toLeftPct = (x: number) => `${(x / W) * 100}%`;
+  const toTopPct = (y: number) => `${(y / H) * 100}%`;
+
   return (
     <div className="space-y-2">
       <p className="text-eyebrow-sm text-content-tertiary">
         {t("posts.scatter.title", { count: total })}
+        <span className="text-content-tertiary/70 normal-case font-normal tracking-normal"> · {t("posts.scatter.hint")}</span>
       </p>
-      <div className="rounded-xl border border-border-subtle bg-white p-3 md:p-4">
+      <div ref={containerRef} className="relative rounded-xl border border-border-subtle bg-white p-3 md:p-4">
         <svg
           viewBox={`0 0 ${W} ${H}`}
           className="w-full h-auto"
@@ -433,21 +472,41 @@ function ConstellationScatter({
             {t("posts.scatter.avg_label", { value: avgFmt })}
           </text>
 
-          {/* Non-extreme points */}
+          {/* Non-extreme (locked) points */}
           {points.map(({ post, x, y }) => {
             if (post.id === best.id || post.id === worst.id) return null;
             const blur = variant === "fog" ? 0.6 : 0;
+            const isHovered = hoveredId === post.id;
             return (
-              <circle
-                key={post.id}
-                cx={x}
-                cy={y}
-                r={3}
-                fill="rgba(3,4,94,0.22)"
-                style={blur ? { filter: `blur(${blur}px)` } : undefined}
-              >
-                <title>{t("posts.scatter.locked_tooltip")}</title>
-              </circle>
+              <g key={post.id}>
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={isHovered ? 4 : 3}
+                  fill={isHovered ? "rgba(3,4,94,0.45)" : "rgba(3,4,94,0.22)"}
+                  style={blur ? { filter: `blur(${blur}px)` } : undefined}
+                />
+                {/* generous transparent hit target */}
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={12}
+                  fill="transparent"
+                  className="cursor-pointer focus:outline-none"
+                  tabIndex={0}
+                  role="button"
+                  aria-label={t("posts.scatter.locked_tooltip")}
+                  onPointerEnter={(e) => {
+                    if (e.pointerType === "mouse") setHoveredId(post.id);
+                  }}
+                  onPointerLeave={(e) => {
+                    if (e.pointerType === "mouse") setHoveredId((cur) => (cur === post.id ? null : cur));
+                  }}
+                  onClick={() => setHoveredId((cur) => (cur === post.id ? null : post.id))}
+                  onFocus={() => setHoveredId(post.id)}
+                  onBlur={() => setHoveredId((cur) => (cur === post.id ? null : cur))}
+                />
+              </g>
             );
           })}
 
@@ -466,33 +525,33 @@ function ConstellationScatter({
             </>
           )}
 
-          {/* Best — aura + dot + pill */}
+          {/* Best — aura + dot + discrete ★ marker (no number) */}
           {bestPoint && (
-            <g>
-              <circle cx={bestPoint.x} cy={bestPoint.y} r={10} fill="var(--accent-primary, #0077B6)" opacity={0.18} />
-              <circle cx={bestPoint.x} cy={bestPoint.y} r={5} fill="var(--accent-primary, #0077B6)" />
-              <ScatterPill
-                cx={bestPoint.x}
-                cy={bestPoint.y - 18}
-                label={t("posts.scatter.best_pill", { value: bestFmt })}
-                tone="best"
-              />
-            </g>
+            <ExtremeMarker
+              cx={bestPoint.x}
+              cy={bestPoint.y}
+              tone="best"
+              label={t("posts.scatter.best_marker")}
+              symbol="★"
+              postId={best.id}
+              hovered={hoveredId === best.id}
+              setHovered={setHoveredId}
+            />
           )}
 
-          {/* Worst — aura + dot + pill */}
+          {/* Worst — aura + dot + discrete ▾ marker (no number) */}
           {worstPoint && (
-            <g>
-              <circle cx={worstPoint.x} cy={worstPoint.y} r={10} fill="var(--signal-warning, #BA7517)" opacity={0.18} />
-              <circle cx={worstPoint.x} cy={worstPoint.y} r={5} fill="var(--signal-warning, #BA7517)" />
-              <ScatterPill
-                cx={worstPoint.x}
-                cy={worstPoint.y + 18}
-                label={t("posts.scatter.worst_pill", { value: worstFmt })}
-                tone="worst"
-                below
-              />
-            </g>
+            <ExtremeMarker
+              cx={worstPoint.x}
+              cy={worstPoint.y}
+              tone="worst"
+              label={t("posts.scatter.worst_marker")}
+              symbol="▾"
+              postId={worst.id}
+              hovered={hoveredId === worst.id}
+              setHovered={setHoveredId}
+              below
+            />
           )}
 
           {/* X axis baseline */}
@@ -517,6 +576,24 @@ function ConstellationScatter({
           </text>
         </svg>
 
+        {/* Floating tooltip overlay — positioned over the SVG using percentages */}
+        {hoveredPoint && (
+          <ScatterTooltip
+            leftPct={toLeftPct(hoveredPoint.x)}
+            topPct={toTopPct(hoveredPoint.y)}
+            anchorX={hoveredPoint.x}
+            viewW={W}
+            variant={
+              hoveredIsExtreme ? (hoveredIsBest ? "best" : "worst") : "locked"
+            }
+            post={hoveredIsBest ? best : hoveredIsWorst ? worst : null}
+            delta={hoveredIsBest ? bestDelta : hoveredIsWorst ? worstDelta : 0}
+            language={language}
+            t={t}
+            fmtDelta={fmtDelta}
+          />
+        )}
+
         {/* SR-only data list */}
         <ul className="sr-only">
           {points.map(({ post }) => (
@@ -530,49 +607,172 @@ function ConstellationScatter({
   );
 }
 
-function ScatterPill({
+function ExtremeMarker({
   cx,
   cy,
-  label,
   tone,
+  label,
+  symbol,
+  postId,
+  hovered,
+  setHovered,
   below = false,
 }: {
   cx: number;
   cy: number;
-  label: string;
   tone: "best" | "worst";
+  label: string;
+  symbol: string;
+  postId: string;
+  hovered: boolean;
+  setHovered: (id: string | null | ((cur: string | null) => string | null)) => void;
   below?: boolean;
 }) {
   const fill = tone === "best" ? "var(--accent-primary, #0077B6)" : "var(--signal-warning, #BA7517)";
-  // Approx text width — keep it simple.
-  const padX = 6;
-  const charW = 4.6;
-  const w = Math.max(40, label.length * charW + padX * 2);
-  const h = 14;
-  const x = cx - w / 2;
-  const y = cy - h / 2;
+  const markerOffset = below ? 16 : -16;
+  const labelOffset = below ? 28 : -24;
   return (
     <g>
-      <rect x={x} y={y} width={w} height={h} rx={7} fill={fill} />
+      <circle cx={cx} cy={cy} r={hovered ? 12 : 10} fill={fill} opacity={hovered ? 0.28 : 0.18} />
+      <circle cx={cx} cy={cy} r={5} fill={fill} />
+      {/* Discrete marker — symbol only, NO number */}
       <text
         x={cx}
-        y={cy + 3.5}
+        y={cy + markerOffset}
         textAnchor="middle"
-        fill="#FFFFFF"
-        style={{ font: "600 9px Inter, sans-serif", fontVariantNumeric: "tabular-nums" }}
+        fill={fill}
+        style={{ font: "700 11px Inter, sans-serif" }}
+      >
+        {symbol}
+      </text>
+      <text
+        x={cx}
+        y={cy + labelOffset}
+        textAnchor="middle"
+        fill={fill}
+        style={{ font: "600 9px Inter, sans-serif", letterSpacing: "0.04em" }}
       >
         {label}
       </text>
-      {/* small connector */}
-      <line
-        x1={cx}
-        y1={below ? y : y + h}
-        x2={cx}
-        y2={below ? y - 4 : y + h + 4}
-        stroke={fill}
-        strokeWidth={1.5}
+      {/* Generous hit target */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={16}
+        fill="transparent"
+        className="cursor-pointer focus:outline-none"
+        tabIndex={0}
+        role="button"
+        aria-label={label}
+        onPointerEnter={(e) => {
+          if (e.pointerType === "mouse") setHovered(postId);
+        }}
+        onPointerLeave={(e) => {
+          if (e.pointerType === "mouse") setHovered((cur) => (cur === postId ? null : cur));
+        }}
+        onClick={() => setHovered((cur) => (cur === postId ? null : postId))}
+        onFocus={() => setHovered(postId)}
+        onBlur={() => setHovered((cur) => (cur === postId ? null : cur))}
       />
     </g>
+  );
+}
+
+function ScatterTooltip({
+  leftPct,
+  topPct,
+  anchorX,
+  viewW,
+  variant,
+  post,
+  delta,
+  language,
+  t,
+  fmtDelta,
+}: {
+  leftPct: string;
+  topPct: string;
+  anchorX: number;
+  viewW: number;
+  variant: "best" | "worst" | "locked";
+  post: EnrichedPost | null;
+  delta: number;
+  language: SupportedLanguage;
+  t: TR;
+  fmtDelta: (d: number) => string;
+}) {
+  // Auto-flip horizontally near edges.
+  const xPct = anchorX / viewW;
+  const translateX = xPct < 0.25 ? "0%" : xPct > 0.75 ? "-100%" : "-50%";
+
+  if (variant === "locked") {
+    return (
+      <div
+        role="tooltip"
+        className="pointer-events-none absolute z-20 -translate-y-[calc(100%+8px)] rounded-lg border border-border-subtle bg-white px-3 py-2 shadow-lg max-w-[220px]"
+        style={{ left: leftPct, top: topPct, transform: `translate(${translateX}, calc(-100% - 8px))` }}
+      >
+        <p className="text-xs text-content-secondary leading-snug">
+          {t("posts.scatter.locked_tooltip")}
+        </p>
+      </div>
+    );
+  }
+
+  if (!post) return null;
+
+  const isBest = variant === "best";
+  const toneCls = isBest ? "text-accent-primary" : "text-signal-warning";
+  const borderCls = isBest ? "border-l-accent-primary" : "border-l-signal-warning";
+  const captionExcerpt = (post.caption ?? "").trim().slice(0, 90);
+  const captionDisplay = captionExcerpt.length === 90 ? `${captionExcerpt}…` : captionExcerpt;
+
+  // Position: above for best, below for worst (matches marker side).
+  const verticalTransform = isBest ? "calc(-100% - 14px)" : "14px";
+
+  return (
+    <div
+      role="tooltip"
+      className={cn(
+        "pointer-events-none absolute z-20 rounded-lg bg-white shadow-lg border border-border-default border-l-2",
+        borderCls,
+        "px-3 py-2.5 w-[240px]",
+      )}
+      style={{ left: leftPct, top: topPct, transform: `translate(${translateX}, ${verticalTransform})` }}
+    >
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <span className={cn("text-eyebrow-sm", toneCls)}>
+          {t(isBest ? "posts.hero.best_label" : "posts.hero.worst_label")}
+        </span>
+        <span className="text-[10px] text-content-tertiary">{post.date}</span>
+      </div>
+      <div className="flex items-baseline gap-2 mb-1.5">
+        <span className="tabular-nums text-base font-bold text-content-primary leading-none">
+          {formatNumber(post.engagementPct, language, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+        </span>
+        <span className={cn("text-[10px] font-semibold tabular-nums", toneCls)}>
+          {fmtDelta(delta)}
+        </span>
+        <span className="text-[10px] text-content-tertiary ml-auto">
+          {formatChipLabel(post.format, t).toLowerCase()}
+        </span>
+      </div>
+      {captionDisplay && (
+        <p className="text-[11px] text-content-secondary leading-snug line-clamp-2 mb-1.5">
+          {captionDisplay}
+        </p>
+      )}
+      <div className="flex items-center gap-2.5 pt-1.5 border-t border-border-subtle/60">
+        <span className="inline-flex items-center gap-1 text-[10px] text-content-secondary">
+          <Heart className="size-2.5" aria-hidden="true" />
+          <span className="tabular-nums">{formatNumber(post.likes, language)}</span>
+        </span>
+        <span className="inline-flex items-center gap-1 text-[10px] text-content-secondary">
+          <MessageCircle className="size-2.5" aria-hidden="true" />
+          <span className="tabular-nums">{formatNumber(post.comments, language)}</span>
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -728,24 +928,18 @@ function DetailedPostCard({
 
         {/* Right: metric + caption */}
         <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="tabular-nums text-[22px] font-bold text-content-primary leading-none">
-              {formatNumber(post.engagementPct, language, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              <span className="text-content-tertiary text-sm font-medium ml-0.5">%</span>
+          {deltaRounded !== 0 && (
+            <span
+              className={cn(
+                "inline-flex items-center self-start text-[12px] font-semibold tabular-nums px-2 py-0.5 rounded-full",
+                tone === "best"
+                  ? "bg-accent-primary/10 text-accent-primary"
+                  : "bg-signal-warning/10 text-signal-warning",
+              )}
+            >
+              {deltaLabel}
             </span>
-            {deltaRounded !== 0 && (
-              <span
-                className={cn(
-                  "inline-flex items-center text-[11px] font-semibold tabular-nums px-1.5 py-0.5 rounded",
-                  tone === "best"
-                    ? "bg-accent-primary/10 text-accent-primary"
-                    : "bg-signal-warning/10 text-signal-warning",
-                )}
-              >
-                {deltaLabel}
-              </span>
-            )}
-          </div>
+          )}
           <p className="text-[12px] text-content-primary leading-snug line-clamp-3">
             {post.caption || t("posts.no_caption")}
           </p>
