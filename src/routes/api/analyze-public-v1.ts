@@ -464,6 +464,16 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           const cachedPayload = existing.normalized_payload as unknown as {
             profile?: { display_name?: string; followers_count?: number };
           };
+          const cachedFreshness = getFreshnessState(existing);
+          console.info(
+            "[analyze-public-v1] cache_hit_recent",
+            JSON.stringify({
+              handle: primary,
+              age_hours: getSnapshotAgeHours(existing),
+              state: cachedFreshness,
+              refresh_available: cachedFreshness === "fresh_12_to_24h",
+            }),
+          );
           await logEvent({
             handle: primary,
             competitorHandles: competitors,
