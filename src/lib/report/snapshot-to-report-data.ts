@@ -1526,11 +1526,12 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
 
   // Bottom 2 posts by engagement (worst performers).
   // Only populated when we have >= 4 posts to avoid overlap with top posts.
-  const sortedForBottom = [...posts].sort(
+  // Mirrors the eligible-sample rule used by `enrichedTopPosts`.
+  const sortedForBottom = [...eligiblePosts].sort(
     (a, b) => num(a.engagement_pct, 0) - num(b.engagement_pct, 0),
   );
   const enrichedBottomPosts: ReportEnriched["bottomPosts"] =
-    posts.length >= 4
+    eligiblePosts.length >= 4
       ? sortedForBottom.slice(0, 2).map((p, idx) => {
           const shortcode =
             typeof p.shortcode === "string" && p.shortcode.trim().length > 0
