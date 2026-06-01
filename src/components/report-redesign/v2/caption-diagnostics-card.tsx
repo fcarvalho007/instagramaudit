@@ -282,14 +282,17 @@ function EvidenceRow({ match }: { match: MatchedEvidence }) {
     : null;
   return (
     <div className="rounded-xl border border-border-subtle bg-surface-muted/30 p-3 flex items-start gap-3">
-      {p.thumbnail_url && p.thumbnail_url.length > 0 && (
-        <img
-          src={p.thumbnail_url}
-          alt=""
-          className="w-10 h-10 rounded-lg object-cover shrink-0"
-          loading="lazy"
-        />
-      )}
+      {(() => {
+        const src = pickThumbnailUrl(p);
+        return src ? (
+          <img
+            src={src}
+            alt=""
+            className="w-10 h-10 rounded-lg object-cover shrink-0"
+            loading="lazy"
+          />
+        ) : null;
+      })()}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap mb-1.5">
           <FormatBadge format={p.format ?? "Imagens"} />
