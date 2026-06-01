@@ -15,6 +15,7 @@ import {
   CACHE_TTL_MS as RETENTION_CACHE_TTL_MS,
   REPORT_RETENTION_MS,
 } from "@/lib/report/retention";
+import { persistThumbnailsInPayload } from "@/lib/report-snapshots/persist-thumbnails.server";
 
 /**
  * Cache TTL — re-export da constante única em `@/lib/report/retention`.
@@ -176,6 +177,24 @@ export async function storeSnapshot(params: {
 }): Promise<string | null> {
   const expiresAt = new Date(Date.now() + CACHE_TTL_MS).toISOString();
   try {
+    // Persiste thumbnails/avatar do CDN do IG no nosso bucket público antes
+    // de guardar. Mutaciona `normalizedPayload.posts[*].thumbnail_url` e
+    // `normalizedPayload.profile.avatar_url`. Best-effort — falhas individuais
+    // ficam `null` e o componente cai no fallback visual.
+    try {
+      const summary = await persistThumbnailsInPayload(
+        params.cacheKey,
+        params.normalizedPayload,
+      );
+      console.log(
+        `[analysis/cache] thumbnails persisted handle=${params.instagramUsername} posts=${summary.posts_success}/${summary.posts_total} avatar=${summary.avatar_success}`,
+      );
+    } catch (thumbErr) {
+      console.warn(
+        "[analysis/cache] thumbnail persistence failed (continuing)",
+        thumbErr,
+      );
+    }
     const row = {
       cache_key: params.cacheKey,
       instagram_username: params.instagramUsername,
