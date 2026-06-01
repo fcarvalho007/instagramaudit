@@ -287,9 +287,11 @@
       "alert": "ALERT"
     },
     "weekly_summary": {
-      "title": "Weekly summary",
+      "title": "Where the rhythm slips",
       "most_active": "Most active",
       "quietest": "Quietest",
+      "quietest_label": "Quietest day",
+      "no_silent": "No standout quiet day in this window.",
       "weekend_label": "Weekend",
       "silent_one": "{{count}} day w/o post",
       "silent_other": "{{count}} days w/o post",
@@ -314,7 +316,10 @@
       "legend_stopped": "stopped ({{count}})",
       "legend_one_post": "1 post",
       "legend_many": "{{label}} posts",
-      "ratio": "{{published}}/{{total}} days"
+      "ratio": "{{published}}/{{total}} days",
+      "toggle_show": "Show daily breakdown",
+      "toggle_hide": "Hide",
+      "window_summary": "Last {{days}} days · {{published}} with posts"
     },
     "weekday_short": [
       "M",
