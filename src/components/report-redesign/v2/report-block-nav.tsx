@@ -92,7 +92,7 @@ function VariantBadge({ variant }: { variant: ReportVariant }) {
   }
   if (variant === "pro_preview") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-blue-700 border border-blue-200">
+      <span className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--accent-soft-pale))] px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-[rgb(var(--accent-violet-deep))] border border-[rgb(var(--accent-soft))]">
         <span aria-hidden="true">✦</span>
         {t("nav.pro_active")}
       </span>
@@ -327,10 +327,10 @@ function PremiumBlockCard({
         onClick={onOpenDialog}
         aria-label={t("nav.access.cta_aria")}
         className={cn(
-          "inline-flex w-full items-center justify-center gap-2 rounded-lg",
-          "bg-content-primary px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] text-white",
+          "inline-flex w-full items-center justify-center gap-2 rounded-full",
+          "bg-content-primary px-4 py-2.5 text-sm font-semibold text-white",
           "hover:bg-content-primary/90 transition-colors",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-primary))] focus-visible:ring-offset-1",
         )}
       >
         {t("nav.access.cta")}
@@ -386,10 +386,10 @@ function ContinueReadingCard({
         onClick={onContinue}
         aria-label={t("nav.access_locked.cta_aria")}
         className={cn(
-          "inline-flex w-full items-center justify-center gap-2 rounded-lg",
-          "bg-content-primary px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] text-white",
-          "hover:bg-content-primary/90 transition-colors",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1",
+          "inline-flex w-full items-center justify-center gap-2 rounded-full",
+          "bg-[rgb(var(--accent-primary))] px-4 py-2.5 text-sm font-semibold text-white",
+          "hover:bg-[rgb(var(--accent-luminous))] transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-primary))] focus-visible:ring-offset-1",
         )}
       >
         {t("nav.access_locked.cta")}
