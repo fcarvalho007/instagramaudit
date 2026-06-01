@@ -40,6 +40,7 @@ import { useBlocks } from "./block-config";
 import { ReportBlockSidebar, ReportBlockTopTabs } from "./report-block-nav";
 import { ReportBlockSection } from "./report-block-section";
 import { ReportHeroV2 } from "./report-hero-v2";
+import { AnalysisPeriodSelector } from "./analysis-period-selector";
 import { ReportOverviewBlock } from "./report-overview-block";
 import { ReportDiagnosticBlock } from "./report-diagnostic-block";
 import { BlockFeedback } from "./feedback/block-feedback";
@@ -177,6 +178,18 @@ export function ReportShellV2({
             actions={actions}
             analyzedAtIso={analyzedAtIso ?? null}
             expiresAtIso={expiresAtIso ?? null}
+          />
+          {/* Analysis period selector (read-only premium teaser).
+              Sits between the hero and the blocks so the temporal window
+              is framed as a global report-level config, not as a metric
+              inside a block. Does NOT mutate report data. */}
+          <AnalysisPeriodSelector
+            sampleSize={result.data.profile.postsAnalyzed ?? 0}
+            observedDays={result.coverage.windowDays ?? 0}
+            snapshotId={snapshotId ?? null}
+            handle={result.data.profile.username ?? null}
+            variant={variant}
+            onUnlockClick={onUnlockClick}
           />
         </section>
 
