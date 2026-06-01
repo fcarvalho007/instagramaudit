@@ -522,7 +522,8 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         // Lifecycle bookkeeping. Default to "release" so any unexpected
         // early return refunds the credit; success/cache/stale paths flip
         // this to "confirm" right before returning.
-        let creditOutcome: "confirm" | "release" = "release";
+        type CreditOutcome = "confirm" | "release";
+        let creditOutcome: CreditOutcome = "release";
         let snapshotForConfirm: string | null = null;
         const finalizeCredit = async () => {
           if (!reservation || !leadId) return;
