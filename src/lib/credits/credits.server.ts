@@ -19,6 +19,7 @@
 import { randomUUID } from "node:crypto";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { Json } from "@/integrations/supabase/types";
 
 export const INITIAL_GRANT = 2;
 
@@ -45,7 +46,7 @@ interface LedgerInsert {
   cache_key?: string | null;
   analysis_snapshot_id?: string | null;
   reservation_id?: string | null;
-  metadata?: Record<string, unknown>;
+  metadata?: Json;
 }
 
 async function insertLedger(row: LedgerInsert): Promise<void> {
@@ -57,7 +58,7 @@ async function insertLedger(row: LedgerInsert): Promise<void> {
     cache_key: row.cache_key ?? null,
     analysis_snapshot_id: row.analysis_snapshot_id ?? null,
     reservation_id: row.reservation_id ?? null,
-    metadata: row.metadata ?? {},
+    metadata: (row.metadata ?? {}) as Json,
   });
   if (error) {
     throw new Error(`credit_ledger insert failed: ${error.message}`);
@@ -128,7 +129,7 @@ export async function reserveCredit(input: {
       delta: 1,
       reason: "release",
       reservation_id: reservationId,
-      metadata: { compensation: "overspend_detected" },
+      metadata: { compensation: "overspend_detected" } as Json,
     });
     throw new InsufficientCreditsError(input.leadId, balanceAfter + 1);
   }
@@ -168,6 +169,6 @@ export async function releaseReservation(input: {
     delta: 1,
     reason: "release",
     reservation_id: input.reservationId,
-    metadata: input.reason ? { release_reason: input.reason } : {},
+      metadata: (input.reason ? { release_reason: input.reason } : {}) as Json,
   });
 }
