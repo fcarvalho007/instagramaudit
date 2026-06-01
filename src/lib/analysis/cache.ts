@@ -230,6 +230,28 @@ export async function storeSnapshot(params: {
       console.log(
         `[thumbnails] handle=${params.instagramUsername} cache_key=${params.cacheKey} attempted=${s.attempted} stored=${s.stored} failed_403=${s.failed_403} failed_timeout=${s.failed_timeout} failed_invalid_content_type=${s.failed_invalid_content_type} failed_upload=${s.failed_upload} failed_other=${s.failed_other} avatar=${s.avatar} duration_ms=${Date.now() - t0}`,
       );
+      // Monitorização ligeira: persiste o resumo da run na tabela
+      // `thumbnail_persistence_runs` (best-effort, nunca falha a análise).
+      try {
+        await supabaseAdmin.from("thumbnail_persistence_runs").insert({
+          cache_key: params.cacheKey,
+          handle: params.instagramUsername,
+          attempted: s.attempted,
+          stored: s.stored,
+          failed_403: s.failed_403,
+          failed_timeout: s.failed_timeout,
+          failed_invalid_content_type: s.failed_invalid_content_type,
+          failed_upload: s.failed_upload,
+          failed_other: s.failed_other,
+          avatar: s.avatar,
+          duration_ms: Date.now() - t0,
+        } as never);
+      } catch (logErr) {
+        console.warn(
+          "[analysis/cache] thumbnail_persistence_runs insert failed",
+          logErr,
+        );
+      }
     } catch (thumbErr) {
       console.warn(
         "[analysis/cache] thumbnail persistence failed (continuing)",
