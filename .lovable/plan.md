@@ -1,49 +1,60 @@
-## Problema
+## Objetivo
 
-A linha `↘ Envolvimento 96% abaixo do típico do escalão Micro` ainda mete um segundo número (96%) a competir com o `31/100`. O leitor leigo continua a ter de fazer matemática mental ("31 é mau? 96% abaixo é a mesma coisa?").
+Refinar visualmente o Bloco 1 (Visão geral) + sidebar do relatório `/analyze/$username`, aproximando do Iconosquare:
 
-## Princípio
+1. Adotar a paleta **Ocean Breeze** como base do azul.
+2. Unificar os botões em **sentence case** (manter eyebrows/labels uppercase — são chips, não botões; a regra core de eyebrow Inter uppercase mantém-se).
 
-A caixa do índice deve ter **um só número** — `31/100` — com uma frase curta que diga o que esse número significa em linguagem humana. Nada mais.
+Âmbito limitado: tokens de azul + componentes da sidebar (`report-block-nav.tsx`) + hero/ações do Bloco 1 (`report-hero.tsx` / `report-hero-v2.tsx`) + cards "Continuar leitura" / "Premium". **Não toca** noutros blocos, landing, admin nem `/report.example`.
 
-## Alterações
+## Paleta Ocean Breeze → tokens
 
-Ficheiro: `src/components/report-redesign/v2/overview/editorial-identity-card.tsx` (função `IndexBlock`).
+Mapeamento em `src/styles/tokens-light.css` (override `[data-theme="light"]`, scoped a relatórios):
 
-### 1. Remover a linha do delta
+```
+#03045E navy        → --text-primary, --border-strong (titulos/CTAs escuros)
+#0077B6 ocean       → --accent-primary (azul principal Iconosquare-like)
+#00B4D8 cyan        → --accent-luminous (hover, data accent secundário)
+#90E0EF aqua        → chips/badges suaves (bg de pills "Premium", ring sutil)
+#CAF0F8 aqua-pale   → surface accent (highlight de selected items na sidebar)
+```
 
-Eliminar o bloco que renderiza `dir + relFormatted + tierShort` (a linha `text-[17px]` com "Envolvimento X% abaixo/acima/alinhado..."). Remover também o helper `deltaInfo` e os i18n keys associados (`identity.index.delta_above_prefix/suffix`, `delta_below_prefix/suffix`, `delta_aligned`) se deixarem de ter usos.
+Mantém-se: `--surface-base #FAFBFD`, `--surface-secondary #FFFFFF`, `--surface-muted #F1F4F9`. Substituem-se as classes hardcoded `bg-blue-50 / text-blue-700 / ring-blue-200 / focus:ring-blue-400` em `report-block-nav.tsx` por equivalentes via tokens (`bg-accent-soft`, `text-accent-primary`, `ring-accent-soft`). Sem `slate-*`.
 
-### 2. Substituir por uma frase única, contextual ao valor do índice
+## Botões → sentence case
 
-Por baixo do `31/100`, mostrar uma linha `text-[14px] text-content-secondary` com leitura qualitativa do próprio índice (não do envolvimento). Mapeamento por faixa:
+Converter para sentence case (label + remover `uppercase tracking-[…]`):
 
-- `index < 25` → "Espaço claro para crescer face ao escalão {tier}."
-- `25 ≤ index < 45` → "Abaixo da mediana do escalão {tier}."
-- `45 ≤ index < 65` → "Em linha com a mediana do escalão {tier}."
-- `65 ≤ index < 85` → "Acima da mediana do escalão {tier}."
-- `index ≥ 85` → "Destaque claro dentro do escalão {tier}."
+- `nav.access.cta` (PremiumBlockCard): `"DESBLOQUEAR ACESSO PREMIUM"` → `"Desbloquear acesso premium"`
+- `nav.access_locked.cta` (ContinueReadingCard, "CONTINUAR LEITURA GRATUITA"): → `"Continuar leitura gratuita"`
+- Botões internos do hero do Bloco 1 (`Novo relatório`, `Comparar concorrente`, `PDF`, `Partilhar`): já estão em sentence case; só normalizar weight/tracking para o mesmo padrão Inter SemiBold sem `uppercase`.
 
-Sem números, sem percentagens, sem "Envolvimento". Apenas posicionamento qualitativo face ao escalão — o que o `31/100` já está a dizer, traduzido em palavras.
+**Mantêm-se uppercase (são eyebrows/chips, não botões — respeita a regra core):**
+- `ANÁLISE DE PERFIL`, `DISPONÍVEL AGORA`, `GRÁTIS`, `EM BREVE · Julho 2026`, `ACESSO GRATUITO · BETA`, `01 / 02 / 03…`
+- Badges `VariantBadge` (`internal_lab`, `pro_active`)
+- Badge "5 por desbloquear" (já é chip)
 
-Sem benchmark/tier disponível: omitir a linha (não inventar fallback genérico).
+Aplica-se a regra `.text-eyebrow` (Inter uppercase) — sem alterações.
 
-### 3. Manter
+## Ficheiros a tocar
 
-- Eyebrow `Índice do perfil · MICRO (10K–50K)` — continua a esclarecer escalão.
-- Régua 0–100 com pin do perfil + pin da mediana + legenda `● este perfil │ mediana do escalão`.
-- Popover ⓘ — continua a explicar Envolvimento e a composição do Índice para quem quiser detalhe.
-
-## Resultado
-
-A caixa fica com **um único número** (`31/100`) e **uma frase qualitativa** ("Abaixo da mediana do escalão Micro"). O valor absoluto de envolvimento (`0,09%`) e qualquer percentagem comparativa vivem apenas no MetricsStrip e no bloco de Benchmark mais abaixo, onde já têm contexto próprio.
-
-## Fora de scope
-
-- Cálculo do índice, régua, MetricsStrip, Benchmark.
-- Popover (mantém-se como está após a iteração anterior).
+1. `src/styles/tokens-light.css` — novos valores `--accent-*` + `--text-primary` (Ocean Breeze).
+2. `src/components/report-redesign/v2/report-block-nav.tsx` — substituir `bg-blue-50 / text-blue-700 / ring-blue-200` por tokens; remover `uppercase tracking-[0.08em]` dos 2 botões CTA; novo `rounded-full` consistente.
+3. `src/i18n/locales/pt/report.json` (+ `en/report.json`) — converter os 2 labels CTA para sentence case.
+4. `src/components/report-redesign/report-hero.tsx` + `v2/report-hero-v2.tsx` — garantir que os botões de ação usam o mesmo estilo (sentence case, Inter SemiBold, sem `uppercase`); pill "EM BREVE · Julho 2026" mantém-se eyebrow.
+5. `mem://design/report-light-tokens` — atualizar nota da paleta (Ocean Breeze) para futuras sessões.
 
 ## Validação
 
 - `bunx tsc --noEmit`
-- Preview `/analyze/frederico.m.carvalho` em 411×742 — confirmar que só sobra `31/100` + 1 linha curta sob a régua.
+- Preview `/analyze/frederico.m.carvalho` a 1460×905 e 411×742; confirmar:
+  - Sidebar: azul navy (#03045E) no item ativo, ocean (#0077B6) no botão "Continuar leitura gratuita" (sentence case), aqua suave (#CAF0F8) no fundo do item selecionado.
+  - Hero: `@frederico.m.carvalho` em navy; botão "+ Novo relatório" navy escuro consistente; `EM BREVE` continua uppercase pill.
+  - Card lead-magnet ("Continua a leitura gratuita…"): CTA "Ver relatório gratuito" em sentence case e azul ocean.
+  - Nenhum outro bloco do relatório alterado (mantém o azul atual onde não chega o override — visto que o override é em `[data-theme="light"]` que cobre o report inteiro, validar visualmente blocos 5–10 para evitar regressões; se houver desvio indesejado, restringe-se via classe wrapper no Bloco 1).
+
+## Fora de âmbito
+
+- Landing, admin, `/report.example`, restantes blocos visuais.
+- Mudar tipografia, espaçamento, ou re-arquitetura da sidebar (shadcn `Sidebar`).
+- Dark mode.

@@ -14,18 +14,20 @@
   --surface-overlay: 255 255 255;
   --surface-muted: 241 244 249;
 
-  /* === COLORS — Accent ===
-   * Report uses a single editorial blue — slightly different from the
-   * global accent to keep reports visually distinct.
+  /* === COLORS — Accent (Ocean Breeze) ===
+   * Iconosquare-like single-azul family. Navy for dark CTAs/titles,
+   * ocean as primary, cyan as luminous, aquas as soft surfaces.
    */
-  --accent-primary:   37  99 217;    /* #2563D9 editorial blue            */
-  --accent-luminous:  59 130 246;    /* #3B82F6 hover/lighter             */
-  --accent-secondary: 37  99 217;
-  --accent-tertiary:  37  99 217;
+  --accent-primary:    0 119 182;    /* #0077B6 ocean                     */
+  --accent-luminous:   0 180 216;    /* #00B4D8 cyan                      */
+  --accent-secondary:  0 119 182;
+  --accent-tertiary:   0 119 182;
+  --accent-soft:     144 224 239;    /* #90E0EF aqua (chip bg / ring)     */
+  --accent-soft-pale: 202 240 248;   /* #CAF0F8 aqua-pale (selected bg)   */
   --accent-gold:     186 117  23;    /* #BA7517 amber alert (rare)        */
-  --accent-violet:    37  99 217;    /* collapsed to blue for reports     */
-  --accent-violet-luminous: 59 130 246;
-  --accent-violet-deep:     30  78 173;
+  --accent-violet:     0 119 182;    /* collapsed to ocean for reports    */
+  --accent-violet-luminous: 0 180 216;
+  --accent-violet-deep:    3   4  94; /* #03045E navy                     */
 
   /* === COLORS — Semantic === */
   --signal-success:  29 158 117;     /* #1D9E75 calmer, more editorial    */
@@ -34,31 +36,29 @@
   --signal-neutral:  90 107 140;
 
   /* === COLORS — Text === */
-  --text-primary:    15  27  61;     /* #0F1B3D editorial navy            */
+  --text-primary:     3   4  94;     /* #03045E ocean navy                */
   --text-secondary:  90 107 140;     /* #5A6B8C                           */
   --text-tertiary:  138 152 178;     /* #8A98B2 (still readable on white) */
   --text-inverse: 250 251 252;
 
   /* === COLORS — Border === */
-  --border-subtle:  15  27  61;
-  --border-default: 15  27  61;
-  --border-strong:  15  27  61;
+  --border-subtle:   3   4  94;
+  --border-default:  3   4  94;
+  --border-strong:   3   4  94;
 
   /* === SHADOWS — identity (matches :root now) === */
   --shadow-glow-cyan: none;
   --shadow-glow-gold: none;
   --shadow-glow-violet: none;
 
-  /* === Chart series ===
-   * Report-specific: single blue family for temporal charts.
-   */
-  --chart-likes:    37  99 217;   /* --accent-primary */
-  --chart-comments: 59 130 246;   /* --accent-luminous */
-  --chart-views:    30  78 173;   /* --accent-violet-deep (deep blue) */
+  /* === Chart series — Ocean Breeze family === */
+  --chart-likes:     0 119 182;   /* ocean */
+  --chart-comments:  0 180 216;   /* cyan */
+  --chart-views:     3   4  94;   /* navy */
 }
 
 /* Selection override for report light mode */
 body[data-theme="light"] ::selection {
-  background-color: rgb(37 99 217 / 0.18);
-  color: rgb(15 27 61);
+  background-color: rgb(0 119 182 / 0.18);
+  color: rgb(3 4 94);
 }
