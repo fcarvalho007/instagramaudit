@@ -1,58 +1,43 @@
-## Auditoria pós-implementação
+## Endpoint tests para `/api/onboarding/start`
 
-Verifiquei: modal completo, server endpoints (`/api/onboarding/start`, `/api/public/onboarding-event`), schema `product_events`, draft hook, tracking helper, tipos das props e copy. Sem runtime errors, 43 testes verdes.
+Adicionar testes focados ao handler. Uma pequena reestruturação isolada permite testar sem montar o runtime TanStack — sem mudar comportamento.
 
-**Estado geral**: bem ligado, sem bugs funcionais bloqueantes. Apenas três refinamentos:
+### Refactor mínimo (sem alterar comportamento)
 
-### Bug A — `<Trans>` com placeholder `<1>` ausente nas strings
+`src/routes/api/onboarding/start.ts`:
+- Extrair o corpo do `POST` para uma função exportada `handleOnboardingStart(request: Request): Promise<Response>`.
+- O `Route.server.handlers.POST` passa a ser `({ request }) => handleOnboardingStart(request)`.
+- Nada mais muda: mesmas validações, mesma ordem (honeypot → timing → upsert → grant → cookie → balance), mesmos status codes e error_codes, mesmas mensagens, mesmo cookie HttpOnly via `setLeadCookie`.
 
-Em dois pontos o componente JSX espera `<1>...</1>` na tradução para envolver o `@handle` em cor primária, mas as strings PT/EN são texto plano. Resultado: o handle aparece **sem** o highlight visual pretendido (não quebra nada, mas é regressão face ao desenho).
+Justificação: o handler atual é uma closure inline dentro de `createFileRoute(...)`, inacessível a vitest sem montar o router. Extrair para função exportada é puramente organizacional.
 
-Ficheiros: `src/i18n/locales/{pt,en}/gate.json`
-- `onboarding.intro.handleContext`
-- `onboarding.steps.2.relationshipQuestion`
+### Novo ficheiro de teste
 
-**Fix** (4 strings):
-```json
-// PT
-"handleContext": "Vais analisar <1>@{{handle}}</1>",
-"relationshipQuestion": "Que relação tens com <1>@{{handle}}</1>?"
-// EN
-"handleContext": "You'll analyse <1>@{{handle}}</1>",
-"relationshipQuestion": "What's your relationship with <1>@{{handle}}</1>?"
-```
+`src/routes/api/onboarding/__tests__/start.test.ts` com `vitest` + `vi.mock` para isolar todas as dependências de I/O:
 
-O JSX já passa `components={{ 1: <span className="text-primary" /> }}` — basta acrescentar as tags na cópia.
+1. **`@/integrations/supabase/client.server`** — `supabaseAdmin` mock com um store in-memory (`Map<email_normalized, { id, ...row }>`). Os chainables (`.from().select().eq().maybeSingle()`, `.from().insert().select().single()`, `.from().update().eq()`) são thenables que devolvem `{ data, error }` a partir do store.
 
-### Refinamento B — classes Tailwind duplicadas no rodapé do form
+2. **`@/lib/credits/credits.server`** — mock de `grantInitialCredits(leadId)` que incrementa um contador por lead apenas na primeira chamada (simulando o unique index `uniq_credit_ledger_initial_grant`); `getBalance(leadId)` devolve o contador.
 
-Em `FormStepBody`, linha 499 do modal:
-```
-className="flex gap-3 pt-1 border-t border-border-default/40 -mx-7 sm:-mx-9 px-7 sm:px-9 pt-5 mt-2"
-```
-`pt-1` e depois `pt-5` — o último vence mas a duplicação confunde. Limpar para `pt-5 mt-2`.
+3. **`@/lib/leads/lead-cookie.server`** — mock de `setLeadCookie` como `vi.fn()` para asserções; o teste de SESSION_SECRET sobrescreve com `mockImplementationOnce(() => { throw new Error("SESSION_SECRET missing or too short (need at least 32 chars).") })`.
 
-### Refinamento C — honeypot sem `as never`
+### Casos cobertos
 
-Em vez de `{...form.register("website" as never)}`, usar um input descontrolado e ler via DOM ref. Reduz risco de o tipo voltar a partir-se quando o schema mudar. Padrão:
+| # | Cenário | Asserções |
+|---|---------|-----------|
+| 1 | Payload válido (name, email, phone, consents) | `status === 200`; `body.ok === true`; `body.lead_id` é UUID; `body.credits === 2`; `setLeadCookie` foi chamado **uma** vez com `body.lead_id` |
+| 2 | Payload inválido (email omitido) | `status === 400`; `body.error_code === "INVALID_PAYLOAD"`; `setLeadCookie` não foi chamado; mensagem em PT mas **não** revela o nome do campo Zod |
+| 3 | Email duplicado (duas chamadas, mesmo email) | Ambas respondem 200 com o **mesmo `lead_id`**; `body.credits === 2` nas duas (não 4); o mock de `grantInitialCredits` foi chamado 2x mas o contador interno só subiu 1x |
+| 4 | `SESSION_SECRET` curto / em falta | `setLeadCookie` mock lança a mensagem real do módulo; resposta `status === 500`, `body.error_code === "INTERNAL_ERROR"`, `body.message === GENERIC_FALLBACK_MESSAGE`; a mensagem **não** contém "SESSION_SECRET" nem "secret" (assert de segurança) |
+| 5 | Telemóvel com formatação `"+351 912 345 678"` | `status === 200`; o payload entregue ao mock `.insert(...)` contém `phone: "+351 912 345 678"` e `phone_normalized: "351912345678"` (digits-only, conforme linha 107/129 do handler) |
 
-```tsx
-const honeypotRef = useRef<HTMLInputElement>(null);
-// no input: ref={honeypotRef}, sem register
-// no submit: const honeypot = honeypotRef.current?.value ?? ""
-```
+### Notas
 
-O `useOnboardingDraft` já não toca em `website` (escreve apenas keys explícitas), portanto remover o register não afeta persistência.
-
-### Não-issues confirmados
-
-- `product_events` aceita os campos enviados (`event_type`, `handle`, `actor_hash`, `metadata` jsonb com `step` e `marketing_consent`).
-- `/api/onboarding/start` aceita `_t` e `website`; honeypot dreni­fica com 200; <2s devolve 400.
-- `user_type` continua nullable; modal omite-o no payload mas mantém default `"creator"` no form para satisfazer o zod resolver (não vai para a BD).
-- `useOnboardingDraft` hidrata uma vez por mount (modal monta-se ao carregar a homepage e persiste); `clearDraft()` corre no sucesso; `gdpr_consent` intencionalmente fora do draft.
-- `onSuccess` no `hero-action-bar.tsx` ignora o segundo argumento — TS aceita assinaturas mais curtas, sem regressão.
-- Landing `lead` (PT/EN) já não promete "sem registo".
+- Não testamos o header `Set-Cookie` na `Response` porque `setCookie` do TanStack escreve via AsyncLocalStorage (não no objeto Response). O proxy correto e estável é spy em `setLeadCookie` — exatamente a fronteira que o handler usa.
+- Não montamos servidor HTTP nem invocamos `Route`. Os testes chamam `handleOnboardingStart(new Request(...))` diretamente.
+- Honeypot, timing-guard, persistence_failed: já existem hooks no código mas ficam fora deste lote (o pedido foca-se em 5 casos). Os mocks deixam o caminho aberto para os adicionar depois sem rework.
+- Se algum dos 5 casos expuser um bug real no handler, faço a correção mínima em `start.ts` e documento na nota do teste; caso contrário, `start.ts` só sofre o refactor de extração.
 
 ### Fora de âmbito
 
-Apify, OpenAI, report, pricing, thumbnails, emails, migrações de BD, Turnstile.
+UI, modal, `credits.server` real, base de dados real, edge functions, cron, Apify, OpenAI.

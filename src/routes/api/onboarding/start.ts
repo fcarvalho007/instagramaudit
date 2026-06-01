@@ -146,6 +146,124 @@ async function upsertLead(
   return { leadId: inserted.data.id, isNew: true };
 }
 
+/**
+ * Pure handler — exported para permitir testes unitários sem montar o
+ * router. Comportamento idêntico ao `POST` registado no `Route` abaixo.
+ */
+export async function handleOnboardingStart(
+  request: Request,
+): Promise<Response> {
+  warnIfSecretMisconfigured();
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    return json(
+      {
+        ok: false,
+        error_code: "INVALID_PAYLOAD",
+        message: "Pedido inválido.",
+      },
+      400,
+    );
+  }
+
+  const parsed = PayloadSchema.safeParse(raw);
+  if (!parsed.success) {
+    return json(
+      {
+        ok: false,
+        error_code: "INVALID_PAYLOAD",
+        message: "Dados inválidos. Verificar os campos.",
+      },
+      400,
+    );
+  }
+
+  // Honeypot tripped → drena silenciosamente. Devolve forma de
+  // sucesso com lead_id sintético e 0 créditos; nada vai à DB.
+  const rawWebsite =
+    typeof raw === "object" && raw && "website" in raw
+      ? (raw as { website?: unknown }).website
+      : undefined;
+  if (typeof rawWebsite === "string" && rawWebsite.length > 0) {
+    console.warn("[onboarding/start] honeypot tripped — draining");
+    return json(
+      {
+        ok: true,
+        lead_id: "00000000-0000-0000-0000-000000000000",
+        credits: 0,
+      },
+      200,
+    );
+  }
+
+  // Timing check: rejeita submits <2s após carregamento.
+  if (typeof parsed.data._t === "number") {
+    const ageMs = Date.now() - parsed.data._t;
+    if (ageMs >= 0 && ageMs < 2_000) {
+      return json(
+        {
+          ok: false,
+          error_code: "INVALID_PAYLOAD",
+          message: "Dados inválidos. Verificar os campos.",
+        },
+        400,
+      );
+    }
+  }
+
+  const upserted = await upsertLead(parsed.data);
+  if ("error" in upserted) {
+    console.error("[onboarding/start] lead upsert failed", upserted.error);
+    return json(
+      {
+        ok: false,
+        error_code: "PERSISTENCE_FAILED",
+        message: GENERIC_FALLBACK_MESSAGE,
+      },
+      500,
+    );
+  }
+
+  try {
+    await grantInitialCredits(upserted.leadId);
+  } catch (err) {
+    console.error("[onboarding/start] grant failed", err);
+    return json(
+      {
+        ok: false,
+        error_code: "INTERNAL_ERROR",
+        message: GENERIC_FALLBACK_MESSAGE,
+      },
+      500,
+    );
+  }
+
+  try {
+    setLeadCookie(upserted.leadId);
+  } catch (err) {
+    console.error("[onboarding/start] cookie write failed", err);
+    return json(
+      {
+        ok: false,
+        error_code: "INTERNAL_ERROR",
+        message: GENERIC_FALLBACK_MESSAGE,
+      },
+      500,
+    );
+  }
+
+  let credits = 0;
+  try {
+    credits = await getBalance(upserted.leadId);
+  } catch (err) {
+    console.error("[onboarding/start] balance read failed", err);
+  }
+
+  return json({ ok: true, lead_id: upserted.leadId, credits }, 200);
+}
+
 export const Route = createFileRoute("/api/onboarding/start")({
   server: {
     handlers: {
@@ -159,120 +277,22 @@ export const Route = createFileRoute("/api/onboarding/start")({
           },
         }),
 
-      POST: async ({ request }) => {
-        warnIfSecretMisconfigured();
-        let raw: unknown;
-        try {
-          raw = await request.json();
-        } catch {
-          return json(
+      POST: async ({ request }) => handleOnboardingStart(request),
+    },
+  },
+});
+
+// (handler-only code below is dead after the refactor — Route definition is the entrypoint)
+/* eslint-disable */
+function _unused_legacy_marker() {
+  return (
+    json(
             {
               ok: false,
               error_code: "INVALID_PAYLOAD",
               message: "Pedido inválido.",
             },
             400,
-          );
-        }
-
-        const parsed = PayloadSchema.safeParse(raw);
-        if (!parsed.success) {
-          return json(
-            {
-              ok: false,
-              error_code: "INVALID_PAYLOAD",
-              message: "Dados inválidos. Verificar os campos.",
-            },
-            400,
-          );
-        }
-
-        // Honeypot tripped → drena silenciosamente. Devolve forma de
-        // sucesso com lead_id sintético e 0 créditos; nada vai à DB.
-        const rawWebsite =
-          typeof raw === "object" && raw && "website" in raw
-            ? (raw as { website?: unknown }).website
-            : undefined;
-        if (typeof rawWebsite === "string" && rawWebsite.length > 0) {
-          console.warn("[onboarding/start] honeypot tripped — draining");
-          return json(
-            {
-              ok: true,
-              lead_id: "00000000-0000-0000-0000-000000000000",
-              credits: 0,
-            },
-            200,
-          );
-        }
-
-        // Timing check: rejeita submits <2s após carregamento.
-        if (typeof parsed.data._t === "number") {
-          const ageMs = Date.now() - parsed.data._t;
-          if (ageMs >= 0 && ageMs < 2_000) {
-            return json(
-              {
-                ok: false,
-                error_code: "INVALID_PAYLOAD",
-                message: "Dados inválidos. Verificar os campos.",
-              },
-              400,
-            );
-          }
-        }
-
-        const upserted = await upsertLead(parsed.data);
-        if ("error" in upserted) {
-          console.error("[onboarding/start] lead upsert failed", upserted.error);
-          return json(
-            {
-              ok: false,
-              error_code: "PERSISTENCE_FAILED",
-              message: GENERIC_FALLBACK_MESSAGE,
-            },
-            500,
-          );
-        }
-
-        try {
-          await grantInitialCredits(upserted.leadId);
-        } catch (err) {
-          console.error("[onboarding/start] grant failed", err);
-          return json(
-            {
-              ok: false,
-              error_code: "INTERNAL_ERROR",
-              message: GENERIC_FALLBACK_MESSAGE,
-            },
-            500,
-          );
-        }
-
-        try {
-          setLeadCookie(upserted.leadId);
-        } catch (err) {
-          console.error("[onboarding/start] cookie write failed", err);
-          return json(
-            {
-              ok: false,
-              error_code: "INTERNAL_ERROR",
-              message: GENERIC_FALLBACK_MESSAGE,
-            },
-            500,
-          );
-        }
-
-        let credits = 0;
-        try {
-          credits = await getBalance(upserted.leadId);
-        } catch (err) {
-          console.error("[onboarding/start] balance read failed", err);
-        }
-
-        return json(
-          { ok: true, lead_id: upserted.leadId, credits },
-          200,
-        );
-      },
-    },
-  },
-});
+    )
+  );
+}
