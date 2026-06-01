@@ -42,6 +42,7 @@ const PostSchema = z.object({
   video_duration: z.number().nullable().optional(),
   engagement_pct: z.number().nullable().optional(),
   thumbnail_url: httpsUrl.nullable().optional(),
+  thumbnail_storage_url: httpsUrl.nullable().optional(),
   is_pinned: z.boolean().nullable().optional(),
 });
 
