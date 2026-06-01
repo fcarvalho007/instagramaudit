@@ -83,6 +83,14 @@ import {
   shouldRunCommentScraper,
   isValidInstagramPostUrl,
 } from "@/lib/analysis/comment-scraper.server";
+import {
+  confirmReservation,
+  InsufficientCreditsError,
+  releaseReservation,
+  reserveCredit,
+  type ReserveResult,
+} from "@/lib/credits/credits.server";
+import { readLeadIdFromRequest } from "@/lib/leads/lead-cookie.server";
 import { getAnalysisExecutionMode } from "@/lib/admin/execution-mode.server";
 import {
   ALL_ENRICHMENT_TYPES,
@@ -135,6 +143,10 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
   NETWORK_ERROR: "Falha de ligação. Tentar novamente.",
   CACHE_ONLY_NO_DATA:
     "Sem snapshot disponível em modo cache-only. Ative o modo Fresh para gerar dados novos.",
+  NO_CREDITS_LEAD_REQUIRED:
+    "Precisamos do teu nome e email para gerar o relatório.",
+  INSUFFICIENT_CREDITS:
+    "Já usaste os teus 2 relatórios gratuitos.",
 };
 
 const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
@@ -150,6 +162,8 @@ const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
   UPSTREAM_FAILED: 502,
   NETWORK_ERROR: 502,
   CACHE_ONLY_NO_DATA: 503,
+  NO_CREDITS_LEAD_REQUIRED: 402,
+  INSUFFICIENT_CREDITS: 402,
 };
 
 /**
