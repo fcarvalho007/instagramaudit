@@ -1,110 +1,48 @@
-## Modelo de consumo confirmado
+## Objetivo
 
-Aplico a tua preferência: **crédito só é consumido quando é necessário gerar ou atribuir um relatório novo ao lead**.
+Confirmar, em produção publicada, se o pipeline de persistência de thumbnails está a ser invocado e a gravar objetos em `post-thumbnails`, usando apenas o handle `frederico.m.carvalho`. Sem backfill, sem alterações de código.
 
-Regras exactas:
+## Passos
 
-| Situação | Crédito |
-|---|---|
-| Lead criado via `/api/onboarding/start` | +2 (grant inicial, one-shot) |
-| Submit do modal → cache hit (<24h) para o mesmo handle **já associado a este lead** | 0 (já lhe pertence) |
-| Submit do modal → cache hit (<24h) para handle **novo para este lead** | −1 (atribuição = novo relatório do ponto de vista do lead) |
-| Submit do modal → fresh run com sucesso (snapshot criado) | −1 |
-| Submit do modal → fresh run falha antes de snapshot utilizável | 0 (refund / nunca debitado) |
-| Submit do modal → handle inválido / não suportado / 404 | 0 |
-| Saldo = 0 ao submeter | bloquear com erro `insufficient_credits` |
+1. **Snapshot inicial (antes do refresh)**
+   - Contar objetos atuais no bucket `post-thumbnails` (storage.objects).
+   - Contar posts do último snapshot de `frederico.m.carvalho` com `thumbnail_storage_url` preenchido.
+   - Guardar `cache_key` / `snapshot_id` atual para comparação.
 
-Padrão de implementação: **reserva → confirma OU liberta** (não débito optimista). O endpoint reserva 1 crédito; só converte em débito definitivo após snapshot escrito; em qualquer falha anterior, liberta a reserva.
+2. **Disparar refresh fresh controlado**
+   - Chamar o endpoint público de análise para `frederico.m.carvalho` com flag de bypass de cache (force fresh), via `stack_modern--invoke-server-function` contra a URL publicada.
+   - Apenas 1 chamada. Sem competitors. Sem retries.
 
-## Fase 1 — Backend foundation
+3. **Recolher sinais do pipeline**
+   - `stack_modern--server-function-logs` (deployment=published) filtrado por `[thumbnails]`:
+     - presença de `[thumbnails] start`
+     - presença do resumo final `[thumbnails] handle=... stored=... skipped=... failed=...`
+     - counters completos (total candidates, downloaded, uploaded, db_updated)
+   - Em paralelo: logs de erro/timeout relacionados (`thumbnail`, `storage`, `post-thumbnails`).
 
-Sem alterações a `analyze-public-v1`, `HeroActionBar`, `OnboardingModal`, report, pricing, emails, prompts ou Apify/OpenAI.
+4. **Snapshot final (depois do refresh)**
+   - Reconsultar storage.objects do bucket `post-thumbnails` (diff vs. passo 1).
+   - Reconsultar posts do novo snapshot com `thumbnail_storage_url` preenchido (x/12).
+   - Confirmar `data_source=fresh` e novo `snapshot_id` em `analysis_events`.
 
-### 1. Migration
+5. **Diagnóstico segundo árvore de decisão acordada**
+   - Sem `[thumbnails] start` → pipeline não está a ser invocado no path publicado (problema de deploy/wiring).
+   - `start` sem resumo final → função aborta/hang antes de terminar (capturar último log antes do silêncio).
+   - Resumo final com `stored=0` → identificar razão (download HTTP, upload storage, update DB).
+   - Resumo final com `stored>0` mas bucket vazio → mismatch bucket/prefixo ou permissões.
+   - `stored>0` e bucket cresce → pipeline OK; recomendar apenas aguardar rotação de cache (sem backfill).
 
-`credit_ledger` (append-only, fonte da verdade):
-- `id uuid PK`
-- `lead_id uuid NOT NULL` (FK lógica para `leads.id`)
-- `delta integer NOT NULL` (+2 grant, −1 reserve, +1 release, etc.)
-- `reason text NOT NULL CHECK IN ('initial_grant','reserve','confirm','release','admin_adjust')`
-- `handle text NULL` (handle pedido, quando aplicável)
-- `cache_key text NULL`
-- `analysis_snapshot_id uuid NULL`
-- `reservation_id uuid NULL` (liga reserve↔confirm/release)
-- `metadata jsonb NOT NULL DEFAULT '{}'`
-- `created_at timestamptz NOT NULL DEFAULT now()`
+## Entregável
 
-Índices: `(lead_id, created_at desc)`, `(reservation_id)`.
+Relatório único com:
+- objects no bucket antes/depois
+- posts com `thumbnail_storage_url` antes/depois (x/12)
+- linhas de log relevantes (`start`, resumo final, counters)
+- ramo da árvore de decisão atingido
+- recomendação final (sem executar backfill nem alterações)
 
-GRANTs: `service_role ALL`. Sem `anon`/`authenticated` directos (acesso só via server fn com service role).
+## Restrições
 
-Função SQL `credit_balance(p_lead_id uuid) returns integer language sql stable security definer` → `SELECT coalesce(sum(delta),0) FROM credit_ledger WHERE lead_id=p_lead_id`.
-
-(`leads.id` já existe; não toco em `leads`.)
-
-### 2. Helpers server-side
-
-- `src/lib/credits/credits.server.ts`
-  - `grantInitialCredits(leadId)` — idempotente: se já existe `initial_grant` para este lead, não duplica.
-  - `getBalance(leadId)` → number
-  - `reserveCredit({ leadId, handle, cacheKey })` → `{ reservationId }` ou lança `InsufficientCreditsError` se balance < 1
-  - `confirmReservation({ reservationId, analysisSnapshotId })` → escreve `confirm` (delta 0; a reserve já desceu 1)
-  - `releaseReservation({ reservationId, reason })` → escreve `release` (+1)
-  - Concorrência: transacção `SELECT sum(delta) ... FOR UPDATE` numa linha-sentinela ou via advisory lock por `lead_id` para evitar race.
-
-- `src/lib/leads/lead-cookie.server.ts`
-  - Cookie HTTP-only `lead_session`, assinada via `useSession` do `@tanstack/react-start/server` com `SESSION_SECRET` (novo secret) — payload `{ leadId, issuedAt }`.
-  - `getLeadFromCookie()` / `setLeadCookie(leadId)` / `clearLeadCookie()`.
-  - Sem dados pessoais no cookie.
-
-### 3. Endpoint `/api/onboarding/start`
-
-Server route `src/routes/api/onboarding/start.ts`, `POST`, Zod validation:
-- input: `{ name, email, phone?, marketing_consent, beta_consent, user_type?, purpose?, profile_ownership?, pricing_preference? }` (alinhado com `leads`)
-- upsert em `leads` por `email_normalized` (já existe coluna)
-- se lead novo OU sem `initial_grant`: `grantInitialCredits(leadId)`
-- `setLeadCookie(leadId)`
-- response: `{ ok: true, lead_id, credits: 2 }`
-- security: rate-limit básico por IP-hash (reaproveitar padrão existente), Zod com `max`/`regex`, sem PII no log
-
-### 4. Novo secret
-
-`SESSION_SECRET` (para assinar cookie). Pedido via `add_secret` antes de implementar.
-
-### 5. Testes (Vitest)
-
-- `credits.server.test.ts` — grant idempotente, reserve baixa balance, double reserve sem saldo falha, release devolve, confirm não duplica débito.
-- `lead-cookie.server.test.ts` — round-trip set/get, cookie inválido devolve null.
-- `onboarding-start.test.ts` (unit do handler) — happy path (lead novo), email existente (não duplica grant), payload inválido devolve 400.
-
-### 6. Validação final
-
-- `bunx tsc --noEmit`
-- `bunx vitest run`
-- Sem chamadas ao endpoint a partir da UI ainda (Fase 3).
-
-## Ficheiros a criar
-
-- migration `*_credit_ledger.sql`
-- `src/lib/credits/credits.server.ts`
-- `src/lib/credits/credits.server.test.ts`
-- `src/lib/leads/lead-cookie.server.ts`
-- `src/lib/leads/lead-cookie.server.test.ts`
-- `src/routes/api/onboarding/start.ts`
-- `src/routes/api/onboarding/start.test.ts`
-
-## Ficheiros NÃO tocados
-
-`analyze-public-v1.ts`, `HeroActionBar`, `OnboardingModal`, report, pricing, emails, prompts, Apify, OpenAI, `cache.ts`, `leads` (schema).
-
-## Riscos
-
-- Race em reserve concorrente → mitigado por advisory lock por `lead_id`.
-- Cookie de lead reaproveitado em browsers partilhados → aceitável nesta fase (sem auth); rotacionar `SESSION_SECRET` invalida todos.
-- Email reutilizado por mau actor para acumular créditos → grant idempotente por `lead_id`, e `email_normalized` é UNIQUE no upsert → só 1 grant por email.
-
-## Checkpoint
-
-☐ Confirmas o modelo de consumo (em particular: **cache hit para handle novo a este lead consome 1**)?
-☐ OK criar o secret `SESSION_SECRET` agora (gerado aleatoriamente, 32+ bytes)?
-☐ OK avançar imediatamente para implementação assim que respondas, sem mais perguntas?
+- Apenas leitura + 1 chamada de refresh.
+- Sem alterações a `analyze-public-v1`, ao pipeline de thumbnails, ao schema, ou ao bucket.
+- Sem backfill seletivo nesta fase.
