@@ -162,7 +162,7 @@
       "eyebrow": "ANTES DE COMEÇAR",
       "title": "Cria a tua conta e abre o relatório",
       "subtitle": "3 perguntas rápidas (~1 min) e a tua conta fica criada — com este e os próximos relatórios guardados.",
-      "handleContext": "Vais analisar @{{handle}}",
+      "handleContext": "Vais analisar <1>@{{handle}}</1>",
       "creditNote": "Começas com <strong>2 créditos grátis</strong>. Esta análise usa 1.",
       "freeBadge": "Grátis",
       "freeValueTitle": "O que recebes grátis",
@@ -189,7 +189,7 @@
         "eyebrow": "PASSO 2 DE 3",
         "title": "Para afinarmos a análise",
         "subtitle": "Duas escolhas rápidas — ajustam o tom e o foco do relatório.",
-        "relationshipQuestion": "Que relação tens com @{{handle}}?",
+        "relationshipQuestion": "Que relação tens com <1>@{{handle}}</1>?",
         "goalQuestion": "O que mais te interessa perceber?",
         "consequenceLine": "Vamos usar isto para evoluir o produto e personalizar próximos relatórios."
       },

@@ -105,6 +105,7 @@ export function OnboardingModal({
   const [serverError, setServerError] = useState<string | null>(null);
   const formStartedAtRef = useRef<number>(Date.now());
   const succeededRef = useRef<boolean>(false);
+  const honeypotRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<UnlockFormValues>({
     resolver: zodResolver(unlockFormSchema),
@@ -222,7 +223,7 @@ export function OnboardingModal({
     setServerError(null);
     try {
       const parsed = parseFullName(values.full_name);
-      const honeypot = (form.getValues() as { website?: string }).website ?? "";
+      const honeypot = honeypotRef.current?.value ?? "";
       const res = await fetch("/api/onboarding/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
