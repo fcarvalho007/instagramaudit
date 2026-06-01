@@ -1328,6 +1328,11 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           });
           return failure("UPSTREAM_FAILED");
         }
+        } finally {
+          // Always settles the reservation (confirm/release) before the
+          // response is flushed. No-op when isInternalBypass=true.
+          await finalizeCredit();
+        }
       },
     },
   },
