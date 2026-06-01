@@ -2,7 +2,6 @@
  * Zone D — Card 1: Frequência de publicação.
  * Human-readable headline → stats → posting calendar → verdict.
  */
-import { ArrowDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { useState } from "react";
