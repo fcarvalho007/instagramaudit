@@ -63,7 +63,6 @@ import { Route as ApiPublicPricingInterestRouteImport } from './routes/api/publi
 import { Route as ApiPublicPricingFeedbackRouteImport } from './routes/api/public/pricing-feedback'
 import { Route as ApiPublicLookupLeadRouteImport } from './routes/api/public/lookup-lead'
 import { Route as ApiPublicInlineFeedbackRouteImport } from './routes/api/public/inline-feedback'
-import { Route as ApiPublicIgThumbRouteImport } from './routes/api/public/ig-thumb'
 import { Route as ApiPublicEnrichSnapshotRouteImport } from './routes/api/public/enrich-snapshot'
 import { Route as ApiPublicEnrichCommentsRouteImport } from './routes/api/public/enrich-comments'
 import { Route as ApiAdminWhoamiRouteImport } from './routes/api/admin/whoami'
@@ -417,11 +416,6 @@ const ApiPublicLookupLeadRoute = ApiPublicLookupLeadRouteImport.update({
 const ApiPublicInlineFeedbackRoute = ApiPublicInlineFeedbackRouteImport.update({
   id: '/api/public/inline-feedback',
   path: '/api/public/inline-feedback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicIgThumbRoute = ApiPublicIgThumbRouteImport.update({
-  id: '/api/public/ig-thumb',
-  path: '/api/public/ig-thumb',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicEnrichSnapshotRoute = ApiPublicEnrichSnapshotRouteImport.update({
@@ -953,7 +947,6 @@ export interface FileRoutesByFullPath {
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
-  '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/inline-feedback': typeof ApiPublicInlineFeedbackRoute
   '/api/public/lookup-lead': typeof ApiPublicLookupLeadRoute
   '/api/public/pricing-feedback': typeof ApiPublicPricingFeedbackRoute
@@ -1089,7 +1082,6 @@ export interface FileRoutesByTo {
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
-  '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/inline-feedback': typeof ApiPublicInlineFeedbackRoute
   '/api/public/lookup-lead': typeof ApiPublicLookupLeadRoute
   '/api/public/pricing-feedback': typeof ApiPublicPricingFeedbackRoute
@@ -1228,7 +1220,6 @@ export interface FileRoutesById {
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
-  '/api/public/ig-thumb': typeof ApiPublicIgThumbRoute
   '/api/public/inline-feedback': typeof ApiPublicInlineFeedbackRoute
   '/api/public/lookup-lead': typeof ApiPublicLookupLeadRoute
   '/api/public/pricing-feedback': typeof ApiPublicPricingFeedbackRoute
@@ -1368,7 +1359,6 @@ export interface FileRouteTypes {
     | '/api/admin/whoami'
     | '/api/public/enrich-comments'
     | '/api/public/enrich-snapshot'
-    | '/api/public/ig-thumb'
     | '/api/public/inline-feedback'
     | '/api/public/lookup-lead'
     | '/api/public/pricing-feedback'
@@ -1504,7 +1494,6 @@ export interface FileRouteTypes {
     | '/api/admin/whoami'
     | '/api/public/enrich-comments'
     | '/api/public/enrich-snapshot'
-    | '/api/public/ig-thumb'
     | '/api/public/inline-feedback'
     | '/api/public/lookup-lead'
     | '/api/public/pricing-feedback'
@@ -1642,7 +1631,6 @@ export interface FileRouteTypes {
     | '/api/admin/whoami'
     | '/api/public/enrich-comments'
     | '/api/public/enrich-snapshot'
-    | '/api/public/ig-thumb'
     | '/api/public/inline-feedback'
     | '/api/public/lookup-lead'
     | '/api/public/pricing-feedback'
@@ -1761,7 +1749,6 @@ export interface RootRouteChildren {
   ApiAdminWhoamiRoute: typeof ApiAdminWhoamiRoute
   ApiPublicEnrichCommentsRoute: typeof ApiPublicEnrichCommentsRoute
   ApiPublicEnrichSnapshotRoute: typeof ApiPublicEnrichSnapshotRoute
-  ApiPublicIgThumbRoute: typeof ApiPublicIgThumbRoute
   ApiPublicInlineFeedbackRoute: typeof ApiPublicInlineFeedbackRoute
   ApiPublicLookupLeadRoute: typeof ApiPublicLookupLeadRoute
   ApiPublicPricingFeedbackRoute: typeof ApiPublicPricingFeedbackRoute
@@ -2185,13 +2172,6 @@ declare module '@tanstack/react-router' {
       path: '/api/public/inline-feedback'
       fullPath: '/api/public/inline-feedback'
       preLoaderRoute: typeof ApiPublicInlineFeedbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/ig-thumb': {
-      id: '/api/public/ig-thumb'
-      path: '/api/public/ig-thumb'
-      fullPath: '/api/public/ig-thumb'
-      preLoaderRoute: typeof ApiPublicIgThumbRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/enrich-snapshot': {
@@ -3043,7 +3023,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminWhoamiRoute: ApiAdminWhoamiRoute,
   ApiPublicEnrichCommentsRoute: ApiPublicEnrichCommentsRoute,
   ApiPublicEnrichSnapshotRoute: ApiPublicEnrichSnapshotRoute,
-  ApiPublicIgThumbRoute: ApiPublicIgThumbRoute,
   ApiPublicInlineFeedbackRoute: ApiPublicInlineFeedbackRoute,
   ApiPublicLookupLeadRoute: ApiPublicLookupLeadRoute,
   ApiPublicPricingFeedbackRoute: ApiPublicPricingFeedbackRoute,
@@ -3099,3 +3078,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
