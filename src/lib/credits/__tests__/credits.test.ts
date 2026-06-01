@@ -1,0 +1,116 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+/**
+ * In-memory fake of the columns we touch on `credit_ledger` + RPC
+ * `credit_balance`. We don't simulate Postgres semantics for the unique
+ * grant index — we approximate it (returns 23505 on duplicate
+ * initial_grant) so `grantInitialCredits` idempotency can be asserted.
+ */
+interface LedgerRow {
+  lead_id: string;
+  delta: number;
+  reason: string;
+  reservation_id: string | null;
+}
+
+const ledger: LedgerRow[] = [];
+
+function insert(payload: Partial<LedgerRow> & { lead_id: string; delta: number; reason: string }) {
+  if (payload.reason === "initial_grant") {
+    const already = ledger.some(
+      (r) => r.lead_id === payload.lead_id && r.reason === "initial_grant",
+    );
+    if (already) {
+      return { error: { code: "23505", message: "duplicate initial grant" } };
+    }
+  }
+  ledger.push({
+    lead_id: payload.lead_id,
+    delta: payload.delta,
+    reason: payload.reason,
+    reservation_id: payload.reservation_id ?? null,
+  });
+  return { error: null };
+}
+
+vi.mock("@/integrations/supabase/client.server", () => {
+  const supabaseAdmin = {
+    from: (_t: string) => ({
+      insert: (payload: Partial<LedgerRow> & { lead_id: string; delta: number; reason: string }) =>
+        Promise.resolve(insert(payload)),
+    }),
+    rpc: (_name: string, args: { p_lead_id: string }) =>
+      Promise.resolve({
+        data: ledger
+          .filter((r) => r.lead_id === args.p_lead_id)
+          .reduce((acc, r) => acc + r.delta, 0),
+        error: null,
+      }),
+  };
+  return { supabaseAdmin };
+});
+
+import {
+  confirmReservation,
+  getBalance,
+  grantInitialCredits,
+  InsufficientCreditsError,
+  releaseReservation,
+  reserveCredit,
+} from "../credits.server";
+
+const LEAD = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+
+beforeEach(() => {
+  ledger.length = 0;
+});
+
+describe("credits.server", () => {
+  it("grants 2 credits initially", async () => {
+    await grantInitialCredits(LEAD);
+    expect(await getBalance(LEAD)).toBe(2);
+  });
+
+  it("grantInitialCredits is idempotent", async () => {
+    await grantInitialCredits(LEAD);
+    await grantInitialCredits(LEAD);
+    expect(await getBalance(LEAD)).toBe(2);
+  });
+
+  it("reserveCredit decrements balance and returns reservationId", async () => {
+    await grantInitialCredits(LEAD);
+    const r = await reserveCredit({ leadId: LEAD, handle: "x" });
+    expect(r.reservationId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(await getBalance(LEAD)).toBe(1);
+  });
+
+  it("reserveCredit throws InsufficientCreditsError at zero balance", async () => {
+    await expect(reserveCredit({ leadId: LEAD })).rejects.toBeInstanceOf(
+      InsufficientCreditsError,
+    );
+  });
+
+  it("releaseReservation returns the credit", async () => {
+    await grantInitialCredits(LEAD);
+    const r = await reserveCredit({ leadId: LEAD });
+    await releaseReservation({ leadId: LEAD, reservationId: r.reservationId });
+    expect(await getBalance(LEAD)).toBe(2);
+  });
+
+  it("confirmReservation does not change balance", async () => {
+    await grantInitialCredits(LEAD);
+    const r = await reserveCredit({ leadId: LEAD });
+    await confirmReservation({ leadId: LEAD, reservationId: r.reservationId });
+    expect(await getBalance(LEAD)).toBe(1);
+  });
+
+  it("two reserves drain to zero, third fails", async () => {
+    await grantInitialCredits(LEAD);
+    await reserveCredit({ leadId: LEAD });
+    await reserveCredit({ leadId: LEAD });
+    expect(await getBalance(LEAD)).toBe(0);
+    await expect(reserveCredit({ leadId: LEAD })).rejects.toBeInstanceOf(
+      InsufficientCreditsError,
+    );
+  });
+});
