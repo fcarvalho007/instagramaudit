@@ -12,24 +12,23 @@ import type { EnrichmentStatusMap } from "@/lib/enrichment/types";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
-  CACHE_TTL_MS as RETENTION_CACHE_TTL_MS,
+  CACHE_REUSE_MAX_MS,
+  REFRESH_BUTTON_AFTER_MS,
   REPORT_RETENTION_MS,
 } from "@/lib/report/retention";
 import { persistThumbnailsInPayload } from "@/lib/report-snapshots/persist-thumbnails.server";
 
 /**
- * Cache TTL — re-export da constante única em `@/lib/report/retention`.
- * Snapshots são reutilizados durante esta janela antes de despoletar um
- * novo scrape ao provider.
+ * Cache TTL — janela de reutilização "fresca" (24h). Acima disto, o
+ * endpoint público corre fresh automaticamente e cai para o snapshot
+ * existente apenas se a chamada falhar.
  */
-export const CACHE_TTL_MS = RETENTION_CACHE_TTL_MS;
+export const CACHE_TTL_MS = CACHE_REUSE_MAX_MS;
 
 /**
- * Stale tolerance: alinhado à janela de retenção do relatório. Com
- * `CACHE_TTL_MS === REPORT_RETENTION_MS`, esta janela deixa de ser uma
- * tolerância distinta e funciona como upper bound do que ainda é
- * "histórico revisitável" — útil para fallbacks defensivos em rotas que
- * já a consomem (`isWithinStaleWindow`).
+ * Stale tolerance: alinhado à janela de retenção do relatório (15 d).
+ * Funciona como upper bound do que ainda é "histórico revisitável" e
+ * janela máxima para fallback quando o provider falha.
  */
 export const STALE_TOLERANCE_MS = REPORT_RETENTION_MS;
 
@@ -161,6 +160,28 @@ export function isFresh(snapshot: SnapshotRow): boolean {
 export function isWithinStaleWindow(snapshot: SnapshotRow): boolean {
   const age = Date.now() - new Date(snapshot.created_at).getTime();
   return age < STALE_TOLERANCE_MS;
+}
+
+/**
+ * Estado de frescura derivado da idade do snapshot. Usado pelo endpoint
+ * público para decidir se mostra o CTA "Actualizar análise" e pelo
+ * frontend para textos como "Actualizado hoje".
+ */
+export type FreshnessState =
+  | "fresh_under_12h"
+  | "fresh_12_to_24h"
+  | "expired";
+
+export function getFreshnessState(snapshot: SnapshotRow): FreshnessState {
+  const age = Date.now() - new Date(snapshot.created_at).getTime();
+  if (age < REFRESH_BUTTON_AFTER_MS) return "fresh_under_12h";
+  if (age < CACHE_REUSE_MAX_MS) return "fresh_12_to_24h";
+  return "expired";
+}
+
+export function getSnapshotAgeHours(snapshot: SnapshotRow): number {
+  const ageMs = Date.now() - new Date(snapshot.created_at).getTime();
+  return Math.max(0, Math.round((ageMs / 3_600_000) * 10) / 10);
 }
 
 /**

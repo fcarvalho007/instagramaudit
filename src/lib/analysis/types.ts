@@ -53,6 +53,42 @@ export interface PublicAnalysisStatus {
   analyzed_at: string; // ISO timestamp
 }
 
+/**
+ * Bloco de frescura — exposto ao frontend para decidir UI:
+ * "Actualizado hoje", CTA de refresh manual (12–24h), aviso de fallback.
+ * Calculado server-side em cima do snapshot servido na resposta.
+ */
+export interface PublicAnalysisFreshness {
+  /**
+   *  - `fresh_under_12h` → snapshot < 12h, sem CTA de refresh.
+   *  - `fresh_12_to_24h` → snapshot 12–24h, mostra CTA "Actualizar análise".
+   *  - `fresh_just_now` → acabou de ser scraped, equivalente a `fresh_under_12h`.
+   *  - `fallback_stale` → fresh falhou, estamos a servir snapshot antigo.
+   */
+  state:
+    | "fresh_just_now"
+    | "fresh_under_12h"
+    | "fresh_12_to_24h"
+    | "fallback_stale";
+  /** ISO `created_at` do snapshot servido. */
+  snapshot_created_at: string;
+  /** Idade do snapshot em horas (1 casa decimal). */
+  snapshot_age_hours: number;
+  /** True quando o CTA público de refresh deve estar visível. */
+  refresh_available: boolean;
+  /**
+   * True quando o refresh manual debitaria 1 crédito. Hoje sempre `false`
+   * (não há tabela de créditos); reservado para activação futura.
+   */
+  refresh_requires_credit: boolean;
+  /**
+   * True quando esta resposta é um fallback: tentámos correr fresh
+   * (porque o snapshot já tinha > 24h ou o utilizador pediu refresh) e
+   * o provider falhou — servimos o snapshot anterior com aviso na UI.
+   */
+  is_fallback: boolean;
+}
+
 export type CompetitorErrorCode =
   | "PROFILE_NOT_FOUND"
   | "POSTS_UNAVAILABLE"
@@ -86,6 +122,11 @@ export interface PublicAnalysisSuccess {
   content_summary: PublicAnalysisContentSummary;
   competitors: CompetitorAnalysis[];
   status: PublicAnalysisStatus;
+  /**
+   * Política de frescura aplicada a esta resposta. Opcional para
+   * backward compatibility com snapshots persistidos antes deste campo.
+   */
+  freshness?: PublicAnalysisFreshness;
   /**
    * Benchmark positioning resolved server-side using the cloud-managed
    * `benchmark_references` dataset. Optional for backward compatibility with

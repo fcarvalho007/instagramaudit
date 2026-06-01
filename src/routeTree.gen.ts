@@ -66,6 +66,7 @@ import { Route as ApiPublicLookupLeadRouteImport } from './routes/api/public/loo
 import { Route as ApiPublicInlineFeedbackRouteImport } from './routes/api/public/inline-feedback'
 import { Route as ApiPublicEnrichSnapshotRouteImport } from './routes/api/public/enrich-snapshot'
 import { Route as ApiPublicEnrichCommentsRouteImport } from './routes/api/public/enrich-comments'
+import { Route as ApiAnalyzeRefreshRouteImport } from './routes/api/analyze/refresh'
 import { Route as ApiAdminWhoamiRouteImport } from './routes/api/admin/whoami'
 import { Route as ApiAdminSimpleLoginRouteImport } from './routes/api/admin/simple-login'
 import { Route as ApiAdminSendReportLinkRouteImport } from './routes/api/admin/send-report-link'
@@ -433,6 +434,11 @@ const ApiPublicEnrichSnapshotRoute = ApiPublicEnrichSnapshotRouteImport.update({
 const ApiPublicEnrichCommentsRoute = ApiPublicEnrichCommentsRouteImport.update({
   id: '/api/public/enrich-comments',
   path: '/api/public/enrich-comments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAnalyzeRefreshRoute = ApiAnalyzeRefreshRouteImport.update({
+  id: '/api/analyze/refresh',
+  path: '/api/analyze/refresh',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdminWhoamiRoute = ApiAdminWhoamiRouteImport.update({
@@ -959,6 +965,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/send-report-link': typeof ApiAdminSendReportLinkRoute
   '/api/admin/simple-login': typeof ApiAdminSimpleLoginRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
+  '/api/analyze/refresh': typeof ApiAnalyzeRefreshRoute
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
   '/api/public/inline-feedback': typeof ApiPublicInlineFeedbackRoute
@@ -1096,6 +1103,7 @@ export interface FileRoutesByTo {
   '/api/admin/send-report-link': typeof ApiAdminSendReportLinkRoute
   '/api/admin/simple-login': typeof ApiAdminSimpleLoginRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
+  '/api/analyze/refresh': typeof ApiAnalyzeRefreshRoute
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
   '/api/public/inline-feedback': typeof ApiPublicInlineFeedbackRoute
@@ -1236,6 +1244,7 @@ export interface FileRoutesById {
   '/api/admin/send-report-link': typeof ApiAdminSendReportLinkRoute
   '/api/admin/simple-login': typeof ApiAdminSimpleLoginRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
+  '/api/analyze/refresh': typeof ApiAnalyzeRefreshRoute
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
   '/api/public/inline-feedback': typeof ApiPublicInlineFeedbackRoute
@@ -1377,6 +1386,7 @@ export interface FileRouteTypes {
     | '/api/admin/send-report-link'
     | '/api/admin/simple-login'
     | '/api/admin/whoami'
+    | '/api/analyze/refresh'
     | '/api/public/enrich-comments'
     | '/api/public/enrich-snapshot'
     | '/api/public/inline-feedback'
@@ -1514,6 +1524,7 @@ export interface FileRouteTypes {
     | '/api/admin/send-report-link'
     | '/api/admin/simple-login'
     | '/api/admin/whoami'
+    | '/api/analyze/refresh'
     | '/api/public/enrich-comments'
     | '/api/public/enrich-snapshot'
     | '/api/public/inline-feedback'
@@ -1653,6 +1664,7 @@ export interface FileRouteTypes {
     | '/api/admin/send-report-link'
     | '/api/admin/simple-login'
     | '/api/admin/whoami'
+    | '/api/analyze/refresh'
     | '/api/public/enrich-comments'
     | '/api/public/enrich-snapshot'
     | '/api/public/inline-feedback'
@@ -1772,6 +1784,7 @@ export interface RootRouteChildren {
   ApiAdminSendReportLinkRoute: typeof ApiAdminSendReportLinkRoute
   ApiAdminSimpleLoginRoute: typeof ApiAdminSimpleLoginRoute
   ApiAdminWhoamiRoute: typeof ApiAdminWhoamiRoute
+  ApiAnalyzeRefreshRoute: typeof ApiAnalyzeRefreshRoute
   ApiPublicEnrichCommentsRoute: typeof ApiPublicEnrichCommentsRoute
   ApiPublicEnrichSnapshotRoute: typeof ApiPublicEnrichSnapshotRoute
   ApiPublicInlineFeedbackRoute: typeof ApiPublicInlineFeedbackRoute
@@ -2218,6 +2231,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/enrich-comments'
       fullPath: '/api/public/enrich-comments'
       preLoaderRoute: typeof ApiPublicEnrichCommentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/analyze/refresh': {
+      id: '/api/analyze/refresh'
+      path: '/api/analyze/refresh'
+      fullPath: '/api/analyze/refresh'
+      preLoaderRoute: typeof ApiAnalyzeRefreshRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/whoami': {
@@ -3063,6 +3083,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminSendReportLinkRoute: ApiAdminSendReportLinkRoute,
   ApiAdminSimpleLoginRoute: ApiAdminSimpleLoginRoute,
   ApiAdminWhoamiRoute: ApiAdminWhoamiRoute,
+  ApiAnalyzeRefreshRoute: ApiAnalyzeRefreshRoute,
   ApiPublicEnrichCommentsRoute: ApiPublicEnrichCommentsRoute,
   ApiPublicEnrichSnapshotRoute: ApiPublicEnrichSnapshotRoute,
   ApiPublicInlineFeedbackRoute: ApiPublicInlineFeedbackRoute,

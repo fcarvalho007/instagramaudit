@@ -22,6 +22,8 @@ import {
 } from "@/lib/analysis/apify-client";
 import {
   buildCacheKey,
+  getFreshnessState,
+  getSnapshotAgeHours,
   isFresh,
   isWithinStaleWindow,
   lookupSnapshot,
@@ -62,6 +64,7 @@ import {
 } from "@/lib/security/public-rate-limit.server";
 import type {
   CompetitorAnalysis,
+  PublicAnalysisFreshness,
   PublicAnalysisErrorCode,
   PublicAnalysisProfile,
   PublicAnalysisResponse,
@@ -461,6 +464,16 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           const cachedPayload = existing.normalized_payload as unknown as {
             profile?: { display_name?: string; followers_count?: number };
           };
+          const cachedFreshness = getFreshnessState(existing);
+          console.info(
+            "[analyze-public-v1] cache_hit_recent",
+            JSON.stringify({
+              handle: primary,
+              age_hours: getSnapshotAgeHours(existing),
+              state: cachedFreshness,
+              refresh_available: cachedFreshness === "fresh_12_to_24h",
+            }),
+          );
           await logEvent({
             handle: primary,
             competitorHandles: competitors,
@@ -1133,12 +1146,17 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               analyzed_at: new Date().toISOString(),
             },
             benchmark_positioning: benchmarkPositioning,
+            freshness: deriveFreshnessJustNow(),
           };
           return jsonResponse(response, 200);
         } catch (err) {
           // 5) Stale-while-error: if provider failed but we have a recent
           // snapshot (≤ 7 days), serve it rather than breaking the page.
           if (existing && isWithinStaleWindow(existing)) {
+            console.info(
+              "[analyze-public-v1] refresh_fallback_to_cache",
+              JSON.stringify({ handle: primary, snapshot_id: existing.id }),
+            );
             console.warn(
               "[analyze-public-v1] serving stale snapshot after provider failure",
               cacheKey,
@@ -1278,5 +1296,47 @@ function buildCachedResponse(
       analyzed_at: snapshot.updated_at,
     },
     benchmark_positioning,
+    freshness: deriveFreshnessFromSnapshot(snapshot, source),
+  };
+}
+
+/**
+ * Deriva o bloco `freshness` para uma resposta servida da cache (ou
+ * stale-fallback). Fresh-just-scraped usa `deriveFreshnessJustNow`.
+ */
+function deriveFreshnessFromSnapshot(
+  snapshot: SnapshotRow,
+  source: "cache" | "stale",
+): PublicAnalysisFreshness {
+  const state = getFreshnessState(snapshot);
+  const isFallback = source === "stale";
+  // Stale = provider failed após snapshot já estar expired → state="expired".
+  // Reportamos como "fallback_stale" no payload para a UI mostrar aviso.
+  const reportedState: PublicAnalysisFreshness["state"] = isFallback
+    ? "fallback_stale"
+    : state === "expired"
+      ? "fresh_12_to_24h" // defensivo: cache servida nunca devia estar expirada
+      : state;
+  return {
+    state: reportedState,
+    snapshot_created_at: snapshot.created_at,
+    snapshot_age_hours: getSnapshotAgeHours(snapshot),
+    refresh_available: !isFallback && state === "fresh_12_to_24h",
+    // Sem tabela de créditos ainda — ver §6 do plano de cache 24h.
+    refresh_requires_credit: false,
+    is_fallback: isFallback,
+  };
+}
+
+/** Bloco de frescura para resposta acabada de scrape (estado "just now"). */
+function deriveFreshnessJustNow(): PublicAnalysisFreshness {
+  const nowIso = new Date().toISOString();
+  return {
+    state: "fresh_just_now",
+    snapshot_created_at: nowIso,
+    snapshot_age_hours: 0,
+    refresh_available: false,
+    refresh_requires_credit: false,
+    is_fallback: false,
   };
 }

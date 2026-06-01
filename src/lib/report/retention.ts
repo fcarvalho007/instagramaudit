@@ -47,9 +47,31 @@ export async function getReportRetentionDays(): Promise<number> {
 export const CACHE_TTL_DAYS = REPORT_RETENTION_DAYS;
 
 const MS_PER_DAY = 86_400_000;
+const MS_PER_HOUR = 3_600_000;
 
 export const REPORT_RETENTION_MS = REPORT_RETENTION_DAYS * MS_PER_DAY;
 export const CACHE_TTL_MS = CACHE_TTL_DAYS * MS_PER_DAY;
+
+/**
+ * Política de frescura (Junho 2026):
+ *
+ *  - Snapshots com idade `< CACHE_REUSE_MAX_HOURS` (24h) são servidos da
+ *    cache sem chamar o provider.
+ *  - Acima dessa janela, o endpoint público corre uma análise nova
+ *    automaticamente; falha → fallback ao snapshot existente com aviso.
+ *  - Entre `REFRESH_BUTTON_AFTER_HOURS` (12h) e `CACHE_REUSE_MAX_HOURS`
+ *    (24h) a UI mostra um CTA "Actualizar análise" para refresh manual.
+ *
+ * Estas constantes substituem o TTL de 15 dias **só para a decisão
+ * cache-vs-fresh**. `REPORT_RETENTION_MS` continua a controlar:
+ *   - acesso histórico ao relatório,
+ *   - janela de fallback `isWithinStaleWindow`.
+ */
+export const CACHE_REUSE_MAX_HOURS = 24;
+export const CACHE_REUSE_MAX_MS = CACHE_REUSE_MAX_HOURS * MS_PER_HOUR;
+
+export const REFRESH_BUTTON_AFTER_HOURS = 12;
+export const REFRESH_BUTTON_AFTER_MS = REFRESH_BUTTON_AFTER_HOURS * MS_PER_HOUR;
 
 function toDate(value: string | Date): Date {
   return value instanceof Date ? value : new Date(value);
