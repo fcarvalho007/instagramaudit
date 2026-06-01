@@ -501,7 +501,7 @@ function buildAnalysedPostFormats(
       date: isoDateOnly(p.taken_at_iso)!,
       type: normaliseFormat(p.format),
       ...(typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
-        ? { thumbnailUrl: `/api/public/ig-thumb?url=${encodeURIComponent(p.thumbnail_url)}` }
+        ? { thumbnailUrl: p.thumbnail_url }
         : {}),
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
@@ -723,19 +723,14 @@ function buildTopPosts(posts: SnapshotPost[]): ReportData["topPosts"] {
     (a, b) => num(b.engagement_pct, 0) - num(a.engagement_pct, 0),
   );
   return sorted.slice(0, 5).map((p, idx) => {
-    // Real Instagram CDN URL when present in the snapshot. The card layout
-    // (locked) keeps the gradient as a guaranteed fallback; the image, when
-    // wired in, sits above it and falls back via `onError` on failure.
-    // O Instagram CDN bloqueia pedidos cross-origin do browser, por isso
-    // encaminhamos via proxy server-side (`/api/public/ig-thumb`). O proxy
-    // faz o fetch com cabeçalhos credíveis e cache no edge.
-    const rawThumb =
+    // Thumbnail já persistido no nosso bucket público pelo
+    // `persist-thumbnails.server.ts` no momento do snapshot. Quando o
+    // download falhou (ex.: 403 do IG), o campo vem `null` e o card
+    // cai no fallback (gradiente + ícone de formato).
+    const thumbnailUrl =
       typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
         ? p.thumbnail_url
         : undefined;
-    const thumbnailUrl = rawThumb
-      ? `/api/public/ig-thumb?url=${encodeURIComponent(rawThumb)}`
-      : undefined;
     // Permalink real para tornar o card clicável. Quando o snapshot só
     // traz o shortcode, derivamos o URL canónico do Instagram.
     const permalinkRaw =
@@ -1423,7 +1418,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
         mentions,
         isPinned: p.is_pinned === true,
         ...(typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
-          ? { thumbnailUrl: `/api/public/ig-thumb?url=${encodeURIComponent(p.thumbnail_url)}` }
+          ? { thumbnailUrl: p.thumbnail_url }
           : {}),
       };
     });
@@ -1492,7 +1487,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
               : {}),
             mentions,
             ...(typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
-              ? { thumbnailUrl: `/api/public/ig-thumb?url=${encodeURIComponent(p.thumbnail_url)}` }
+              ? { thumbnailUrl: p.thumbnail_url }
               : {}),
           };
         })

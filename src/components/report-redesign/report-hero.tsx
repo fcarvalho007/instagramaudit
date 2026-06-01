@@ -133,7 +133,7 @@ function Avatar({ avatarUrl, fullName }: { avatarUrl: string | null; fullName: s
   if (avatarUrl) {
     return (
       <img
-        src={`/api/public/ig-thumb?url=${encodeURIComponent(avatarUrl)}`}
+        src={avatarUrl}
         alt={`Avatar de ${fullName}`}
         loading="eager"
         decoding="async"

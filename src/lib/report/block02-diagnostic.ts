@@ -618,13 +618,12 @@ export function classifyAudienceResponse(
     .slice(0, 3);
 
   const topCommentPosts = postsByComments.map(({ p, i }) => {
-    const rawThumb =
+    // Thumbnail já persistido no bucket público pelo
+    // `persist-thumbnails.server.ts` no momento do snapshot.
+    const thumbnailUrl =
       typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
         ? p.thumbnail_url
-        : undefined;
-    const thumbnailUrl = rawThumb
-      ? `/api/public/ig-thumb?url=${encodeURIComponent(rawThumb)}`
-      : null;
+        : null;
     const permalinkRaw =
       typeof p.permalink === "string" && p.permalink.trim().length > 0
         ? p.permalink.trim()

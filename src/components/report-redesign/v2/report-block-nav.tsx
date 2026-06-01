@@ -132,7 +132,7 @@ function ProfileAvatar({
   if (profile.avatarUrl) {
     return (
       <img
-        src={`/api/public/ig-thumb?url=${encodeURIComponent(profile.avatarUrl)}`}
+        src={profile.avatarUrl}
         alt={t("nav.avatar_alt", { handle })}
         loading="eager"
         decoding="async"

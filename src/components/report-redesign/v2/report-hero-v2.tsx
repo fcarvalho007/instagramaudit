@@ -288,7 +288,7 @@ function Avatar({
   const showImage = Boolean(avatarUrl) && !failed;
   const inner = showImage ? (
     <img
-      src={`/api/public/ig-thumb?url=${encodeURIComponent(avatarUrl as string)}`}
+      src={avatarUrl as string}
       alt={t("hero.avatar_alt", { name: fullName })}
       loading="eager"
       decoding="async"
