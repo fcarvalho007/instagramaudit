@@ -603,10 +603,35 @@ export function FrequencyCard({
       {/* Calendar grid */}
       {weeks.length > 0 && (
         <div className="px-4 sm:px-5 md:px-6 mt-4 sm:mt-6">
-          <span className="text-xs uppercase tracking-[0.04em] text-content-tertiary block mb-2">
-            {t("frequency.calendar.title")}
-          </span>
+          <button
+            type="button"
+            onClick={() => setCalendarOpen((v) => !v)}
+            aria-expanded={calendarOpen}
+            className="w-full flex items-center justify-between gap-3 text-left group"
+          >
+            <span className="flex flex-col gap-0.5 min-w-0">
+              <span className="text-eyebrow-sm text-content-tertiary">
+                {t("frequency.calendar.title")}
+              </span>
+              <span className="text-xs text-content-tertiary leading-snug">
+                {t("frequency.calendar.window_summary", {
+                  days: effectiveWindowDays,
+                  published: publishedCount,
+                })}
+              </span>
+            </span>
+            <span className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-content-secondary group-hover:text-content-primary transition-colors">
+              {calendarOpen
+                ? t("frequency.calendar.toggle_hide")
+                : t("frequency.calendar.toggle_show")}
+              <span aria-hidden="true" className="text-[10px]">
+                {calendarOpen ? "▴" : "▾"}
+              </span>
+            </span>
+          </button>
 
+          {calendarOpen && (
+          <div className="mt-3">
           {/* Weekday headers */}
           <div className="grid grid-cols-7 gap-1 md:gap-1.5 mb-1 md:mb-1.5">
             {weekdayShort.map((wd, i) => (
@@ -696,6 +721,8 @@ export function FrequencyCard({
               </span>
             )}
           </div>
+          </div>
+          )}
         </div>
       )}
 
