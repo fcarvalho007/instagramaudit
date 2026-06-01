@@ -23,11 +23,16 @@ import { useReportTracking } from "./report-tracking-context";
 import { trackEvent } from "@/lib/tracking.functions";
 
 type EnrichedPost = ReportEnriched["topPosts"][number];
+type ScatterPost = ReportEnriched["allPostsScatter"][number];
 type TR = TFunction<"report", undefined>;
 
 interface PostComparisonBlockProps {
   topPosts: EnrichedPost[];
   bottomPosts: EnrichedPost[];
+  /** Todas as publicações da janela, para o scatter de distribuição. */
+  allPostsForScatter?: ScatterPost[];
+  /** Janela de análise (ISO YYYY-MM-DD) — domínio do eixo X do scatter. */
+  windowRange?: { startIso: string; endIso: string };
   /** Raw AI insight text for the comparative diagnostic. */
   aiInsightText?: string | null;
   windowLabel?: string;
@@ -69,6 +74,8 @@ function FormatIcon({
 export function PostComparisonBlock({
   topPosts,
   bottomPosts,
+  allPostsForScatter,
+  windowRange,
   aiInsightText,
   windowLabel,
   scatterVariant = "sober",
@@ -88,13 +95,22 @@ export function PostComparisonBlock({
   );
   const multiplierLabel = multiplier > 1 ? `${multiplier}×` : "";
 
-  // All posts visible in the window (already sorted by engagement desc).
-  const allPosts = topPosts;
-  const total = allPosts.length;
+  // Universe for the scatter: prefer the full scatter dataset (all posts of
+  // the window); fall back to topPosts when caller has not wired it yet.
+  const scatterPosts: ScatterPost[] = allPostsForScatter && allPostsForScatter.length > 0
+    ? allPostsForScatter
+    : topPosts.map((p) => ({
+        id: p.id,
+        format: p.format,
+        engagementPct: p.engagementPct,
+        date: p.date,
+        takenAtIso: p.takenAtIso,
+      }));
+  const total = scatterPosts.length;
   const avgEng = useMemo(() => {
     if (total === 0) return 0;
-    return allPosts.reduce((s, p) => s + p.engagementPct, 0) / total;
-  }, [allPosts, total]);
+    return scatterPosts.reduce((s, p) => s + p.engagementPct, 0) / total;
+  }, [scatterPosts, total]);
 
   const bestDelta = avgEng > 0 ? ((bestEng - avgEng) / avgEng) * 100 : 0;
   const worstDelta = avgEng > 0 ? ((worstEng - avgEng) / avgEng) * 100 : 0;
@@ -149,7 +165,7 @@ export function PostComparisonBlock({
           {/* 2. Constellation Scatter */}
           {total >= 3 && (
             <ConstellationScatter
-              posts={allPosts}
+              posts={scatterPosts}
               best={best}
               worst={worst}
               avg={avgEng}
@@ -157,6 +173,7 @@ export function PostComparisonBlock({
               t={t}
               language={language}
               variant={scatterVariant}
+              windowRange={windowRange}
             />
           )}
 
@@ -287,8 +304,9 @@ function ConstellationScatter({
   t,
   language,
   variant,
+  windowRange,
 }: {
-  posts: EnrichedPost[];
+  posts: ScatterPost[];
   best: EnrichedPost;
   worst: EnrichedPost;
   avg: number;
@@ -296,6 +314,7 @@ function ConstellationScatter({
   t: TR;
   language: SupportedLanguage;
   variant: "sober" | "fog" | "glass";
+  windowRange?: { startIso: string; endIso: string };
 }) {
   // Layout (viewBox units — scales fluidly).
   const W = 600;
@@ -307,29 +326,38 @@ function ConstellationScatter({
   const innerW = W - PAD_L - PAD_R;
   const innerH = H - PAD_T - PAD_B;
 
-  // Parse dates → time scale. Posts may share dates; we add jitter on X
-  // for visual separation.
+  // Time domain: prefer explicit windowRange. Otherwise fall back to
+  // min/max of taken_at_iso across posts. Either way the X axis spans the
+  // full window so the user sees real density (gaps included).
+  const { minT, maxT } = useMemo(() => {
+    if (windowRange) {
+      const a = Date.parse(`${windowRange.startIso}T00:00:00Z`);
+      const b = Date.parse(`${windowRange.endIso}T23:59:59Z`);
+      if (Number.isFinite(a) && Number.isFinite(b) && b > a) return { minT: a, maxT: b };
+    }
+    const tsValues = posts
+      .map((p) => (p.takenAtIso ? Date.parse(p.takenAtIso) : NaN))
+      .filter((v) => Number.isFinite(v)) as number[];
+    if (tsValues.length === 0) return { minT: 0, maxT: 1 };
+    return { minT: Math.min(...tsValues), maxT: Math.max(...tsValues) };
+  }, [posts, windowRange]);
+
   const points = useMemo(() => {
-    const parsed = posts.map((p) => {
-      const ts = Date.parse(p.date);
-      return { post: p, ts: Number.isFinite(ts) ? ts : 0 };
-    });
-    const tsValues = parsed.map((p) => p.ts).filter((v) => v > 0);
-    const minT = tsValues.length ? Math.min(...tsValues) : 0;
-    const maxT = tsValues.length ? Math.max(...tsValues) : 1;
     const engValues = posts.map((p) => p.engagementPct);
     const minE = Math.min(...engValues, 0);
     const maxE = Math.max(...engValues, 0.001);
     const rangeE = maxE - minE || 1;
     const rangeT = maxT - minT || 1;
-    return parsed.map(({ post, ts }, i) => {
-      const fx = ts > 0 ? (ts - minT) / rangeT : i / Math.max(1, parsed.length - 1);
-      // jitter only when many points cluster on same day
-      const x = PAD_L + fx * innerW;
+    return posts.map((post, i) => {
+      const ts = post.takenAtIso ? Date.parse(post.takenAtIso) : NaN;
+      const fx = Number.isFinite(ts)
+        ? (ts - minT) / rangeT
+        : i / Math.max(1, posts.length - 1);
+      const x = PAD_L + Math.min(1, Math.max(0, fx)) * innerW;
       const y = PAD_T + (1 - (post.engagementPct - minE) / rangeE) * innerH;
       return { post, x, y };
     });
-  }, [posts, innerW, innerH]);
+  }, [posts, minT, maxT, innerW, innerH]);
 
   const avgY = useMemo(() => {
     const engValues = posts.map((p) => p.engagementPct);
@@ -342,18 +370,17 @@ function ConstellationScatter({
   const bestPoint = points.find((p) => p.post.id === best.id);
   const worstPoint = points.find((p) => p.post.id === worst.id);
 
-  // X axis ticks — first / middle / last date
-  const sortedByTs = useMemo(
-    () =>
-      [...posts]
-        .map((p) => ({ date: p.date, ts: Date.parse(p.date) }))
-        .filter((p) => Number.isFinite(p.ts) && p.ts > 0)
-        .sort((a, b) => a.ts - b.ts),
-    [posts],
-  );
-  const firstDate = sortedByTs[0]?.date ?? "";
-  const lastDate = sortedByTs[sortedByTs.length - 1]?.date ?? "";
-  const midDate = sortedByTs[Math.floor(sortedByTs.length / 2)]?.date ?? "";
+  // X axis tick labels: start / midpoint / end of the visible window.
+  const fmtTick = (ts: number): string => {
+    if (!Number.isFinite(ts)) return "";
+    const d = new Date(ts);
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    const months = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+    return `${day} ${months[d.getUTCMonth()]}`;
+  };
+  const firstDate = fmtTick(minT);
+  const lastDate = fmtTick(maxT);
+  const midDate = fmtTick(minT + (maxT - minT) / 2);
 
   const avgFmt = formatNumber(avg, language, { maximumFractionDigits: 2 });
   const bestFmt = formatNumber(best.engagementPct, language, { maximumFractionDigits: 2 });
@@ -673,7 +700,19 @@ function DetailedPostCard({
             gradientCls,
           )}
         >
-          {showImg ? (
+          {/* Base fallback — always rendered behind the image so a slow
+              network or a transparent thumbnail still shows the icon. */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <FormatIcon
+              format={post.format}
+              className={cn("size-9", arrowCls)}
+            />
+          </div>
+          {/* Real thumbnail — sits on top when available. The Instagram CDN
+              proxy (/api/public/ig-thumb) can return 404 if the URL
+              expired; in that case we hide the <img> and the fallback
+              above shows through. */}
+          {showImg && (
             <img
               src={thumbUrl}
               alt=""
@@ -681,13 +720,6 @@ function DetailedPostCard({
               onError={() => setImgError(true)}
               className="absolute inset-0 size-full object-cover"
             />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <FormatIcon
-                format={post.format}
-                className={cn("size-9", arrowCls)}
-              />
-            </div>
           )}
           <span className="absolute top-1 left-1 z-10 text-[7px] font-bold uppercase tracking-[0.04em] px-1.5 py-[2px] rounded bg-white/85 backdrop-blur-sm text-content-primary leading-none shadow-sm">
             {formatChipLabel(post.format, t)}
