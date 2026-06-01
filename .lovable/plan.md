@@ -1,59 +1,81 @@
-## Objetivo
+## Diagnóstico
 
-Refinar o card **Frequência de publicação**: calendário sempre visível com células retangulares (mais compacto), e corrigir a linguagem do bloco "Ritmo por dia da semana" para tom de analista terceiro (sem "tu", sem "Concentras-te").
+Testei o proxy `/api/public/ig-thumb` em produção com um URL real do snapshot mais recente do `@frederico.m.carvalho`:
 
-## Ficheiros a tocar
+```
+proxy:  status=404  body="upstream error"
+direct: status=403  (Instagram CDN bloqueia o fetch do worker)
+```
 
-- `src/components/report-redesign/v2/overview/frequency-card.tsx`
-- `src/i18n/locales/pt/report.json`
-- `src/i18n/locales/en/report.json`
+Causa raiz: o Instagram CDN (`*.cdninstagram.com`) **recusa qualquer pedido server-to-server** que não venha de um browser com cookies/sessão, mesmo com User-Agent e Referer credíveis. Devolve 403 para o nosso worker Cloudflare. Por isso o proxy nunca consegue servir a imagem, e o componente `BestWorstCard` cai sempre no fallback do ícone de formato.
 
-## 1 · Calendário sempre visível + células retangulares
+Notas adicionais:
+- O URL nem sequer está expirado (`oe=` aponta para o futuro). É bloqueio anti-bot por IP/região, não TTL.
+- O domínio `instagramaudit.lovable.app` ainda redireciona para `auditprofiles.com` (302) — irrelevante para o bug, mas pode confundir testes manuais.
+- O ícone de formato (gradient + Reels/Image/Carousel) aparece exatamente porque o `<img>` faz `onError` → `setImgError(true)`.
 
-`src/components/report-redesign/v2/overview/frequency-card.tsx`:
+Conclusão: **a abordagem de proxy não é viável**. O Instagram nunca vai deixar o nosso servidor passar. Tem de ser feito ao contrário — descarregar a imagem **uma única vez, no momento da análise**, e guardar permanentemente.
 
-- **Remover o toggle**: apagar o estado `const [calendarOpen, setCalendarOpen] = useState(false)`, o `<button>` com `Esconder/Mostrar` (linhas ~648–675) e o wrapper `{calendarOpen && (...)}`. O cabeçalho do calendário (eyebrow `CALENDÁRIO · 30 DIAS` + sub-linha `X dias com publicação`) passa a ser um simples `<div>` não-interativo.
-- **Células retangulares**:
-  - Cells dos dias: trocar `aspect-square` por `aspect-[5/3]` (~h ≈ 60% da largura), mantendo `rounded-md` e os mesmos `gap-1 md:gap-1.5`. Padding cells idem.
-  - Mantém os 7 dias por linha (grid alignment semanal preservado — os "buracos" no início/fim ficam como padding vazio, como já está, porque sem esses padding o calendário deixa de ler como calendário). Resultado: a grelha encolhe verticalmente ~40% sem sacrificar a leitura semanal.
-- **Manter** legenda (sem post / 1 post / 2 posts) e cabeçalhos dos dias da semana.
-- **Limpar i18n não utilizado**: as chaves `frequency.calendar.toggle_show` e `frequency.calendar.toggle_hide` deixam de ser referenciadas — removo-as do PT e EN.
+## Estratégia recomendada
 
-## 2 · Linguagem agnóstica (analista, não 2ª pessoa)
+Persistir os thumbnails em **Supabase Storage** (bucket público `post-thumbnails`) no momento em que o snapshot é construído, e gravar no `normalized_payload.posts[*].thumbnail_url` o URL público estável do bucket. O proxy `/api/public/ig-thumb` deixa de ser usado e é removido.
 
-Princípio: somos uma ferramenta de diagnóstico externa. Não tratamos por "tu", não assumimos que o leitor é o gestor do perfil. Reportamos o que os dados mostram.
+Vantagens:
+- O fetch do CDN é feito imediatamente após o Apify devolver os dados — janela em que o URL ainda é "fresco" e, mais importante, podemos usar o **`User-Agent` + `Referer` adequados a partir do worker** dentro de um job server-side (ainda assim alguns 403s podem ocorrer; ver fallback abaixo).
+- URLs do bucket nunca expiram e custam ~zero a servir.
+- Remove latência por imagem em cada visualização do relatório.
+- Remove um endpoint público (`/api/public/ig-thumb`) com risco de abuso.
 
-`weekly_rhythm.interpretation_*` — reescrita em PT e EN:
+Se mesmo no worker o IG continuar a bloquear, alternativa: usar a **Apify Key-Value Store** (`OUTPUT.images`) — alguns actors do Instagram já guardam os ficheiros internamente. Tem de ser verificado no actor atualmente em uso.
 
-PT (atual → novo):
-- `interpretation_with_quiet_one`:
-  `"Concentras-te à <b>{{peak}}</b>. <b>{{quiet}}</b> é o vazio — esteve {{count}} dia sem publicação."`
-  → `"Publicação concentrada à <b>{{peak}}</b>. <b>{{quiet}}</b> é o ponto mais fraco — {{count}} dia sem publicação."`
-- `interpretation_with_quiet_other`:
-  `"Concentras-te à <b>{{peak}}</b>. <b>{{quiet}}</b> é o vazio — esteve {{count}} dias sem publicação."`
-  → `"Publicação concentrada à <b>{{peak}}</b>. <b>{{quiet}}</b> é o ponto mais fraco — {{count}} dias sem publicação."`
-- `interpretation_peak_only`:
-  `"Concentras-te à <b>{{peak}}</b>. Os restantes dias estão equilibrados."`
-  → `"Publicação concentrada à <b>{{peak}}</b>. Restantes dias da semana equilibrados."`
-- `interpretation_uniform`: já está em tom impessoal, mantém.
+## Plano de implementação (uma feature por prompt)
 
-EN (atual → novo):
-- `interpretation_with_quiet_one`:
-  `"You concentrate on <b>{{peak}}</b>. <b>{{quiet}}</b> is the void — {{count}} day without posts."`
-  → `"Posting concentrated on <b>{{peak}}</b>. <b>{{quiet}}</b> is the weak point — {{count}} day without posts."`
-- `interpretation_with_quiet_other`:
-  → `"Posting concentrated on <b>{{peak}}</b>. <b>{{quiet}}</b> is the weak point — {{count}} days without posts."`
-- `interpretation_peak_only`:
-  → `"Posting concentrated on <b>{{peak}}</b>. Remaining weekdays are balanced."`
-- `interpretation_uniform`: mantém.
+Esta é uma feature isolada. Sugiro **dois prompts encadeados**:
 
-## Fora de scope (sinalizar, não corrigir agora)
+### Prompt 1 — Persistência on-the-fly + remoção do proxy
 
-Vi outras strings com 2ª pessoa pelo relatório (`Esta leitura foi útil?`, `Obrigado pelo teu sinal.`, `O teu clique ajuda…`, `Guarda a tua visão geral…`, `Continuar a explorar`). **Não toco neles neste prompt** — o pedido foca-se no card de frequência. Posso abrir um prompt seguinte com uma varredura completa pt-PT/EN para tom de analista agnóstico, se aprovares.
+☐ Criar migração:
+   - Bucket `post-thumbnails` (public, MIME `image/*`, file_size_limit ~2 MB).
+   - Política `select` pública.
+   - Política `insert` apenas `service_role`.
+
+☐ Novo módulo `src/lib/report-snapshots/persist-thumbnails.server.ts`:
+   - Recebe array `{ shortcode, thumbnail_url }` (raw CDN).
+   - Para cada um: `fetch` com UA Chrome + Referer; se 2xx + `image/*`, faz upload via `supabaseAdmin.storage.from('post-thumbnails').upload(\`${snapshotId}/${shortcode}.jpg\`, blob, { upsert: true, contentType })`; devolve o `publicUrl`.
+   - Se falhar (403, timeout, content-type errado), devolve `null` — fallback do ícone continua a funcionar.
+   - Concorrência limitada (≤4 em paralelo) para não rebentar com o worker.
+   - Log estruturado por shortcode (`success` / `failed_status` / `failed_network`).
+
+☐ Em `build-report-snapshot-payload.server.ts`:
+   - Antes de gravar `normalized_payload`, chama `persistThumbnails` para `posts[]` do próprio perfil + competidores.
+   - Substitui `thumbnail_url` (CDN) pelo URL do bucket; se `null`, deixa `null`.
+
+☐ Em `snapshot-to-report-data.ts` e `block02-diagnostic.ts`:
+   - Remover todos os 4 sítios que constroem `/api/public/ig-thumb?url=…`.
+   - Passar `thumbnail_url` diretamente (já é URL absoluto do bucket).
+
+☐ Apagar `src/routes/api/public/ig-thumb.ts` + entrada no `routeTree.gen.ts` (regenerado pelo plugin).
+
+☐ Verificação: `bunx tsc --noEmit` + um analyze fresco do `@frederico.m.carvalho` + abrir Network no browser e confirmar que os pedidos a `.../storage/v1/object/public/post-thumbnails/...` devolvem 200 com `image/jpeg`.
+
+### Prompt 2 (opcional) — Backfill de snapshots antigos
+
+Só se for útil. Job admin pontual que percorre `analysis_snapshots` recentes onde `thumbnail_url` ainda aponta para `cdninstagram.com` e tenta migrar para o bucket. Snapshots cujos URLs já expiraram ficam sem thumbnail (fallback).
+
+## Detalhes técnicos
+
+- **Bucket público vs assinado**: público é mais simples e o conteúdo não é sensível (já era exibido publicamente no Instagram). Cache do CDN do Supabase trata da entrega.
+- **Tamanho**: thumbnails IG `t51.71878-15` rondam 50–200 KB. 12 posts × 5 concorrentes × ~150 KB ≈ 9 MB por análise. Aceitável.
+- **Custo storage**: desprezável face ao custo de Apify/OpenAI.
+- **Locked files**: nenhum dos ficheiros tocados está em `LOCKED_FILES.md` (vou confirmar antes de editar).
+- **Sem alterações ao mockup `/report.example`** nem ao layout dos cards (continua tudo igual; só a fonte da imagem muda).
+- **Sem alterações de copy, OpenAI ou Apify limits**.
+
+## Risco
+
+P1 — se o Cloudflare worker também apanhar 403 do IG CDN em larga escala, o sintoma é o mesmo de hoje (ícone de fallback). Nesse caso o próximo passo é investigar se o actor Apify atual expõe `OUTPUT.images` na key-value store e usar isso como fonte. Vou medir a taxa de sucesso no Prompt 1 antes de decidir.
 
 ## Checkpoint
 
-- ☐ Aprovas remover por completo o toggle "Esconder" (calendário sempre visível)?
-- ☐ Aprovas células `aspect-[5/3]` (retangulares horizontais), mantendo a grelha de 7 colunas por semana?
-- ☐ Aprovas a reescrita "Publicação concentrada à <Sexta>. <Quarta> é o ponto mais fraco — 4 dias sem publicação."?
-- ☐ Passar a Build Mode?
+☐ Aprovas avançar com o Prompt 1 (persistência + remoção do proxy)?
+☐ Queres que o backfill (Prompt 2) seja já planeado ou só depois de validar o sucesso live?
