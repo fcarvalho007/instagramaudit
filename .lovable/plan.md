@@ -1,29 +1,41 @@
-### Scope
-Add two visible columns to the `/admin/apify-lab` results table and CSV export: `resultsLimit` and `onlyPostsNewerThan`.
+### Objetivo
+Expor leitura read-only dos caps Apify e estado do allowlist no endpoint `/api/admin/diagnostics`, para confirmar:
+- `APIFY_ENABLED=true`
+- `APIFY_HARD_CAP_USD >= 5`
+- `APIFY_DAILY_CAP_USD >= 5`
+- `frederico.m.carvalho`, `martimsilvai`, `mariiana.ai` presentes no allowlist
 
-### Context
-The endpoint already stores these values inside `input_params` (returned via `.select("*")`). No backend or endpoint changes are needed.
+Sem alterar lógica de runtime, sem expor `APIFY_TOKEN`.
 
-### Changes
-**File: `src/routes/admin.apify-lab.tsx`**
+### Alterações
 
-1. Update `LabRun` interface to include `input_params?: Record<string, unknown> | null`.
+**`src/routes/api/admin/diagnostics.ts`** — estender o objecto `apifyRuntimeCheck`:
 
-2. Add helper to safely extract `resultsLimit` and `onlyPostsNewerThan` from `input_params`.
+1. Importar `getDailyCapUsd` e `getHardCapUsd` de `@/lib/security/apify-budget.server` (já existem; defaults 5 e 10).
+2. Acrescentar 3 handles esperados ao check:
+   ```ts
+   const EXPECTED_HANDLES = ["frederico.m.carvalho", "martimsilvai", "mariiana.ai"] as const;
+   const missingHandles = EXPECTED_HANDLES.filter(h => !allowlist.includes(h));
+   ```
+3. Acrescentar ao `apifyRuntimeCheck`:
+   ```ts
+   daily_cap_usd: getDailyCapUsd(),
+   hard_cap_usd: getHardCapUsd(),
+   daily_cap_meets_min_5: getDailyCapUsd() >= 5,
+   hard_cap_meets_min_5: getHardCapUsd() >= 5,
+   expected_handles: EXPECTED_HANDLES,
+   expected_handles_present: missingHandles.length === 0,
+   expected_handles_missing: missingHandles,
+   ```
+4. Não alterar `blocking_reason` nem `ready_for_smoke_test` (compatibilidade).
 
-3. Table headers: insert two `<th>` after "Janela" column:
-   - `resultsLimit`
-   - `onlyPostsNewerThan`
+### Verificação
 
-4. Table rows: render extracted values in matching `<td>` cells.
+Após o deploy, invocar `GET /api/admin/diagnostics` (com sessão admin) e ler `apify_runtime_check`. Vou correr a chamada e reportar os 4 pontos pedidos.
 
-5. CSV export: append `resultsLimit` and `onlyPostsNewerThan` to the `header` array and to each row's data array.
+### Não-objectivos
 
-6. Update `colSpan={14}` to `colSpan={16}` for the empty-state row.
-
-### Constraints respected
-- No endpoint logic changes.
-- No cap changes.
-- No Apify calls.
-- No production analysis impact.
-- Only frontend table readability and CSV export improved.
+- Não alterar caps.
+- Não alterar allowlist.
+- Não expor `APIFY_TOKEN` nem outros segredos.
+- Não tocar em produção (`/analyze/$username`, snapshots, leads).
