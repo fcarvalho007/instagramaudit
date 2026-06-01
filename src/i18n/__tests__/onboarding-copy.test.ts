@@ -28,8 +28,8 @@ type Gate = {
 };
 
 const LOCALES: Array<[string, Errors, Gate]> = [
-  ["en", enErrors as Errors, enGate as unknown as Gate],
-  ["pt", ptErrors as Errors, ptGate as unknown as Gate],
+  ["en", enErrors as unknown as Errors, enGate as unknown as Gate],
+  ["pt", ptErrors as unknown as Errors, ptGate as unknown as Gate],
 ];
 
 const RAW_LEAK =

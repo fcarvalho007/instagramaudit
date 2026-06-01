@@ -17,15 +17,14 @@ function mockFetch(response: unknown, init: { ok?: boolean; status?: number } = 
     status,
     json: async () => response,
   });
-  // @ts-expect-error — assigning to global for the test
-  globalThis.fetch = fn;
+  (globalThis as unknown as { fetch: typeof fetch }).fetch =
+    fn as unknown as typeof fetch;
   return fn;
 }
 
 afterEach(() => {
   vi.restoreAllMocks();
-  // @ts-expect-error — cleanup
-  delete globalThis.fetch;
+  delete (globalThis as unknown as { fetch?: typeof fetch }).fetch;
 });
 
 describe("fetchPublicAnalysis — onboarding gate passthrough", () => {
@@ -64,8 +63,9 @@ describe("fetchPublicAnalysis — onboarding gate passthrough", () => {
   });
 
   it("maps thrown network failures to NETWORK_ERROR (never raw)", async () => {
-    // @ts-expect-error — test override
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error("offline"));
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = vi
+      .fn()
+      .mockRejectedValue(new Error("offline")) as unknown as typeof fetch;
     const res = await fetchPublicAnalysis("frederico.m.carvalho");
     expect(res.success).toBe(false);
     if (!res.success) {
