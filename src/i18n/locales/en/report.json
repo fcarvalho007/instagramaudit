@@ -46,8 +46,8 @@
     "low_confidence": "Based on only {{count}} posts — limited confidence.",
     "low_confidence_one": "Based on only {{count}} post — limited confidence.",
     "columns": {
-      "strengths": "What's already working",
-      "limits": "What's limiting growth"
+      "strengths": "What works",
+      "limits": "What limits"
     },
     "bands": {
       "solid": "Solid",
