@@ -640,8 +640,8 @@ export function FrequencyCard({
         />
       )}
 
-      {/* Resumo da semana — hidden when cadence is insufficient */}
-      {!isInsufficient && <WeeklySummary days={windowedDays} t={t} />}
+      {/* Ritmo por dia da semana — hidden when cadence is insufficient */}
+      {!isInsufficient && <WeeklyRhythm days={windowedDays} t={t} />}
 
       {/* Calendar grid */}
       {weeks.length > 0 && (
