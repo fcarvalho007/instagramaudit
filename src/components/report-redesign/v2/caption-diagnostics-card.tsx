@@ -27,6 +27,7 @@ import type {
 import { INSTAGRAM_CAPTION_CONTEXT } from "@/lib/knowledge/instagram-caption-context";
 import type { CaptionSemanticAnalysis } from "@/lib/report/caption-semantic-types";
 import type { EnrichedPost } from "@/lib/analysis/normalize";
+import { pickThumbnailUrl } from "@/lib/report/pick-thumbnail";
 
 /** Accept both EnrichedPost and the looser SnapshotPost shape. */
 type PostLike = {
