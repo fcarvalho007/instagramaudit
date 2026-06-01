@@ -1,76 +1,58 @@
-# Plan — Apify Lab: posts mode + temporal windows
+# Plano — Validação mínima do `posts` mode
 
-Scope estrito: só `/admin/apify-lab` (server route + página). Produção (`analyze-public-v1`, free report, OpenAI, thumbnails, preços) não é tocada.
+Não consigo executar o Lab por ti: `/api/admin/apify-lab` exige sessão de admin (cookie HTTP-only emitido pelo teu login). A chamada tem de partir do teu browser. O que faço aqui é dar-te o guião mínimo e analisar os resultados quando os colares.
 
-## 1. Causa raiz (recap)
-`buildActorInput` força `resultsType: "details"` em todas as janelas. Nesse modo o `apify/instagram-scraper` devolve 1 item de perfil com `latestPosts` limitado (~12) e ignora `resultsLimit` + `onlyPostsNewerThan`. Por isso baseline/30d/60d/90d/365d devolveram sempre 12 posts e o mesmo intervalo.
+## 1. Pré-flight (30 segundos)
 
-## 2. Dois modos no Lab
+Confirma no admin (`/admin` → Apify) ou via secrets:
+- `APIFY_ENABLED = true`
+- `APIFY_ALLOWLIST` contém `frederico.m.carvalho`
+- `APIFY_DAILY_CAP_USD` e `APIFY_HARD_CAP_USD` com folga (>= 2 USD livres hoje)
 
-| window_kind | mode | resultsType | resultsLimit | onlyPostsNewerThan | maxItems guardrail |
-|---|---|---|---|---|---|
-| baseline | details | details | 12 | — | 1 |
-| 30d | posts | posts | 100 | 30 days | 100 |
-| 60d | posts | posts | 200 | 60 days | 200 |
-| 90d | posts | posts | 300 | 90 days | 300 |
-| 365d | posts | posts | 1000 | 365 days | 1000 |
+Se algum falhar, a run é persistida com `status = blocked` e nada é cobrado — também serve como sinal, mas não valida posts mode.
 
-- Baseline mantém-se em details e é rotulada `purpose = current_free_report_baseline`.
-- Em posts mode, o actor devolve uma lista plana de posts (sem objecto de perfil); `profile_metadata_present = false`.
-- `maxItems` no guardrail acompanha `resultsLimit` para não bloquear artificialmente a janela. `maxTotalChargeUsd` mantém-se conservador por janela.
+## 2. Sequência das 3 runs
 
-## 3. Migração mínima
+Em `/admin/apify-lab`, secção **Teste individual**, correr **uma de cada vez**, esperar concluir antes da seguinte (a página faz auto-refresh do histórico):
 
-Nova migração: adicionar colunas nullable a `public.apify_lab_runs`:
+| # | handle | segment | window |
+|---|---|---|---|
+| 1 | frederico.m.carvalho | medium | baseline |
+| 2 | frederico.m.carvalho | medium | 30d |
+| 3 | frederico.m.carvalho | medium | 90d |
 
-- `mode text` ('details' | 'posts')
-- `purpose text` (ex.: 'current_free_report_baseline' | 'window_test')
-- `results_type text`
-- `results_limit integer`
-- `only_posts_newer_than text`
-- `raw_items_returned integer`
-- `posts_extracted integer`
-- `profile_metadata_present boolean`
+Total esperado: 3 chamadas reais ao Apify. Sem OpenAI, sem DataForSEO, sem snapshot, sem lead, sem email — o route só toca `apify_lab_runs` (já confirmado no código).
 
-Sem alterar grants/RLS existentes (tabela é admin-only via service role). Tipos Supabase regeneram automaticamente.
+Cap por run já configurado: baseline 0.10 USD, 30d 0.10 USD, 90d 0.30 USD → tecto teórico ≈ 0.50 USD para as três.
 
-## 4. Server route (`src/routes/api/admin/apify-lab.ts`)
+## 3. O que me colares
 
-- Estender `WindowConfig` com `mode: 'details' | 'posts'` e `purpose`.
-- `buildActorInput`: aplicar `resultsType` conforme `cfg.mode`. Em posts mode, omitir `latestPosts` cap e enviar `resultsLimit` + `onlyPostsNewerThan`.
-- Extracção:
-  - details → `extractLatestPosts(items[0])`, `profile_metadata_present = !!items[0]`.
-  - posts → `posts = items` (lista plana), `profile_metadata_present = false`, `followers = 0` para `enrichPosts`.
-  - Não coagir um modo para o outro; se `items` vazio em posts mode, `posts = []` e `normalize_ok = true` (lista vazia válida) — não inventar shape.
-- Persistir os novos campos (mode, purpose, results_type, results_limit, only_posts_newer_than, raw_items_returned = items.length, posts_extracted = posts.length, profile_metadata_present).
-- Falhas (timeout/upstream/network): persistir uma única linha com status + semantic_code + error_excerpt já sanitizado (já existe), garantindo `raw_items_returned = 0`, `posts_extracted = 0`.
+Depois de as três correrem (ou usa "Export CSV" e cola só as 3 linhas relevantes), preciso destas colunas:
 
-## 5. Página (`src/routes/admin.apify-lab.tsx`)
+```
+window | mode | resultsType | resultsLimit | onlyPostsNewerThan
+| raw_items_returned | posts_extracted | newest_post_at | oldest_post_at
+| observed_days | duration_ms | actual_cost_usd | estimated_cost_usd
+| status | error_excerpt
+```
 
-- Banner novo (acima dos existentes):
-  > "O relatório gratuito de produção usa `details` mode com os ~12 posts mais recentes. As janelas temporais (30/60/90/365d) usam `posts` mode e são experimentais."
-- Novas colunas na tabela: `Mode`, `resultsType`, `resultsLimit`, `onlyPostsNewerThan`, `Raw items`, `Posts extraídos`, `Perfil meta?`.
-- Aviso por handle: agrupar runs por `profile_handle` e, se todas as janelas (excluindo baseline) tiverem o mesmo `posts_returned`, `oldest_post_at` e `newest_post_at`, mostrar badge vermelho:
-  > "Aviso: parâmetros de janela podem não estar a ter efeito para @handle."
-- CSV hardening:
-  - Novo `csvEscape(v)`: converte `null/undefined` → `""`; números/booleans → string; strings → recorta a 500 chars, remove `\r\n\t`, e envolve em aspas se contiver `,`, `"` ou whitespace, escapando `"` → `""`.
-  - Header inclui as novas colunas (mode, purpose, results_type, results_limit, only_posts_newer_than, raw_items_returned, posts_extracted, profile_metadata_present, error_excerpt).
-  - Garantir exactamente 1 linha por run, sem multilinha HTML (sanitize já corre no servidor, mas reforçamos no cliente via `csvEscape`).
+Todas estas colunas estão no CSV novo. Se uma run falhar com 5xx, cola na mesma — o `error_excerpt` chega.
 
-## 6. Validação
+## 4. Como vou decidir (regras já acordadas)
 
-- `bunx tsc --noEmit`.
-- Smoke manual no Lab: 1 run baseline (details, espera ~12) + 1 run 30d (posts, esperar `raw_items_returned > 12` se o perfil tiver posts >30d) num handle do allowlist.
-- Sem alterações em: `analyze-public-v1`, `report.example`, `unlock-modal`, pricing, OpenAI, thumbnails, normalize de produção (`enrichPosts` continua a ser chamado tal como hoje, só para verificar `normalize_ok`).
+- **Posts mode partido:** se #2 e #3 devolverem ambos exactamente 12 e os mesmos `newest_post_at`/`oldest_post_at` → paro, investigo se `apify/instagram-scraper` aceita mesmo `resultsType: "posts"` (alguns forks usam `directUrls` apenas para details; pode ser preciso `username` + `resultsType: "posts"` ou outro actor). Não autorizo a matriz completa.
+- **Posts mode funciona:** se #2 e #3 tiverem `raw_items_returned` / `observed_days` claramente diferentes (ex.: 30d com ~20-40 posts e ~30 dias span, 90d com ~50-100 e ~90 dias span) → posts mode validado.
+- **Risco de custo:** se #3 tiver `actual_cost_usd` muito acima do estimado (> 0.20 USD) ou `duration_ms` > 120s, sinalizo antes de autorizar a matriz 3×5.
 
-## 7. Ficheiros tocados
+## 5. Output que te devolvo
 
-- `supabase/migrations/<timestamp>_apify_lab_modes.sql` (novo)
-- `src/routes/api/admin/apify-lab.ts` (modos, extracção, persistência)
-- `src/routes/admin.apify-lab.tsx` (banner, colunas, aviso por handle, CSV escaping)
+Quando colares:
+1. Tabela limpa das 3 runs com as colunas acima.
+2. Veredicto: **posts mode funciona / não funciona / inconclusivo**.
+3. Recomendação: **seguro correr matriz 3×5** / **ajustar parâmetros antes** / **trocar de actor**.
+4. Se aplicável, estimativa de custo total da matriz baseada no que #2 e #3 mostraram.
 
-## 8. Riscos / notas
+## Notas
 
-- Posts mode pode custar mais por run; `maxTotalChargeUsd` por janela mantém-se como travão (0.1 / 0.2 / 0.3 / 1.0 USD) e o cap diário continua activo.
-- Se o actor devolver shape inesperado em posts mode (ex.: objecto único), `raw_items_returned` reflecte-o e `posts_extracted = 0` — não há fallback silencioso.
-- Migração só adiciona colunas nullable; runs antigas continuam a abrir (campos novos = NULL, UI mostra "—").
+- Não vou alterar produção, OpenAI, DataForSEO, snapshots, leads, emails nem analyze-public-v1.
+- Não vou correr a matriz completa antes da tua confirmação após estes 3 testes.
