@@ -1,58 +1,65 @@
-# Plano — Validação mínima do `posts` mode
+# Phase 3 — Tests
 
-Não consigo executar o Lab por ti: `/api/admin/apify-lab` exige sessão de admin (cookie HTTP-only emitido pelo teu login). A chamada tem de partir do teu browser. O que faço aqui é dar-te o guião mínimo e analisar os resultados quando os colares.
+## Constraint surfaced first
 
-## 1. Pré-flight (30 segundos)
+`vitest.config.ts` runs in `environment: "node"` and only picks up `**/__tests__/**/*.test.ts` — there is **no jsdom or React Testing Library** wired up. Every existing test in the repo (`extractUsername`, `unlock-flow`, `pricing-feedback`, etc.) is pure logic / pure data.
 
-Confirma no admin (`/admin` → Apify) ou via secrets:
-- `APIFY_ENABLED = true`
-- `APIFY_ALLOWLIST` contém `frederico.m.carvalho`
-- `APIFY_DAILY_CAP_USD` e `APIFY_HARD_CAP_USD` com folga (>= 2 USD livres hoje)
+Per scope ("tests only, plus minimal fixes if a test exposes a real bug"), I will **not** add jsdom + RTL infra in this turn. Instead I will lock the Phase 3 contract at the two layers that actually carry the bug risk:
 
-Se algum falhar, a run é persistida com `status = blocked` e nada é cobrado — também serve como sinal, mas não valida posts mode.
+1. The **fetch client** that the analyze route branches on (`ONBOARDING_REQUIRED` / `INSUFFICIENT_CREDITS` must pass through verbatim).
+2. The **i18n copy** the user sees (no raw `402` / `ONBOARDING_REQUIRED` leak; modal intro keeps `@handle` + `1/2` credits expectation line).
 
-## 2. Sequência das 3 runs
+The HeroActionBar → OnboardingModal render-level assertions and the analyze-route render assertions cannot be expressed with the current infra. They will be listed as a remaining manual smoke checklist.
 
-Em `/admin/apify-lab`, secção **Teste individual**, correr **uma de cada vez**, esperar concluir antes da seguinte (a página faz auto-refresh do histórico):
+## Files to add
 
-| # | handle | segment | window |
-|---|---|---|---|
-| 1 | frederico.m.carvalho | medium | baseline |
-| 2 | frederico.m.carvalho | medium | 30d |
-| 3 | frederico.m.carvalho | medium | 90d |
+### 1. `src/lib/analysis/__tests__/fetch-public-analysis-onboarding.test.ts`
 
-Total esperado: 3 chamadas reais ao Apify. Sem OpenAI, sem DataForSEO, sem snapshot, sem lead, sem email — o route só toca `apify_lab_runs` (já confirmado no código).
+Mocks `globalThis.fetch` and asserts `fetchPublicAnalysis`:
 
-Cap por run já configurado: baseline 0.10 USD, 30d 0.10 USD, 90d 0.30 USD → tecto teórico ≈ 0.50 USD para as três.
+- preserves `error_code: "ONBOARDING_REQUIRED"` on 402 (so `analyze.$username.tsx` can reopen the modal)
+- preserves `error_code: "INSUFFICIENT_CREDITS"` on 402 (so the route renders friendly copy)
+- maps a thrown network failure to `error_code: "NETWORK_ERROR"` (never raw)
+- forwards a `{ success: true }` envelope unchanged
+- POSTs to `/api/analyze-public-v1` with handle cleaned (no `@`, trimmed) and competitors cleaned + capped at 2
 
-## 3. O que me colares
+### 2. `src/i18n/__tests__/onboarding-copy.test.ts`
 
-Depois de as três correrem (ou usa "Export CSV" e cola só as 3 linhas relevantes), preciso destas colunas:
+Imports `en/errors.json`, `pt/errors.json`, `en/gate.json`, `pt/gate.json` and asserts, per locale:
 
-```
-window | mode | resultsType | resultsLimit | onlyPostsNewerThan
-| raw_items_returned | posts_extracted | newest_post_at | oldest_post_at
-| observed_days | duration_ms | actual_cost_usd | estimated_cost_usd
-| status | error_excerpt
-```
+- `errors.ONBOARDING_REQUIRED` exists, is >10 chars, does **not** match `/\b(402|payment required|onboarding_required|insufficient_credits)\b/i`
+- `errors.INSUFFICIENT_CREDITS` exists, same anti-leak guard
+- `gate.onboarding.intro.handleContext` contains the `{{handle}}` placeholder
+- `gate.onboarding.intro.creditNote` contains both `1` and `2`
+- `gate.onboarding.intro.freeValue` is an array with ≥3 items
+- `gate.onboarding.intro.cta` exists and is a short label
+- `gate.onboarding.errors.generic` and `.network` exist and are leak-free
 
-Todas estas colunas estão no CSV novo. Se uma run falhar com 5xx, cola na mesma — o `error_excerpt` chega.
+## What this does NOT cover (manual smoke required)
 
-## 4. Como vou decidir (regras já acordadas)
+- HeroActionBar: submitting a valid handle opens `OnboardingModal` and does **not** navigate or call `/api/analyze-public-v1` before `/api/onboarding/start` succeeds.
+- HeroActionBar: invalid handle shows validation error and does **not** open the modal.
+- OnboardingModal: completing Step 5 calls `POST /api/onboarding/start` with the correct payload.
+- analyze.$username: `ONBOARDING_REQUIRED` actually reopens the modal in the live DOM.
+- UnlockModal post-report regression.
 
-- **Posts mode partido:** se #2 e #3 devolverem ambos exactamente 12 e os mesmos `newest_post_at`/`oldest_post_at` → paro, investigo se `apify/instagram-scraper` aceita mesmo `resultsType: "posts"` (alguns forks usam `directUrls` apenas para details; pode ser preciso `username` + `resultsType: "posts"` ou outro actor). Não autorizo a matriz completa.
-- **Posts mode funciona:** se #2 e #3 tiverem `raw_items_returned` / `observed_days` claramente diferentes (ex.: 30d com ~20-40 posts e ~30 dias span, 90d com ~50-100 e ~90 dias span) → posts mode validado.
-- **Risco de custo:** se #3 tiver `actual_cost_usd` muito acima do estimado (> 0.20 USD) ou `duration_ms` > 120s, sinalizo antes de autorizar a matriz 3×5.
+These need either (a) a follow-up turn that adds `jsdom` + `@testing-library/react` to `vitest.config.ts` and brings in real component tests, or (b) a manual preview pass against the checklist.
 
-## 5. Output que te devolvo
+## Validation
 
-Quando colares:
-1. Tabela limpa das 3 runs com as colunas acima.
-2. Veredicto: **posts mode funciona / não funciona / inconclusivo**.
-3. Recomendação: **seguro correr matriz 3×5** / **ajustar parâmetros antes** / **trocar de actor**.
-4. Se aplicável, estimativa de custo total da matriz baseada no que #2 e #3 mostraram.
+- `bunx tsc --noEmit`
+- `bunx vitest run` — expect all new tests green, no existing test impacted
 
-## Notas
+## Risk
 
-- Não vou alterar produção, OpenAI, DataForSEO, snapshots, leads, emails nem analyze-public-v1.
-- Não vou correr a matriz completa antes da tua confirmação após estes 3 testes.
+- Zero production code touched. Only two new test files under `__tests__/`.
+- If a leak guard fires (e.g. someone later inlines a raw code into the JSON), the test surface is the JSON copy, which is trivial to fix.
+
+## Checkpoint
+
+- ☐ Switch to build mode
+- ☐ Add `src/lib/analysis/__tests__/fetch-public-analysis-onboarding.test.ts`
+- ☐ Add `src/i18n/__tests__/onboarding-copy.test.ts`
+- ☐ Run `bunx tsc --noEmit`
+- ☐ Run `bunx vitest run` and report Phase 3 tests
+- ☐ Output manual smoke checklist for the render-level assertions not coverable today
