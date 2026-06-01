@@ -54,9 +54,9 @@ const MORE_SECTION_KEYS = [
   "compare",
 ] as const;
 
-type IconCmp = typeof User;
+export type IconCmp = typeof User;
 
-const PROFILE_OWNERSHIP_ICONS: Record<
+export const PROFILE_OWNERSHIP_ICONS: Record<
   ProfileOwnership,
   { Icon: IconCmp; bg: string; fg: string }
 > = {
@@ -123,7 +123,7 @@ export interface UnlockModalProps {
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6;
 
-function useStepHeader(step: 1 | 2 | 3 | 4 | 5) {
+export function useStepHeader(step: 1 | 2 | 3 | 4 | 5) {
   const { t } = useTranslation("gate");
   const eyebrow = t(`unlock.step${step}.eyebrow`);
   const subtitle = t(`unlock.step${step}.subtitle`);
@@ -512,7 +512,7 @@ function StepShellAndForm({
   );
 }
 
-function ProgressSegments({
+export function ProgressSegments({
   current,
   total,
 }: {
@@ -545,7 +545,7 @@ function ProgressSegments({
   );
 }
 
-function Step1FullName({
+export function Step1FullName({
   form,
 }: {
   form: ReturnType<typeof useForm<UnlockFormValues>>;
@@ -573,7 +573,7 @@ function Step1FullName({
   );
 }
 
-function Step5EmailPhone({
+export function Step5EmailPhone({
   form,
 }: {
   form: ReturnType<typeof useForm<UnlockFormValues>>;
@@ -717,13 +717,13 @@ function Step5EmailPhone({
   );
 }
 
-interface RadioOption {
+export interface RadioOption {
   value: string;
   label: string;
   icon?: { Icon: IconCmp; bg: string; fg: string };
 }
 
-function RadioCardField({
+export function RadioCardField({
   legend,
   name,
   options,
