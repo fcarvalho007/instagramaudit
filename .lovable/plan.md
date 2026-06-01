@@ -1,81 +1,162 @@
-## Diagnóstico
 
-Testei o proxy `/api/public/ig-thumb` em produção com um URL real do snapshot mais recente do `@frederico.m.carvalho`:
+# Block 1 — Amostra oficial e consistência matemática
 
+Objetivo: definir UMA amostra canónica para o Bloco 1 (Visão Geral) do relatório gratuito, alinhar todas as métricas a essa amostra, clarificar a copy e remover do índice global o sub-score de interação que hoje é praticamente constante (25).
+
+Sem mexer em: limites do Apify, pricing, pagamentos, e-mails, gates, prompts OpenAI, `/report.example`.
+
+---
+
+## 1. Amostra oficial do Bloco 1
+
+Novo módulo puro: `src/lib/report/block01-sample.ts`
+
+```ts
+export interface Block01Sample {
+  totalReturnedPosts: number;     // posts.length
+  analyzedPosts: SnapshotPost[];  // = não-fixados (fallback: todos)
+  performancePosts: SnapshotPost[]; // = analyzedPosts limpos de outliers de data
+  cadencePosts: SnapshotPost[];     // = idem performancePosts
+  formatPosts: SnapshotPost[];      // = analyzedPosts (opção A)
+  pinnedPostsExcluded: number;
+  dateOutliersExcluded: number;
+  observedPeriodDays: number;       // ceil((newest-oldest)/86400000)+1, mínimo 1
+  newestPostDateIso: string | null;
+  oldestPostDateIso: string | null;
+  sampleLabel: string;              // PT/EN curado por i18n no consumidor
+}
+export function buildBlock01Sample(posts: SnapshotPost[]): Block01Sample;
 ```
-proxy:  status=404  body="upstream error"
-direct: status=403  (Instagram CDN bloqueia o fetch do worker)
-```
 
-Causa raiz: o Instagram CDN (`*.cdninstagram.com`) **recusa qualquer pedido server-to-server** que não venha de um browser com cookies/sessão, mesmo com User-Agent e Referer credíveis. Devolve 403 para o nosso worker Cloudflare. Por isso o proxy nunca consegue servir a imagem, e o componente `BestWorstCard` cai sempre no fallback do ícone de formato.
+Regras:
+- Base: `posts` já vem capado por `PUBLIC_INSTAGRAM_POSTS_LIMIT = 12` (sem alterar).
+- Excluir `is_pinned === true` para `analyzedPosts`. Se tudo vier fixado, fallback = todos.
+- Aplicar `pruneDateOutliers` (já existe em `snapshot-to-report-data.ts`) para `performancePosts/cadencePosts`.
+- Formato (opção A, escolhida): distribuição calculada a partir de `analyzedPosts` (sem pinned). Mais consistente — likes/comments/engagement já vão excluir pinned.
+- `observedPeriodDays` calculado a partir de `performancePosts` reais; nunca usar "30 dias" como default.
 
-Notas adicionais:
-- O URL nem sequer está expirado (`oe=` aponta para o futuro). É bloqueio anti-bot por IP/região, não TTL.
-- O domínio `instagramaudit.lovable.app` ainda redireciona para `auditprofiles.com` (302) — irrelevante para o bug, mas pode confundir testes manuais.
-- O ícone de formato (gradient + Reels/Image/Carousel) aparece exatamente porque o `<img>` faz `onError` → `setImgError(true)`.
+## 2. Alinhamento de métricas em `snapshotToReportData`
 
-Conclusão: **a abordagem de proxy não é viável**. O Instagram nunca vai deixar o nosso servidor passar. Tem de ser feito ao contrário — descarregar a imagem **uma única vez, no momento da análise**, e guardar permanentemente.
+Ficheiro: `src/lib/report/snapshot-to-report-data.ts`
 
-## Estratégia recomendada
+- Chamar `buildBlock01Sample(posts)` uma única vez no topo de `snapshotToReportData`.
+- Passar `sample.performancePosts` em vez de `posts` para:
+  - `buildKeyMetrics` (médias de likes/comments/engagement re-calculadas a partir do sample, não de `content_summary` legacy).
+  - `buildTopPosts` (não-pinned, ordenados por engagement) — pinned continua disponível no payload, mas sai do "best vs worst" para não distorcer.
+  - `buildFormatBreakdown` (recalcular shares a partir de `sample.formatPosts`, ignorando `format_stats` legacy quando há posts suficientes).
+- `cadencePostsRaw`/`cadencePostsClean` passam a vir de `sample.cadencePosts` (remove duplicação atual).
+- Expor `sample` no `coverage`/`enriched`:
+  - `coverage.windowDays = sample.observedPeriodDays`
+  - novo: `enriched.block01Sample` (subset serializável).
 
-Persistir os thumbnails em **Supabase Storage** (bucket público `post-thumbnails`) no momento em que o snapshot é construído, e gravar no `normalized_payload.posts[*].thumbnail_url` o URL público estável do bucket. O proxy `/api/public/ig-thumb` deixa de ser usado e é removido.
+## 3. Médias canónicas
 
-Vantagens:
-- O fetch do CDN é feito imediatamente após o Apify devolver os dados — janela em que o URL ainda é "fresco" e, mais importante, podemos usar o **`User-Agent` + `Referer` adequados a partir do worker** dentro de um job server-side (ainda assim alguns 403s podem ocorrer; ver fallback abaixo).
-- URLs do bucket nunca expiram e custam ~zero a servir.
-- Remove latência por imagem em cada visualização do relatório.
-- Remove um endpoint público (`/api/public/ig-thumb`) com risco de abuso.
+Ficheiro: `src/lib/report/post-aggregates.ts`
 
-Se mesmo no worker o IG continuar a bloquear, alternativa: usar a **Apify Key-Value Store** (`OUTPUT.images`) — alguns actors do Instagram já guardam os ficheiros internamente. Tem de ser verificado no actor atualmente em uso.
+- `computePostAverages(posts, { excludePinned = true })` — passar a aceitar opção e usar pinned-excluded por defeito.
+- Chamadores: `report-overview-block.tsx`, qualquer card P05 que use a função. P05 continua a poder pedir `excludePinned: false` se quiser comparar.
 
-## Plano de implementação (uma feature por prompt)
+## 4. Copy clara e sem "30 dias" implícito
 
-Esta é uma feature isolada. Sugiro **dois prompts encadeados**:
+`src/i18n/locales/pt/report.json` e `src/i18n/locales/en/report.json`:
 
-### Prompt 1 — Persistência on-the-fly + remoção do proxy
+Novos strings (chave sugerida `overview.sample.*`):
+- PT:
+  - `caption`: "Análise baseada nas últimas {{count}} publicações disponíveis."
+  - `period`: "Período observado: {{days}} dias."
+  - `pinnedExcluded`: "{{count}} publicações fixadas foram excluídas dos cálculos de cadência e desempenho."
+- EN (espelhar).
 
-☐ Criar migração:
-   - Bucket `post-thumbnails` (public, MIME `image/*`, file_size_limit ~2 MB).
-   - Política `select` pública.
-   - Política `insert` apenas `service_role`.
+Auditar e substituir / remover qualquer frase com "30 dias" / "last 30 days" no Bloco 1 a menos que o card tenha `cadence.method === "window_30d"` (que é o único caso legítimo). Locais a varrer:
+- `editorial-identity-card.tsx` (tooltip "Como foi calculado", subtítulos)
+- `frequency-card.tsx`
+- `format-card.tsx`
+- `report-overview-engagement.tsx`
+- `cadence-label.ts`
+- chaves `overview.*` / `frequency.*` / `format.*` nos dois ficheiros i18n.
 
-☐ Novo módulo `src/lib/report-snapshots/persist-thumbnails.server.ts`:
-   - Recebe array `{ shortcode, thumbnail_url }` (raw CDN).
-   - Para cada um: `fetch` com UA Chrome + Referer; se 2xx + `image/*`, faz upload via `supabaseAdmin.storage.from('post-thumbnails').upload(\`${snapshotId}/${shortcode}.jpg\`, blob, { upsert: true, contentType })`; devolve o `publicUrl`.
-   - Se falhar (403, timeout, content-type errado), devolve `null` — fallback do ícone continua a funcionar.
-   - Concorrência limitada (≤4 em paralelo) para não rebentar com o worker.
-   - Log estruturado por shortcode (`success` / `failed_status` / `failed_network`).
+Render: pequena nota discreta no rodapé do `EditorialIdentityCard` (acima do MetricsStrip), 11–12px, `text-content-tertiary`.
 
-☐ Em `build-report-snapshot-payload.server.ts`:
-   - Antes de gravar `normalized_payload`, chama `persistThumbnails` para `posts[]` do próprio perfil + competidores.
-   - Substitui `thumbnail_url` (CDN) pelo URL do bucket; se `null`, deixa `null`.
+## 5. Resolver sub-score de interação (Opção A)
 
-☐ Em `snapshot-to-report-data.ts` e `block02-diagnostic.ts`:
-   - Remover todos os 4 sítios que constroem `/api/public/ig-thumb?url=…`.
-   - Passar `thumbnail_url` diretamente (já é URL absoluto do bucket).
+`src/components/report-redesign/v2/overview/score-utils.ts`:
+- Remover `computeInteraccao`, `interaccaoSubtitle`, `"interaccao"` de `ScoreKey`, e a entrada em `SCORE_DEFINITIONS`.
+- Novo `computeGlobalScore(envolvimento, frequencia)` com pesos:
+  - `envolvimento: 0.60`
+  - `frequencia: 0.40`
+- Tipo `ScoreKey = "envolvimento" | "frequencia"`.
 
-☐ Apagar `src/routes/api/public/ig-thumb.ts` + entrada no `routeTree.gen.ts` (regenerado pelo plugin).
+`src/components/report-redesign/v2/report-overview-block.tsx`:
+- Remover entrada `interaccao` em `scores`.
+- Passar 2 valores para `computeGlobalScore`.
 
-☐ Verificação: `bunx tsc --noEmit` + um analyze fresco do `@frederico.m.carvalho` + abrir Network no browser e confirmar que os pedidos a `.../storage/v1/object/public/post-thumbnails/...` devolvem 200 com `image/jpeg`.
+`src/components/report-redesign/v2/overview/editorial-identity-card.tsx`:
+- Atualizar `EditorialIdentityCardProps.scores` para o novo `ScoreKey`.
+- Remover qualquer leitura de `scores.interaccao`.
+- Atualizar a guard determinística de `deriveEditorialVerdict` se depender de `interaccao` (verificar `editorial-verdict.ts`).
 
-### Prompt 2 (opcional) — Backfill de snapshots antigos
+## 6. "Como foi calculado" — popover
 
-Só se for útil. Job admin pontual que percorre `analysis_snapshots` recentes onde `thumbnail_url` ainda aponta para `cdninstagram.com` e tenta migrar para o bucket. Snapshots cujos URLs já expiraram ficam sem thumbnail (fallback).
+`editorial-identity-card.tsx` (linha ~676) e chave i18n correspondente em `overview.global_score.tooltip`:
 
-## Detalhes técnicos
+- PT: "O índice combina envolvimento (60%) e cadência de publicação (40%), comparados com referências de perfis semelhantes."
+- EN: "The index combines engagement (60%) and posting rhythm (40%), compared with references from similar profiles."
 
-- **Bucket público vs assinado**: público é mais simples e o conteúdo não é sensível (já era exibido publicamente no Instagram). Cache do CDN do Supabase trata da entrega.
-- **Tamanho**: thumbnails IG `t51.71878-15` rondam 50–200 KB. 12 posts × 5 concorrentes × ~150 KB ≈ 9 MB por análise. Aceitável.
-- **Custo storage**: desprezável face ao custo de Apify/OpenAI.
-- **Locked files**: nenhum dos ficheiros tocados está em `LOCKED_FILES.md` (vou confirmar antes de editar).
-- **Sem alterações ao mockup `/report.example`** nem ao layout dos cards (continua tudo igual; só a fonte da imagem muda).
-- **Sem alterações de copy, OpenAI ou Apify limits**.
+Remover qualquer menção a "conversa" / "interação" / "comentários" no tooltip do índice global.
 
-## Risco
+## 7. Benchmark — consistência mínima
 
-P1 — se o Cloudflare worker também apanhar 403 do IG CDN em larga escala, o sintoma é o mesmo de hoje (ícone de fallback). Nesse caso o próximo passo é investigar se o actor Apify atual expõe `OUTPUT.images` na key-value store e usar isso como fonte. Vou medir a taxa de sucesso no Prompt 1 antes de decidir.
+Não rebuild. Apenas:
+- Garantir que `EngagementCardRefined` e o `computeEnvolvimento` no `report-overview-block` lêem `k.engagementBenchmark` (mesma origem `benchmark-input.server.ts → positioning.benchmarkValue`).
+- Auditar `format-card.tsx` para não mostrar um benchmark de formato com origem diferente sem label. Se houver dois (per-format vs global), prefixar com "Ref. formato" / "Ref. escalão" no caption.
 
-## Checkpoint
+## 8. Testes
 
-☐ Aprovas avançar com o Prompt 1 (persistência + remoção do proxy)?
-☐ Queres que o backfill (Prompt 2) seja já planeado ou só depois de validar o sucesso live?
+Novos / atualizados (Vitest):
+
+- `src/lib/report/__tests__/block01-sample.test.ts` (novo)
+  - exclui pinned de `performancePosts`/`cadencePosts`;
+  - fallback quando todos os posts são pinned;
+  - `observedPeriodDays` = ceil((newest-oldest)/dia)+1;
+  - dropa outlier > 180d.
+- `src/lib/report/__tests__/post-aggregates.test.ts` (atualizar)
+  - `excludePinned: true` ignora pinned;
+  - médias batem com `performancePosts`.
+- `src/lib/report/__tests__/snapshot-pinned-window.test.ts` (atualizar)
+  - asserts `keyMetrics.engagementRate`, `averageLikes`, `averageComments` calculados a partir do sample sem pinned.
+- `src/components/report-redesign/v2/overview/__tests__/score-utils.test.ts` (novo / substituir existente)
+  - `computeGlobalScore(env, freq)` com pesos 0.6 / 0.4;
+  - não exporta nenhuma referência a `interaccao`.
+- `src/components/report-redesign/v2/__tests__/cadence-copy.test.ts` (atualizar)
+  - copy não contém "30 dias" quando `cadence.method !== "window_30d"`.
+
+## 9. Validação
+
+- `bunx tsc --noEmit`
+- `bunx vitest run`
+
+## 10. Files changed (esperado)
+
+- `src/lib/report/block01-sample.ts` (novo)
+- `src/lib/report/snapshot-to-report-data.ts` (chamar sample, alinhar métricas, expor `enriched.block01Sample`)
+- `src/lib/report/post-aggregates.ts` (`excludePinned` opt)
+- `src/components/report-redesign/v2/overview/score-utils.ts` (remover interação, novos pesos)
+- `src/components/report-redesign/v2/report-overview-block.tsx`
+- `src/components/report-redesign/v2/overview/editorial-identity-card.tsx`
+- `src/i18n/locales/pt/report.json`, `src/i18n/locales/en/report.json`
+- testes acima
+
+Não tocados (locked / fora de scope): `report-mock-data.ts`, `/report.example`, normalize/cap do Apify, prompts OpenAI, `block02-diagnostic.ts`, persistência de thumbnails.
+
+## Checkpoint final
+
+- [ ] `buildBlock01Sample` puro + tipado
+- [ ] `snapshotToReportData` usa o sample para todas as métricas Bloco 1
+- [ ] `computePostAverages` exclui pinned por defeito
+- [ ] `computeInteraccao` removido; índice = env 60% + freq 40%
+- [ ] Tooltip "Como foi calculado" atualizado (PT + EN)
+- [ ] Caption "últimas N publicações · X dias" visível no card
+- [ ] Aviso "publicações fixadas excluídas" quando `pinnedPostsExcluded > 0`
+- [ ] Nenhuma copy do Bloco 1 menciona "30 dias" fora de `window_30d`
+- [ ] Testes novos/atualizados verdes
+- [ ] `tsc --noEmit` + `vitest run` limpos

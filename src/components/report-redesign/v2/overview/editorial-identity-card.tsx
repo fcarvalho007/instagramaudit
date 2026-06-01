@@ -100,7 +100,9 @@ interface EditorialCopy {
 /**
  * Índice agregado do perfil. Usa `computeGlobalScore` de `score-utils` para
  * garantir consistência com os scores individuais documentados nos tooltips
- * (pesos: envolvimento 45%, ritmo 25%, conversa 30%).
+ * (pesos actuais: envolvimento 60%, cadência 40%). O sub-score de
+ * interacção foi removido — estava efectivamente constante em 25 por
+ * falta de um benchmark fiável de comentários por escalão.
  */
 function computeOverall(
   scores: Record<ScoreKey, { value: number; subtitle: string }>,
@@ -108,7 +110,6 @@ function computeOverall(
   const raw = computeGlobalScore(
     scores.envolvimento.value,
     scores.frequencia.value,
-    scores.interaccao.value,
   );
   return Math.max(0, Math.min(100, raw));
 }
@@ -241,18 +242,8 @@ export function deriveSignals(
     }
   }
 
-  const inter = scores.interaccao.value;
-  if (inter >= 60) {
-    strengths.push({
-      destaque: t("identity.signals.interaction_active.title"),
-      detalhe: t("identity.signals.interaction_active.detail"),
-    });
-  } else if (inter < 30) {
-    limits.push({
-      destaque: t("identity.signals.interaction_low.title"),
-      detalhe: t("identity.signals.interaction_low.detail"),
-    });
-  }
+  // Interaction sub-score removido — sem benchmark fiável de comentários
+  // por escalão, qualquer bullet de "interação" aqui seria especulativo.
 
   if (typeof dominantFormatShare === "number" && dominantFormatShare > 0) {
     if (dominantFormatShare < 55) {
@@ -673,7 +664,7 @@ function IndexBlock({
               <p>
                 {t("identity.method.index_line", {
                   defaultValue:
-                    "Índice (0\u2013100) combina envolvimento (45%), cadência e conversa para uma leitura comparativa face ao escalão (Nano · Micro · Mid · Macro · Mega).",
+                    "Índice (0\u2013100) combina envolvimento (60%) e cadência de publicação (40%), comparados com refer\u00EAncias de perfis semelhantes (Nano · Micro · Mid · Macro · Mega).",
                 })}
               </p>
               {sampleParts.length > 0 ? (
