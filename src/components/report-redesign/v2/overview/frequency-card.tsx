@@ -588,6 +588,18 @@ export function FrequencyCard({
         ) : null}
       </div>
 
+      {/* KPI strip (Cadência · Consistência · Pico semanal) — gated on usable data */}
+      {!isInsufficient && hasUsableData && (
+        <FrequencyKpiStrip
+          postingFrequencyWeekly={postingFrequencyWeekly}
+          publishedCount={publishedCount}
+          totalDays={windowedDays.length}
+          days={windowedDays}
+          t={t}
+          lang={i18n.language.startsWith("pt") ? "pt" : "en"}
+        />
+      )}
+
       {/* Resumo da semana — hidden when cadence is insufficient */}
       {!isInsufficient && <WeeklySummary days={windowedDays} t={t} />}
 
@@ -684,11 +696,6 @@ export function FrequencyCard({
                   style={{ background: legendBg(maxPosts >= 3 ? 3 : 2) }}
                 />
                 {t("frequency.calendar.legend_many", { label: maxPosts >= 3 ? "3+" : "2" })}
-              </span>
-            )}
-            {!isInsufficient && (
-              <span className="ml-auto text-sm font-medium tabular-nums text-content-secondary">
-                {t("frequency.calendar.ratio", { published: publishedCount, total: windowedDays.length })}
               </span>
             )}
           </div>
