@@ -664,7 +664,7 @@ function IndexBlock({
               <p>
                 {t("identity.method.index_line", {
                   defaultValue:
-                    "Índice (0\u2013100) combina envolvimento (45%), cadência e conversa para uma leitura comparativa face ao escalão (Nano · Micro · Mid · Macro · Mega).",
+                    "Índice (0\u2013100) combina envolvimento (60%) e cadência de publicação (40%), comparados com refer\u00EAncias de perfis semelhantes (Nano · Micro · Mid · Macro · Mega).",
                 })}
               </p>
               {sampleParts.length > 0 ? (
