@@ -3,6 +3,8 @@ import { describe, expect, it, beforeAll } from "vitest";
 import {
   decodeLeadCookie,
   encodeLeadCookie,
+  readLeadIdFromRequest,
+  LEAD_COOKIE_NAME,
 } from "../lead-cookie.server";
 
 const LEAD_ID = "11111111-2222-3333-4444-555555555555";
@@ -41,5 +43,26 @@ describe("lead-cookie", () => {
 
   it("rejects non-uuid leadId on encode", () => {
     expect(() => encodeLeadCookie("not-a-uuid")).toThrow();
+  });
+
+  it("readLeadIdFromRequest extracts a valid leadId from Cookie header", () => {
+    const cookie = encodeLeadCookie(LEAD_ID);
+    const req = new Request("https://x.test/", {
+      headers: { cookie: `other=1; ${LEAD_COOKIE_NAME}=${cookie}; foo=bar` },
+    });
+    expect(readLeadIdFromRequest(req)).toBe(LEAD_ID);
+  });
+
+  it("readLeadIdFromRequest returns null without Cookie header", () => {
+    const req = new Request("https://x.test/");
+    expect(readLeadIdFromRequest(req)).toBeNull();
+  });
+
+  it("readLeadIdFromRequest returns null for tampered cookie", () => {
+    const cookie = encodeLeadCookie(LEAD_ID).slice(0, -2) + "xx";
+    const req = new Request("https://x.test/", {
+      headers: { cookie: `${LEAD_COOKIE_NAME}=${cookie}` },
+    });
+    expect(readLeadIdFromRequest(req)).toBeNull();
   });
 });
