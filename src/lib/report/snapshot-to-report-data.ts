@@ -1619,6 +1619,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     cadence,
     allPostsScatter: enrichedAllPostsScatter,
     windowRange: enrichedWindowRange,
+    block01Sample: sampleSummary,
   };
 
   const data: ReportData = {
