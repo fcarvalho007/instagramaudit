@@ -214,11 +214,18 @@ export const Route = createFileRoute("/api/admin/apify-lab")({
         const cfg = WINDOW_CONFIGS[window_kind as WindowKind];
         const input = buildActorInput(handle, cfg);
         const guardrails = {
-          maxItems: 1,
+          maxItems: cfg.maxItems,
           maxTotalChargeUsd: cfg.maxTotalChargeUsd,
           apifyTimeoutSecs: cfg.apifyTimeoutSecs,
           timeoutMs: cfg.timeoutMs,
           memoryMbytes: cfg.memoryMbytes,
+        };
+        const labMeta = {
+          mode: cfg.mode,
+          purpose: cfg.purpose,
+          results_type: input.resultsType as string,
+          results_limit: cfg.resultsLimit,
+          only_posts_newer_than: cfg.onlyPostsNewerThan ?? null,
         };
 
         // Pre-flight gates.
@@ -234,6 +241,10 @@ export const Route = createFileRoute("/api/admin/apify-lab")({
             semantic_code: "apify_disabled",
             notes: notes ?? null,
             error_excerpt: "APIFY_ENABLED não é 'true'",
+            ...labMeta,
+            raw_items_returned: 0,
+            posts_extracted: 0,
+            profile_metadata_present: false,
           });
           return Response.json({ success: false, run: row }, { status: 200 });
         }
@@ -249,6 +260,10 @@ export const Route = createFileRoute("/api/admin/apify-lab")({
             semantic_code: "allowlist_block",
             notes: notes ?? null,
             error_excerpt: `Handle fora de APIFY_ALLOWLIST: ${handle}`,
+            ...labMeta,
+            raw_items_returned: 0,
+            posts_extracted: 0,
+            profile_metadata_present: false,
           });
           return Response.json({ success: false, run: row }, { status: 200 });
         }
@@ -267,6 +282,10 @@ export const Route = createFileRoute("/api/admin/apify-lab")({
               semantic_code: "daily_budget_exceeded",
               notes: notes ?? null,
               error_excerpt: err.message,
+              ...labMeta,
+              raw_items_returned: 0,
+              posts_extracted: 0,
+              profile_metadata_present: false,
             });
             return Response.json({ success: false, run: row }, { status: 200 });
           }
@@ -282,13 +301,25 @@ export const Route = createFileRoute("/api/admin/apify-lab")({
               timeoutMs: cfg.timeoutMs,
               apifyTimeoutSecs: cfg.apifyTimeoutSecs,
               memoryMbytes: cfg.memoryMbytes,
-              maxItems: 1,
+              maxItems: cfg.maxItems,
               maxTotalChargeUsd: cfg.maxTotalChargeUsd,
             },
           );
           const durationMs = Date.now() - startedAt;
-          const profileRow = result.items[0] ?? null;
-          const posts = extractLatestPosts(profileRow);
+          const rawItems = Array.isArray(result.items) ? result.items : [];
+          let profileRow: Record<string, unknown> | null = null;
+          let posts: unknown[] = [];
+          let profileMetadataPresent = false;
+
+          if (cfg.mode === "details") {
+            profileRow = rawItems[0] ?? null;
+            posts = extractLatestPosts(profileRow);
+            profileMetadataPresent = !!profileRow;
+          } else {
+            // posts mode: actor devolve lista plana de posts; sem objecto de perfil.
+            posts = rawItems;
+            profileMetadataPresent = false;
+          }
 
           // Compute newest/oldest/observed_days.
           const tsList = posts
@@ -335,6 +366,10 @@ export const Route = createFileRoute("/api/admin/apify-lab")({
             normalize_ok: normalizeOk,
             notes: notes ?? null,
             error_excerpt: null,
+            ...labMeta,
+            raw_items_returned: rawItems.length,
+            posts_extracted: posts.length,
+            profile_metadata_present: profileMetadataPresent,
           });
           return Response.json({ success: true, run: row });
         } catch (err) {
@@ -369,6 +404,10 @@ export const Route = createFileRoute("/api/admin/apify-lab")({
             actual_cost_usd: actualCost,
             notes: notes ?? null,
             error_excerpt: sanitizeErrorExcerpt(message),
+            ...labMeta,
+            raw_items_returned: 0,
+            posts_extracted: 0,
+            profile_metadata_present: false,
           });
           return Response.json({ success: false, run: row }, { status: 200 });
         }
@@ -397,6 +436,14 @@ interface PersistInput {
   normalize_ok?: boolean | null;
   notes?: string | null;
   error_excerpt?: string | null;
+  mode?: string | null;
+  purpose?: string | null;
+  results_type?: string | null;
+  results_limit?: number | null;
+  only_posts_newer_than?: string | null;
+  raw_items_returned?: number | null;
+  posts_extracted?: number | null;
+  profile_metadata_present?: boolean | null;
 }
 
 async function persistRun(payload: PersistInput): Promise<unknown> {
