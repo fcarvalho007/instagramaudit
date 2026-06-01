@@ -174,6 +174,8 @@ export function PostComparisonBlock({
               language={language}
               variant={scatterVariant}
               windowRange={windowRange}
+              bestDelta={bestDelta}
+              worstDelta={worstDelta}
             />
           )}
 
