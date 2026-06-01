@@ -390,12 +390,6 @@ function FrequencyKpiStrip({
  */
 function buildWeekGrid(days: DayEntry[]): (DayEntry | null)[][] {
   if (days.length === 0) return [];
-  // (logic continues below)
-  return _buildWeekGridImpl(days);
-}
-
-function _buildWeekGridImpl(days: DayEntry[]): (DayEntry | null)[][] {
-  if (days.length === 0) return [];
 
   const firstDate = new Date(days[0].date);
   // JS getUTCDay: 0=Sun. Shift to Mon=0: (day+6)%7
@@ -413,6 +407,27 @@ function _buildWeekGridImpl(days: DayEntry[]): (DayEntry | null)[][] {
     weeks.push(padded.slice(i, i + 7));
   }
   return weeks;
+}
+
+/**
+ * Ensure the day series spans exactly `window` days. If the upstream
+ * timeline is shorter (e.g. last post older than today, or no posts in the
+ * last few days), append empty trailing entries so the calendar/legend
+ * always match the "X publicações em Y dias" subtitle.
+ */
+function backFillToWindow(days: DayEntry[], windowDays: number): DayEntry[] {
+  if (windowDays <= 0 || days.length >= windowDays) return days;
+  if (days.length === 0) return days;
+  const lastDateStr = days[days.length - 1].date;
+  // Date strings are ISO "YYYY-MM-DD". Build successive dates in UTC.
+  const lastDate = new Date(`${lastDateStr}T00:00:00Z`);
+  const filled: DayEntry[] = [...days];
+  for (let i = filled.length; i < windowDays; i++) {
+    lastDate.setUTCDate(lastDate.getUTCDate() + 1);
+    const iso = lastDate.toISOString().slice(0, 10);
+    filled.push({ date: iso, published: false, postCount: 0 });
+  }
+  return filled;
 }
 
 /**
