@@ -60,12 +60,6 @@ const METHODOLOGY_AXES_KEYS = [
   "grid_coherence",
 ];
 
-// ─── Helpers ────────────────────────────────────────────────────────
-
-function proxyThumbUrl(rawUrl: string): string {
-  return `/api/public/ig-thumb?url=${encodeURIComponent(rawUrl)}`;
-}
-
 // ─── Component ──────────────────────────────────────────────────────
 
 export function VisualCoverAnalysisCard({ posts, analysis }: Props) {
@@ -225,7 +219,7 @@ function ThumbnailGrid({
       {posts.map((post, idx) => (
         <ThumbnailCell
           key={post.id ?? idx}
-          thumbnailUrl={proxyThumbUrl(post.thumbnail_url!)}
+          thumbnailUrl={post.thumbnail_url!}
           status={analysis?.thumbnails[idx]?.status ?? null}
         />
       ))}
