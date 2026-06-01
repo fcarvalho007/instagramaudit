@@ -1,90 +1,134 @@
-## Fase 2 — Gating de créditos no fluxo de análise
 
-Aplicar a política aprovada (Opção A): cada pedido confirmado consome 1 crédito, mesmo em cache hit. Lead anónimo sem `lead_session` cookie continua bloqueado.
+## Auditoria — pontos de entrada de análise
 
-## Decisões consolidadas
+| Entrada | Fresh providers? | Estado actual de gating |
+|---|---|---|
+| `POST /api/analyze-public-v1` | Sim (Apify+OpenAI) | Já tem reserva 1-crédito por pedido (Opção A) — precisa de refactor para a nova política |
+| `POST /api/analyze/refresh` (utilizador) | Sim (delega em `?refresh=1` com `INTERNAL_API_TOKEN`) | Exige sessão Supabase autenticada; não consome créditos hoje |
+| `POST /api/admin/refresh-profile` (admin) | Sim (delega em `?refresh=1` com `INTERNAL_API_TOKEN`) | Admin token; bypass de leads |
+| `POST /api/admin/refresh-profile-preflight` | Não | Só leitura |
+| `POST /api/onboarding/start` | Não | Cria lead + cookie + 2 créditos iniciais |
+| `GET /api/public/analysis-snapshot/$username` | Não | Só lê snapshot persistido |
 
-- Lead novo recebe **+2 créditos** ao submeter o modal (já implementado em `/api/onboarding/start`).
-- **Cada pedido confirmado** ao `analyze-public-v1` consome 1 crédito — cache hit, stale ou fresh, todos contam.
-- Se o provider falhar **antes** de produzir snapshot utilizável → **release** da reserva (devolve 1 crédito).
-- Sem cookie `lead_session` válido → resposta `402 NO_CREDITS_LEAD_REQUIRED` (modal abre no frontend, sem alterações visuais nesta fase — só código de erro novo).
-- Saldo 0 → resposta `402 INSUFFICIENT_CREDITS`.
+Decisão cache vs fresh vive toda em `analyze-public-v1.ts` (linhas ~559–600 e 740+). O `lead_session` é lido por `readLeadIdFromRequest()` (`src/lib/leads/lead-cookie.server.ts`).
 
-## Mudanças backend (apenas)
+Hoje não existe associação persistida entre `lead` e `analysis_snapshot`/handle. `credit_ledger.lead_id+cache_key` é histórico de débitos, não fonte de verdade para "este lead já tem este report" (a primeira reserva escreve a linha mesmo quando depois é refundida, e a reutilização posterior teria de filtrar por `reason='confirm'` — frágil). É necessária estrutura aditiva mínima.
 
-### 1. `src/routes/api/analyze-public-v1.ts`
-Inserir lifecycle de crédito **antes** do `buildCacheKey` / lookup de cache (a cache só é tocada depois de termos uma reserva):
+## Nova tabela: `public.lead_reports`
+
+Migração nova (não tocar nas existentes). Justificação: única forma robusta de saber "este lead já recebeu este report" sem inferir a partir do ledger.
+
+```sql
+CREATE TABLE public.lead_reports (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  lead_id uuid NOT NULL,
+  handle text NOT NULL,
+  cache_key text NOT NULL,
+  analysis_snapshot_id uuid,
+  source text NOT NULL DEFAULT 'analyze_public_v1',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (lead_id, cache_key)
+);
+CREATE INDEX idx_lead_reports_lead ON public.lead_reports(lead_id);
+GRANT ALL ON public.lead_reports TO service_role;
+ALTER TABLE public.lead_reports ENABLE ROW LEVEL SECURITY;
+-- Sem policies para anon/authenticated: escrita/leitura só via service role.
+```
+
+Sem `FK` para `leads`/`analysis_snapshots` para evitar acoplamento de migrações; `service_role`-only mantém-se na linha do `credit_ledger`.
+
+## Fluxo backend final em `analyze-public-v1`
 
 ```
-read lead_session cookie
-  └─ ausente/inválido → return 402 NO_CREDITS_LEAD_REQUIRED
-reserveCredit(lead_id, handle, cache_key)
-  └─ InsufficientCreditsError → return 402 INSUFFICIENT_CREDITS
+parse → cacheKey
+if isInternalBypass:                 # admin / smoke / refresh autenticado
+    skip credit gate (mantém comportamento actual)
+else:
+    leadId = readLeadIdFromRequest()
+    if !leadId: return ONBOARDING_REQUIRED   # (rename do actual NO_CREDITS_LEAD_REQUIRED)
 
-try {
-  ... fluxo existente (cache → fresh → snapshot) ...
-  confirmReservation(reservation_id, { snapshot_id, cache_key, data_source })
-} catch (anyFailureBeforeSnapshot) {
-  releaseReservation(reservation_id, reason)
-  rethrow
-}
+    existing = lookupSnapshot(cacheKey)
+    alreadyAssociated = await leadOwnsReport(leadId, cacheKey)
+
+    if existing && isFresh(existing) && alreadyAssociated:
+        # cache <24h já atribuído a este lead → 0 créditos
+        serve cached; no reservation
+    else:
+        reservation = reserveCredit(leadId, handle, cacheKey)  # pode lançar INSUFFICIENT_CREDITS
+        creditOutcome = "release" (default)
+        # depois: confirm + upsertLeadReport(leadId, cacheKey, snapshotId)
+        # em qualquer falha (provider_error, PROFILE_NOT_ALLOWED, PROFILE_PRIVATE,
+        #  PROFILE_PERSONAL_NO_FEED, PROVIDER_DISABLED, CACHE_ONLY_NO_DATA,
+        #  RATE_LIMITED, BUDGET_EXCEEDED, validation, throw): mantém release
 ```
 
-Detalhes:
-- **Allowlist / `forceRefresh` interno**: requests com `Authorization: Bearer $INTERNAL_API_TOKEN` ignoram o gating de crédito (admin/smoke test). Mantém comportamento atual.
-- **Cache hit e stale**: confirmam reserva imediatamente (Opção A — cada pedido confirmado consome).
-- **Fresh success**: confirmam após `analysis_snapshots` upsert.
-- **Fresh provider error / Apify timeout / `INVALID_USERNAME` / `PROFILE_NOT_FOUND`**: release. Erros de validação (Zod) acontecem **antes** da reserva, portanto não chegam a reservar.
+`alreadyAssociated` é a única leitura nova; é barata (índice `(lead_id, cache_key)` único).
 
-### 2. `src/lib/credits/credits.server.ts`
-Já tem `reserveCredit` / `confirmReservation` / `releaseReservation`. Adicionar apenas helper de conveniência:
-- `getLeadCreditState(lead_id) → { balance, has_initial_grant }` para o endpoint `/api/onboarding/start` poder devolver o saldo atualizado (útil para o frontend futuro saber o estado sem chamar endpoint extra). Read-only, sem novas writes.
+`upsertLeadReport` corre dentro do `finalizeCredit` no ramo `confirm`, ON CONFLICT DO NOTHING — garante idempotência se o mesmo lead voltar a cair no path "confirm" por race.
 
-### 3. `src/lib/leads/lead-cookie.server.ts`
-Adicionar `readLeadCookieFromRequest(request) → { leadId } | null` que encapsula `getRequestHeader('cookie')` + parse + verify. Hoje a verificação está pronta mas só é chamada no endpoint `/api/onboarding/start`. Centraliza para `analyze-public-v1`.
+## Consumo final
 
-### 4. Novos códigos de erro em `analyze-public-v1`
-- `NO_CREDITS_LEAD_REQUIRED` → 402, mensagem PT "Precisamos do teu email para gerar o relatório."
-- `INSUFFICIENT_CREDITS` → 402, mensagem PT "Já usaste os teus 2 relatórios gratuitos."
-Adicionar a `ERROR_MESSAGES`, `ERROR_HTTP_STATUS`, e ao tipo `PublicAnalysisErrorCode`. Logar em `analysis_events` com `outcome='blocked_credits'` (novo valor de `outcome` — admite-se sem migration porque a coluna é `text` livre).
+| Cenário | Créditos |
+|---|---|
+| Sem cookie | 0, devolve `ONBOARDING_REQUIRED` |
+| Lead com saldo 0 | 0, devolve `INSUFFICIENT_CREDITS` |
+| Cache <24h, já associado ao lead | 0 |
+| Cache <24h, novo para o lead | 1 (confirm + associa) |
+| Stale servido em `cache_only` (associado) | 0 |
+| Stale servido em `cache_only` (novo) | 1 (confirm + associa) |
+| Stale servido por `APIFY_ENABLED=false` (novo) | 1 |
+| Fresh OK | 1 (confirm + associa) |
+| Fresh com `provider_error`/throw | 0 (release) |
+| `PROFILE_NOT_ALLOWED` / `PROFILE_PRIVATE` / `PROFILE_PERSONAL_NO_FEED` / negative-cache | 0 (release) |
+| `PROVIDER_DISABLED` / `BUDGET_EXCEEDED` / `RATE_LIMITED` sem stale | 0 (release) |
+| `CACHE_ONLY_NO_DATA` | 0 (release) |
+| `?refresh=1` com `INTERNAL_API_TOKEN` válido | 0 (bypass admin) |
 
-### 5. Testes
-- Unitário: contrato de lifecycle no fluxo do endpoint, com Supabase mockado:
-  - sem cookie → 402 `NO_CREDITS_LEAD_REQUIRED`, sem reserva criada
-  - cookie válido + saldo 0 → 402 `INSUFFICIENT_CREDITS`
-  - cookie válido + saldo 2 + cache hit → 200, ledger tem `reserve` + `confirm` (saldo final 1)
-  - cookie válido + saldo 2 + fresh success → 200, ledger tem `reserve` + `confirm`
-  - cookie válido + saldo 2 + fresh provider error → 5xx, ledger tem `reserve` + `release` (saldo final 2)
-  - request com `Authorization: Bearer INTERNAL_API_TOKEN` → bypassa gating, ledger vazio
-- Manter os 12 testes da Fase 1 verdes.
+## Ficheiros tocados
 
-## NÃO mexer nesta fase
+1. **Migração nova** `supabase/migrations/<ts>_lead_reports.sql` — tabela acima.
+2. **`src/lib/credits/lead-reports.server.ts`** (novo) — `leadOwnsReport(leadId, cacheKey)` e `upsertLeadReport({leadId, handle, cacheKey, snapshotId})`. Service role.
+3. **`src/routes/api/analyze-public-v1.ts`** — refactor do bloco "Credit gate (Fase 2, Opção A)" (~L479–549):
+   - rename `NO_CREDITS_LEAD_REQUIRED` → `ONBOARDING_REQUIRED`;
+   - pré-cálculo de `alreadyAssociated` antes da reserva;
+   - skip de reserva quando cache fresh + associado;
+   - chamada a `upsertLeadReport` no `finalizeCredit` ramo `confirm`;
+   - garantir que negative-cache e o stale `APIFY_ENABLED=false` cabem na matriz acima.
+4. **Sem alterações** em `analyze/refresh.ts`, `admin/refresh-profile.ts`, modal, `HeroActionBar`, report, pricing, emails, Apify actor, OpenAI, thumbnails.
 
-- `OnboardingModal` (visual + copy)
-- `HeroActionBar`
-- report rendering, premium gating, pricing, emails
-- Apify/OpenAI prompts, thumbnails
-- schema (sem migration nova — `credit_ledger` já é suficiente)
+## Códigos de erro
 
-## Verificação ao fim
+- `ONBOARDING_REQUIRED` (novo nome — substitui `NO_CREDITS_LEAD_REQUIRED`)
+- `INSUFFICIENT_CREDITS` (mantém)
 
-1. `bunx tsc --noEmit` → 0 erros.
-2. `bunx vitest run` → todos os testes verdes.
-3. Smoke manual em preview:
-   - `curl POST /api/onboarding/start` cria lead, devolve cookie, ledger ganha `+2 initial_grant`.
-   - `curl POST /api/analyze-public-v1` com esse cookie e handle de allowlist → 200, ledger ganha `-1 reserve` + `+0 confirm` (delta zero, status update).
-   - Mesmo lead, 3.ª chamada → 402 `INSUFFICIENT_CREDITS`.
-   - Chamada admin com `Authorization: Bearer $INTERNAL_API_TOKEN` → 200, ledger inalterado.
+Mensagens PT preparadas em comentário JSDoc no ficheiro do endpoint para uso futuro pela UI:
 
-## Riscos & mitigações
+- "Para gerar a análise, começa por criar a tua conta gratuita."
+- "Sem créditos disponíveis."
+- "Este pedido usa 1 crédito. Já não tens créditos gratuitos disponíveis."
 
-- **Erro pós-snapshot**: se o snapshot já está em DB e o crash é depois (ex.: render de payload), confirmamos antes — o lead pagou e tem o snapshot consultável.
-- **Lead com cookie antigo + DB recriada**: `reserveCredit` falha com `lead_id not found` → tratamos como `NO_CREDITS_LEAD_REQUIRED` (frontend re-abre modal).
-- **Concorrência (2 cliques rápidos)**: já protegido por advisory lock em `reserveCredit`.
+## Testes (`src/routes/api/__tests__/analyze-public-v1-credits.test.ts` novo + unit tests para o helper)
 
-## Restrições mantidas
+- pedido anónimo (sem cookie) → 402 `ONBOARDING_REQUIRED`, sem chamadas a Apify/OpenAI nem a `lookupSnapshot` necessariamente, sem reserva
+- lead válido, saldo 0 → 402 `INSUFFICIENT_CREDITS`, sem providers
+- cache <24h já associado → 200, 0 créditos consumidos, sem reserve
+- cache <24h novo para o lead → 200, 1 crédito consumido, `lead_reports` ganha linha
+- fresh success → 1 crédito consumido + associação criada
+- provider_error → reserva libertada, sem associação
+- `PROFILE_PERSONAL_NO_FEED` / `PROFILE_PRIVATE` (negative-cache + first-time) → reserva libertada
+- `PROFILE_NOT_ALLOWED` em testing mode → reserva libertada
+- `INTERNAL_API_TOKEN` Bearer → ignora cookie/credito (admin/refresh continuam OK)
 
-- Sem alterações visuais.
-- Sem alterações ao schema.
-- Sem alterações a providers (Apify/OpenAI/thumbnails).
-- Sem alterações a `pricing_plans`, emails, report rendering, premium gating.
+Helpers existentes (mocks de `supabaseAdmin`, `reserveCredit`, etc.) reaproveitados dos testes da Fase 1.
+
+## Validação
+
+- `bunx tsc --noEmit`
+- `bunx vitest run`
+
+## Riscos antes da Fase 3 UI
+
+- **Race entre dois pedidos simultâneos do mesmo lead/handle**: o segundo pode reservar antes do primeiro confirmar; ambos acabam por escrever `lead_reports` (ON CONFLICT DO NOTHING garante 1 linha, mas o segundo crédito é gasto). Aceitável; mitigação real exige lock por (lead, cache_key) — fora do âmbito desta fase.
+- **Snapshots criados antes da Fase 2** não têm associação a leads; o primeiro lead que abrir o handle paga 1 crédito mesmo com cache existente. Comportamento intencional (associa-se na primeira vez).
+- **`/api/analyze/refresh` do utilizador** continua a chamar internamente com `INTERNAL_API_TOKEN`, logo não consome crédito do lead. Pode ser revisto na Fase 3 quando a UI de refresh existir.
+- Endpoint actual já assinala `outcome='blocked_credits'` em `analysis_events`; o rename do error_code requer atenção a dashboards admin que filtrem pelo string antigo (`NO_CREDITS_LEAD_REQUIRED`). Verificar no Build Mode.
