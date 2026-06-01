@@ -1,63 +1,93 @@
-# Plano — Cards "Melhor / Pior publicação" do Bloco 1
+# Plano — Validação controlada da pipeline de persistência de thumbnails
 
 ## Objetivo
 
-1. Refinar o design dos dois cards detalhados (Melhor / Pior) — mais elegantes, mais editoriais, mantendo coerência com o resto do Block 1 (Ocean Breeze: navy / ocean / cyan / aquas, sem dark, sem neon).
-2. Garantir que a miniatura mostra a **imagem real do post** (não o ícone de formato) sempre que houver thumbnail disponível.
+Executar **uma única corrida fresh** para `frederico.m.carvalho`, recolher os contadores de persistência do novo pipeline e decidir entre (A) esperar rotação natural da cache, (B) backfill seletivo, (C) investigar fonte alternativa de media.
 
-Escopo restrito ao componente `DetailedPostCard` em `src/components/report-redesign/v2/report-post-comparison.tsx`. Não toca em métricas, dados, scatter, hero comparativo, AI reading ou copy estrutural.
+Sem alterações de código, sem migrações, sem backfill, sem mexer em gates/prompts/UI.
 
 ---
 
-## 1. Redesign visual dos cards (frontend-only)
+## 1. O que já está no repositório (verificado)
 
-Mudanças no `DetailedPostCard` (linhas 842–960):
+- `src/lib/report-snapshots/persist-thumbnails.server.ts` — implementa `persistThumbnailsInPayload`, com contadores: `attempted`, `stored`, `failed_403`, `failed_timeout`, `failed_invalid_content_type`, `failed_upload`, `failed_other`, `avatar`, `duration_ms`.
+- `src/lib/analysis/cache.ts:184-198` — chama o persistor dentro de `storeSnapshot` (corre apenas em escritas fresh) e imprime no log a linha:
+  `[thumbnails] handle=… cache_key=… attempted=… stored=… failed_403=… failed_timeout=… failed_invalid_content_type=… failed_upload=… failed_other=… avatar=… duration_ms=…`
+- `src/routes/api/admin/refresh-profile.ts` — endpoint admin que invoca `/api/analyze-public-v1?refresh=1` com `INTERNAL_API_TOKEN`, bypassando a cache e os guards de execution mode. Tem pre-flights: `APIFY_ENABLED`, allowlist se `APIFY_TESTING_MODE`, lock por handle, sessão admin.
+- `analyze-public-v1?refresh=1` (linhas 431–446 + 460): bypass de cache + bypass do stale fallback quando autenticado com o token interno. Custos Apify reais incorrem.
+- Bucket público `post-thumbnails` já existe (visível em `<storage-buckets>`).
+- Rendering priority em `pick-thumbnail.ts`: `thumbnail_storage_url → thumbnail_url → thumbnailUrl → null` (fallback icon). Não há alteração necessária.
 
-- **Imagem em destaque**: aumentar a thumb de `w-[88px] aspect-square` para `w-[120px] sm:w-[132px] aspect-[4/5]` (proporção mais próxima do feed Instagram, mais cinematográfica). Remover o gradiente colorido por trás — passa a ser `bg-surface-muted` neutro só visível enquanto a imagem carrega.
-- **Chip de formato sobre a imagem**: manter, mas em cápsula `bg-content-primary/85` (navy translúcido) + texto branco, canto superior esquerdo, tipografia eyebrow Inter (não font-mono). Adicionar pequeno ícone Lucide ao lado do label (Carrossel / Reel / Imagem), tamanho `size-3`.
-- **Faixa superior tonal**: substituir a `border-t-2` colorida por uma faixa interna de 4 px com gradiente sutil (`from-accent-primary/15 to-transparent` para best, `from-signal-warning/15 to-transparent` para worst) acima do header. O resto do card mantém o card branco unificado (mesma sombra que os outros cards do bloco).
-- **Header refinado**: badge "Melhor publicação" / "Pior publicação" passa a inline-flex com fundo `bg-accent-primary/8` / `bg-signal-warning/8`, padding `px-2 py-0.5`, radius `rounded-full`, eyebrow Inter SemiBold. Data alinhada à direita, `text-xs text-content-tertiary`.
-- **Métrica primária**: adicionar a engagement rate da própria publicação como número grande Inter SemiBold tabular-nums `text-lg` no topo da coluna direita (ex: `0,15 %`), seguido do chip `+68 % vs média` (mantido). Cria hierarquia visual coerente com o hero do bloco.
-- **Caption**: subir para `text-[13px]`, `leading-[1.45]`, `line-clamp-3`. Se vazia, exibe placeholder em itálico `text-content-tertiary`.
-- **Rodapé likes/comments**: separar com `divide-x divide-border-subtle`, ícones `size-3.5`, números `text-sm tabular-nums`. Adicionar terceiro slot opcional só se `post.format === "Reel"` com views (se existir no payload — caso contrário não renderiza, sem placeholder).
-- **Hover state**: o card inteiro ganha `transition-shadow hover:shadow-md` e a thumb `group-hover:scale-[1.02] transition-transform`. Sem animações fora deste envelope.
-- **Acessibilidade**: o `<img>` recebe `alt={t("posts.thumb_alt", { format, date })}` em vez de `alt=""`.
+## 2. Execução do teste (passos manuais via ferramentas)
 
-Tokens / cores: tudo via `text-accent-primary`, `text-signal-warning`, `text-content-*`, `border-border-*`, `bg-surface-*`. Zero cores hardcoded. Tipografia: Inter (já é o default deste card — Fraunces continua reservada a H1/H2 do bloco).
+1. **Estado prévio** — `supabase--read_query` para registar baseline:
+   - último snapshot atual de `frederico.m.carvalho` (`id`, `created_at`, `expires_at`, contagem de `posts[*].thumbnail_storage_url` no `normalized_payload`).
+   - último `provider_call_logs` para o handle (para isolar o novo `apify_run_id` após o teste).
+2. **Disparar a corrida fresh** — `stack_modern--invoke-server-function` com:
+   - `path: /api/admin/refresh-profile`
+   - `method: POST`
+   - `body: {"handle":"frederico.m.carvalho"}`
+   - **Pré-requisito:** o utilizador tem de estar com sessão admin no preview (o endpoint chama `requireAdminSession`). Se não estiver, paro e peço para fazer login antes de continuar.
+3. **Aguardar conclusão** (Apify costuma demorar 20–60 s para um perfil). Polling em `supabase--read_query` ao `analysis_snapshots` filtrando por `created_at > baseline`.
+4. **Recolher snapshot novo** — `supabase--read_query` para extrair:
+   - `id`, `created_at`, `cache_key`
+   - `jsonb_array_length(normalized_payload->'posts')` → posts retornados
+   - `COUNT` de posts com `thumbnail_url` não-nulo
+   - `COUNT` de posts com `thumbnail_storage_url` não-nulo
+   - `normalized_payload->'profile'->>'avatar_url'` (para confirmar persistência do avatar)
+5. **Recolher contadores** — `stack_modern--server-function-logs` filtrando por `search: "[thumbnails] handle=frederico.m.carvalho"` no deployment correto (preview, já que o refresh corre no ambiente onde o teste é disparado). Extrair: `attempted, stored, failed_403, failed_timeout, failed_invalid_content_type, failed_upload, failed_other, avatar, duration_ms`.
+6. **Custo Apify** — `supabase--read_query` ao `provider_call_logs` para o `apify_run_id` desta corrida: `estimated_cost_usd`, `actual_cost_usd`, `posts_returned`, `http_status`, `status`.
+7. **OpenAI / DataForSEO** — `supabase--read_query`:
+   - `enrichment_jobs` criados nos últimos 5 minutos para este snapshot (`snapshot_id` = novo) — confirma se foram agendados.
+   - `provider_call_logs` com `provider IN ('openai','dataforseo')` desde o baseline — confirma se efectivamente chamaram. (Os jobs são assíncronos e podem ainda não ter corrido no momento da observação — reportar estado parcial é aceitável.)
+8. **Validação visual no browser**:
+   - `browser--navigate_to_sandbox` em `/analyze/frederico.m.carvalho` com viewport 1280×900.
+   - `browser--list_network_requests` filtrando por `storage/v1/object/public/post-thumbnails` — contar requests 200 vs 4xx.
+   - `browser--screenshot` do bloco "Melhores e piores publicações" para confirmar visualmente se aparecem imagens reais ou icons.
 
-## 2. Garantir imagem real (não ícone)
+## 3. Constraints respeitadas (nada será tocado)
 
-Verificação + ajuste mínimo:
+- Sem alteração ao `thumbnail_url` original (o persistor já é aditivo — só escreve `thumbnail_storage_url`).
+- Sem envio de emails (a rota `/api/analyze-public-v1` não dispara emails neste caminho; o envio só ocorre via `report_requests` quando o utilizador faz o gate de lead — não vai acontecer aqui).
+- Sem criação de `leads` nem `report_requests` (o gate de lead é client-side e só dispara em `/report/…`, não em `/analyze/…`).
+- Sem backfill, sem mudar provider settings, sem migração, sem alteração de prompts/scoring/UI.
+- Sem desactivar fallback icon (mantido tal como está).
 
-- O componente já tenta renderizar `thumbUrl` e cai para o ícone quando `onError` dispara. O ícone aparecer significa que a `img` falhou (CDN do IG expira) ou que `thumbnailUrl` veio vazio.
-- Ação: no `DetailedPostCard`, trocar o `src={thumbUrl}` direto pelo proxy estável `/api/public/ig-thumb?url=<encoded>` quando o URL vier do CDN do IG (host `*.cdninstagram.com` ou `*.fbcdn.net`), mantendo o URL direto quando já for do Supabase Storage (`thumbnail_storage_url`).
-- Garantir o atributo `referrerPolicy="no-referrer"` no `<img>` (algumas variantes do CDN do IG bloqueiam requests com referrer).
-- Manter o fallback do ícone como rede de segurança (sem alteração de comportamento), só com a estética nova.
+## 4. Riscos / notas de honestidade
 
-Antes de implementar, confirmo se o endpoint `/api/public/ig-thumb` existe na branch atual. A listagem em `src/routes/api/public/` mostra que **não existe**. Duas opções:
+- **Custo real Apify** (~$0.01–0.02 para 1 perfil + ~12 posts) é incorrido. Único custo previsto.
+- **Async enrichment jobs**: depois da corrida fresh, o sistema agenda jobs OpenAI/DataForSEO. Não posso impedi-los sem mexer em código (o que o utilizador proibiu). Vou apenas **reportar** se correram, em vez de bloquear.
+- **Logs do worker**: `server-function-logs` pode não conter a linha `[thumbnails]` se a corrida acontecer no preview e os logs forem só da published deployment. Em caso de ausência, faço fallback para `deployment: 'preview'`.
+- **Sessão admin necessária**: se a chamada ao endpoint admin devolver 401/403, paro e peço ao utilizador para autenticar no preview antes de re-disparar.
 
-- **A (preferida, sem novo backend)**: usar apenas `referrerPolicy="no-referrer"` + `crossOrigin="anonymous"` no `<img>`. Em muitos casos resolve o problema dos thumbnails do IG quando o URL ainda não expirou. Não precisa de novo endpoint.
-- **B (mais robusto, fora de escopo desta UI task)**: criar o endpoint proxy `/api/public/ig-thumb` (server route que faz fetch do CDN do IG e devolve a imagem). Isto é trabalho de backend e deve ser pedido num prompt separado.
+## 5. Output final que vais receber
 
-Recomendo seguir com **A** neste prompt (mantém o trabalho na camada de apresentação, conforme regra "UI changes stay frontend"). Se mesmo assim os thumbnails continuarem a falhar para muitos posts, abrimos depois um prompt dedicado ao proxy.
+1. **Resumo da fresh run**: snapshot id, data_source=fresh, posts retornados, duração total, apify_run_id.
+2. **Tabela de contadores de thumbnail**: attempted, stored, failed_403, failed_timeout, failed_invalid_content_type, failed_upload, failed_other, avatar, duration_ms.
+3. **Taxa de sucesso de thumbnail** = `stored / attempted` em %.
+4. **Inventário no payload**: nº posts com `thumbnail_url`, nº posts com `thumbnail_storage_url`.
+5. **Verificação visual**: nº de imagens carregadas via `post-thumbnails` (200) vs fallbacks visíveis.
+6. **Custo**: `estimated_cost_usd` e `actual_cost_usd` do `provider_call_logs`.
+7. **OpenAI/DataForSEO**: chamados? (sim/não/parcial, com contagem de jobs).
+8. **Razões de falha dominantes** (se as houver).
+9. **Recomendação GO/NO-GO**:
+   - **A (esperar)** se `stored/attempted ≥ 80 %` e `failed_403 < 20 %`.
+   - **B (backfill seletivo)** se taxa ≥ 80 % e há snapshots em cache afetados que justificam re-persistir só esses.
+   - **C (fonte alternativa)** se `failed_403 ≥ 50 %` (CDN do IG está a rejeitar requests do nosso worker) — então o storage não resolve sozinho e é preciso outra estratégia (proxy autenticado, base64 inline, oEmbed, etc.).
 
-## 3. Fora de escopo
+## 6. Ficheiros tocados pelo plano
 
-- Não mexer no scatter, no hero, no premium reveal, no AI reading nem na copy de títulos/subtítulos do bloco.
-- Não criar novos endpoints nem alterar `snapshot-to-report-data.ts` ou `pick-thumbnail.ts`.
-- Não alterar tokens globais nem `src/styles/tokens-light.css`.
-
-## Ficheiros tocados
-
-- `src/components/report-redesign/v2/report-post-comparison.tsx` — só o `DetailedPostCard` e, se necessário, uma chave i18n nova (`posts.thumb_alt`, `posts.no_caption_placeholder`) em `src/i18n/locales/{pt,en}/report.json`.
+Nenhum. Esta tarefa é puramente de observação/medição. Se for aprovado, na execução só uso tools de leitura + uma única chamada POST admin.
 
 ## Checkpoint
 
-- ☐ DetailedPostCard com thumbnail maior, proporção 4:5, sem gradiente colorido
-- ☐ Chip de formato sobre a imagem em navy translúcido + ícone
-- ☐ Faixa tonal superior (gradient) em vez de border colorida
-- ☐ Engagement rate como métrica primária no card
-- ☐ `referrerPolicy="no-referrer"` no `<img>` para reduzir falhas do CDN IG
-- ☐ Alt text descritivo
-- ☐ Zero cores hardcoded, zero font-mono, Inter em tudo
-- ☐ `tsc --noEmit` limpo
+- ☐ Sessão admin confirmada no preview
+- ☐ Baseline registado (snapshot anterior + último provider_call_log)
+- ☐ POST /api/admin/refresh-profile devolve `success: true` com `snapshot_id`
+- ☐ Linha `[thumbnails]` capturada nos logs
+- ☐ Counts no payload extraídos via SQL
+- ☐ Network tab do preview verificado (`post-thumbnails` 200)
+- ☐ Screenshot do bloco "Melhores e piores" guardado
+- ☐ Custo Apify extraído
+- ☐ Estado OpenAI/DataForSEO reportado
+- ☐ Recomendação A/B/C entregue com critério numérico
