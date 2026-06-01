@@ -8,8 +8,6 @@ import {
   envolvimentoSubtitle,
   computeFrequencia,
   frequenciaSubtitle,
-  computeInteraccao,
-  interaccaoSubtitle,
   type ScoreKey,
 } from "./overview/score-utils";
 import { EditorialIdentityCard } from "./overview/editorial-identity-card";
@@ -74,11 +72,7 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
       value: computeFrequencia(k.postingFrequencyWeekly),
       subtitle: frequenciaSubtitle(k.postingFrequencyWeekly),
     },
-    interaccao: {
-      value: computeInteraccao(avgComments, k.postsAnalyzed, 0, 0),
-      subtitle: interaccaoSubtitle(avgComments),
-    },
-  }), [k, avgComments]);
+  }), [k]);
 
   // Counts: prefer the snapshot's authoritative `format_stats[k].count`.
   // Fallback: count per-post records in `analysedPostFormats`. Last resort:
