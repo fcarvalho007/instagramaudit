@@ -653,13 +653,15 @@ export function FrequencyCard({
           >
             <span className="flex flex-col gap-0.5 min-w-0">
               <span className="text-eyebrow-sm text-content-tertiary">
-                {t("frequency.calendar.title")}
+                {t("frequency.calendar.eyebrow", { days: effectiveWindowDays })}
               </span>
               <span className="text-xs text-content-tertiary leading-snug">
-                {t("frequency.calendar.window_summary", {
-                  days: effectiveWindowDays,
-                  published: publishedCount,
-                })}
+                {t(
+                  publishedCount === 1
+                    ? "frequency.calendar.published_one"
+                    : "frequency.calendar.published_other",
+                  { count: publishedCount },
+                )}
               </span>
             </span>
             <span className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-content-secondary group-hover:text-content-primary transition-colors">
