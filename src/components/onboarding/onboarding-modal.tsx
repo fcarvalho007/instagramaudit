@@ -42,6 +42,7 @@ import {
 import { parseFullName } from "@/lib/names/parse-full-name";
 import { useOnboardingDraft } from "@/lib/leads/use-onboarding-draft";
 import { trackOnboardingEvent } from "@/lib/tracking/onboarding-events";
+import { buildStartPayload } from "@/lib/leads/build-start-payload";
 
 const TOTAL_STEPS = 3;
 
@@ -217,6 +218,12 @@ export function OnboardingModal({
     const elapsed = Date.now() - formStartedAtRef.current;
     if (elapsed < 2_000) {
       setServerError(t("onboarding.errors.generic"));
+      trackOnboardingEvent({
+        event_type: "onboarding_error",
+        step: 3,
+        handle,
+        error_code: "TIMING_GUARD",
+      });
       return;
     }
     setSubmitting(true);
@@ -224,21 +231,16 @@ export function OnboardingModal({
     try {
       const parsed = parseFullName(values.full_name);
       const honeypot = honeypotRef.current?.value ?? "";
+      const payload = buildStartPayload(
+        values,
+        parsed.full_name,
+        honeypot,
+        formStartedAtRef.current,
+      );
       const res = await fetch("/api/onboarding/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: parsed.full_name || values.full_name,
-          email: values.email,
-          phone: values.phone?.trim() ? values.phone.trim() : undefined,
-          marketing_consent: values.marketing_consent === true,
-          beta_consent: false,
-          // user_type intencionalmente omitido (coluna nullable na BD).
-          purpose: values.goal,
-          profile_ownership: values.profile_ownership,
-          website: honeypot,
-          _t: formStartedAtRef.current,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = (await res
         .json()
@@ -248,6 +250,16 @@ export function OnboardingModal({
           (data && "message" in data && data.message) ||
           t("onboarding.errors.generic");
         setServerError(msg);
+        const code =
+          data && "error_code" in data && data.error_code
+            ? data.error_code
+            : `HTTP_${res.status}`;
+        trackOnboardingEvent({
+          event_type: "onboarding_error",
+          step: 3,
+          handle,
+          error_code: code,
+        });
         return;
       }
       succeededRef.current = true;
@@ -261,6 +273,12 @@ export function OnboardingModal({
       onSuccess(handle, { leadId: data.lead_id, credits: data.credits });
     } catch {
       setServerError(t("onboarding.errors.network"));
+      trackOnboardingEvent({
+        event_type: "onboarding_error",
+        step: 3,
+        handle,
+        error_code: "NETWORK",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -634,7 +652,8 @@ function Step2Context({
 
   return (
     <div className="space-y-5">
-      <div className="space-y-2">
+      <div className="flex flex-col gap-5 sm:flex-row sm:gap-6">
+        <div className="flex-1 space-y-2">
         <p className="text-[13px] font-medium text-content-primary">
           <Trans
             i18nKey="onboarding.steps.2.relationshipQuestion"
@@ -657,9 +676,9 @@ function Step2Context({
           }
           error={ownershipError}
         />
-      </div>
+        </div>
 
-      <div className="space-y-2">
+        <div className="flex-1 space-y-2">
         <p className="text-[13px] font-medium text-content-primary">
           {t("onboarding.steps.2.goalQuestion")}
         </p>
@@ -675,6 +694,7 @@ function Step2Context({
           }
           error={goalError}
         />
+        </div>
       </div>
 
       <p className="text-[12px] text-content-tertiary leading-relaxed">
