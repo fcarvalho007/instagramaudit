@@ -105,6 +105,7 @@ export function OnboardingModal({
   const [serverError, setServerError] = useState<string | null>(null);
   const formStartedAtRef = useRef<number>(Date.now());
   const succeededRef = useRef<boolean>(false);
+  const honeypotRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<UnlockFormValues>({
     resolver: zodResolver(unlockFormSchema),
@@ -222,7 +223,7 @@ export function OnboardingModal({
     setServerError(null);
     try {
       const parsed = parseFullName(values.full_name);
-      const honeypot = (form.getValues() as { website?: string }).website ?? "";
+      const honeypot = honeypotRef.current?.value ?? "";
       const res = await fetch("/api/onboarding/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -288,6 +289,7 @@ export function OnboardingModal({
             submitting={submitting}
             goBack={goBack}
             goNext={goNext}
+            honeypotRef={honeypotRef}
           />
         )}
       </DialogContent>
@@ -427,6 +429,7 @@ function FormStepBody({
   submitting,
   goBack,
   goNext,
+  honeypotRef,
 }: {
   step: FormStep;
   handle: string;
@@ -435,6 +438,7 @@ function FormStepBody({
   submitting: boolean;
   goBack: () => void;
   goNext: () => Promise<void> | void;
+  honeypotRef: React.RefObject<HTMLInputElement | null>;
 }) {
   const { t } = useTranslation("gate");
   const stepKey = String(step) as "1" | "2" | "3";
@@ -482,7 +486,9 @@ function FormStepBody({
             type="text"
             tabIndex={-1}
             autoComplete="off"
-            {...form.register("website" as never)}
+            ref={honeypotRef}
+            name="website"
+            defaultValue=""
           />
         </div>
 
@@ -496,7 +502,7 @@ function FormStepBody({
           </Alert>
         ) : null}
 
-        <div className="flex gap-3 pt-1 border-t border-border-default/40 -mx-7 sm:-mx-9 px-7 sm:px-9 pt-5 mt-2">
+        <div className="flex gap-3 border-t border-border-default/40 -mx-7 sm:-mx-9 px-7 sm:px-9 pt-5 mt-2">
           <Button
             type="button"
             variant="outline"

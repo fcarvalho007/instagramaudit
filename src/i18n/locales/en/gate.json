@@ -162,7 +162,7 @@
       "eyebrow": "BEFORE WE START",
       "title": "Create your account and open the report",
       "subtitle": "3 quick questions (~1 min) and your account is ready — with this report and all future ones saved.",
-      "handleContext": "You'll analyse @{{handle}}",
+      "handleContext": "You'll analyse <1>@{{handle}}</1>",
       "creditNote": "You start with <strong>2 free credits</strong>. This analysis uses 1.",
       "freeBadge": "Free",
       "freeValueTitle": "What you get for free",
@@ -189,7 +189,7 @@
         "eyebrow": "STEP 2 OF 3",
         "title": "Let's tune the analysis",
         "subtitle": "Two quick picks — they adjust the tone and focus of the report.",
-        "relationshipQuestion": "What's your relationship with @{{handle}}?",
+        "relationshipQuestion": "What's your relationship with <1>@{{handle}}</1>?",
         "goalQuestion": "What matters most to you?",
         "consequenceLine": "We'll use this to improve the product and personalise future reports."
       },
