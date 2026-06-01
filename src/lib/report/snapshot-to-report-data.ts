@@ -309,6 +309,8 @@ export interface ReportEnriched {
     comments: number;
     engagementPct: number;
     date: string;
+    /** ISO timestamp from snapshot (UTC). Used for time-axis charts. */
+    takenAtIso?: string;
     mentions: string[];
     thumbnailUrl?: string;
     /** True quando o post foi fixado no perfil — usado pela UI para
@@ -326,6 +328,8 @@ export interface ReportEnriched {
     comments: number;
     engagementPct: number;
     date: string;
+    /** ISO timestamp from snapshot (UTC). Used for time-axis charts. */
+    takenAtIso?: string;
     mentions: string[];
     thumbnailUrl?: string;
   }>;
