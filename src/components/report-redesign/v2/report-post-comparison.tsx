@@ -307,6 +307,8 @@ function ConstellationScatter({
   language,
   variant,
   windowRange,
+  bestDelta,
+  worstDelta,
 }: {
   posts: ScatterPost[];
   best: EnrichedPost;
@@ -317,6 +319,8 @@ function ConstellationScatter({
   language: SupportedLanguage;
   variant: "sober" | "fog" | "glass";
   windowRange?: { startIso: string; endIso: string };
+  bestDelta: number;
+  worstDelta: number;
 }) {
   // Layout (viewBox units — scales fluidly).
   const W = 600;
