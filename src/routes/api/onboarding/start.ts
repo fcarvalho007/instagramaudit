@@ -190,7 +190,7 @@ export const Route = createFileRoute("/api/onboarding/start")({
             {
               ok: false,
               error_code: "PERSISTENCE_FAILED",
-              message: "Não foi possível guardar o pedido. Tentar novamente.",
+              message: GENERIC_FALLBACK_MESSAGE,
             },
             500,
           );
@@ -204,7 +204,7 @@ export const Route = createFileRoute("/api/onboarding/start")({
             {
               ok: false,
               error_code: "INTERNAL_ERROR",
-              message: "Falha interna ao atribuir créditos.",
+              message: GENERIC_FALLBACK_MESSAGE,
             },
             500,
           );
