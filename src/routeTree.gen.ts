@@ -69,6 +69,7 @@ import { Route as ApiPublicEnrichCommentsRouteImport } from './routes/api/public
 import { Route as ApiOnboardingStartRouteImport } from './routes/api/onboarding/start'
 import { Route as ApiAnalyzeRefreshRouteImport } from './routes/api/analyze/refresh'
 import { Route as ApiAdminWhoamiRouteImport } from './routes/api/admin/whoami'
+import { Route as ApiAdminThumbnailPersistenceRouteImport } from './routes/api/admin/thumbnail-persistence'
 import { Route as ApiAdminSimpleLoginRouteImport } from './routes/api/admin/simple-login'
 import { Route as ApiAdminSendReportLinkRouteImport } from './routes/api/admin/send-report-link'
 import { Route as ApiAdminSendFeedbackRequestRouteImport } from './routes/api/admin/send-feedback-request'
@@ -452,6 +453,12 @@ const ApiAdminWhoamiRoute = ApiAdminWhoamiRouteImport.update({
   path: '/api/admin/whoami',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminThumbnailPersistenceRoute =
+  ApiAdminThumbnailPersistenceRouteImport.update({
+    id: '/api/admin/thumbnail-persistence',
+    path: '/api/admin/thumbnail-persistence',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminSimpleLoginRoute = ApiAdminSimpleLoginRouteImport.update({
   id: '/api/admin/simple-login',
   path: '/api/admin/simple-login',
@@ -970,6 +977,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/send-feedback-request': typeof ApiAdminSendFeedbackRequestRoute
   '/api/admin/send-report-link': typeof ApiAdminSendReportLinkRoute
   '/api/admin/simple-login': typeof ApiAdminSimpleLoginRoute
+  '/api/admin/thumbnail-persistence': typeof ApiAdminThumbnailPersistenceRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/analyze/refresh': typeof ApiAnalyzeRefreshRoute
   '/api/onboarding/start': typeof ApiOnboardingStartRoute
@@ -1109,6 +1117,7 @@ export interface FileRoutesByTo {
   '/api/admin/send-feedback-request': typeof ApiAdminSendFeedbackRequestRoute
   '/api/admin/send-report-link': typeof ApiAdminSendReportLinkRoute
   '/api/admin/simple-login': typeof ApiAdminSimpleLoginRoute
+  '/api/admin/thumbnail-persistence': typeof ApiAdminThumbnailPersistenceRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/analyze/refresh': typeof ApiAnalyzeRefreshRoute
   '/api/onboarding/start': typeof ApiOnboardingStartRoute
@@ -1251,6 +1260,7 @@ export interface FileRoutesById {
   '/api/admin/send-feedback-request': typeof ApiAdminSendFeedbackRequestRoute
   '/api/admin/send-report-link': typeof ApiAdminSendReportLinkRoute
   '/api/admin/simple-login': typeof ApiAdminSimpleLoginRoute
+  '/api/admin/thumbnail-persistence': typeof ApiAdminThumbnailPersistenceRoute
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/analyze/refresh': typeof ApiAnalyzeRefreshRoute
   '/api/onboarding/start': typeof ApiOnboardingStartRoute
@@ -1394,6 +1404,7 @@ export interface FileRouteTypes {
     | '/api/admin/send-feedback-request'
     | '/api/admin/send-report-link'
     | '/api/admin/simple-login'
+    | '/api/admin/thumbnail-persistence'
     | '/api/admin/whoami'
     | '/api/analyze/refresh'
     | '/api/onboarding/start'
@@ -1533,6 +1544,7 @@ export interface FileRouteTypes {
     | '/api/admin/send-feedback-request'
     | '/api/admin/send-report-link'
     | '/api/admin/simple-login'
+    | '/api/admin/thumbnail-persistence'
     | '/api/admin/whoami'
     | '/api/analyze/refresh'
     | '/api/onboarding/start'
@@ -1674,6 +1686,7 @@ export interface FileRouteTypes {
     | '/api/admin/send-feedback-request'
     | '/api/admin/send-report-link'
     | '/api/admin/simple-login'
+    | '/api/admin/thumbnail-persistence'
     | '/api/admin/whoami'
     | '/api/analyze/refresh'
     | '/api/onboarding/start'
@@ -1795,6 +1808,7 @@ export interface RootRouteChildren {
   ApiAdminSendFeedbackRequestRoute: typeof ApiAdminSendFeedbackRequestRoute
   ApiAdminSendReportLinkRoute: typeof ApiAdminSendReportLinkRoute
   ApiAdminSimpleLoginRoute: typeof ApiAdminSimpleLoginRoute
+  ApiAdminThumbnailPersistenceRoute: typeof ApiAdminThumbnailPersistenceRoute
   ApiAdminWhoamiRoute: typeof ApiAdminWhoamiRoute
   ApiAnalyzeRefreshRoute: typeof ApiAnalyzeRefreshRoute
   ApiOnboardingStartRoute: typeof ApiOnboardingStartRoute
@@ -2265,6 +2279,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/whoami'
       fullPath: '/api/admin/whoami'
       preLoaderRoute: typeof ApiAdminWhoamiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/thumbnail-persistence': {
+      id: '/api/admin/thumbnail-persistence'
+      path: '/api/admin/thumbnail-persistence'
+      fullPath: '/api/admin/thumbnail-persistence'
+      preLoaderRoute: typeof ApiAdminThumbnailPersistenceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/simple-login': {
@@ -3102,6 +3123,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminSendFeedbackRequestRoute: ApiAdminSendFeedbackRequestRoute,
   ApiAdminSendReportLinkRoute: ApiAdminSendReportLinkRoute,
   ApiAdminSimpleLoginRoute: ApiAdminSimpleLoginRoute,
+  ApiAdminThumbnailPersistenceRoute: ApiAdminThumbnailPersistenceRoute,
   ApiAdminWhoamiRoute: ApiAdminWhoamiRoute,
   ApiAnalyzeRefreshRoute: ApiAnalyzeRefreshRoute,
   ApiOnboardingStartRoute: ApiOnboardingStartRoute,

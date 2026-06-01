@@ -27,6 +27,7 @@ import { ExecutionModeCard } from "@/components/admin/v2/sistema/execution-mode-
 import { TestProfilesCard } from "@/components/admin/v2/sistema/test-profiles-card";
 import { CacheMaintenanceCard } from "@/components/admin/v2/sistema/cache-maintenance-card";
 import { AdminSectionHeader } from "@/components/admin/v2/admin-section-header";
+import { ThumbnailPersistenceCard } from "@/components/admin/v2/sistema/thumbnail-persistence-card";
 
 export const Route = createFileRoute("/admin/sistema")({
   component: SistemaPage,
@@ -137,6 +138,7 @@ function SistemaPage() {
         </section>
 
         <HealthSection />
+        <ThumbnailPersistenceCard />
         <SecretsConfigSection />
         <CostsDetailSection />
         <AnalysisCostBreakdown />

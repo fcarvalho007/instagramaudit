@@ -1533,6 +1533,54 @@ export type Database = {
         }
         Relationships: []
       }
+      thumbnail_persistence_runs: {
+        Row: {
+          attempted: number
+          avatar: string
+          cache_key: string
+          created_at: string
+          duration_ms: number | null
+          failed_403: number
+          failed_invalid_content_type: number
+          failed_other: number
+          failed_timeout: number
+          failed_upload: number
+          handle: string
+          id: string
+          stored: number
+        }
+        Insert: {
+          attempted?: number
+          avatar?: string
+          cache_key: string
+          created_at?: string
+          duration_ms?: number | null
+          failed_403?: number
+          failed_invalid_content_type?: number
+          failed_other?: number
+          failed_timeout?: number
+          failed_upload?: number
+          handle: string
+          id?: string
+          stored?: number
+        }
+        Update: {
+          attempted?: number
+          avatar?: string
+          cache_key?: string
+          created_at?: string
+          duration_ms?: number | null
+          failed_403?: number
+          failed_invalid_content_type?: number
+          failed_other?: number
+          failed_timeout?: number
+          failed_upload?: number
+          handle?: string
+          id?: string
+          stored?: number
+        }
+        Relationships: []
+      }
       usage_alerts: {
         Row: {
           acknowledged_at: string | null
