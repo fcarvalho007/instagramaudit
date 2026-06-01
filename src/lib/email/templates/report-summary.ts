@@ -30,7 +30,7 @@ export interface ReportSummaryTopPost {
   format: string;
   /** Engagement % for this post. */
   engagementPct: number;
-  /** Optional thumbnail URL (already proxied via /api/public/ig-thumb). */
+  /** Optional thumbnail URL (URL público do bucket `post-thumbnails`). */
   thumbnailUrl?: string | null;
   /** Optional permalink to the original post. */
   permalink?: string | null;
