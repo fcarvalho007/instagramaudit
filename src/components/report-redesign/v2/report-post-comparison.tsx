@@ -185,7 +185,10 @@ export function PostComparisonBlock({
           {t("posts.title")}
         </h3>
         <p className="text-eyebrow-sm text-content-tertiary">
-          {windowLabel ? t("posts.subtitle_with_window", { window: windowLabel }) : t("posts.subtitle")}
+          {(() => {
+            const picked = pickSubtitleKey(cadenceMethod, sampleSize ?? 0);
+            return t(picked.key, picked.params);
+          })()}
         </p>
       </div>
 
