@@ -782,6 +782,7 @@
     },
     "diff": "difference",
     "no_caption": "No caption",
+    "thumb_alt": "Thumbnail of the {{format}} post from {{date}}",
     "format_chip": {
       "carousel": "CAROUSEL",
       "reel": "REEL",
