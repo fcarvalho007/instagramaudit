@@ -297,6 +297,16 @@
       "posts_other": "{{count}} posts",
       "aria_distribution": "Distribution of posts by weekday"
     },
+    "kpi": {
+      "cadence_label": "Cadence",
+      "cadence_unit": "posts / wk",
+      "consistency_label": "Consistency",
+      "consistency_caption": "Active days",
+      "peak_label": "Weekly peak",
+      "peak_caption_posts_one": "{{count}} post in window",
+      "peak_caption_posts_other": "{{count}} posts in window",
+      "peak_caption_none": "No clear peak"
+    },
     "calendar": {
       "title": "When they posted",
       "aria": "Posting calendar: {{published}} days with posts, {{paused}} without",

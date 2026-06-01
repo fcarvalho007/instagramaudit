@@ -303,6 +303,16 @@
       "posts_other": "{{count}} posts",
       "aria_distribution": "Distribuição de publicações por dia da semana"
     },
+    "kpi": {
+      "cadence_label": "Cadência",
+      "cadence_unit": "posts / sem",
+      "consistency_label": "Consistência",
+      "consistency_caption": "Dias activos",
+      "peak_label": "Pico semanal",
+      "peak_caption_posts_one": "{{count}} post no período",
+      "peak_caption_posts_other": "{{count}} posts no período",
+      "peak_caption_none": "Sem pico definido"
+    },
     "calendar": {
       "title": "Quando publicou",
       "aria": "Calendário de publicação: {{published}} dias com publicação, {{paused}} sem publicação",
