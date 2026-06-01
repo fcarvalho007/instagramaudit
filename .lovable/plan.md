@@ -1,58 +1,58 @@
-## Auditoria
+## Auditoria pós-implementação
 
-Restaurei o modal antigo (5 passos) só para resolver os erros TS. A infraestrutura do redesenho aprovado já está toda no projeto, **mas não está ligada**:
+Verifiquei: modal completo, server endpoints (`/api/onboarding/start`, `/api/public/onboarding-event`), schema `product_events`, draft hook, tracking helper, tipos das props e copy. Sem runtime errors, 43 testes verdes.
 
-| Peça | Estado |
-|---|---|
-| `gate.json` PT/EN com copy de 3 passos (`onboarding.steps.1/2/3`, `compactOptions`, `cta`) | Pronto, **não usado** |
-| `landing.json` trust bar "Conta grátis em 1 min" | Pronto |
-| `src/lib/leads/use-onboarding-draft.ts` (sessionStorage debounced) | Pronto, **não usado** |
-| `src/lib/tracking/onboarding-events.ts` (sendBeacon) + rota `/api/public/onboarding-event` | Pronto, **não usado** |
-| `/api/onboarding/start` com honeypot + `_t` timing | Pronto, **não recebe os campos do modal** |
-| `OnboardingModal` componente | Versão antiga de 5 passos restaurada do git |
+**Estado geral**: bem ligado, sem bugs funcionais bloqueantes. Apenas três refinamentos:
 
-Resultado: experiência atual ainda é a longa (6 ecrãs, incluindo `user_type`), sem persistência de rascunho, sem honeypot/anti-bot enviado, sem eventos de funil, e com copy a prometer "tom de consultor" que não é entregue.
+### Bug A — `<Trans>` com placeholder `<1>` ausente nas strings
 
-## Plano: terminar o redesenho 3 passos
+Em dois pontos o componente JSX espera `<1>...</1>` na tradução para envolver o `@handle` em cor primária, mas as strings PT/EN são texto plano. Resultado: o handle aparece **sem** o highlight visual pretendido (não quebra nada, mas é regressão face ao desenho).
 
-### 1. Reescrever `src/components/onboarding/onboarding-modal.tsx` (Intro + 3 passos)
+Ficheiros: `src/i18n/locales/{pt,en}/gate.json`
+- `onboarding.intro.handleContext`
+- `onboarding.steps.2.relationshipQuestion`
 
-- `TOTAL_STEPS = 3`. Estados: `0` (intro), `1` (nome), `2` (relação + objetivo), `3` (email + telemóvel + GDPR).
-- Importar e ligar `useOnboardingDraft(form)` para persistir em `sessionStorage`; chamar `clear()` no `onSuccess`.
-- Importar `trackOnboardingEvent` e disparar:
-  - `onboarding_step_view` ao entrar em cada passo (incluindo 0);
-  - `onboarding_step_complete` ao validar e avançar;
-  - `onboarding_abandon` no `onOpenChange(false)` antes do sucesso (`sendBeacon`);
-  - `onboarding_success` após `/api/onboarding/start` 200.
-- Capturar `formStartedAt = Date.now()` no primeiro mount, enviar como `_t`.
-- Honeypot: input `name="website"` invisível (`tabIndex={-1}`, `aria-hidden`, `autoComplete="off"`, `absolute -left-[9999px]`). Se preenchido, **não bloquear UX** — apenas envia; o servidor já drena.
-- Submit final: validar todos os campos, parar se `Date.now() - formStartedAt < 2000` (mensagem genérica), e POST a `/api/onboarding/start` **sem `user_type`** (campo continua nullable na BD).
-- Passo 2 mostra dois grupos lado-a-lado em ≥sm, empilhados em mobile:
-  - "Que relação tens com @{{handle}}?" → 4 chips compactos (`compactOptions.profileOwnership`): `own_profile`, `client_profile`, `brand_profile`, `competitor_research`. Sem ícones pesados; chips Inter SemiBold.
-  - "O que mais te interessa perceber?" → 4 chips (`compactOptions.goal`): `improve_content`, `benchmark_competitors`, `grow_audience`, `validate_brand`. Sem campo "Outro" no funil.
-  - Linha de consequência: `onboarding.steps.2.consequenceLine` (copy já suavizada).
-- Passo 3 reutiliza `Step5EmailPhone` (ou versão local equivalente) com label "Telemóvel — opcional", hint "Só usamos se o email falhar (raro)". Consentimento GDPR com dois links distintos (`/aviso-legal` e `/privacidade`).
-- CTA final: `cta.final` ("Gerar o meu relatório") com ícone `Sparkles`.
-- Botão "Voltar" mantém-se em todos os passos do form; no passo 1, volta ao intro.
+**Fix** (4 strings):
+```json
+// PT
+"handleContext": "Vais analisar <1>@{{handle}}</1>",
+"relationshipQuestion": "Que relação tens com <1>@{{handle}}</1>?"
+// EN
+"handleContext": "You'll analyse <1>@{{handle}}</1>",
+"relationshipQuestion": "What's your relationship with <1>@{{handle}}</1>?"
+```
 
-### 2. Ajustes mínimos noutros ficheiros
+O JSX já passa `components={{ 1: <span className="text-primary" /> }}` — basta acrescentar as tags na cópia.
 
-- `src/lib/unlock-flow.ts`: **não** remover `user_type` do schema (mantém-se para o módulo `unlock-modal` legado e para `Step5EmailPhone` reutilizado). O modal novo simplesmente não envia. Sem migração de BD.
-- `src/routes/api/onboarding/start.ts`: nada a mudar — já aceita `user_type` opcional.
-- `src/i18n/__tests__/onboarding-copy.test.ts`: já valida `intro.handleContext`, `creditNote`, `freeValue`, `cta`. Adicionar 3 asserções:
-  - `steps.1/2/3.eyebrow`, `title`, `subtitle` existem;
-  - `steps.2.consequenceLine` **não** contém "consultor" nem "concorrentes" (proteção anti-overpromise);
-  - `compactOptions.profileOwnership` e `compactOptions.goal` têm exatamente 4 entradas cada.
+### Refinamento B — classes Tailwind duplicadas no rodapé do form
 
-### 3. Verificações finais (sem alterar código)
+Em `FormStepBody`, linha 499 do modal:
+```
+className="flex gap-3 pt-1 border-t border-border-default/40 -mx-7 sm:-mx-9 px-7 sm:px-9 pt-5 mt-2"
+```
+`pt-1` e depois `pt-5` — o último vence mas a duplicação confunde. Limpar para `pt-5 mt-2`.
 
-- `bun run typecheck` limpa.
-- Testes existentes (`onboarding-copy`, `unlock-flow`) verdes.
-- Smoke manual no preview: abrir modal, navegar 0→3, fechar a meio (evento `abandon`), reabrir e confirmar hidratação do rascunho, submeter e confirmar redirect para `/analyze/$username`.
+### Refinamento C — honeypot sem `as never`
 
-## Fora de âmbito (explicitamente)
+Em vez de `{...form.register("website" as never)}`, usar um input descontrolado e ler via DOM ref. Reduz risco de o tipo voltar a partir-se quando o schema mudar. Padrão:
 
-- Apify, OpenAI, report, pricing, thumbnails, selector temporal, emails.
-- `/report.example` e `unlock-modal` legado (continuam a usar o fluxo de 5 passos antigo se for chamado de outro sítio).
-- Migrações de BD. `leads.user_type` permanece nullable, sem UI a preencher.
-- Cloudflare Turnstile.
+```tsx
+const honeypotRef = useRef<HTMLInputElement>(null);
+// no input: ref={honeypotRef}, sem register
+// no submit: const honeypot = honeypotRef.current?.value ?? ""
+```
+
+O `useOnboardingDraft` já não toca em `website` (escreve apenas keys explícitas), portanto remover o register não afeta persistência.
+
+### Não-issues confirmados
+
+- `product_events` aceita os campos enviados (`event_type`, `handle`, `actor_hash`, `metadata` jsonb com `step` e `marketing_consent`).
+- `/api/onboarding/start` aceita `_t` e `website`; honeypot dreni­fica com 200; <2s devolve 400.
+- `user_type` continua nullable; modal omite-o no payload mas mantém default `"creator"` no form para satisfazer o zod resolver (não vai para a BD).
+- `useOnboardingDraft` hidrata uma vez por mount (modal monta-se ao carregar a homepage e persiste); `clearDraft()` corre no sucesso; `gdpr_consent` intencionalmente fora do draft.
+- `onSuccess` no `hero-action-bar.tsx` ignora o segundo argumento — TS aceita assinaturas mais curtas, sem regressão.
+- Landing `lead` (PT/EN) já não promete "sem registo".
+
+### Fora de âmbito
+
+Apify, OpenAI, report, pricing, thumbnails, emails, migrações de BD, Turnstile.
