@@ -45,6 +45,11 @@ import {
   type EditorialPatterns,
 } from "./editorial-patterns";
 import type { CommentIntelligence } from "@/lib/analysis/types";
+import {
+  buildBlock01Sample,
+  toSampleSummary,
+  type Block01SampleSummary,
+} from "./block01-sample";
 
 // ============================================================================
 // Snapshot input typing — kept loose because `normalized_payload` is `Json`.
