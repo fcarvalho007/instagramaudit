@@ -179,7 +179,7 @@
     "submitting": "Preparing your access…",
     "preparingAnalysis": "Preparing the profile analysis…",
     "errors": {
-      "generic": "We couldn't complete this right now. Please try again in a moment.",
+      "generic": "We couldn't prepare access to the report. Please try again in a moment.",
       "network": "Connection error. Check your internet and try again."
     }
   }
