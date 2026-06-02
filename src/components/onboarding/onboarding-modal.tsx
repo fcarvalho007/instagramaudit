@@ -19,7 +19,22 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Trans, useTranslation } from "react-i18next";
-import { ArrowLeft, Check, Loader2, ShieldCheck, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  Binoculars,
+  Briefcase,
+  Check,
+  CheckCircle2,
+  Lightbulb,
+  Loader2,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  TrendingUp,
+  User,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 
 import {
   Dialog,
