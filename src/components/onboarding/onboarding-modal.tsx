@@ -128,7 +128,7 @@ export function OnboardingModal({
     },
   });
 
-  const { clear: clearDraft } = useOnboardingDraft(form);
+  const { clear: clearDraft } = useOnboardingDraft(form, handle);
 
   // Reset state quando o modal abre (não quando fecha — assim o `abandon`
   // ainda pode ler `step`). `formStartedAt` reinicia para garantir ≥2s reais.
@@ -287,7 +287,7 @@ export function OnboardingModal({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
-        className="sm:max-w-[760px] max-h-[92vh] overflow-y-auto p-0 gap-0 border-border-default/60"
+        className="w-[calc(100vw-2rem)] sm:max-w-[760px] max-h-[92vh] overflow-x-hidden overflow-y-auto p-0 gap-0 border-border-default/60"
         data-testid="onboarding-modal"
       >
         {step === 0 ? (
