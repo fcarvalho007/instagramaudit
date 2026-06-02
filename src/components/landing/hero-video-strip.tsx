@@ -24,18 +24,18 @@ export function HeroVideoStrip() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[70px] sm:h-[100px] md:h-[130px] lg:h-[160px] overflow-hidden"
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[90px] sm:h-[130px] md:h-[170px] lg:h-[210px] overflow-hidden"
     >
       {reduced ? (
         <img
           src={posterAsset.url}
           alt=""
-          className="w-full h-full object-cover opacity-[0.15] sm:opacity-[0.22] lg:opacity-[0.24]"
+          className="w-full h-full object-cover opacity-[0.35] sm:opacity-[0.5] lg:opacity-[0.6]"
           draggable={false}
         />
       ) : (
         <video
-          className="w-full h-full object-cover opacity-[0.15] sm:opacity-[0.22] lg:opacity-[0.24]"
+          className="w-full h-full object-cover opacity-[0.35] sm:opacity-[0.5] lg:opacity-[0.6]"
           autoPlay
           muted
           loop
@@ -54,7 +54,7 @@ export function HeroVideoStrip() {
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            "linear-gradient(to bottom, rgb(var(--hero-bg-base) / 0) 0%, rgb(var(--hero-bg-base) / 0.55) 60%, rgb(var(--hero-bg-base) / 0.95) 100%)",
+            "linear-gradient(to bottom, rgb(var(--hero-bg-base) / 0.35) 0%, rgb(var(--hero-bg-base) / 0) 35%, rgb(var(--hero-bg-base) / 0) 70%, rgb(var(--hero-bg-base) / 0.55) 100%)",
         }}
       />
       {/* Lateral fade to avoid hard edges on ultra-wide */}
@@ -62,7 +62,7 @@ export function HeroVideoStrip() {
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            "linear-gradient(to right, rgb(var(--hero-bg-base) / 0.6) 0%, rgb(var(--hero-bg-base) / 0) 12%, rgb(var(--hero-bg-base) / 0) 88%, rgb(var(--hero-bg-base) / 0.6) 100%)",
+            "linear-gradient(to right, rgb(var(--hero-bg-base) / 0.25) 0%, rgb(var(--hero-bg-base) / 0) 8%, rgb(var(--hero-bg-base) / 0) 92%, rgb(var(--hero-bg-base) / 0.25) 100%)",
         }}
       />
     </div>
