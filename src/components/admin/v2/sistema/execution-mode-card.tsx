@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import {
   getExecutionMode,
   setExecutionMode,
-} from "@/server/admin/execution-mode.functions";
+} from "@/lib/admin/execution-mode.functions";
 import {
   AlertDialog,
   AlertDialogAction,

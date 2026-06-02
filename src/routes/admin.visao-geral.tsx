@@ -18,7 +18,7 @@ import { AcquisitionFunnel } from "@/components/admin/v2/visao-geral/acquisition
 import { CostSummaryCard } from "@/components/admin/v2/visao-geral/cost-summary-card";
 import { PriorityFollowups } from "@/components/admin/v2/visao-geral/priority-followups";
 import { IntentSection } from "@/components/admin/v2/visao-geral/intent-section";
-import { getExecutionMode } from "@/server/admin/execution-mode.functions";
+import { getExecutionMode } from "@/lib/admin/execution-mode.functions";
 import { adminFetch } from "@/lib/admin/fetch";
 
 export const Route = createFileRoute("/admin/visao-geral")({

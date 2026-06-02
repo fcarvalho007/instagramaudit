@@ -15,7 +15,7 @@ import { useEffect, useState } from "react";
 import { useRouterState } from "@tanstack/react-router";
 import { Menu, Search } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { getExecutionMode } from "@/server/admin/execution-mode.functions";
+import { getExecutionMode } from "@/lib/admin/execution-mode.functions";
 
 const TITLES: Record<string, string> = {
   "/admin": "Visão geral",
