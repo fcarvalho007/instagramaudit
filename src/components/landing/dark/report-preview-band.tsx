@@ -220,12 +220,12 @@ export function ReportPreviewBand() {
 
         {/* Subhighlights */}
         <div className="flex flex-wrap justify-center gap-x-10 gap-y-3 pt-6 pb-10">
-          {(
-            t("dark.preview.subhighlights", {
-              returnObjects: true,
-            }) as Array<{ title: string; hint: string }>
-          ).map((h) => (
-            <div key={h.title} className="text-center">
+          {[
+            { key: "data", title: t("dark.preview.sub.data.title"), hint: t("dark.preview.sub.data.hint") },
+            { key: "benchmark", title: t("dark.preview.sub.benchmark.title"), hint: t("dark.preview.sub.benchmark.hint") },
+            { key: "ai", title: t("dark.preview.sub.ai.title"), hint: t("dark.preview.sub.ai.hint") },
+          ].map((h) => (
+            <div key={h.key} className="text-center">
               <div
                 className="text-sm font-medium"
                 style={{ color: "rgb(var(--hero-text-primary))" }}
