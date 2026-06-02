@@ -17,6 +17,7 @@
   "FALLBACK": "Não foi possível concluir a análise. Tenta novamente dentro de instantes.",
   "NETWORK_FETCH": "Falha de ligação. Tentar novamente.",
   "ONBOARDING_REQUIRED": "Para gerar a análise, completa o registo rápido.",
+  "ONBOARDING_SESSION_LOST": "Não conseguimos guardar a tua sessão neste browser. Tenta novamente — se persistir, abre o relatório num separador novo.",
   "INSUFFICIENT_CREDITS": "Sem créditos disponíveis.",
   "INSUFFICIENT_CREDITS_HELPER": "Já usaste os teus 2 relatórios gratuitos.",
   "snapshot": {

@@ -17,6 +17,7 @@
   "FALLBACK": "We couldn't complete the analysis. Please try again in a moment.",
   "NETWORK_FETCH": "Connection error. Please try again.",
   "ONBOARDING_REQUIRED": "To generate the analysis, complete the quick sign-up.",
+  "ONBOARDING_SESSION_LOST": "We couldn't store your session in this browser. Try again — if it persists, open the report in a new tab.",
   "INSUFFICIENT_CREDITS": "No credits available.",
   "INSUFFICIENT_CREDITS_HELPER": "You've already used your 2 free reports.",
   "snapshot": {
