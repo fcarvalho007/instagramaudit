@@ -1,30 +1,28 @@
-## Simplificar menu do header e corrigir ancoras
+## Block 1: empilhar verticalmente Frequência + Formato
 
-### Problema atual
-- O menu tem 4 itens; o utilizador quer ~3 itens minimalistas.
-- As ancoras `/#como-funciona` e `/#exemplos` estão quebradas — nenhuma secção da homepage tem esses `id`.
-- "Exemplos" não tem destino válido.
+### Ficheiros
+- `src/components/report-redesign/v2/report-overview-block.tsx` (não locked)
 
-### Alterações
+### Alteração
+Na Zona D, substituir o grid 2-colunas por um stack vertical:
 
-1. **Simplificar navItems no `Header`** (`src/components/layout/header.tsx`):
-   - Manter: **Analisar** → `/`
-   - Manter: **Como funciona** → `/#como-funciona`
-   - Remover: **Exemplos**
-   - Manter: **Preços** → `/precos`
+```diff
+- <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
++ <div className="space-y-6 md:space-y-8">
+    <FrequencyCard ... />
+    <FormatCard ... />
+  </div>
+```
 
-2. **Adicionar `id="como-funciona"`** à secção correspondente (`src/components/landing/dark/how-it-works-band.tsx`):
-   - A secção `HowItWorksBand` tem o headline "Relatório em 3 passos." (chave `dark.how.headline`).
-   - Adicionar `id="como-funciona"` ao `<section>` para que o scroll da âncora funcione.
+### Resultado
+- Desktop/tablet/mobile: 1 cartão por linha, full content width
+- Ordem: Frequência primeiro, Formato segundo (já é a ordem atual no JSX)
+- Espaçamento vertical consistente com o restante Block 1 (`space-y-8 md:space-y-10` do wrapper)
+- Sem alteração a dados, fórmulas, lógica de cadência, lógica de formatos, thumbnails, gating, backend
 
-3. **Desktop + mobile**: ambas as listas de navItems usam a mesma array, por isso a simplificação aplica-se automaticamente aos dois.
+### Sem refinamentos internos nos cards
+Os componentes `FrequencyCard` e `FormatCard` já são responsivos a 100% width. Não toco no interior — o ganho de largura permite naturalmente que o calendário e a grelha de thumbnails respirem. Se o owner depois quiser reduzir densidade do grid de thumbnails, é um prompt à parte.
 
-### Ficheiros a alterar
-- `src/components/layout/header.tsx` — reduzir `navItems` de 4 para 3
-- `src/components/landing/dark/how-it-works-band.tsx` — adicionar `id="como-funciona"` ao `<section>`
-
-### Resultado esperado
-- Menu limpo: Analisar | Como funciona | Preços
-- Clicar em "Como funciona" faz scroll suave até à secção "Relatório em 3 passos." na homepage.
-- "Preços" continua a navegar para `/precos`.
-- "Exemplos" desaparece do menu.
+### Validação
+- `bunx tsc --noEmit`
+- Screenshots desktop 1440, tablet, mobile
