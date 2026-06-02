@@ -27,14 +27,14 @@
         "d365": "365 days"
       },
       "scoreLabel": "Profile index",
-      "scoreValue": "37/100",
+      "scoreValue": "37 / 100",
       "scoreCaption": "Preview · Illustrative data",
       "kpis": {
         "engagement": "Engagement",
         "frequency": "Posts/wk",
-        "growth": "Growth"
+        "costPerPost": "Cost/post"
       },
-      "sidebar": "Free overview · 5 premium sections",
+      "sidebar": "1 of 6 sections unlocked",
       "premiumRows": {
         "diagnostic": "Editorial diagnosis",
         "content": "Content",

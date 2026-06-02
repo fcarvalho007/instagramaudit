@@ -138,7 +138,7 @@ export function HeroReportPreview() {
           {[
             { label: t("hero.previewMock.kpis.engagement"), value: "4,2%" },
             { label: t("hero.previewMock.kpis.frequency"), value: "2,8" },
-            { label: t("hero.previewMock.kpis.growth"), value: "+1,9%" },
+            { label: t("hero.previewMock.kpis.costPerPost"), value: "134" },
           ].map((kpi) => (
             <div
               key={kpi.label}
