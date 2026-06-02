@@ -52,6 +52,9 @@ const ALLOWED_EVENTS = [
   "unlock_check_returning_lead",
   "unlock_check_skipped_steps",
   "unlock_modal_intro_viewed",
+  // Premium CTA flow (report — unified entry points)
+  "premium_cta_clicked",
+  "premium_window_interest",
 ] as const;
 
 const trackEventSchema = z.object({
