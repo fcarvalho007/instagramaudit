@@ -1,9 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { HeroSection } from "@/components/landing/hero-section";
-import { HowItWorksSection } from "@/components/landing/how-it-works-section";
-import { ProductPreviewSection } from "@/components/landing/product-preview-section";
-import { SocialProofSection } from "@/components/landing/social-proof-section";
+import { LandingDarkIsland } from "@/components/landing/dark/landing-dark-island";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -36,21 +34,7 @@ function Home() {
   return (
     <>
       <HeroSection />
-      <div
-        aria-hidden="true"
-        className="h-4 w-full"
-        style={{
-          background:
-            "linear-gradient(180deg, #060A18 0%, rgb(var(--surface-base)) 100%)",
-        }}
-      />
-      <SocialProofSection />
-      <div id="como-funciona" style={{ scrollMarginTop: "5rem" }}>
-        <HowItWorksSection />
-      </div>
-      <div id="exemplos" style={{ scrollMarginTop: "5rem" }}>
-        <ProductPreviewSection />
-      </div>
+      <LandingDarkIsland />
     </>
   );
 }
