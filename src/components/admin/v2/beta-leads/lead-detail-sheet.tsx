@@ -68,7 +68,7 @@ import {
   ChevronDown,
   MessageCircle,
 } from "lucide-react";
-import { Zap, Flame, Repeat, Wallet, FileBarChart, CalendarClock } from "lucide-react";
+import { Zap, Repeat, Wallet, FileBarChart, CalendarClock } from "lucide-react";
 import { Plus, Download, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -655,6 +655,49 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
       .finally(() => setTimelineLoading(false));
   }, [open, lead?.id]);
 
+  // ── CTA do próximo passo (memo) ─────────────────────────────
+  // IMPORTANTE: este `useMemo` tem de ser chamado em TODOS os renders,
+  // mesmo quando `lead` é null, para preservar a ordem dos hooks
+  // (caso contrário: "Rendered fewer hooks than expected").
+  const nextStepCta = useMemo<
+    { label: string; onClick: () => void } | null
+  >(() => {
+    if (!lead) return null;
+    const status = lead.commercial_status ?? "";
+    if (
+      lead.report_request_id &&
+      GENERATABLE_STATUSES.includes(
+        lead.report_status as typeof GENERATABLE_STATUSES[number],
+      )
+    ) {
+      return { label: "Gerar →", onClick: () => setGenerateOpen(true) };
+    }
+    if (status === "relatorio_gerado" || status === "novo_pedido") {
+      return { label: "Gerar →", onClick: () => setGenerateOpen(true) };
+    }
+    if (
+      ["link_enviado", "relatorio_visto"].includes(status) &&
+      !lead.feedback
+    ) {
+      return { label: "Pedir feedback →", onClick: () => setFeedbackOpen(true) };
+    }
+    // Follow-up depends on feedback intent — recalculated below when lead exists.
+    if (
+      lead.email &&
+      lead.feedback &&
+      lead.commercial_status !== "convertido" &&
+      lead.commercial_status !== "arquivado"
+    ) {
+      const fi = interpretFeedback(lead.feedback);
+      if (fi.intent === "alto" || fi.intent === "medio") {
+        return { label: "Follow-up →", onClick: () => setFollowupOpen(true) };
+      }
+    }
+    return null;
+  }, [
+    lead,
+  ]);
+
   if (!lead) return null;
 
   const intent = deriveIntentSignal(lead);
@@ -663,21 +706,15 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
     null;
   const suggestedStep = suggestNextLeadAction(lead).label;
   const feedbackIntent = interpretFeedback(lead.feedback);
-  // When feedback exists, override the heuristic intent with the commercial signal.
-  const displayedIntent = lead.feedback
-    ? { label: feedbackIntent.label, accent: feedbackIntent.accent }
-    : intent;
+  // `intent` heuristic is kept for the suggestion text fallback; the dedicated
+  // "Intenção" field was removed from the context grid because it is derived,
+  // not provided by the lead in the onboarding modal.
+  void intent;
   const displayedSuggestion = lead.feedback ? feedbackIntent.nextAction : suggestedStep;
   const columnDef = KANBAN_COLUMNS.find((c) => c.key === lead.commercial_status);
-
-  // Commercial follow-up button is only available when the lead has shown
-  // measurable purchase intent in their feedback AND is still in the funnel.
-  const followupEligible =
-    !!lead.email &&
-    !!lead.feedback &&
-    (feedbackIntent.intent === "alto" || feedbackIntent.intent === "medio") &&
-    lead.commercial_status !== "convertido" &&
-    lead.commercial_status !== "arquivado";
+  // (Follow-up eligibility now lives inside the `nextStepCta` memo above so
+  // hooks order stays stable when `lead` is null.)
+  void feedbackIntent;
 
   const handleSaveNotes = () => {
     onUpdate(lead.id, { internal_notes: notesText });
@@ -722,40 +759,6 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
   const totalPaidEur = (lead.payment_summary?.total_paid_cents ?? 0) / 100;
   const kpiSpent = totalPaidEur > 0 ? `€${totalPaidEur.toFixed(0)}` : "€0";
   const kpiAge = `${daysSince(lead.created_at)}d`;
-
-  // CTA do próximo passo — mapeia o estado actual à acção mais relevante.
-  const nextStepCta = useMemo<
-    { label: string; onClick: () => void } | null
-  >(() => {
-    const status = lead.commercial_status ?? "";
-    if (
-      lead.report_request_id &&
-      GENERATABLE_STATUSES.includes(
-        lead.report_status as typeof GENERATABLE_STATUSES[number],
-      )
-    ) {
-      return { label: "Gerar →", onClick: () => setGenerateOpen(true) };
-    }
-    if (status === "relatorio_gerado" || status === "novo_pedido") {
-      return { label: "Gerar →", onClick: () => setGenerateOpen(true) };
-    }
-    if (
-      ["link_enviado", "relatorio_visto"].includes(status) &&
-      !lead.feedback
-    ) {
-      return { label: "Pedir feedback →", onClick: () => setFeedbackOpen(true) };
-    }
-    if (followupEligible) {
-      return { label: "Follow-up →", onClick: () => setFollowupOpen(true) };
-    }
-    return null;
-  }, [
-    lead.commercial_status,
-    lead.report_status,
-    lead.report_request_id,
-    lead.feedback,
-    followupEligible,
-  ]);
 
   return (
     <>
@@ -834,12 +837,12 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
           className="flex-1 min-h-0 flex flex-col"
         >
           <div className="px-6 border-b border-admin-text-primary/10 shrink-0">
-            <TabsList className="h-auto bg-transparent p-0 gap-6 rounded-none justify-start">
+            <TabsList className="h-auto bg-transparent p-0 gap-7 rounded-none justify-start">
               {TABS.map((t) => (
                 <TabsTrigger
                   key={t.key}
                   value={t.key}
-                  className="relative h-10 px-0 rounded-none bg-transparent text-[13px] font-medium text-admin-text-tertiary hover:text-admin-text-secondary transition-colors data-[state=active]:text-admin-text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:-bottom-px data-[state=active]:after:h-[2px] data-[state=active]:after:bg-admin-info-500"
+                  className="relative h-10 px-0 rounded-none bg-transparent text-[13px] font-medium text-admin-text-secondary hover:text-admin-text-primary transition-colors data-[state=active]:text-admin-text-primary data-[state=active]:font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:-bottom-px data-[state=active]:after:h-[2px] data-[state=active]:after:bg-admin-info-500"
                 >
                   {t.label}
                 </TabsTrigger>
@@ -891,12 +894,11 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                     label="Origem"
                     value={labelSource(lead.source)}
                   />
-                  <ContextField
-                    icon={Flame}
-                    label="Intenção"
-                    value={displayedIntent.label}
-                  />
                 </div>
+                <p className="admin-meta text-admin-text-tertiary mt-2">
+                  Só o que o lead respondeu no onboarding. Sinais derivados
+                  (intenção, próximo passo) aparecem acima.
+                </p>
               </div>
 
               {/* (c) Estado comercial — select agrupado manual/auto */}

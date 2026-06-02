@@ -1,83 +1,121 @@
 ## Diagnóstico
 
-Auditei `/admin/receita` e o que está lá **já é honesto** — não há mockup estático. Mas a organização é confusa e o título da página promete mais do que entrega.
+Abri a ficha de cliente (`src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`) e cruzei com os valores reais na BD e o modal de onboarding. Encontrei 4 problemas reais:
 
-**Estado actual:**
+### 1. Erro "Rendered fewer hooks than expected" — bug de ordem de hooks
 
-| Secção | Origem | Estado |
-|---|---|---|
-| Métricas principais (MRR/ARR/ARPU/churn) | `EmptyStateCard` | Vazio · "depende de checkout" |
-| Anatomia do MRR (waterfall) | `EmptyStateCard` | Vazio · "depende de checkout" |
-| Custos da plataforma (`ExpenseSection`) | `provider_call_logs` + `provider_billing_imports` | **Real** ✓ |
-| MRR por plano | `EmptyStateCard` | Vazio · "depende de checkout" |
-| Cohort de retenção | `EmptyStateCard` | Vazio · "depende de checkout" |
-| Últimas faturas | `EmptyStateCard` | Vazio · "depende de checkout" |
+`LeadDetailSheet` faz `if (!lead) return null` na **linha 658**, mas chama `useMemo(nextStepCta)` na **linha 727**, depois do early-return. Quando o sheet abre/fecha (ou troca de lead), o React vê um número diferente de hooks entre renders → exactamente o erro reportado.
 
-Confirmei na BD: `lead_payments` tem **0 linhas**, não existe tabela de subscrições, e o knowledge do projeto proíbe ligar checkout nesta fase ("Do not implement payments yet").
+**Fix:** mover o `useMemo` para **antes** do `if (!lead) return null` e lidar com `lead` possivelmente nulo dentro do callback (devolver `null` se for o caso). Sem isto o "Try again" só funciona porque o ErrorBoundary descarta e remonta — o bug volta sempre.
 
-**Problemas reais:**
+### 2. Dados inventados que não vêm do modal (rótulos out-of-sync)
 
-1. **5 cartões vazios consecutivos** com a mesma razão ("depende de checkout") inflam a página e fazem parecer que está incompleta. Devia ser **um** bloco consolidado.
-2. **Título "Receita e despesas"** está desalinhado: 5/6 secções não têm receita. Ou se assume que hoje é "Despesas + preparação de receita", ou se renomeia.
-3. **`ExportCsvButton`** é um stub silencioso (`toast.info("em breve")`) — botão a fingir trabalho que não faz. Remover até ter export real.
-4. **`PeriodSelect`** só afecta `ExpenseSection`; os outros 5 cartões ignoram-no. Sugere falsamente que filtra a página toda.
-5. **Sinais reais de pré-receita que já existem na BD e não estão na página:**
-   - `pricing_interest` — quem disse que pagaria e quanto (sinal de WTP real)
-   - `beta_feedback.purchase_intent` + `pricing_preference` — intenção de compra dos utilizadores beta
-   - `lead_payments` — contador a zero (mas pronto para quando passar a 1)
-   - `leads` por `commercial_status` — funil comercial em direção à receita
+`src/lib/admin/lead-context-labels.ts` está dessincronizado com os valores que o modal de onboarding grava em `leads`. Cruzei com a BD:
 
-## Proposta
+| Campo | Valores reais na BD | Mapeados em PT? | O que aparece hoje |
+|---|---|---|---|
+| `profile_ownership` | `own_profile`, `brand_profile`, `client_profile`, `curiosity` | só os 2 primeiros (e parcialmente) | `brand_profile` → **"Brand profile"** (humanização) |
+| `purpose` | `improve_content`, `grow_audience`, `validate_brand` | só `improve_content` e `grow_audience` | `validate_brand` → **"Validate brand"** (em inglês) |
+| `source` | `public_report_unlock` (todos os 8 leads) | ❌ não mapeado | **"Public report unlock"** (em inglês) |
 
-Reorganizar a página em **3 blocos honestos**, sem mockup, com dados reais onde existem:
+Já existem rótulos em PT bonitos em `src/i18n/locales/pt/gate.json` (linhas 107-118) — usados pelo modal que o lead vê — mas estão duplicados/divergentes do que admin mostra. Solução: alinhar `lead-context-labels.ts` com os mesmos valores PT que o modal usa, cobrindo **todos** os valores do enum + o `competitor_research`/`benchmark_competitors` em falta.
+
+### 3. "Intenção" misturada com dados que o lead preencheu
+
+No grid "Contexto do lead", o campo **Intenção: Baixo — sem relatório** está visualmente igual aos campos que vêm do modal (Relação/Objetivo/Origem). Mas é heurística derivada (`deriveIntentSignal`), não input do utilizador. Isto cria a percepção de "dado inventado" exactamente como o user reclama.
+
+**Fix:** ou tirar do grid e mover para o callout do "Próximo passo" (onde o sinal pertence), ou marcar visualmente como derivado (badge "automático" + cor mais subtil). Proposta: mover, porque já temos o "Próximo passo" mesmo acima — fica naturalmente como contexto da sugestão.
+
+### 4. Tabs com pouca legibilidade
+
+Tabs actuais usam `text-admin-text-tertiary` (cinzento muito apagado) e só ganham cor quando activos. O user pede mais clareza/destaque.
+
+**Fix:** subir contraste — inactivos para `text-secondary` (legível), activo para `text-primary` com **font-semibold** + underline accent já existente. Espaçamento entre tabs sobe ligeiramente para respirar.
+
+---
+
+## Plano de execução
+
+### Ficheiro 1 — `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`
+
+**A. Corrigir ordem de hooks (bug crítico)**
+
+Mover `useMemo(nextStepCta)` para imediatamente antes de `if (!lead) return null`. Dentro do callback, devolver `null` se `!lead`. Manter as dependências como estão.
+
+**B. Tabs com mais clareza**
+
+No `TabsTrigger` (linha 842), trocar:
 
 ```text
-┌─ Receita e custos ────────────────────────────────────────┐
-│  (subtítulo: "Hoje: custos reais + sinais de demanda.    │
-│   Métricas de subscrição activam quando o checkout for   │
-│   ligado.")                                              │
-│  [PeriodSelect afecta só os blocos que dependem dele]    │
-└──────────────────────────────────────────────────────────┘
-
-BLOCO 1 — Despesas reais (mantém ExpenseSection tal como está)
-  · Custo por fornecedor 30d, custo por análise, reconciliação
-
-BLOCO 2 — Sinais de pré-receita (NOVO, dados reais)
-  · KPI: Pagamentos confirmados (lead_payments status='paid')
-  · KPI: Receita acumulada (sum amount_cents)
-  · KPI: Intenção de compra beta (% beta_feedback.purchase_intent ∈ {'sim','talvez'})
-  · KPI: Sinais em /preços (pricing_interest.would_pay='sim' nos últimos 30d)
-  · Tabela compacta: top respostas pricing_interest (opção + faixa + comentário)
-
-BLOCO 3 — Receita recorrente (1 cartão consolidado, não 5)
-  · Único EmptyStateCard explicando que MRR/ARR/cohort/faturas
-    acendem quando o checkout EuPago/Stripe ligar
-  · Lista as 4 métricas que vão aparecer (não 4 cartões separados)
+text-admin-text-tertiary
+hover:text-admin-text-secondary
+data-[state=active]:text-admin-text-primary
 ```
 
-## Ficheiros a alterar
+por:
 
-| Ficheiro | Acção |
-|---|---|
-| `src/routes/admin.receita.tsx` | Recompor: remover `ExportCsvButton`, remover `MetricsSection`/`WaterfallSection`/`PlansSection`/`CohortSection`/`InvoicesSection` separados, adicionar `PreRevenueSignalsSection` e `FutureRecurringRevenueCard` |
-| `src/components/admin/v2/receita/pre-revenue-signals-section.tsx` | **Novo** · KPIs + tabela alimentados por novo endpoint |
-| `src/components/admin/v2/receita/future-recurring-revenue-card.tsx` | **Novo** · 1 `EmptyStateCard` consolidado (substitui os 5) |
-| `src/routes/api/admin/pre-revenue-signals.ts` | **Novo** · endpoint server route que agrega `lead_payments`, `beta_feedback`, `pricing_interest` |
-| `src/components/admin/v2/receita/metrics-section.tsx` | **Apagar** (substituído pelo cartão consolidado) |
-| `src/components/admin/v2/receita/waterfall-section.tsx` | **Apagar** |
-| `src/components/admin/v2/receita/plans-section.tsx` | **Apagar** |
-| `src/components/admin/v2/receita/cohort-section.tsx` | **Apagar** |
-| `src/components/admin/v2/receita/invoices-section.tsx` | **Apagar** |
+```text
+text-admin-text-secondary font-medium
+hover:text-admin-text-primary
+data-[state=active]:text-admin-text-primary
+data-[state=active]:font-semibold
+```
 
-Sem migração: todas as tabelas usadas já existem.
+E aumentar gap do `TabsList` de `gap-6` para `gap-7` (respiração).
+
+**C. Tirar "Intenção" do grid de contexto**
+
+No grid "Contexto do lead" (linhas 878-899), remover o 4º `ContextField` (Intenção). A intenção continua exposta no callout "Próximo passo" + na vista de Feedback. Grid passa a 3 campos honestos: Relação · Objetivo · Origem (todos do modal).
+
+### Ficheiro 2 — `src/lib/admin/lead-context-labels.ts`
+
+Alinhar com o que o modal de onboarding grava hoje e com os PT-PT do `gate.json`. Adicionar todos os valores em falta:
+
+```ts
+PROFILE_OWNERSHIP_LABELS:
+  own_profile        → "É o meu perfil pessoal"
+  brand_profile      → "É o perfil da minha marca"      // NOVO
+  client_profile     → "É o perfil de um cliente"
+  competitor_research→ "Estou a observar concorrência"   // NOVO
+  curiosity          → "Estou só a explorar"             // NOVO
+
+PURPOSE_LABELS:
+  improve_content       → "Melhorar o conteúdo"          // alinhar
+  benchmark_competitors → "Comparar com concorrentes"    // NOVO
+  grow_audience         → "Crescer a audiência"          // alinhar
+  validate_brand        → "Validar a presença da marca"  // NOVO
+  client_report         → "Preparar análise para cliente" // NOVO (modal)
+
+SOURCE_LABELS:
+  public_report_unlock  → "Desbloqueio de relatório público"  // NOVO
+  public_report_gate    → "Gate de relatório público"          // NOVO (default da tabela)
+```
+
+Manter alias antigos por compatibilidade (own, mine, etc.) sem alterar comportamento, mas adicionar comment explicando que os valores canónicos vêm do modal.
+
+### Sem migração
+
+A correcção é só de UI + tradução de rótulos. Os dados na BD estão correctos.
+
+### Verificação
+
+```bash
+bunx tsc --noEmit
+bun vitest run src/components/admin/v2/beta-leads/__tests__/
+```
+
+Smoke manual:
+- Abrir kanban → clicar num card de lead → ficha abre **sem erro de hooks**
+- Fechar → reabrir → continuar sem erro
+- Trocar entre leads → sem erro
+- Confirmar que Relação/Objetivo/Origem aparecem em PT-PT (sem "Brand profile" nem "Public report unlock")
+- Confirmar que tabs "Resumo / Relatórios / Feedback / Histórico" estão legíveis em estado inactivo
 
 ## Checkpoint
 
-- ☐ Página passa a ter 3 blocos em vez de 6
-- ☐ Zero mockup; cada número exibido vem de query real
-- ☐ KPIs de pré-receita mostram valores actuais (`lead_payments`=$0, contadores de `pricing_interest` e `beta_feedback` reais)
-- ☐ Botão "Exportar CSV" removido enquanto não houver export
-- ☐ Subtítulo da página explica honestamente o que está e o que falta
-- ☐ `bunx tsc --noEmit` limpo
-
-Confirma se avanço, ou se preferes manter os 5 cartões MRR separados (mesmo vazios) por uma questão de "promessa visual" do produto futuro.
+- ☐ Hook order corrigido — erro "Rendered fewer hooks than expected" desaparece
+- ☐ Rótulos de Relação/Objetivo/Origem em PT-PT, alinhados com os do modal
+- ☐ Tabs com contraste suficiente quando inactivas + activa com peso e cor
+- ☐ Grid "Contexto do lead" reduzido a 3 campos honestos (todos do modal); "Intenção" derivada deixa de se passar por input do lead
+- ☐ `bunx tsc --noEmit` e vitest de beta-leads limpos
+- ☐ Nenhuma alteração na BD nem nas APIs
