@@ -16,10 +16,10 @@ export function HeroSection() {
     >
       <HeroAuroraBackground />
 
-      <Container size="lg" className="relative z-10 py-10 md:py-24 lg:py-28">
-        <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8 lg:gap-12 items-center">
+      <Container size="lg" className="relative z-10 py-8 md:py-24 lg:py-28">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-10 lg:gap-12 items-center">
           {/* Left — copy + action */}
-          <div className="space-y-5 md:space-y-7 text-center lg:text-left">
+          <div className="space-y-4 md:space-y-7 text-center lg:text-left">
             {/* Eyebrow */}
             <div className="flex justify-center lg:justify-start">
               <span
@@ -54,7 +54,7 @@ export function HeroSection() {
               delayMs={500}
             />
 
-            <div className="pt-4 lg:pt-2">
+            <div className="pt-2 lg:pt-2">
               <HeroActionBar />
             </div>
           </div>
