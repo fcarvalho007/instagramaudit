@@ -1,68 +1,126 @@
 ## Objetivo
 
-Três ajustes visuais ao relatório em `/analyse/$username`, sem alterar lógica, dados ou rotas.
+Refinar UI do `OnboardingModal` para mobile (360–412px), sem mexer em lógica, payload, tracking, endpoints ou copy de fundo. Apenas tipografia, spacing e responsividade dos botões.
 
-## (a) Remover card de feedback duplicado dos emojis
+## Ficheiros a editar
 
-Existem dois widgets de feedback no relatório:
-- `BlockFeedback` — card grande com título "Uma breve pausa para te ouvirmos" + 5 emojis (após o Bloco 1, só visível com `unlocked`).
-- `EndFeedbackStrip` — variante compacta no fim, dentro do `ReportEndOfFreeBlock`.
+- `src/components/onboarding/onboarding-modal.tsx` (único ficheiro de código)
+- Sem alterações em `gate.json` (pt/en) — copy mantém-se.
 
-São redundantes. Manter apenas o do fim.
+## Mudanças concretas
 
-**Mudança**:
-- `src/components/report-redesign/v2/report-shell-v2.tsx`
-  - Remover o bloco JSX entre as linhas 283–291 (`BlockFeedback` + wrapper `<div className="mt-6 md:mt-8 mb-2">`).
-  - Remover o import na linha 47 (`BlockFeedback`).
-- Deixar `block-feedback.tsx` em disco (não tocar — pode ainda ser usado por outros pontos futuros; só desativar uso). Se grep confirmar zero usos restantes, removo também o ficheiro.
+### 1. Shell do modal (`DialogContent`, ~linha 346)
 
-## (b) Ampliar thumbnails no card "Formato"
+- Outer padding: `px-7 py-8 sm:px-9 sm:py-9` → `px-5 py-7 sm:px-9 sm:py-9` em todos os bodies (Intro/Login/Form). Liberta ~16px laterais em 360–390.
+- Mantém `w-[calc(100vw-2rem)] sm:max-w-[760px] max-h-[92vh]`.
 
-O card "Frequência" ao lado tem muito mais peso visual (calendário 7×6). O grid de thumbnails no `FormatCard` é `repeat(min(N,6), 1fr)` com `aspect-ratio 3/4` → resulta em miniaturas pequenas em 2 linhas de 6.
+### 2. Títulos — consistência entre os 4 estados
 
-**Mudança** em `src/components/report-redesign/v2/overview/format-card.tsx` (linhas ~326–366):
-- Trocar grid para `repeat(min(N,4), 1fr)` → 4 colunas, 3 linhas para 12 posts; mais "presença".
-- Aumentar `gap` de `gap-1` → `gap-2`.
-- Manter `aspect-ratio 3/4` (formato vertical IG), mas como a célula passa a ser maior, as thumbs ficam visualmente maiores.
-- Aumentar o dot indicador de formato de `size-[6px]` → `size-2` e o ícone fallback de `size-3.5` → `size-5` para acompanhar a escala.
+Hoje:
+- Intro/Login: `text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em]`
+- FormStep: `text-[22px] sm:text-[30px] leading-[1.15] tracking-[-0.01em]` ← inconsistente (22px é pequeno demais e diferente do intro)
 
-Sem alterações em copy, legenda ou lógica de ordenação.
+Normalizar todos para:
+```
+font-display text-[28px] sm:text-[30px] leading-[1.08] tracking-[-0.015em] text-content-primary
+```
+- `min-w-0 break-words text-balance` mantém-se nos passos com `<Trans>`.
 
-## (c) Redesenhar marcadores "melhor" e "pior" do scatter
+### 3. Subtitle (FormStep)
 
-Atual (em `report-post-comparison.tsx`, função `ExtremeMarker` ~650–719):
-- "melhor": aura azul + ★ por cima
-- "pior": aura âmbar/ouro + ▾ por baixo
-- Texto da label em 9px, cor igual ao ponto, parece desalinhado e pesado
+`text-[13px] leading-relaxed` → `text-[15px] leading-[1.55] text-content-secondary`. Continua claramente secundário, mas mais legível.
 
-**Mudança**:
-- Substituir os símbolos unicode (★, ▾) por ícones `lucide-react`:
-  - melhor → `TrendingUp` (ou `Sparkles`), cor `--accent-primary` (#0077B6 / ocean)
-  - pior → `TrendingDown`, cor `--signal-warning` semântica mas suavizada (usar `--content-tertiary` para o âmbar ficar discreto, mantendo o azul como protagonista único — alinha com a paleta Ocean Breeze)
-- Renderizar o ícone via `<foreignObject>` no SVG (12×12px) num pequeno "chip" arredondado:
-  - chip: `rounded-full` branco com `border` ténue da cor do tom, `shadow-sm`, padding 3px
-  - posicionado a `cy ± 18` (acima para best, abaixo para worst)
-- Label "melhor"/"pior" passa a ser uma pill em Inter 10px SemiBold uppercase tracking-wide, cor do tom, fundo `rgba(white, 0.85)` com border-1 do tom — visualmente mais "etiqueta editorial", menos texto solto.
-- Aumentar o ponto principal de `r=5` para `r=6` e reduzir opacidade da aura para 0.14 (mais clean).
+### 4. Spacing do header
 
-Resultado: marcadores parecem badges premium em vez de símbolos ASCII; mantém legibilidade e hierarquia clara (best > worst).
+`DialogHeader space-y-3` → `space-y-2.5` no FormStep (eyebrow → title → subtitle → progress mais compacto vertical).  
+`mt-6 space-y-4` da Intro → `mt-5 space-y-4`.  
+Form `space-y-6 mt-6` → `space-y-5 mt-5`.
 
-## Fora de âmbito
+### 5. Step 1 — Input nome
 
-- Onboarding, report logic, credits, pricing, tracking, DB, rotas — intactos.
-- Copy: zero alterações (mesmas chaves i18n `posts.scatter.best_marker` / `worst_marker`).
-- `BlockFeedback` lógica de submissão não é tocada — só deixa de ser renderizado.
+- Label `text-sm` → `text-[15px] font-medium text-content-primary`
+- Helper `text-[11px] text-content-tertiary` → `text-[13px] leading-[1.45] text-content-tertiary`
+- Erro `text-xs` → `text-[13px]`
+- Container `space-y-1.5` → `space-y-2`
+- Input herda altura `size-lg` do shadcn — confirmar que o `font-size` é ≥16px (evita zoom iOS). Se o Input tem 14px default, adicionar `className="text-base"`.
+
+### 6. Step 2 — Chips
+
+`ChipGroup`:
+- Grid mantém `grid-cols-2 sm:grid-cols-4`, gap `gap-2` → `gap-2.5`
+- Botão: `min-h-[76px] text-[12px]` → `min-h-[88px] text-[14px] font-semibold`
+- Padding: `px-2 py-3` → `px-2.5 py-3.5`
+- Ícone: `size-5` → `size-[22px]`, gap `gap-1.5` → `gap-2`
+- Label: adicionar `leading-[1.2] break-words hyphens-auto` para evitar overflow em "competitor_research" / "benchmark_competitors".
+
+Question labels (Step2):
+- `text-[13px] font-medium` → `text-[15px] font-medium`
+
+Consequence line:
+- `text-[12px]` → `text-[13px] leading-[1.5]`
+
+### 7. Step 3 — Email/Phone/Consent
+
+- Labels `text-sm` → `text-[15px] font-medium`
+- Optional `text-[12px]` → `text-[13px]`
+- Helper `text-[11px]` → `text-[13px] leading-[1.45]`
+- Erros `text-xs` → `text-[13px]`
+- Inputs: aplicar `text-base` (16px) para evitar zoom iOS
+- Consent box padding `p-4` mantém-se; copy `text-[12.5px] leading-relaxed` → `text-[14px] leading-[1.55]`
+- "consentMandatory"/"marketingOptional" labels `text-content-tertiary` mantém-se mas herda o `text-[14px]`.
+
+### 8. Intro — handle context + trust line
+
+- `text-[13px]` / `text-[12.5px]` → `text-[14px]` / `text-[13.5px] leading-[1.5]`
+- Trust line `text-[11px]` → `text-[12px]` (mínimo legível mantido)
+
+### 9. Footer dos botões — RESPONSIVO (mudança chave)
+
+Linha 768:
+```
+flex gap-3 ... pt-5 mt-2
+```
+Substituir por:
+```
+flex flex-col-reverse gap-2.5 sm:flex-row sm:gap-3 ... pt-5 mt-2
+```
+
+- `<=640px`: botões stacked verticalmente, primário em cima ("flex-col-reverse" garante que "Voltar" fica em baixo, "Continuar/Analisar" em cima — primário tem destaque).
+- `>=sm` (≥640px): volta a side-by-side como hoje.
+- Botão "Voltar": remove `flex-shrink-0`, adiciona `w-full sm:w-auto`.
+- Botão primário: `flex-1 min-w-0` mantém-se mas em mobile fica `w-full` (flex-col já garante full width).
+- Resultado: zero risco de CTA truncado em 360px; em 390–412 também sai mais respirado.
+
+### 10. Progress bar
+
+Mantém. `gap-1.5` → `gap-2` e `pt-1` → `pt-2` para isolar visualmente do subtitle (que agora é maior).
+
+## Fora de âmbito (não toco)
+
+- Endpoints, payload (`buildStartPayload`), schemas (`unlockFormSchema`)
+- Honeypot, timing guard, tracking events
+- Lógica de `goNext` / `goBack` / `handleFinalSubmit`
+- `useOnboardingDraft`, `parseFullName`
+- LoginStepBody mantém estrutura — só recebe os mesmos tweaks tipográficos para coerência (label `text-[15px]`, helper `text-[12px]→[13px]`).
 
 ## Validação
 
 1. `bunx tsc --noEmit`
-2. `rg "BlockFeedback" src/` → confirmar zero referências (ou só o ficheiro autocontido).
-3. QA visual no preview em `/analyse/frederico.m.carvalho` (desktop 1440 + mobile 390).
+2. QA visual nos 4 estados (intro, step1, step2, step3) em:
+   - 360×800
+   - 390×844
+   - 412×915
+   - tablet 768
+   - desktop 1440
+3. Confirmar: sem overflow horizontal, CTA primário sempre legível por inteiro, chips 2×2 sem cramping, inputs com tap target confortável.
 
 ## Checkpoint
 
-- ☐ `BlockFeedback` removido do shell, sem regressões
-- ☐ Grid de thumbnails em 4 colunas, miniaturas visivelmente maiores
-- ☐ Marcadores melhor/pior com ícones lucide + pill label, sem ★/▾
+- ☐ Títulos consistentes (28→30px, leading 1.08, mesmo tracking) nos 4 estados
+- ☐ Body typography mais legível (subtitle 15px, labels 15px, helpers 13px)
+- ☐ Chips do Step 2 sem cramping, label 14px, min-h 88px
+- ☐ Step 3 footer stacked em mobile, side-by-side em sm+
+- ☐ Sem zoom iOS (inputs ≥16px)
+- ☐ Sem overflow horizontal em 360/390/412
 - ☐ `tsc` limpo
-- ☐ Sem alterações em rotas, dados, copy ou backend
+- ☐ Zero alterações em endpoints, payload, tracking, copy
