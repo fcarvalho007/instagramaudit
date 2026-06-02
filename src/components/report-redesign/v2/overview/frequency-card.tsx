@@ -657,7 +657,7 @@ export function FrequencyCard({
             </span>
           </div>
 
-          <div className="mt-2.5 max-w-[420px]">
+          <div className="mt-2.5">
           {/* Weekday headers */}
           <div className="grid grid-cols-7 gap-1 md:gap-1.5 mb-1 md:mb-1.5">
             {weekdayShort.map((wd, i) => (

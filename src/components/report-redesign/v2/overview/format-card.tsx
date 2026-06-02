@@ -326,7 +326,7 @@ export function FormatCard({
           <div
             role="img"
             aria-label={ariaLabel}
-            className="grid gap-1.5 grid-cols-6 sm:grid-cols-8 max-w-[520px]"
+            className="grid gap-1.5 grid-cols-6 sm:grid-cols-10 md:grid-cols-12"
           >
             {sortedPosts.map((post, idx) => {
               const fk = TYPE_TO_FORMAT_KEY[post.type] ?? "unknown";
