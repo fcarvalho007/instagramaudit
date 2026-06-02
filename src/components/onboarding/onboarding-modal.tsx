@@ -404,14 +404,14 @@ function IntroStepBody({
 
   return (
     <div
-      className="px-7 py-8 sm:px-9 sm:py-9"
+      className="px-5 py-7 sm:px-9 sm:py-9"
       data-testid="onboarding-intro-step"
     >
-      <DialogHeader className="text-left space-y-3">
+      <DialogHeader className="text-left space-y-2.5">
         <p className="text-eyebrow-sm text-content-tertiary">
           {t("onboarding.intro.eyebrow")}
         </p>
-        <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
+        <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.08] tracking-[-0.015em] text-content-primary text-balance">
           <Trans
             i18nKey="onboarding.intro.title"
             ns="gate"
@@ -423,12 +423,12 @@ function IntroStepBody({
         </DialogDescription>
       </DialogHeader>
 
-      <div className="mt-6 space-y-4">
+      <div className="mt-5 space-y-4">
         <div
-          className="rounded-xl border border-primary/20 bg-primary/[0.04] px-4 py-3.5 space-y-1.5"
+          className="rounded-xl border border-primary/20 bg-primary/[0.04] px-4 py-3.5 space-y-2"
           data-testid="onboarding-handle-context"
         >
-          <p className="text-[13px] font-medium text-content-primary">
+          <p className="text-[14px] font-medium text-content-primary leading-[1.5]">
             <Trans
               i18nKey="onboarding.intro.handleContext"
               ns="gate"
@@ -438,7 +438,7 @@ function IntroStepBody({
               {`Vais analisar @${handle}`}
             </Trans>
           </p>
-          <p className="text-[12.5px] text-content-secondary leading-relaxed">
+          <p className="text-[13.5px] text-content-secondary leading-[1.5]">
             <Trans
               i18nKey="onboarding.intro.creditNote"
               ns="gate"
@@ -447,7 +447,7 @@ function IntroStepBody({
           </p>
         </div>
 
-        <p className="text-[12px] text-content-tertiary leading-relaxed">
+        <p className="text-[13px] text-content-tertiary leading-[1.5]">
           {t("onboarding.intro.personalHint")}
         </p>
 
@@ -462,7 +462,7 @@ function IntroStepBody({
         </Button>
 
         <div className="border-t border-border-default/50 pt-3 space-y-2.5">
-          <p className="text-center text-[12.5px] text-content-secondary">
+          <p className="text-center text-[13.5px] text-content-secondary">
             {t("onboarding.intro.haveAccount")}{" "}
             <button
               type="button"
@@ -473,7 +473,7 @@ function IntroStepBody({
               {t("onboarding.intro.haveAccountCta")}
             </button>
           </p>
-          <p className="text-center text-[11px] text-content-tertiary flex items-center justify-center gap-1">
+          <p className="text-center text-[12px] text-content-tertiary flex items-center justify-center gap-1">
             <ShieldCheck className="size-3" aria-hidden />
             {t("onboarding.intro.trustLine")}
           </p>
@@ -548,19 +548,19 @@ function LoginStepBody({
   if (sent) {
     const masked = maskEmail(sent);
     return (
-      <div className="px-7 py-8 sm:px-9 sm:py-9" data-testid="onboarding-login-success">
-        <DialogHeader className="text-left space-y-3">
+      <div className="px-5 py-7 sm:px-9 sm:py-9" data-testid="onboarding-login-success">
+        <DialogHeader className="text-left space-y-2.5">
           <p className="text-eyebrow-sm text-content-tertiary">
             {t("onboarding.login.eyebrow")}
           </p>
-          <DialogTitle className="font-display text-[26px] sm:text-[28px] leading-[1.15] tracking-[-0.01em] text-content-primary">
+          <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.08] tracking-[-0.015em] text-content-primary text-balance">
             {t("onboarding.login.success.title")}
           </DialogTitle>
-          <DialogDescription className="text-[13px] text-content-secondary leading-relaxed">
+          <DialogDescription className="text-[15px] text-content-secondary leading-[1.55]">
             {t("onboarding.login.success.body", { email: masked })}
           </DialogDescription>
         </DialogHeader>
-        <div className="mt-6">
+        <div className="mt-5">
           <Button
             type="button"
             variant="outline"
@@ -577,15 +577,15 @@ function LoginStepBody({
   }
 
   return (
-    <div className="px-7 py-8 sm:px-9 sm:py-9" data-testid="onboarding-login-step">
-      <DialogHeader className="text-left space-y-3">
+    <div className="px-5 py-7 sm:px-9 sm:py-9" data-testid="onboarding-login-step">
+      <DialogHeader className="text-left space-y-2.5">
         <p className="text-eyebrow-sm text-content-tertiary">
           {t("onboarding.login.eyebrow")}
         </p>
-        <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
+        <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.08] tracking-[-0.015em] text-content-primary text-balance">
           {t("onboarding.login.title")}
         </DialogTitle>
-        <DialogDescription className="text-[13px] text-content-secondary leading-relaxed">
+        <DialogDescription className="text-[15px] text-content-secondary leading-[1.55]">
           <Trans
             i18nKey="onboarding.login.subtitle"
             ns="gate"
@@ -595,15 +595,15 @@ function LoginStepBody({
         </DialogDescription>
       </DialogHeader>
 
-      <form onSubmit={onSubmit} className="mt-6 space-y-4" noValidate>
+      <form onSubmit={onSubmit} className="mt-5 space-y-4" noValidate>
         {error ? (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
 
-        <div className="space-y-1.5">
-          <Label htmlFor="onb-login-email" className="text-sm">
+        <div className="space-y-2">
+          <Label htmlFor="onb-login-email" className="text-[15px] font-medium text-content-primary">
             {t("onboarding.login.emailLabel")}
           </Label>
           <Input
@@ -616,6 +616,7 @@ function LoginStepBody({
             onChange={(e) => setEmail(e.target.value)}
             aria-invalid={Boolean(error)}
             data-testid="onboarding-login-email"
+            className="text-base"
           />
         </div>
 
@@ -636,12 +637,12 @@ function LoginStepBody({
           )}
         </Button>
 
-        <p className="text-center text-[12px] text-content-tertiary leading-relaxed">
+        <p className="text-center text-[13px] text-content-tertiary leading-[1.5]">
           {t("onboarding.login.secureHint")}
         </p>
 
         <div className="border-t border-border-default/50 pt-3">
-          <p className="text-center text-[12.5px] text-content-secondary">
+          <p className="text-center text-[13.5px] text-content-secondary">
             {t("onboarding.login.noAccount")}{" "}
             <button
               type="button"
@@ -667,7 +668,7 @@ function maskEmail(email: string): string {
 
 function ProgressSegments({ current, total }: { current: number; total: number }) {
   return (
-    <div className="flex gap-1.5 pt-1" aria-hidden>
+    <div className="flex gap-2 pt-2" aria-hidden>
       {Array.from({ length: total }).map((_, i) => {
         const filled = i < current;
         return (
@@ -712,8 +713,8 @@ function FormStepBody({
     step === 3 ? t("onboarding.steps.3.badge", { defaultValue: "" }) : "";
 
   return (
-    <div className="min-w-0 px-7 py-8 sm:px-9 sm:py-9">
-      <DialogHeader className="min-w-0 text-left space-y-3">
+    <div className="min-w-0 px-5 py-7 sm:px-9 sm:py-9">
+      <DialogHeader className="min-w-0 text-left space-y-2.5">
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
           <p className="text-eyebrow-sm text-content-tertiary">{eyebrow}</p>
           {badge ? (
@@ -722,12 +723,12 @@ function FormStepBody({
             </span>
           ) : null}
         </div>
-        <DialogTitle className="font-display text-[22px] sm:text-[30px] leading-[1.15] tracking-[-0.01em] text-content-primary min-w-0 break-words text-balance">
+        <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.08] tracking-[-0.015em] text-content-primary min-w-0 break-words text-balance">
           <Trans i18nKey={`onboarding.steps.${stepKey}.title`} ns="gate" components={{ em: <em className="not-italic text-primary" /> }}>
             {title}
           </Trans>
         </DialogTitle>
-        <DialogDescription className="text-[13px] text-content-secondary leading-relaxed break-words">
+        <DialogDescription className="text-[15px] text-content-secondary leading-[1.55] break-words">
           {subtitle}
         </DialogDescription>
         <ProgressSegments current={step} total={TOTAL_STEPS} />
@@ -738,7 +739,7 @@ function FormStepBody({
           e.preventDefault();
           void goNext();
         }}
-        className="space-y-6 mt-6"
+        className="space-y-5 mt-5"
         noValidate
       >
         {/* Honeypot — invisível para humanos, atrai bots */}
@@ -765,14 +766,14 @@ function FormStepBody({
           </Alert>
         ) : null}
 
-        <div className="flex gap-3 border-t border-border-default/40 -mx-7 sm:-mx-9 px-7 sm:px-9 pt-5 mt-2 min-w-0">
+        <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:gap-3 border-t border-border-default/40 -mx-5 sm:-mx-9 px-5 sm:px-9 pt-5 mt-2 min-w-0">
           <Button
             type="button"
             variant="outline"
             size="lg"
             onClick={goBack}
             disabled={submitting}
-            className="flex-shrink-0 rounded-lg"
+            className="w-full sm:w-auto sm:flex-shrink-0 rounded-lg"
           >
             <ArrowLeft className="size-4" aria-hidden />
             {t("onboarding.cta.back")}
@@ -780,7 +781,7 @@ function FormStepBody({
           <Button
             type="submit"
             size="lg"
-            className="flex-1 min-w-0 rounded-lg font-medium"
+            className="w-full sm:flex-1 sm:w-auto min-w-0 rounded-lg font-medium"
             disabled={submitting}
             data-testid={
               step === 3 ? "onboarding-submit" : "onboarding-continue"
@@ -814,8 +815,8 @@ function Step1Name({
   const { t } = useTranslation("gate");
   const error = form.formState.errors.full_name?.message;
   return (
-    <div className="space-y-1.5">
-      <Label htmlFor="onb-full-name" className="text-sm">
+    <div className="space-y-2">
+      <Label htmlFor="onb-full-name" className="text-[15px] font-medium text-content-primary">
         {t("onboarding.steps.1.nameLabel")}
       </Label>
       <Input
@@ -825,12 +826,13 @@ function Step1Name({
         autoComplete="name"
         placeholder={t("onboarding.steps.1.namePlaceholder")}
         aria-invalid={Boolean(error)}
+        className="text-base"
         {...form.register("full_name")}
       />
-      <p className="text-[11px] text-content-tertiary">
+      <p className="text-[13px] text-content-tertiary leading-[1.45]">
         {t("onboarding.steps.1.nameHint")}
       </p>
-      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
     </div>
   );
 }
@@ -853,7 +855,7 @@ function ChipGroup<T extends string>({
       <div
         role="radiogroup"
         aria-label={name}
-        className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+        className="grid grid-cols-2 gap-2.5 sm:grid-cols-4"
       >
         {options.map((o) => {
           const selected = value === o.value;
@@ -866,7 +868,7 @@ function ChipGroup<T extends string>({
               aria-checked={selected}
               onClick={() => onChange(o.value)}
               className={
-                "flex flex-col items-center justify-center gap-1.5 rounded-lg border px-2 py-3 min-h-[76px] text-center text-[12px] font-semibold transition-colors " +
+                "flex flex-col items-center justify-center gap-2 rounded-lg border px-2.5 py-3.5 min-h-[88px] text-center text-[14px] font-semibold transition-colors " +
                 (selected
                   ? "border-primary bg-primary/[0.06] text-primary"
                   : "border-border-default/60 bg-card text-content-secondary hover:border-primary/40 hover:text-content-primary")
@@ -875,18 +877,18 @@ function ChipGroup<T extends string>({
             >
               <Icon
                 className={
-                  "size-5 " +
+                  "size-[22px] " +
                   (selected ? "text-primary" : "text-content-tertiary")
                 }
                 aria-hidden="true"
                 strokeWidth={1.75}
               />
-              <span className="leading-tight">{o.label}</span>
+              <span className="leading-[1.2] break-words hyphens-auto">{o.label}</span>
             </button>
           );
         })}
       </div>
-      {error ? <p className="text-xs text-destructive mt-1.5">{error}</p> : null}
+      {error ? <p className="text-[13px] text-destructive mt-1.5">{error}</p> : null}
     </div>
   );
 }
@@ -921,7 +923,7 @@ function Step2Context({
     <div className="space-y-5">
       <div className="flex flex-col gap-5">
         <div className="space-y-2">
-        <p className="text-[13px] font-medium text-content-primary">
+        <p className="text-[15px] font-medium text-content-primary">
           <Trans
             i18nKey="onboarding.steps.2.relationshipQuestion"
             ns="gate"
@@ -947,7 +949,7 @@ function Step2Context({
         </div>
 
         <div className="space-y-2">
-        <p className="text-[13px] font-medium text-content-primary">
+        <p className="text-[15px] font-medium text-content-primary">
           {t("onboarding.steps.2.goalQuestion")}
         </p>
         <ChipGroup
@@ -966,7 +968,7 @@ function Step2Context({
         </div>
       </div>
 
-      <p className="text-[12px] text-content-tertiary leading-relaxed">
+      <p className="text-[13px] text-content-tertiary leading-[1.5]">
         {t("onboarding.steps.2.consequenceLine")}
       </p>
     </div>
@@ -989,8 +991,8 @@ function Step3EmailGdpr({
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1.5">
-        <Label htmlFor="onb-email" className="text-sm">
+      <div className="space-y-2">
+        <Label htmlFor="onb-email" className="text-[15px] font-medium text-content-primary">
           {t("onboarding.steps.3.emailLabel")}
         </Label>
         <div className="relative">
@@ -1001,7 +1003,7 @@ function Step3EmailGdpr({
             autoComplete="email"
             placeholder={t("onboarding.steps.3.emailPlaceholder")}
             aria-invalid={Boolean(error)}
-            className="pr-9"
+            className="pr-9 text-base"
             {...form.register("email")}
           />
           {emailIsValid ? (
@@ -1011,13 +1013,13 @@ function Step3EmailGdpr({
             />
           ) : null}
         </div>
-        {error ? <p className="text-xs text-destructive">{error}</p> : null}
+        {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
       </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="onb-phone" className="text-sm">
+      <div className="space-y-2">
+        <Label htmlFor="onb-phone" className="text-[15px] font-medium text-content-primary">
           {t("onboarding.steps.3.phoneLabel")}{" "}
-          <span className="text-content-tertiary text-[12px] font-normal">
+          <span className="text-content-tertiary text-[13px] font-normal">
             — {t("onboarding.steps.3.phoneOptional")}
           </span>
         </Label>
@@ -1028,13 +1030,14 @@ function Step3EmailGdpr({
           autoComplete="tel"
           placeholder={t("onboarding.steps.3.phonePlaceholder")}
           aria-invalid={Boolean(phoneError)}
+          className="text-base"
           {...form.register("phone")}
         />
-        <p className="text-[11px] text-content-tertiary">
+        <p className="text-[13px] text-content-tertiary leading-[1.45]">
           {t("onboarding.steps.3.phoneHint")}
         </p>
         {phoneError ? (
-          <p className="text-xs text-destructive">{phoneError}</p>
+          <p className="text-[13px] text-destructive">{phoneError}</p>
         ) : null}
       </div>
 
@@ -1056,7 +1059,7 @@ function Step3EmailGdpr({
             aria-invalid={Boolean(consentError)}
             className="mt-0.5"
           />
-          <span className="text-[12.5px] text-content-secondary leading-relaxed flex-1">
+          <span className="text-[14px] text-content-secondary leading-[1.55] flex-1">
             <Trans
               i18nKey="onboarding.steps.3.consentText"
               ns="gate"
@@ -1101,7 +1104,7 @@ function Step3EmailGdpr({
             }
             className="mt-0.5"
           />
-          <span className="text-[12.5px] text-content-secondary leading-relaxed flex-1">
+          <span className="text-[14px] text-content-secondary leading-[1.55] flex-1">
             {t("onboarding.steps.3.marketingText")}{" "}
             <span className="text-content-tertiary">
               {t("onboarding.steps.3.marketingOptional")}
@@ -1111,7 +1114,7 @@ function Step3EmailGdpr({
       </div>
 
       {consentError ? (
-        <p className="text-xs text-destructive">{consentError}</p>
+        <p className="text-[13px] text-destructive">{consentError}</p>
       ) : null}
     </div>
   );
