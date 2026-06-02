@@ -57,15 +57,19 @@ explicitly asks for a modification in a new prompt.
 
 ## Landing Components (Sprint 1, Prompt 1.2)
 - /src/components/landing/use-in-view.ts
-- /src/components/landing/social-proof-section.tsx
-- /src/components/landing/how-it-works-step.tsx
-- /src/components/landing/how-it-works-section.tsx
+
+> **Edição autorizada (2026-06-02):** Homepage `/` passou a renderizar
+> apenas `<HeroSection />` + `<LandingDarkIsland />` (novo, em
+> `src/components/landing/dark/`). Os antigos `social-proof-section.tsx`,
+> `how-it-works-section.tsx`, `how-it-works-step.tsx` e
+> `product-preview-section.tsx` deixaram de ser usados em `/` mas continuam
+> presentes no codebase (ainda não removidos). A nova ilha dark é a
+> referência canónica pós-hero.
 
 ## Landing Components (Sprint 1, Prompt 1.3)
 - /src/components/landing/mockup-metric-card.tsx
 - /src/components/landing/mockup-benchmark-gauge.tsx
 - /src/components/landing/mockup-dashboard.tsx
-- /src/components/landing/product-preview-section.tsx
 
 ## Landing Micro-components (Sprint 1, Prompt 1.1B)
 - /src/components/landing/blur-reveal-text.tsx
