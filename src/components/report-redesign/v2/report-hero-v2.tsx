@@ -1,7 +1,6 @@
-import { useId, useState } from "react";
-import { Check, ChevronDown, Download, Loader2, Plus } from "lucide-react";
+import { useState } from "react";
+import { Check, Download, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Link } from "@tanstack/react-router";
 
 import type {
   AdapterResult,
@@ -41,8 +40,6 @@ export function ReportHeroV2({
   const enriched: ReportEnriched = result.enriched;
 
   const handle = `@${profile.username}`;
-  // Insert zero-width space after each "." so long handles wrap at dot
-  // boundaries instead of mid-word on narrow mobile viewports.
   const handleWrappable = handle.replace(/\./g, ".\u200B");
   const fullName = profile.fullName?.trim() || "";
   const avatarUrl = enriched.profile.avatarUrl;
@@ -53,164 +50,73 @@ export function ReportHeroV2({
   const postsAnalyzed = profile.postsAnalyzed ?? 0;
   const tierLabel = followers > 0 ? getTierLabel(getTierForFollowers(followers)) : null;
 
-  const [expanded, setExpanded] = useState(false);
-  const expandedId = useId();
-
-  const toggleExpanded = () => setExpanded((prev) => !prev);
-
   return (
     <section
       aria-label={handle}
-      className={cn("min-w-0 flex-1", className)}
+      className={cn("min-w-0 flex-1 flex items-center gap-2 sm:gap-3 px-2.5 sm:px-4 py-1.5 sm:py-2", className)}
     >
-      <div
-        className={cn(
-          "rounded-xl sm:rounded-2xl border border-border-default bg-white shadow-card overflow-hidden",
-          "transition-all duration-200",
-        )}
-      >
-          {/* ── COMPACT BAR (sempre visível) ─────────────────────── */}
-          <div className="flex flex-row items-center gap-1.5 sm:gap-4 px-2.5 sm:px-5 py-1.5 sm:py-3">
-            {/* Identity */}
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-              <CompactAvatar
-                avatarUrl={avatarUrl}
-                fullName={fullName || handle}
-                verified={verified}
-                t={t}
-              />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap min-w-0">
-                  <span className="font-display text-[13px] sm:text-base font-semibold text-content-primary tracking-tight truncate min-w-0 leading-tight">
-                    {handleWrappable}
-                  </span>
-                  {tierLabel && (
-                    <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full bg-surface-muted text-[11px] font-medium text-content-secondary border border-border-default whitespace-nowrap">
-                      {tierLabel}
-                    </span>
-                  )}
-                </div>
-                <div className="hidden sm:block">
-                  <CompactMetricLine
-                    followers={followers}
-                    postsCount={postsCount}
-                    postsAnalyzed={postsAnalyzed}
-                    language={language}
-                    t={t}
-                  />
-                </div>
-                <div className="sm:hidden">
-                  <MobileMicroMetric
-                    followers={followers}
-                    language={language}
-                    t={t}
-                  />
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={toggleExpanded}
-                aria-expanded={expanded}
-                aria-controls={expandedId}
-                aria-label={t(expanded ? "hero.actions.collapse" : "hero.actions.expand")}
-                title={t(expanded ? "hero.actions.collapse" : "hero.actions.expand")}
-                className="shrink-0 inline-flex items-center justify-center size-6 sm:size-8 rounded-lg text-content-tertiary hover:text-content-primary hover:bg-surface-muted transition-colors"
-              >
-                <ChevronDown
-                  className={cn(
-                    "size-3 sm:size-4 transition-transform duration-200",
-                    expanded && "rotate-180",
-                  )}
-                  aria-hidden="true"
-                />
-              </button>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-              <button
-                type="button"
-                onClick={actions.onExportPdf}
-                disabled={actions.pdfDisabled || actions.pdfBusy}
-                aria-busy={actions.pdfBusy}
-                aria-label={t("hero.actions.pdf")}
-                title={t("hero.actions.pdf")}
-                className={cn(
-                  "inline-flex items-center justify-center size-7 sm:size-9 rounded-lg",
-                  "border border-border-default bg-white text-content-secondary",
-                  "transition-colors duration-150",
-                  "hover:bg-surface-muted hover:border-border-strong hover:text-content-primary",
-                  "disabled:cursor-not-allowed disabled:opacity-50",
-                )}
-              >
-                {actions.pdfBusy ? (
-                  <Loader2 className="size-3 sm:size-4 animate-spin" aria-hidden="true" />
-                ) : (
-                  <Download className="size-3 sm:size-4" aria-hidden="true" />
-                )}
-              </button>
-              <ShareReportPopover
-                result={result}
-                variant="ghost"
-                triggerLabel=""
-                aria-label={t("hero.actions.share")}
-                className={cn(
-                  "inline-flex items-center justify-center size-7 sm:size-9 rounded-lg",
-                  "border border-border-default bg-white text-content-secondary",
-                  "transition-colors duration-150",
-                  "hover:bg-surface-muted hover:border-border-strong hover:text-content-primary",
-                )}
-              />
-              <Link
-                to="/"
-                aria-label={t("hero.actions.new_report")}
-                title={t("hero.actions.new_report")}
-                className={cn(
-                  "inline-flex items-center justify-center gap-1 h-7 sm:h-9 px-2.5 sm:px-3 rounded-lg",
-                  "bg-content-primary text-white text-xs sm:text-sm font-semibold",
-                  "shadow-[0_1px_2px_rgba(15,23,42,0.18)]",
-                  "transition-colors duration-150 hover:brightness-110",
-                )}
-              >
-                <Plus className="size-3 sm:size-4" aria-hidden="true" />
-                <span className="hidden sm:inline">Novo</span>
-              </Link>
-            </div>
-          </div>
-
-          {/* ── EXPANDED PANEL ───────────────────────────────────── */}
-          {expanded && (
-            <div
-              id={expandedId}
-              className="border-t border-border-default px-5 sm:px-8 py-6 sm:py-7 bg-surface-muted/30"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-7">
-                <ExpandedAvatar
-                  avatarUrl={avatarUrl}
-                  fullName={fullName || handle}
-                  verified={verified}
-                  t={t}
-                />
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <h1 className="font-display text-[1.5rem] sm:text-[2rem] font-bold tracking-[-0.03em] text-content-primary leading-[1.1] [overflow-wrap:anywhere] min-w-0">
-                    {handleWrappable}
-                  </h1>
-                  {fullName && (
-                    <p className="text-[15px] font-medium text-content-secondary leading-snug">
-                      {fullName}
-                    </p>
-                  )}
-                  <ExpandedMetricLine
-                    followers={followers}
-                    postsCount={postsCount}
-                    postsAnalyzed={postsAnalyzed}
-                    language={language}
-                    t={t}
-                  />
-                </div>
-              </div>
-            </div>
+      {/* Identity */}
+      <CompactAvatar
+        avatarUrl={avatarUrl}
+        fullName={fullName || handle}
+        verified={verified}
+        t={t}
+      />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-display text-[13px] sm:text-[15px] font-semibold text-content-primary tracking-tight truncate leading-tight">
+            {handleWrappable}
+          </span>
+          {tierLabel && (
+            <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full bg-surface-muted text-[11px] font-medium text-content-secondary border border-border-default whitespace-nowrap">
+              {tierLabel}
+            </span>
           )}
+        </div>
+        <CompactMetricLine
+          followers={followers}
+          postsCount={postsCount}
+          postsAnalyzed={postsAnalyzed}
+          language={language}
+          t={t}
+        />
+      </div>
+
+      {/* Actions — PDF + Share only */}
+      <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <button
+          type="button"
+          onClick={actions.onExportPdf}
+          disabled={actions.pdfDisabled || actions.pdfBusy}
+          aria-busy={actions.pdfBusy}
+          aria-label={t("hero.actions.pdf")}
+          title={t("hero.actions.pdf")}
+          className={cn(
+            "inline-flex items-center justify-center size-7 sm:size-9 rounded-lg",
+            "border border-border-default bg-white text-content-secondary",
+            "transition-colors duration-150",
+            "hover:bg-surface-muted hover:border-border-strong hover:text-content-primary",
+            "disabled:cursor-not-allowed disabled:opacity-50",
+          )}
+        >
+          {actions.pdfBusy ? (
+            <Loader2 className="size-3 sm:size-4 animate-spin" aria-hidden="true" />
+          ) : (
+            <Download className="size-3 sm:size-4" aria-hidden="true" />
+          )}
+        </button>
+        <ShareReportPopover
+          result={result}
+          variant="ghost"
+          triggerLabel=""
+          aria-label={t("hero.actions.share")}
+          className={cn(
+            "inline-flex items-center justify-center size-7 sm:size-9 rounded-lg",
+            "border border-border-default bg-white text-content-secondary",
+            "transition-colors duration-150",
+            "hover:bg-surface-muted hover:border-border-strong hover:text-content-primary",
+          )}
+        />
       </div>
     </section>
   );
@@ -255,7 +161,7 @@ function CompactMetricLine({
   }
   if (parts.length === 0) return null;
   return (
-    <p className="mt-0.5 text-[13px] text-content-secondary leading-tight flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+    <p className="mt-0.5 text-[12px] sm:text-[13px] text-content-secondary leading-tight flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 truncate">
       {parts.map((p, i) => (
         <span key={p.label} className="inline-flex items-baseline gap-1">
           {i > 0 && (
@@ -269,86 +175,8 @@ function CompactMetricLine({
   );
 }
 
-function ExpandedMetricLine({
-  followers,
-  postsCount,
-  postsAnalyzed,
-  language,
-  t,
-}: {
-  followers: number;
-  postsCount: number;
-  postsAnalyzed: number;
-  language: "pt" | "en";
-  t: (k: string, opts?: Record<string, unknown>) => string;
-}) {
-  const fmt = (n: number) => formatCompactNumber(n, language);
-  const parts: Array<{ value: string; label: string }> = [];
-  if (followers > 0) {
-    parts.push({
-      value: fmt(followers),
-      label: t(followers === 1 ? "hero.metric_followers_one" : "hero.metric_followers"),
-    });
-  }
-  if (postsCount > 0) {
-    parts.push({
-      value: fmt(postsCount),
-      label: t(postsCount === 1 ? "hero.metric_posts_one" : "hero.metric_posts"),
-    });
-  }
-  if (postsAnalyzed > 0) {
-    const label = t(
-      postsAnalyzed === 1 ? "hero.metric_analyzed_one" : "hero.metric_analyzed",
-    );
-    parts.push({
-      value: String(postsAnalyzed),
-      label,
-    });
-  }
-
-  if (parts.length === 0) return null;
-
-  return (
-    <p className="text-[15px] text-content-secondary leading-relaxed mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-      {parts.map((p, i) => (
-        <span key={p.label} className="inline-flex items-baseline gap-1.5">
-          {i > 0 && (
-            <span className="text-content-tertiary/60 select-none" aria-hidden="true">·</span>
-          )}
-          <span className="font-semibold text-content-primary tabular-nums">{p.value}</span>
-          <span>{p.label}</span>
-        </span>
-      ))}
-    </p>
-  );
-}
-
 function CompactAvatar(props: AvatarProps) {
-  return <BaseAvatar {...props} sizeClass="size-7 sm:size-10" badgeSizeClass="size-3 sm:size-4" checkSize="size-2 sm:size-2.5" />;
-}
-
-function ExpandedAvatar(props: AvatarProps) {
-  return <BaseAvatar {...props} sizeClass="size-16 md:size-24" badgeSizeClass="size-5 md:size-6" checkSize="size-3 md:size-3.5" />;
-}
-
-function MobileMicroMetric({
-  followers,
-  language,
-  t,
-}: {
-  followers: number;
-  language: "pt" | "en";
-  t: (k: string, opts?: Record<string, unknown>) => string;
-}) {
-  if (followers <= 0) return null;
-  return (
-    <p className="mt-0.5 text-[12px] text-content-secondary leading-tight truncate">
-      <span className="font-semibold text-content-primary tabular-nums">
-        {formatCompactNumber(followers, language)}
-      </span>{" "}
-      {t(followers === 1 ? "hero.metric_followers_one" : "hero.metric_followers")}
-    </p>
-  );
+  return <BaseAvatar {...props} sizeClass="size-8 sm:size-10" badgeSizeClass="size-3 sm:size-4" checkSize="size-2 sm:size-2.5" />;
 }
 
 interface AvatarProps {
