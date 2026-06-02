@@ -32,26 +32,35 @@ export const KANBAN_COLUMNS: KanbanColumnDef[] = [
  */
 export const COMMERCIAL_STATUS_OPTIONS: Array<{
   group: "Funil" | "Legado";
+  /**
+   * `manual`  → estado que o operador define à mão (decisão comercial).
+   * `auto`    → estado actualizado pelo sistema a partir de eventos
+   *             (geração, envios, visualizações, feedback). Não deve ser
+   *             editável directamente no UI; aparece desactivado no select.
+   */
+  kind: "manual" | "auto";
   key: string;
   label: string;
   color: string;
 }> = [
-  { group: "Funil", key: "lead_magnet", label: "Subscreveu Lead Magnet", color: "#3772E5" },
-  { group: "Funil", key: "checkout_iniciado", label: "Checkout iniciado · €", color: "#7664E4" },
-  { group: "Funil", key: "pago_report", label: "Pagou 1 report · 7€", color: "#1D9E75" },
-  { group: "Funil", key: "pago_pack5", label: "Pagou Pack 5 · 28€", color: "#059669" },
-  { group: "Funil", key: "expirado", label: "Expirado / Cancelado", color: "#888780" },
-  { group: "Legado", key: "novo_pedido", label: "Novo pedido", color: "#534AB7" },
-  { group: "Legado", key: "em_analise", label: "Em análise", color: "#BA7517" },
-  { group: "Legado", key: "relatorio_gerado", label: "Relatório gerado", color: "#185FA5" },
-  { group: "Legado", key: "link_enviado", label: "Link enviado", color: "#3772E5" },
-  { group: "Legado", key: "relatorio_visto", label: "Relatório visto", color: "#1D9E75" },
-  { group: "Legado", key: "feedback_pedido", label: "Feedback pedido", color: "#D85A30" },
-  { group: "Legado", key: "feedback_recebido", label: "Feedback recebido", color: "#0E9488" },
-  { group: "Legado", key: "interessado", label: "Interessado", color: "#3B82F6" },
-  { group: "Legado", key: "potencial_cliente", label: "Potencial cliente", color: "#EF9F27" },
-  { group: "Legado", key: "convertido", label: "Convertido", color: "#059669" },
-  { group: "Legado", key: "arquivado", label: "Arquivado", color: "#888780" },
+  // Decisão comercial — editável à mão
+  { group: "Funil", kind: "manual", key: "lead_magnet", label: "Subscreveu Lead Magnet", color: "#3772E5" },
+  { group: "Legado", kind: "manual", key: "interessado", label: "Interessado", color: "#3B82F6" },
+  { group: "Legado", kind: "manual", key: "potencial_cliente", label: "Potencial cliente", color: "#EF9F27" },
+  { group: "Funil", kind: "manual", key: "checkout_iniciado", label: "Checkout iniciado · €", color: "#7664E4" },
+  { group: "Funil", kind: "manual", key: "pago_report", label: "Pagou 1 report · 7€", color: "#1D9E75" },
+  { group: "Funil", kind: "manual", key: "pago_pack5", label: "Pagou Pack 5 · 28€", color: "#059669" },
+  { group: "Legado", kind: "manual", key: "convertido", label: "Convertido", color: "#059669" },
+  { group: "Legado", kind: "manual", key: "arquivado", label: "Arquivado", color: "#888780" },
+  { group: "Funil", kind: "manual", key: "expirado", label: "Expirado / Cancelado", color: "#888780" },
+  // Automático — actualizado pelo sistema
+  { group: "Legado", kind: "auto", key: "novo_pedido", label: "Novo pedido", color: "#534AB7" },
+  { group: "Legado", kind: "auto", key: "em_analise", label: "Em análise", color: "#BA7517" },
+  { group: "Legado", kind: "auto", key: "relatorio_gerado", label: "Relatório gerado", color: "#185FA5" },
+  { group: "Legado", kind: "auto", key: "link_enviado", label: "Link enviado", color: "#3772E5" },
+  { group: "Legado", kind: "auto", key: "relatorio_visto", label: "Relatório visto", color: "#1D9E75" },
+  { group: "Legado", kind: "auto", key: "feedback_pedido", label: "Feedback pedido", color: "#D85A30" },
+  { group: "Legado", kind: "auto", key: "feedback_recebido", label: "Feedback recebido", color: "#0E9488" },
 ];
 
 export type PaymentProduct = "report_single" | "pack_5";

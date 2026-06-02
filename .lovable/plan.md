@@ -1,113 +1,122 @@
+## Redesenhar a ficha de cliente como modal central
 
-# Refazer Step 0 do onboarding + caminho "Já tenho conta"
+Substituir o `Sheet` lateral (`LeadDetailSheet`) por um **modal centrado** com foco numa sessão de trabalho do lead. Manter API pública (`open`, `onOpenChange`, `lead`, `onUpdate`, `onRefresh`) e ponto de entrada (`/admin/leads` via `?lead=`), para não tocar nas tabelas/kanban que já o consomem.
 
-Implementa o mockup enviado: o IntroStep do `OnboardingModal` fica enxuto e ganha uma porta de regresso para quem já tem conta, sem repetir o questionário de 3 passos.
+### 1. Posição & contentor
 
-## Âmbito desta tarefa
+- Trocar `Sheet/SheetContent` por `Dialog/DialogContent` (shadcn) — modal central sobre `bg-black/60` (`DialogOverlay`).
+- Largura: `max-w-[640px]`, altura máxima `min(88vh, 880px)`, scroll interno.
+- Cantos `rounded-2xl`, sombra de elevação, header sticky com fecho `×`.
+- Manter foco do teclado e fechar com `Esc` (já é o default do `Dialog`).
+- Sem alteração ao `admin.leads.tsx`: continua a abrir via `setActiveLeadId`.
 
-- Frontend (modal + i18n): tudo aqui em baixo.
-- Backend (lookup por email e geração de link): NÃO se implementa neste prompt — só se prepara o ponto de integração e fica explícito como decisão de produto a fechar a seguir (ver fim do plano).
+### 2. Cabeçalho (identidade + estado)
 
-## 1. IntroStep — versão simplificada
+```
+[Avatar JP]  João Pereira                                    [Novo pedido ▾chip]
+             smoketest+pt@auditprofiles.test
+```
 
-Ficheiro: `src/components/onboarding/onboarding-modal.tsx`, componente `IntroStepBody`.
+- Avatar com iniciais (já existe `getInitials`).
+- Chip de estado comercial à direita usa cor do `COMMERCIAL_STATUS_OPTIONS` (apenas leitura aqui, é editável abaixo).
 
-Manter:
-- Eyebrow "ANTES DE COMEÇAR".
-- Caixa de contexto azul com o handle (`@{{handle}}`) e a linha dos créditos: "Começas com 2 créditos grátis. Esta usa 1."
-- A linha-aviso sobre perfis públicos Creator/Empresa (compactada para 1 linha curta).
-- CTA primário.
-- Linha-rodapé de confiança.
+### 3. KPI strip — 4 métricas accionáveis
 
-Remover:
-- Subtitle "3 perguntas rápidas (~1 min) e a tua conta fica criada".
-- Bloco inteiro "O que recebes grátis" (eyebrow + lista de 3 bullets + nota premium).
-- Menção a "Fomentar Sonhos, Lda." na trustLine (operador desaparece).
+Substituir Views/Custo/Idade por:
 
-Alterar:
-- Título passa a terminar em "grátis" destacado a verde: usar `<Trans>` com `<free>` envolvido por `<span className="text-emerald-600">`. Texto final: `Cria a tua conta e abre o relatório <free>grátis</free>`.
-- CTA primário muda de "Começar" para "Começar grátis →".
-- Trust line passa a `RGPD · sem spam` (sem `{{operator}}`), com um pequeno glifo de escudo opcional (`ShieldCheck` size-3) à esquerda.
+| Label | Valor | Fonte |
+|---|---|---|
+| RELATÓRIOS | `report_request_id ? 1 : 0` (placeholder até existir contador real) | `lead.report_request_id` |
+| CRÉDITOS | `credits_remaining / credits_granted` (ex.: `1 / 2`) | já existe |
+| GASTO | `€{(total_paid_cents/100).toFixed(0)}` | `lead.payment_summary.total_paid_cents` |
+| INSCRITO HÁ | `{daysSince(created_at)}d` | já existe |
 
-Adicionar (novo, abaixo do CTA, separado por divisor fino):
-- Divisor `border-t border-border-default/50`.
-- Linha `Já tens conta? <button>Entrar</button>` — `<button>` é um link discreto que troca a vista interna do modal para o ecrã "Entrar" (variante de regresso, ver §2). Sem navegação de rota.
+Cartões iguais em grelha 4×1, com label uppercase pequeno (`text-eyebrow-sm`) + valor em Inter SemiBold tabular-nums. Sem cor de destaque excepto se `credits_remaining === 0 && credits_granted > 0` → label "CRÉDITOS" a vermelho admin (sinal de esgotado).
 
-## 2. Nova vista interna: "Entrar" (cliente que regressa)
+> ⚠️ Os números reais (relatórios, gasto) dependem de `report_request_id` e `payment_summary`. Se faltarem, mostrar `—` (nunca `0` enganador).
 
-Mesmo `OnboardingModal`, sem nova rota. Introduz-se um estado `view: "intro" | "login"` (default `"intro"`). Quando `view === "login"`, em vez de `IntroStepBody`/`FormStepBody` renderiza-se `LoginStepBody`.
+### 4. Tabs (4, não 5)
 
-Comportamento:
-- `step` continua a 0 enquanto se está em `login` (o tracking de `onboarding_step_view` para passo 1 só dispara quando se entra no questionário).
-- Tecla Esc / clicar fora fecha o modal normalmente (`handleClose`).
-- Tracking novo: `onboarding_login_view` quando entra na variante; `onboarding_login_submit` ao enviar; `onboarding_login_back` se voltar à intro. Eventos não levam email/telefone — só `handle`.
+`Resumo · Relatórios · Feedback · Histórico` — fundir "Comunicação" dentro de "Histórico" (passa a render `LeadCommunicationTimeline` + product_events na mesma timeline ordenada). Tabs em `TabsList` com underline (estilo da imagem).
 
-Conteúdo do `LoginStepBody` (corresponde ao segundo cartão do mockup):
-- Eyebrow "BEM-VINDO DE VOLTA".
-- Título `font-display`: "Entra e abre o relatório".
-- Descrição: "Indica o email da tua conta. Vamos analisar `@{{handle}}` com os teus créditos."
-- Campo único `email` (com label "Email da conta", placeholder `o-teu@email.pt`, validação básica de formato — usar `z.string().email()` num pequeno schema local).
-- CTA primário "Entrar e analisar →" (full-width, mesmo estilo do CTA da intro).
-- Hint cinza por baixo: "Enviamos um link de acesso seguro para o teu email."
-- Divisor.
-- Link discreto: "Ainda não tens conta? Criar conta grátis" → volta a `view = "intro"`.
+### 5. Tab "Resumo" — conteúdo central
 
-Estados do submit:
-- `loading`: spinner no botão + texto "A enviar link…".
-- `success`: substitui o corpo do cartão por uma mensagem curta — "Verifica o teu email — enviámos um link de acesso para `{{emailMascarado}}`." + botão secundário "Voltar".
-- `error`: `Alert` por cima do campo com mensagem do servidor (mapeada por código), sem PII.
+**(a) Próximo passo — callout com botão accionável**
 
-Integração com o backend (placeholder, ver §4): o handler chama `fetch("/api/onboarding/login", …)` com `{ email, handle }` e `credentials: "include"`. Como o endpoint ainda não existe, isto fica preparado mas atrás de uma flag local `LOGIN_BACKEND_READY = false` — enquanto for `false`, o botão mostra o ecrã de "success" simulado e dispara `onboarding_login_pending_backend`. Isto evita criar uma promessa visível ao utilizador sem suporte real.
+```
+💡 PRÓXIMO PASSO
+   Aprovar pedido e gerar relatório            [Gerar →]
+```
 
-## 3. i18n
+- Texto vem de `suggestNextLeadAction(lead)` (já existe em `lead-lifecycle`).
+- Botão CTA muda consoante a sugestão (Gerar relatório / Pedir feedback / Enviar email / Oferecer pack). Se a sugestão for "ver" sem acção, esconder o botão.
+- Cor do callout: `bg-info-50` com `border-info-200`.
 
-Ficheiros: `src/i18n/locales/pt/gate.json` e `src/i18n/locales/en/gate.json`.
+**(b) Contexto do lead — grelha 2×2 com tradução humana**
 
-Em `onboarding.intro`:
-- Substituir `title` por "Cria a tua conta e abre o relatório <free>grátis</free>" (e equivalente EN).
-- Apagar `subtitle`, `freeBadge`, `freeValueTitle`, `freeValue`, `premiumNote`.
-- Reduzir `personalHint` a uma única frase curta.
-- `cta` passa a "Começar grátis".
-- `trustLine` passa a "RGPD · sem spam" (sem interpolação `{{operator}}`).
-- Adicionar `haveAccount` ("Já tens conta?") e `haveAccountCta` ("Entrar").
+```
+👤 Relação            🎯 Objetivo
+   É o perfil dele       Melhorar conteúdo
 
-Novo bloco `onboarding.login`:
-- `eyebrow`, `title`, `subtitle` (com `<1>@{{handle}}</1>`), `emailLabel`, `emailPlaceholder`, `cta`, `submitting`, `secureHint`, `noAccount`, `noAccountCta`, `success.title`, `success.body`, `back`, `errors.notFound`, `errors.generic`, `errors.network`.
+🔀 Origem             🔥 Intenção
+   Modal de onboarding   Baixa — sem relatório visto
+```
 
-Remover do código qualquer leitura de `onboarding.intro.subtitle`, `freeValueTitle`, `freeValue`, `premiumNote`, `freeBadge`. Verificar com `rg` antes de fechar.
+- Criar mapas de tradução (PT, sentence case) num ficheiro novo `src/lib/admin/lead-context-labels.ts`:
+  - `PROFILE_OWNERSHIP_LABELS`: `own_profile → "É o perfil dele"`, `competitor → "É um concorrente"`, `client → "É de um cliente"`, etc. (cobrir todos os valores que aparecem em `leads.profile_ownership`).
+  - `PURPOSE_LABELS`: `improve_content → "Melhorar conteúdo"`, `understand_competition → "Estudar concorrência"`, `sell_to_client → "Vender a cliente"`, etc.
+  - `SOURCE_LABELS`: `onboarding_modal → "Modal de onboarding"`, `beta_form → "Formulário beta"`, `qa → "QA interno"`, etc.
+- Intenção usa `deriveIntentSignal` (já existe) e força sentence case.
+- Cada campo: ícone Lucide pequeno + label `text-eyebrow-sm` + valor Inter regular.
+- Fallback `—` quando o campo é null.
 
-## 4. Decisão de produto a fechar (NÃO implementar aqui)
+**(c) Estado comercial — Select agrupado (corrigir o pior problema)**
 
-Documentar no fim do plano e no PR, sem código: quando o utilizador escreve no passo email (questionário) um endereço que já existe em `leads.email_normalized`, o `/api/onboarding/start` deve:
+Reorganizar `COMMERCIAL_STATUS_OPTIONS` em dois grupos visíveis dentro do `SelectContent`:
 
-- Detectar duplicado e devolver `error_code: "ACCOUNT_EXISTS"` com `message` "Esta conta já existe. Queres entrar?" + acção sugerida no cliente para saltar para a vista `login`.
-- Não criar segundo registo nem conceder 2 créditos extra.
-- Reutiliza o saldo existente do lead (fecha o exploit do "email novo de cada vez").
+- **Decisão comercial** (editável à mão, ordem por etapa do funil):
+  `lead_magnet`, `interessado`, `potencial_cliente`, `checkout_iniciado`, `pago_report`, `pago_pack5`, `convertido`, `arquivado`, `expirado`.
+- **Automático — só leitura** (renderizados como `SelectItem disabled`, com cinzento e tooltip "Atualizado pelo sistema"):
+  `novo_pedido`, `em_analise`, `relatorio_gerado`, `link_enviado`, `relatorio_visto`, `feedback_pedido`, `feedback_recebido`.
 
-Endpoint novo a especificar (próximo prompt): `POST /api/onboarding/login` recebe `{ email, handle }`, valida formato, encontra `lead` por `email_normalized`, gera token de acesso curto (assinado), envia email com link `https://…/r/login?token=…`, devolve `{ ok: true }` sem revelar se a conta existe (mesma resposta para email não encontrado, para não permitir enumeração). O endpoint de troca do token emite o `lead_session` cookie e redirecciona para `/analyze/{{handle}}`.
+Implementação:
+- Adicionar campo `kind: "manual" | "auto"` a `COMMERCIAL_STATUS_OPTIONS` em `src/lib/admin/kanban-columns.ts` (sem remover `group` para não partir consumidores existentes).
+- Render via `SelectGroup` + `SelectLabel` ("Decisão comercial" / "Automático").
+- Se o lead estiver actualmente num estado "auto", mostrar no trigger normalmente (chip), mas no dropdown ele aparece desactivado para não ser re-selecionado à mão.
 
-## 5. Testes
+**(d) Notas internas** — `Textarea` igual ao actual, com contador.
 
-- Atualizar / adicionar `src/components/onboarding/__tests__/onboarding-modal.test.tsx`:
-  - Intro renderiza novo título com "grátis" destacado.
-  - Lista "O que recebes grátis" desapareceu.
-  - Clicar "Entrar" troca para `LoginStepBody`.
-  - Submeter `LoginStepBody` com email inválido mostra erro sem chamar `fetch`.
-  - Submeter com email válido chama `fetch("/api/onboarding/login", …)` com `credentials: "include"`.
-  - Clicar "Criar conta grátis" volta à intro.
+**(e) Acções rápidas** — grelha 3+1:
 
-## 6. Checklist
+```
+[✉ Email]  [💬 WhatsApp]  [✓ Contactado]
+[         🗄 Arquivar                    ]
+```
 
-- ☐ `IntroStepBody` reduzido (sem subtitle, sem lista, sem operador).
-- ☐ Título com "grátis" verde via `<Trans>`.
-- ☐ CTA "Começar grátis →".
-- ☐ Link "Já tens conta? Entrar" abaixo do CTA com divisor.
-- ☐ Trust line "RGPD · sem spam" com ícone discreto.
-- ☐ Estado interno `view: "intro" | "login"` no modal.
-- ☐ Novo `LoginStepBody` com email + CTA + hint + link de regresso.
-- ☐ Tracking `onboarding_login_view/submit/back` sem PII.
-- ☐ Chamada a `/api/onboarding/login` por trás de flag `LOGIN_BACKEND_READY` (default `false`, com fallback de UI "verifica o teu email").
-- ☐ `gate.json` PT e EN atualizados, chaves obsoletas removidas e referências em código eliminadas.
-- ☐ Testes do modal verdes.
-- ☐ Mobile-first verificado a 360px e 390px (sem overflow horizontal, CTA visível).
-- ☐ Nota no PR sobre a decisão pendente do backend (`/api/onboarding/login` + `ACCOUNT_EXISTS`).
+- Email/WhatsApp/Contactado reaproveitam handlers existentes.
+- Arquivar abre `ConfirmDialog` (já existe), faz `onUpdate(id, { commercial_status: "arquivado" })`.
+
+### 6. Tabs "Relatórios", "Feedback", "Histórico"
+
+- **Relatórios**: mover bloco "Relatório" actual (request status + pdf + actions) para esta tab. Quando houver mais que um relatório por lead no futuro, esta tab passa a lista.
+- **Feedback**: bloco actual de `interpretFeedback` + `PRICING_PREFERENCE_LABELS` / `PURCHASE_INTENT_LABELS`.
+- **Histórico**: timeline unificada — eventos de produto (`product_events` via `useQuery` já existente) + `LeadCommunicationTimeline`, ordenados por `created_at` desc.
+
+### 7. Limpeza
+
+- Apagar `SectionDivider`, `STATUS_ACCENT` não usado, e cabeçalhos do drawer antigo que deixam de existir.
+- Não tocar em: `LeadsTable`, `KanbanBoard`, `LeadCard`, `admin.leads.tsx` (a invocação continua igual).
+- `COMMERCIAL_STATUS_OPTIONS` ganha campo `kind` mas mantém `group/key/label/color` — consumidores actuais continuam a funcionar.
+
+### Ficheiros tocados
+
+- `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` — reescrita estrutural (Sheet → Dialog, novas secções).
+- `src/lib/admin/kanban-columns.ts` — adicionar `kind: "manual" | "auto"` a cada opção.
+- `src/lib/admin/lead-context-labels.ts` — **novo** ficheiro com os 3 mapas de tradução.
+- `src/components/admin/v2/beta-leads/__tests__/` — actualizar/adicionar teste de smoke que confirme: (1) render como `role="dialog"`, (2) tradução de `own_profile` aparece como "É o perfil dele", (3) opções "auto" estão `disabled` no select.
+
+### Notas honestas (do briefing do user)
+
+- **KPIs reais**: "Relatórios" e "Gasto" usam dados existentes mas podem ficar a `—` quando não há `report_request_id` ou `payment_summary.total_paid_cents=0`. Não inflacionar.
+- **Sugestão de próximo passo**: já existe `suggestNextLeadAction`. Confirmar que cobre os 4 estados ("gerar", "pedir feedback", "oferecer pack", "ver"). Se faltar mapeamento para o CTA do botão, completar nesse helper (sem duplicar lógica em UI).
+- **Renomear ficheiro**: não renomear `lead-detail-sheet.tsx` para evitar churn de imports — fica como nome legado, o componente passa a ser modal.

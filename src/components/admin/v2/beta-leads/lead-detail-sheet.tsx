@@ -15,11 +15,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   Tabs,
   TabsList,
@@ -29,6 +29,8 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
+  SelectLabel,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -65,7 +67,7 @@ import {
   ChevronDown,
   MessageCircle,
 } from "lucide-react";
-import { Zap } from "lucide-react";
+import { Zap, Flame, Repeat, Wallet, FileBarChart, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
 import {
   KANBAN_COLUMNS,
@@ -88,6 +90,11 @@ import {
 } from "@/lib/email/templates";
 import { CommercialFollowupDialog } from "./commercial-followup-dialog";
 import { adminFetch } from "@/lib/admin/fetch";
+import {
+  labelProfileOwnership,
+  labelPurpose,
+  labelSource,
+} from "@/lib/admin/lead-context-labels";
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -232,6 +239,69 @@ function DetailRow({ label, icon: Icon, children }: { label: string; icon?: Reac
   );
 }
 
+/** Cartão de KPI do cabeçalho — label + valor grande, ícone discreto. */
+function KpiTile({
+  label,
+  value,
+  icon: Icon,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  icon?: React.ComponentType<{ size?: number; className?: string }>;
+  tone?: "default" | "danger";
+}) {
+  return (
+    <div className="rounded-lg border border-admin-text-primary/10 bg-admin-surface-muted/40 px-3 py-2.5">
+      <div className="flex items-center gap-1.5">
+        {Icon && (
+          <Icon
+            size={11}
+            className={
+              tone === "danger"
+                ? "text-admin-expense-500"
+                : "text-admin-text-tertiary"
+            }
+          />
+        )}
+        <span
+          className={`text-[10px] font-semibold uppercase tracking-wider ${
+            tone === "danger" ? "text-admin-expense-500" : "text-admin-text-tertiary"
+          }`}
+        >
+          {label}
+        </span>
+      </div>
+      <p className="m-0 mt-1 text-[15px] font-semibold text-admin-text-primary tabular-nums">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+/** Linha da grelha "Contexto do lead" — ícone + label eyebrow + valor humano. */
+function ContextField({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-start gap-2 min-w-0">
+      <Icon size={14} className="text-admin-text-tertiary shrink-0 mt-0.5" />
+      <div className="min-w-0">
+        <p className="admin-eyebrow-sm m-0 mb-0.5">{label}</p>
+        <p className="admin-body text-admin-text-primary m-0 truncate" title={value}>
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ──────────────────────────────────────────────
 
 /** Statuses that allow triggering a fresh report generation. */
@@ -243,7 +313,6 @@ const TABS: ReadonlyArray<{ key: TabKey; label: string }> = [
   { key: "resumo", label: "Resumo" },
   { key: "relatorio", label: "Relatórios" },
   { key: "feedback", label: "Feedback" },
-  { key: "comunicacao", label: "Comunicação" },
   { key: "historico", label: "Histórico" },
 ];
 
@@ -377,158 +446,144 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
     onUpdate(lead.id, { commercial_status: status });
   };
 
+  // Métricas do cabeçalho — derivadas de campos reais. Mostrar "—" em vez de
+  // zero quando o campo não existe (não inflacionar).
+  const kpiReports = lead.report_request_id ? "1" : "0";
+  const kpiCredits =
+    lead.credits_granted > 0
+      ? `${lead.credits_remaining} / ${lead.credits_granted}`
+      : "—";
+  const creditsExhausted =
+    lead.credits_granted > 0 && lead.credits_remaining <= 0;
+  const totalPaidEur = (lead.payment_summary?.total_paid_cents ?? 0) / 100;
+  const kpiSpent = totalPaidEur > 0 ? `€${totalPaidEur.toFixed(0)}` : "€0";
+  const kpiAge = `${daysSince(lead.created_at)}d`;
+
+  // CTA do próximo passo — mapeia o estado actual à acção mais relevante.
+  const nextStepCta = useMemo<
+    { label: string; onClick: () => void } | null
+  >(() => {
+    const status = lead.commercial_status ?? "";
+    if (
+      lead.report_request_id &&
+      GENERATABLE_STATUSES.includes(
+        lead.report_status as typeof GENERATABLE_STATUSES[number],
+      )
+    ) {
+      return { label: "Gerar →", onClick: () => setGenerateOpen(true) };
+    }
+    if (status === "relatorio_gerado" || status === "novo_pedido") {
+      return { label: "Gerar →", onClick: () => setGenerateOpen(true) };
+    }
+    if (
+      ["link_enviado", "relatorio_visto"].includes(status) &&
+      !lead.feedback
+    ) {
+      return { label: "Pedir feedback →", onClick: () => setFeedbackOpen(true) };
+    }
+    if (followupEligible) {
+      return { label: "Follow-up →", onClick: () => setFollowupOpen(true) };
+    }
+    return null;
+  }, [
+    lead.commercial_status,
+    lead.report_status,
+    lead.report_request_id,
+    lead.feedback,
+    followupEligible,
+  ]);
+
+  // Estado comercial agrupado para o select.
+  const statusOptionsManual = COMMERCIAL_STATUS_OPTIONS.filter(
+    (o) => o.kind === "manual",
+  );
+  const statusOptionsAuto = COMMERCIAL_STATUS_OPTIONS.filter(
+    (o) => o.kind === "auto",
+  );
+
   return (
     <>
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="w-full sm:max-w-[520px] p-0 scroll-smooth flex flex-col"
-        style={columnDef ? { borderTop: `3px solid ${columnDef.color}` } : undefined}
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="p-0 max-w-[640px] w-[calc(100vw-2rem)] max-h-[88vh] overflow-hidden rounded-2xl flex flex-col gap-0 bg-white"
       >
-        <SheetDescription className="sr-only">
+        <DialogDescription className="sr-only">
           Detalhes do lead {displayName(lead)}
-        </SheetDescription>
-        <SheetTitle className="sr-only">Ficha de cliente</SheetTitle>
+        </DialogDescription>
+        <DialogTitle className="sr-only">Ficha de cliente · {displayName(lead)}</DialogTitle>
 
-        {/* ── Sticky Header + KPIs ─────────────────────────── */}
-        <div className="sticky top-0 z-10 bg-white border-b border-admin-text-primary/10">
-          <div className="px-4 sm:px-6 pt-6 pb-4">
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div className="flex items-start gap-3 min-w-0">
-                <div
-                  className="shrink-0 flex items-center justify-center rounded-full text-white font-semibold"
-                  style={{
-                    width: 48,
-                    height: 48,
-                    fontSize: 16,
-                    backgroundColor: columnDef?.color ?? "#534AB7",
-                  }}
-                >
-                  {getInitials(displayName(lead) !== "Sem nome" ? displayName(lead) : lead.email)}
-                </div>
-                <div className="min-w-0">
-                  <h2
-                    className="m-0 truncate text-admin-text-primary"
-                    style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.2 }}
-                  >
-                    {displayName(lead)}
-                  </h2>
-                  <a
-                    href={`mailto:${lead.email}`}
-                    className="admin-body text-admin-text-secondary mt-1 truncate block hover:text-admin-text-primary transition-colors"
-                    title={lead.email}
-                  >
-                    {lead.email}
-                  </a>
-                  {(lead.handle || lead.phone) && (
-                    <div className="mt-0.5 flex flex-col gap-0.5">
-                      {lead.handle && (
-                        <a
-                          href={`https://instagram.com/${lead.handle}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="admin-meta text-admin-text-tertiary inline-flex items-center gap-1 hover:text-admin-text-primary transition-colors"
-                        >
-                          <Instagram size={12} /> @{lead.handle}
-                        </a>
-                      )}
-                      {lead.phone && (
-                        <a
-                          href={`tel:${lead.phone}`}
-                          className="admin-meta text-admin-text-tertiary inline-flex items-center gap-1 hover:text-admin-text-primary transition-colors"
-                          title="Telemóvel"
-                        >
-                          <Phone size={12} /> {lead.phone}
-                        </a>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-              {columnDef && (
-                <span
-                  className="shrink-0 rounded-lg px-2.5 py-1 text-[12px] font-medium"
-                  style={{
-                    backgroundColor: `${columnDef.color}15`,
-                    color: columnDef.color,
-                    border: `1px solid ${columnDef.color}30`,
-                  }}
-                >
-                  {columnDef.label}
-                </span>
-              )}
-            </div>
-
-            {(lead.user_type || lead.company) && (
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                {lead.user_type && (
-                  <AdminBadge variant={USER_TYPE_ACCENT[lead.user_type.toLowerCase()] ?? "neutral"}>
-                    {USER_TYPE_LABELS[lead.user_type.toLowerCase() as UserType] ?? lead.user_type}
-                  </AdminBadge>
-                )}
-                {lead.company && (
-                  <span className="admin-meta text-admin-text-tertiary">
-                    {lead.company}
-                  </span>
-                )}
-              </div>
-            )}
-
-            <p className="admin-meta text-admin-text-tertiary">
-              Criado {formatDate(lead.created_at)}
-              {lead.contacted_at && ` · Contactado ${formatDate(lead.contacted_at)}`}
-            </p>
-
-            {/* KPI strip */}
-            <div
-              className="grid grid-cols-3 gap-3 rounded-xl p-3 mt-3"
-              style={{ backgroundColor: "rgba(44,44,42,0.04)" }}
-            >
-              <div className="text-center">
-                <p className="admin-eyebrow-sm m-0 mb-1">Views</p>
-                <p className="admin-code text-admin-text-primary m-0" style={{ fontSize: 18 }}>
-                  {lead.report_views}
-                </p>
-              </div>
+        {/* ── Cabeçalho (identidade + estado) ─────────────── */}
+        <div className="px-6 pt-6 pb-4 border-b border-admin-text-primary/10 shrink-0">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3 min-w-0">
               <div
-                className="text-center"
+                className="shrink-0 flex items-center justify-center rounded-full text-white font-semibold"
                 style={{
-                  borderLeft: "1px solid rgba(44,44,42,0.08)",
-                  borderRight: "1px solid rgba(44,44,42,0.08)",
+                  width: 44,
+                  height: 44,
+                  fontSize: 15,
+                  backgroundColor: columnDef?.color ?? "#534AB7",
                 }}
               >
-                <p className="admin-eyebrow-sm m-0 mb-1">Custo</p>
-                <p
-                  className="admin-code text-admin-text-primary m-0 tabular-nums"
-                  style={{ fontSize: 18 }}
-                  title="Custo provider (USD)"
-                >
-                  {lead.report_cost_usd != null ? `$${lead.report_cost_usd.toFixed(2)}` : "—"}
-                </p>
+                {getInitials(displayName(lead) !== "Sem nome" ? displayName(lead) : lead.email)}
               </div>
-              <div className="text-center">
-                <p className="admin-eyebrow-sm m-0 mb-1">Idade</p>
-                <p className="admin-code text-admin-text-primary m-0" style={{ fontSize: 18 }}>
-                  {daysSince(lead.created_at)}d
-                </p>
+              <div className="min-w-0">
+                <h2
+                  className="m-0 truncate text-admin-text-primary"
+                  style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.2 }}
+                >
+                  {displayName(lead)}
+                </h2>
+                <a
+                  href={`mailto:${lead.email}`}
+                  className="admin-body text-admin-text-secondary mt-1 truncate block hover:text-admin-text-primary transition-colors"
+                  title={lead.email}
+                >
+                  {lead.email}
+                </a>
               </div>
             </div>
+            {columnDef && (
+              <span
+                className="shrink-0 rounded-lg px-2.5 py-1 text-[12px] font-medium"
+                style={{
+                  backgroundColor: `${columnDef.color}15`,
+                  color: columnDef.color,
+                  border: `1px solid ${columnDef.color}30`,
+                }}
+              >
+                {columnDef.label}
+              </span>
+            )}
+          </div>
+
+          {/* KPI strip — 4 métricas accionáveis */}
+          <div className="grid grid-cols-4 gap-2 mt-4">
+            <KpiTile label="Relatórios" value={kpiReports} icon={FileBarChart} />
+            <KpiTile
+              label="Créditos"
+              value={kpiCredits}
+              icon={Repeat}
+              tone={creditsExhausted ? "danger" : "default"}
+            />
+            <KpiTile label="Gasto" value={kpiSpent} icon={Wallet} />
+            <KpiTile label="Inscrito há" value={kpiAge} icon={CalendarClock} />
           </div>
         </div>
 
-        {/* ── Tabs ─────────────────────────────────────────── */}
+        {/* ── Tabs — estilo underline (mockup) ─────────────── */}
         <Tabs
           value={activeTab}
           onValueChange={(v) => setActiveTab(v as TabKey)}
           className="flex-1 min-h-0 flex flex-col"
         >
-          <div className="px-4 sm:px-6 pt-3 overflow-x-auto">
-            <TabsList className="inline-flex h-9 w-auto items-center gap-1 rounded-lg p-1 bg-admin-text-primary/[0.04] text-admin-text-secondary">
+          <div className="px-6 border-b border-admin-text-primary/10 shrink-0">
+            <TabsList className="h-auto bg-transparent p-0 gap-5 rounded-none justify-start">
               {TABS.map((t) => (
                 <TabsTrigger
                   key={t.key}
                   value={t.key}
-                  className="whitespace-nowrap rounded-md px-3 py-1 text-[12px] font-medium data-[state=active]:bg-white data-[state=active]:text-admin-text-primary data-[state=active]:shadow-sm"
+                  className="relative h-9 px-0 rounded-none bg-transparent text-[13px] font-medium text-admin-text-tertiary data-[state=active]:text-admin-text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:-bottom-px data-[state=active]:after:h-[2px] data-[state=active]:after:bg-admin-text-primary"
                 >
                   {t.label}
                 </TabsTrigger>
@@ -538,132 +593,166 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
           {/* ── Tab: Resumo ─────────────────────────────── */}
           <TabsContent value="resumo" className="flex-1 overflow-y-auto mt-0">
-            <div className="px-4 sm:px-6 py-5">
-              <SectionTitle>Perfil</SectionTitle>
-              {lead.profile_ownership && (
-                <DetailRow label="Propriedade" icon={Shield}>{lead.profile_ownership}</DetailRow>
-              )}
-              {lead.purpose && (
-                <DetailRow label="Objetivo" icon={Target}>{lead.purpose}</DetailRow>
-              )}
-              <DetailRow label="Origem" icon={Globe}>{lead.source}</DetailRow>
-              <DetailRow label="Consentimento beta" icon={User}>
-                {lead.beta_consent ? (
-                  <span className="inline-flex items-center gap-1 text-admin-revenue-700">
-                    <CheckCircle2 size={14} /> Sim
-                  </span>
-                ) : (
-                  <span className="text-admin-text-tertiary">Não</span>
-                )}
-              </DetailRow>
-            </div>
-
-            <SectionDivider />
-
-            <div className="px-4 sm:px-6 py-5">
-              <SectionTitle>Inteligência comercial</SectionTitle>
-              <DetailRow label="Tipo de lead" icon={User}>
-                {USER_TYPE_LABELS[(lead.user_type?.toLowerCase() ?? "") as UserType] ?? "Desconhecido"}
-              </DetailRow>
-              <DetailRow label="Sinal de intenção" icon={Target}>
-                <AdminBadge variant={displayedIntent.accent}>{displayedIntent.label}</AdminBadge>
-              </DetailRow>
-
+            <div className="px-6 py-5 space-y-6">
+              {/* (a) Próximo passo — callout com CTA */}
               <div
-                className="mt-3 rounded-xl p-3.5 flex items-start gap-2.5"
+                className="rounded-xl p-3.5 flex items-center justify-between gap-3"
                 style={{
-                  backgroundColor: "rgba(83,74,183,0.06)",
-                  borderLeft: "3px solid rgba(83,74,183,0.4)",
+                  backgroundColor: "rgba(55,114,229,0.08)",
+                  border: "1px solid rgba(55,114,229,0.18)",
                 }}
               >
-                <Lightbulb size={15} className="text-admin-text-tertiary shrink-0 mt-0.5" />
-                <div>
-                  <p className="admin-eyebrow mb-1">Próximo passo sugerido</p>
-                  <p className="admin-body text-admin-text-primary font-medium m-0">
-                    {displayedSuggestion}
-                  </p>
+                <div className="flex items-start gap-2.5 min-w-0">
+                  <Lightbulb size={16} className="text-admin-info-500 shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="admin-eyebrow mb-0.5 text-admin-info-700">Próximo passo</p>
+                    <p className="admin-body text-admin-text-primary font-medium m-0">
+                      {displayedSuggestion}
+                    </p>
+                  </div>
+                </div>
+                {nextStepCta && (
+                  <Button
+                    size="sm"
+                    onClick={nextStepCta.onClick}
+                    className="shrink-0 bg-admin-info-500 hover:bg-admin-info-700 text-white"
+                  >
+                    {nextStepCta.label}
+                  </Button>
+                )}
+              </div>
+
+              {/* (b) Contexto do lead — grelha 2×2 traduzida */}
+              <div>
+                <p className="admin-eyebrow mb-3">Contexto do lead</p>
+                <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+                  <ContextField
+                    icon={User}
+                    label="Relação"
+                    value={labelProfileOwnership(lead.profile_ownership)}
+                  />
+                  <ContextField
+                    icon={Target}
+                    label="Objetivo"
+                    value={labelPurpose(lead.purpose)}
+                  />
+                  <ContextField
+                    icon={Globe}
+                    label="Origem"
+                    value={labelSource(lead.source)}
+                  />
+                  <ContextField
+                    icon={Flame}
+                    label="Intenção"
+                    value={displayedIntent.label}
+                  />
                 </div>
               </div>
 
-              <div className="mt-4">
+              {/* (c) Estado comercial — select agrupado manual/auto */}
+              <div>
                 <p className="admin-eyebrow mb-2">Estado comercial</p>
                 <Select value={lead.commercial_status} onValueChange={handleStatusChange}>
                   <SelectTrigger className="h-10 text-[13px] rounded-lg">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {COMMERCIAL_STATUS_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.key} value={opt.key} className="text-[13px]">
-                        {opt.label}
-                      </SelectItem>
-                    ))}
+                    <SelectGroup>
+                      <SelectLabel className="text-eyebrow-sm text-admin-text-tertiary">
+                        Decisão comercial
+                      </SelectLabel>
+                      {statusOptionsManual.map((opt) => (
+                        <SelectItem key={opt.key} value={opt.key} className="text-[13px]">
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                    <SelectGroup>
+                      <SelectLabel className="text-eyebrow-sm text-admin-text-tertiary mt-1">
+                        Automático · atualizado pelo sistema
+                      </SelectLabel>
+                      {statusOptionsAuto.map((opt) => {
+                        const isCurrent = opt.key === lead.commercial_status;
+                        return (
+                          <SelectItem
+                            key={opt.key}
+                            value={opt.key}
+                            disabled={!isCurrent}
+                            className="text-[13px] text-admin-text-tertiary"
+                            title="Estado atualizado automaticamente pelo sistema"
+                          >
+                            {opt.label}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectGroup>
                   </SelectContent>
                 </Select>
               </div>
-            </div>
 
-            <SectionDivider />
+              {/* (d) Notas internas */}
+              <div>
+                <p className="admin-eyebrow mb-2">Notas internas</p>
+                <Textarea
+                  value={notesText}
+                  onChange={(e) => {
+                    setNotesText(e.target.value);
+                    setNotesDirty(true);
+                  }}
+                  rows={3}
+                  placeholder="Adicionar nota sobre este lead…"
+                  className="text-[13px]"
+                />
+                <div className="flex items-center justify-between mt-1">
+                  <span className="admin-meta text-admin-text-tertiary">
+                    {notesText.length} caracteres
+                  </span>
+                  {notesDirty && (
+                    <Button size="sm" onClick={handleSaveNotes}>
+                      Guardar notas
+                    </Button>
+                  )}
+                </div>
+              </div>
 
-            <div className="px-4 sm:px-6 py-5 pb-8">
-              <SectionTitle>Notas e ações</SectionTitle>
-              <Textarea
-                value={notesText}
-                onChange={(e) => {
-                  setNotesText(e.target.value);
-                  setNotesDirty(true);
-                }}
-                rows={4}
-                placeholder="Notas internas sobre este lead..."
-                className="text-[13px] mb-1"
-              />
-              <p className="admin-meta text-admin-text-tertiary mb-3 text-right">
-                {notesText.length} caracteres
-              </p>
-              {notesDirty && (
-                <Button size="sm" onClick={handleSaveNotes} className="mb-4">
-                  Guardar notas
-                </Button>
-              )}
-
-              <div className="grid grid-cols-2 gap-2">
+              {/* (e) Acções rápidas */}
+              <div className="space-y-2 pb-2">
+                <div className="grid grid-cols-3 gap-2">
+                  <AdminActionButton size="md" onClick={handleCopyEmail}>
+                    <Mail size={14} /> Email
+                  </AdminActionButton>
+                  <AdminActionButton
+                    size="md"
+                    onClick={() => {
+                      window.open(
+                        `https://wa.me/?text=${encodeURIComponent(`Olá ${lead.name ?? ""}!`)}`,
+                        "_blank",
+                      );
+                    }}
+                  >
+                    <MessageCircle size={14} /> WhatsApp
+                  </AdminActionButton>
+                  <AdminActionButton size="md" onClick={handleMarkContacted}>
+                    <CheckCircle2 size={14} /> Contactado
+                  </AdminActionButton>
+                </div>
+                <AdminActionButton
+                  size="md"
+                  onClick={handleArchive}
+                  className="w-full text-admin-text-secondary"
+                >
+                  <Archive size={14} /> Arquivar
+                </AdminActionButton>
                 {lead.handle && (
                   <AdminActionButton
                     size="md"
                     onClick={() => window.open(`https://instagram.com/${lead.handle}`, "_blank")}
+                    className="w-full"
                   >
-                    <Instagram size={14} /> Instagram
+                    <Instagram size={14} /> Abrir Instagram
+                    {lead.handle ? ` @${lead.handle}` : ""}
                   </AdminActionButton>
                 )}
-                <AdminActionButton size="md" onClick={handleCopyEmail}>
-                  <Mail size={14} /> Copiar email
-                </AdminActionButton>
-                <AdminActionButton
-                  size="md"
-                  onClick={() => {
-                    window.open(`https://wa.me/?text=${encodeURIComponent(`Olá ${lead.name}!`)}`, "_blank");
-                  }}
-                >
-                  <MessageCircle size={14} /> WhatsApp
-                </AdminActionButton>
-                <AdminActionButton size="md" onClick={handleMarkContacted}>
-                  <Phone size={14} /> Contactado
-                </AdminActionButton>
-                {followupEligible && (
-                  <AdminActionButton
-                    size="md"
-                    onClick={() => setFollowupOpen(true)}
-                    className="!border-admin-signal-500/40 !text-admin-signal-700 hover:!bg-admin-signal-50"
-                  >
-                    <Sparkles size={14} /> Follow-up comercial
-                  </AdminActionButton>
-                )}
-                <AdminActionButton
-                  size="md"
-                  onClick={handleArchive}
-                  className="text-admin-danger-700 border-admin-danger-500/30 hover:bg-admin-danger-50"
-                >
-                  <Archive size={14} /> Arquivar
-                </AdminActionButton>
               </div>
             </div>
           </TabsContent>
@@ -742,40 +831,38 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
             <FeedbackBetaSection feedback={lead.feedback} />
           </TabsContent>
 
-          {/* ── Tab: Comunicação ────────────────────────── */}
-          <TabsContent value="comunicacao" className="flex-1 overflow-y-auto mt-0">
-            {lead.lead_magnet && lead.lead_magnet.status !== "none" && (
-              <div className="mb-4 rounded-lg border border-[var(--color-admin-border)] bg-white p-3">
-                <p className="m-0 text-eyebrow-sm text-admin-text-tertiary">
-                  Lead-magnet
-                </p>
-                <p className="m-0 mt-1 text-[13px] text-admin-text-primary">
-                  Estado: <strong>{lead.lead_magnet.status}</strong> ·{" "}
-                  {lead.lead_magnet.sent_count} envio
-                  {lead.lead_magnet.sent_count === 1 ? "" : "s"}
-                </p>
-                {lead.lead_magnet.last_event_at && (
-                  <p className="m-0 mt-0.5 text-[12px] text-admin-text-tertiary">
-                    Último evento: {lead.lead_magnet.last_event_type} ·{" "}
-                    {new Date(lead.lead_magnet.last_event_at).toLocaleString("pt-PT")}
-                  </p>
-                )}
-              </div>
-            )}
-            <LeadCommunicationTimeline timeline={timeline} loading={timelineLoading} />
-          </TabsContent>
-
-          {/* ── Tab: Histórico ──────────────────────────── */}
+          {/* ── Tab: Histórico (inclui comunicação) ─────── */}
           <TabsContent value="historico" className="flex-1 overflow-y-auto mt-0">
+            <div className="px-6 py-5 space-y-5">
+              {lead.lead_magnet && lead.lead_magnet.status !== "none" && (
+                <div className="rounded-lg border border-[var(--color-admin-border)] bg-white p-3">
+                  <p className="m-0 text-eyebrow-sm text-admin-text-tertiary">
+                    Lead-magnet
+                  </p>
+                  <p className="m-0 mt-1 text-[13px] text-admin-text-primary">
+                    Estado: <strong>{lead.lead_magnet.status}</strong> ·{" "}
+                    {lead.lead_magnet.sent_count} envio
+                    {lead.lead_magnet.sent_count === 1 ? "" : "s"}
+                  </p>
+                  {lead.lead_magnet.last_event_at && (
+                    <p className="m-0 mt-0.5 text-[12px] text-admin-text-tertiary">
+                      Último evento: {lead.lead_magnet.last_event_type} ·{" "}
+                      {new Date(lead.lead_magnet.last_event_at).toLocaleString("pt-PT")}
+                    </p>
+                  )}
+                </div>
+              )}
+              <LeadCommunicationTimeline timeline={timeline} loading={timelineLoading} />
+            </div>
             <TimelineSection
               timeline={groupConsecutiveViews(timeline)}
               loading={timelineLoading}
-              title="Histórico"
+              title="Eventos do produto"
             />
           </TabsContent>
         </Tabs>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
 
     {/* ── Generate report confirmation dialog ────────────── */}
     <GenerateReportDialog
