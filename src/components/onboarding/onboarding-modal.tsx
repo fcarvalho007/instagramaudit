@@ -904,6 +904,19 @@ function Step2Context({
   const ownershipError = form.formState.errors.profile_ownership?.message;
   const goalError = form.formState.errors.goal?.message;
 
+  const ownershipIcons: Record<ProfileOwnership, LucideIcon> = {
+    own_profile: User,
+    client_profile: Briefcase,
+    brand_profile: Star,
+    competitor_research: Binoculars,
+  };
+  const goalIcons: Record<Goal, LucideIcon> = {
+    improve_content: Lightbulb,
+    benchmark_competitors: Users,
+    grow_audience: TrendingUp,
+    validate_brand: CheckCircle2,
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-5 sm:flex-row sm:gap-6">
@@ -921,6 +934,7 @@ function Step2Context({
           options={RELATIONSHIP_VALUES.map((v) => ({
             value: v,
             label: t(`onboarding.compactOptions.profileOwnership.${v}`),
+            icon: ownershipIcons[v],
           }))}
           value={ownership as ProfileOwnership | undefined}
           onChange={(v) =>
@@ -941,6 +955,7 @@ function Step2Context({
           options={GOAL_VALUES.map((v) => ({
             value: v,
             label: t(`onboarding.compactOptions.goal.${v}`),
+            icon: goalIcons[v],
           }))}
           value={goal as Goal | undefined}
           onChange={(v) =>
