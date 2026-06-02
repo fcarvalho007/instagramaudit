@@ -1,89 +1,51 @@
-
 ## Objetivo
 
-Transformar o hero do `/analyze/$username` num cabeçalho compacto, em barra única, fiel ao mockup enviado. O formato atual (hero grande com avatar 28, prisma decorativo e stack de ações) deixa de ser o estado inicial — passa a ser opcionalmente acessível através de um botão de expandir. Remover por completo o CTA "Novo relatório".
+Em mobile, transformar o hero numa "above-the-fold" focada **só** no preenchimento do perfil (eyebrow + título + subtítulo + caixa de input + trust). O mockup do report sai do primeiro ecrã e aparece **abaixo do scroll**, com mais respiração e título maior. Desktop fica inalterado.
 
-## Mockup de referência
+## Alterações (apenas `src/components/landing/hero-section.tsx`)
 
-```text
-┌──────────────────────────────────────────────────────────────────────────────┐
-│ [FC●] @frederico.m.carvalho  ⌜Micro · 10K–50K⌝                              │
-│       10,1K seg · 2,6K pub · 12 analisadas  ⌄        [⬇] [⤴]   │ PERÍODO  ⋯│
-└──────────────────────────────────────────────────────────────────────────────┘
-```
+### 1. Reordenar mockup em mobile
 
-- Avatar pequeno (≈40px) com badge verificado mini.
-- Handle em peso forte, tier badge inline ("Micro · 10K–50K").
-- Linha única de métricas (sem nome completo, sem prisma).
-- Chevron `⌄` à direita do bloco de identidade para expandir/colapsar.
-- Ações reduzidas a dois ícones ghost (PDF, Partilhar). Sem "Novo relatório".
-- À direita, separador vertical fino e o `AnalysisPeriodSelector` existente (já é compacto e cabe na barra em desktop).
+Atualmente o grid é `grid-cols-1` em mobile, com a coluna do mockup logo a seguir à coluna do formulário — fica visível ainda no primeiro scroll.
 
-Mobile: barra empilha em duas linhas — identidade em cima, ações + chevron em baixo; period selector mantém-se logo abaixo como hoje.
+- Adicionar `order-1` à coluna esquerda (copy + action) e `order-2 lg:order-none` à coluna direita (mockup).
+- No wrapper do mockup: aumentar a margem superior em mobile (`mt-10 sm:mt-12 lg:mt-0`) para criar separação clara entre o foco principal e a "prova visual" abaixo do scroll.
 
-## Alterações
+### 2. Aumentar título em mobile
 
-### 1. `src/components/report-redesign/v2/report-hero-v2.tsx`
+H1 atual em mobile: `text-[1.75rem]` (28px). Subir para `text-[2.125rem]` (34px) → bom salto sem partir em ecrãs 360px com `text-balance`.
 
-Refactor do componente para suportar dois modos:
+- `text-[1.75rem]` → `text-[2.125rem]`
+- `leading-[1.12]` mantém-se
+- `max-w-[18ch]` → `max-w-[16ch]` em mobile para forçar quebra elegante em 2 linhas
 
-- `mode: "compact"` (default, novo) — barra única descrita acima.
-- `mode: "expanded"` — exatamente o hero atual (avatar grande + nome + prisma + métricas), mas **sem** o botão "Novo relatório" e sem o "Comparar PRO" (Comparar fica disponível apenas via sidebar/menu existente para não recriar entry points). Ações reduzem-se a PDF + Partilhar.
+### 3. Melhorar espaçamento mobile
 
-Estado local: `const [expanded, setExpanded] = useState(false);`. Chevron alterna entre os dois modos com `aria-expanded`, `aria-controls` e transição suave (`transition-all` + `max-height`).
+- Container: `py-8 md:py-24` → `py-12 md:py-24` (mais ar em cima/baixo)
+- Stack vertical da coluna esquerda: `space-y-4 md:space-y-7` → `space-y-6 md:space-y-7`
+- Eyebrow → H1: mais ar via aumento do `space-y` acima
+- `pt-2 lg:pt-2` antes do `HeroActionBar` → `pt-4 lg:pt-2` (separa caixa de input do subtítulo)
 
-Mudanças concretas:
+### 4. Subtítulo ligeiramente maior em mobile
 
-- Remover `Link to="/"` + ícone `Plus` (CTA "Novo relatório") em ambos os modos.
-- Remover o botão "Comparar PRO" do hero (mantém-se o `CompetitorModal` apenas se for chamado a partir de outro local — caso contrário, remover o import e o estado `compareOpen`).
-- Novo sub-componente `CompactHeader` com:
-  - Avatar 10 (`size-10`) com check verde mini sobreposto.
-  - Handle em `font-display text-[15px] sm:text-base font-semibold`.
-  - `TierBadge` (novo, ver §3) inline ao lado do handle.
-  - `MetricLine` reutilizada mas em `text-[13px] text-content-secondary`, sem `mt-2` e sem wrap forçado.
-  - Botões PDF/Partilhar como `size-9` ghost icon-only (com `aria-label` traduzido); reutiliza `ShareReportPopover` com nova variante visual mínima.
-  - Botão chevron com `ChevronDown` rotacionado quando `expanded`.
-- `ExpandedHeader` reaproveita o JSX atual do hero mas com os ajustes acima (sem novo relatório, sem comparar).
-- O `<section>` raiz passa a `py-3` (era `pt-5 pb-4`) para garantir compactação inicial.
+`text-base md:text-lg` → `text-[1.0625rem] md:text-lg` (17px → respiração editorial).
 
-### 2. `src/components/report-redesign/v2/report-shell-v2.tsx`
+## Fora de scope
 
-- Manter `ReportHeroV2` no mesmo sítio.
-- Garantir que o `AnalysisPeriodSelector` continua imediatamente abaixo do hero (sem alterações funcionais). Em desktop ≥1280px, considerar fundir visualmente os dois numa única faixa: o hero compacto fica à esquerda e o selector à direita, separados por divider vertical. Isto faz-se ao envolver ambos num wrapper `flex` quando `mode === "compact"`. Se complicar layout responsivo, mantemos como duas faixas empilhadas (não bloqueante).
+- Desktop (≥1024px) — todas as mudanças são scoped a mobile/sm com prefixos `md:`/`lg:` a preservar o estado atual.
+- `HeroActionBar`, `HeroReportPreview`, tokens, copy, i18n.
+- Light sections, header, footer.
 
-### 3. `TierBadge` (novo, inline no `report-hero-v2.tsx`)
+## Validação
 
-Pequeno chip `inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-muted text-[11px] font-medium text-content-secondary` que mostra `{tierLabel} · {tierRange}` derivado de `getAccountTier(followers)` + `getTierLabel(...)` + intervalo do tier (já existente em `FALLBACK_BENCHMARK_DATA.tiers`). Sem dependências novas.
+- Preview a 375px: confirmar que acima do scroll vê-se **só** eyebrow + título + subtítulo + caixa de input + trust line; mockup aparece com `mt-10` após scroll.
+- Confirmar que o título cabe em 2 linhas sem clipping em 360px.
+- Desktop 1280px: layout 2-col inalterado.
 
-### 4. i18n
+## Checkpoint
 
-`src/i18n/locales/pt/report.json` e `en/report.json`:
-- Remover/deixar de usar `hero.actions.new_report`.
-- Adicionar `hero.actions.expand` / `hero.actions.collapse` ("Ver mais detalhes" / "Recolher cabeçalho").
-- Adicionar `hero.actions.pdf_aria` e `hero.actions.share_aria` para icon-only buttons.
-
-Não apago as chaves antigas para evitar quebrar outros consumidores; ficam órfãs e podem ser removidas num cleanup posterior.
-
-### 5. Telemetria
-
-Adicionar `trackEvent("analyze_header_toggled", { mode: "expanded"|"compact" })` no `setExpanded`. Sem alterações no backend.
-
-## Fora do âmbito
-
-- `report.example`, `report-page.tsx`, `ReportHeader` antigo (locked).
-- `AnalysisPeriodSelector` (apenas reposicionado, lógica intacta).
-- Lógica de credits, unlock, onboarding, Apify.
-- Sidebar, modais e tracking de outros blocos.
-
-## Checklist
-
-- ☐ Hero v2 passa a renderizar barra compacta por defeito (≤ 56px em desktop).
-- ☐ Chevron expande/colapsa para o layout atual sem layout shift acima.
-- ☐ Botão "Novo relatório" removido em ambos os modos.
-- ☐ Botão "Comparar PRO" removido do hero (e estado/import limpos).
-- ☐ PDF + Partilhar continuam a funcionar, agora icon-only com `aria-label`.
-- ☐ Tier badge inline mostra ex. "Micro · 10K–50K".
-- ☐ Mobile 375px: barra em duas linhas, sem overflow horizontal.
-- ☐ i18n PT/EN com chaves novas.
-- ☐ `trackEvent` dispara em expand/collapse.
-- ☐ `bunx tsc --noEmit` limpo.
+- ☐ Mockup empurrado para abaixo do scroll em mobile (via `order` + `mt`)
+- ☐ H1 mobile a 34px com quebra em 2 linhas
+- ☐ Espaçamento vertical aumentado entre eyebrow/título/subtítulo/caixa
+- ☐ Subtítulo a 17px em mobile
+- ☐ Desktop intacto
