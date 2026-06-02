@@ -12,7 +12,6 @@ import { cn } from "@/lib/utils";
 import { useLanguage } from "@/hooks/use-language";
 import { formatCompactNumber } from "@/lib/i18n/format";
 import { getTierForFollowers, getTierLabel } from "@/lib/benchmark/tiers";
-import { trackEvent } from "@/lib/tracking.functions";
 
 interface ReportHeroV2Props {
   result: AdapterResult;
@@ -54,18 +53,7 @@ export function ReportHeroV2({
   const [expanded, setExpanded] = useState(false);
   const expandedId = useId();
 
-  const toggleExpanded = () => {
-    setExpanded((prev) => {
-      const next = !prev;
-      void trackEvent({
-        data: {
-          name: "analyze_header_toggled",
-          properties: { mode: next ? "expanded" : "compact" },
-        },
-      }).catch(() => {});
-      return next;
-    });
-  };
+  const toggleExpanded = () => setExpanded((prev) => !prev);
 
   return (
     <section
