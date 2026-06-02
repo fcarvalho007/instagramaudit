@@ -655,6 +655,49 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
       .finally(() => setTimelineLoading(false));
   }, [open, lead?.id]);
 
+  // ── CTA do próximo passo (memo) ─────────────────────────────
+  // IMPORTANTE: este `useMemo` tem de ser chamado em TODOS os renders,
+  // mesmo quando `lead` é null, para preservar a ordem dos hooks
+  // (caso contrário: "Rendered fewer hooks than expected").
+  const nextStepCta = useMemo<
+    { label: string; onClick: () => void } | null
+  >(() => {
+    if (!lead) return null;
+    const status = lead.commercial_status ?? "";
+    if (
+      lead.report_request_id &&
+      GENERATABLE_STATUSES.includes(
+        lead.report_status as typeof GENERATABLE_STATUSES[number],
+      )
+    ) {
+      return { label: "Gerar →", onClick: () => setGenerateOpen(true) };
+    }
+    if (status === "relatorio_gerado" || status === "novo_pedido") {
+      return { label: "Gerar →", onClick: () => setGenerateOpen(true) };
+    }
+    if (
+      ["link_enviado", "relatorio_visto"].includes(status) &&
+      !lead.feedback
+    ) {
+      return { label: "Pedir feedback →", onClick: () => setFeedbackOpen(true) };
+    }
+    // Follow-up depends on feedback intent — recalculated below when lead exists.
+    if (
+      lead.email &&
+      lead.feedback &&
+      lead.commercial_status !== "convertido" &&
+      lead.commercial_status !== "arquivado"
+    ) {
+      const fi = interpretFeedback(lead.feedback);
+      if (fi.intent === "alto" || fi.intent === "medio") {
+        return { label: "Follow-up →", onClick: () => setFollowupOpen(true) };
+      }
+    }
+    return null;
+  }, [
+    lead,
+  ]);
+
   if (!lead) return null;
 
   const intent = deriveIntentSignal(lead);
@@ -722,40 +765,6 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
   const totalPaidEur = (lead.payment_summary?.total_paid_cents ?? 0) / 100;
   const kpiSpent = totalPaidEur > 0 ? `€${totalPaidEur.toFixed(0)}` : "€0";
   const kpiAge = `${daysSince(lead.created_at)}d`;
-
-  // CTA do próximo passo — mapeia o estado actual à acção mais relevante.
-  const nextStepCta = useMemo<
-    { label: string; onClick: () => void } | null
-  >(() => {
-    const status = lead.commercial_status ?? "";
-    if (
-      lead.report_request_id &&
-      GENERATABLE_STATUSES.includes(
-        lead.report_status as typeof GENERATABLE_STATUSES[number],
-      )
-    ) {
-      return { label: "Gerar →", onClick: () => setGenerateOpen(true) };
-    }
-    if (status === "relatorio_gerado" || status === "novo_pedido") {
-      return { label: "Gerar →", onClick: () => setGenerateOpen(true) };
-    }
-    if (
-      ["link_enviado", "relatorio_visto"].includes(status) &&
-      !lead.feedback
-    ) {
-      return { label: "Pedir feedback →", onClick: () => setFeedbackOpen(true) };
-    }
-    if (followupEligible) {
-      return { label: "Follow-up →", onClick: () => setFollowupOpen(true) };
-    }
-    return null;
-  }, [
-    lead.commercial_status,
-    lead.report_status,
-    lead.report_request_id,
-    lead.feedback,
-    followupEligible,
-  ]);
 
   return (
     <>
