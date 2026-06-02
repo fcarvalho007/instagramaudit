@@ -713,8 +713,8 @@ function FormStepBody({
     step === 3 ? t("onboarding.steps.3.badge", { defaultValue: "" }) : "";
 
   return (
-    <div className="min-w-0 px-7 py-8 sm:px-9 sm:py-9">
-      <DialogHeader className="min-w-0 text-left space-y-3">
+    <div className="min-w-0 px-5 py-7 sm:px-9 sm:py-9">
+      <DialogHeader className="min-w-0 text-left space-y-2.5">
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
           <p className="text-eyebrow-sm text-content-tertiary">{eyebrow}</p>
           {badge ? (
@@ -723,12 +723,12 @@ function FormStepBody({
             </span>
           ) : null}
         </div>
-        <DialogTitle className="font-display text-[22px] sm:text-[30px] leading-[1.15] tracking-[-0.01em] text-content-primary min-w-0 break-words text-balance">
+        <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.08] tracking-[-0.015em] text-content-primary min-w-0 break-words text-balance">
           <Trans i18nKey={`onboarding.steps.${stepKey}.title`} ns="gate" components={{ em: <em className="not-italic text-primary" /> }}>
             {title}
           </Trans>
         </DialogTitle>
-        <DialogDescription className="text-[13px] text-content-secondary leading-relaxed break-words">
+        <DialogDescription className="text-[15px] text-content-secondary leading-[1.55] break-words">
           {subtitle}
         </DialogDescription>
         <ProgressSegments current={step} total={TOTAL_STEPS} />
@@ -739,7 +739,7 @@ function FormStepBody({
           e.preventDefault();
           void goNext();
         }}
-        className="space-y-6 mt-6"
+        className="space-y-5 mt-5"
         noValidate
       >
         {/* Honeypot — invisível para humanos, atrai bots */}
@@ -766,14 +766,14 @@ function FormStepBody({
           </Alert>
         ) : null}
 
-        <div className="flex gap-3 border-t border-border-default/40 -mx-7 sm:-mx-9 px-7 sm:px-9 pt-5 mt-2 min-w-0">
+        <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:gap-3 border-t border-border-default/40 -mx-5 sm:-mx-9 px-5 sm:px-9 pt-5 mt-2 min-w-0">
           <Button
             type="button"
             variant="outline"
             size="lg"
             onClick={goBack}
             disabled={submitting}
-            className="flex-shrink-0 rounded-lg"
+            className="w-full sm:w-auto sm:flex-shrink-0 rounded-lg"
           >
             <ArrowLeft className="size-4" aria-hidden />
             {t("onboarding.cta.back")}
@@ -781,7 +781,7 @@ function FormStepBody({
           <Button
             type="submit"
             size="lg"
-            className="flex-1 min-w-0 rounded-lg font-medium"
+            className="w-full sm:flex-1 sm:w-auto min-w-0 rounded-lg font-medium"
             disabled={submitting}
             data-testid={
               step === 3 ? "onboarding-submit" : "onboarding-continue"
