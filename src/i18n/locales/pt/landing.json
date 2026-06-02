@@ -9,7 +9,6 @@
     "subtitle": "Benchmark, diagnóstico editorial e pistas claras para melhorar a presença digital.",
     "previewMock": {
       "header": "Pré-visualização do relatório",
-      "urlBar": "auditprofiles.com/report/preview",
       "scoreLabel": "Índice do perfil",
       "scoreValue": "37 / 100",
       "kpis": {
@@ -20,10 +19,8 @@
       "premiumRows": {
         "diagnostic": "Diagnóstico editorial",
         "content": "Conteúdo",
-        "reach": "Procura",
         "comparison": "Comparação"
-      },
-      "footnote": "O resumo gratuito mostra o essencial. O relatório completo aprofunda o diagnóstico."
+      }
     }
   },
   "actionBar": {
@@ -73,9 +70,21 @@
     "title": "O relatório que recebes no email.",
     "lead": "Métricas claras, benchmark visual e comparação com concorrentes. Tudo exportável em PDF, partilhável em equipa, construído para decisão rápida.",
     "highlights": {
-      "data": { "label": "Dados", "title": "Métricas accionáveis", "description": "Engagement, alcance, frequência e formato dominante. Tudo o que importa, nada do que distrai." },
-      "benchmark": { "label": "Benchmark", "title": "Comparação imediata", "description": "Cada métrica contextualizada face ao benchmark da plataforma e da dimensão do perfil." },
-      "ai": { "label": "IA", "title": "Leitura estratégica", "description": "Três insights prioritários gerados por IA, com recomendações concretas para os próximos 30 dias." }
+      "data": {
+        "label": "Dados",
+        "title": "Métricas accionáveis",
+        "description": "Engagement, alcance, frequência e formato dominante. Tudo o que importa, nada do que distrai."
+      },
+      "benchmark": {
+        "label": "Benchmark",
+        "title": "Comparação imediata",
+        "description": "Cada métrica contextualizada face ao benchmark da plataforma e da dimensão do perfil."
+      },
+      "ai": {
+        "label": "IA",
+        "title": "Leitura estratégica",
+        "description": "Três insights prioritários gerados por IA, com recomendações concretas para os próximos 30 dias."
+      }
     }
   },
   "mockup": {
