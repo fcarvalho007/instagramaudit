@@ -43,9 +43,9 @@ export function MarginAlert() {
   }
 
   return (
-    <AdminCallout title="A gerar custo sem receita">
-      Cada lead custa ~${costPerLead.toFixed(2)} e o checkout ainda não está
-      ligado — prioridade para fechar a margem.
+    <AdminCallout title="Margem negativa por lead">
+      Cada lead custa ~${costPerLead.toFixed(2)} mas a receita por lead é
+      inferior — rever pricing ou eficiência de custo.
     </AdminCallout>
   );
 }
