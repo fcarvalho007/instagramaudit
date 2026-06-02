@@ -496,7 +496,8 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         //   • Bypass com Authorization: Bearer $INTERNAL_API_TOKEN (admin /
         //     /api/analyze/refresh / /api/admin/refresh-profile).
         let leadId: string | null = null;
-        let reservation: ReserveResult | null = null;
+        let reservation: { reservationId: string } | null = null;
+        let duplicateInFlight = false;
         let alreadyAssociated = false;
         // Lookup adiantado: necessário para decidir se vamos cobrar crédito
         // antes de reservar. Reutilizado mais à frente como `existing`.
@@ -522,11 +523,24 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           const skipReserve = cacheFreshHit && alreadyAssociated;
           if (!skipReserve) {
             try {
-              reservation = await reserveCredit({
+              const outcome = await reserveCredit({
                 leadId,
                 handle: primary,
                 cacheKey,
               });
+              if (outcome.kind === "duplicate") {
+                duplicateInFlight = true;
+                await logEvent({
+                  handle: primary,
+                  competitorHandles: competitors,
+                  cacheKey,
+                  dataSource: "none",
+                  outcome: "duplicate_reservation_skipped",
+                  estimatedCostUsd: 0,
+                });
+              } else {
+                reservation = { reservationId: outcome.reservationId };
+              }
             } catch (err) {
               if (err instanceof InsufficientCreditsError) {
                 await logEvent({
