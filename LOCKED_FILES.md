@@ -41,6 +41,12 @@ explicitly asks for a modification in a new prompt.
 - /src/components/landing/hero-aurora-background.tsx
 - /src/components/landing/hero-action-bar.tsx
 
+> **Edição autorizada (2026-06-02):** Redesign do hero — layout split,
+> ilha dark scoped (`.hero-dark`), nova preview do relatório à direita.
+> Ficheiros tocados: `hero-section.tsx`, `hero-aurora-background.tsx`,
+> `hero-action-bar.tsx`, novo `hero-report-preview.tsx`, novo
+> `src/styles/hero-dark.css`. Continuam locked para futuras alterações.
+
 ## Landing Components (Sprint 1, Prompt 1.2)
 - /src/components/landing/use-in-view.ts
 - /src/components/landing/social-proof-section.tsx

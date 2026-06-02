@@ -18,6 +18,7 @@
 /* === Design tokens === */
 @import "./styles/tokens.css";
 @import "./styles/tokens-light.css";
+@import "./styles/hero-dark.css";
 
 @custom-variant dark (&:is(.dark *));
 
