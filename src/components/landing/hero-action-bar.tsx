@@ -70,23 +70,33 @@ export function HeroActionBar() {
     <>
     <div className="relative w-full max-w-3xl mx-auto">
       {/* Micro-label above the bar */}
-      <div className="mb-3 flex items-center justify-center gap-2 text-content-secondary">
+      <div
+        className="mb-3 flex items-center gap-2"
+        style={{ color: "var(--hero-fg-subtle)" }}
+      >
         <InstagramGlyph className="size-[18px]" />
-        <span className="text-eyebrow-sm text-[0.625rem]">
-          {t("actionBar.microLabel")}
-        </span>
+        <span className="text-eyebrow-sm">{t("actionBar.microLabel")}</span>
       </div>
 
       {/* The bar — glass card with input + button inline */}
-      <div className="relative rounded-2xl border border-border-strong bg-surface-base/80 backdrop-blur-xl shadow-2xl shadow-[inset_0_1px_0_rgb(255_255_255_/_0.04),0_30px_60px_-30px_rgb(0_0_0_/_0.6)] overflow-hidden hero-bar-breathe focus-within:border-accent-violet/40 transition-colors">
+      <div
+        className="relative rounded-2xl border backdrop-blur-xl shadow-2xl overflow-hidden hero-bar-breathe transition-colors"
+        style={{
+          borderColor: "var(--hero-border-strong)",
+          backgroundColor: "rgb(255 255 255 / 0.04)",
+          boxShadow:
+            "inset 0 1px 0 rgb(255 255 255 / 0.06), 0 30px 60px -30px rgb(0 0 0 / 0.7)",
+        }}
+      >
         <form
           onSubmit={handleSubmit}
-          className="flex flex-col sm:flex-row items-stretch gap-0 divide-y sm:divide-y-0 sm:divide-x divide-border-subtle sm:divide-border-default"
+          className="flex flex-col sm:flex-row items-stretch gap-0"
         >
           {/* Input zone */}
           <div className="relative flex-1">
             <AtSign
-              className="absolute left-5 top-1/2 -translate-y-1/2 size-5 text-content-tertiary pointer-events-none"
+              className="absolute left-5 top-1/2 -translate-y-1/2 size-5 pointer-events-none"
+              style={{ color: "var(--hero-fg-faint)" }}
               aria-hidden="true"
             />
             <input
@@ -99,7 +109,8 @@ export function HeroActionBar() {
               placeholder={t("actionBar.placeholder")}
               aria-label={t("actionBar.ariaInput")}
               aria-invalid={error ? true : undefined}
-              className="w-full h-16 sm:h-[72px] bg-transparent pl-14 pr-4 font-sans text-base md:text-lg text-content-primary placeholder:text-content-tertiary/70 focus:outline-none"
+              className="w-full h-16 sm:h-[72px] bg-transparent pl-14 pr-4 font-sans text-base md:text-lg focus:outline-none placeholder:text-[var(--hero-fg-faint)]"
+              style={{ color: "var(--hero-fg)" }}
             />
           </div>
 
@@ -121,23 +132,28 @@ export function HeroActionBar() {
       {error ? (
         <p
           role="alert"
-          className="mt-3 text-center font-sans text-sm text-signal-danger"
+          className="mt-3 font-sans text-sm"
+          style={{ color: "#FF8A8A" }}
         >
           {error}
         </p>
       ) : (
-        <p className="mt-3 text-center font-sans text-xs text-content-tertiary">
+        <p
+          className="mt-3 font-sans text-xs"
+          style={{ color: "var(--hero-fg-subtle)" }}
+        >
           {t("actionBar.personalHint")}
         </p>
       )}
 
       {/* Progressive reveal: competitors */}
-      <div className="mt-4 flex justify-center">
+      <div className="mt-4 flex">
         {!competitorsOpen ? (
           <button
             type="button"
             onClick={() => setCompetitorsOpen(true)}
-            className="group inline-flex items-center gap-2 font-sans text-sm text-content-secondary hover:text-accent-luminous transition-colors duration-[150ms]"
+            className="group inline-flex items-center gap-2 font-sans text-sm transition-colors duration-[150ms]"
+            style={{ color: "var(--hero-fg-subtle)" }}
           >
             <Plus className="size-4 transition-transform group-hover:rotate-90 duration-[250ms]" />
             {t("actionBar.addCompetitors")}
@@ -145,7 +161,10 @@ export function HeroActionBar() {
         ) : (
           <div className="w-full space-y-3 animate-fade-in">
             <div className="flex items-center justify-between">
-              <span className="text-eyebrow text-content-tertiary">
+              <span
+                className="text-eyebrow"
+                style={{ color: "var(--hero-fg-subtle)" }}
+              >
                 {t("actionBar.competitorsLabel")}
               </span>
               <button
@@ -156,7 +175,8 @@ export function HeroActionBar() {
                   setCompetitor2("");
                   setCompetitorError(null);
                 }}
-                className="font-sans text-xs text-content-tertiary hover:text-content-secondary transition-colors"
+                className="font-sans text-xs transition-colors"
+                style={{ color: "var(--hero-fg-subtle)" }}
               >
                 {t("actionBar.remove")}
               </button>
@@ -188,7 +208,8 @@ export function HeroActionBar() {
             {competitorError ? (
               <p
                 role="alert"
-                className="text-center font-sans text-sm text-signal-danger"
+                className="font-sans text-sm"
+                style={{ color: "#FF8A8A" }}
               >
                 {competitorError}
               </p>
