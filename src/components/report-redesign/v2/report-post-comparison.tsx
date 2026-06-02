@@ -650,7 +650,6 @@ function ExtremeMarker({
   cy,
   tone,
   label,
-  symbol,
   postId,
   hovered,
   setHovered,
@@ -660,35 +659,51 @@ function ExtremeMarker({
   cy: number;
   tone: "best" | "worst";
   label: string;
-  symbol: string;
   postId: string;
   hovered: boolean;
   setHovered: (id: string | null | ((cur: string | null) => string | null)) => void;
   below?: boolean;
 }) {
-  const fill = tone === "best" ? "var(--accent-primary, #0077B6)" : "var(--signal-warning, #BA7517)";
-  const markerOffset = below ? 16 : -16;
-  const labelOffset = below ? 28 : -24;
+  const fill =
+    tone === "best"
+      ? "var(--accent-primary, #0077B6)"
+      : "var(--content-tertiary, #6B7280)";
+  // Pill geometry — sized for ~10px Inter SemiBold uppercase label.
+  const pillW = 46;
+  const pillH = 16;
+  const pillGap = below ? 14 : -14 - pillH;
+  const pillY = cy + pillGap;
+  const pillX = cx - pillW / 2;
+  const labelY = pillY + pillH / 2 + 3.5;
   return (
     <g>
-      <circle cx={cx} cy={cy} r={hovered ? 12 : 10} fill={fill} opacity={hovered ? 0.28 : 0.18} />
-      <circle cx={cx} cy={cy} r={5} fill={fill} />
-      {/* Discrete marker — symbol only, NO number */}
+      {/* Aura — softer */}
+      <circle cx={cx} cy={cy} r={hovered ? 12 : 10} fill={fill} opacity={hovered ? 0.22 : 0.14} />
+      {/* Main point */}
+      <circle cx={cx} cy={cy} r={6} fill={fill} />
+      <circle cx={cx} cy={cy} r={6} fill="none" stroke="#FFFFFF" strokeWidth={1.5} />
+      {/* Editorial pill label */}
+      <rect
+        x={pillX}
+        y={pillY}
+        width={pillW}
+        height={pillH}
+        rx={pillH / 2}
+        ry={pillH / 2}
+        fill="rgba(255,255,255,0.92)"
+        stroke={fill}
+        strokeWidth={1}
+      />
       <text
         x={cx}
-        y={cy + markerOffset}
+        y={labelY}
         textAnchor="middle"
         fill={fill}
-        style={{ font: "700 11px Inter, sans-serif" }}
-      >
-        {symbol}
-      </text>
-      <text
-        x={cx}
-        y={cy + labelOffset}
-        textAnchor="middle"
-        fill={fill}
-        style={{ font: "600 9px Inter, sans-serif", letterSpacing: "0.04em" }}
+        style={{
+          font: "600 9.5px Inter, sans-serif",
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+        }}
       >
         {label}
       </text>
