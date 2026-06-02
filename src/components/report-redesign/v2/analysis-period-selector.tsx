@@ -105,6 +105,7 @@ export function AnalysisPeriodSelector({
             {/* Locked premium windows */}
             {PREMIUM_WINDOWS.map((days) => {
               const label = t(`selector.premium_${days}` as const);
+              const labelCompact = t(`selector.premium_${days}_compact` as const);
               return (
                 <Popover
                   key={days}
@@ -128,7 +129,11 @@ export function AnalysisPeriodSelector({
                         "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40",
                       )}
                     >
-                      {label}
+                      {/* Mobile: compact label ("30d") to avoid horizontal
+                          overflow at ≤390px. Desktop keeps full label.
+                          aria-label always uses the full text. */}
+                      <span className="sm:hidden">{labelCompact}</span>
+                      <span className="hidden sm:inline">{label}</span>
                       <Lock className="size-3" aria-hidden="true" />
                     </button>
                   </PopoverTrigger>
