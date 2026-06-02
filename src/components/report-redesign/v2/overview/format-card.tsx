@@ -484,8 +484,8 @@ function FormatBreakdown({
   rows.forEach((k, i) => pctByKey.set(k, rounded[i]));
 
   // Donut geometry
-  const size = 88;
-  const stroke = 11;
+  const size = 76;
+  const stroke = 9;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   let offsetAcc = 0;
@@ -493,7 +493,7 @@ function FormatBreakdown({
   return (
     <div className="px-5 md:px-6 mt-5">
       <div
-        className="flex items-center gap-5 md:gap-6 rounded-xl bg-surface-muted/60 border border-border-subtle/50 px-4 md:px-5 py-3.5"
+        className="flex items-center gap-4 md:gap-5 rounded-xl bg-surface-muted/60 border border-border-subtle/50 px-4 md:px-5 py-3"
         role="img"
         aria-label={t("format.aria_breakdown", {
           total,
@@ -547,7 +547,7 @@ function FormatBreakdown({
             })}
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-            <span className="text-[1.5rem] font-semibold text-content-primary tabular-nums">
+            <span className="text-[1.25rem] font-semibold text-content-primary tabular-nums">
               {total}
             </span>
           </div>
@@ -563,7 +563,7 @@ function FormatBreakdown({
             return (
               <Fragment key={k}>
                 <span
-                  className={`flex items-center gap-2 text-[15px] ${
+                  className={`flex items-center gap-2 text-[14px] ${
                     isZero ? "text-content-tertiary" : "text-content-primary"
                   }`}
                 >
@@ -579,7 +579,7 @@ function FormatBreakdown({
                   {tFormatLegend(t, k)}
                 </span>
                 <span
-                  className={`text-[15px] font-semibold tabular-nums text-right ${
+                  className={`text-[14px] font-semibold tabular-nums text-right ${
                     isZero ? "text-content-tertiary" : "text-content-primary"
                   }`}
                 >
