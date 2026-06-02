@@ -288,9 +288,9 @@ export function FormatCard({
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="px-5 md:px-6 pt-6 md:pt-8 space-y-2.5">
+      <div className="px-5 md:px-6 pt-5 md:pt-6 space-y-2">
         <div className="flex items-start gap-3">
-          <h3 className="font-display text-[1.25rem] sm:text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight">
+          <h3 className="font-display text-[1.125rem] sm:text-[1.25rem] md:text-[1.5rem] font-semibold tracking-tight text-content-primary leading-tight">
             {t("format.title")}{" "}
             <span
               className="font-semibold"
@@ -309,7 +309,7 @@ export function FormatCard({
             </span>
           </h3>
         </div>
-        <p className="text-[15px] text-content-secondary leading-relaxed">
+        <p className="text-[14px] text-content-secondary leading-relaxed">
           {subtitleLine}
         </p>
       </div>
@@ -319,17 +319,14 @@ export function FormatCard({
 
       {/* Thumbnail grid */}
       {sortedPosts.length > 0 && (
-        <div className="px-5 md:px-6 mt-6">
-          <span className="text-xs uppercase tracking-[0.04em] text-content-tertiary block mb-1.5">
+        <div className="px-5 md:px-6 mt-5">
+          <span className="text-xs uppercase tracking-[0.04em] text-content-tertiary block mb-2">
             {t("format.analyzed_count", { count: postsAnalyzed })}
           </span>
           <div
             role="img"
             aria-label={ariaLabel}
-            className="grid gap-2"
-            style={{
-              gridTemplateColumns: `repeat(${Math.min(sortedPosts.length, 4)}, 1fr)`,
-            }}
+            className="grid gap-1.5 grid-cols-6 sm:grid-cols-8 max-w-[520px]"
           >
             {sortedPosts.map((post, idx) => {
               const fk = TYPE_TO_FORMAT_KEY[post.type] ?? "unknown";
@@ -341,7 +338,7 @@ export function FormatCard({
                   key={`${post.date}-${idx}`}
                   title={t("format.thumb_aria", { label, date: post.date })}
                   className="relative rounded-md overflow-hidden bg-surface-muted border border-border-subtle/40"
-                  style={{ aspectRatio: "3/4" }}
+                  style={{ aspectRatio: "1/1" }}
                 >
                   {post.thumbnailUrl ? (
                     <PostThumb
@@ -357,7 +354,7 @@ export function FormatCard({
                   )}
                   {/* Small format dot indicator — bottom-right */}
                   <span
-                    className={`absolute bottom-1 right-1 size-2 rounded-full ring-1 ring-white ${style.dot}`}
+                    className={`absolute bottom-0.5 right-0.5 size-1.5 rounded-full ring-1 ring-white ${style.dot}`}
                     aria-hidden="true"
                   />
                 </span>
@@ -381,7 +378,7 @@ export function FormatCard({
       )}
 
       {/* Verdict */}
-      <InsightCallout tone={calloutTone} label={calloutLabel} className="mt-auto mx-5 md:mx-6 mb-6 md:mb-8">
+      <InsightCallout tone={calloutTone} label={calloutLabel} className="mt-auto mx-5 md:mx-6 mb-5 sm:mb-6">
         <p>
           <span className="font-semibold">{verdict.strong}</span>{" "}
           {verdict.rest}
