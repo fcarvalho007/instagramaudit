@@ -7,6 +7,7 @@
 
 import type { EnrichedLead } from "./kanban-columns";
 import { deriveKanbanColumn } from "./kanban-columns";
+import { isHotLead, isQaLead } from "./lead-classification";
 
 export type FilterChipKey =
   | "todos"
@@ -17,9 +18,12 @@ export type FilterChipKey =
   | "checkout_abandonado"
   | "pagaram_semana"
   | "lm_ativo_sem_ler"
-  | "candidato_pack";
+  | "candidato_pack"
+  | "quentes"
+  | "credito_esgotado"
+  | "sem_feedback";
 
-export type FilterChipGroup = "estado" | "atencao";
+export type FilterChipGroup = "estado" | "atencao" | "tabela";
 
 export interface FilterChip {
   key: FilterChipKey;
@@ -114,6 +118,29 @@ export const FILTER_CHIPS: FilterChip[] = [
         new Date(pay.last_payment_at).getTime() < daysAgoMs(14);
     },
   },
+  // ─── Chips exclusivos da vista Tabela (não renderizados no Kanban) ───
+  {
+    key: "quentes",
+    label: "Quentes",
+    group: "tabela",
+    columns: null,
+    predicate: (l) => isHotLead(l),
+  },
+  {
+    key: "credito_esgotado",
+    label: "Crédito esgotado",
+    group: "tabela",
+    columns: null,
+    predicate: (l) =>
+      (l.credits_granted ?? 0) > 0 && (l.credits_remaining ?? 0) <= 0,
+  },
+  {
+    key: "sem_feedback",
+    label: "Sem feedback",
+    group: "tabela",
+    columns: null,
+    predicate: (l) => (l.report_views ?? 0) > 0 && !l.feedback,
+  },
 ];
 
 export function matchesChip(lead: EnrichedLead, key: FilterChipKey): boolean {
@@ -126,6 +153,8 @@ export function matchesChip(lead: EnrichedLead, key: FilterChipKey): boolean {
   if (chip.predicate && !chip.predicate(lead)) return false;
   return true;
 }
+
+export { isQaLead };
 
 export function matchesQuery(lead: EnrichedLead, query: string): boolean {
   const q = query.trim().toLowerCase();
