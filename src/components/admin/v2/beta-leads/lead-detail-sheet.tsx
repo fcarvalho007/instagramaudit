@@ -167,13 +167,7 @@ function formatDate(iso: string): string {
 
 function SectionDivider() {
   return (
-    <div
-      className="mx-6"
-      style={{
-        height: 1,
-        background: "linear-gradient(to right, rgba(44,44,42,0.10), transparent 80%)",
-      }}
-    />
+    <div className="mx-6 h-px bg-admin-text-primary/10" />
   );
 }
 
@@ -253,11 +247,11 @@ function KpiTile({
   tone?: "default" | "danger";
 }) {
   return (
-    <div className="rounded-lg border border-admin-text-primary/10 bg-admin-surface-muted/40 px-3 py-2.5">
+    <div className="rounded-lg border border-admin-text-primary/10 bg-admin-surface-muted/50 px-3 py-3">
       <div className="flex items-center gap-1.5">
         {Icon && (
           <Icon
-            size={11}
+            size={12}
             className={
               tone === "danger"
                 ? "text-admin-expense-500"
@@ -266,14 +260,14 @@ function KpiTile({
           />
         )}
         <span
-          className={`text-[10px] font-semibold uppercase tracking-wider ${
+          className={`text-[11px] font-semibold uppercase tracking-[0.08em] ${
             tone === "danger" ? "text-admin-expense-500" : "text-admin-text-tertiary"
           }`}
         >
           {label}
         </span>
       </div>
-      <p className="m-0 mt-1 text-[15px] font-semibold text-admin-text-primary tabular-nums">
+      <p className="m-0 mt-1.5 text-[16px] leading-none font-semibold text-admin-text-primary tabular-nums">
         {value}
       </p>
     </div>
@@ -775,8 +769,8 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
         <DialogTitle className="sr-only">Ficha de cliente · {displayName(lead)}</DialogTitle>
 
         {/* ── Cabeçalho (identidade + estado) ─────────────── */}
-        <div className="px-6 pt-6 pb-4 border-b border-admin-text-primary/10 shrink-0">
-          <div className="flex items-start justify-between gap-3">
+        <div className="px-6 pt-6 pb-5 border-b border-admin-text-primary/10 shrink-0">
+          <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3 min-w-0">
               <div
                 className="shrink-0 flex items-center justify-center rounded-full text-white font-semibold"
@@ -784,7 +778,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                   width: 44,
                   height: 44,
                   fontSize: 15,
-                  backgroundColor: columnDef?.color ?? "#534AB7",
+                  backgroundColor: columnDef?.color ?? "rgb(var(--admin-leads-500))",
                 }}
               >
                 {getInitials(displayName(lead) !== "Sem nome" ? displayName(lead) : lead.email)}
@@ -792,13 +786,13 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
               <div className="min-w-0">
                 <h2
                   className="m-0 truncate text-admin-text-primary"
-                  style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.2 }}
+                  style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.25, letterSpacing: "-0.01em" }}
                 >
                   {displayName(lead)}
                 </h2>
                 <a
                   href={`mailto:${lead.email}`}
-                  className="admin-body text-admin-text-secondary mt-1 truncate block hover:text-admin-text-primary transition-colors"
+                  className="admin-body text-admin-text-secondary mt-0.5 truncate block hover:text-admin-text-primary transition-colors"
                   title={lead.email}
                 >
                   {lead.email}
@@ -807,11 +801,11 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
             </div>
             {columnDef && (
               <span
-                className="shrink-0 rounded-lg px-2.5 py-1 text-[12px] font-medium"
+                className="shrink-0 rounded-md px-2.5 py-1 text-[12px] font-medium leading-none"
                 style={{
-                  backgroundColor: `${columnDef.color}15`,
+                  backgroundColor: `${columnDef.color}1A`,
                   color: columnDef.color,
-                  border: `1px solid ${columnDef.color}30`,
+                  border: `1px solid ${columnDef.color}33`,
                 }}
               >
                 {columnDef.label}
@@ -820,7 +814,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
           </div>
 
           {/* KPI strip — 4 métricas accionáveis */}
-          <div className="grid grid-cols-4 gap-2 mt-4">
+          <div className="grid grid-cols-4 gap-2 mt-5">
             <KpiTile label="Relatórios" value={kpiReports} icon={FileBarChart} />
             <KpiTile
               label="Créditos"
@@ -840,12 +834,12 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
           className="flex-1 min-h-0 flex flex-col"
         >
           <div className="px-6 border-b border-admin-text-primary/10 shrink-0">
-            <TabsList className="h-auto bg-transparent p-0 gap-5 rounded-none justify-start">
+            <TabsList className="h-auto bg-transparent p-0 gap-6 rounded-none justify-start">
               {TABS.map((t) => (
                 <TabsTrigger
                   key={t.key}
                   value={t.key}
-                  className="relative h-9 px-0 rounded-none bg-transparent text-[13px] font-medium text-admin-text-tertiary data-[state=active]:text-admin-text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:-bottom-px data-[state=active]:after:h-[2px] data-[state=active]:after:bg-admin-text-primary"
+                  className="relative h-10 px-0 rounded-none bg-transparent text-[13px] font-medium text-admin-text-tertiary hover:text-admin-text-secondary transition-colors data-[state=active]:text-admin-text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:-bottom-px data-[state=active]:after:h-[2px] data-[state=active]:after:bg-admin-info-500"
                 >
                   {t.label}
                 </TabsTrigger>
@@ -855,20 +849,14 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
           {/* ── Tab: Resumo ─────────────────────────────── */}
           <TabsContent value="resumo" className="flex-1 overflow-y-auto mt-0">
-            <div className="px-6 py-5 space-y-6">
+            <div className="px-6 py-6 space-y-7">
               {/* (a) Próximo passo — callout com CTA */}
-              <div
-                className="rounded-xl p-3.5 flex items-center justify-between gap-3"
-                style={{
-                  backgroundColor: "rgba(55,114,229,0.08)",
-                  border: "1px solid rgba(55,114,229,0.18)",
-                }}
-              >
-                <div className="flex items-start gap-2.5 min-w-0">
+              <div className="rounded-xl p-4 flex items-center justify-between gap-3 bg-admin-info-50 border border-admin-info-500/20">
+                <div className="flex items-start gap-3 min-w-0">
                   <Lightbulb size={16} className="text-admin-info-500 shrink-0 mt-0.5" />
                   <div className="min-w-0">
-                    <p className="admin-eyebrow mb-0.5 text-admin-info-700">Próximo passo</p>
-                    <p className="admin-body text-admin-text-primary font-medium m-0">
+                    <p className="admin-eyebrow mb-1 text-admin-info-700">Próximo passo</p>
+                    <p className="admin-body text-admin-text-primary font-medium m-0 leading-snug">
                       {displayedSuggestion}
                     </p>
                   </div>
@@ -886,8 +874,8 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
               {/* (b) Contexto do lead — grelha 2×2 traduzida */}
               <div>
-                <p className="admin-eyebrow mb-3">Contexto do lead</p>
-                <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+                <p className="admin-eyebrow mb-4">Contexto do lead</p>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                   <ContextField
                     icon={User}
                     label="Relação"
@@ -913,7 +901,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
               {/* (c) Estado comercial — select agrupado manual/auto */}
               <div>
-                <p className="admin-eyebrow mb-2">Estado comercial</p>
+                <p className="admin-eyebrow mb-2.5">Estado comercial</p>
                 <CommercialStatusSelect
                   lead={lead}
                   value={lead.commercial_status}
@@ -925,7 +913,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
               {/* (d) Notas internas */}
               <div>
-                <p className="admin-eyebrow mb-2">Notas internas</p>
+                <p className="admin-eyebrow mb-2.5">Notas internas</p>
                 <Textarea
                   value={notesText}
                   onChange={(e) => {
@@ -934,10 +922,10 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                   }}
                   rows={3}
                   placeholder="Adicionar nota sobre este lead…"
-                  className="text-[13px]"
+                  className="text-[13px] leading-relaxed"
                 />
-                <div className="flex items-center justify-between mt-1">
-                  <span className="admin-meta text-admin-text-tertiary">
+                <div className="flex items-center justify-between mt-2">
+                  <span className="admin-meta text-admin-text-tertiary tabular-nums">
                     {notesText.length} caracteres
                   </span>
                   {notesDirty && (
@@ -1254,35 +1242,29 @@ function ProgressTracker({
   ];
 
   return (
-    <div className="flex items-center gap-1 mb-4">
+    <div className="flex items-center gap-1.5 mb-4">
       {steps.map((step, i) => (
-        <div key={step.label} className="flex items-center gap-1 flex-1">
+        <div key={step.label} className="flex items-center gap-1.5 flex-1">
           <div
-            className="flex items-center justify-center rounded-full shrink-0"
-            style={{
-              width: 22,
-              height: 22,
-              fontSize: 11,
-              fontWeight: 600,
-              backgroundColor: step.done ? "rgba(5,150,105,0.15)" : "rgba(44,44,42,0.06)",
-              color: step.done ? "#059669" : "rgba(44,44,42,0.4)",
-            }}
+            className={`flex items-center justify-center rounded-full shrink-0 text-[11px] font-semibold ${
+              step.done
+                ? "bg-admin-revenue-500/15 text-admin-revenue-500"
+                : "bg-admin-text-primary/5 text-admin-text-tertiary"
+            }`}
+            style={{ width: 22, height: 22 }}
           >
             {step.done ? "✓" : i + 1}
           </div>
           <span
-            className="admin-meta"
-            style={{ color: step.done ? "#059669" : undefined }}
+            className={`admin-meta ${step.done ? "text-admin-revenue-500 font-medium" : ""}`}
           >
             {step.label}
           </span>
           {i < steps.length - 1 && (
             <div
-              className="flex-1 mx-1"
-              style={{
-                height: 1,
-                backgroundColor: step.done ? "rgba(5,150,105,0.3)" : "rgba(44,44,42,0.10)",
-              }}
+              className={`flex-1 mx-1 h-px ${
+                step.done ? "bg-admin-revenue-500/30" : "bg-admin-text-primary/10"
+              }`}
             />
           )}
         </div>
@@ -1335,16 +1317,11 @@ function TimelineSection({
             return (
               <div
                 key={ev.id}
-                className="flex items-start gap-3 py-2.5"
-                style={{ borderBottom: "1px solid rgba(44,44,42,0.06)" }}
+                className="flex items-start gap-3 py-3 border-b border-admin-text-primary/5 last:border-b-0"
               >
                 <div
-                  className="mt-0.5 flex items-center justify-center shrink-0 rounded-md"
-                  style={{
-                    width: 24,
-                    height: 24,
-                    backgroundColor: "rgba(44,44,42,0.06)",
-                  }}
+                  className="mt-0.5 flex items-center justify-center shrink-0 rounded-md bg-admin-text-primary/5"
+                  style={{ width: 24, height: 24 }}
                 >
                   <IconComp size={13} className="text-admin-text-tertiary" />
                 </div>
@@ -1352,10 +1329,7 @@ function TimelineSection({
                   <p className="admin-body text-admin-text-primary m-0 flex items-center gap-2">
                     <span>{getEventLabel(ev.event_type)}</span>
                     {groupedCount && groupedCount > 1 ? (
-                      <span
-                        className="admin-meta text-admin-text-tertiary rounded-full px-2 py-0.5"
-                        style={{ backgroundColor: "rgba(44,44,42,0.06)" }}
-                      >
+                      <span className="admin-meta text-admin-text-tertiary rounded-full px-2 py-0.5 bg-admin-text-primary/5 tabular-nums">
                         ×{groupedCount}
                       </span>
                     ) : null}
@@ -1375,7 +1349,7 @@ function TimelineSection({
                       Origem: {String(ev.metadata.source_component)}
                     </p>
                   ) : null}
-                  <p className="admin-meta text-admin-text-tertiary m-0 mt-0.5">
+                  <p className="admin-meta text-admin-text-tertiary m-0 mt-1 tabular-nums">
                     {relativeTime(ev.created_at)} · {formatDate(ev.created_at)}
                   </p>
                 </div>
@@ -1732,11 +1706,11 @@ function FeedbackBetaSection({
 
   if (!feedback) {
     return (
-      <div className="px-4 sm:px-6 py-5 space-y-5">
+      <div className="px-4 sm:px-6 py-6 space-y-6">
         {/* (A) Empty state — emoji + CTA */}
-        <div className="rounded-xl border border-admin-text-primary/10 bg-white p-6 text-center">
+        <div className="rounded-xl border border-admin-text-primary/10 bg-white p-7 text-center">
           <p className="m-0 text-[44px] leading-none">😊</p>
-          <p className="m-0 mt-3 text-[14px] text-admin-text-secondary">
+          <p className="m-0 mt-4 text-[14px] text-admin-text-secondary">
             Ainda sem feedback deste lead.
           </p>
           <Button
@@ -1744,7 +1718,7 @@ function FeedbackBetaSection({
             onClick={pedirDisabled ? undefined : onPedirFeedback}
             disabled={pedirDisabled}
             title={pedirDisabledReason ?? undefined}
-            className="mt-4 bg-admin-info-500 hover:bg-admin-info-700 text-white"
+            className="mt-5 bg-admin-info-500 hover:bg-admin-info-700 text-white"
           >
             <Send size={13} className="mr-1.5" /> Pedir feedback por email
           </Button>
@@ -1752,20 +1726,20 @@ function FeedbackBetaSection({
 
         {/* Illustrative preview — clearly labelled "Exemplo" */}
         <div>
-          <p className="admin-eyebrow mb-2 flex items-center gap-2">
+          <p className="admin-eyebrow mb-2.5 flex items-center gap-2">
             <span>Como aparece quando responde</span>
-            <span className="text-[10px] font-medium text-admin-text-tertiary px-1.5 py-0.5 rounded bg-admin-surface-muted/70 normal-case tracking-normal">
+            <span className="text-[11px] font-medium text-admin-text-tertiary px-1.5 py-0.5 rounded bg-admin-surface-muted normal-case tracking-normal">
               Exemplo
             </span>
           </p>
-          <div className="rounded-xl border border-dashed border-admin-text-primary/15 bg-admin-surface-muted/30 p-3.5">
-            <div className="flex items-center gap-2 mb-1">
+          <div className="rounded-xl border border-dashed border-admin-text-primary/15 bg-admin-surface-muted/40 p-4">
+            <div className="flex items-center gap-2 mb-1.5">
               <span className="text-[20px] leading-none">😍</span>
               <span className="text-[13px] font-semibold text-admin-text-primary">
                 Muito útil
               </span>
             </div>
-            <p className="m-0 text-[11px] text-admin-text-tertiary mb-2">
+            <p className="m-0 text-[12px] text-admin-text-tertiary mb-2">
               sobre o relatório de @{lead.handle ?? "exemplo"} · há 2 dias
             </p>
             <p className="m-0 text-[13px] italic text-admin-text-secondary">
@@ -1789,16 +1763,16 @@ function FeedbackBetaSection({
     : null;
 
   return (
-    <div className="px-4 sm:px-6 py-5 space-y-4">
-      <div className="rounded-xl border border-admin-text-primary/10 bg-white p-4">
+    <div className="px-4 sm:px-6 py-6 space-y-5">
+      <div className="rounded-xl border border-admin-text-primary/10 bg-white p-5">
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex items-center gap-3 min-w-0">
             <span className="text-[26px] leading-none shrink-0">{scoreInfo.emoji}</span>
             <div className="min-w-0">
-              <p className="m-0 text-[14px] font-semibold text-admin-text-primary">
+              <p className="m-0 text-[14px] font-semibold text-admin-text-primary leading-tight">
                 {scoreInfo.label}
               </p>
-              <p className="m-0 text-[11px] text-admin-text-tertiary">
+              <p className="m-0 mt-0.5 text-[12px] text-admin-text-tertiary tabular-nums">
                 sobre o relatório de @{lead.handle ?? "—"} ·{" "}
                 {relativeTime(feedback.created_at)}
               </p>
@@ -1808,23 +1782,23 @@ function FeedbackBetaSection({
         </div>
 
         {feedback.clarity_text && (
-          <div className="mt-3 pt-3 border-t border-admin-text-primary/10">
-            <p className="admin-eyebrow-sm mb-1">O que ficou mais claro</p>
-            <p className="m-0 text-[13px] text-admin-text-primary whitespace-pre-wrap">
+          <div className="mt-4 pt-4 border-t border-admin-text-primary/10">
+            <p className="admin-eyebrow-sm mb-1.5">O que ficou mais claro</p>
+            <p className="m-0 text-[13px] leading-relaxed text-admin-text-primary whitespace-pre-wrap">
               {feedback.clarity_text}
             </p>
           </div>
         )}
         {feedback.missing_text && (
-          <div className="mt-3 pt-3 border-t border-admin-text-primary/10">
-            <p className="admin-eyebrow-sm mb-1">O que faltou</p>
-            <p className="m-0 text-[13px] text-admin-text-primary whitespace-pre-wrap">
+          <div className="mt-4 pt-4 border-t border-admin-text-primary/10">
+            <p className="admin-eyebrow-sm mb-1.5">O que faltou</p>
+            <p className="m-0 text-[13px] leading-relaxed text-admin-text-primary whitespace-pre-wrap">
               {feedback.missing_text}
             </p>
           </div>
         )}
 
-        <div className="mt-3 pt-3 border-t border-admin-text-primary/10 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-[12px]">
+        <div className="mt-4 pt-4 border-t border-admin-text-primary/10 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-[12px]">
           <span className="text-admin-text-tertiary">Disposto a pagar</span>
           <span className="text-admin-text-primary">
             {PURCHASE_INTENT_LABELS[feedback.purchase_intent]}
@@ -1842,17 +1816,11 @@ function FeedbackBetaSection({
         </div>
       </div>
 
-      <div
-        className="rounded-xl p-3.5 flex items-start gap-2.5"
-        style={{
-          backgroundColor: "rgba(55,114,229,0.06)",
-          borderLeft: "3px solid rgba(55,114,229,0.4)",
-        }}
-      >
+      <div className="rounded-xl p-4 flex items-start gap-3 bg-admin-info-50/60 border-l-[3px] border-admin-info-500/50">
         <Lightbulb size={15} className="text-admin-info-500 shrink-0 mt-0.5" />
         <div className="min-w-0">
-          <p className="admin-eyebrow mb-1 text-admin-info-700">Sinal comercial</p>
-          <p className="m-0 text-[13px] font-medium text-admin-text-primary">
+          <p className="admin-eyebrow mb-1.5 text-admin-info-700">Sinal comercial</p>
+          <p className="m-0 text-[13px] leading-snug font-medium text-admin-text-primary">
             {intent.nextAction}
           </p>
         </div>
@@ -1925,10 +1893,10 @@ function LeadReportsList({
       : "Sem créditos atribuídos";
 
   return (
-    <div className="px-4 sm:px-6 py-5 space-y-4">
+    <div className="px-4 sm:px-6 py-6 space-y-5">
       {/* Cabeçalho compacto — contador + CTA "Gerar para este lead" */}
       <div className="flex items-center justify-between gap-3">
-        <p className="m-0 text-[13px] text-admin-text-primary tabular-nums">
+        <p className="m-0 text-[13px] text-admin-text-primary tabular-nums leading-tight">
           <span className="font-semibold">{count}</span>{" "}
           {count === 1 ? "relatório" : "relatórios"}
           <span className="mx-1.5 text-admin-text-tertiary">·</span>
@@ -1947,7 +1915,7 @@ function LeadReportsList({
           onClick={canGenerate ? onGenerateClick : undefined}
           disabled={!canGenerate}
           title={generateDisabledReason ?? "Gerar nova análise para este lead"}
-          className={`inline-flex items-center gap-1 text-[12px] font-medium transition-colors ${
+          className={`inline-flex items-center gap-1.5 text-[12px] font-medium transition-colors ${
             canGenerate
               ? "text-admin-info-500 hover:text-admin-info-700"
               : "text-admin-text-tertiary cursor-not-allowed"
@@ -1974,7 +1942,7 @@ function LeadReportsList({
           </button>
         </div>
       ) : rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-admin-text-primary/15 bg-admin-surface-muted/30 p-5 text-center">
+        <div className="rounded-xl border border-dashed border-admin-text-primary/15 bg-admin-surface-muted/40 p-6 text-center">
           <p className="m-0 text-[13px] text-admin-text-tertiary">
             Este lead ainda não pediu nenhum relatório.
           </p>
@@ -1994,28 +1962,24 @@ function LeadReportsList({
             return (
               <li
                 key={r.id}
-                className="rounded-xl border border-admin-text-primary/10 bg-white p-3"
+                className="rounded-xl border border-admin-text-primary/10 bg-white p-3.5 hover:border-admin-text-primary/20 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   {/* Avatar quadrado */}
                   <div
-                    className="shrink-0 rounded-lg flex items-center justify-center"
-                    style={{
-                      width: 36,
-                      height: 36,
-                      backgroundColor: "rgba(44,44,42,0.05)",
-                    }}
+                    className="shrink-0 rounded-lg flex items-center justify-center bg-admin-text-primary/5"
+                    style={{ width: 36, height: 36 }}
                   >
                     <Instagram size={16} className="text-admin-text-tertiary" />
                   </div>
 
                   {/* Meta — handle + estado + data */}
-                  <div className="min-w-0 flex-1 flex items-center gap-2 flex-wrap">
+                  <div className="min-w-0 flex-1 flex items-center gap-2.5 flex-wrap">
                     <span className="text-[13px] font-semibold text-admin-text-primary">
                       @{r.instagram_username}
                     </span>
                     <AdminBadge variant={state.tone}>{state.label}</AdminBadge>
-                    <span className="text-[11px] text-admin-text-tertiary tabular-nums">
+                    <span className="text-[12px] text-admin-text-tertiary tabular-nums">
                       {formatShortDateTime(r.created_at)}
                     </span>
                   </div>
@@ -2068,11 +2032,11 @@ function LeadReportsList({
                 </div>
 
                 {(showViewed || showNotViewed) && (
-                  <p className="m-0 mt-2 pl-[48px] text-[11px] text-admin-text-tertiary flex items-center gap-1.5">
+                  <p className="m-0 mt-2 pl-[48px] text-[12px] text-admin-text-tertiary flex items-center gap-1.5">
                     {showViewed ? (
                       <>
                         <CheckCircle2
-                          size={11}
+                          size={12}
                           className="text-admin-revenue-500"
                         />
                         Visto {lead.report_views}{" "}
@@ -2080,7 +2044,7 @@ function LeadReportsList({
                       </>
                     ) : (
                       <>
-                        <EyeOff size={11} />
+                        <EyeOff size={12} />
                         Ainda não foi visto pelo lead.
                       </>
                     )}
@@ -2138,7 +2102,7 @@ export function buildLeadHistoryEntries(
             : "via desbloqueio direto",
         timestamp: ev.created_at,
         style: "filled",
-        color: "rgb(55,114,229)",
+        color: "rgb(var(--admin-info-500))",
       });
     } else if (t === "report_generated") {
       entries.push({
@@ -2147,7 +2111,7 @@ export function buildLeadHistoryEntries(
         meta: lead.credits_granted > 0 ? "1 crédito usado" : null,
         timestamp: ev.created_at,
         style: "filled",
-        color: "rgb(5,150,105)",
+        color: "rgb(var(--admin-revenue-500))",
       });
     } else if (t === "report_link_sent") {
       entries.push({
@@ -2167,7 +2131,7 @@ export function buildLeadHistoryEntries(
         meta: null,
         timestamp: ev.created_at,
         style: "filled",
-        color: "rgb(118,100,228)",
+        color: "rgb(var(--admin-leads-500))",
       });
     } else if (t === "feedback_requested") {
       entries.push({
@@ -2184,7 +2148,7 @@ export function buildLeadHistoryEntries(
         meta: null,
         timestamp: ev.created_at,
         style: "filled",
-        color: "rgb(186,117,23)",
+        color: "rgb(var(--admin-expense-500))",
       });
     } else if (t === "commercial_followup_sent") {
       entries.push({
@@ -2226,7 +2190,7 @@ function HistoryDot({
         style={{
           width: 11,
           height: 11,
-          backgroundColor: color ?? "rgb(55,114,229)",
+          backgroundColor: color ?? "rgb(var(--admin-info-500))",
         }}
       />
     );
@@ -2234,24 +2198,20 @@ function HistoryDot({
   if (style === "ring") {
     return (
       <span
-        className="block rounded-full"
+        className="block rounded-full bg-white border-2 border-admin-info-500"
         style={{
           width: 11,
           height: 11,
-          border: "2px solid rgb(55,114,229)",
-          backgroundColor: "white",
         }}
       />
     );
   }
   return (
     <span
-      className="block rounded-full"
+      className="block rounded-full bg-white border-[1.5px] border-dashed border-admin-text-primary/40"
       style={{
         width: 11,
         height: 11,
-        border: "1.5px dashed rgba(44,44,42,0.4)",
-        backgroundColor: "white",
       }}
     />
   );
@@ -2275,7 +2235,7 @@ function LeadHistoryTimeline({
 
   if (loading) {
     return (
-      <div className="px-4 sm:px-6 py-5 flex items-center gap-2 text-[12px] text-admin-text-tertiary">
+      <div className="px-4 sm:px-6 py-6 flex items-center gap-2 text-[12px] text-admin-text-tertiary">
         <Loader2 size={13} className="animate-spin" /> A carregar histórico…
       </div>
     );
@@ -2283,7 +2243,7 @@ function LeadHistoryTimeline({
 
   if (entries.length === 0) {
     return (
-      <div className="px-4 sm:px-6 py-5">
+      <div className="px-4 sm:px-6 py-6">
         <p className="text-[12px] text-admin-text-tertiary">
           Sem eventos registados para este lead.
         </p>
@@ -2292,38 +2252,38 @@ function LeadHistoryTimeline({
   }
 
   return (
-    <div className="px-4 sm:px-6 py-5">
+    <div className="px-4 sm:px-6 py-6">
       <ol className="list-none p-0 m-0">
         {entries.map((entry, i) => {
           const isLast = i === entries.length - 1;
           const isPending = entry.style === "pending";
           const nextIsPending = !isLast && entries[i + 1].style === "pending";
           return (
-            <li key={entry.id} className="relative pl-6 pb-4 last:pb-0">
+            <li key={entry.id} className="relative pl-7 pb-5 last:pb-0">
               {/* Vertical rail */}
               {!isLast && (
                 <span
                   aria-hidden
-                  className="absolute left-[5px] top-3"
+                  className="absolute left-[5px] top-3.5"
                   style={{
                     width: 1,
                     bottom: 0,
                     backgroundColor: nextIsPending
                       ? "transparent"
-                      : "rgba(44,44,42,0.15)",
+                      : "rgb(var(--admin-neutral-900) / 0.15)",
                     backgroundImage: nextIsPending
-                      ? "linear-gradient(to bottom, rgba(44,44,42,0.3) 50%, transparent 50%)"
+                      ? "linear-gradient(to bottom, rgb(var(--admin-neutral-900) / 0.3) 50%, transparent 50%)"
                       : undefined,
                     backgroundSize: nextIsPending ? "1px 5px" : undefined,
                     backgroundRepeat: nextIsPending ? "repeat-y" : undefined,
                   }}
                 />
               )}
-              <span className="absolute left-0 top-1">
+              <span className="absolute left-0 top-1.5">
                 <HistoryDot style={entry.style} color={entry.color} />
               </span>
               <p
-                className={`m-0 text-[13px] ${
+                className={`m-0 text-[13px] leading-snug ${
                   isPending
                     ? "italic text-admin-text-tertiary"
                     : "font-medium text-admin-text-primary"
@@ -2333,7 +2293,7 @@ function LeadHistoryTimeline({
                 {isPending && "…"}
               </p>
               {entry.meta && (
-                <p className="m-0 mt-0.5 text-[11px] text-admin-text-tertiary">
+                <p className="m-0 mt-1 text-[12px] text-admin-text-tertiary">
                   {entry.meta}
                   {entry.timestamp && (
                     <>
@@ -2346,7 +2306,7 @@ function LeadHistoryTimeline({
                 </p>
               )}
               {!entry.meta && entry.timestamp && (
-                <p className="m-0 mt-0.5 text-[11px] text-admin-text-tertiary tabular-nums">
+                <p className="m-0 mt-1 text-[12px] text-admin-text-tertiary tabular-nums">
                   {formatShortDateTime(entry.timestamp)}
                 </p>
               )}
