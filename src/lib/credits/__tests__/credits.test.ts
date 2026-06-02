@@ -10,6 +10,7 @@ interface LedgerRow {
   lead_id: string;
   delta: number;
   reason: string;
+  cache_key: string | null;
   reservation_id: string | null;
 }
 
@@ -24,10 +25,29 @@ function insert(payload: Partial<LedgerRow> & { lead_id: string; delta: number; 
       return { error: { code: "23505", message: "duplicate initial grant" } };
     }
   }
+  // Simula o índice único parcial uniq_credit_ledger_reserve_per_report.
+  if (payload.reason === "reserve" && payload.cache_key) {
+    const dup = ledger.some(
+      (r) =>
+        r.lead_id === payload.lead_id &&
+        r.reason === "reserve" &&
+        r.cache_key === payload.cache_key,
+    );
+    if (dup) {
+      return {
+        error: {
+          code: "23505",
+          message:
+            'duplicate key value violates unique constraint "uniq_credit_ledger_reserve_per_report"',
+        },
+      };
+    }
+  }
   ledger.push({
     lead_id: payload.lead_id,
     delta: payload.delta,
     reason: payload.reason,
+    cache_key: payload.cache_key ?? null,
     reservation_id: payload.reservation_id ?? null,
   });
   return { error: null };
@@ -36,8 +56,13 @@ function insert(payload: Partial<LedgerRow> & { lead_id: string; delta: number; 
 vi.mock("@/integrations/supabase/client.server", () => {
   const supabaseAdmin = {
     from: (_t: string) => ({
-      insert: (payload: Partial<LedgerRow> & { lead_id: string; delta: number; reason: string }) =>
-        Promise.resolve(insert(payload)),
+      insert: (payload: Partial<LedgerRow> & { lead_id: string; delta: number; reason: string }) => {
+        const res = insert(payload);
+        if (res.error) {
+          return Promise.resolve({ error: res.error });
+        }
+        return Promise.resolve({ error: null });
+      },
     }),
     rpc: (_name: string, args: { p_lead_id: string }) =>
       Promise.resolve({
@@ -80,6 +105,7 @@ describe("credits.server", () => {
   it("reserveCredit decrements balance and returns reservationId", async () => {
     await grantInitialCredits(LEAD);
     const r = await reserveCredit({ leadId: LEAD, handle: "x" });
+    if (r.kind !== "reserved") throw new Error("expected reserved");
     expect(r.reservationId).toMatch(/^[0-9a-f-]{36}$/);
     expect(await getBalance(LEAD)).toBe(1);
   });
@@ -93,6 +119,7 @@ describe("credits.server", () => {
   it("releaseReservation returns the credit", async () => {
     await grantInitialCredits(LEAD);
     const r = await reserveCredit({ leadId: LEAD });
+    if (r.kind !== "reserved") throw new Error("expected reserved");
     await releaseReservation({ leadId: LEAD, reservationId: r.reservationId });
     expect(await getBalance(LEAD)).toBe(2);
   });
@@ -100,6 +127,7 @@ describe("credits.server", () => {
   it("confirmReservation does not change balance", async () => {
     await grantInitialCredits(LEAD);
     const r = await reserveCredit({ leadId: LEAD });
+    if (r.kind !== "reserved") throw new Error("expected reserved");
     await confirmReservation({ leadId: LEAD, reservationId: r.reservationId });
     expect(await getBalance(LEAD)).toBe(1);
   });
@@ -112,5 +140,23 @@ describe("credits.server", () => {
     await expect(reserveCredit({ leadId: LEAD })).rejects.toBeInstanceOf(
       InsufficientCreditsError,
     );
+  });
+
+  it("reserveCredit com mesmo (lead, cacheKey) devolve duplicate e não debita 2x", async () => {
+    await grantInitialCredits(LEAD);
+    const r1 = await reserveCredit({ leadId: LEAD, cacheKey: "v1:foo|" });
+    expect(r1.kind).toBe("reserved");
+    const r2 = await reserveCredit({ leadId: LEAD, cacheKey: "v1:foo|" });
+    expect(r2.kind).toBe("duplicate");
+    expect(await getBalance(LEAD)).toBe(1);
+  });
+
+  it("reserveCredit com cacheKey diferente continua a consumir", async () => {
+    await grantInitialCredits(LEAD);
+    const r1 = await reserveCredit({ leadId: LEAD, cacheKey: "v1:foo|" });
+    expect(r1.kind).toBe("reserved");
+    const r2 = await reserveCredit({ leadId: LEAD, cacheKey: "v1:bar|" });
+    expect(r2.kind).toBe("reserved");
+    expect(await getBalance(LEAD)).toBe(0);
   });
 });
