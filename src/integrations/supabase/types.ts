@@ -1276,6 +1276,7 @@ export type Database = {
           posts_returned: number
           prompt_tokens: number | null
           provider: string
+          source_context: string
           status: string
           total_tokens: number | null
         }
@@ -1297,6 +1298,7 @@ export type Database = {
           posts_returned?: number
           prompt_tokens?: number | null
           provider?: string
+          source_context?: string
           status: string
           total_tokens?: number | null
         }
@@ -1318,6 +1320,7 @@ export type Database = {
           posts_returned?: number
           prompt_tokens?: number | null
           provider?: string
+          source_context?: string
           status?: string
           total_tokens?: number | null
         }

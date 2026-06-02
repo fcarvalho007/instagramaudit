@@ -292,6 +292,7 @@ async function logCall(
       estimatedCostUsd: estimatedCostUsd ?? null,
       errorMessage: errorMessage ?? null,
       analysisEventId: analysisEventId ?? null,
+      sourceContext: "public_analysis",
     });
   } catch (err) {
     console.error(LOG_PREFIX, "failed to log provider call", err);

@@ -304,6 +304,7 @@ async function fetchProfileWithPostsLogged(username: string): Promise<{
       actualCostUsd,
       apifyRunId: runId,
       httpStatus: 200,
+      sourceContext: "public_analysis",
     });
     return { row, error: null, providerCallLogId };
   } catch (err) {
@@ -336,6 +337,7 @@ async function fetchProfileWithPostsLogged(username: string): Promise<{
       apifyRunId: partial.runId ?? null,
       httpStatus,
       errorMessage: err instanceof Error ? err.message : String(err),
+      sourceContext: "public_analysis",
     });
     return { row: null, error: err, providerCallLogId };
   }

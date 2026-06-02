@@ -152,6 +152,21 @@ export function CostSummaryCard() {
               </span>
             </span>
           </div>
+
+          <div className="mt-2 flex items-baseline justify-between gap-3 text-[12px] text-admin-text-tertiary">
+            <span title="Produção: análises públicas + enriquecimento de comentários. Base para custo/lead e margem.">
+              Produção{" "}
+              <span className="font-mono tabular-nums text-admin-text-secondary">
+                ${data.production_cost_30d.toFixed(2)}
+              </span>
+            </span>
+            <span title="Apify Lab / I&D — corre real, conta para o total mas NÃO para custo/lead.">
+              I&D · Lab{" "}
+              <span className="font-mono tabular-nums text-admin-text-secondary">
+                ${data.lab_cost_30d.toFixed(2)}
+              </span>
+            </span>
+          </div>
         </>
       )}
     </AdminCard>

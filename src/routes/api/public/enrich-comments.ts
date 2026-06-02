@@ -143,6 +143,7 @@ async function processJob(job: JobRow): Promise<{ ok: boolean; error?: string }>
       actualCostUsd: commentResult.actualCostUsd ?? undefined,
       errorMessage: undefined,
       analysisEventId: job.analysis_event_id ?? undefined,
+      sourceContext: "enrich_comments",
     });
 
     commentIntelligence = aggregateCommentIntelligence(
@@ -202,6 +203,7 @@ async function processJob(job: JobRow): Promise<{ ok: boolean; error?: string }>
         postsReturned: 0,
         errorMessage: err instanceof Error ? err.message.slice(0, 500) : "unknown",
         analysisEventId: job.analysis_event_id ?? undefined,
+        sourceContext: "enrich_comments",
       });
     } catch (logErr) {
       console.error(LOG, "failed to log provider call", logErr);
