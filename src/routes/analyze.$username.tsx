@@ -12,7 +12,7 @@ import { UnlockModal } from "@/components/product/unlock-modal";
 import { OnboardingModal } from "@/components/onboarding/onboarding-modal";
 import { Toaster } from "@/components/ui/sonner";
 import { fetchPublicAnalysis } from "@/lib/analysis/client";
-import { getPublishedFeatures } from "@/server/admin/variant-overrides.functions";
+import { getPublishedFeatures } from "@/lib/admin/variant-overrides.functions";
 import type { VariantFeatures } from "@/lib/report/report-variant";
 import { trackEvent } from "@/lib/tracking.functions";
 import {

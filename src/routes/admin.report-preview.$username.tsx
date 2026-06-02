@@ -23,7 +23,7 @@ import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import type { ReportVariant } from "@/lib/report/report-variant";
 import type { VariantFeatures } from "@/lib/report/report-variant";
-import { getDraftFeatures, getPublishedFeatures } from "@/server/admin/variant-overrides.functions";
+import { getDraftFeatures, getPublishedFeatures } from "@/lib/admin/variant-overrides.functions";
 import {
   snapshotToReportData,
   type AdapterResult,
