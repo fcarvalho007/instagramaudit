@@ -58,7 +58,7 @@ export function HeroActionBar() {
 
       {/* The bar — glass card with input + button inline */}
       <div
-        className="relative rounded-2xl border overflow-hidden sm:hero-bar-breathe transition-colors"
+        className="relative rounded-2xl border overflow-hidden hero-bar-breathe transition-colors"
         style={{
           borderColor: "rgba(15, 23, 42, 0.08)",
           backgroundColor: "#FFFFFF",
@@ -138,7 +138,12 @@ export function HeroActionBar() {
 
       <style>{`
         .hero-bar-breathe {
-          animation: hero-bar-breathe-kf 4s ease-in-out infinite;
+          animation: none;
+        }
+        @media (min-width: 640px) {
+          .hero-bar-breathe {
+            animation: hero-bar-breathe-kf 4s ease-in-out infinite;
+          }
         }
         @keyframes hero-bar-breathe-kf {
           0%, 100% { transform: scale(1); }
