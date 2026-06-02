@@ -1,96 +1,142 @@
-# Redesign: zona de diagnóstico em /admin/receita
+# Auditoria + refinamento dos KPIs de /admin/visao-geral
 
-## Contexto
+## 1. Cost source audit — `fetchExpense30d().total`
 
-A `ExpenseSection` (importada em `/admin/receita`) tem hoje 6 zonas densas com tabelas de 6 colunas. O screenshot propõe uma versão consolidada — **uma secção "Diagnóstico de custos"** com 4 blocos, hierarquia clara e falhas como sinal primário.
+`expense.total` lê **todas as linhas** de `provider_call_logs` com `status IN ('success','cache')` nos últimos 30 dias (`aggregateCostsFromLogs`, `system-queries.server.ts:581`). **Não distingue** origem da chamada — inclui:
 
-Esta é uma intervenção **só visual**. Não muda queries, não muda cost math, não toca em `provider_call_logs`, não cria endpoints.
+- ✅ análises públicas via `/analyze/$username`
+- ✅ refreshes admin
+- ✅ Apify Lab runs (`apify_lab_runs` gera entradas em `provider_call_logs`)
+- ✅ enriquecimentos OpenAI (visual cover, captions, insights)
+- ✅ thumbnail processing quando passa por providers
+- ⚠️ retries de falhas que terminem em `success`
+- ❌ falhas (excluídas: `status != 'success'/'cache'`)
+- ⚠️ smoke/diagnostic se rodadas em produção
 
-## Ficheiro alvo
+→ `expense.total` **não é adequado** como numerador de "custo por lead" porque inclui custo administrativo (lab + refreshes) que não pertence ao funil de aquisição. É adequado para "custo total da plataforma".
 
-`src/components/admin/v2/visao-geral/expense-section.tsx` (linhas 226–576) — substituir o JSX da `return` da secção. Subcomponentes existentes (`ProviderCard`, `ReliabilityCard`, helpers de reconciliação) mantêm-se ou são refactorados para a nova grelha.
+## 2. Denominator audit (30d na BD agora)
 
-O ficheiro continua a viver em `visao-geral/` (já é importado por `/admin/receita.tsx`). Não muda o sítio do ficheiro nem o import — só o conteúdo renderizado.
+| Métrica | Fonte | Valor atual |
+|---|---|---|
+| `leads_30d` | `leads.count` | **12** |
+| `analyses_total` | `analysis_events.count` | 2323 (todos os outcomes) |
+| `fresh_analyses_30d` | `analysis_events where data_source='fresh' AND outcome='success'` | **35** |
+| `cache_analyses_30d` | `analysis_events where data_source='cache' AND outcome='success'` | 1962 |
+| `completed_reports_30d` | `analysis_snapshots.count` | já calculado em `expense.completed_reports` |
+| `fresh_reports_30d` | já calculado em `expense.fresh_reports` | 35 |
+| `reports_unlocked_30d` | `lead_reports.count` (30d) | **a expor** |
+| `onboarding_success_30d` | `product_events where event_type='onboarding_success'` | **a expor** |
+| `paid_customers_30d` | `lead_payments where status='paid' AND paid_at>=30d` | **0** (tabela existe, vazia) |
 
-As Zonas 1 e 2 atuais (Custo interno atribuído + Custo por análise) **permanecem intactas** — pertencem ao topo decisional da página de receita. A redesign aplica-se às Zonas 3–6.
+→ Denominador recomendado por métrica:
+- `cost_per_lead` = **custo público** / `leads_30d` (não custo total)
+- `cost_per_analysis` = `expense.fresh_avg_cost_per_report` (já existe, exato)
+- `cost_per_unlocked_report` = custo público / `reports_unlocked_30d`
+- `margin_per_lead` = `(revenue_30d − custo_público_30d) / leads_30d` — só calcular quando `revenue_active`
 
-## Nova estrutura (Zonas 3–6 → 1 secção "Diagnóstico")
+## 3. Revenue audit
 
-Cabeçalho da secção:
+`lead_payments` existe (`status`, `amount_cents`, `currency`, `paid_at`, `provider`). Hoje **0 linhas**. Nenhum webhook EuPago/Stripe ativo. `revenue_total_30d` é forçado a 0 no endpoint.
+
+→ Introduzir flag `revenue_active`:
+```sql
+SELECT COALESCE(SUM(amount_cents),0)/100.0 AS eur, COUNT(*) AS paid_count
+FROM lead_payments
+WHERE status='paid' AND paid_at >= now() - interval '30 days';
 ```
-🩺 Diagnóstico de custos
-Detalhe por fornecedor, reconciliação e evolução — para investigar, não para decidir.
+`revenue_active = paid_count_alltime > 0` (verifica se já houve algum pagamento, não só nos 30d). Enquanto `false`, KPI mostra "Receita ainda não activa" e margem fica `null`.
+
+## 4. Funnel audit
+
+Etapas atuais em `AcquisitionFunnel`:
+1. "Report público visto" — **placeholder** (já marcado `unavailable: 'sem tracker'`) ✅
+2. "Email submetido" — `beta-funnel.unlock_iniciado` ✅ real
+3. "Conta criada" — `beta-funnel.unlock_concluido` ✅ real
+4. "Feedback recebido" — `beta-funnel.feedback_recebido` ✅ real
+5. "Convertido (pago)" — `beta-funnel.convertido` (depende de `lead_payments`) → hoje 0, marcar como "checkout por ligar" em vez de "0%".
+
+→ Sem alterações de queries — só copy mais honesta na etapa 5.
+
+## 5. Margin alert logic — bug atual
+
+Hoje: alerta dispara sempre que `margin_per_lead < 0`. Como receita está fixa em 0 e há custo > 0, **dispara sempre que houver leads**. É ruído, não sinal.
+
+→ Nova regra:
+- `revenue_active === false` → **não mostrar** alerta de margem negativa; mostrar `AdminCallout` informativo: *"Receita ainda não activa. Acompanha custo por lead (${X}) e custo por análise (${Y}) até ligar o checkout."*
+- `revenue_active === true && margin_per_lead < 0` → alerta atual (negativo).
+- `revenue_active === true && margin_per_lead >= 0` → nada.
+
+## 6. UI copy provisional
+
+- KPI "Receita" quando `!revenue_active` → valor: **"—"**, eyebrow mantém "Receita", sub: **"ainda não activa"**
+- KPI "Margem / lead" quando `!revenue_active` → valor: **"em validação"** (não mostrar número), sub: `custo/lead $X · receita pendente`
+- Funnel etapa 5 quando `!revenue_active` → label mantém, pct: **"— checkout por ligar"**
+
+## 7. Novo contrato de `OverviewKpis`
+
+```ts
+{
+  // contagens
+  leads_30d, leads_7d,
+  analyses_30d,                  // events fresh+cache success
+  fresh_analyses_30d,            // events fresh success
+  reports_unlocked_30d,          // lead_reports 30d
+
+  // custos
+  cost_total_30d,                // expense.total (plataforma)
+  cost_public_30d,               // custo atribuído a fresh com event_id (proxy honesto)
+  cost_per_lead,                 // cost_public_30d / leads_30d
+  cost_per_analysis,             // expense.fresh_avg_cost_per_report
+  cost_per_unlocked_report,      // cost_public_30d / reports_unlocked_30d
+
+  // receita / margem
+  revenue_active: boolean,       // já houve algum lead_payment paid?
+  revenue_30d,                   // 0 quando inactive
+  revenue_per_lead: number|null,
+  margin_per_lead: number|null,  // null quando !revenue_active
+  margin_status: "inactive" | "negative" | "positive",
+
+  // outros
+  avg_cost_per_report, reliability_pct, checkout_enabled, providers
+}
 ```
 
-### Bloco A — OpenAI · por operação (FIRST, com alerta)
+`cost_public_30d` ≈ `fresh_linked_total_usd` (já calculado em `fetchExpense30d`) — custo de chamadas reais ligadas a `analysis_event_id` (exclui lab/órfãs). É o melhor proxy honesto disponível sem alterar o backend de custos.
 
-Card branco com header "🟦 OpenAI · por operação" e badge âmbar `⚠ N falhas` à direita (soma de `actor.failures`).
+## Ficheiros a tocar
 
-Por linha (em vez de tabela de 6 colunas):
-- **Lado esquerdo**: nome amigável (`Insights`, `Análise visual`, `Legendas`) + sublinha muted `modelo · N chamadas · P+C tokens`
-- **Lado direito**: custo `$0,25` em tabular-nums + chip `N falhas` (âmbar se >0, neutro/oculto se 0)
+1. `src/routes/api/admin/overview-kpis.ts` — alargar contrato + queries (`lead_payments`, `lead_reports`, `product_events.onboarding_success`, contagens de `analysis_events`).
+2. `src/components/admin/v2/visao-geral/overview-kpi-row.tsx` — copy "Receita ainda não activa", "Margem em validação".
+3. `src/components/admin/v2/visao-geral/margin-alert.tsx` — branch `revenue_active` (info vs warning).
+4. `src/components/admin/v2/visao-geral/acquisition-funnel.tsx` — copy etapa 5 quando `!revenue_active`.
+5. `src/components/admin/v2/visao-geral/cost-summary-card.tsx` — mostrar **custo público** ao lado de **custo total** para honestidade.
+6. `src/lib/admin/__tests__/overview-kpis.test.ts` (novo) — testes puros das fórmulas.
 
-Callout âmbar no fundo do card **só se** existir alguma operação com `failures >= calls`:
-```
-⚠ {N} falhas em {M} chamadas de {nome} é anormal — estás a pagar retries.
-   Investigar antes de escalar.
-```
-Texto derivado das contagens reais. Sem hardcode.
+**Fora de âmbito** (não tocar): `system-queries.server.ts` core de custos, providers, onboarding, reports, pricing, `/admin/sistema`, `/admin/receita`.
 
-### Bloco B — Apify · por actor
+## Testes
 
-Mesmo padrão: nome amigável + `N eventos · $X/evento` em sublinha; custo total à direita + chip `cost_source` (`REAL` / `ESTIM.` / `ESTIM.+REAL`).
-
-### Bloco C — Reconciliação (grelha 2 colunas com C+D)
-
-Lista compacta dos 3 fornecedores: ponto colorido · nome · `$internal` · pill `pendente` / `OK` / `rever` / `arred.`.
-
-Nota honesta por baixo (só se `pendingCount === reconRows.length`):
-```
-{pendingCount} fornecedores sem faturação externa ligada. Valores baseados em estimativas internas.
-```
-
-### Bloco D — Evolução diária
-
-Mesmo `BarChart` empilhado (Apify+OpenAI+DFS) + `ReferenceLine` no `DAILY_COST_LIMIT`. Header com legenda compacta inline (chips à direita) e `limite $X/dia` em texto secundário. Altura reduz para `h-44`.
-
-Mobile: Bloco C empilha por cima de D.
-
-## Tokens & estilo
-
-- Sem hardcode de cores além dos já usados via `ADMIN_LITERAL.expenseChart*`
-- Cards: `AdminCard` com `variant="accent-left"` quando faz sentido (Apify=expense, OpenAI=info)
-- Badges de falha: chip âmbar (`bg-amber-500/15 text-amber-700`) já em uso no ficheiro
-- Tipografia: respeitar regra "JetBrains Mono só em admin" — manter `font-mono` para números e ids
-- Eyebrows com `.text-eyebrow-sm` / `uppercase tracking-wider` — sem `font-mono`
-
-## Honestidade dos números
-
-- Tudo lido de `Expense30d` (`apify_actors`, `openai_actors`, `daily`) e `ReconciliationData.byProvider` — já carregados na secção, sem novos endpoints
-- O texto do callout de OpenAI é derivado da operação com pior `failures/calls`
-- Estados "pendente" mantêm-se quando não há `external > 0` (sem inventar)
-- `DAILY_COST_LIMIT` continua a vir de `@/lib/admin/mock-data`
-
-## Fora de âmbito
-
-- /admin/visao-geral (não tocar)
-- Backend / cost math / queries
-- Tabelas Zona 1 e 2 (continuam como estão)
-- Endpoint novos
+`src/lib/admin/overview-formulas.ts` (novo, função pura `computeKpis(input)`) + Vitest cobrindo:
+- `leads_30d=0` → `cost_per_lead=null`, sem divisão por zero
+- `revenue_active=false` → `margin_per_lead=null`, `margin_status="inactive"`
+- `revenue_active=false` → `MarginAlert` não dispara warning (snapshot do branch)
+- `cost_per_lead = cost_public / leads`
+- `cost_per_analysis = fresh_avg_cost_per_report` (pass-through)
+- `revenue_active=true, revenue<cost` → `margin_status="negative"`
 
 ## Validação
 
 - `bunx tsc --noEmit`
-- Mobile 375px: blocos empilham sem overflow
-- Conferir que todos os totais batem com os atuais (mesmo dataset)
+- `bunx vitest run src/lib/admin/__tests__/overview-kpis.test.ts`
+- Confirmar visualmente em /admin/visao-geral que "Receita ainda não activa" aparece, alerta de margem deixa de aparecer, e os 4 valores batem (`leads=12`, custos = mesmos do /admin/receita).
 
 ## Checkpoint
 
-- ☐ Substituir JSX das Zonas 3–6 na `ExpenseSection`
-- ☐ Bloco OpenAI primeiro com badge de falhas no header
-- ☐ Bloco Apify simplificado (sem tabela 6 colunas)
-- ☐ Bloco Reconciliação com pills `pendente` honestas
-- ☐ Bloco Evolução diária com legenda compacta e limit line
-- ☐ Callout de retries derivado de dados reais
+- ☐ Endpoint devolve novo contrato com `revenue_active`, `cost_public_30d`, `analyses_30d`, `reports_unlocked_30d`
+- ☐ `OverviewKpiRow`: copy "ainda não activa" / "em validação" quando aplicável
+- ☐ `MarginAlert`: info-card quando `!revenue_active`, warning só quando real
+- ☐ `AcquisitionFunnel`: etapa 5 com "checkout por ligar"
+- ☐ `CostSummaryCard`: distinção custo total vs custo público
+- ☐ Testes puros de fórmulas verdes
 - ☐ `tsc --noEmit` limpo
-- ☐ Mobile 375px sem overflow
