@@ -78,6 +78,16 @@ export interface Expense30d {
   openai_total: number;
   dataforseo_total: number;
   total: number;
+  /**
+   * Cost split by `provider_call_logs.source_context` (30d window).
+   * - production: end-user analysis + comment enrichment (drives cost-per-lead)
+   * - lab: admin Apify Lab / I&D runs (mirrored from `apify_lab_runs`)
+   * - other: admin refresh, backfills, and unclassified legacy rows
+   * production + lab + other === total (modulo rounding).
+   */
+  production_cost_30d: number;
+  lab_cost_30d: number;
+  other_cost_30d: number;
   apify_calls: number;
   openai_calls: number;
   dataforseo_calls: number;
@@ -642,6 +652,50 @@ export async function aggregateCostsFromLogs(sinceIso: string): Promise<{
   return { totals, daily, apifyFreshSum, apifyFreshCount };
 }
 
+/**
+ * Sum `provider_call_logs` cost in the window grouped by `source_context`.
+ *
+ * Buckets:
+ *   - production: `public_analysis` + `enrich_comments`
+ *                 (drives cost-per-lead, cost-per-analysis, margin)
+ *   - lab:        `admin_lab` (mirrored from `apify_lab_runs` via DB trigger)
+ *   - other:      `admin_refresh`, `backfill`, `unknown` (historical / one-off)
+ *
+ * Counts successful + cache rows, like `aggregateCostsFromLogs`. Lab rows
+ * always carry the cost on the mirrored row, so they show up here naturally
+ * without changing the writers.
+ */
+export async function aggregateCostsBySourceContext(
+  sinceIso: string,
+): Promise<{ production: number; lab: number; other: number; total: number }> {
+  const { data: logs } = await supabaseAdmin
+    .from("provider_call_logs")
+    .select("source_context, actual_cost_usd, estimated_cost_usd, status")
+    .gte("created_at", sinceIso);
+
+  let production = 0;
+  let lab = 0;
+  let other = 0;
+
+  for (const row of logs ?? []) {
+    const status = String(row.status);
+    if (status !== "success" && status !== "cache") continue;
+    const cost = resolveCallCost(row);
+    const ctx = String(
+      (row as Record<string, unknown>).source_context ?? "unknown",
+    );
+    if (ctx === "public_analysis" || ctx === "enrich_comments") {
+      production += cost;
+    } else if (ctx === "admin_lab") {
+      lab += cost;
+    } else {
+      other += cost;
+    }
+  }
+
+  return { production, lab, other, total: production + lab + other };
+}
+
 export async function fetchCostMetrics24h(): Promise<Cost24hMetrics> {
   const since = isoSinceHours(24);
   const { totals: acc, apifyFreshSum, apifyFreshCount } =
@@ -760,6 +814,11 @@ export async function fetchExpense30d(): Promise<Expense30d> {
   const sinceIso = new Date(Date.now() - 30 * DAY_MS).toISOString();
   const { totals, daily } = await aggregateCostsFromLogs(sinceIso);
 
+  // Cost split by source_context (production / lab / other).
+  // Done as a single small query against the same window so admin views
+  // can render the production-vs-Lab breakdown without unioning tables.
+  const buckets = await aggregateCostsBySourceContext(sinceIso);
+
   // cost_daily continua a existir só para extras de reconciliação:
   // saldo DataForSEO e faturação real Apify (monthly usage API).
   const startDay = dayKey(new Date(Date.now() - 30 * DAY_MS));
@@ -798,6 +857,9 @@ export async function fetchExpense30d(): Promise<Expense30d> {
         totals.dataforseo.amount_usd
       ).toFixed(4),
     ),
+    production_cost_30d: Number(buckets.production.toFixed(4)),
+    lab_cost_30d: Number(buckets.lab.toFixed(4)),
+    other_cost_30d: Number(buckets.other.toFixed(4)),
     apify_calls: totals.apify.calls,
     openai_calls: totals.openai.calls,
     dataforseo_calls: totals.dataforseo.calls,
