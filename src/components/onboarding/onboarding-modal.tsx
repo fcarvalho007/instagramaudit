@@ -128,7 +128,7 @@ export function OnboardingModal({
     },
   });
 
-  const { clear: clearDraft } = useOnboardingDraft(form);
+  const { clear: clearDraft } = useOnboardingDraft(form, handle);
 
   // Reset state quando o modal abre (não quando fecha — assim o `abandon`
   // ainda pode ler `step`). `formStartedAt` reinicia para garantir ≥2s reais.
@@ -287,7 +287,7 @@ export function OnboardingModal({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
-        className="sm:max-w-[760px] max-h-[92vh] overflow-y-auto p-0 gap-0 border-border-default/60"
+        className="w-[calc(100vw-2rem)] sm:max-w-[760px] max-h-[92vh] overflow-x-hidden overflow-y-auto p-0 gap-0 border-border-default/60"
         data-testid="onboarding-modal"
       >
         {step === 0 ? (
@@ -467,9 +467,9 @@ function FormStepBody({
     step === 3 ? t("onboarding.steps.3.badge", { defaultValue: "" }) : "";
 
   return (
-    <div className="px-7 py-8 sm:px-9 sm:py-9">
-      <DialogHeader className="text-left space-y-3">
-        <div className="flex items-center gap-2">
+    <div className="min-w-0 px-7 py-8 sm:px-9 sm:py-9">
+      <DialogHeader className="min-w-0 text-left space-y-3">
+        <div className="flex items-center gap-2 min-w-0 flex-wrap">
           <p className="text-eyebrow-sm text-content-tertiary">{eyebrow}</p>
           {badge ? (
             <span className="inline-flex items-center rounded-full bg-primary/10 text-primary px-2 py-[1px] text-[10px] font-semibold tracking-wide">
@@ -477,12 +477,12 @@ function FormStepBody({
             </span>
           ) : null}
         </div>
-        <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
+        <DialogTitle className="font-display text-[22px] sm:text-[30px] leading-[1.15] tracking-[-0.01em] text-content-primary min-w-0 break-words text-balance">
           <Trans i18nKey={`onboarding.steps.${stepKey}.title`} ns="gate" components={{ em: <em className="not-italic text-primary" /> }}>
             {title}
           </Trans>
         </DialogTitle>
-        <DialogDescription className="text-[13px] text-content-secondary leading-relaxed">
+        <DialogDescription className="text-[13px] text-content-secondary leading-relaxed break-words">
           {subtitle}
         </DialogDescription>
         <ProgressSegments current={step} total={TOTAL_STEPS} />
@@ -520,7 +520,7 @@ function FormStepBody({
           </Alert>
         ) : null}
 
-        <div className="flex gap-3 border-t border-border-default/40 -mx-7 sm:-mx-9 px-7 sm:px-9 pt-5 mt-2">
+        <div className="flex gap-3 border-t border-border-default/40 -mx-7 sm:-mx-9 px-7 sm:px-9 pt-5 mt-2 min-w-0">
           <Button
             type="button"
             variant="outline"
@@ -535,7 +535,7 @@ function FormStepBody({
           <Button
             type="submit"
             size="lg"
-            className="flex-1 rounded-lg font-medium"
+            className="flex-1 min-w-0 rounded-lg font-medium"
             disabled={submitting}
             data-testid={
               step === 3 ? "onboarding-submit" : "onboarding-continue"

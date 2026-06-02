@@ -147,11 +147,13 @@ import { handleOnboardingStart } from "@/routes/api/onboarding/start";
 const GENERIC =
   "Não foi possível preparar o acesso ao relatório. Tenta novamente dentro de instantes.";
 
-function post(body: unknown): Request {
+function post(body: Record<string, unknown>): Request {
+  const withGdpr =
+    "gdpr_consent" in body ? body : { ...body, gdpr_consent: true };
   return new Request("http://test.local/api/onboarding/start", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify(withGdpr),
   });
 }
 
@@ -272,5 +274,40 @@ describe("POST /api/onboarding/start", () => {
     const inserted = insertCalls[0];
     expect(inserted.phone).toBe("+351 912 345 678");
     expect(inserted.phone_normalized).toBe("351912345678");
+  });
+
+  it("missing gdpr_consent → 400 INVALID_PAYLOAD", async () => {
+    const res = await handleOnboardingStart(
+      post({ name: "Ana", email: "nogdpr@example.com", gdpr_consent: undefined }),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { ok: boolean; error_code: string };
+    expect(body.ok).toBe(false);
+    expect(body.error_code).toBe("INVALID_PAYLOAD");
+    expect(setLeadCookieMock).not.toHaveBeenCalled();
+  });
+
+  it("gdpr_consent === false → 400 INVALID_PAYLOAD", async () => {
+    const res = await handleOnboardingStart(
+      post({
+        name: "Ana",
+        email: "falsegdpr@example.com",
+        gdpr_consent: false,
+      }),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { ok: boolean; error_code: string };
+    expect(body.error_code).toBe("INVALID_PAYLOAD");
+  });
+
+  it("valid payload persists gdpr_consent_at and gdpr_consent_version", async () => {
+    const res = await handleOnboardingStart(
+      post({ name: "Ana", email: "consent@example.com" }),
+    );
+    expect(res.status).toBe(200);
+    expect(insertCalls).toHaveLength(1);
+    const inserted = insertCalls[0];
+    expect(typeof inserted.gdpr_consent_at).toBe("string");
+    expect(inserted.gdpr_consent_version).toBe("v1");
   });
 });

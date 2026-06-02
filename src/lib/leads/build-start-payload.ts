@@ -18,6 +18,7 @@ export interface OnboardingStartPayload {
   beta_consent: false;
   purpose: UnlockFormValues["goal"];
   profile_ownership: UnlockFormValues["profile_ownership"];
+  gdpr_consent: true;
   website: string;
   _t: number;
 }
@@ -38,6 +39,9 @@ export function buildStartPayload(
     // user_type intentionally omitted — column is nullable on the lead row.
     purpose: values.goal,
     profile_ownership: values.profile_ownership,
+    // GDPR consent é validado client-side antes do submit; envia sempre `true`
+    // para o servidor exigir prova explícita (Zod `literal(true)`).
+    gdpr_consent: true,
     website: honeypot,
     _t: formStartedAt,
   };

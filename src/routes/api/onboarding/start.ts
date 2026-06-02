@@ -36,6 +36,8 @@ const PayloadSchema = z.object({
   purpose: z.string().trim().max(120).optional(),
   profile_ownership: z.string().trim().max(40).optional(),
   pricing_preference: z.string().trim().max(40).optional(),
+  // GDPR — exige `true` explícito. Ausência ou `false` → 400 INVALID_PAYLOAD.
+  gdpr_consent: z.literal(true),
   // Anti-bot — campos opcionais; honeypot deve permanecer vazio e `_t`
   // (timestamp do form start em ms) deve estar pelo menos 2s no passado.
   website: z.string().max(0).optional(),
@@ -113,6 +115,8 @@ async function upsertLead(
         purpose: data.purpose ?? null,
         profile_ownership: data.profile_ownership ?? null,
         pricing_preference: data.pricing_preference ?? null,
+        gdpr_consent_at: consentTimestamp,
+        gdpr_consent_version: "v1",
       })
       .eq("id", existing.data.id);
     if (update.error) return { error: update.error.message };
@@ -135,6 +139,8 @@ async function upsertLead(
       purpose: data.purpose ?? null,
       profile_ownership: data.profile_ownership ?? null,
       pricing_preference: data.pricing_preference ?? null,
+      gdpr_consent_at: consentTimestamp,
+      gdpr_consent_version: "v1",
       source: "onboarding_modal",
     })
     .select("id")
