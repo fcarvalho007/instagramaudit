@@ -1,39 +1,50 @@
 ## Objetivo
 
-Reverter a homepage `/` para o modo dark "Editorial Tech Noir" (deep navy + cyan + gold) que existia antes, alinhado com a direção de design do projeto. A versão light atual foi um desvio — vamos repor o hero dark e garantir que renderiza correctamente.
+Aplicar dois refinamentos pendentes no hero da `/` e blindá-los para não voltarem a ser revertidos.
 
-## Diagnóstico
+## Mudanças
 
-A homepage actual usa o scope `.hero-light` com tokens claros (`surface-base`, `content-primary` navy, accent azul). O ficheiro `src/styles/hero-dark.css` foi esvaziado do bloco `.hero-dark` e do `color-scheme: dark`. O `HeroAuroraBackground` foi reescrito como gradiente claro. O `HeroReportPreview` perdeu o glass dark. O `index.tsx` perdeu a transição de gradiente dark→light.
+### 1. `src/components/landing/hero-action-bar.tsx`
+- **Caixa do input a branco** (destaque sobre o fundo navy):
+  - `backgroundColor: "#FFFFFF"` (em vez de `var(--hero-glass-bg)`).
+  - `borderColor: "rgba(15, 23, 42, 0.08)"` (navy a baixa opacidade).
+  - Remover `backdrop-blur-xl` (deixa de fazer sentido sobre branco).
+  - Sombra mais sóbria: `0 18px 40px -22px rgba(8, 14, 32, 0.45), 0 1px 0 rgba(15, 23, 42, 0.04) inset` (sem glow ciano).
+- **Ícone `@`** em navy: `color: "rgb(var(--hero-bg-base))"`.
+- **Input** com texto em navy (`text-[color:rgb(var(--hero-bg-base))]`) e placeholder em slate (`placeholder:text-slate-400` substituído por classe utilitária equivalente já existente; usar `placeholder:text-[#94A3B8]`).
+- **Trust list**: remover o item `publicData`. Fica apenas `freeReports`. Check a ciano mantém-se.
+- Manter a animação `hero-bar-breathe` (subtil, não interfere com a leitura).
 
-## Plano
+### 2. `src/i18n/locales/pt/landing.json` e `.../en/landing.json`
+- Remover a chave `actionBar.trustInline.publicData` em ambos os ficheiros (já não é referenciada).
 
-1. **`src/styles/hero-dark.css`** — Restaurar o bloco `.hero-dark` com `color-scheme: dark` e tokens locais (`--hero-bg-base #060A18`, `--hero-cyan`, `--hero-cyan-soft`, `--hero-glass-bg`, `--hero-glass-border`, `--hero-text-primary`, `--hero-text-secondary`, `--hero-text-tertiary`, `--hero-gold`). Manter as animações já presentes.
+### 3. Blindagem contra regressão
 
-2. **`src/components/landing/hero-section.tsx`** — Trocar `hero-light` por `hero-dark`. Restaurar headline com `var(--hero-text-primary)` + highlight cyan, subtitle com `var(--hero-text-secondary)`, eyebrow chip cyan sobre fundo `rgb(var(--hero-cyan) / 0.08)`.
+Para que estes refinamentos não sejam apagados em sessões futuras:
 
-3. **`src/components/landing/hero-aurora-background.tsx`** — Reescrever para fundo dark: gradiente `#060A18 → #0A1230`, blobs aurora cyan/violet em opacidade baixa, grain noise subtil.
+- **`LOCKED_FILES.md`** — adicionar entrada:
+  - `src/components/landing/hero-action-bar.tsx` — "Caixa branca, trust list só com freeReports. Não reverter sem confirmação."
+  - `src/styles/hero-dark.css` — "Hero homepage é dark ('Editorial Tech Noir'). Não converter para light."
+- **`mem://design/hero-homepage`** (nova memória) com regras:
+  - Hero da `/` é **dark navy**; caixa do input é **branca** com ícone navy e texto navy; trust list mostra **apenas** "Oferta de 2 relatórios grátis".
+- **`mem://index.md`** — registar referência à nova memória na secção Memories.
 
-4. **`src/components/landing/hero-report-preview.tsx`** — Repor glass dark: container `bg-[var(--hero-glass-bg)]` com border `var(--hero-glass-border)`, shadow profundo cyan, mini-cards internos sobre `--hero-bg-elevated`, glow cyan.
-
-5. **`src/components/landing/hero-action-bar.tsx`** — Repor tokens dark: barra glass (`--hero-glass-bg`, `--hero-glass-border`), input com `var(--hero-text-primary)` e placeholder `var(--hero-text-tertiary)`, ícones e check cyan, micro-label cyan.
-
-6. **`src/routes/index.tsx`** — Repor banda gradiente `#060A18 → surface-base` (16px) entre hero dark e a `SocialProofSection` light para transição limpa.
-
-7. **Forçar atualização** — Após patches, `code--restart_dev_server` para garantir que o Vite recarrega o CSS dos tokens e o cliente vê a versão nova.
+## Fora de âmbito
+- Restantes secções da homepage (já estão light, sem alterações).
+- Tokens globais, `report-theme-wrapper`, `__root.tsx`.
 
 ## Validação
 
-- `bunx tsc --noEmit`
-- Screenshot do preview em 390×844 (mobile) e 1366×900 (desktop) para confirmar:
-  - fundo navy escuro no hero
-  - headline branca com últimas duas palavras em cyan
-  - report preview em glass dark com glow cyan
-  - transição suave para a secção social proof clara abaixo
+1. `bunx tsc --noEmit`.
+2. Screenshot em 1366×900 e 390×844 para confirmar:
+   - Caixa branca com bom contraste sobre o navy.
+   - Apenas uma linha de trust ("Oferta de 2 relatórios grátis").
+3. Verificar que `t("actionBar.trustInline.publicData")` já não aparece em nenhum lugar (`rg publicData src`).
 
-## Fora de scope
+## Checkpoint
 
-- Restantes secções da homepage (já são light e mantêm-se)
-- `ReportThemeWrapper` e relatórios (continuam light Iconosquare)
-- Tokens globais em `src/styles/tokens.css`
-- `LOCKED_FILES.md`
+- ☐ Caixa do `@` a branco (fundo, ícone navy, texto navy, placeholder slate).
+- ☐ "Acesso apenas a dados públicos" removido (UI + i18n PT/EN).
+- ☐ `LOCKED_FILES.md` atualizado com `hero-action-bar.tsx` + `hero-dark.css`.
+- ☐ Nova memória `mem://design/hero-homepage` criada e indexada.
+- ☐ `tsc` passa e screenshots confirmam o resultado.
