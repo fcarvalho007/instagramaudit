@@ -1317,16 +1317,11 @@ function TimelineSection({
             return (
               <div
                 key={ev.id}
-                className="flex items-start gap-3 py-2.5"
-                style={{ borderBottom: "1px solid rgba(44,44,42,0.06)" }}
+                className="flex items-start gap-3 py-3 border-b border-admin-text-primary/5 last:border-b-0"
               >
                 <div
-                  className="mt-0.5 flex items-center justify-center shrink-0 rounded-md"
-                  style={{
-                    width: 24,
-                    height: 24,
-                    backgroundColor: "rgba(44,44,42,0.06)",
-                  }}
+                  className="mt-0.5 flex items-center justify-center shrink-0 rounded-md bg-admin-text-primary/5"
+                  style={{ width: 24, height: 24 }}
                 >
                   <IconComp size={13} className="text-admin-text-tertiary" />
                 </div>
@@ -1334,10 +1329,7 @@ function TimelineSection({
                   <p className="admin-body text-admin-text-primary m-0 flex items-center gap-2">
                     <span>{getEventLabel(ev.event_type)}</span>
                     {groupedCount && groupedCount > 1 ? (
-                      <span
-                        className="admin-meta text-admin-text-tertiary rounded-full px-2 py-0.5"
-                        style={{ backgroundColor: "rgba(44,44,42,0.06)" }}
-                      >
+                      <span className="admin-meta text-admin-text-tertiary rounded-full px-2 py-0.5 bg-admin-text-primary/5 tabular-nums">
                         ×{groupedCount}
                       </span>
                     ) : null}
@@ -1357,7 +1349,7 @@ function TimelineSection({
                       Origem: {String(ev.metadata.source_component)}
                     </p>
                   ) : null}
-                  <p className="admin-meta text-admin-text-tertiary m-0 mt-0.5">
+                  <p className="admin-meta text-admin-text-tertiary m-0 mt-1 tabular-nums">
                     {relativeTime(ev.created_at)} · {formatDate(ev.created_at)}
                   </p>
                 </div>
