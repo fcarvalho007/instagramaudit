@@ -110,22 +110,29 @@
   color: rgb(var(--hero-text-tertiary));
 }
 
-/* Scroll-reveal helper (paired with useInView). */
+/* Scroll-reveal helper (paired with useInView).
+ * Progressive enhancement: content is visible by default. Only when JS
+ * marks the element as observed (`.is-armed`) does it start hidden and
+ * animate in once `.is-in` is added. This avoids invisible content
+ * during SSR, slow hydration, or screenshot tools that don't scroll. */
 .dark-reveal {
-  opacity: 0;
-  transform: translateY(16px);
   transition:
     opacity 700ms cubic-bezier(0.16, 1, 0.3, 1),
     transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
   will-change: opacity, transform;
 }
-.dark-reveal.is-in {
+.dark-reveal.is-armed {
+  opacity: 0;
+  transform: translateY(16px);
+}
+.dark-reveal.is-armed.is-in {
   opacity: 1;
   transform: translateY(0);
 }
 @media (prefers-reduced-motion: reduce) {
   .dark-reveal,
-  .dark-reveal.is-in {
+  .dark-reveal.is-armed,
+  .dark-reveal.is-armed.is-in {
     opacity: 1;
     transform: none;
     transition: none;
