@@ -5,31 +5,44 @@
  */
 
 export const PROFILE_OWNERSHIP_LABELS: Record<string, string> = {
-  own_profile: "É o perfil dele",
-  own: "É o perfil dele",
-  mine: "É o perfil dele",
-  client: "É de um cliente",
-  client_profile: "É de um cliente",
-  competitor: "É um concorrente",
-  competitor_profile: "É um concorrente",
+  // Valores canónicos gravados pelo modal de onboarding (RELATIONSHIP_VALUES).
+  // Mantemos os mesmos rótulos PT-PT que o lead vê em gate.json/step2.
+  own_profile: "É o meu perfil pessoal",
+  brand_profile: "É o perfil da minha marca",
+  client_profile: "É o perfil de um cliente",
+  competitor_research: "Estou a observar concorrência",
+  curiosity: "Estou só a explorar",
+  // Alias legados (compat com leads antigos)
+  own: "É o meu perfil pessoal",
+  mine: "É o perfil pessoal",
+  client: "É o perfil de um cliente",
+  competitor: "Estou a observar concorrência",
+  competitor_profile: "Estou a observar concorrência",
   inspiration: "Perfil de inspiração",
   other: "Outro",
 };
 
 export const PURPOSE_LABELS: Record<string, string> = {
-  improve_content: "Melhorar conteúdo",
-  understand_competition: "Estudar concorrência",
-  benchmark: "Fazer benchmark",
-  sell_to_client: "Vender a cliente",
-  pitch_client: "Vender a cliente",
+  // Valores canónicos gravados pelo modal (GOAL_VALUES) + extras do gate.json.
+  improve_content: "Melhorar o conteúdo",
+  benchmark_competitors: "Comparar com concorrentes",
+  grow_audience: "Crescer a audiência",
+  validate_brand: "Validar a presença da marca",
+  client_report: "Preparar análise para cliente",
+  // Alias legados
+  understand_competition: "Comparar com concorrentes",
+  benchmark: "Comparar com concorrentes",
+  sell_to_client: "Preparar análise para cliente",
+  pitch_client: "Preparar análise para cliente",
   win_client: "Ganhar cliente",
-  grow_audience: "Crescer audiência",
-  validate_strategy: "Validar estratégia",
-  curiosity: "Só curiosidade",
+  validate_strategy: "Validar a presença da marca",
+  curiosity: "Só a explorar",
   other: "Outro objetivo",
 };
 
 export const SOURCE_LABELS: Record<string, string> = {
+  public_report_unlock: "Desbloqueio de relatório público",
+  public_report_gate: "Gate de relatório público",
   onboarding_modal: "Modal de onboarding",
   onboarding: "Modal de onboarding",
   homepage: "Página inicial",
