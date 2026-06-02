@@ -42,7 +42,6 @@ export function HeroActionBar() {
 
   const trustInline = [
     t("actionBar.trustInline.freeReports"),
-    t("actionBar.trustInline.publicData"),
   ];
 
   return (
@@ -59,12 +58,12 @@ export function HeroActionBar() {
 
       {/* The bar — glass card with input + button inline */}
       <div
-        className="relative rounded-2xl border overflow-hidden hero-bar-breathe transition-colors backdrop-blur-xl"
+        className="relative rounded-2xl border overflow-hidden hero-bar-breathe transition-colors"
         style={{
-          borderColor: "var(--hero-glass-border)",
-          backgroundColor: "var(--hero-glass-bg)",
+          borderColor: "rgba(15, 23, 42, 0.08)",
+          backgroundColor: "#FFFFFF",
           boxShadow:
-            "0 20px 60px -28px rgba(56,189,248,0.35), 0 1px 0 rgba(255,255,255,0.04) inset",
+            "0 18px 40px -22px rgba(8, 14, 32, 0.45), 0 1px 0 rgba(15, 23, 42, 0.04) inset",
         }}
       >
         <form
@@ -75,7 +74,7 @@ export function HeroActionBar() {
           <div className="relative flex-1">
             <AtSign
               className="absolute left-5 top-1/2 -translate-y-1/2 size-5 pointer-events-none"
-              style={{ color: "rgb(var(--hero-cyan))" }}
+              style={{ color: "rgb(var(--hero-bg-base))" }}
               aria-hidden="true"
             />
             <input
@@ -88,7 +87,7 @@ export function HeroActionBar() {
               placeholder={t("actionBar.placeholder")}
               aria-label={t("actionBar.ariaInput")}
               aria-invalid={error ? true : undefined}
-              className="w-full h-16 sm:h-[72px] bg-transparent pl-14 pr-4 font-sans text-base md:text-lg focus:outline-none text-[color:rgb(var(--hero-text-primary))] placeholder:text-[color:rgb(var(--hero-text-tertiary))]"
+              className="w-full h-16 sm:h-[72px] bg-transparent pl-14 pr-4 font-sans text-base md:text-lg focus:outline-none text-[color:rgb(var(--hero-bg-base))] placeholder:text-[#94A3B8]"
             />
           </div>
 

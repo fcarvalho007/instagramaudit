@@ -47,6 +47,14 @@ explicitly asks for a modification in a new prompt.
 > `hero-action-bar.tsx`, novo `hero-report-preview.tsx`, novo
 > `src/styles/hero-dark.css`. Continuam locked para futuras alterações.
 
+> **Reforço de lock (2026-06-02):** A homepage `/` é **dark** ("Editorial
+> Tech Noir") — não converter para light. A caixa do `@` em
+> `hero-action-bar.tsx` é **branca** com ícone e texto navy; a trust list
+> mostra **apenas** "Oferta de 2 relatórios grátis" (a key
+> `actionBar.trustInline.publicData` foi removida intencionalmente). Não
+> reverter sem confirmação explícita. Ficheiros adicionalmente locked:
+> `src/components/landing/hero-report-preview.tsx`, `src/styles/hero-dark.css`.
+
 ## Landing Components (Sprint 1, Prompt 1.2)
 - /src/components/landing/use-in-view.ts
 - /src/components/landing/social-proof-section.tsx
