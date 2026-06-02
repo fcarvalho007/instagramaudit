@@ -9,12 +9,39 @@
     "gdpr": "RGPD"
   },
   "hero": {
-    "headline": "Analisar qualquer perfil de Instagram em menos de 30 segundos.",
-    "subtitle": "Benchmark, comparação e insights claros para decidir melhor."
+    "eyebrow": "Benchmark de Instagram",
+    "headline": "Analisa qualquer perfil de Instagram em segundos.",
+    "subtitle": "Benchmark, diagnóstico editorial e pistas claras para melhorar a presença digital.",
+    "trust": {
+      "freeReports": "2 relatórios grátis",
+      "publicData": "Só dados públicos",
+      "freeAccount": "Conta gratuita"
+    },
+    "previewMock": {
+      "header": "Pré-visualização do relatório",
+      "sampleActive": "Últimas 12 publicações",
+      "windowsLocked": ["30 dias", "60 dias", "90 dias", "365 dias"],
+      "scoreLabel": "Índice do perfil",
+      "scoreValue": "37/100",
+      "scoreCaption": "Preview · Dados ilustrativos",
+      "kpis": {
+        "engagement": "Engagement",
+        "frequency": "Posts/sem",
+        "growth": "Crescimento"
+      },
+      "sidebar": "Visão geral grátis · 5 secções premium",
+      "premiumRows": [
+        "Diagnóstico editorial",
+        "Conteúdo",
+        "Procura",
+        "Comparação"
+      ],
+      "footnote": "O resumo gratuito mostra o essencial. O relatório completo aprofunda o diagnóstico."
+    }
   },
   "actionBar": {
     "microLabel": "Perfil público do Instagram",
-    "placeholder": "@username ou URL do perfil",
+    "placeholder": "@perfil ou URL do Instagram",
     "ariaInput": "Username ou URL do perfil do Instagram",
     "submit": "Analisar",
     "addCompetitors": "Adicionar até 2 concorrentes para comparar",

@@ -9,12 +9,39 @@
     "gdpr": "GDPR"
   },
   "hero": {
-    "headline": "Analyze any Instagram profile in under 30 seconds.",
-    "subtitle": "Benchmarks, comparison and clear insights to decide better."
+    "eyebrow": "Instagram benchmark",
+    "headline": "Analyze any Instagram profile in seconds.",
+    "subtitle": "Benchmarks, editorial diagnosis and clear cues to improve your digital presence.",
+    "trust": {
+      "freeReports": "2 free reports",
+      "publicData": "Public data only",
+      "freeAccount": "Free account"
+    },
+    "previewMock": {
+      "header": "Report preview",
+      "sampleActive": "Latest 12 posts",
+      "windowsLocked": ["30 days", "60 days", "90 days", "365 days"],
+      "scoreLabel": "Profile index",
+      "scoreValue": "37/100",
+      "scoreCaption": "Preview · Illustrative data",
+      "kpis": {
+        "engagement": "Engagement",
+        "frequency": "Posts/wk",
+        "growth": "Growth"
+      },
+      "sidebar": "Free overview · 5 premium sections",
+      "premiumRows": [
+        "Editorial diagnosis",
+        "Content",
+        "Reach",
+        "Comparison"
+      ],
+      "footnote": "The free summary shows the essentials. The full report goes deeper."
+    }
   },
   "actionBar": {
     "microLabel": "Public Instagram profile",
-    "placeholder": "@username or profile URL",
+    "placeholder": "@profile or Instagram URL",
     "ariaInput": "Instagram profile username or URL",
     "submit": "Analyze",
     "addCompetitors": "Add up to 2 competitors to compare",
