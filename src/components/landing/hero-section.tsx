@@ -5,7 +5,6 @@ import { BlurRevealText } from "@/components/landing/blur-reveal-text";
 import { HeroActionBar } from "@/components/landing/hero-action-bar";
 import { HeroAuroraBackground } from "@/components/landing/hero-aurora-background";
 import { HeroReportPreview } from "@/components/landing/hero-report-preview";
-import { HeroVideoStrip } from "@/components/landing/hero-video-strip";
 import { ScrollIndicator } from "@/components/landing/scroll-indicator";
 
 export function HeroSection() {
@@ -16,7 +15,6 @@ export function HeroSection() {
       aria-label={t("hero.headline")}
     >
       <HeroAuroraBackground />
-      <HeroVideoStrip />
 
       <Container size="lg" className="relative z-10 py-12 md:py-24 lg:py-28">
         <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-10 lg:gap-12 items-center">
