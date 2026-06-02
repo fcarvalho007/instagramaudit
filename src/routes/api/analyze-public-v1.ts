@@ -530,14 +530,10 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               });
               if (outcome.kind === "duplicate") {
                 duplicateInFlight = true;
-                await logEvent({
-                  handle: primary,
-                  competitorHandles: competitors,
-                  cacheKey,
-                  dataSource: "none",
-                  outcome: "duplicate_reservation_skipped",
-                  estimatedCostUsd: 0,
-                });
+                console.info(
+                  "[analyze-public-v1] duplicate_reservation_skipped",
+                  JSON.stringify({ handle: primary, cacheKey, leadId }),
+                );
               } else {
                 reservation = { reservationId: outcome.reservationId };
               }
