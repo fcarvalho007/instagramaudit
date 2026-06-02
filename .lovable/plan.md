@@ -1,126 +1,64 @@
 ## Objetivo
 
-Refinar UI do `OnboardingModal` para mobile (360–412px), sem mexer em lógica, payload, tracking, endpoints ou copy de fundo. Apenas tipografia, spacing e responsividade dos botões.
+Remover por completo o "dark island" do hero da homepage (`/`). A homepage passa a ser 100% light, alinhada com o resto da landing (Iconosquare-style, surfaces claras + acento azul/índigo). Isto também resolve o bug visual que vês no screenshot — o `.hero-dark` está a falhar a aplicar (título a renderizar navy em vez de branco, sem aurora, sem report mockup visível à direita), provavelmente por `data-theme="light"` herdado do report wrapper a sobrepor-se ao scope `.hero-dark`. Em vez de remendar a cascata, eliminamos o conceito dark do hero.
 
-## Ficheiros a editar
+## Scope
 
-- `src/components/onboarding/onboarding-modal.tsx` (único ficheiro de código)
-- Sem alterações em `gate.json` (pt/en) — copy mantém-se.
+Apenas hero da homepage. Não toca:
+- relatórios (continuam light, Ocean Breeze)
+- admin
+- restantes secções da landing (já são light)
+- backend, i18n, tracking
 
-## Mudanças concretas
+## Mudanças
 
-### 1. Shell do modal (`DialogContent`, ~linha 346)
+**1. `src/components/landing/hero-section.tsx`**
+- Remover `hero-dark` do wrapper.
+- Substituir `HeroAuroraBackground` (dark) por um ambient light subtil: gradient suave `surface-base → surface-muted` + 1 blob radial em `accent-primary / 8%` (mantém vida sem ruído).
+- Eyebrow chip: trocar tokens `--hero-cyan*` por tokens light (`accent-primary` + soft bg). Continua a parecer "produto", mas calmo.
+- Headline: remover `highlightClassName="text-[var(--hero-cyan)]"`; highlight passa a `text-[hsl(var(--accent-primary))]` (índigo/azul do design system). Cor base do título: `content-primary` (navy `#03045E`-equivalente já existente nos tokens light).
+- Subtitle: `content-secondary`.
+- `min-h` e estrutura grid preservadas.
 
-- Outer padding: `px-7 py-8 sm:px-9 sm:py-9` → `px-5 py-7 sm:px-9 sm:py-9` em todos os bodies (Intro/Login/Form). Liberta ~16px laterais em 360–390.
-- Mantém `w-[calc(100vw-2rem)] sm:max-w-[760px] max-h-[92vh]`.
+**2. `src/components/landing/hero-aurora-background.tsx`**
+- Reescrever como ambient light (não apagar o ficheiro — continua a ser importado e útil). Gradient `#FAFBFD → #F1F4F9`, blobs com opacidade muito baixa (8–12%) em accent + secondary. Sem noise overlay (era um truque cinematic dark).
 
-### 2. Títulos — consistência entre os 4 estados
+**3. `src/components/landing/hero-report-preview.tsx`**
+- Substituir referências a `--hero-glass-bg`, `--hero-glass-border`, `--hero-border` por tokens light: `surface-elevated`, `border-default`. Sombra editorial suave em vez de `shadow-[0_30px_80px_-20px_rgba(0,0,0,0.6)]`.
+- Traffic lights ficam (são acromáticos).
+- Glow ambiente atrás do card: baixar opacidade e trocar para accent light.
 
-Hoje:
-- Intro/Login: `text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em]`
-- FormStep: `text-[22px] sm:text-[30px] leading-[1.15] tracking-[-0.01em]` ← inconsistente (22px é pequeno demais e diferente do intro)
+**4. `src/components/landing/hero-action-bar.tsx`, `blur-reveal-text.tsx`, `scroll-indicator.tsx`**
+- Auditar e remover qualquer consumo direto de tokens `--hero-*`. Trocar por tokens light equivalentes (`content-*`, `accent-primary`, `border-default`).
 
-Normalizar todos para:
-```
-font-display text-[28px] sm:text-[30px] leading-[1.08] tracking-[-0.015em] text-content-primary
-```
-- `min-w-0 break-words text-balance` mantém-se nos passos com `<Trans>`.
+**5. `src/routes/index.tsx`**
+- Remover o `<div>` de costura dark→light (gradient `#060A18 → surface-base`). Já não é preciso.
 
-### 3. Subtitle (FormStep)
+**6. `src/styles/hero-dark.css`**
+- Manter as animações reutilizáveis (`hero-mock-fade`, `hero-blur-reveal`, `hero-chips-scroll`) — não são dark-specific.
+- Remover o bloco `.hero-dark { ... }` com todos os tokens `--hero-*` e o `color-scheme: dark`.
+- Renomear o ficheiro para `src/styles/hero.css` e atualizar o import em `src/styles.css` (rename + update import na mesma migração).
 
-`text-[13px] leading-relaxed` → `text-[15px] leading-[1.55] text-content-secondary`. Continua claramente secundário, mas mais legível.
+**7. Verificações finais**
+- `bunx tsc --noEmit`
+- Screenshot do hero em mobile (390) e desktop (1366) para confirmar:
+  - fundo light contínuo (sem corte dark→light a meio)
+  - título navy legível
+  - report preview visível à direita em desktop, em baixo em mobile
+  - eyebrow chip discreto
+  - CTA primary mantém-se
 
-### 4. Spacing do header
+## Risco / fora de scope
 
-`DialogHeader space-y-3` → `space-y-2.5` no FormStep (eyebrow → title → subtitle → progress mais compacto vertical).  
-`mt-6 space-y-4` da Intro → `mt-5 space-y-4`.  
-Form `space-y-6 mt-6` → `space-y-5 mt-5`.
-
-### 5. Step 1 — Input nome
-
-- Label `text-sm` → `text-[15px] font-medium text-content-primary`
-- Helper `text-[11px] text-content-tertiary` → `text-[13px] leading-[1.45] text-content-tertiary`
-- Erro `text-xs` → `text-[13px]`
-- Container `space-y-1.5` → `space-y-2`
-- Input herda altura `size-lg` do shadcn — confirmar que o `font-size` é ≥16px (evita zoom iOS). Se o Input tem 14px default, adicionar `className="text-base"`.
-
-### 6. Step 2 — Chips
-
-`ChipGroup`:
-- Grid mantém `grid-cols-2 sm:grid-cols-4`, gap `gap-2` → `gap-2.5`
-- Botão: `min-h-[76px] text-[12px]` → `min-h-[88px] text-[14px] font-semibold`
-- Padding: `px-2 py-3` → `px-2.5 py-3.5`
-- Ícone: `size-5` → `size-[22px]`, gap `gap-1.5` → `gap-2`
-- Label: adicionar `leading-[1.2] break-words hyphens-auto` para evitar overflow em "competitor_research" / "benchmark_competitors".
-
-Question labels (Step2):
-- `text-[13px] font-medium` → `text-[15px] font-medium`
-
-Consequence line:
-- `text-[12px]` → `text-[13px] leading-[1.5]`
-
-### 7. Step 3 — Email/Phone/Consent
-
-- Labels `text-sm` → `text-[15px] font-medium`
-- Optional `text-[12px]` → `text-[13px]`
-- Helper `text-[11px]` → `text-[13px] leading-[1.45]`
-- Erros `text-xs` → `text-[13px]`
-- Inputs: aplicar `text-base` (16px) para evitar zoom iOS
-- Consent box padding `p-4` mantém-se; copy `text-[12.5px] leading-relaxed` → `text-[14px] leading-[1.55]`
-- "consentMandatory"/"marketingOptional" labels `text-content-tertiary` mantém-se mas herda o `text-[14px]`.
-
-### 8. Intro — handle context + trust line
-
-- `text-[13px]` / `text-[12.5px]` → `text-[14px]` / `text-[13.5px] leading-[1.5]`
-- Trust line `text-[11px]` → `text-[12px]` (mínimo legível mantido)
-
-### 9. Footer dos botões — RESPONSIVO (mudança chave)
-
-Linha 768:
-```
-flex gap-3 ... pt-5 mt-2
-```
-Substituir por:
-```
-flex flex-col-reverse gap-2.5 sm:flex-row sm:gap-3 ... pt-5 mt-2
-```
-
-- `<=640px`: botões stacked verticalmente, primário em cima ("flex-col-reverse" garante que "Voltar" fica em baixo, "Continuar/Analisar" em cima — primário tem destaque).
-- `>=sm` (≥640px): volta a side-by-side como hoje.
-- Botão "Voltar": remove `flex-shrink-0`, adiciona `w-full sm:w-auto`.
-- Botão primário: `flex-1 min-w-0` mantém-se mas em mobile fica `w-full` (flex-col já garante full width).
-- Resultado: zero risco de CTA truncado em 360px; em 390–412 também sai mais respirado.
-
-### 10. Progress bar
-
-Mantém. `gap-1.5` → `gap-2` e `pt-1` → `pt-2` para isolar visualmente do subtitle (que agora é maior).
-
-## Fora de âmbito (não toco)
-
-- Endpoints, payload (`buildStartPayload`), schemas (`unlockFormSchema`)
-- Honeypot, timing guard, tracking events
-- Lógica de `goNext` / `goBack` / `handleFinalSubmit`
-- `useOnboardingDraft`, `parseFullName`
-- LoginStepBody mantém estrutura — só recebe os mesmos tweaks tipográficos para coerência (label `text-[15px]`, helper `text-[12px]→[13px]`).
-
-## Validação
-
-1. `bunx tsc --noEmit`
-2. QA visual nos 4 estados (intro, step1, step2, step3) em:
-   - 360×800
-   - 390×844
-   - 412×915
-   - tablet 768
-   - desktop 1440
-3. Confirmar: sem overflow horizontal, CTA primário sempre legível por inteiro, chips 2×2 sem cramping, inputs com tap target confortável.
+- **Não** mexer no `ReportThemeWrapper` (continua a forçar light no `/reports/*`).
+- **Não** alterar tokens globais (`src/styles/tokens.css`, `tokens-light.css`).
+- **Não** mexer no `LOCKED_FILES.md`. Se algum dos ficheiros acima estiver na lockada, paro e peço confirmação antes de tocar.
 
 ## Checkpoint
 
-- ☐ Títulos consistentes (28→30px, leading 1.08, mesmo tracking) nos 4 estados
-- ☐ Body typography mais legível (subtitle 15px, labels 15px, helpers 13px)
-- ☐ Chips do Step 2 sem cramping, label 14px, min-h 88px
-- ☐ Step 3 footer stacked em mobile, side-by-side em sm+
-- ☐ Sem zoom iOS (inputs ≥16px)
-- ☐ Sem overflow horizontal em 360/390/412
-- ☐ `tsc` limpo
-- ☐ Zero alterações em endpoints, payload, tracking, copy
+☐ Hero renderiza 100% light, sem `.hero-dark`
+☐ Sem gradient de costura no `index.tsx`
+☐ Animações preservadas (BlurReveal + fade do mockup)
+☐ Nenhuma referência a `--hero-bg*`, `--hero-fg*`, `--hero-cyan*`, `--hero-glass-*` no projeto
+☐ `tsc --noEmit` verde
+☐ Visual confirmado em 390 e 1366
