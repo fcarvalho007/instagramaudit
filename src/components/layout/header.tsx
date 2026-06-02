@@ -97,24 +97,17 @@ function Header() {
               className="hidden sm:inline-flex"
             />
 
-            {/* Auth link */}
-            {loading ? (
-              <span
-                aria-hidden="true"
-                className="hidden sm:inline-block h-9 w-[72px] rounded-md bg-surface-muted/60 animate-pulse"
-              />
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="hidden sm:inline-flex"
-                asChild
-              >
-                <Link to={session ? "/app" : "/login"}>
-                  {session ? t("cta.account") : t("cta.login")}
-                </Link>
-              </Button>
-            )}
+            {/* Auth link — render optimistically; swaps if session resolves. */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden sm:inline-flex"
+              asChild
+            >
+              <Link to={session ? "/app" : "/login"}>
+                {session ? t("cta.account") : t("cta.login")}
+              </Link>
+            </Button>
 
             <span data-header-cta="">
               <Button
