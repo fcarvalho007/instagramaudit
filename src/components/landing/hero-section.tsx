@@ -16,8 +16,8 @@ export function HeroSection() {
     >
       <HeroAuroraBackground />
 
-      <Container size="lg" className="relative z-10 py-12 md:py-24 lg:py-28">
-        <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-10 lg:gap-12 items-center">
+      <Container size="lg" className="relative z-10 py-10 md:py-24 lg:py-28">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8 lg:gap-12 items-center">
           {/* Left — copy + action */}
           <div className="space-y-5 md:space-y-7 text-center lg:text-left">
             {/* Eyebrow */}
@@ -38,7 +38,7 @@ export function HeroSection() {
             <BlurRevealText
               text={t("hero.headline")}
               as="h1"
-              className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl tracking-tight font-medium leading-[1.08] text-balance max-w-[22ch] mx-auto lg:mx-0"
+              className="font-display text-[1.75rem] sm:text-4xl md:text-5xl lg:text-6xl tracking-tight font-medium leading-[1.12] sm:leading-[1.08] text-balance max-w-[18ch] sm:max-w-[20ch] lg:max-w-[22ch] mx-auto lg:mx-0"
               delayMs={150}
               highlightTailWords={2}
               highlightClassName="text-[var(--hero-cyan)]"

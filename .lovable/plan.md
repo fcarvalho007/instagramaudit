@@ -1,57 +1,51 @@
+## Critical bug found during QA
+
+The hero H1 and subtitle render with `opacity-0` and never animate in. The DOM contains the text but `BlurRevealText`'s `mounted` state never visually flips (no hydration error, no console log — likely an SSR/hydration timing edge case where the SSR `opacity-0` markup persists). Result on both 390×844 and 1440×900: ~400px of empty dark space between the eyebrow and the input. Headline is the page's most important element — must be fixed before any other polish.
+
 ## Scope
 
-Visual/UI-only refinement of homepage hero + right-side preview. No onboarding, report, credits, pricing, tracking, or backend changes. Dark hero stays dark; product/report stay light.
+Visual/UI only. No onboarding, report, credits, pricing, tracking, or backend touched. Targeted fix + small follow-up polish.
 
-## Files to change
+## Fixes
 
-1. **`src/components/layout/header.tsx`** — remove the non-functional Moon theme toggle (button + `Moon` import). The header is shared via `__root.tsx > AppShell`, and the button has no onClick today. Removing it satisfies "remove from marketing" while leaving the product/report's own theme controls untouched (they live in report shells, not in this header).
+### Fix 1 — Make `BlurRevealText` SSR-visible (critical)
+`src/components/landing/blur-reveal-text.tsx`
+- Initialize `mounted` as `true` (was `false`) so SSR + first client paint render text immediately at `opacity-100`.
+- Replace the mount-flip animation with a CSS-only entrance: spans use `animate-[heroReveal_700ms_ease-out_both]` with per-word `animationDelay: ${baseDelay + i * stagger}ms`. The keyframe goes from `opacity:0 / blur(8px) / translateY(8px)` → `opacity:1 / blur(0) / translateY(0)`. If the keyframe is somehow not applied (CSS not yet parsed), the end state is the visible default, so text is never hidden.
+- Keep `highlightTailWords` / `highlightClassName` props unchanged.
+- Add `@keyframes heroReveal` to `src/styles.css` (or scope inline via the `style` attribute on the span — simpler, no global CSS needed). Choice: inline `animation` with a single shared keyframe added once to `src/styles.css`.
 
-2. **`src/components/landing/blur-reveal-text.tsx`** — add two optional props:
-   - `highlightTailWords?: number` (e.g. `2`)
-   - `highlightClassName?: string`
-   When set, the last N words render with the extra className (used to color "em segundos." in `var(--hero-cyan)`). Animation behavior unchanged.
+### Fix 2 — Header right-side empty skeleton (high)
+`src/components/layout/header.tsx`
+- The `loading` branch renders a permanent grey rectangle when `useAuthSession()` stays in `loading` on the public homepage. Render `null` instead of the skeleton when `loading` AND the user is on a public marketing route, OR simply collapse the skeleton to `display: none` after 1s if still loading. Simpler: render the unauthenticated CTA (`Entrar`) immediately and let it swap to "A minha conta" if a session resolves. Avoids a stuck skeleton between the language switcher and the primary CTA.
 
-3. **`src/components/landing/hero-section.tsx`**
-   - H1: reduce mobile size — `text-3xl sm:text-4xl md:text-5xl lg:text-6xl` (was `text-4xl md:text-5xl lg:text-6xl`). Add `max-w-[18ch] mx-auto lg:mx-0` so line breaks land cleanly on 360/390.
-   - Pass `highlightTailWords={2}` + `highlightClassName="text-[var(--hero-cyan)]"` to the headline BlurRevealText.
-   - Subtitle: bump contrast — add `style={{ color: "var(--hero-fg-muted)" }}` to ensure AA on dark.
-   - Tighten vertical rhythm on mobile: `py-12 md:py-24 lg:py-28` and `space-y-5 md:space-y-7`.
-   - Reduce min-height on mobile so preview appears sooner: `min-h-[auto] lg:min-h-[calc(100dvh-4rem)]`.
+### Fix 3 — Mobile spacing tightening (medium)
+`src/components/landing/hero-section.tsx`
+- Reduce mobile top padding: `py-10 md:py-24 lg:py-28` (was `py-12`). Once H1 is visible, the column reads naturally without extra cushion above.
+- Reduce grid gap on mobile: `gap-8 lg:gap-12` (was `gap-10`).
 
-4. **`src/components/landing/hero-report-preview.tsx`**
-   - Browser chrome: keep the URL pill **visually present but empty** — remove the `<span>{t("hero.previewMock.urlBar")}</span>` text, keep the bordered pill `div` for shape.
-   - Premium rows: reduce from 4 to **3** (`diagnostic`, `content`, `comparison`). Drop `reach`.
-   - Show the locked-rows block on **all viewports** (remove `hidden lg:block`) so mobile also communicates "there is more inside". Keep it compact: `space-y-1.5` and 3 rows max.
-   - Remove the **footnote block** entirely (the `<div>` containing `t("hero.previewMock.footnote")` and its top border).
-   - Slight frost upgrade on rows: add `backdrop-blur-sm` and a faint divider line above the locked group ("1 de 6 secções acessíveis" stays as is via `hero.previewMock.sidebar`).
+### Fix 4 — Preview card mobile balance (low)
+`src/components/landing/hero-report-preview.tsx`
+- Tighten internal padding on mobile: `px-4 sm:px-5` on the score / KPI / locked-row blocks (was `px-5`). Reduces visual heaviness on 360px.
+- Slightly shrink the score number on mobile: `text-2xl sm:text-3xl` (was `text-3xl`) so the card doesn't dominate the fold once H1 returns.
 
-5. **`src/i18n/locales/pt/landing.json` + `src/i18n/locales/en/landing.json`**
-   - Remove unused keys (no consumer after the edits): `hero.previewMock.urlBar`, `hero.previewMock.footnote`, `hero.previewMock.premiumRows.reach`.
-   - All other keys unchanged. Headline copy unchanged.
+## Out of scope
 
-6. **`src/i18n/locales/{pt,en}/header.json`** — remove the now-unused `aria.theme` key if present (only after confirming no other consumer; otherwise leave it).
-
-## Out of scope (explicitly untouched)
-
-- `HeroActionBar`, onboarding modal, `/api/onboarding/start`, `/api/analyze-public-v1`, credits, premium CTAs, pricing, report routes, tracking, DB.
-- `actionBar.trustInline.*` copy (already "Oferta de 2 relatórios grátis" + "Acesso apenas a dados públicos" — aligned with onboarding-first flow, no "sem registo" wording).
-- Other landing sections below the hero (SocialProof, HowItWorks, ProductPreview).
+- `HeroActionBar` internals, onboarding modal, `useAuthSession` hook itself (only its consumption in Header), trust bullets copy, other landing sections.
 
 ## Validation
 
 - `bunx tsc --noEmit`
-- `bunx vitest run src/i18n/__tests__/ src/components/landing/__tests__/` (existing tests should pass; no new tests added since this is visual)
-- Visual QA at 360×800, 390×844, 1440×900 via browser tools:
-  - Theme toggle gone from header
-  - H1 fits 2–3 lines on 360, "em segundos." cyan
-  - Subtitle legible (AA contrast)
-  - Preview shows: empty browser bar → score block → 2 KPI cards → "1 de 6 secções acessíveis" → 3 frosted locked rows
-  - No footnote sentence anywhere
-  - Mobile preview sits cleanly below CTA, no oversized empty space
+- Re-screenshot at 360×800, 390×844, 1440×900 and confirm:
+  - H1 visible immediately, "em segundos." cyan
+  - Subtitle visible and AA-legible
+  - No stuck skeleton in header
+  - Preview card sits below CTA with comfortable spacing
+  - 3 frosted locked rows, empty browser bar, no footer sentence
 
-## Deliverables to user
+## Deliverables
 
-- Files changed list
-- Summary of visual changes (header, H1, subtitle, preview)
-- Confirmation: no onboarding/report/backend behavior touched
-- Remaining visual risks (e.g. very long EN headline on 320px — fallback is text wrap)
+- Issues found (bullet list, severity)
+- Fixes applied (file map)
+- Final visual assessment per viewport (mobile 360 / 390, desktop 1440)
+- Non-blocking follow-ups (e.g. consider replacing per-word stagger with a single reveal once we confirm motion preferences)

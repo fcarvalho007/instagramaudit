@@ -60,7 +60,7 @@ export function HeroReportPreview() {
         </div>
 
         {/* Score card */}
-        <div className="px-5 pt-5">
+        <div className="px-4 sm:px-5 pt-5">
           <div
             className="rounded-xl border p-4 ring-1"
             style={{
@@ -77,7 +77,7 @@ export function HeroReportPreview() {
               {t("hero.previewMock.scoreLabel")}
             </div>
             <div
-              className="font-sans font-semibold text-3xl tabular-nums"
+              className="font-sans font-semibold text-2xl sm:text-3xl tabular-nums"
               style={{ color: "var(--hero-fg)" }}
             >
               {t("hero.previewMock.scoreValue")}
@@ -99,7 +99,7 @@ export function HeroReportPreview() {
         </div>
 
         {/* KPI row */}
-        <div className="px-5 pt-4 grid grid-cols-2 gap-2">
+        <div className="px-4 sm:px-5 pt-4 grid grid-cols-2 gap-2">
           {[
             { label: t("hero.previewMock.kpis.engagement"), value: "4,2%" },
             { label: t("hero.previewMock.kpis.frequency"), value: "2,8" },
@@ -129,7 +129,7 @@ export function HeroReportPreview() {
         </div>
 
         {/* Sidebar label + premium rows blurred (all viewports) */}
-        <div className="px-5 pt-4 pb-5">
+        <div className="px-4 sm:px-5 pt-4 pb-5">
           <div
             className="text-eyebrow-sm mb-2.5"
             style={{ color: "var(--hero-fg-subtle)" }}
