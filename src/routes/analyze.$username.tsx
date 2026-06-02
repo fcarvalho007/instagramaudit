@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { AnalysisErrorState } from "@/components/product/analysis-error-state";
 import { AnalysisSkeleton } from "@/components/product/analysis-skeleton";
 import { normalizeInstagramHandle } from "@/lib/instagram/normalize-handle";
+import "@/styles/analyze-header-collapse.css";
 import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
 import { ReportShellV2 } from "@/components/report-redesign/v2/report-shell-v2";
 import { useReportShareActions } from "@/components/report-share/use-report-share-actions";
