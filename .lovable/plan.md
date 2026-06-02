@@ -1,80 +1,83 @@
-# Auditoria custos Apify · final maio → 1 jun 2026
+## Diagnóstico
 
-## TL;DR
+Auditei `/admin/receita` e o que está lá **já é honesto** — não há mockup estático. Mas a organização é confusa e o título da página promete mais do que entrega.
 
-Os custos reportados em `/admin` **não batem com a fatura Apify** para o período de faturação 26 mai → 25 jun 2026. Apify cobra **$1.35** (587 eventos × $0.0023 result). O nosso `provider_call_logs` regista apenas **$0.233 estimados** em 25 corridas com 216 posts.
+**Estado actual:**
 
-A divergência tem **três causas distintas** — uma delas é provavelmente crítica (corridas não auditadas a sair do nosso domínio).
+| Secção | Origem | Estado |
+|---|---|---|
+| Métricas principais (MRR/ARR/ARPU/churn) | `EmptyStateCard` | Vazio · "depende de checkout" |
+| Anatomia do MRR (waterfall) | `EmptyStateCard` | Vazio · "depende de checkout" |
+| Custos da plataforma (`ExpenseSection`) | `provider_call_logs` + `provider_billing_imports` | **Real** ✓ |
+| MRR por plano | `EmptyStateCard` | Vazio · "depende de checkout" |
+| Cohort de retenção | `EmptyStateCard` | Vazio · "depende de checkout" |
+| Últimas faturas | `EmptyStateCard` | Vazio · "depende de checkout" |
 
-## Números lado a lado (26 mai → 1 jun 2026)
+Confirmei na BD: `lead_payments` tem **0 linhas**, não existe tabela de subscrições, e o knowledge do projeto proíbe ligar checkout nesta fase ("Do not implement payments yet").
 
-| Fonte | Corridas | "Results" | Custo |
-|---|---|---|---|
-| Apify dashboard (billing) | (89 recent, do mês todo) | 587 | $1.35 |
-| Apify dashboard (runs visíveis no screenshot, 2026-06-01 21:01-21:09 UTC) | 11 | 369 | ~$0.79 |
-| `provider_call_logs` (DB) | 25 | 216 posts | $0.233 est. / $0.00 actual |
+**Problemas reais:**
 
-Última corrida Apify registada na nossa DB: **2026-06-01 16:07:53 UTC**. Os 11 runs visíveis no screenshot (21:01-21:09 UTC, ~5h depois) **não existem em `provider_call_logs`**.
+1. **5 cartões vazios consecutivos** com a mesma razão ("depende de checkout") inflam a página e fazem parecer que está incompleta. Devia ser **um** bloco consolidado.
+2. **Título "Receita e despesas"** está desalinhado: 5/6 secções não têm receita. Ou se assume que hoje é "Despesas + preparação de receita", ou se renomeia.
+3. **`ExportCsvButton`** é um stub silencioso (`toast.info("em breve")`) — botão a fingir trabalho que não faz. Remover até ter export real.
+4. **`PeriodSelect`** só afecta `ExpenseSection`; os outros 5 cartões ignoram-no. Sugere falsamente que filtra a página toda.
+5. **Sinais reais de pré-receita que já existem na BD e não estão na página:**
+   - `pricing_interest` — quem disse que pagaria e quanto (sinal de WTP real)
+   - `beta_feedback.purchase_intent` + `pricing_preference` — intenção de compra dos utilizadores beta
+   - `lead_payments` — contador a zero (mas pronto para quando passar a 1)
+   - `leads` por `commercial_status` — funil comercial em direção à receita
 
-## Discrepâncias identificadas
+## Proposta
 
-### 1. Corridas Apify fora do nosso pipeline (CRÍTICO)
+Reorganizar a página em **3 blocos honestos**, sem mockup, com dados reais onde existem:
 
-Apify regista 89 runs recentes; o nosso `provider_call_logs` tem 72 lifetime e zero entre 16:07 e 21:09 do dia 1/jun. Há runs reais (origem "API") que **não passam pelo nosso wrapper de logging**. Hipóteses:
+```text
+┌─ Receita e custos ────────────────────────────────────────┐
+│  (subtítulo: "Hoje: custos reais + sinais de demanda.    │
+│   Métricas de subscrição activam quando o checkout for   │
+│   ligado.")                                              │
+│  [PeriodSelect afecta só os blocos que dependem dele]    │
+└──────────────────────────────────────────────────────────┘
 
-- Testes ad-hoc feitos diretamente contra o Apify API com o `APIFY_TOKEN` (CLI, Postman, scripts manuais).
-- Cron / scheduled actor configurado no Apify console (não no nosso `pg_cron`).
-- Code path alternativo que chama Apify sem invocar a função que escreve em `provider_call_logs`.
+BLOCO 1 — Despesas reais (mantém ExpenseSection tal como está)
+  · Custo por fornecedor 30d, custo por análise, reconciliação
 
-**Impacto**: o cockpit `/admin` subestima sempre os custos Apify e os alertas de "abuso/repetição" perdem visibilidade sobre essas corridas.
+BLOCO 2 — Sinais de pré-receita (NOVO, dados reais)
+  · KPI: Pagamentos confirmados (lead_payments status='paid')
+  · KPI: Receita acumulada (sum amount_cents)
+  · KPI: Intenção de compra beta (% beta_feedback.purchase_intent ∈ {'sim','talvez'})
+  · KPI: Sinais em /preços (pricing_interest.would_pay='sim' nos últimos 30d)
+  · Tabela compacta: top respostas pricing_interest (opção + faixa + comentário)
 
-### 2. Modelo de custo estimado errado
+BLOCO 3 — Receita recorrente (1 cartão consolidado, não 5)
+  · Único EmptyStateCard explicando que MRR/ARR/cohort/faturas
+    acendem quando o checkout EuPago/Stripe ligar
+  · Lista as 4 métricas que vão aparecer (não 4 cartões separados)
+```
 
-Usamos uma tabela flat ($0.011 para runs com posts, $0.005 para runs vazias). A realidade Apify é **pay-per-event** a $0.0023 por result do dataset, $0.0015 por post e $0.0008 por post details.
+## Ficheiros a alterar
 
-Mesmo recalculando o nosso `posts_returned` × $0.0023, dá $0.497 — ainda longe dos $1.35. O delta restante vem de: (a) eventos "Result" cobrados por outros itens além de posts (perfis dos competidores, comments expansion), (b) corridas não logadas (ponto 1), (c) run com timeout no screenshot ($0.09, 38 results) que pode não ter sido logada como sucesso.
+| Ficheiro | Acção |
+|---|---|
+| `src/routes/admin.receita.tsx` | Recompor: remover `ExportCsvButton`, remover `MetricsSection`/`WaterfallSection`/`PlansSection`/`CohortSection`/`InvoicesSection` separados, adicionar `PreRevenueSignalsSection` e `FutureRecurringRevenueCard` |
+| `src/components/admin/v2/receita/pre-revenue-signals-section.tsx` | **Novo** · KPIs + tabela alimentados por novo endpoint |
+| `src/components/admin/v2/receita/future-recurring-revenue-card.tsx` | **Novo** · 1 `EmptyStateCard` consolidado (substitui os 5) |
+| `src/routes/api/admin/pre-revenue-signals.ts` | **Novo** · endpoint server route que agrega `lead_payments`, `beta_feedback`, `pricing_interest` |
+| `src/components/admin/v2/receita/metrics-section.tsx` | **Apagar** (substituído pelo cartão consolidado) |
+| `src/components/admin/v2/receita/waterfall-section.tsx` | **Apagar** |
+| `src/components/admin/v2/receita/plans-section.tsx` | **Apagar** |
+| `src/components/admin/v2/receita/cohort-section.tsx` | **Apagar** |
+| `src/components/admin/v2/receita/invoices-section.tsx` | **Apagar** |
 
-### 3. `actual_cost_usd` está sempre a 0
-
-Todas as 25 entradas têm `actual_cost_usd = 0.00`. A reconciliação com o custo real Apify (via `run.usageTotalUsd` ou webhook `ACTOR.RUN.SUCCEEDED`) não está a acontecer. Sem isto, **nunca conseguimos detetar drift entre estimativa e fatura**.
-
-## O que verificar em `/admin` antes de mudar código
-
-Para o utilizador confirmar manualmente:
-
-1. Abrir `/admin` → secção custos → filtrar 26 mai → 25 jun.
-2. Confirmar se o total apresentado coincide com **$0.233** (nossa estimativa) ou se já está a chamar o Apify usage API.
-3. Comparar a contagem de "análises frescas" no `/admin` com as 25 corridas logadas.
-4. Verificar se aparece algum alerta "estimativa vs real divergente" — provavelmente não, porque `actual_cost_usd = 0` em todas.
-
-## Plano de correção (sequencial, em prompts separados)
-
-### Prompt A — Identificar a fuga de logging
-- Greppar `APIFY_TOKEN`, `apify-client`, `https://api.apify.com` em `src/` e `supabase/` para encontrar call sites fora de `provider_call_logs`.
-- Verificar `supabase/config.toml` e `pg_cron` jobs por schedulers que invoquem Apify diretamente.
-- Pedir ao utilizador para confirmar no Apify console se há "Scheduled actors" ativos ou integrações externas a usar o mesmo token.
-
-### Prompt B — Reconciliar `actual_cost_usd`
-- Cron (ou job pós-run) que chama `GET /v2/actor-runs/{runId}` e popula `actual_cost_usd` a partir de `usageTotalUsd`.
-- Backfill das 72 corridas existentes.
-- Adicionar alerta em `/admin` quando `abs(actual - estimated) / actual > 0.3` em janela diária.
-
-### Prompt C — Reformular tabela de tarifas
-- Substituir o flat $0.011/$0.005 por modelo pay-per-event ($0.0023 Result + $0.0015 Post + $0.0008 Post details), parametrizável via tabela `provider_pricing`.
-- Recalcular `estimated_cost_usd` no momento da escrita usando `posts_returned` + `profiles_returned` + um delta seguro para events não modelados.
-
-### Prompt D — Painel de reconciliação Apify no `/admin`
-- Card "Apify billing window": estimado nosso vs `usageTotalUsd` agregado vs total da plataforma (manual, lido de secret/env mensal).
-- Lista de runs com "Apify run ID conhecido mas não em `provider_call_logs`" (cross-check via `apify-client`).
-
-## Fora de âmbito desta auditoria
-
-- Não alterar código nesta iteração.
-- Não mexer em OpenAI/DataForSEO (custos batem ordem de grandeza — $0.4101 + $0.2477 + $0.1039 + $0.009 e não há fatura externa equivalente a verificar agora).
+Sem migração: todas as tabelas usadas já existem.
 
 ## Checkpoint
 
-- ☐ Apresentar findings ao utilizador
-- ☐ Confirmar com utilizador se executou runs manuais contra Apify entre 16:07 e 21:09 UTC de 1/jun
-- ☐ Confirmar se há scheduled actor no console Apify
-- ☐ Escolher por qual prompt corretivo começar (A, B, C ou D)
+- ☐ Página passa a ter 3 blocos em vez de 6
+- ☐ Zero mockup; cada número exibido vem de query real
+- ☐ KPIs de pré-receita mostram valores actuais (`lead_payments`=$0, contadores de `pricing_interest` e `beta_feedback` reais)
+- ☐ Botão "Exportar CSV" removido enquanto não houver export
+- ☐ Subtítulo da página explica honestamente o que está e o que falta
+- ☐ `bunx tsc --noEmit` limpo
+
+Confirma se avanço, ou se preferes manter os 5 cartões MRR separados (mesmo vazios) por uma questão de "promessa visual" do produto futuro.

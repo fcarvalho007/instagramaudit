@@ -84,6 +84,7 @@ import { Route as ApiAdminRefreshProfilePreflightRouteImport } from './routes/ap
 import { Route as ApiAdminRefreshProfileRouteImport } from './routes/api/admin/refresh-profile'
 import { Route as ApiAdminRecentReportsRouteImport } from './routes/api/admin/recent-reports'
 import { Route as ApiAdminPricingPlansRouteImport } from './routes/api/admin/pricing-plans'
+import { Route as ApiAdminPreRevenueSignalsRouteImport } from './routes/api/admin/pre-revenue-signals'
 import { Route as ApiAdminOverviewKpisRouteImport } from './routes/api/admin/overview-kpis'
 import { Route as ApiAdminOnboardingFunnelRouteImport } from './routes/api/admin/onboarding-funnel'
 import { Route as ApiAdminLeadsKanbanRouteImport } from './routes/api/admin/leads-kanban'
@@ -537,6 +538,12 @@ const ApiAdminPricingPlansRoute = ApiAdminPricingPlansRouteImport.update({
   path: '/api/admin/pricing-plans',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminPreRevenueSignalsRoute =
+  ApiAdminPreRevenueSignalsRouteImport.update({
+    id: '/api/admin/pre-revenue-signals',
+    path: '/api/admin/pre-revenue-signals',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminOverviewKpisRoute = ApiAdminOverviewKpisRouteImport.update({
   id: '/api/admin/overview-kpis',
   path: '/api/admin/overview-kpis',
@@ -986,6 +993,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
   '/api/admin/onboarding-funnel': typeof ApiAdminOnboardingFunnelRoute
   '/api/admin/overview-kpis': typeof ApiAdminOverviewKpisRoute
+  '/api/admin/pre-revenue-signals': typeof ApiAdminPreRevenueSignalsRoute
   '/api/admin/pricing-plans': typeof ApiAdminPricingPlansRoute
   '/api/admin/recent-reports': typeof ApiAdminRecentReportsRoute
   '/api/admin/refresh-profile': typeof ApiAdminRefreshProfileRoute
@@ -1129,6 +1137,7 @@ export interface FileRoutesByTo {
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
   '/api/admin/onboarding-funnel': typeof ApiAdminOnboardingFunnelRoute
   '/api/admin/overview-kpis': typeof ApiAdminOverviewKpisRoute
+  '/api/admin/pre-revenue-signals': typeof ApiAdminPreRevenueSignalsRoute
   '/api/admin/pricing-plans': typeof ApiAdminPricingPlansRoute
   '/api/admin/recent-reports': typeof ApiAdminRecentReportsRoute
   '/api/admin/refresh-profile': typeof ApiAdminRefreshProfileRoute
@@ -1275,6 +1284,7 @@ export interface FileRoutesById {
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
   '/api/admin/onboarding-funnel': typeof ApiAdminOnboardingFunnelRoute
   '/api/admin/overview-kpis': typeof ApiAdminOverviewKpisRoute
+  '/api/admin/pre-revenue-signals': typeof ApiAdminPreRevenueSignalsRoute
   '/api/admin/pricing-plans': typeof ApiAdminPricingPlansRoute
   '/api/admin/recent-reports': typeof ApiAdminRecentReportsRoute
   '/api/admin/refresh-profile': typeof ApiAdminRefreshProfileRoute
@@ -1422,6 +1432,7 @@ export interface FileRouteTypes {
     | '/api/admin/leads-kanban'
     | '/api/admin/onboarding-funnel'
     | '/api/admin/overview-kpis'
+    | '/api/admin/pre-revenue-signals'
     | '/api/admin/pricing-plans'
     | '/api/admin/recent-reports'
     | '/api/admin/refresh-profile'
@@ -1565,6 +1576,7 @@ export interface FileRouteTypes {
     | '/api/admin/leads-kanban'
     | '/api/admin/onboarding-funnel'
     | '/api/admin/overview-kpis'
+    | '/api/admin/pre-revenue-signals'
     | '/api/admin/pricing-plans'
     | '/api/admin/recent-reports'
     | '/api/admin/refresh-profile'
@@ -1710,6 +1722,7 @@ export interface FileRouteTypes {
     | '/api/admin/leads-kanban'
     | '/api/admin/onboarding-funnel'
     | '/api/admin/overview-kpis'
+    | '/api/admin/pre-revenue-signals'
     | '/api/admin/pricing-plans'
     | '/api/admin/recent-reports'
     | '/api/admin/refresh-profile'
@@ -1835,6 +1848,7 @@ export interface RootRouteChildren {
   ApiAdminLeadsKanbanRoute: typeof ApiAdminLeadsKanbanRouteWithChildren
   ApiAdminOnboardingFunnelRoute: typeof ApiAdminOnboardingFunnelRoute
   ApiAdminOverviewKpisRoute: typeof ApiAdminOverviewKpisRoute
+  ApiAdminPreRevenueSignalsRoute: typeof ApiAdminPreRevenueSignalsRoute
   ApiAdminPricingPlansRoute: typeof ApiAdminPricingPlansRoute
   ApiAdminRecentReportsRoute: typeof ApiAdminRecentReportsRoute
   ApiAdminRefreshProfileRoute: typeof ApiAdminRefreshProfileRoute
@@ -2425,6 +2439,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/pricing-plans'
       fullPath: '/api/admin/pricing-plans'
       preLoaderRoute: typeof ApiAdminPricingPlansRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/pre-revenue-signals': {
+      id: '/api/admin/pre-revenue-signals'
+      path: '/api/admin/pre-revenue-signals'
+      fullPath: '/api/admin/pre-revenue-signals'
+      preLoaderRoute: typeof ApiAdminPreRevenueSignalsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/overview-kpis': {
@@ -3174,6 +3195,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminLeadsKanbanRoute: ApiAdminLeadsKanbanRouteWithChildren,
   ApiAdminOnboardingFunnelRoute: ApiAdminOnboardingFunnelRoute,
   ApiAdminOverviewKpisRoute: ApiAdminOverviewKpisRoute,
+  ApiAdminPreRevenueSignalsRoute: ApiAdminPreRevenueSignalsRoute,
   ApiAdminPricingPlansRoute: ApiAdminPricingPlansRoute,
   ApiAdminRecentReportsRoute: ApiAdminRecentReportsRoute,
   ApiAdminRefreshProfileRoute: ApiAdminRefreshProfileRoute,

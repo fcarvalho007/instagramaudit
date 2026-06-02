@@ -1,25 +1,25 @@
 /**
  * /admin/receita — tab Receita do admin v2.
  *
- * 5 secções: métricas → waterfall → planos → cohort → faturas.
- * Header tem selector de período + Exportar CSV (acções mock).
+ * 3 blocos honestos:
+ *  1. Despesas reais (ExpenseSection — custos por fornecedor + reconciliação)
+ *  2. Sinais de pré-receita (pagamentos, intenção beta, interesse em /preços)
+ *  3. Receita recorrente (placeholder consolidado — depende do checkout)
+ *
+ * O selector de período só afecta o bloco de despesas (único com séries
+ * temporais). Sem botão de export enquanto não houver export real.
  */
 
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { toast } from "sonner";
 
 import { AdminPageHeader } from "@/components/admin/v2/admin-page-header";
 import {
   PeriodSelect,
-  ExportCsvButton,
   type AdminPeriod,
 } from "@/components/admin/v2/period-select";
-import { MetricsSection } from "@/components/admin/v2/receita/metrics-section";
-import { WaterfallSection } from "@/components/admin/v2/receita/waterfall-section";
-import { PlansSection } from "@/components/admin/v2/receita/plans-section";
-import { CohortSection } from "@/components/admin/v2/receita/cohort-section";
-import { InvoicesSection } from "@/components/admin/v2/receita/invoices-section";
+import { PreRevenueSignalsSection } from "@/components/admin/v2/receita/pre-revenue-signals-section";
+import { FutureRecurringRevenueCard } from "@/components/admin/v2/receita/future-recurring-revenue-card";
 import { ExpenseSection } from "@/components/admin/v2/visao-geral/expense-section";
 
 export const Route = createFileRoute("/admin/receita")({
@@ -32,26 +32,14 @@ function ReceitaPage() {
   return (
     <>
       <AdminPageHeader
-        title="Receita e despesas"
-        subtitle="Subscrições, avulso e custos reais por fornecedor (Apify, OpenAI, DataForSEO)"
-        actions={
-          <>
-            <PeriodSelect value={period} onChange={setPeriod} />
-            <ExportCsvButton
-              onExport={() => {
-                toast.info("Exportação CSV ainda não disponível — em breve.");
-              }}
-            />
-          </>
-        }
+        title="Receita e custos"
+        subtitle="Hoje: custos reais por fornecedor + sinais de demanda. As métricas de subscrição acendem quando o checkout for ligado."
+        actions={<PeriodSelect value={period} onChange={setPeriod} />}
       />
       <div className="flex flex-col gap-14">
-        <MetricsSection />
-        <WaterfallSection />
         <ExpenseSection period={period} />
-        <PlansSection />
-        <CohortSection />
-        <InvoicesSection />
+        <PreRevenueSignalsSection />
+        <FutureRecurringRevenueCard />
       </div>
     </>
   );
