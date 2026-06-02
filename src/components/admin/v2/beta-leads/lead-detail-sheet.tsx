@@ -32,6 +32,7 @@ import {
   SelectGroup,
   SelectLabel,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
