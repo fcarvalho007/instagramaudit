@@ -19,20 +19,12 @@
     },
     "previewMock": {
       "header": "Pré-visualização do relatório",
-      "sampleActive": "Últimas 12 publicações",
-      "windowsLocked": {
-        "d30": "30 dias",
-        "d60": "60 dias",
-        "d90": "90 dias",
-        "d365": "365 dias"
-      },
+      "urlBar": "auditprofiles.com/report/preview",
       "scoreLabel": "Índice do perfil",
       "scoreValue": "37 / 100",
-      "scoreCaption": "Preview · Dados ilustrativos",
       "kpis": {
-        "engagement": "Engagement",
-        "frequency": "Posts/sem",
-        "costPerPost": "Custo/post"
+        "engagement": "Taxa de Engagement",
+        "frequency": "Frequência de Publicação"
       },
       "sidebar": "1 de 6 secções acessíveis",
       "premiumRows": {
@@ -49,18 +41,13 @@
     "placeholder": "@perfil ou URL do Instagram",
     "ariaInput": "Username ou URL do perfil do Instagram",
     "submit": "Analisar",
-    "addCompetitors": "Adicionar até 2 concorrentes para comparar",
-    "competitorsLabel": "Concorrentes (opcional)",
-    "remove": "Remover",
-    "competitor1Placeholder": "@concorrente 1",
-    "competitor1Aria": "Username do primeiro concorrente",
-    "competitor2Placeholder": "@concorrente 2 (opcional)",
-    "competitor2Aria": "Username do segundo concorrente",
-    "personalHint": "Funciona melhor com perfis públicos Creator/Empresa. Alguns perfis pessoais podem não devolver publicações suficientes para análise.",
+    "trustInline": {
+      "freeReports": "Oferta de 2 relatórios grátis",
+      "publicData": "Acesso apenas a dados públicos"
+    },
     "errors": {
       "empty": "Inserir um username válido para continuar",
-      "invalid": "Insere um perfil público do Instagram, por exemplo @marca ou instagram.com/marca.",
-      "competitorInvalid": "Concorrente inválido. Insere um @ ou um link instagram.com/marca."
+      "invalid": "Insere um perfil público do Instagram, por exemplo @marca ou instagram.com/marca."
     }
   },
   "handwritten": {
