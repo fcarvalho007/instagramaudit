@@ -55,6 +55,7 @@ import { StickyUnlockBar } from "./sticky-unlock-bar";
 import { ReportShortcutDialog } from "./report-shortcut-dialog";
 import { useReportKeyboardShortcuts } from "./use-report-keyboard-shortcuts";
 import { scrollToBlock } from "./use-active-block";
+import { usePremiumCta } from "./premium-cta-context";
 
 interface ReportShellV2Props {
   result: AdapterResult;
@@ -246,13 +247,9 @@ export function ReportShellV2({
                 lockBoundary === "engagement" &&
                 !unlocked && (
                   <section id="lead-magnet-card" className="mt-6 md:mt-8">
-                    <ReportLockGate
-                      unlocked={false}
-                      onUnlockClick={handleUnlockClick}
+                    <LockGatePremium
                       handle={result.data.profile.username}
-                    >
-                      {null}
-                    </ReportLockGate>
+                    />
                   </section>
                 )}
 
@@ -413,9 +410,13 @@ export function ReportShellV2({
 
         {/* UX helpers — back to top, shortcut help, mobile unlock CTA */}
         <BackToTopButton />
-        {/* Sticky premium CTA: only after lead capture (post-unlock).
-            Pre-lead the lead-magnet card is the single primary CTA. */}
-        {unlocked && lockBoundary === "engagement" && (
+        {/* Sticky premium CTA: always visible on mobile when the report
+            has gated content and the user has not paid. In the
+            onboarding-first flow, every visitor reaching the shell has
+            already completed lead capture (the route enforces it via
+            ONBOARDING_REQUIRED), so the legacy `unlocked` sessionStorage
+            flag is no longer the right gate for premium CTAs. */}
+        {lockBoundary === "engagement" && !premiumUnlocked && (
           <StickyUnlockBar />
         )}
         <ReportShortcutDialog
