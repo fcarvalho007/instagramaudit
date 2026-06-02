@@ -315,6 +315,14 @@ function shortDate(iso: string): string {
   });
 }
 
+/** Data + hora compacta DD/MM · HH:MM (Inter tabular-nums). */
+function formatShortDateTime(iso: string): string {
+  const d = new Date(iso);
+  const date = d.toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit" });
+  const time = d.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
+  return `${date} · ${time}`;
+}
+
 /**
  * Devolve o timestamp em que cada estado automático aconteceu, ou `null`
  * quando ainda não há sinal. Usado para mostrar ✓ + data nas linhas do
