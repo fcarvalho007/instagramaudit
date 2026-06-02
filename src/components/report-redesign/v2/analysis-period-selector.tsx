@@ -1,4 +1,5 @@
-import { Check, Lock, Calendar } from "lucide-react";
+import { useId, useState } from "react";
+import { Check, ChevronDown, Lock, Calendar } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
@@ -41,6 +42,8 @@ export function AnalysisPeriodSelector({
   const { t } = useTranslation("report");
   const { handlePremiumAccessClick, trackPremiumWindowInterest } =
     usePremiumCta();
+  const [expanded, setExpanded] = useState(false);
+  const expandedId = useId();
 
   const observedBadge =
     observedDays > 0
@@ -61,12 +64,57 @@ export function AnalysisPeriodSelector({
   return (
     <section
       aria-label={t("selector.eyebrow")}
-      className="w-full px-5 md:px-6 pb-4"
+      className="w-full px-4 sm:px-6 pb-2 sm:pb-4"
     >
       <div className="mx-auto max-w-[1520px]">
-        <div className="rounded-2xl border border-border-default bg-white shadow-card px-5 py-4 sm:px-6 sm:py-5">
+        <div className="rounded-xl sm:rounded-2xl border border-border-default bg-white shadow-card">
+          {/* ── Mobile compact trigger ─────────────────────────── */}
+          <button
+            type="button"
+            onClick={() => setExpanded((p) => !p)}
+            aria-expanded={expanded}
+            aria-controls={expandedId}
+            className={cn(
+              "sm:hidden w-full flex items-center gap-2 px-3 py-2 rounded-xl",
+              "text-left transition-colors hover:bg-surface-muted/50",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40",
+            )}
+          >
+            <Calendar
+              className="size-3.5 text-content-tertiary shrink-0"
+              aria-hidden="true"
+            />
+            <span className="text-[12px] text-content-secondary truncate flex-1 min-w-0">
+              <span className="font-semibold text-content-primary">
+                {t("selector.active_sample", { count: sampleSize })}
+              </span>
+              {observedDays > 0 && (
+                <>
+                  {" "}
+                  <span className="text-content-tertiary">·</span>{" "}
+                  {observedDays} {observedDays === 1 ? "dia" : "dias"}
+                </>
+              )}
+            </span>
+            <ChevronDown
+              className={cn(
+                "size-3.5 text-content-tertiary shrink-0 transition-transform duration-200",
+                expanded && "rotate-180",
+              )}
+              aria-hidden="true"
+            />
+          </button>
+
+          {/* ── Expanded content (always visible on ≥sm) ───────── */}
+          <div
+            id={expandedId}
+            className={cn(
+              "px-3 pb-3 sm:px-6 sm:py-5 sm:!block",
+              expanded ? "block" : "hidden",
+            )}
+          >
           {/* Header row */}
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div className="hidden sm:flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <Calendar
                 className="size-3.5 text-content-tertiary"
@@ -84,7 +132,7 @@ export function AnalysisPeriodSelector({
           </div>
 
           {/* Chips */}
-          <div className="mt-3 -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="sm:mt-3 -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {/* Active (free sample) */}
             <span
               className={cn(
@@ -181,9 +229,10 @@ export function AnalysisPeriodSelector({
           </div>
 
           {/* Footnote */}
-          <p className="mt-3 text-xs leading-relaxed text-content-tertiary">
+          <p className="mt-3 text-[11px] sm:text-xs leading-relaxed text-content-tertiary">
             {t("selector.footnote")}
           </p>
+          </div>
         </div>
       </div>
     </section>

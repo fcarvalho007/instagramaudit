@@ -28,6 +28,10 @@
     "premium_90_compact": "90d",
     "premium_365_compact": "365d",
     "footnote": "A versão gratuita usa uma amostra recente. Janelas maiores ficam disponíveis no relatório premium.",
+    "compact_summary": "{{sample}} · {{days}} dias observados",
+    "compact_summary_one": "{{sample}} · {{days}} dia observado",
+    "expand": "Ver janelas premium",
+    "collapse": "Recolher",
     "locked": {
       "title": "Disponível no relatório completo",
       "body": "Analisa mais histórico para perceber evolução, consistência e padrões de conteúdo ao longo do tempo.",

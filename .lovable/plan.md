@@ -1,51 +1,86 @@
 ## Objetivo
 
-Em mobile, transformar o hero numa "above-the-fold" focada **só** no preenchimento do perfil (eyebrow + título + subtítulo + caixa de input + trust). O mockup do report sai do primeiro ecrã e aparece **abaixo do scroll**, com mais respiração e título maior. Desktop fica inalterado.
+Em mobile (`/analyze/$username`), o cabeçalho do relatório deve ocupar **muito pouco espaço vertical** — tanto o cartão de identidade do perfil como o cartão "Período analisado". O utilizador deve conseguir expandir cada um se quiser ver mais detalhe. Desktop fica inalterado.
 
-## Alterações (apenas `src/components/landing/hero-section.tsx`)
+## Estado atual (screenshot)
 
-### 1. Reordenar mockup em mobile
+- Cartão do perfil ocupa ~340 px de altura em mobile mesmo no estado "compacto" (avatar 40 px + 3 linhas de métricas a quebrarem + 2 botões em linha separada).
+- Cartão "Período analisado" ocupa ~300 px (eyebrow + subtítulo + chips + footnote).
+- Juntos consomem todo o viewport antes do utilizador ver qualquer conteúdo.
 
-Atualmente o grid é `grid-cols-1` em mobile, com a coluna do mockup logo a seguir à coluna do formulário — fica visível ainda no primeiro scroll.
+Meta: reduzir o conjunto para **~120 px** colapsado em mobile (≈2 linhas), mantendo elegância editorial.
 
-- Adicionar `order-1` à coluna esquerda (copy + action) e `order-2 lg:order-none` à coluna direita (mockup).
-- No wrapper do mockup: aumentar a margem superior em mobile (`mt-10 sm:mt-12 lg:mt-0`) para criar separação clara entre o foco principal e a "prova visual" abaixo do scroll.
+## Mudanças
 
-### 2. Aumentar título em mobile
+### 1. `src/components/report-redesign/v2/report-hero-v2.tsx` — barra ultra-compacta em mobile
 
-H1 atual em mobile: `text-[1.75rem]` (28px). Subir para `text-[2.125rem]` (34px) → bom salto sem partir em ecrãs 360px com `text-balance`.
+Reformatar a "compact bar" para uma **única linha** em mobile:
 
-- `text-[1.75rem]` → `text-[2.125rem]`
-- `leading-[1.12]` mantém-se
-- `max-w-[18ch]` → `max-w-[16ch]` em mobile para forçar quebra elegante em 2 linhas
+```
+[avatar 28px] @handle · 10,1K seguidores      [⌄] [↓] [↗]
+```
 
-### 3. Melhorar espaçamento mobile
+- Avatar: `size-7` (28 px) em mobile, `sm:size-10` mantém.
+- Esconder tier badge ("Micro 10K–50K") em mobile (`hidden sm:inline-flex`) — passa só para o painel expandido.
+- Métricas em mobile: **uma só métrica** (seguidores) ao lado do handle, separada por `·`. As restantes (publicações, analisadas) ficam reservadas ao painel expandido. `sm:` mostra a linha completa atual.
+- Botões PDF / Partilhar: reduzir `size-9` → `size-8` em mobile, ícones `size-3.5`.
+- Chevron, PDF e share alinhados na mesma linha à direita (já estão, mas confirmar `self-auto` em mobile em vez de `self-end`).
+- Padding do cartão: `px-3 py-2 sm:px-5 sm:py-3`.
+- Border radius do cartão: `rounded-xl sm:rounded-2xl` para parecer mais leve.
 
-- Container: `py-8 md:py-24` → `py-12 md:py-24` (mais ar em cima/baixo)
-- Stack vertical da coluna esquerda: `space-y-4 md:space-y-7` → `space-y-6 md:space-y-7`
-- Eyebrow → H1: mais ar via aumento do `space-y` acima
-- `pt-2 lg:pt-2` antes do `HeroActionBar` → `pt-4 lg:pt-2` (separa caixa de input do subtítulo)
+Painel expandido fica como está (já mostra avatar grande, nome, métricas completas).
 
-### 4. Subtítulo ligeiramente maior em mobile
+### 2. `src/components/report-redesign/v2/analysis-period-selector.tsx` — cartão colapsável
 
-`text-base md:text-lg` → `text-[1.0625rem] md:text-lg` (17px → respiração editorial).
+Tornar o cartão de período também colapsável em mobile, espelhando o padrão do hero. Em desktop fica inalterado (sempre expandido).
+
+Layout colapsado em mobile (uma linha):
+
+```
+[📅] Últimas 12 publicações · 30 dias                  [⌄]
+```
+
+- Estado `expanded` com `useState(false)`; sempre `true` em `sm:` via classe `sm:!block` no conteúdo expandido (ou simplesmente renderizar sempre e esconder o trigger em `sm:hidden`).
+- Trigger collapsed (apenas mobile): pill discreta com calendar icon + label ativa + observed days + chevron. Toda a área é clicável (`button` wrapper).
+- Conteúdo expandido (chips premium 30/60/90/365 + footnote) só renderiza se `expanded || sm:` (matchMedia não é necessário — usar Tailwind: trigger `sm:hidden`, conteúdo `${expanded ? 'block' : 'hidden'} sm:block`).
+- Padding mobile mais apertado: `px-3 py-2.5 sm:px-6 sm:py-5`.
+- Border radius: `rounded-xl sm:rounded-2xl`.
+- Adicionar i18n keys novas em `pt/report.json` e `en/report.json`:
+  - `selector.compact_summary`: `"{{sample}} · {{days}} dias"` (PT) / `"{{sample}} · {{days}} days"` (EN)
+  - `selector.expand`: `"Ver janelas premium"` / `"View premium windows"`
+  - `selector.collapse`: `"Recolher"` / `"Collapse"`
+
+### 3. Espaçamento entre cartões
+
+- Reduzir `pt-3 pb-2` do hero section para `pt-2 pb-1 sm:pt-3 sm:pb-2`.
+- Reduzir `pb-4` do period selector para `pb-2 sm:pb-4`.
+
+## Técnico
+
+- Usar `useState` + classes condicionais Tailwind; sem mudanças de lógica de negócio.
+- Manter aria-expanded, aria-controls, focus-visible rings.
+- Todos os tokens já existem (`content-primary`, `border-default`, `surface-muted`, etc.).
+- Sem alterações em desktop (≥640 px / `sm:`).
 
 ## Fora de scope
 
-- Desktop (≥1024px) — todas as mudanças são scoped a mobile/sm com prefixos `md:`/`lg:` a preservar o estado atual.
-- `HeroActionBar`, `HeroReportPreview`, tokens, copy, i18n.
-- Light sections, header, footer.
+- Hero do `/` (landing).
+- Lógica de premium, popovers de upgrade, tracking events.
+- Conteúdo do painel expandido (mantém atual).
+- `report.example` (mockup intacto).
+- Tokens, fontes, design system.
 
 ## Validação
 
-- Preview a 375px: confirmar que acima do scroll vê-se **só** eyebrow + título + subtítulo + caixa de input + trust line; mockup aparece com `mt-10` após scroll.
-- Confirmar que o título cabe em 2 linhas sem clipping em 360px.
-- Desktop 1280px: layout 2-col inalterado.
+- Mobile 411 px: confirmar header + período colapsados ocupam ≤ 130 px de altura combinados.
+- Clicar no chevron de cada cartão expande/recolhe sem layout shift do resto.
+- Desktop 1280 px: layout idêntico ao atual.
+- pt-PT em todas as labels novas; sem placeholder.
 
 ## Checkpoint
 
-- ☐ Mockup empurrado para abaixo do scroll em mobile (via `order` + `mt`)
-- ☐ H1 mobile a 34px com quebra em 2 linhas
-- ☐ Espaçamento vertical aumentado entre eyebrow/título/subtítulo/caixa
-- ☐ Subtítulo a 17px em mobile
-- ☐ Desktop intacto
+- ☐ `report-hero-v2.tsx`: barra compacta em uma linha em mobile
+- ☐ `analysis-period-selector.tsx`: estado colapsado em mobile com expand
+- ☐ i18n keys novas em pt + en
+- ☐ Espaçamentos verticais reduzidos
+- ☐ Verificação visual em 411 px e 1280 px
