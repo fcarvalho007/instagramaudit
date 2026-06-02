@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Download, Loader2, Share2 } from "lucide-react";
+import { Check, Download, Loader2, Share2, UserPlus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type {
@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { useLanguage } from "@/hooks/use-language";
 import { formatCompactNumber } from "@/lib/i18n/format";
 import { getTierForFollowers, getTierLabel } from "@/lib/benchmark/tiers";
+import { scrollToBlock } from "./use-active-block";
 
 interface ReportHeroV2Props {
   result: AdapterResult;
@@ -83,6 +84,23 @@ export function ReportHeroV2({
 
       {/* Actions — PDF + Share only */}
       <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <button
+          type="button"
+          onClick={() => scrollToBlock("benchmark")}
+          aria-label={t("hero.actions.add_competitor")}
+          title={t("hero.actions.add_competitor")}
+          className={cn(
+            "inline-flex items-center gap-1.5 h-7 sm:h-9 px-2 sm:px-3 rounded-lg",
+            "border border-border-default bg-white text-content-secondary",
+            "transition-colors duration-150",
+            "hover:bg-surface-muted hover:border-border-strong hover:text-content-primary",
+          )}
+        >
+          <UserPlus className="size-3 sm:size-4" aria-hidden="true" />
+          <span className="hidden md:inline text-[12px] font-medium">
+            {t("hero.actions.add_competitor")}
+          </span>
+        </button>
         <button
           type="button"
           onClick={actions.onExportPdf}
