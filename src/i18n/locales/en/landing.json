@@ -9,7 +9,6 @@
     "subtitle": "Benchmarks, editorial diagnosis and clear cues to improve your digital presence.",
     "previewMock": {
       "header": "Report preview",
-      "urlBar": "auditprofiles.com/report/preview",
       "scoreLabel": "Profile index",
       "scoreValue": "37 / 100",
       "kpis": {
@@ -20,10 +19,8 @@
       "premiumRows": {
         "diagnostic": "Editorial diagnosis",
         "content": "Content",
-        "reach": "Reach",
         "comparison": "Comparison"
-      },
-      "footnote": "The free summary shows the essentials. The full report goes deeper."
+      }
     }
   },
   "actionBar": {
@@ -73,9 +70,21 @@
     "title": "The report you'll get by email.",
     "lead": "Clear metrics, visual benchmark and competitor comparison. All exportable as PDF, shareable across teams, built for fast decisions.",
     "highlights": {
-      "data": { "label": "Data", "title": "Actionable metrics", "description": "Engagement, reach, frequency and dominant format. Everything that matters, nothing that distracts." },
-      "benchmark": { "label": "Benchmark", "title": "Instant comparison", "description": "Every metric contextualized against the platform benchmark and profile size." },
-      "ai": { "label": "AI", "title": "Strategic read", "description": "Three priority AI-generated insights, with concrete recommendations for the next 30 days." }
+      "data": {
+        "label": "Data",
+        "title": "Actionable metrics",
+        "description": "Engagement, reach, frequency and dominant format. Everything that matters, nothing that distracts."
+      },
+      "benchmark": {
+        "label": "Benchmark",
+        "title": "Instant comparison",
+        "description": "Every metric contextualized against the platform benchmark and profile size."
+      },
+      "ai": {
+        "label": "AI",
+        "title": "Strategic read",
+        "description": "Three priority AI-generated insights, with concrete recommendations for the next 30 days."
+      }
     }
   },
   "mockup": {

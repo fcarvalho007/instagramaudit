@@ -9,6 +9,8 @@ interface BlurRevealTextProps {
   staggerMs?: number;
   durationMs?: number;
   delayMs?: number;
+  highlightTailWords?: number;
+  highlightClassName?: string;
 }
 
 export function BlurRevealText({
@@ -18,6 +20,8 @@ export function BlurRevealText({
   staggerMs = 80,
   durationMs = 700,
   delayMs = 0,
+  highlightTailWords = 0,
+  highlightClassName,
 }: BlurRevealTextProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -27,6 +31,8 @@ export function BlurRevealText({
   }, [delayMs]);
 
   const words = text.split(" ");
+  const highlightFromIndex =
+    highlightTailWords > 0 ? Math.max(0, words.length - highlightTailWords) : -1;
 
   return (
     <Tag className={className} aria-label={text}>
@@ -39,6 +45,9 @@ export function BlurRevealText({
             mounted
               ? "opacity-100 blur-0 translate-y-0"
               : "opacity-0 blur-md translate-y-2",
+            highlightFromIndex >= 0 && i >= highlightFromIndex
+              ? highlightClassName
+              : undefined,
           )}
           style={{
             transitionDuration: `${durationMs}ms`,

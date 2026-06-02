@@ -11,7 +11,6 @@ export function HeroReportPreview() {
   const premiumRowKeys = [
     "diagnostic",
     "content",
-    "reach",
     "comparison",
   ] as const;
 
@@ -47,21 +46,15 @@ export function HeroReportPreview() {
             <span className="size-3 rounded-full" style={{ backgroundColor: "#FEBC2E" }} />
             <span className="size-3 rounded-full" style={{ backgroundColor: "#28C840" }} />
           </div>
-          {/* URL pill */}
+          {/* URL pill — intentionally empty, kept for browser-chrome shape */}
           <div
-            className="flex-1 min-w-0 mx-1 sm:mx-4 rounded-md border px-3 py-1 text-center"
+            className="flex-1 min-w-0 mx-1 sm:mx-4 h-5 rounded-md border"
             style={{
               borderColor: "var(--hero-border)",
               backgroundColor: "rgb(255 255 255 / 0.03)",
             }}
-          >
-            <span
-              className="block truncate text-xs tabular-nums"
-              style={{ color: "var(--hero-fg-subtle)" }}
-            >
-              {t("hero.previewMock.urlBar")}
-            </span>
-          </div>
+            aria-hidden="true"
+          />
           {/* Spacer to balance traffic lights */}
           <div className="size-3 shrink-0" aria-hidden="true" />
         </div>
@@ -135,8 +128,8 @@ export function HeroReportPreview() {
           ))}
         </div>
 
-        {/* Sidebar label + premium rows blurred (desktop only) */}
-        <div className="hidden lg:block px-5 pt-4">
+        {/* Sidebar label + premium rows blurred (all viewports) */}
+        <div className="px-5 pt-4 pb-5">
           <div
             className="text-eyebrow-sm mb-2.5"
             style={{ color: "var(--hero-fg-subtle)" }}
@@ -147,7 +140,7 @@ export function HeroReportPreview() {
             {premiumRowKeys.map((key) => (
               <div
                 key={key}
-                className="flex items-center justify-between rounded-md border px-3 py-2 select-none"
+                className="flex items-center justify-between rounded-md border px-3 py-2 select-none backdrop-blur-sm"
                 style={{
                   borderColor: "var(--hero-border)",
                   backgroundColor: "rgb(255 255 255 / 0.02)",
@@ -169,19 +162,6 @@ export function HeroReportPreview() {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Footnote */}
-        <div
-          className="px-5 py-4 mt-4 border-t"
-          style={{ borderColor: "var(--hero-border)" }}
-        >
-          <p
-            className="text-xs leading-relaxed"
-            style={{ color: "var(--hero-fg-subtle)" }}
-          >
-            {t("hero.previewMock.footnote")}
-          </p>
         </div>
       </div>
     </div>

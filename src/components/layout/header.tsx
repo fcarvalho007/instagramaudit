@@ -1,7 +1,7 @@
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu, Moon, X, ArrowRight } from "lucide-react";
+import { Menu, X, ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
@@ -92,10 +92,6 @@ function Header() {
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2">
-            <Button size="icon" variant="ghost" aria-label={t("aria.theme")}>
-              <Moon />
-            </Button>
-
             <LanguageSwitcher
               variant="compact"
               className="hidden sm:inline-flex"
