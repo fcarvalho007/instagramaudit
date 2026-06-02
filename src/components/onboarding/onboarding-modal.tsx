@@ -904,13 +904,13 @@ function Step2Context({
   const ownershipError = form.formState.errors.profile_ownership?.message;
   const goalError = form.formState.errors.goal?.message;
 
-  const ownershipIcons: Record<ProfileOwnership, LucideIcon> = {
+  const ownershipIcons: Record<(typeof RELATIONSHIP_VALUES)[number], LucideIcon> = {
     own_profile: User,
     client_profile: Briefcase,
     brand_profile: Star,
     competitor_research: Binoculars,
   };
-  const goalIcons: Record<Goal, LucideIcon> = {
+  const goalIcons: Record<(typeof GOAL_VALUES)[number], LucideIcon> = {
     improve_content: Lightbulb,
     benchmark_competitors: Users,
     grow_audience: TrendingUp,
