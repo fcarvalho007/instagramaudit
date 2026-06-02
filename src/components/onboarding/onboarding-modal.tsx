@@ -15,11 +15,11 @@
  * `leads.user_type` mantém-se nullable.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Trans, useTranslation } from "react-i18next";
-import { ArrowLeft, Check, Loader2, Lock, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 
 import {
   Dialog,
@@ -103,6 +103,7 @@ export function OnboardingModal({
 }: OnboardingModalProps) {
   const { t } = useTranslation("gate");
   const [step, setStep] = useState<Step>(0);
+  const [view, setView] = useState<"intro" | "login">("intro");
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const formStartedAtRef = useRef<number>(Date.now());
@@ -138,6 +139,7 @@ export function OnboardingModal({
     succeededRef.current = false;
     formStartedAtRef.current = Date.now();
     setStep(0);
+    setView("intro");
     setServerError(null);
     trackOnboardingEvent({
       event_type: "onboarding_step_view",
@@ -329,12 +331,32 @@ export function OnboardingModal({
         className="w-[calc(100vw-2rem)] sm:max-w-[760px] max-h-[92vh] overflow-x-hidden overflow-y-auto p-0 gap-0 border-border-default/60"
         data-testid="onboarding-modal"
       >
-        {step === 0 ? (
+        {step === 0 && view === "login" ? (
+          <LoginStepBody
+            handle={handle}
+            onBackToIntro={() => {
+              setView("intro");
+              trackOnboardingEvent({
+                event_type: "onboarding_step_view",
+                step: 0,
+                handle,
+              });
+            }}
+          />
+        ) : step === 0 ? (
           <IntroStepBody
             handle={handle}
             onContinue={() => {
               setStep(1);
               fireStepView(1);
+            }}
+            onSignIn={() => {
+              setView("login");
+              trackOnboardingEvent({
+                event_type: "onboarding_step_view",
+                step: 0,
+                handle,
+              });
             }}
           />
         ) : (
