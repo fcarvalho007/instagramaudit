@@ -26,7 +26,7 @@ import {
   getMarketStudyBlocks,
   getMarketStudyModal,
   getPricingInterest,
-} from "@/server/admin/market-study.functions";
+} from "@/lib/admin/market-study.functions";
 
 type WindowDays = 7 | 30 | 90;
 

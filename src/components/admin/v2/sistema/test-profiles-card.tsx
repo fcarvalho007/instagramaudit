@@ -11,7 +11,7 @@ import {
   getExecutionMode,
   setExecutionMode,
   type TestProfileStatus,
-} from "@/server/admin/execution-mode.functions";
+} from "@/lib/admin/execution-mode.functions";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ExternalLink, RefreshCw, Clock, Plus, DollarSign, Zap, CheckCircle2, XCircle, AlertTriangle, Lock, Database } from "lucide-react";

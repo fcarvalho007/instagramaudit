@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
-import { expireSnapshotForHandle } from "@/server/admin/execution-mode.functions";
+import { expireSnapshotForHandle } from "@/lib/admin/execution-mode.functions";
 import {
   AlertDialog,
   AlertDialogAction,
