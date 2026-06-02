@@ -259,14 +259,14 @@ function KpiTile({
             size={11}
             className={
               tone === "danger"
-                ? "text-admin-expense-600"
+                ? "text-admin-expense-500"
                 : "text-admin-text-tertiary"
             }
           />
         )}
         <span
           className={`text-[10px] font-semibold uppercase tracking-wider ${
-            tone === "danger" ? "text-admin-expense-600" : "text-admin-text-tertiary"
+            tone === "danger" ? "text-admin-expense-500" : "text-admin-text-tertiary"
           }`}
         >
           {label}
@@ -603,7 +603,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                 }}
               >
                 <div className="flex items-start gap-2.5 min-w-0">
-                  <Lightbulb size={16} className="text-admin-info-600 shrink-0 mt-0.5" />
+                  <Lightbulb size={16} className="text-admin-info-500 shrink-0 mt-0.5" />
                   <div className="min-w-0">
                     <p className="admin-eyebrow mb-0.5 text-admin-info-700">Próximo passo</p>
                     <p className="admin-body text-admin-text-primary font-medium m-0">
@@ -615,7 +615,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                   <Button
                     size="sm"
                     onClick={nextStepCta.onClick}
-                    className="shrink-0 bg-admin-info-600 hover:bg-admin-info-700 text-white"
+                    className="shrink-0 bg-admin-info-500 hover:bg-admin-info-700 text-white"
                   >
                     {nextStepCta.label}
                   </Button>
