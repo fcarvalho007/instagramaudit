@@ -137,6 +137,21 @@ export function CostSummaryCard() {
                 : "—"}
             </span>
           </div>
+
+          <div className="mt-3 flex items-baseline justify-between gap-3 text-[12px] text-admin-text-tertiary">
+            <span>
+              Total plataforma{" "}
+              <span className="font-mono tabular-nums text-admin-text-secondary">
+                ${data.cost_total_30d.toFixed(2)}
+              </span>
+            </span>
+            <span title="Chamadas ligadas a análises públicas (exclui lab e órfãs)">
+              Atribuído a público{" "}
+              <span className="font-mono tabular-nums text-admin-text-secondary">
+                ${data.cost_public_30d.toFixed(2)}
+              </span>
+            </span>
+          </div>
         </>
       )}
     </AdminCard>
