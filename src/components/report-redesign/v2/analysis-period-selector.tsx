@@ -61,14 +61,6 @@ export function AnalysisPeriodSelector({
     });
   };
 
-  const compactSummary = t(
-    observedDays === 1 ? "selector.compact_summary_one" : "selector.compact_summary",
-    {
-      sample: t("selector.active_sample", { count: sampleSize }),
-      days: observedDays,
-    },
-  );
-
   return (
     <section
       aria-label={t("selector.eyebrow")}
