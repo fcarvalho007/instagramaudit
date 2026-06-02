@@ -120,21 +120,17 @@
       "headline": "O que demora uma tarde, em segundos.",
       "manual": {
         "label": "À mão",
-        "items": [
-          "Abrir o perfil e contar gostos um a um",
-          "Calcular taxas em folhas de cálculo",
-          "Sem referência do escalão",
-          "Interpretação subjetiva"
-        ]
+        "item1": "Abrir o perfil e contar gostos um a um",
+        "item2": "Calcular taxas em folhas de cálculo",
+        "item3": "Sem referência do escalão",
+        "item4": "Interpretação subjetiva"
       },
       "tool": {
         "label": "AuditProfiles",
-        "items": [
-          "Um username, relatório em segundos",
-          "Métricas calculadas automaticamente",
-          "Benchmark face ao escalão certo",
-          "Leitura editorial profissional"
-        ]
+        "item1": "Um username, relatório em segundos",
+        "item2": "Métricas calculadas automaticamente",
+        "item3": "Benchmark face ao escalão certo",
+        "item4": "Leitura editorial profissional"
       }
     },
     "preview": {
@@ -152,11 +148,11 @@
         "formatHint": "62% do mix",
         "competitorsLabel": "Comparação com concorrentes"
       },
-      "subhighlights": [
-        { "title": "Métricas acionáveis", "hint": "o que importa, nada que distrai" },
-        { "title": "Comparação imediata", "hint": "face ao escalão e concorrentes" },
-        { "title": "Leitura editorial", "hint": "insights gerados por IA" }
-      ]
+      "sub": {
+        "data": { "title": "Métricas acionáveis", "hint": "o que importa, nada que distrai" },
+        "benchmark": { "title": "Comparação imediata", "hint": "face ao escalão e concorrentes" },
+        "ai": { "title": "Leitura editorial", "hint": "insights gerados por IA" }
+      }
     },
     "how": {
       "eyebrow": "Como funciona",
