@@ -1,51 +1,68 @@
-## Critical bug found during QA
+## Objetivo
 
-The hero H1 and subtitle render with `opacity-0` and never animate in. The DOM contains the text but `BlurRevealText`'s `mounted` state never visually flips (no hydration error, no console log — likely an SSR/hydration timing edge case where the SSR `opacity-0` markup persists). Result on both 390×844 and 1440×900: ~400px of empty dark space between the eyebrow and the input. Headline is the page's most important element — must be fixed before any other polish.
+Três ajustes visuais ao relatório em `/analyse/$username`, sem alterar lógica, dados ou rotas.
 
-## Scope
+## (a) Remover card de feedback duplicado dos emojis
 
-Visual/UI only. No onboarding, report, credits, pricing, tracking, or backend touched. Targeted fix + small follow-up polish.
+Existem dois widgets de feedback no relatório:
+- `BlockFeedback` — card grande com título "Uma breve pausa para te ouvirmos" + 5 emojis (após o Bloco 1, só visível com `unlocked`).
+- `EndFeedbackStrip` — variante compacta no fim, dentro do `ReportEndOfFreeBlock`.
 
-## Fixes
+São redundantes. Manter apenas o do fim.
 
-### Fix 1 — Make `BlurRevealText` SSR-visible (critical)
-`src/components/landing/blur-reveal-text.tsx`
-- Initialize `mounted` as `true` (was `false`) so SSR + first client paint render text immediately at `opacity-100`.
-- Replace the mount-flip animation with a CSS-only entrance: spans use `animate-[heroReveal_700ms_ease-out_both]` with per-word `animationDelay: ${baseDelay + i * stagger}ms`. The keyframe goes from `opacity:0 / blur(8px) / translateY(8px)` → `opacity:1 / blur(0) / translateY(0)`. If the keyframe is somehow not applied (CSS not yet parsed), the end state is the visible default, so text is never hidden.
-- Keep `highlightTailWords` / `highlightClassName` props unchanged.
-- Add `@keyframes heroReveal` to `src/styles.css` (or scope inline via the `style` attribute on the span — simpler, no global CSS needed). Choice: inline `animation` with a single shared keyframe added once to `src/styles.css`.
+**Mudança**:
+- `src/components/report-redesign/v2/report-shell-v2.tsx`
+  - Remover o bloco JSX entre as linhas 283–291 (`BlockFeedback` + wrapper `<div className="mt-6 md:mt-8 mb-2">`).
+  - Remover o import na linha 47 (`BlockFeedback`).
+- Deixar `block-feedback.tsx` em disco (não tocar — pode ainda ser usado por outros pontos futuros; só desativar uso). Se grep confirmar zero usos restantes, removo também o ficheiro.
 
-### Fix 2 — Header right-side empty skeleton (high)
-`src/components/layout/header.tsx`
-- The `loading` branch renders a permanent grey rectangle when `useAuthSession()` stays in `loading` on the public homepage. Render `null` instead of the skeleton when `loading` AND the user is on a public marketing route, OR simply collapse the skeleton to `display: none` after 1s if still loading. Simpler: render the unauthenticated CTA (`Entrar`) immediately and let it swap to "A minha conta" if a session resolves. Avoids a stuck skeleton between the language switcher and the primary CTA.
+## (b) Ampliar thumbnails no card "Formato"
 
-### Fix 3 — Mobile spacing tightening (medium)
-`src/components/landing/hero-section.tsx`
-- Reduce mobile top padding: `py-10 md:py-24 lg:py-28` (was `py-12`). Once H1 is visible, the column reads naturally without extra cushion above.
-- Reduce grid gap on mobile: `gap-8 lg:gap-12` (was `gap-10`).
+O card "Frequência" ao lado tem muito mais peso visual (calendário 7×6). O grid de thumbnails no `FormatCard` é `repeat(min(N,6), 1fr)` com `aspect-ratio 3/4` → resulta em miniaturas pequenas em 2 linhas de 6.
 
-### Fix 4 — Preview card mobile balance (low)
-`src/components/landing/hero-report-preview.tsx`
-- Tighten internal padding on mobile: `px-4 sm:px-5` on the score / KPI / locked-row blocks (was `px-5`). Reduces visual heaviness on 360px.
-- Slightly shrink the score number on mobile: `text-2xl sm:text-3xl` (was `text-3xl`) so the card doesn't dominate the fold once H1 returns.
+**Mudança** em `src/components/report-redesign/v2/overview/format-card.tsx` (linhas ~326–366):
+- Trocar grid para `repeat(min(N,4), 1fr)` → 4 colunas, 3 linhas para 12 posts; mais "presença".
+- Aumentar `gap` de `gap-1` → `gap-2`.
+- Manter `aspect-ratio 3/4` (formato vertical IG), mas como a célula passa a ser maior, as thumbs ficam visualmente maiores.
+- Aumentar o dot indicador de formato de `size-[6px]` → `size-2` e o ícone fallback de `size-3.5` → `size-5` para acompanhar a escala.
 
-## Out of scope
+Sem alterações em copy, legenda ou lógica de ordenação.
 
-- `HeroActionBar` internals, onboarding modal, `useAuthSession` hook itself (only its consumption in Header), trust bullets copy, other landing sections.
+## (c) Redesenhar marcadores "melhor" e "pior" do scatter
 
-## Validation
+Atual (em `report-post-comparison.tsx`, função `ExtremeMarker` ~650–719):
+- "melhor": aura azul + ★ por cima
+- "pior": aura âmbar/ouro + ▾ por baixo
+- Texto da label em 9px, cor igual ao ponto, parece desalinhado e pesado
 
-- `bunx tsc --noEmit`
-- Re-screenshot at 360×800, 390×844, 1440×900 and confirm:
-  - H1 visible immediately, "em segundos." cyan
-  - Subtitle visible and AA-legible
-  - No stuck skeleton in header
-  - Preview card sits below CTA with comfortable spacing
-  - 3 frosted locked rows, empty browser bar, no footer sentence
+**Mudança**:
+- Substituir os símbolos unicode (★, ▾) por ícones `lucide-react`:
+  - melhor → `TrendingUp` (ou `Sparkles`), cor `--accent-primary` (#0077B6 / ocean)
+  - pior → `TrendingDown`, cor `--signal-warning` semântica mas suavizada (usar `--content-tertiary` para o âmbar ficar discreto, mantendo o azul como protagonista único — alinha com a paleta Ocean Breeze)
+- Renderizar o ícone via `<foreignObject>` no SVG (12×12px) num pequeno "chip" arredondado:
+  - chip: `rounded-full` branco com `border` ténue da cor do tom, `shadow-sm`, padding 3px
+  - posicionado a `cy ± 18` (acima para best, abaixo para worst)
+- Label "melhor"/"pior" passa a ser uma pill em Inter 10px SemiBold uppercase tracking-wide, cor do tom, fundo `rgba(white, 0.85)` com border-1 do tom — visualmente mais "etiqueta editorial", menos texto solto.
+- Aumentar o ponto principal de `r=5` para `r=6` e reduzir opacidade da aura para 0.14 (mais clean).
 
-## Deliverables
+Resultado: marcadores parecem badges premium em vez de símbolos ASCII; mantém legibilidade e hierarquia clara (best > worst).
 
-- Issues found (bullet list, severity)
-- Fixes applied (file map)
-- Final visual assessment per viewport (mobile 360 / 390, desktop 1440)
-- Non-blocking follow-ups (e.g. consider replacing per-word stagger with a single reveal once we confirm motion preferences)
+## Fora de âmbito
+
+- Onboarding, report logic, credits, pricing, tracking, DB, rotas — intactos.
+- Copy: zero alterações (mesmas chaves i18n `posts.scatter.best_marker` / `worst_marker`).
+- `BlockFeedback` lógica de submissão não é tocada — só deixa de ser renderizado.
+
+## Validação
+
+1. `bunx tsc --noEmit`
+2. `rg "BlockFeedback" src/` → confirmar zero referências (ou só o ficheiro autocontido).
+3. QA visual no preview em `/analyse/frederico.m.carvalho` (desktop 1440 + mobile 390).
+
+## Checkpoint
+
+- ☐ `BlockFeedback` removido do shell, sem regressões
+- ☐ Grid de thumbnails em 4 colunas, miniaturas visivelmente maiores
+- ☐ Marcadores melhor/pior com ícones lucide + pill label, sem ★/▾
+- ☐ `tsc` limpo
+- ☐ Sem alterações em rotas, dados, copy ou backend
