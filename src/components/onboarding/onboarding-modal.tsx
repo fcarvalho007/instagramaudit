@@ -91,6 +91,7 @@ interface OnboardingApiFail {
   ok: false;
   error_code: string;
   message: string;
+  issues?: { field: string; code: string }[];
 }
 type OnboardingApiResponse = OnboardingApiOk | OnboardingApiFail;
 
