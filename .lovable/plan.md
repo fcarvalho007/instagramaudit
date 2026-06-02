@@ -1,121 +1,76 @@
-## Diagnóstico
+## Smoke test — idempotência de créditos (fresh lead)
 
-Abri a ficha de cliente (`src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`) e cruzei com os valores reais na BD e o modal de onboarding. Encontrei 4 problemas reais:
+Este teste **escreve na base de dados** (cria lead novo, invoca Apify/OpenAI, grava ledger). Por isso preciso de mudar para build mode para o correr. Sem alterações de código.
 
-### 1. Erro "Rendered fewer hooks than expected" — bug de ordem de hooks
+### Pré-flight (read-only — posso fazer já se quiseres)
 
-`LeadDetailSheet` faz `if (!lead) return null` na **linha 658**, mas chama `useMemo(nextStepCta)` na **linha 727**, depois do early-return. Quando o sheet abre/fecha (ou troca de lead), o React vê um número diferente de hooks entre renders → exactamente o erro reportado.
+- `select count(*) from leads` e `select max(created_at) from leads` para ter baseline.
+- Confirmar índice único `credit_ledger(lead_id, cache_key) WHERE reason='reserve'` existe (`pg_indexes`).
 
-**Fix:** mover o `useMemo` para **antes** do `if (!lead) return null` e lidar com `lead` possivelmente nulo dentro do callback (devolver `null` se for o caso). Sem isto o "Try again" só funciona porque o ErrorBoundary descarta e remonta — o bug volta sempre.
+### Execução (browser automation)
 
-### 2. Dados inventados que não vêm do modal (rótulos out-of-sync)
+1. `navigate_to_sandbox` → abrir homepage limpa (sessão browser nova → cookies/sessionStorage vazios por defeito).
+2. `observe` para localizar o input do handle.
+3. `act` → escrever `frederico.m.carvalho` e submeter.
+4. Completar os 3 passos do modal de onboarding (nome + email único de teste tipo `smoke+{ts}@auditprofiles.com`, relação, objetivo, consentimentos).
+5. `list_network_requests` durante e após o flow para capturar:
+   - `POST /api/onboarding/start` (status, payload)
+   - cookie `lead_session` (via response headers)
+   - `POST /api/analyze-public-v1` — **contar chamadas** e validar todas as respostas
+6. Aguardar o relatório renderizar (screenshot final).
+7. **Recarregar a página do relatório** (`navigate_to_url` para o mesmo URL) e capturar novamente as chamadas a `/api/analyze-public-v1` — deve devolver duplicate sem consumir crédito.
 
-`src/lib/admin/lead-context-labels.ts` está dessincronizado com os valores que o modal de onboarding grava em `leads`. Cruzei com a BD:
+### Validação (SQL read-only após o flow)
 
-| Campo | Valores reais na BD | Mapeados em PT? | O que aparece hoje |
-|---|---|---|---|
-| `profile_ownership` | `own_profile`, `brand_profile`, `client_profile`, `curiosity` | só os 2 primeiros (e parcialmente) | `brand_profile` → **"Brand profile"** (humanização) |
-| `purpose` | `improve_content`, `grow_audience`, `validate_brand` | só `improve_content` e `grow_audience` | `validate_brand` → **"Validate brand"** (em inglês) |
-| `source` | `public_report_unlock` (todos os 8 leads) | ❌ não mapeado | **"Public report unlock"** (em inglês) |
+```sql
+-- Identifica o lead criado neste smoke
+SELECT id, email, handle_or_username_field, created_at
+FROM leads
+WHERE email LIKE 'smoke+%@auditprofiles.com'
+ORDER BY created_at DESC LIMIT 1;
 
-Já existem rótulos em PT bonitos em `src/i18n/locales/pt/gate.json` (linhas 107-118) — usados pelo modal que o lead vê — mas estão duplicados/divergentes do que admin mostra. Solução: alinhar `lead-context-labels.ts` com os mesmos valores PT que o modal usa, cobrindo **todos** os valores do enum + o `competitor_research`/`benchmark_competitors` em falta.
+-- Ledger completo desse lead
+SELECT reason, delta, cache_key, created_at, metadata
+FROM credit_ledger
+WHERE lead_id = $1
+ORDER BY created_at;
 
-### 3. "Intenção" misturada com dados que o lead preencheu
+-- Saldo final
+SELECT credit_balance($1);
 
-No grid "Contexto do lead", o campo **Intenção: Baixo — sem relatório** está visualmente igual aos campos que vêm do modal (Relação/Objetivo/Origem). Mas é heurística derivada (`deriveIntentSignal`), não input do utilizador. Isto cria a percepção de "dado inventado" exactamente como o user reclama.
-
-**Fix:** ou tirar do grid e mover para o callout do "Próximo passo" (onde o sinal pertence), ou marcar visualmente como derivado (badge "automático" + cor mais subtil). Proposta: mover, porque já temos o "Próximo passo" mesmo acima — fica naturalmente como contexto da sugestão.
-
-### 4. Tabs com pouca legibilidade
-
-Tabs actuais usam `text-admin-text-tertiary` (cinzento muito apagado) e só ganham cor quando activos. O user pede mais clareza/destaque.
-
-**Fix:** subir contraste — inactivos para `text-secondary` (legível), activo para `text-primary` com **font-semibold** + underline accent já existente. Espaçamento entre tabs sobe ligeiramente para respirar.
-
----
-
-## Plano de execução
-
-### Ficheiro 1 — `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`
-
-**A. Corrigir ordem de hooks (bug crítico)**
-
-Mover `useMemo(nextStepCta)` para imediatamente antes de `if (!lead) return null`. Dentro do callback, devolver `null` se `!lead`. Manter as dependências como estão.
-
-**B. Tabs com mais clareza**
-
-No `TabsTrigger` (linha 842), trocar:
-
-```text
-text-admin-text-tertiary
-hover:text-admin-text-secondary
-data-[state=active]:text-admin-text-primary
+-- Associação lead_reports
+SELECT id, cache_key, handle, created_at
+FROM lead_reports
+WHERE lead_id = $1;
 ```
 
-por:
+### Output a produzir
 
-```text
-text-admin-text-secondary font-medium
-hover:text-admin-text-primary
-data-[state=active]:text-admin-text-primary
-data-[state=active]:font-semibold
-```
+1. **Tabela de sequência de pedidos** — método, path, status, ts, duração, marca de duplicate.
+2. **Tabela do credit_ledger** — reason / delta / cache_key / created_at.
+3. **Saldo final** (esperado: 1).
+4. **Duplicates observados?** sim/não; **consumiram crédito?** sim/não.
+5. **Verificação de error codes ausentes**: `ONBOARDING_REQUIRED`, `ONBOARDING_SESSION_LOST`, `INSUFFICIENT_CREDITS`.
+6. **Veredicto final**: **READY** / **BLOCKED** com razão.
 
-E aumentar gap do `TabsList` de `gap-6` para `gap-7` (respiração).
+### Critérios de aprovação
 
-**C. Tirar "Intenção" do grid de contexto**
+- Exactamente 1× `initial_grant +2`, 1× `reserve -1`, 1× `confirm 0`, saldo = 1.
+- Exactamente 1 linha em `lead_reports` para o (lead_id, cache_key).
+- Recarregar o relatório → zero novas linhas no ledger, saldo continua 1.
+- Sem nenhum dos 3 error codes acima nos logs do servidor.
+- Todas as respostas HTTP 200 (incluindo as duplicate que devem responder com payload `{ kind: "duplicate" }` mas status 200).
 
-No grid "Contexto do lead" (linhas 878-899), remover o 4º `ContextField` (Intenção). A intenção continua exposta no callout "Próximo passo" + na vista de Feedback. Grid passa a 3 campos honestos: Relação · Objetivo · Origem (todos do modal).
+### Notas
 
-### Ficheiro 2 — `src/lib/admin/lead-context-labels.ts`
-
-Alinhar com o que o modal de onboarding grava hoje e com os PT-PT do `gate.json`. Adicionar todos os valores em falta:
-
-```ts
-PROFILE_OWNERSHIP_LABELS:
-  own_profile        → "É o meu perfil pessoal"
-  brand_profile      → "É o perfil da minha marca"      // NOVO
-  client_profile     → "É o perfil de um cliente"
-  competitor_research→ "Estou a observar concorrência"   // NOVO
-  curiosity          → "Estou só a explorar"             // NOVO
-
-PURPOSE_LABELS:
-  improve_content       → "Melhorar o conteúdo"          // alinhar
-  benchmark_competitors → "Comparar com concorrentes"    // NOVO
-  grow_audience         → "Crescer a audiência"          // alinhar
-  validate_brand        → "Validar a presença da marca"  // NOVO
-  client_report         → "Preparar análise para cliente" // NOVO (modal)
-
-SOURCE_LABELS:
-  public_report_unlock  → "Desbloqueio de relatório público"  // NOVO
-  public_report_gate    → "Gate de relatório público"          // NOVO (default da tabela)
-```
-
-Manter alias antigos por compatibilidade (own, mine, etc.) sem alterar comportamento, mas adicionar comment explicando que os valores canónicos vêm do modal.
-
-### Sem migração
-
-A correcção é só de UI + tradução de rótulos. Os dados na BD estão correctos.
-
-### Verificação
-
-```bash
-bunx tsc --noEmit
-bun vitest run src/components/admin/v2/beta-leads/__tests__/
-```
-
-Smoke manual:
-- Abrir kanban → clicar num card de lead → ficha abre **sem erro de hooks**
-- Fechar → reabrir → continuar sem erro
-- Trocar entre leads → sem erro
-- Confirmar que Relação/Objetivo/Origem aparecem em PT-PT (sem "Brand profile" nem "Public report unlock")
-- Confirmar que tabs "Resumo / Relatórios / Feedback / Histórico" estão legíveis em estado inactivo
+- O lead vai ficar na BD em `commercial_status='novo_pedido'` (não rollback). Posso arquivar no fim, se quiseres — só requer 1 UPDATE.
+- O run real do Apify para `frederico.m.carvalho` deve estar em cache (foi analisado várias vezes), por isso o custo extra deve ser **$0** (cache hit). Confirmo isso na sequência de pedidos via `data_source` em `analysis_events`.
+- Se o browser sandbox falhar a arrancar (capacidade), reporto e não retento.
 
 ## Checkpoint
 
-- ☐ Hook order corrigido — erro "Rendered fewer hooks than expected" desaparece
-- ☐ Rótulos de Relação/Objetivo/Origem em PT-PT, alinhados com os do modal
-- ☐ Tabs com contraste suficiente quando inactivas + activa com peso e cor
-- ☐ Grid "Contexto do lead" reduzido a 3 campos honestos (todos do modal); "Intenção" derivada deixa de se passar por input do lead
-- ☐ `bunx tsc --noEmit` e vitest de beta-leads limpos
-- ☐ Nenhuma alteração na BD nem nas APIs
+- ☐ Aprovação para mudar para build mode (escreve em BD via flow real)
+- ☐ Baseline capturada (counts pré-test)
+- ☐ Flow completo até relatório renderizado
+- ☐ Reload do relatório verifica idempotência
+- ☐ Tabelas + veredicto READY/BLOCKED entregues no fim
