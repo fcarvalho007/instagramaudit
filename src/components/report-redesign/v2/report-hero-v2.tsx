@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Download, Loader2 } from "lucide-react";
+import { Check, Download, Loader2, Share2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type {
@@ -47,8 +47,8 @@ export function ReportHeroV2({
 
   const followers = profile.followers ?? 0;
   const postsCount = profile.postsCount ?? 0;
-  const postsAnalyzed = profile.postsAnalyzed ?? 0;
   const tierLabel = followers > 0 ? getTierLabel(getTierForFollowers(followers)) : null;
+  const tierBadge = tierLabel ? `${t("hero.tier_label_prefix")} · ${tierLabel}` : null;
 
   return (
     <section
@@ -67,16 +67,15 @@ export function ReportHeroV2({
           <span className="font-display text-[13px] sm:text-[15px] font-semibold text-content-primary tracking-tight truncate leading-tight">
             {handleWrappable}
           </span>
-          {tierLabel && (
+          {tierBadge && (
             <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full bg-surface-muted text-[11px] font-medium text-content-secondary border border-border-default whitespace-nowrap">
-              {tierLabel}
+              {tierBadge}
             </span>
           )}
         </div>
         <CompactMetricLine
           followers={followers}
           postsCount={postsCount}
-          postsAnalyzed={postsAnalyzed}
           language={language}
           t={t}
         />
@@ -107,15 +106,21 @@ export function ReportHeroV2({
         </button>
         <ShareReportPopover
           result={result}
-          variant="ghost"
-          triggerLabel=""
-          aria-label={t("hero.actions.share")}
-          className={cn(
-            "inline-flex items-center justify-center size-7 sm:size-9 rounded-lg",
-            "border border-border-default bg-white text-content-secondary",
-            "transition-colors duration-150",
-            "hover:bg-surface-muted hover:border-border-strong hover:text-content-primary",
-          )}
+          customTrigger={
+            <button
+              type="button"
+              aria-label={t("hero.actions.share")}
+              title={t("hero.actions.share")}
+              className={cn(
+                "inline-flex items-center justify-center size-7 sm:size-9 rounded-lg",
+                "border border-border-default bg-white text-content-secondary",
+                "transition-colors duration-150",
+                "hover:bg-surface-muted hover:border-border-strong hover:text-content-primary",
+              )}
+            >
+              <Share2 className="size-3 sm:size-4" aria-hidden="true" />
+            </button>
+          }
         />
       </div>
     </section>
@@ -129,13 +134,11 @@ export function ReportHeroV2({
 function CompactMetricLine({
   followers,
   postsCount,
-  postsAnalyzed,
   language,
   t,
 }: {
   followers: number;
   postsCount: number;
-  postsAnalyzed: number;
   language: "pt" | "en";
   t: (k: string, opts?: Record<string, unknown>) => string;
 }) {
@@ -151,12 +154,6 @@ function CompactMetricLine({
     parts.push({
       value: fmt(postsCount),
       label: t(postsCount === 1 ? "hero.metric_posts_one" : "hero.metric_posts"),
-    });
-  }
-  if (postsAnalyzed > 0) {
-    parts.push({
-      value: String(postsAnalyzed),
-      label: t(postsAnalyzed === 1 ? "hero.metric_analyzed_one" : "hero.metric_analyzed"),
     });
   }
   if (parts.length === 0) return null;
