@@ -8,19 +8,10 @@ export function MiniFooterStrip() {
   const { t } = useTranslation("landing");
   const { contactEmail } = usePublicAppConfig();
 
-  const links = [
-    { label: t("dark.miniFooter.pricing"), href: "/precos", internal: true },
-    {
-      label: t("dark.miniFooter.privacy"),
-      href: "/privacidade",
-      internal: true,
-    },
-    { label: t("dark.miniFooter.terms"), href: "/termos", internal: true },
-    {
-      label: t("dark.miniFooter.contact"),
-      href: `mailto:${contactEmail}`,
-      internal: false,
-    },
+  const internalLinks = [
+    { label: t("dark.miniFooter.pricing"), to: "/precos" as const },
+    { label: t("dark.miniFooter.privacy"), to: "/privacidade" as const },
+    { label: t("dark.miniFooter.terms"), to: "/termos" as const },
   ];
 
   return (
@@ -45,29 +36,26 @@ export function MiniFooterStrip() {
         </div>
       </div>
       <ul className="flex flex-wrap gap-x-5 gap-y-2">
-        {links.map((link) =>
-          link.internal ? (
-            <li key={link.href}>
-              <Link
-                to={link.href}
-                className="text-xs transition-colors hover:opacity-80"
-                style={{ color: "rgb(var(--hero-text-secondary))" }}
-              >
-                {link.label}
-              </Link>
-            </li>
-          ) : (
-            <li key={link.href}>
-              <a
-                href={link.href}
-                className="text-xs transition-colors hover:opacity-80"
-                style={{ color: "rgb(var(--hero-text-secondary))" }}
-              >
-                {link.label}
-              </a>
-            </li>
-          ),
-        )}
+        {internalLinks.map((link) => (
+          <li key={link.to}>
+            <Link
+              to={link.to}
+              className="text-xs transition-colors hover:opacity-80"
+              style={{ color: "rgb(var(--hero-text-secondary))" }}
+            >
+              {link.label}
+            </Link>
+          </li>
+        ))}
+        <li>
+          <a
+            href={`mailto:${contactEmail}`}
+            className="text-xs transition-colors hover:opacity-80"
+            style={{ color: "rgb(var(--hero-text-secondary))" }}
+          >
+            {t("dark.miniFooter.contact")}
+          </a>
+        </li>
       </ul>
     </div>
   );
