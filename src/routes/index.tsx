@@ -36,6 +36,14 @@ function Home() {
   return (
     <>
       <HeroSection />
+      <div
+        aria-hidden="true"
+        className="h-4 w-full"
+        style={{
+          background:
+            "linear-gradient(180deg, #060A18 0%, rgb(var(--surface-base)) 100%)",
+        }}
+      />
       <SocialProofSection />
       <div id="como-funciona" style={{ scrollMarginTop: "5rem" }}>
         <HowItWorksSection />
