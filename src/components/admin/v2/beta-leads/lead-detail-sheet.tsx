@@ -15,11 +15,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   Tabs,
   TabsList,
@@ -29,6 +29,8 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
+  SelectLabel,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -65,7 +67,7 @@ import {
   ChevronDown,
   MessageCircle,
 } from "lucide-react";
-import { Zap } from "lucide-react";
+import { Zap, Flame, Repeat, Wallet, FileBarChart, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
 import {
   KANBAN_COLUMNS,
@@ -88,6 +90,11 @@ import {
 } from "@/lib/email/templates";
 import { CommercialFollowupDialog } from "./commercial-followup-dialog";
 import { adminFetch } from "@/lib/admin/fetch";
+import {
+  labelProfileOwnership,
+  labelPurpose,
+  labelSource,
+} from "@/lib/admin/lead-context-labels";
 
 // ── Types ────────────────────────────────────────────────────────
 
