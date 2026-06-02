@@ -11,15 +11,15 @@ export function HeroSection() {
   const { t } = useTranslation("landing");
   return (
     <section
-      className="hero-dark relative min-h-[calc(100dvh-4rem)] w-full overflow-hidden flex items-center"
+      className="hero-dark relative w-full overflow-hidden flex items-center lg:min-h-[calc(100dvh-4rem)]"
       aria-label={t("hero.headline")}
     >
       <HeroAuroraBackground />
 
-      <Container size="lg" className="relative z-10 py-16 md:py-24 lg:py-28">
+      <Container size="lg" className="relative z-10 py-12 md:py-24 lg:py-28">
         <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-10 lg:gap-12 items-center">
           {/* Left — copy + action */}
-          <div className="space-y-6 md:space-y-7 text-center lg:text-left">
+          <div className="space-y-5 md:space-y-7 text-center lg:text-left">
             {/* Eyebrow */}
             <div className="flex justify-center lg:justify-start">
               <span
@@ -38,14 +38,16 @@ export function HeroSection() {
             <BlurRevealText
               text={t("hero.headline")}
               as="h1"
-              className="font-display text-4xl md:text-5xl lg:text-6xl tracking-tight font-medium leading-[1.05] text-balance"
+              className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl tracking-tight font-medium leading-[1.08] text-balance max-w-[22ch] mx-auto lg:mx-0"
               delayMs={150}
+              highlightTailWords={2}
+              highlightClassName="text-[var(--hero-cyan)]"
             />
 
             <BlurRevealText
               text={t("hero.subtitle")}
               as="p"
-              className="font-sans text-base md:text-lg leading-relaxed max-w-xl mx-auto lg:mx-0"
+              className="font-sans text-base md:text-lg leading-relaxed max-w-xl mx-auto lg:mx-0 text-[var(--hero-fg-muted)]"
               delayMs={500}
             />
 
