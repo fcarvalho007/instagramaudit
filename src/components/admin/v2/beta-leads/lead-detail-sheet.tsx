@@ -2102,7 +2102,7 @@ export function buildLeadHistoryEntries(
             : "via desbloqueio direto",
         timestamp: ev.created_at,
         style: "filled",
-        color: "rgb(55,114,229)",
+        color: "rgb(var(--admin-info-500))",
       });
     } else if (t === "report_generated") {
       entries.push({
@@ -2111,7 +2111,7 @@ export function buildLeadHistoryEntries(
         meta: lead.credits_granted > 0 ? "1 crédito usado" : null,
         timestamp: ev.created_at,
         style: "filled",
-        color: "rgb(5,150,105)",
+        color: "rgb(var(--admin-revenue-500))",
       });
     } else if (t === "report_link_sent") {
       entries.push({
@@ -2131,7 +2131,7 @@ export function buildLeadHistoryEntries(
         meta: null,
         timestamp: ev.created_at,
         style: "filled",
-        color: "rgb(118,100,228)",
+        color: "rgb(var(--admin-leads-500))",
       });
     } else if (t === "feedback_requested") {
       entries.push({
@@ -2148,7 +2148,7 @@ export function buildLeadHistoryEntries(
         meta: null,
         timestamp: ev.created_at,
         style: "filled",
-        color: "rgb(186,117,23)",
+        color: "rgb(var(--admin-expense-500))",
       });
     } else if (t === "commercial_followup_sent") {
       entries.push({
