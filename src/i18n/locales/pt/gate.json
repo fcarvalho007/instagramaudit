@@ -229,14 +229,14 @@
       "profileOwnership": {
         "own_profile": "É meu",
         "client_profile": "De um cliente",
-        "brand_profile": "Da minha marca",
+        "brand_profile": "Minha marca",
         "competitor_research": "Concorrente"
       },
       "goal": {
-        "improve_content": "Melhorar conteúdo",
-        "benchmark_competitors": "Comparar concorrentes",
-        "grow_audience": "Crescer audiência",
-        "validate_brand": "Validar a marca"
+        "improve_content": "Conteúdo",
+        "benchmark_competitors": "Concorrentes",
+        "grow_audience": "Audiência",
+        "validate_brand": "Validar"
       }
     },
     "cta": {
