@@ -206,23 +206,29 @@ export function ReportShellV2({
       >
         {/* Hero v2 (full-bleed, fora dos 6 blocos) */}
         <section className="bg-surface-base">
-          <ReportHeroV2
-            result={result}
-            actions={actions}
-            analyzedAtIso={analyzedAtIso ?? null}
-            expiresAtIso={expiresAtIso ?? null}
-          />
-          {/* Analysis period selector (read-only premium teaser).
-              Sits between the hero and the blocks so the temporal window
-              is framed as a global report-level config, not as a metric
-              inside a block. Does NOT mutate report data. */}
-          <AnalysisPeriodSelector
-            sampleSize={result.data.profile.postsAnalyzed ?? 0}
-            observedDays={result.coverage.windowDays ?? 0}
-            snapshotId={snapshotId ?? null}
-            handle={result.data.profile.username ?? null}
-            variant={variant}
-          />
+          {/* Top bar: identity + actions à esquerda, selector de período
+              à direita (desktop). Em mobile/tablet, empilhado. */}
+          <div className="w-full px-3 sm:px-6 pt-1.5 pb-1.5 sm:pt-3 sm:pb-4">
+            <div className="mx-auto max-w-[1520px]">
+              <div className="flex flex-col lg:flex-row lg:items-stretch gap-2 sm:gap-3">
+                <ReportHeroV2
+                  result={result}
+                  actions={actions}
+                  analyzedAtIso={analyzedAtIso ?? null}
+                  expiresAtIso={expiresAtIso ?? null}
+                />
+                {/* Analysis period selector (read-only premium teaser).
+                    Read-only; does NOT mutate report data. */}
+                <AnalysisPeriodSelector
+                  sampleSize={result.data.profile.postsAnalyzed ?? 0}
+                  observedDays={result.coverage.windowDays ?? 0}
+                  snapshotId={snapshotId ?? null}
+                  handle={result.data.profile.username ?? null}
+                  variant={variant}
+                />
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* Tabs mobile sticky abaixo do hero */}

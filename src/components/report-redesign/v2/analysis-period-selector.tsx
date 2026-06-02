@@ -19,6 +19,7 @@ interface AnalysisPeriodSelectorProps {
   snapshotId?: string | null;
   handle?: string | null;
   variant?: string;
+  className?: string;
 }
 
 const PREMIUM_WINDOWS = [30, 60, 90, 365] as const;
@@ -38,6 +39,7 @@ const PREMIUM_WINDOWS = [30, 60, 90, 365] as const;
 export function AnalysisPeriodSelector({
   sampleSize,
   observedDays,
+  className,
 }: AnalysisPeriodSelectorProps) {
   const { t } = useTranslation("report");
   const { handlePremiumAccessClick, trackPremiumWindowInterest } =
@@ -64,10 +66,9 @@ export function AnalysisPeriodSelector({
   return (
     <section
       aria-label={t("selector.eyebrow")}
-      className="w-full px-3 sm:px-6 pb-1.5 sm:pb-4"
+      className={cn("w-full lg:w-[440px] xl:w-[480px] shrink-0", className)}
     >
-      <div className="mx-auto max-w-[1520px]">
-        <div className="rounded-xl sm:rounded-2xl border border-border-default bg-white shadow-card">
+      <div className="rounded-xl sm:rounded-2xl border border-border-default bg-white shadow-card">
           {/* ── Mobile compact trigger ─────────────────────────── */}
           <button
             type="button"
@@ -233,7 +234,6 @@ export function AnalysisPeriodSelector({
             {t("selector.footnote")}
           </p>
           </div>
-        </div>
       </div>
     </section>
   );

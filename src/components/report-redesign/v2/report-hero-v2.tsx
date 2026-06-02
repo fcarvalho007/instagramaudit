@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
-import { Check, ChevronDown, Download, Loader2 } from "lucide-react";
+import { Check, ChevronDown, Download, Loader2, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Link } from "@tanstack/react-router";
 
 import type {
   AdapterResult,
@@ -18,6 +19,7 @@ interface ReportHeroV2Props {
   actions: ReportPageActions;
   analyzedAtIso?: string | null;
   expiresAtIso?: string | null;
+  className?: string;
 }
 
 /**
@@ -31,6 +33,7 @@ interface ReportHeroV2Props {
 export function ReportHeroV2({
   result,
   actions,
+  className,
 }: ReportHeroV2Props) {
   const { t } = useTranslation("report");
   const { language } = useLanguage();
@@ -58,15 +61,14 @@ export function ReportHeroV2({
   return (
     <section
       aria-label={handle}
-      className="w-full px-3 sm:px-6 pt-1.5 pb-0.5 sm:pt-3 sm:pb-2"
+      className={cn("min-w-0 flex-1", className)}
     >
-      <div className="mx-auto max-w-[1520px]">
-        <div
-          className={cn(
-            "rounded-xl sm:rounded-2xl border border-border-default bg-white shadow-card overflow-hidden",
-            "transition-all duration-200",
-          )}
-        >
+      <div
+        className={cn(
+          "rounded-xl sm:rounded-2xl border border-border-default bg-white shadow-card overflow-hidden",
+          "transition-all duration-200",
+        )}
+      >
           {/* ── COMPACT BAR (sempre visível) ─────────────────────── */}
           <div className="flex flex-row items-center gap-1.5 sm:gap-4 px-2.5 sm:px-5 py-1.5 sm:py-3">
             {/* Identity */}
@@ -159,6 +161,20 @@ export function ReportHeroV2({
                   "hover:bg-surface-muted hover:border-border-strong hover:text-content-primary",
                 )}
               />
+              <Link
+                to="/"
+                aria-label={t("hero.actions.new_report")}
+                title={t("hero.actions.new_report")}
+                className={cn(
+                  "inline-flex items-center justify-center gap-1 h-7 sm:h-9 px-2.5 sm:px-3 rounded-lg",
+                  "bg-content-primary text-white text-xs sm:text-sm font-semibold",
+                  "shadow-[0_1px_2px_rgba(15,23,42,0.18)]",
+                  "transition-colors duration-150 hover:brightness-110",
+                )}
+              >
+                <Plus className="size-3 sm:size-4" aria-hidden="true" />
+                <span className="hidden sm:inline">Novo</span>
+              </Link>
             </div>
           </div>
 
@@ -195,7 +211,6 @@ export function ReportHeroV2({
               </div>
             </div>
           )}
-        </div>
       </div>
     </section>
   );
