@@ -1,142 +1,135 @@
-# Auditoria + refinamento dos KPIs de /admin/visao-geral
+# Redesenho — Tabela de Contactos (`/admin/leads?view=tabela`)
 
-## 1. Cost source audit — `fetchExpense30d().total`
+Transformar a tabela actual de "lista de leads" em "fila de trabalho": ordenada por quem precisa de ação, com créditos visíveis, QA escondido por defeito e botão de acção sugerida por linha.
 
-`expense.total` lê **todas as linhas** de `provider_call_logs` com `status IN ('success','cache')` nos últimos 30 dias (`aggregateCostsFromLogs`, `system-queries.server.ts:581`). **Não distingue** origem da chamada — inclui:
+**Âmbito:** só a vista Tabela em `/admin/leads` (e suporte mínimo no backend `/api/admin/leads-kanban` + nova classificação partilhada). Kanban, ficha de detalhe, `/admin/visao-geral` e `/report.example` ficam intactos.
 
-- ✅ análises públicas via `/analyze/$username`
-- ✅ refreshes admin
-- ✅ Apify Lab runs (`apify_lab_runs` gera entradas em `provider_call_logs`)
-- ✅ enriquecimentos OpenAI (visual cover, captions, insights)
-- ✅ thumbnail processing quando passa por providers
-- ⚠️ retries de falhas que terminem em `success`
-- ❌ falhas (excluídas: `status != 'success'/'cache'`)
-- ⚠️ smoke/diagnostic se rodadas em produção
+---
 
-→ `expense.total` **não é adequado** como numerador de "custo por lead" porque inclui custo administrativo (lab + refreshes) que não pertence ao funil de aquisição. É adequado para "custo total da plataforma".
+## ☐ Checklist
 
-## 2. Denominator audit (30d na BD agora)
+- ☐ Backend: enriquecer `EnrichedLead` com créditos e flag QA
+- ☐ Lib partilhada: `lead-classification.ts` (hot / QA / acção sugerida)
+- ☐ Tabela: substituir coluna Lead-magnet por Créditos
+- ☐ Tabela: toggle "Ocultar QA" + linha colapsada de QA no fim
+- ☐ Tabela: ordenação por prioridade (quentes no topo, fundo de aviso)
+- ☐ Tabela: nova coluna "Acção" contextual
+- ☐ Header: chips reescritos (Todos, Quentes, Crédito esgotado, Sem feedback, Novos hoje) + KPI "Precisam de acção"
+- ☐ Testes puros para `lead-classification`
+- ☐ `bunx tsc --noEmit` + `bunx vitest run`
 
-| Métrica | Fonte | Valor atual |
-|---|---|---|
-| `leads_30d` | `leads.count` | **12** |
-| `analyses_total` | `analysis_events.count` | 2323 (todos os outcomes) |
-| `fresh_analyses_30d` | `analysis_events where data_source='fresh' AND outcome='success'` | **35** |
-| `cache_analyses_30d` | `analysis_events where data_source='cache' AND outcome='success'` | 1962 |
-| `completed_reports_30d` | `analysis_snapshots.count` | já calculado em `expense.completed_reports` |
-| `fresh_reports_30d` | já calculado em `expense.fresh_reports` | 35 |
-| `reports_unlocked_30d` | `lead_reports.count` (30d) | **a expor** |
-| `onboarding_success_30d` | `product_events where event_type='onboarding_success'` | **a expor** |
-| `paid_customers_30d` | `lead_payments where status='paid' AND paid_at>=30d` | **0** (tabela existe, vazia) |
+---
 
-→ Denominador recomendado por métrica:
-- `cost_per_lead` = **custo público** / `leads_30d` (não custo total)
-- `cost_per_analysis` = `expense.fresh_avg_cost_per_report` (já existe, exato)
-- `cost_per_unlocked_report` = custo público / `reports_unlocked_30d`
-- `margin_per_lead` = `(revenue_30d − custo_público_30d) / leads_30d` — só calcular quando `revenue_active`
+## 1. Definições partilhadas (fonte única)
 
-## 3. Revenue audit
+Novo ficheiro `src/lib/admin/lead-classification.ts` — usado pela tabela hoje e amanhã por `priority-followups` e KPIs da Visão Geral.
 
-`lead_payments` existe (`status`, `amount_cents`, `currency`, `paid_at`, `provider`). Hoje **0 linhas**. Nenhum webhook EuPago/Stripe ativo. `revenue_total_30d` é forçado a 0 no endpoint.
+- **`isQaLead(lead)`** — `true` se:
+  - `source === 'qa'` ou começa por `qa_`
+  - email em allowlist explícita (`QA_EMAILS`, configurável no ficheiro)
+  - `name` contém `"QA"` (case-insensitive, palavra inteira)
+- **`isHotLead(lead, now)`** — `true` se (reutiliza regras do `/api/admin/follow-ups`):
+  - viu o relatório (`report_views > 0`) **e**
+  - não tem feedback recebido **e**
+  - última interacção há ≥ 48h
+- **`suggestedAction(lead)`** — devolve `{ key, label, intent }`:
+  - `credits_remaining === 0 && credits_granted > 0` → `oferecer_pack` ("Oferecer pack")
+  - `isHotLead(lead)` → `pedir_feedback` ("Pedir feedback")
+  - caso contrário → `ver` ("Ver")
+- **`priorityScore(lead)`** — número para ordenação descendente: crédito esgotado (3) > hot (2) > recente (1) > resto (0). Empate desempata por `last_interaction` desc.
 
-→ Introduzir flag `revenue_active`:
-```sql
-SELECT COALESCE(SUM(amount_cents),0)/100.0 AS eur, COUNT(*) AS paid_count
-FROM lead_payments
-WHERE status='paid' AND paid_at >= now() - interval '30 days';
-```
-`revenue_active = paid_count_alltime > 0` (verifica se já houve algum pagamento, não só nos 30d). Enquanto `false`, KPI mostra "Receita ainda não activa" e margem fica `null`.
+## 2. Backend — `/api/admin/leads-kanban`
 
-## 4. Funnel audit
+Apenas adicionar campos no payload de cada lead (sem mudar contrato existente):
 
-Etapas atuais em `AcquisitionFunnel`:
-1. "Report público visto" — **placeholder** (já marcado `unavailable: 'sem tracker'`) ✅
-2. "Email submetido" — `beta-funnel.unlock_iniciado` ✅ real
-3. "Conta criada" — `beta-funnel.unlock_concluido` ✅ real
-4. "Feedback recebido" — `beta-funnel.feedback_recebido` ✅ real
-5. "Convertido (pago)" — `beta-funnel.convertido` (depende de `lead_payments`) → hoje 0, marcar como "checkout por ligar" em vez de "0%".
+- `credits_granted: number` — `SUM(delta>0)` em `credit_ledger`
+- `credits_used: number` — `SUM(-delta WHERE delta<0)`
+- `credits_remaining: number` — `SUM(delta)`
 
-→ Sem alterações de queries — só copy mais honesta na etapa 5.
+Implementação: um único `SELECT lead_id, SUM(...) FROM credit_ledger GROUP BY lead_id` agregado num `Map` e fundido à lista (LEFT JOIN em memória). Leads sem registos ficam a `{0,0,0}`.
 
-## 5. Margin alert logic — bug atual
+Estender `EnrichedLead` em `src/lib/admin/kanban-columns.ts` com os 3 campos.
 
-Hoje: alerta dispara sempre que `margin_per_lead < 0`. Como receita está fixa em 0 e há custo > 0, **dispara sempre que houver leads**. É ruído, não sinal.
+## 3. UI — `LeadsTable`
 
-→ Nova regra:
-- `revenue_active === false` → **não mostrar** alerta de margem negativa; mostrar `AdminCallout` informativo: *"Receita ainda não activa. Acompanha custo por lead (${X}) e custo por análise (${Y}) até ligar o checkout."*
-- `revenue_active === true && margin_per_lead < 0` → alerta atual (negativo).
-- `revenue_active === true && margin_per_lead >= 0` → nada.
+### 3.1 Toolbar (substitui chips actuais)
 
-## 6. UI copy provisional
+- Chips: `Todos`, `Quentes`, `Crédito esgotado`, `Sem feedback`, `Novos hoje`.
+  Atualizar `FILTER_CHIPS` em `lead-filter-chips.ts` reutilizando `isHotLead`, `credits_remaining`, `feedback`, `created_at`.
+- À direita: toggle `Ocultar QA` (default ON, `localStorage` `admin.leads.hideQa`) + Pesquisar + contador.
+- Botão `Exportar` mantém o comportamento existente (CSV dos visíveis).
 
-- KPI "Receita" quando `!revenue_active` → valor: **"—"**, eyebrow mantém "Receita", sub: **"ainda não activa"**
-- KPI "Margem / lead" quando `!revenue_active` → valor: **"em validação"** (não mostrar número), sub: `custo/lead $X · receita pendente`
-- Funnel etapa 5 quando `!revenue_active` → label mantém, pct: **"— checkout por ligar"**
+### 3.2 KPI strip (novo, acima da tabela)
 
-## 7. Novo contrato de `OverviewKpis`
+4 mini-cards estilo Visão Geral:
+1. **Contactos reais** — `N` (`+M em QA ocultos` se aplicável)
+2. **Report → Conta** — % calculado da janela actual
+3. **Conta → Pago** — % da janela
+4. **Precisam de acção** — count de `isHotLead || credits_remaining===0` (destaque `signal`)
 
-```ts
-{
-  // contagens
-  leads_30d, leads_7d,
-  analyses_30d,                  // events fresh+cache success
-  fresh_analyses_30d,            // events fresh success
-  reports_unlocked_30d,          // lead_reports 30d
+Estes KPIs lêem só da lista filtrada (excluindo QA quando escondido) — não criar endpoint novo.
 
-  // custos
-  cost_total_30d,                // expense.total (plataforma)
-  cost_public_30d,               // custo atribuído a fresh com event_id (proxy honesto)
-  cost_per_lead,                 // cost_public_30d / leads_30d
-  cost_per_analysis,             // expense.fresh_avg_cost_per_report
-  cost_per_unlocked_report,      // cost_public_30d / reports_unlocked_30d
+### 3.3 Colunas (nova ordem)
 
-  // receita / margem
-  revenue_active: boolean,       // já houve algum lead_payment paid?
-  revenue_30d,                   // 0 quando inactive
-  revenue_per_lead: number|null,
-  margin_per_lead: number|null,  // null quando !revenue_active
-  margin_status: "inactive" | "negative" | "positive",
+| Coluna | Conteúdo |
+|---|---|
+| Contacto | Nome + email (linha 2 muted) |
+| Perfil | `@handle` |
+| Estado | `StatusPill` (já existe) com label curta (Report visto / Crédito esgotado / etc.) |
+| **Créditos** | `1/2`, `2/2`. A `2/2` ganha cor `expense` + sublinha "crédito esgotado" |
+| Visto há | `formatAge(last_interaction)` — reutiliza `formatAge` já no `priority-followups` |
+| Acção | Botão sólido com `suggestedAction(lead).label`. `pedir_feedback`/`oferecer_pack` em alto contraste; `ver` discreto |
 
-  // outros
-  avg_cost_per_report, reliability_pct, checkout_enabled, providers
-}
-```
+Coluna "Lead-magnet" **removida**. Coluna "Email" e "Criado em" colapsadas para sublinhas / removidas (estão acessíveis na ficha).
 
-`cost_public_30d` ≈ `fresh_linked_total_usd` (já calculado em `fetchExpense30d`) — custo de chamadas reais ligadas a `analysis_event_id` (exclui lab/órfãs). É o melhor proxy honesto disponível sem alterar o backend de custos.
+### 3.4 Ordenação e destaque
 
-## Ficheiros a tocar
+- Default sort = `priorityScore desc, last_interaction desc` (em vez de "Mais recentes"). Manter `Select` para outras ordens.
+- Linhas `isHotLead || credits_remaining===0` recebem fundo `bg-[rgb(var(--admin-signal-50))]` e borda esquerda 2px `signal-500`.
+- Click na linha continua a abrir o `LeadDetailSheet`. Botão "Acção" pára propagação e, para já, abre o sheet com `?tab=email` (reutiliza UX existente; sem novas mutations).
 
-1. `src/routes/api/admin/overview-kpis.ts` — alargar contrato + queries (`lead_payments`, `lead_reports`, `product_events.onboarding_success`, contagens de `analysis_events`).
-2. `src/components/admin/v2/visao-geral/overview-kpi-row.tsx` — copy "Receita ainda não activa", "Margem em validação".
-3. `src/components/admin/v2/visao-geral/margin-alert.tsx` — branch `revenue_active` (info vs warning).
-4. `src/components/admin/v2/visao-geral/acquisition-funnel.tsx` — copy etapa 5 quando `!revenue_active`.
-5. `src/components/admin/v2/visao-geral/cost-summary-card.tsx` — mostrar **custo público** ao lado de **custo total** para honestidade.
-6. `src/lib/admin/__tests__/overview-kpis.test.ts` (novo) — testes puros das fórmulas.
+### 3.5 QA escondido
 
-**Fora de âmbito** (não tocar): `system-queries.server.ts` core de custos, providers, onboarding, reports, pricing, `/admin/sistema`, `/admin/receita`.
+- Quando `hideQa === true`:
+  - filtrar `leads` por `!isQaLead`
+  - render uma linha colapsada no fim: `N contactos de QA ocultos · mostrar` (botão que faz toggle)
+- Contador da toolbar e KPI passam a contar apenas reais.
 
-## Testes
+---
 
-`src/lib/admin/overview-formulas.ts` (novo, função pura `computeKpis(input)`) + Vitest cobrindo:
-- `leads_30d=0` → `cost_per_lead=null`, sem divisão por zero
-- `revenue_active=false` → `margin_per_lead=null`, `margin_status="inactive"`
-- `revenue_active=false` → `MarginAlert` não dispara warning (snapshot do branch)
-- `cost_per_lead = cost_public / leads`
-- `cost_per_analysis = fresh_avg_cost_per_report` (pass-through)
-- `revenue_active=true, revenue<cost` → `margin_status="negative"`
+## 4. Detalhes técnicos
 
-## Validação
+- Nenhuma mudança no Kanban — `LeadsTable` recebe o mesmo `leads: EnrichedLead[]` com os 3 campos extra disponíveis.
+- A definição de "lead quente" fica **só** em `lead-classification.ts`. `priority-followups` e futuros KPIs passarão a importá-la (não faz parte deste âmbito mudá-los, mas a função fica pronta).
+- Tokens: nenhum `text-white`/cores hardcoded; tudo via `var(--admin-*)` existentes.
+- A11y: `aria-sort` na coluna ordenada; linhas hot com `aria-label` que inclui motivo.
+
+## 5. Testes
+
+`src/lib/admin/__tests__/lead-classification.test.ts`:
+- `isQaLead` reconhece source, allowlist e nome
+- `isHotLead` exige report visto + sem feedback + ≥48h
+- `suggestedAction` prioriza crédito esgotado sobre hot
+- `priorityScore` ordena correctamente em empates
+
+## 6. Ficheiros tocados
+
+- `src/lib/admin/lead-classification.ts` (novo)
+- `src/lib/admin/__tests__/lead-classification.test.ts` (novo)
+- `src/lib/admin/kanban-columns.ts` (3 campos no `EnrichedLead`)
+- `src/lib/admin/lead-filter-chips.ts` (chips reescritos)
+- `src/routes/api/admin/leads-kanban.ts` (JOIN com `credit_ledger`)
+- `src/components/admin/v2/beta-leads/leads-table.tsx` (redesenho)
+
+## 7. Fora de âmbito
+
+- Kanban / `LeadDetailSheet` / `LeadsConversionBanner`
+- `/admin/visao-geral`, `/admin/receita`, `/report.example`
+- Novas mutations (oferecer pack, enviar email) — só sugestão visual
+- Marcar leads como QA manualmente (usa regras automáticas; allowlist editável no ficheiro)
+
+## 8. Validação
 
 - `bunx tsc --noEmit`
-- `bunx vitest run src/lib/admin/__tests__/overview-kpis.test.ts`
-- Confirmar visualmente em /admin/visao-geral que "Receita ainda não activa" aparece, alerta de margem deixa de aparecer, e os 4 valores batem (`leads=12`, custos = mesmos do /admin/receita).
-
-## Checkpoint
-
-- ☐ Endpoint devolve novo contrato com `revenue_active`, `cost_public_30d`, `analyses_30d`, `reports_unlocked_30d`
-- ☐ `OverviewKpiRow`: copy "ainda não activa" / "em validação" quando aplicável
-- ☐ `MarginAlert`: info-card quando `!revenue_active`, warning só quando real
-- ☐ `AcquisitionFunnel`: etapa 5 com "checkout por ligar"
-- ☐ `CostSummaryCard`: distinção custo total vs custo público
-- ☐ Testes puros de fórmulas verdes
-- ☐ `tsc --noEmit` limpo
+- `bunx vitest run src/lib/admin/__tests__/lead-classification.test.ts`
+- Verificação visual em `/admin/leads?view=tabela`: KPI strip, chips, ordenação, fundo signal nos hot, linha QA colapsada, botões de acção contextuais.

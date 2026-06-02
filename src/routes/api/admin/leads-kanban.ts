@@ -254,6 +254,34 @@ export const Route = createFileRoute("/api/admin/leads-kanban")({
           }
         }
 
+        // 5d. Créditos por lead — agregação do `credit_ledger`.
+        const creditsByLead = new Map<
+          string,
+          { granted: number; used: number; remaining: number }
+        >();
+        {
+          const { data: ledger } = await supabaseAdmin
+            .from("credit_ledger")
+            .select("lead_id, delta")
+            .in("lead_id", leadIds);
+
+          if (ledger) {
+            for (const row of ledger) {
+              const lid = row.lead_id as string;
+              const delta = Number(row.delta ?? 0);
+              const agg = creditsByLead.get(lid) ?? {
+                granted: 0,
+                used: 0,
+                remaining: 0,
+              };
+              if (delta > 0) agg.granted += delta;
+              else if (delta < 0) agg.used += -delta;
+              agg.remaining += delta;
+              creditsByLead.set(lid, agg);
+            }
+          }
+        }
+
         // 5c. Lead-magnet sequence status per lead, agregado a partir de
         //     `product_events` (sem schema novo).
         const LM_EVENT_TYPES = [
@@ -344,6 +372,11 @@ export const Route = createFileRoute("/api/admin/leads-kanban")({
               pending_checkout_started_at: null,
               total_paid_cents: 0,
             };
+          const credits = creditsByLead.get(lead.id) ?? {
+            granted: 0,
+            used: 0,
+            remaining: 0,
+          };
 
           return {
             id: lead.id,
@@ -376,6 +409,9 @@ export const Route = createFileRoute("/api/admin/leads-kanban")({
             marketing_consent: !!lead.marketing_consent,
             is_lead_magnet_subscriber: isLmSubscriber,
             payment_summary: paymentSummary,
+            credits_granted: credits.granted,
+            credits_used: credits.used,
+            credits_remaining: credits.remaining,
           };
         });
 
