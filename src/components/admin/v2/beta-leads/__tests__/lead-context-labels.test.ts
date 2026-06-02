@@ -33,29 +33,48 @@ describe("lead-context-labels", () => {
 });
 
 describe("COMMERCIAL_STATUS_OPTIONS", () => {
-  it("separa estados manuais de automáticos pelo campo kind", () => {
+  it("separa estados em manual / payment / auto pelo campo kind", () => {
     const manual = COMMERCIAL_STATUS_OPTIONS.filter((o) => o.kind === "manual");
+    const payment = COMMERCIAL_STATUS_OPTIONS.filter((o) => o.kind === "payment");
     const auto = COMMERCIAL_STATUS_OPTIONS.filter((o) => o.kind === "auto");
     expect(manual.length).toBeGreaterThan(0);
+    expect(payment.length).toBeGreaterThan(0);
     expect(auto.length).toBeGreaterThan(0);
-    // Estados de decisão comercial conhecidos
+
+    // Decisão comercial — clicável pelo operador
     expect(manual.map((o) => o.key)).toEqual(
       expect.arrayContaining([
+        "novo_pedido",
+        "em_analise",
         "interessado",
         "potencial_cliente",
         "convertido",
         "arquivado",
       ]),
     );
-    // Estados que o sistema actualiza sozinho
+    // Pagamento — marco com valor em €
+    expect(payment.map((o) => o.key)).toEqual(
+      expect.arrayContaining(["pago_report", "pago_pack5"]),
+    );
+    for (const opt of payment) {
+      expect(opt.amount_eur).toBeGreaterThan(0);
+    }
+    // Automático — actualizado pelo sistema
     expect(auto.map((o) => o.key)).toEqual(
       expect.arrayContaining([
-        "novo_pedido",
+        "lead_magnet",
         "relatorio_gerado",
         "link_enviado",
         "relatorio_visto",
-        "feedback_recebido",
+        "checkout_iniciado",
       ]),
+    );
+  });
+
+  it("esconde feedback_* do dropdown mas mantém labels para pills legadas", () => {
+    const hidden = COMMERCIAL_STATUS_OPTIONS.filter((o) => o.hidden);
+    expect(hidden.map((o) => o.key)).toEqual(
+      expect.arrayContaining(["feedback_pedido", "feedback_recebido"]),
     );
   });
 });
