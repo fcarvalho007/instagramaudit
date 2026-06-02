@@ -1861,7 +1861,7 @@ function FeedbackBetaSection({
   );
 }
 // ── LeadReportsList ──────────────────────────────────────────
-// Lista todos os report_requests deste contacto. Read-only.
+// Lista os relatórios deste lead com cabeçalho compacto (créditos + CTA).
 
 interface LeadReportRow {
   id: string;
@@ -1873,7 +1873,36 @@ interface LeadReportRow {
   created_at: string;
 }
 
-function LeadReportsList({ leadId }: { leadId: string }) {
+const REPORT_STATE_LABEL: Record<
+  string,
+  { label: string; tone: "revenue" | "info" | "signal" | "danger" | "neutral" }
+> = {
+  completed: { label: "Gerado", tone: "revenue" },
+  ready: { label: "Gerado", tone: "revenue" },
+  generated: { label: "Gerado", tone: "revenue" },
+  pending: { label: "A processar", tone: "info" },
+  processing: { label: "A processar", tone: "info" },
+  approved: { label: "Por aprovar", tone: "neutral" },
+  pending_review: { label: "Por aprovar", tone: "neutral" },
+  failed: { label: "Falhou", tone: "danger" },
+  rejected: { label: "Rejeitado", tone: "danger" },
+};
+
+function LeadReportsList({
+  leadId,
+  lead,
+  canGenerate,
+  generateDisabledReason,
+  onGenerateClick,
+  onResendLink,
+}: {
+  leadId: string;
+  lead: EnrichedLead;
+  canGenerate: boolean;
+  generateDisabledReason: string | null;
+  onGenerateClick: () => void;
+  onResendLink: () => void;
+}) {
   const { data, isLoading, error, refetch } = useQuery<{ rows: LeadReportRow[] }>({
     queryKey: ["admin", "lead-reports", leadId],
     queryFn: async () => {
@@ -1886,89 +1915,445 @@ function LeadReportsList({ leadId }: { leadId: string }) {
     staleTime: 30_000,
   });
 
-  if (isLoading) {
-    return (
-      <p className="text-[12px] text-admin-text-tertiary">A carregar pedidos…</p>
-    );
-  }
+  const rows = data?.rows ?? [];
+  const count = rows.length;
+  const creditsExhausted =
+    lead.credits_granted > 0 && lead.credits_remaining <= 0;
+  const creditsLabel =
+    lead.credits_granted > 0
+      ? `${lead.credits_remaining} / ${lead.credits_granted} créditos por usar`
+      : "Sem créditos atribuídos";
 
-  if (error) {
-    return (
-      <div className="flex items-center gap-2">
-        <p className="text-[12px] text-admin-danger-700">
-          Não foi possível carregar pedidos.
+  return (
+    <div className="px-4 sm:px-6 py-5 space-y-4">
+      {/* Cabeçalho compacto — contador + CTA "Gerar para este lead" */}
+      <div className="flex items-center justify-between gap-3">
+        <p className="m-0 text-[13px] text-admin-text-primary tabular-nums">
+          <span className="font-semibold">{count}</span>{" "}
+          {count === 1 ? "relatório" : "relatórios"}
+          <span className="mx-1.5 text-admin-text-tertiary">·</span>
+          <span
+            className={
+              creditsExhausted
+                ? "text-admin-expense-500 font-medium"
+                : "text-admin-text-secondary"
+            }
+          >
+            {creditsLabel}
+          </span>
         </p>
         <button
           type="button"
-          onClick={() => refetch()}
-          className="text-[12px] underline text-admin-text-secondary hover:text-admin-text-primary"
+          onClick={canGenerate ? onGenerateClick : undefined}
+          disabled={!canGenerate}
+          title={generateDisabledReason ?? "Gerar nova análise para este lead"}
+          className={`inline-flex items-center gap-1 text-[12px] font-medium transition-colors ${
+            canGenerate
+              ? "text-admin-info-500 hover:text-admin-info-700"
+              : "text-admin-text-tertiary cursor-not-allowed"
+          }`}
         >
-          Tentar de novo
+          <Plus size={13} /> Gerar para este lead
         </button>
+      </div>
+
+      {/* Lista de relatórios */}
+      {isLoading ? (
+        <p className="text-[12px] text-admin-text-tertiary">A carregar pedidos…</p>
+      ) : error ? (
+        <div className="flex items-center gap-2">
+          <p className="text-[12px] text-admin-danger-700">
+            Não foi possível carregar pedidos.
+          </p>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="text-[12px] underline text-admin-text-secondary hover:text-admin-text-primary"
+          >
+            Tentar de novo
+          </button>
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-admin-text-primary/15 bg-admin-surface-muted/30 p-5 text-center">
+          <p className="m-0 text-[13px] text-admin-text-tertiary">
+            Este lead ainda não pediu nenhum relatório.
+          </p>
+        </div>
+      ) : (
+        <ul className="space-y-2.5 list-none p-0 m-0">
+          {rows.map((r, idx) => {
+            const state =
+              REPORT_STATE_LABEL[r.request_status] ??
+              { label: r.request_status, tone: "neutral" as const };
+            const isLatest = idx === 0;
+            const isGenerated = state.label === "Gerado";
+            const showViewed = isLatest && isGenerated && lead.report_views > 0;
+            const showNotViewed =
+              isLatest && isGenerated && lead.report_views === 0;
+            const hasSnapshot = !!r.analysis_snapshot_id;
+            return (
+              <li
+                key={r.id}
+                className="rounded-xl border border-admin-text-primary/10 bg-white p-3"
+              >
+                <div className="flex items-center gap-3">
+                  {/* Avatar quadrado */}
+                  <div
+                    className="shrink-0 rounded-lg flex items-center justify-center"
+                    style={{
+                      width: 36,
+                      height: 36,
+                      backgroundColor: "rgba(44,44,42,0.05)",
+                    }}
+                  >
+                    <Instagram size={16} className="text-admin-text-tertiary" />
+                  </div>
+
+                  {/* Meta — handle + estado + data */}
+                  <div className="min-w-0 flex-1 flex items-center gap-2 flex-wrap">
+                    <span className="text-[13px] font-semibold text-admin-text-primary">
+                      @{r.instagram_username}
+                    </span>
+                    <AdminBadge variant={state.tone}>{state.label}</AdminBadge>
+                    <span className="text-[11px] text-admin-text-tertiary tabular-nums">
+                      {formatShortDateTime(r.created_at)}
+                    </span>
+                  </div>
+
+                  {/* Acções rápidas */}
+                  <div className="shrink-0 flex items-center gap-1">
+                    <a
+                      href={`/analyze/${r.instagram_username}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Abrir relatório público"
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-admin-text-primary/10 text-admin-text-secondary hover:text-admin-text-primary hover:bg-admin-surface-muted/50 transition-colors"
+                    >
+                      <ExternalLink size={13} />
+                    </a>
+                    {hasSnapshot ? (
+                      <Link
+                        to="/admin/report-preview/snapshot/$snapshotId"
+                        params={{ snapshotId: r.analysis_snapshot_id! }}
+                        target="_blank"
+                        title="Abrir snapshot"
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-admin-text-primary/10 text-admin-text-secondary hover:text-admin-text-primary hover:bg-admin-surface-muted/50 transition-colors"
+                      >
+                        <Download size={13} />
+                      </Link>
+                    ) : (
+                      <span
+                        title="Snapshot ainda não gerado"
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-admin-text-primary/10 text-admin-text-tertiary/40 cursor-not-allowed"
+                      >
+                        <Download size={13} />
+                      </span>
+                    )}
+                    {isLatest && isGenerated && (
+                      <button
+                        type="button"
+                        onClick={lead.email ? onResendLink : undefined}
+                        title={
+                          lead.email
+                            ? "Reenviar link por email"
+                            : "Lead sem email"
+                        }
+                        disabled={!lead.email}
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-admin-text-primary/10 text-admin-text-secondary hover:text-admin-text-primary hover:bg-admin-surface-muted/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <Send size={13} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {(showViewed || showNotViewed) && (
+                  <p className="m-0 mt-2 pl-[48px] text-[11px] text-admin-text-tertiary flex items-center gap-1.5">
+                    {showViewed ? (
+                      <>
+                        <CheckCircle2
+                          size={11}
+                          className="text-admin-revenue-500"
+                        />
+                        Visto {lead.report_views}{" "}
+                        {lead.report_views === 1 ? "vez" : "vezes"} pelo lead
+                      </>
+                    ) : (
+                      <>
+                        <EyeOff size={11} />
+                        Ainda não foi visto pelo lead.
+                      </>
+                    )}
+                  </p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ── LeadHistoryTimeline ──────────────────────────────────────
+// Timeline vertical da ficha — entradas humanas derivadas dos product_events.
+
+type HistoryDotStyle = "filled" | "ring" | "pending";
+
+interface HistoryEntry {
+  id: string;
+  label: string;
+  meta: string | null;
+  timestamp: string | null;
+  style: HistoryDotStyle;
+  color?: string;
+}
+
+const TERMINAL_STATUSES = new Set(["convertido", "arquivado", "expirado"]);
+
+export function buildLeadHistoryEntries(
+  lead: EnrichedLead,
+  timeline: TimelineEvent[],
+  suggestedStep: string,
+): HistoryEntry[] {
+  // Timeline arrives DESC — process in ASC for chronological order.
+  const asc = [...timeline].sort((a, b) =>
+    a.created_at < b.created_at ? -1 : 1,
+  );
+  const entries: HistoryEntry[] = [];
+
+  for (const ev of asc) {
+    const t = ev.event_type;
+    if (t === "beta_request_created" || t === "unlock_email_submitted") {
+      const handle =
+        (ev.metadata?.handle as string | undefined) ?? lead.handle ?? "";
+      entries.push({
+        id: ev.id,
+        label: handle
+          ? `Criou conta e pediu análise de @${handle}`
+          : "Criou conta e pediu análise",
+        meta:
+          lead.source === "onboarding_modal" || t === "beta_request_created"
+            ? "via modal de onboarding"
+            : "via desbloqueio direto",
+        timestamp: ev.created_at,
+        style: "filled",
+        color: "rgb(55,114,229)",
+      });
+    } else if (t === "report_generated") {
+      entries.push({
+        id: ev.id,
+        label: "Relatório gerado",
+        meta: lead.credits_granted > 0 ? "1 crédito usado" : null,
+        timestamp: ev.created_at,
+        style: "filled",
+        color: "rgb(5,150,105)",
+      });
+    } else if (t === "report_link_sent") {
+      entries.push({
+        id: ev.id,
+        label: "Email com o link enviado",
+        meta: null,
+        timestamp: ev.created_at,
+        style: "ring",
+      });
+    } else if (t === "report_viewed") {
+      // Collapse consecutive views into a single entry.
+      const last = entries[entries.length - 1];
+      if (last && last.id.startsWith("view-")) continue;
+      entries.push({
+        id: `view-${ev.id}`,
+        label: "Lead abriu o relatório",
+        meta: null,
+        timestamp: ev.created_at,
+        style: "filled",
+        color: "rgb(118,100,228)",
+      });
+    } else if (t === "feedback_requested") {
+      entries.push({
+        id: ev.id,
+        label: "Feedback pedido por email",
+        meta: null,
+        timestamp: ev.created_at,
+        style: "ring",
+      });
+    } else if (t === "feedback_submitted") {
+      entries.push({
+        id: ev.id,
+        label: "Feedback recebido",
+        meta: null,
+        timestamp: ev.created_at,
+        style: "filled",
+        color: "rgb(186,117,23)",
+      });
+    } else if (t === "commercial_followup_sent") {
+      entries.push({
+        id: ev.id,
+        label: "Follow-up comercial enviado",
+        meta: null,
+        timestamp: ev.created_at,
+        style: "ring",
+      });
+    }
+  }
+
+  // Pending projection — only when the lead isn't in a terminal state.
+  const terminal = TERMINAL_STATUSES.has(lead.commercial_status ?? "");
+  if (!terminal && suggestedStep) {
+    entries.push({
+      id: "pending",
+      label: suggestedStep,
+      meta: null,
+      timestamp: null,
+      style: "pending",
+    });
+  }
+
+  return entries;
+}
+
+function HistoryDot({
+  style,
+  color,
+}: {
+  style: HistoryDotStyle;
+  color?: string;
+}) {
+  if (style === "filled") {
+    return (
+      <span
+        className="block rounded-full"
+        style={{
+          width: 11,
+          height: 11,
+          backgroundColor: color ?? "rgb(55,114,229)",
+        }}
+      />
+    );
+  }
+  if (style === "ring") {
+    return (
+      <span
+        className="block rounded-full"
+        style={{
+          width: 11,
+          height: 11,
+          border: "2px solid rgb(55,114,229)",
+          backgroundColor: "white",
+        }}
+      />
+    );
+  }
+  return (
+    <span
+      className="block rounded-full"
+      style={{
+        width: 11,
+        height: 11,
+        border: "1.5px dashed rgba(44,44,42,0.4)",
+        backgroundColor: "white",
+      }}
+    />
+  );
+}
+
+function LeadHistoryTimeline({
+  lead,
+  timeline,
+  loading,
+  suggestedStep,
+}: {
+  lead: EnrichedLead;
+  timeline: TimelineEvent[];
+  loading: boolean;
+  suggestedStep: string;
+}) {
+  const entries = useMemo(
+    () => buildLeadHistoryEntries(lead, timeline, suggestedStep),
+    [lead, timeline, suggestedStep],
+  );
+
+  if (loading) {
+    return (
+      <div className="px-4 sm:px-6 py-5 flex items-center gap-2 text-[12px] text-admin-text-tertiary">
+        <Loader2 size={13} className="animate-spin" /> A carregar histórico…
       </div>
     );
   }
 
-  const rows = data?.rows ?? [];
-  if (rows.length === 0) {
+  if (entries.length === 0) {
     return (
-      <p className="text-[12px] text-admin-text-tertiary">
-        Ainda não existem relatórios associados a este contacto.
-      </p>
+      <div className="px-4 sm:px-6 py-5">
+        <p className="text-[12px] text-admin-text-tertiary">
+          Sem eventos registados para este lead.
+        </p>
+      </div>
     );
   }
 
   return (
-    <ul className="flex flex-col">
-      {rows.map((r) => (
-        <li
-          key={r.id}
-          className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t py-2.5 first:border-t-0 first:pt-0"
-          style={{ borderColor: "rgb(var(--admin-border-default))" }}
-        >
-          <span className="text-[13px] font-medium text-admin-text-primary">
-            @{r.instagram_username}
-          </span>
-          <span className="text-[11px] text-admin-text-tertiary">
-            {formatDate(r.created_at)}
-          </span>
-          <AdminBadge variant={STATUS_ACCENT[r.request_status] ?? "neutral"}>
-            {r.request_status}
-          </AdminBadge>
-          {r.pdf_status && r.pdf_status !== "not_generated" && (
-            <AdminBadge variant={STATUS_ACCENT[r.pdf_status] ?? "neutral"}>
-              PDF: {r.pdf_status}
-            </AdminBadge>
-          )}
-          {r.delivery_status && r.delivery_status !== "not_sent" && (
-            <AdminBadge variant={STATUS_ACCENT[r.delivery_status] ?? "neutral"}>
-              Email: {r.delivery_status}
-            </AdminBadge>
-          )}
-          <div className="ml-auto flex items-center gap-2">
-            {r.instagram_username && (
-              <a
-                href={`/analyze/${r.instagram_username}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[11px] font-medium text-admin-text-secondary hover:text-admin-text-primary hover:underline inline-flex items-center gap-1"
+    <div className="px-4 sm:px-6 py-5">
+      <ol className="list-none p-0 m-0">
+        {entries.map((entry, i) => {
+          const isLast = i === entries.length - 1;
+          const isPending = entry.style === "pending";
+          const nextIsPending = !isLast && entries[i + 1].style === "pending";
+          return (
+            <li key={entry.id} className="relative pl-6 pb-4 last:pb-0">
+              {/* Vertical rail */}
+              {!isLast && (
+                <span
+                  aria-hidden
+                  className="absolute left-[5px] top-3"
+                  style={{
+                    width: 1,
+                    bottom: 0,
+                    backgroundColor: nextIsPending
+                      ? "transparent"
+                      : "rgba(44,44,42,0.15)",
+                    backgroundImage: nextIsPending
+                      ? "linear-gradient(to bottom, rgba(44,44,42,0.3) 50%, transparent 50%)"
+                      : undefined,
+                    backgroundSize: nextIsPending ? "1px 5px" : undefined,
+                    backgroundRepeat: nextIsPending ? "repeat-y" : undefined,
+                  }}
+                />
+              )}
+              <span className="absolute left-0 top-1">
+                <HistoryDot style={entry.style} color={entry.color} />
+              </span>
+              <p
+                className={`m-0 text-[13px] ${
+                  isPending
+                    ? "italic text-admin-text-tertiary"
+                    : "font-medium text-admin-text-primary"
+                }`}
               >
-                <ExternalLink size={11} /> Abrir
-              </a>
-            )}
-            {r.analysis_snapshot_id && (
-              <Link
-                to="/admin/report-preview/snapshot/$snapshotId"
-                params={{ snapshotId: r.analysis_snapshot_id }}
-                target="_blank"
-                className="text-[11px] font-medium text-admin-text-secondary hover:text-admin-text-primary hover:underline inline-flex items-center gap-1"
-              >
-                <FileText size={11} /> Snapshot
-              </Link>
-            )}
-          </div>
-        </li>
-      ))}
-    </ul>
+                {entry.label}
+                {isPending && "…"}
+              </p>
+              {entry.meta && (
+                <p className="m-0 mt-0.5 text-[11px] text-admin-text-tertiary">
+                  {entry.meta}
+                  {entry.timestamp && (
+                    <>
+                      {" · "}
+                      <span className="tabular-nums">
+                        {formatShortDateTime(entry.timestamp)}
+                      </span>
+                    </>
+                  )}
+                </p>
+              )}
+              {!entry.meta && entry.timestamp && (
+                <p className="m-0 mt-0.5 text-[11px] text-admin-text-tertiary tabular-nums">
+                  {formatShortDateTime(entry.timestamp)}
+                </p>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
 }
