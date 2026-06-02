@@ -150,7 +150,7 @@ async function logServerOnboardingError(args: {
           step: 3,
           source: "server",
           error_code: args.errorCode,
-          issues: args.issues,
+          issues: args.issues.map((i) => ({ field: i.field, code: i.code })),
           fields_present: args.fieldsPresent,
         },
       },
