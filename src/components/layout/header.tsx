@@ -37,7 +37,6 @@ function Header() {
   const navItems: { labelKey: string; href: string; match: (p: string) => boolean }[] = [
     { labelKey: "nav.analyze", href: "/", match: (p) => p === "/" },
     { labelKey: "nav.how_it_works", href: "/#como-funciona", match: () => false },
-    { labelKey: "nav.examples", href: "/#exemplos", match: () => false },
     { labelKey: "nav.pricing", href: "/precos", match: (p) => p.startsWith("/precos") },
   ];
 
