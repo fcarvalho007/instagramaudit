@@ -428,7 +428,12 @@ function AnalyzeReady({
         featuresOverride={featuresOverride}
         lockBoundary="engagement"
         unlocked={unlocked}
+        // TODO: ligar a estado real de compra quando o gateway de
+        // pagamento estiver ativo. Hoje, todos os CTAs premium vão pelo
+        // PremiumCtaProvider para o PremiumInterestDialog (waitlist).
         premiumUnlocked={false}
+        // Lead-capture flow ONLY (UnlockModal). Premium CTAs vão pelo
+        // PremiumCtaProvider dentro do shell — não passam por aqui.
         onUnlockClick={() => setUnlockOpen(true)}
         actions={{
           onExportPdf: () => {
