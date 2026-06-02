@@ -137,7 +137,7 @@
       "cta": "View full report · +7 sections",
       "card": {
         "meta": "30 posts · last 30 days",
-        "tag": "Full report",
+        "tag": "Example · fictional data",
         "kpiEngagement": "Engagement",
         "kpiFrequency": "Frequency",
         "kpiFormat": "Format",
@@ -145,6 +145,7 @@
         "formatHint": "62% of mix",
         "competitorsLabel": "Competitor comparison"
       },
+      "disclaimer": "Illustrative mockup. Real numbers come from your profile.",
       "sub": {
         "data": { "title": "Actionable metrics", "hint": "what matters, nothing that distracts" },
         "benchmark": { "title": "Instant comparison", "hint": "against tier and competitors" },

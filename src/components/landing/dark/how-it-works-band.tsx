@@ -29,7 +29,7 @@ function Step({
           />
         </div>
         <span
-          className="text-[10px] uppercase tracking-wider"
+          className="text-xs uppercase tracking-wider"
           style={{ color: "rgb(var(--hero-text-tertiary))" }}
         >
           {number}

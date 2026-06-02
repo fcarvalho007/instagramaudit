@@ -14,8 +14,8 @@
   --hero-violet: 139 92 246;          /* #8B5CF6 */
   --hero-gold: 212 175 100;           /* #D4AF64 */
   --hero-text-primary: 245 247 255;   /* near-white */
-  --hero-text-secondary: 186 196 222; /* muted slate */
-  --hero-text-tertiary: 134 146 178;  /* dim slate */
+  --hero-text-secondary: 202 212 232; /* #CAD4E8 — AA on dark base */
+  --hero-text-tertiary: 168 180 208;  /* #A8B4D0 — AA on dark base */
   --hero-glass-bg: rgba(12, 18, 40, 0.72);
   --hero-glass-border: rgba(125, 211, 252, 0.14);
 }

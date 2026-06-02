@@ -140,7 +140,7 @@
       "cta": "Ver relatório completo · +7 secções",
       "card": {
         "meta": "30 publicações · últimos 30 dias",
-        "tag": "Relatório completo",
+        "tag": "Exemplo · dados fictícios",
         "kpiEngagement": "Envolvimento",
         "kpiFrequency": "Frequência",
         "kpiFormat": "Formato",
@@ -148,6 +148,7 @@
         "formatHint": "62% do mix",
         "competitorsLabel": "Comparação com concorrentes"
       },
+      "disclaimer": "Mockup ilustrativo. Os números reais vêm do teu perfil.",
       "sub": {
         "data": { "title": "Métricas acionáveis", "hint": "o que importa, nada que distrai" },
         "benchmark": { "title": "Comparação imediata", "hint": "face ao escalão e concorrentes" },

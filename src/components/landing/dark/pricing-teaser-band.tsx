@@ -38,7 +38,7 @@ function Tier({
     >
       {badge ? (
         <span
-          className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] px-2.5 py-0.5 rounded-full whitespace-nowrap font-semibold"
+          className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-xs px-2.5 py-0.5 rounded-full whitespace-nowrap font-semibold"
           style={{ backgroundColor: "rgb(var(--hero-cyan))", color: "#0B1020" }}
         >
           {badge}
