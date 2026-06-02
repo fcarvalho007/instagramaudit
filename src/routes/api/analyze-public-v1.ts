@@ -88,7 +88,6 @@ import {
   InsufficientCreditsError,
   releaseReservation,
   reserveCredit,
-  type ReserveResult,
 } from "@/lib/credits/credits.server";
 import { readLeadIdFromRequest } from "@/lib/leads/lead-cookie.server";
 import {
