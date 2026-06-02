@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 /**
  * Pré-visualização ilustrativa do relatório, mostrada à direita do hero.
  * Apresentada com chrome de janela de browser (desktop) para reforçar a
- * percepção de produto de computador. Scoped ao wrapper `.hero-dark`.
+ * percepção de produto de computador. Consome tokens light globais.
  */
 export function HeroReportPreview() {
   const { t } = useTranslation("landing");
