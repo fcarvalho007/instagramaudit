@@ -23,6 +23,10 @@
     "premium_60": "60 dias",
     "premium_90": "90 dias",
     "premium_365": "365 dias",
+    "premium_30_compact": "30d",
+    "premium_60_compact": "60d",
+    "premium_90_compact": "90d",
+    "premium_365_compact": "365d",
     "footnote": "A versão gratuita usa uma amostra recente. Janelas maiores ficam disponíveis no relatório premium.",
     "locked": {
       "title": "Disponível no relatório completo",

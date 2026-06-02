@@ -60,6 +60,18 @@ describe("Premium CTA — unified labels", () => {
     expect(pt.toLowerCase()).not.toMatch(/email|onboarding|registar/);
     expect(en.toLowerCase()).not.toMatch(/email|onboarding|sign\s?up/);
   });
+
+  it("selector exposes compact labels for ≤390px mobile chips", () => {
+    for (const days of [30, 60, 90, 365]) {
+      const expected = `${days}d`;
+      expect(resolve(ptReport, `selector.premium_${days}_compact`)).toBe(
+        expected,
+      );
+      expect(resolve(enReport, `selector.premium_${days}_compact`)).toBe(
+        expected,
+      );
+    }
+  });
 });
 
 describe("Premium CTA — tracking allow-list", () => {
@@ -80,5 +92,35 @@ describe("Premium CTA — tracking allow-list", () => {
     expect(source).toMatch(/"premium_window_interest"/);
     // Sanity — the exported function exists.
     expect(typeof mod.trackEvent).toBe("function");
+  });
+});
+
+describe("Premium CTA — shell wiring", () => {
+  it("body lock-gate routes through usePremiumCta (not UnlockModal)", async () => {
+    const source = await import("fs").then((fs) =>
+      fs.promises.readFile(
+        new URL("../report-shell-v2.tsx", import.meta.url),
+        "utf8",
+      ),
+    );
+    // The body lock-gate wrapper exists and emits the lock_gate source.
+    expect(source).toMatch(/function LockGatePremium/);
+    expect(source).toMatch(/handlePremiumAccessClick\("lock_gate"/);
+    // The body CTA must NOT pass the route's onUnlockClick (which opens
+    // the legacy 5-step UnlockModal) — replaced by <LockGatePremium />.
+    expect(source).toMatch(/<LockGatePremium\b/);
+  });
+
+  it("sticky unlock bar is mounted based on lockBoundary, not the stale `unlocked` flag", async () => {
+    const source = await import("fs").then((fs) =>
+      fs.promises.readFile(
+        new URL("../report-shell-v2.tsx", import.meta.url),
+        "utf8",
+      ),
+    );
+    // Condition no longer gates on `unlocked` — uses premiumUnlocked instead.
+    expect(source).toMatch(
+      /lockBoundary === "engagement" && !premiumUnlocked[\s\S]*?<StickyUnlockBar/,
+    );
   });
 });
