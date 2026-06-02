@@ -923,7 +923,7 @@ function Step2Context({
     <div className="space-y-5">
       <div className="flex flex-col gap-5">
         <div className="space-y-2">
-        <p className="text-[13px] font-medium text-content-primary">
+        <p className="text-[15px] font-medium text-content-primary">
           <Trans
             i18nKey="onboarding.steps.2.relationshipQuestion"
             ns="gate"
@@ -949,7 +949,7 @@ function Step2Context({
         </div>
 
         <div className="space-y-2">
-        <p className="text-[13px] font-medium text-content-primary">
+        <p className="text-[15px] font-medium text-content-primary">
           {t("onboarding.steps.2.goalQuestion")}
         </p>
         <ChipGroup
@@ -968,7 +968,7 @@ function Step2Context({
         </div>
       </div>
 
-      <p className="text-[12px] text-content-tertiary leading-relaxed">
+      <p className="text-[13px] text-content-tertiary leading-[1.5]">
         {t("onboarding.steps.2.consequenceLine")}
       </p>
     </div>
