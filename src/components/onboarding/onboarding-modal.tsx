@@ -855,7 +855,7 @@ function ChipGroup<T extends string>({
       <div
         role="radiogroup"
         aria-label={name}
-        className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+        className="grid grid-cols-2 gap-2.5 sm:grid-cols-4"
       >
         {options.map((o) => {
           const selected = value === o.value;
@@ -868,7 +868,7 @@ function ChipGroup<T extends string>({
               aria-checked={selected}
               onClick={() => onChange(o.value)}
               className={
-                "flex flex-col items-center justify-center gap-1.5 rounded-lg border px-2 py-3 min-h-[76px] text-center text-[12px] font-semibold transition-colors " +
+                "flex flex-col items-center justify-center gap-2 rounded-lg border px-2.5 py-3.5 min-h-[88px] text-center text-[14px] font-semibold transition-colors " +
                 (selected
                   ? "border-primary bg-primary/[0.06] text-primary"
                   : "border-border-default/60 bg-card text-content-secondary hover:border-primary/40 hover:text-content-primary")
@@ -877,18 +877,18 @@ function ChipGroup<T extends string>({
             >
               <Icon
                 className={
-                  "size-5 " +
+                  "size-[22px] " +
                   (selected ? "text-primary" : "text-content-tertiary")
                 }
                 aria-hidden="true"
                 strokeWidth={1.75}
               />
-              <span className="leading-tight">{o.label}</span>
+              <span className="leading-[1.2] break-words hyphens-auto">{o.label}</span>
             </button>
           );
         })}
       </div>
-      {error ? <p className="text-xs text-destructive mt-1.5">{error}</p> : null}
+      {error ? <p className="text-[13px] text-destructive mt-1.5">{error}</p> : null}
     </div>
   );
 }
