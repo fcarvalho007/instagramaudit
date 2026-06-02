@@ -1,4 +1,4 @@
-import { useEffect, useState, type ElementType } from "react";
+import type { ElementType } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -23,13 +23,6 @@ export function BlurRevealText({
   highlightTailWords = 0,
   highlightClassName,
 }: BlurRevealTextProps) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setMounted(true), delayMs);
-    return () => clearTimeout(timer);
-  }, [delayMs]);
-
   const words = text.split(" ");
   const highlightFromIndex =
     highlightTailWords > 0 ? Math.max(0, words.length - highlightTailWords) : -1;
@@ -41,17 +34,14 @@ export function BlurRevealText({
           key={`${word}-${i}`}
           aria-hidden="true"
           className={cn(
-            "inline-block transition-all ease-out motion-reduce:!opacity-100 motion-reduce:!blur-0 motion-reduce:!translate-y-0",
-            mounted
-              ? "opacity-100 blur-0 translate-y-0"
-              : "opacity-0 blur-md translate-y-2",
+            "inline-block hero-blur-reveal motion-reduce:!animate-none",
             highlightFromIndex >= 0 && i >= highlightFromIndex
               ? highlightClassName
               : undefined,
           )}
           style={{
-            transitionDuration: `${durationMs}ms`,
-            transitionDelay: `${i * staggerMs}ms`,
+            animationDuration: `${durationMs}ms`,
+            animationDelay: `${delayMs + i * staggerMs}ms`,
           }}
         >
           {word}
