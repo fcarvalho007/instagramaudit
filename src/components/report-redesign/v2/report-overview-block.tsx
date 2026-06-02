@@ -198,8 +198,8 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
           {/* Zona C — Card de Taxa de Envolvimento (lock boundary) */}
           <EngagementCardRefined result={result} />
 
-          {/* Zona D — Frequência + Tipo de conteúdo */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+          {/* Zona D — Frequência + Tipo de conteúdo (stack vertical) */}
+          <div className="space-y-6 md:space-y-8">
             <FrequencyCard
               postsAnalyzed={k.postsAnalyzed}
               windowDays={result.coverage.windowDays}
