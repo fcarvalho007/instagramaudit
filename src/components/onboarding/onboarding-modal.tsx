@@ -991,8 +991,8 @@ function Step3EmailGdpr({
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1.5">
-        <Label htmlFor="onb-email" className="text-sm">
+      <div className="space-y-2">
+        <Label htmlFor="onb-email" className="text-[15px] font-medium text-content-primary">
           {t("onboarding.steps.3.emailLabel")}
         </Label>
         <div className="relative">
@@ -1003,7 +1003,7 @@ function Step3EmailGdpr({
             autoComplete="email"
             placeholder={t("onboarding.steps.3.emailPlaceholder")}
             aria-invalid={Boolean(error)}
-            className="pr-9"
+            className="pr-9 text-base"
             {...form.register("email")}
           />
           {emailIsValid ? (
@@ -1013,13 +1013,13 @@ function Step3EmailGdpr({
             />
           ) : null}
         </div>
-        {error ? <p className="text-xs text-destructive">{error}</p> : null}
+        {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
       </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="onb-phone" className="text-sm">
+      <div className="space-y-2">
+        <Label htmlFor="onb-phone" className="text-[15px] font-medium text-content-primary">
           {t("onboarding.steps.3.phoneLabel")}{" "}
-          <span className="text-content-tertiary text-[12px] font-normal">
+          <span className="text-content-tertiary text-[13px] font-normal">
             — {t("onboarding.steps.3.phoneOptional")}
           </span>
         </Label>
@@ -1030,13 +1030,14 @@ function Step3EmailGdpr({
           autoComplete="tel"
           placeholder={t("onboarding.steps.3.phonePlaceholder")}
           aria-invalid={Boolean(phoneError)}
+          className="text-base"
           {...form.register("phone")}
         />
-        <p className="text-[11px] text-content-tertiary">
+        <p className="text-[13px] text-content-tertiary leading-[1.45]">
           {t("onboarding.steps.3.phoneHint")}
         </p>
         {phoneError ? (
-          <p className="text-xs text-destructive">{phoneError}</p>
+          <p className="text-[13px] text-destructive">{phoneError}</p>
         ) : null}
       </div>
 
@@ -1058,7 +1059,7 @@ function Step3EmailGdpr({
             aria-invalid={Boolean(consentError)}
             className="mt-0.5"
           />
-          <span className="text-[12.5px] text-content-secondary leading-relaxed flex-1">
+          <span className="text-[14px] text-content-secondary leading-[1.55] flex-1">
             <Trans
               i18nKey="onboarding.steps.3.consentText"
               ns="gate"
@@ -1103,7 +1104,7 @@ function Step3EmailGdpr({
             }
             className="mt-0.5"
           />
-          <span className="text-[12.5px] text-content-secondary leading-relaxed flex-1">
+          <span className="text-[14px] text-content-secondary leading-[1.55] flex-1">
             {t("onboarding.steps.3.marketingText")}{" "}
             <span className="text-content-tertiary">
               {t("onboarding.steps.3.marketingOptional")}
@@ -1113,7 +1114,7 @@ function Step3EmailGdpr({
       </div>
 
       {consentError ? (
-        <p className="text-xs text-destructive">{consentError}</p>
+        <p className="text-[13px] text-destructive">{consentError}</p>
       ) : null}
     </div>
   );
