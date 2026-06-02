@@ -21,6 +21,8 @@ export interface OnboardingStartPayload {
   gdpr_consent: true;
   website: string;
   _t: number;
+  /** Tracking-only — usado server-side para correlacionar erros. */
+  handle?: string;
 }
 
 export function buildStartPayload(
@@ -28,6 +30,7 @@ export function buildStartPayload(
   parsedFullName: string,
   honeypot: string,
   formStartedAt: number,
+  handle?: string,
 ): OnboardingStartPayload {
   const phone = values.phone?.trim();
   return {
@@ -44,5 +47,6 @@ export function buildStartPayload(
     gdpr_consent: true,
     website: honeypot,
     _t: formStartedAt,
+    ...(handle ? { handle } : {}),
   };
 }
