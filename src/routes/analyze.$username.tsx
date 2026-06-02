@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
@@ -214,9 +214,7 @@ function AnalyzePage() {
   // de que o cookie `lead_session` não foi guardado pelo browser (típico
   // em iframes terceiros com cookies particionados). Em vez de reabrir o
   // modal silenciosamente em loop, mostramos um erro acionável.
-  const justOnboardedRef = useState<{ current: boolean }>(() => ({
-    current: false,
-  }))[0];
+  const justOnboardedRef = useRef(false);
 
   const load = useCallback(async () => {
     setState({ status: "loading" });
