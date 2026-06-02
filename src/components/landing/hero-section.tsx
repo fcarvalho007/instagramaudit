@@ -60,7 +60,7 @@ export function HeroSection() {
           </div>
 
           {/* Right — report preview */}
-          <div className="order-2 lg:order-none w-full mt-10 sm:mt-12 lg:mt-0">
+          <div className="order-2 lg:order-2 w-full mt-10 sm:mt-12 lg:mt-0">
             <HeroReportPreview />
           </div>
         </div>
