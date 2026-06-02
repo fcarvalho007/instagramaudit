@@ -913,7 +913,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
               {/* (d) Notas internas */}
               <div>
-                <p className="admin-eyebrow mb-2">Notas internas</p>
+                <p className="admin-eyebrow mb-2.5">Notas internas</p>
                 <Textarea
                   value={notesText}
                   onChange={(e) => {
@@ -922,10 +922,10 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                   }}
                   rows={3}
                   placeholder="Adicionar nota sobre este lead…"
-                  className="text-[13px]"
+                  className="text-[13px] leading-relaxed"
                 />
-                <div className="flex items-center justify-between mt-1">
-                  <span className="admin-meta text-admin-text-tertiary">
+                <div className="flex items-center justify-between mt-2">
+                  <span className="admin-meta text-admin-text-tertiary tabular-nums">
                     {notesText.length} caracteres
                   </span>
                   {notesDirty && (
