@@ -203,10 +203,10 @@
       "2": {
         "eyebrow": "STEP 2 OF 3",
         "title": "Let's tune the analysis",
-        "subtitle": "Two quick picks — they adjust the tone and focus of the report.",
+        "subtitle": "Two quick picks — they help us improve the product.",
         "relationshipQuestion": "What's your relationship with <1>@{{handle}}</1>?",
         "goalQuestion": "What matters most to you?",
-        "consequenceLine": "We'll use this to improve the product and personalise future reports."
+        "consequenceLine": "We'll use this to improve the product."
       },
       "3": {
         "eyebrow": "STEP 3 OF 3",
@@ -230,13 +230,13 @@
         "own_profile": "It's mine",
         "client_profile": "A client's",
         "brand_profile": "My brand",
-        "competitor_research": "A competitor"
+        "competitor_research": "Competitor"
       },
       "goal": {
-        "improve_content": "Improve content",
-        "benchmark_competitors": "Compare competitors",
-        "grow_audience": "Grow audience",
-        "validate_brand": "Validate the brand"
+        "improve_content": "Content",
+        "benchmark_competitors": "Competitors",
+        "grow_audience": "Audience",
+        "validate_brand": "Validate"
       }
     },
     "cta": {
