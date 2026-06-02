@@ -1,71 +1,66 @@
 ## Objetivo
-Aumentar a legibilidade e melhorar UX/UI do modal de onboarding (Intro step) visível em `/`, transformando o link "Entrar" num botão ghost e aplicando melhores práticas tipográficas e de hierarquia.
 
-## Ficheiro a editar
-- `src/components/onboarding/onboarding-modal.tsx` — apenas o componente `IntroStepBody` (linhas ~394–484). Sem alterações de lógica, copy ou i18n.
+Melhorar a leitura mobile (≤640px) da homepage `/`. O screenshot mostra três problemas:
 
-## Alterações
+1. **Densidade vertical desigual** — eyebrow → headline → subtítulo → micro-label → caixa @ → trust → mockup. Tudo com gaps semelhantes; falta respiração entre blocos.
+2. **Caixa @ + CTA empilhados ocupam muita altura** (input 64px + botão full-width grande + padding 10px), empurrando o mockup para fora do above-the-fold.
+3. **Mockup por baixo entra "colado" e sem destaque** — pequeno glow ciano, sem separação clara da action bar; lê-se como "continuação" e não como "prova visual do produto".
 
-### 1. Tipografia maior e mais respirável
-| Elemento | Antes | Depois |
-|---|---|---|
-| Padding do container | `px-5 py-7 sm:px-9 sm:py-9` | `px-6 py-8 sm:px-10 sm:py-10` |
-| Eyebrow "ANTES DE COMEÇAR" | `text-eyebrow-sm` | `text-eyebrow` (12 → 13px, mais tracking) |
-| Título "Cria a tua conta…" | `text-[28px] sm:text-[30px]` | `text-[30px] sm:text-[34px]` leading `1.1` |
-| Bloco "Vais analisar @…" linha 1 | `text-[14px]` | `text-[15px]` |
-| Bloco "Vais analisar @…" linha 2 (créditos) | `text-[13.5px]` | `text-[14px]` |
-| Hint "Funciona melhor…" | `text-[13px]` | `text-[14px]` |
-| CTA "Começar grátis →" | `size="lg"` default | `size="lg"` com `text-[15px] h-12` |
-| "Já tens conta?" parágrafo | `text-[13.5px]` | `text-[14px]` |
-| Trust line "Respeitamos o RGPD" | `text-[12px]` | `text-[13px]` + ícone `size-3.5` |
-| Espaçamento vertical geral | `space-y-4` / `mt-5` | `space-y-5` / `mt-6` |
-| Bloco handle (rounded card) padding | `px-4 py-3.5` | `px-5 py-4` |
+## Escopo (apenas UI/CSS, mobile-first)
 
-### 2. "Já tens conta? Entrar" → botão ghost
-Substituir o atual parágrafo + `<button>` inline por um layout com botão ghost a toda a largura, mantendo a label "Já tens conta?" como texto descritivo acima ou inline:
+Ficheiros:
+- `src/components/landing/hero-section.tsx`
+- `src/components/landing/hero-action-bar.tsx`
+- `src/components/landing/hero-report-preview.tsx`
 
-```tsx
-<div className="border-t border-border-default/50 pt-4 space-y-3">
-  <Button
-    type="button"
-    variant="ghost"
-    size="lg"
-    onClick={onSignIn}
-    className="w-full rounded-lg font-medium text-[14px] text-content-secondary hover:text-primary hover:bg-primary/[0.04]"
-    data-testid="onboarding-intro-signin"
-  >
-    {t("onboarding.intro.haveAccount")}{" "}
-    <span className="ml-1 text-primary font-semibold">
-      {t("onboarding.intro.haveAccountCta")}
-    </span>
-  </Button>
-  <p className="text-center text-[13px] text-content-tertiary flex items-center justify-center gap-1.5">
-    <ShieldCheck className="size-3.5" aria-hidden />
-    {t("onboarding.intro.trustLine")}
-  </p>
-</div>
-```
+Fora de escopo: tokens globais, copy/i18n, lógica, desktop (≥1024px mantém-se igual), light sections seguintes.
 
-Mantém o mesmo `data-testid` e os mesmos i18n keys — zero impacto em testes ou copy.
+## Mudanças
 
-### 3. Hierarquia visual reforçada
-- O CTA primário continua a ser o foco principal (gradient roxo já existente do `Button` default).
-- O botão ghost ("Entrar") fica claramente secundário mas reconhecível como acção (área clicável `w-full h-12` em vez de um link minúsculo).
-- Separador (`border-t`) com mais ar (`pt-4`) entre primário e secundário.
+### 1. `hero-section.tsx` — ritmo vertical mobile
 
-## Fora de escopo
-- `FormStepBody` (steps 1–3) — só foi pedido o modal "geral" mas o screenshot mostra apenas o Intro. Posso aplicar o mesmo escalar de fontes aos steps seguintes num próximo prompt se desejares.
-- Copy / i18n (`gate.json`) — sem alterações.
-- Lógica de auth, tracking, payload — intocado.
-- Tokens globais — sem alterações.
+- Padding da `<section>`: `py-10 md:py-24` → `py-8 md:py-24` (menos topo em mobile, header já cria ar).
+- Stack de copy: `space-y-5 md:space-y-7` → `space-y-4 md:space-y-7` (eyebrow/headline/sub mais compactos).
+- Gap entre coluna esquerda e mockup: `gap-8 lg:gap-12` → `gap-10 lg:gap-12` (mais separação em mobile entre action bar e mockup).
+- `pt-4 lg:pt-2` antes da action bar → `pt-2 lg:pt-2` (a action bar já tem micro-label como header próprio).
+
+### 2. `hero-action-bar.tsx` — caixa @ mais compacta em mobile
+
+- Altura do input mobile: `h-16 sm:h-[72px]` → `h-14 sm:h-[72px]` (56px em mobile, mantém 72px desktop).
+- Padding wrapper do botão: `p-2.5` → `p-2 sm:p-2.5`.
+- CTA mobile: manter full-width mas reduzir altura visual via `size="lg"` já controlado; ok.
+- Trust line: margem `mt-3` → `mt-4` (separa do bloco branco).
+- Remover `hero-bar-breathe` em mobile via `sm:hero-bar-breathe` (a animação de scale só faz sentido com mais ar à volta; em mobile causa "tremor" perto do mockup). Manter a classe só para `sm:`+; em mobile aplicar estática.
+
+### 3. `hero-report-preview.tsx` — destaque do mockup em mobile
+
+Problemas atuais: glow ciano fraco contra fundo navy + chrome de browser cinzento → o cartão lê-se "morto".
+
+- Adicionar `mt-2 sm:mt-0` ao wrapper (separa visualmente da action bar).
+- Reforçar glow em mobile: `-inset-8` → `-inset-6 sm:-inset-8`, `opacity-80` → `opacity-100 sm:opacity-80`, e segundo radial-gradient sutil em violeta no canto inferior esquerdo para ganhar profundidade ("aurora compacta"):
+  ```
+  background:
+    radial-gradient(70% 55% at 65% 35%, rgb(var(--hero-cyan) / 0.32), transparent 70%),
+    radial-gradient(50% 50% at 20% 85%, rgb(var(--hero-violet) / 0.18), transparent 70%);
+  ```
+- Sombra do cartão: aumentar contraste em mobile — adicionar `0 0 0 1px rgba(125,211,252,0.08) inset` para "vidro" mais definido.
+- Score "37 / 100": em mobile fica pequeno relativo ao espaço. `text-2xl sm:text-3xl` → `text-3xl sm:text-3xl` e barra de progresso `h-1.5` → `h-2 sm:h-1.5` (mais peso visual no único número que importa).
+- Eyebrow do score (`scoreLabel`): `mb-2` → `mb-1.5`.
+- KPIs: `text-base` → `text-lg sm:text-base` (mais leitura em mobile).
+- Padding interior: `px-4 sm:px-5 pt-5` no primeiro bloco continua; reduzir `pb-5` final para `pb-4` em mobile (`pb-4 sm:pb-5`).
+- "Premium rows" blurred: reduzir de 3 para 2 linhas em mobile (`premiumRowKeys.slice(0, isMobile ? 2 : 3)` — sem hook, usar Tailwind: renderizar 3 mas esconder a terceira com `hidden sm:flex`). Mantém promessa premium sem empurrar fold.
 
 ## Validação
-1. `bunx tsc --noEmit` deve passar.
-2. Verificar visualmente em `/` (abrir o modal): título maior, mais ar, "Entrar" como botão ghost full-width abaixo do CTA primário.
-3. Confirmar que `data-testid="onboarding-intro-signin"` continua a disparar `onSignIn` (transição para `view="login"`).
+
+- `bunx tsc --noEmit` passa.
+- Preview a 375px: eyebrow legível, caixa @ não passa metade do ecrã, mockup começa visível com glow notável, score "37 / 100" domina o cartão.
+- Desktop ≥1024px inalterado (todas as mudanças são `mobile-only` ou `sm:` overrides que repõem valores atuais).
+- Sem novas dependências, sem alterações de tokens globais, sem alterações em ficheiros locked (`hero-dark.css` intacto).
 
 ## Checkpoint
-- ☐ `IntroStepBody` com fontes aumentadas conforme tabela
-- ☐ "Entrar" renderizado como `<Button variant="ghost" size="lg" className="w-full">`
-- ☐ Sem alterações em i18n, lógica, ou outros steps
-- ☐ Typecheck passa
+
+- ☐ `hero-section.tsx`: padding + space-y + gap ajustados mobile
+- ☐ `hero-action-bar.tsx`: altura input + breathe `sm:` only + trust margin
+- ☐ `hero-report-preview.tsx`: glow dual-radial + score maior + 3ª premium row hidden mobile
+- ☐ Typecheck verde
+- ☐ QA visual @375px

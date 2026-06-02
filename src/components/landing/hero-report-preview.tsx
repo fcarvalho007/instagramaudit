@@ -16,17 +16,17 @@ export function HeroReportPreview() {
 
   return (
     <div
-      className="hero-mock-fade relative w-full max-w-[520px] mx-auto"
+      className="hero-mock-fade relative w-full max-w-[520px] mx-auto mt-2 sm:mt-0"
       role="img"
       aria-label={t("hero.previewMock.header")}
     >
       {/* Glow ambiente atrás do card */}
       <div
         aria-hidden="true"
-        className="absolute -inset-8 -z-10 opacity-80"
+        className="absolute -inset-6 sm:-inset-8 -z-10 opacity-100 sm:opacity-80"
         style={{
           background:
-            "radial-gradient(60% 50% at 60% 40%, rgb(var(--hero-cyan) / 0.28), transparent 70%)",
+            "radial-gradient(70% 55% at 65% 35%, rgb(var(--hero-cyan) / 0.32), transparent 70%), radial-gradient(50% 50% at 20% 85%, rgb(var(--hero-violet) / 0.18), transparent 70%)",
           filter: "blur(48px)",
         }}
       />
@@ -37,7 +37,7 @@ export function HeroReportPreview() {
           borderColor: "var(--hero-glass-border)",
           backgroundColor: "var(--hero-glass-bg)",
           boxShadow:
-            "0 30px 80px -30px rgba(56,189,248,0.25), 0 1px 0 rgba(255,255,255,0.04) inset",
+            "0 30px 80px -30px rgba(56,189,248,0.3), 0 0 0 1px rgba(125,211,252,0.08) inset, 0 1px 0 rgba(255,255,255,0.04) inset",
         }}
       >
         {/* Browser chrome */}
@@ -77,19 +77,19 @@ export function HeroReportPreview() {
             }}
           >
             <div
-              className="text-eyebrow-sm mb-2"
+              className="text-eyebrow-sm mb-1.5"
               style={{ color: "rgb(var(--hero-text-tertiary))" }}
             >
               {t("hero.previewMock.scoreLabel")}
             </div>
             <div
-              className="font-sans font-semibold text-2xl sm:text-3xl tabular-nums"
+              className="font-sans font-semibold text-3xl sm:text-3xl tabular-nums"
               style={{ color: "rgb(var(--hero-text-primary))" }}
             >
               {t("hero.previewMock.scoreValue")}
             </div>
             <div
-              className="mt-3 h-1.5 w-full rounded-full overflow-hidden"
+              className="mt-3 h-2 sm:h-1.5 w-full rounded-full overflow-hidden"
               style={{ backgroundColor: "rgb(var(--hero-cyan) / 0.12)" }}
             >
               <div
@@ -135,7 +135,7 @@ export function HeroReportPreview() {
         </div>
 
         {/* Sidebar label + premium rows blurred (all viewports) */}
-        <div className="px-4 sm:px-5 pt-4 pb-5">
+        <div className="px-4 sm:px-5 pt-4 pb-4 sm:pb-5">
           <div
             className="text-eyebrow-sm mb-2.5"
             style={{ color: "rgb(var(--hero-text-tertiary))" }}
@@ -143,10 +143,10 @@ export function HeroReportPreview() {
             {t("hero.previewMock.sidebar")}
           </div>
           <div className="space-y-1.5" aria-hidden="true">
-            {premiumRowKeys.map((key) => (
+            {premiumRowKeys.map((key, idx) => (
               <div
                 key={key}
-                className="flex items-center justify-between rounded-md border px-3 py-2 select-none"
+                className={`${idx === 2 ? "hidden sm:flex" : "flex"} items-center justify-between rounded-md border px-3 py-2 select-none`}
                 style={{
                   borderColor: "var(--hero-glass-border)",
                   backgroundColor: "rgb(var(--hero-bg-elevated) / 0.6)",

@@ -87,12 +87,12 @@ export function HeroActionBar() {
               placeholder={t("actionBar.placeholder")}
               aria-label={t("actionBar.ariaInput")}
               aria-invalid={error ? true : undefined}
-              className="w-full h-16 sm:h-[72px] bg-transparent pl-14 pr-4 font-sans text-base md:text-lg focus:outline-none text-[color:rgb(var(--hero-bg-base))] placeholder:text-[#94A3B8]"
+              className="w-full h-14 sm:h-[72px] bg-transparent pl-14 pr-4 font-sans text-base md:text-lg focus:outline-none text-[color:rgb(var(--hero-bg-base))] placeholder:text-[#94A3B8]"
             />
           </div>
 
           {/* Submit zone */}
-          <div className="p-2.5 flex items-stretch">
+          <div className="p-2 sm:p-2.5 flex items-stretch">
             <Button
               type="submit"
               variant="primary"
@@ -116,7 +116,7 @@ export function HeroActionBar() {
         </p>
       ) : (
         <ul
-          className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5"
+          className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5"
           aria-label="Trust"
         >
           {trustInline.map((item) => (
@@ -138,7 +138,12 @@ export function HeroActionBar() {
 
       <style>{`
         .hero-bar-breathe {
-          animation: hero-bar-breathe-kf 4s ease-in-out infinite;
+          animation: none;
+        }
+        @media (min-width: 640px) {
+          .hero-bar-breathe {
+            animation: hero-bar-breathe-kf 4s ease-in-out infinite;
+          }
         }
         @keyframes hero-bar-breathe-kf {
           0%, 100% { transform: scale(1); }
