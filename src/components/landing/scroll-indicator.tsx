@@ -4,7 +4,7 @@ export function ScrollIndicator() {
   const { t } = useTranslation("landing");
   return (
     <div
-      className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 z-10"
+      className="hidden lg:flex absolute bottom-8 left-1/2 -translate-x-1/2 flex-col items-center gap-3 z-10"
       aria-hidden="true"
     >
       <span className="text-eyebrow-sm text-content-tertiary">
