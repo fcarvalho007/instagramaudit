@@ -404,14 +404,14 @@ function IntroStepBody({
 
   return (
     <div
-      className="px-5 py-7 sm:px-9 sm:py-9"
+      className="px-6 py-8 sm:px-10 sm:py-10"
       data-testid="onboarding-intro-step"
     >
-      <DialogHeader className="text-left space-y-2.5">
-        <p className="text-eyebrow-sm text-content-tertiary">
+      <DialogHeader className="text-left space-y-3">
+        <p className="text-eyebrow text-content-tertiary">
           {t("onboarding.intro.eyebrow")}
         </p>
-        <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.08] tracking-[-0.015em] text-content-primary text-balance">
+        <DialogTitle className="font-display text-[30px] sm:text-[34px] leading-[1.1] tracking-[-0.015em] text-content-primary text-balance">
           <Trans
             i18nKey="onboarding.intro.title"
             ns="gate"
@@ -423,12 +423,12 @@ function IntroStepBody({
         </DialogDescription>
       </DialogHeader>
 
-      <div className="mt-5 space-y-4">
+      <div className="mt-6 space-y-5">
         <div
-          className="rounded-xl border border-primary/20 bg-primary/[0.04] px-4 py-3.5 space-y-2"
+          className="rounded-xl border border-primary/20 bg-primary/[0.04] px-5 py-4 space-y-2"
           data-testid="onboarding-handle-context"
         >
-          <p className="text-[14px] font-medium text-content-primary leading-[1.5]">
+          <p className="text-[15px] font-medium text-content-primary leading-[1.5]">
             <Trans
               i18nKey="onboarding.intro.handleContext"
               ns="gate"
@@ -438,7 +438,7 @@ function IntroStepBody({
               {`Vais analisar @${handle}`}
             </Trans>
           </p>
-          <p className="text-[13.5px] text-content-secondary leading-[1.5]">
+          <p className="text-[14px] text-content-secondary leading-[1.5]">
             <Trans
               i18nKey="onboarding.intro.creditNote"
               ns="gate"
@@ -447,34 +447,36 @@ function IntroStepBody({
           </p>
         </div>
 
-        <p className="text-[13px] text-content-tertiary leading-[1.5]">
+        <p className="text-[14px] text-content-tertiary leading-[1.5]">
           {t("onboarding.intro.personalHint")}
         </p>
 
         <Button
           type="button"
           size="lg"
-          className="w-full rounded-lg font-medium"
+          className="w-full rounded-lg font-medium h-12 text-[15px]"
           onClick={onContinue}
           data-testid="onboarding-intro-cta"
         >
           {t("onboarding.intro.cta")}
         </Button>
 
-        <div className="border-t border-border-default/50 pt-3 space-y-2.5">
-          <p className="text-center text-[13.5px] text-content-secondary">
-            {t("onboarding.intro.haveAccount")}{" "}
-            <button
-              type="button"
-              onClick={onSignIn}
-              className="font-medium text-primary hover:underline"
-              data-testid="onboarding-intro-signin"
-            >
+        <div className="border-t border-border-default/50 pt-4 space-y-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="lg"
+            onClick={onSignIn}
+            className="w-full rounded-lg h-12 text-[14px] font-medium text-content-secondary hover:text-primary hover:bg-primary/[0.04]"
+            data-testid="onboarding-intro-signin"
+          >
+            <span>{t("onboarding.intro.haveAccount")}</span>
+            <span className="ml-1.5 text-primary font-semibold">
               {t("onboarding.intro.haveAccountCta")}
-            </button>
-          </p>
-          <p className="text-center text-[12px] text-content-tertiary flex items-center justify-center gap-1">
-            <ShieldCheck className="size-3" aria-hidden />
+            </span>
+          </Button>
+          <p className="text-center text-[13px] text-content-tertiary flex items-center justify-center gap-1.5">
+            <ShieldCheck className="size-3.5" aria-hidden />
             {t("onboarding.intro.trustLine")}
           </p>
         </div>

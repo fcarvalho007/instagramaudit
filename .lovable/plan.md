@@ -1,50 +1,71 @@
 ## Objetivo
+Aumentar a legibilidade e melhorar UX/UI do modal de onboarding (Intro step) visível em `/`, transformando o link "Entrar" num botão ghost e aplicando melhores práticas tipográficas e de hierarquia.
 
-Aplicar dois refinamentos pendentes no hero da `/` e blindá-los para não voltarem a ser revertidos.
+## Ficheiro a editar
+- `src/components/onboarding/onboarding-modal.tsx` — apenas o componente `IntroStepBody` (linhas ~394–484). Sem alterações de lógica, copy ou i18n.
 
-## Mudanças
+## Alterações
 
-### 1. `src/components/landing/hero-action-bar.tsx`
-- **Caixa do input a branco** (destaque sobre o fundo navy):
-  - `backgroundColor: "#FFFFFF"` (em vez de `var(--hero-glass-bg)`).
-  - `borderColor: "rgba(15, 23, 42, 0.08)"` (navy a baixa opacidade).
-  - Remover `backdrop-blur-xl` (deixa de fazer sentido sobre branco).
-  - Sombra mais sóbria: `0 18px 40px -22px rgba(8, 14, 32, 0.45), 0 1px 0 rgba(15, 23, 42, 0.04) inset` (sem glow ciano).
-- **Ícone `@`** em navy: `color: "rgb(var(--hero-bg-base))"`.
-- **Input** com texto em navy (`text-[color:rgb(var(--hero-bg-base))]`) e placeholder em slate (`placeholder:text-slate-400` substituído por classe utilitária equivalente já existente; usar `placeholder:text-[#94A3B8]`).
-- **Trust list**: remover o item `publicData`. Fica apenas `freeReports`. Check a ciano mantém-se.
-- Manter a animação `hero-bar-breathe` (subtil, não interfere com a leitura).
+### 1. Tipografia maior e mais respirável
+| Elemento | Antes | Depois |
+|---|---|---|
+| Padding do container | `px-5 py-7 sm:px-9 sm:py-9` | `px-6 py-8 sm:px-10 sm:py-10` |
+| Eyebrow "ANTES DE COMEÇAR" | `text-eyebrow-sm` | `text-eyebrow` (12 → 13px, mais tracking) |
+| Título "Cria a tua conta…" | `text-[28px] sm:text-[30px]` | `text-[30px] sm:text-[34px]` leading `1.1` |
+| Bloco "Vais analisar @…" linha 1 | `text-[14px]` | `text-[15px]` |
+| Bloco "Vais analisar @…" linha 2 (créditos) | `text-[13.5px]` | `text-[14px]` |
+| Hint "Funciona melhor…" | `text-[13px]` | `text-[14px]` |
+| CTA "Começar grátis →" | `size="lg"` default | `size="lg"` com `text-[15px] h-12` |
+| "Já tens conta?" parágrafo | `text-[13.5px]` | `text-[14px]` |
+| Trust line "Respeitamos o RGPD" | `text-[12px]` | `text-[13px]` + ícone `size-3.5` |
+| Espaçamento vertical geral | `space-y-4` / `mt-5` | `space-y-5` / `mt-6` |
+| Bloco handle (rounded card) padding | `px-4 py-3.5` | `px-5 py-4` |
 
-### 2. `src/i18n/locales/pt/landing.json` e `.../en/landing.json`
-- Remover a chave `actionBar.trustInline.publicData` em ambos os ficheiros (já não é referenciada).
+### 2. "Já tens conta? Entrar" → botão ghost
+Substituir o atual parágrafo + `<button>` inline por um layout com botão ghost a toda a largura, mantendo a label "Já tens conta?" como texto descritivo acima ou inline:
 
-### 3. Blindagem contra regressão
+```tsx
+<div className="border-t border-border-default/50 pt-4 space-y-3">
+  <Button
+    type="button"
+    variant="ghost"
+    size="lg"
+    onClick={onSignIn}
+    className="w-full rounded-lg font-medium text-[14px] text-content-secondary hover:text-primary hover:bg-primary/[0.04]"
+    data-testid="onboarding-intro-signin"
+  >
+    {t("onboarding.intro.haveAccount")}{" "}
+    <span className="ml-1 text-primary font-semibold">
+      {t("onboarding.intro.haveAccountCta")}
+    </span>
+  </Button>
+  <p className="text-center text-[13px] text-content-tertiary flex items-center justify-center gap-1.5">
+    <ShieldCheck className="size-3.5" aria-hidden />
+    {t("onboarding.intro.trustLine")}
+  </p>
+</div>
+```
 
-Para que estes refinamentos não sejam apagados em sessões futuras:
+Mantém o mesmo `data-testid` e os mesmos i18n keys — zero impacto em testes ou copy.
 
-- **`LOCKED_FILES.md`** — adicionar entrada:
-  - `src/components/landing/hero-action-bar.tsx` — "Caixa branca, trust list só com freeReports. Não reverter sem confirmação."
-  - `src/styles/hero-dark.css` — "Hero homepage é dark ('Editorial Tech Noir'). Não converter para light."
-- **`mem://design/hero-homepage`** (nova memória) com regras:
-  - Hero da `/` é **dark navy**; caixa do input é **branca** com ícone navy e texto navy; trust list mostra **apenas** "Oferta de 2 relatórios grátis".
-- **`mem://index.md`** — registar referência à nova memória na secção Memories.
+### 3. Hierarquia visual reforçada
+- O CTA primário continua a ser o foco principal (gradient roxo já existente do `Button` default).
+- O botão ghost ("Entrar") fica claramente secundário mas reconhecível como acção (área clicável `w-full h-12` em vez de um link minúsculo).
+- Separador (`border-t`) com mais ar (`pt-4`) entre primário e secundário.
 
-## Fora de âmbito
-- Restantes secções da homepage (já estão light, sem alterações).
-- Tokens globais, `report-theme-wrapper`, `__root.tsx`.
+## Fora de escopo
+- `FormStepBody` (steps 1–3) — só foi pedido o modal "geral" mas o screenshot mostra apenas o Intro. Posso aplicar o mesmo escalar de fontes aos steps seguintes num próximo prompt se desejares.
+- Copy / i18n (`gate.json`) — sem alterações.
+- Lógica de auth, tracking, payload — intocado.
+- Tokens globais — sem alterações.
 
 ## Validação
-
-1. `bunx tsc --noEmit`.
-2. Screenshot em 1366×900 e 390×844 para confirmar:
-   - Caixa branca com bom contraste sobre o navy.
-   - Apenas uma linha de trust ("Oferta de 2 relatórios grátis").
-3. Verificar que `t("actionBar.trustInline.publicData")` já não aparece em nenhum lugar (`rg publicData src`).
+1. `bunx tsc --noEmit` deve passar.
+2. Verificar visualmente em `/` (abrir o modal): título maior, mais ar, "Entrar" como botão ghost full-width abaixo do CTA primário.
+3. Confirmar que `data-testid="onboarding-intro-signin"` continua a disparar `onSignIn` (transição para `view="login"`).
 
 ## Checkpoint
-
-- ☐ Caixa do `@` a branco (fundo, ícone navy, texto navy, placeholder slate).
-- ☐ "Acesso apenas a dados públicos" removido (UI + i18n PT/EN).
-- ☐ `LOCKED_FILES.md` atualizado com `hero-action-bar.tsx` + `hero-dark.css`.
-- ☐ Nova memória `mem://design/hero-homepage` criada e indexada.
-- ☐ `tsc` passa e screenshots confirmam o resultado.
+- ☐ `IntroStepBody` com fontes aumentadas conforme tabela
+- ☐ "Entrar" renderizado como `<Button variant="ghost" size="lg" className="w-full">`
+- ☐ Sem alterações em i18n, lógica, ou outros steps
+- ☐ Typecheck passa
