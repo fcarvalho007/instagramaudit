@@ -1,153 +1,138 @@
+# Apify Cost Accounting — Production vs Lab/I&D
 
-# Redesign do hero — homepage AuditProfiles
+## Problem (recap)
 
-## Estado atual
+`/admin/apify-lab` writes to `apify_lab_runs` only. Every admin cost view and the budget gate read `provider_call_logs`. Result: Lab credits spent on the Apify dashboard are invisible to admin KPIs, and cost-per-lead is silently inflated whenever a Lab run also happens to fall in a production query window. Current 30 d snapshot:
 
-`/` (src/routes/index.tsx) → `<HeroSection />` (light, centrado, single-column).
-Composição atual:
-- `HeroSection` (locked) — fundo `bg-surface-base` + `HeroAuroraBackground` light + headline e subtitle centrados (`BlurRevealText`) + `HeroActionBar` central com `HandwrittenNote`.
-- A seguir: micro-proof strip ("CONTA GRATUITA / 2 RELATÓRIOS GRÁTIS / RGPD") e `SocialProofSection`, `HowItWorksSection`, `ProductPreviewSection` (todos light).
-- Tokens em `src/styles/tokens.css` são LIGHT-only (Iconosquare). Não existe paleta dark.
-- Dependências: nenhuma de motion/3D/aceternity. Animação atual é CSS pura via `BlurRevealText`.
+| bucket | est USD | actual USD | rows |
+|---|---:|---:|---:|
+| `provider_call_logs` apify | 0.412 | 0.497 | 72 |
+| `apify_lab_runs` | 0.439 | 1.090 | 36 |
 
-## Decisão arquitectural (precisa de flag)
+Lab is already ~2× production by `actual_cost_usd` — material enough to warrant proper separation.
 
-⚠️ Manter o hero DARK numa app light-first é uma decisão estilística forte mas tecnicamente isolável. Implementação: o hero passa a ser uma "ilha dark" scoped por classe (`.hero-dark`) com variáveis CSS locais — **não** mexe nos tokens globais nem no resto da página. O `<body>` continua light. Transição visual: a faixa micro-proof actual passa a fazer de "costura" entre a ilha dark e a página light.
+## Approach (recommended)
 
-⚠️ Os ficheiros `hero-section.tsx`, `hero-action-bar.tsx`, `hero-aurora-background.tsx` estão em `LOCKED_FILES.md`. Este prompt é a autorização explícita para os modificar (regra "explicitly asks for a modification in a new prompt"). Após o merge, devem ser **re-lockados** no `LOCKED_FILES.md` com nota da data.
+Add `source_context` to `provider_call_logs` and **mirror Lab runs into it via a DB trigger** (Option A below). One source of truth, zero changes to the 15+ admin call sites that already aggregate `provider_call_logs`, and the budget gate automatically starts counting Lab.
 
-## Proposta — estrutura
+### Why mirror, not union (trade-off)
 
-Layout split responsivo dentro do mesmo `<HeroSection />`:
+| Option | Pros | Cons |
+|---|---|---|
+| **A. Mirror lab → pcl via trigger** (chosen) | Single source of truth for cost. All 15+ admin queries get Lab "for free" once they filter on `source_context`. Budget gate works unchanged. Reconciliation simpler (one table, one sum). | Lab rows exist in two places. Mitigated by: (i) trigger is the only writer; (ii) `apify_run_id` becomes a natural idempotency key on pcl via unique partial index; (iii) `apify_lab_runs` keeps its rich debug-only columns (`guardrails`, `notes`, `purpose`, `window_kind`, …) — pcl just stores the cost row. |
+| B. Union pcl + lab_runs at query time | No duplication. | Every one of the ~15 admin queries + `apify-budget.server.ts` must change. Every future query has to remember to union. High regression surface. |
+
+## Final cost taxonomy
+
+`source_context` (text, NOT NULL default `'unknown'`) on `provider_call_logs`:
+
+| value | written by |
+|---|---|
+| `public_analysis` | `/api/analyze-public-v1` (Apify profile scraper called from `src/lib/analysis/apify-client.ts`) |
+| `enrich_comments` | `src/lib/enrichment/run-enrichment.server.ts` (comment scraper) |
+| `admin_lab` | DB trigger mirroring `apify_lab_runs` |
+| `admin_refresh` | future: admin-triggered manual refresh of a snapshot |
+| `backfill` | future: scripted backfills / historical re-imports |
+| `unknown` | default safety bucket; existing rows that don't match a heuristic |
+
+Same column on every provider (apify, openai, dataforseo). Most non-apify rows will be `public_analysis` after backfill.
+
+## Final admin formulas (`overview-formulas.ts`)
+
+Inputs are extended with three split buckets, all over the 30 d window:
 
 ```
-desktop (≥lg, 1024+)         mobile (<lg)
-┌─────────────┬─────────────┐   ┌───────────────┐
-│ Eyebrow     │             │   │ Eyebrow       │
-│ Headline    │ Report      │   │ Headline      │
-│ Subheadline │ preview     │   │ Subheadline   │
-│ Action bar  │ mockup      │   │ Action bar    │
-│ Trust row   │ (glass)     │   │ Trust row     │
-│             │             │   │ Compact mockup│
-└─────────────┴─────────────┘   └───────────────┘
-   60%            40%               100% stacked
+production_cost_30d = SUM(coalesce(actual_cost_usd, estimated_cost_usd))
+                      FROM provider_call_logs
+                      WHERE status='success'
+                        AND source_context IN ('public_analysis','enrich_comments')
+
+lab_cost_30d        = SUM(...) WHERE source_context = 'admin_lab'
+
+other_cost_30d      = SUM(...) WHERE source_context IN ('admin_refresh','backfill','unknown')
+
+total_cost_30d      = production_cost_30d + lab_cost_30d + other_cost_30d
 ```
 
-Mobile: mockup empurrado **abaixo** do CTA, em versão compacta (mostra score card + 1 KPI row + chips locked, esconde sidebar e premium rows blurred).
+Derived KPIs:
 
-## Componentes a criar / alterar
+- `cost_per_lead       = production_cost_30d / leads_30d`   ← Lab EXCLUDED
+- `cost_per_analysis   = production_cost_30d / fresh_analyses_30d`   ← Lab EXCLUDED
+- `cost_per_unlocked   = production_cost_30d / reports_unlocked_30d` ← Lab EXCLUDED
+- `margin_per_lead     = revenue_per_lead − cost_per_lead`           ← Lab EXCLUDED
+- `total_platform_cost = total_cost_30d`                              ← Lab INCLUDED
 
-### Novos
-- `src/components/landing/hero-report-preview.tsx` — mockup tablet/dashboard dark. Sub-blocos internos (sem ficheiros separados): header mini, chips temporais (1 activo + 4 locked com 🔒), score card "Índice do perfil 37/100" (label "Pré-visualização"), KPI row 3 cols, sidebar "Visão geral · 5 secções premium", 4 linhas premium blurred (`backdrop-blur` + overlay), legenda explicativa. Todos os valores marcados como preview (badge `PREVIEW · Dados ilustrativos`).
-- `src/styles/hero-dark.css` — escopo `.hero-dark { --hero-bg, --hero-fg, --hero-fg-muted, --hero-border, --hero-accent, --hero-accent-soft, --hero-glass-bg, --hero-glass-border }`. Importado em `src/styles.css`.
+`/admin/visao-geral` and `/admin/receita` get a new line item **"I&D · Apify Lab"** showing `lab_cost_30d` separately from production.
 
-### Alterar
-- `src/components/landing/hero-section.tsx` — substitui layout centrado por split grid `lg:grid-cols-[1.1fr_0.9fr]`. Aplica `className="hero-dark"`. Headline + subtitle alinhados à esquerda em desktop, centrados em mobile.
-- `src/components/landing/hero-aurora-background.tsx` — versão dark: gradient radial cyan/indigo subtil sobre `--hero-bg` (navy near-black). Sem glow agressivo, fine grain via SVG noise opcional.
-- `src/components/landing/hero-action-bar.tsx` — variante dark: input/border/text consomem tokens `--hero-*` em vez de `surface-*`. Mantém validação, errors, onSubmit, todo o comportamento. **Sem alteração lógica.**
-- `src/components/landing/handwritten-note.tsx` — remover do hero (já não cola com a nova composição split). Ficheiro permanece, mas `<HandwrittenNote />` deixa de ser renderizado.
-- `src/routes/index.tsx` — faixa micro-proof actual: trocar background `from-surface-base to-surface-secondary` para gradiente de transição dark→light (`from-[var(--hero-bg)] to-surface-base`) para suavizar a costura. Resto da página intocado.
+## Budget gate (`apify-budget.server.ts`)
 
-### NÃO mexer
-- `src/components/landing/mockup-dashboard.tsx`, `mockup-metric-card.tsx`, `mockup-benchmark-gauge.tsx`, `product-preview-section.tsx` — continuam light e servem a secção "Preview do produto" mais abaixo.
-- `src/components/landing/how-it-works-*`, `social-proof-section.tsx` — intocados.
-- Tokens globais (`tokens.css`, `tokens-light.css`, `styles.css` @theme) — intocados.
-- Onboarding, report, /analyze, admin, créditos, Apify, OpenAI, pricing, emails, plano premium — intocados.
+- **Hard cap (`APIFY_HARD_CAP_USD`)** — keep current behaviour (sum all apify rows in pcl over the UTC day). Because Lab is mirrored, it now counts automatically. ✅ matches required behaviour ("Lab should count against hard cap: yes").
+- Add a sibling `getApifyProductionDailySpendUsd()` that filters on `source_context IN ('public_analysis','enrich_comments')` for any future production-only budget warning. Not wired anywhere yet — just available.
 
-## i18n — chaves a actualizar
+## Migration plan
 
-### `src/i18n/locales/pt/landing.json`
-```jsonc
-"hero": {
-  "eyebrow": "Benchmark de Instagram",  // novo
-  "headline": "Analisa qualquer perfil de Instagram em segundos.",  // alterado
-  "subtitle": "Benchmark, diagnóstico editorial e pistas claras para melhorar a presença digital.",  // alterado
-  "trust": {
-    "freeReports": "2 relatórios grátis",
-    "publicData": "Só dados públicos",
-    "freeAccount": "Conta gratuita"
-  },
-  "previewMock": {
-    "header": "Pré-visualização do relatório",
-    "sampleActive": "Últimas 12 publicações",
-    "windowsLocked": ["30 dias", "60 dias", "90 dias", "365 dias"],
-    "scoreLabel": "Índice do perfil",
-    "scoreValue": "37/100",
-    "scoreCaption": "Preview · Dados ilustrativos",
-    "kpis": {
-      "engagement": "Engagement",
-      "frequency": "Posts/sem",
-      "growth": "Crescimento"
-    },
-    "sidebar": "Visão geral grátis · 5 secções premium",
-    "premiumRows": ["Diagnóstico editorial", "Conteúdo", "Procura", "Comparação"],
-    "footnote": "O resumo gratuito mostra o essencial. O relatório completo aprofunda o diagnóstico."
-  }
-}
-```
-`actionBar.placeholder` muda para `"@perfil ou URL do Instagram"`.
-`actionBar.submit` mantém-se `"Analisar"`.
+One migration, idempotent:
 
-Remover do faixa micro-proof actual ("CONTA GRATUITA / 2 RELATÓRIOS GRÁTIS / RGPD") — passa a estar dentro do hero como trust row. Faixa abaixo pode ser eliminada ou repurposed (sugestão: eliminar para evitar redundância).
+1. `ALTER TABLE provider_call_logs ADD COLUMN source_context text NOT NULL DEFAULT 'unknown'`
+2. `CREATE INDEX provider_call_logs_source_context_idx ON provider_call_logs(source_context, created_at DESC)`
+3. **Backfill** existing 72 apify rows + others:
+   - `UPDATE … SET source_context='enrich_comments' WHERE provider='apify' AND actor ILIKE '%comment%'`
+   - `UPDATE … SET source_context='public_analysis' WHERE provider='apify' AND source_context='unknown' AND analysis_event_id IS NOT NULL`
+   - `UPDATE … SET source_context='public_analysis' WHERE provider='openai'` (insights are only called from public analysis today)
+   - `UPDATE … SET source_context='public_analysis' WHERE provider='dataforseo'` (market signals are only called from public analysis today)
+   - Remaining rows stay `'unknown'` (the 24 apify rows with no `analysis_event_id` that aren't comments — these are historical pre-instrumentation calls).
+4. **Mirror Lab → pcl trigger**:
+   - `ALTER TABLE provider_call_logs ADD CONSTRAINT provider_call_logs_lab_run_unique UNIQUE (provider, apify_run_id) DEFERRABLE INITIALLY DEFERRED` — actually a `UNIQUE INDEX … WHERE source_context='admin_lab' AND apify_run_id IS NOT NULL` (partial, to avoid colliding with NULL run_ids on production rows).
+   - `CREATE FUNCTION mirror_apify_lab_to_provider_call_logs()` (SECURITY DEFINER, search_path=public): on INSERT or UPDATE of `apify_lab_runs`, upsert into `provider_call_logs` with `source_context='admin_lab'`, `provider='apify'`, `actor=NEW.mode`, `handle=NEW.profile_handle`, `apify_run_id=NEW.apify_run_id`, `status=NEW.status`, `posts_returned=NEW.posts_returned`, `estimated_cost_usd=NEW.estimated_cost_usd`, `actual_cost_usd=NEW.actual_cost_usd`, `duration_ms=NEW.duration_ms`, `error_excerpt=NEW.error_excerpt`. ON CONFLICT on the unique index → UPDATE the cost fields (handles the backfill-actual-cost flow that updates `actual_cost_usd` after the fact).
+   - `CREATE TRIGGER apify_lab_runs_mirror_aiu AFTER INSERT OR UPDATE OF status, estimated_cost_usd, actual_cost_usd, posts_returned, duration_ms, apify_run_id ON apify_lab_runs FOR EACH ROW EXECUTE FUNCTION mirror_apify_lab_to_provider_call_logs();`
+5. **Backfill the 36 existing Lab rows** by running `UPDATE apify_lab_runs SET id = id WHERE created_at >= '2026-01-01'` once after the trigger is in place (no data change, just fires the trigger).
+6. RLS / GRANT: `provider_call_logs` is already locked down via service-role-only access — no policy changes needed.
 
-### `src/i18n/locales/en/landing.json`
-Espelho EN — destaque:
-- `"headline": "Analyze any Instagram profile in seconds."`
-- `"subtitle": "Benchmarks, editorial diagnosis and clear cues to improve your digital presence."`
-- `"trust"`: `"2 free reports"`, `"Public data only"`, `"Free account"`
-- `"previewMock.header": "Report preview"`, `"sampleActive": "Latest 12 posts"`, `"windowsLocked": ["30 days","60 days","90 days","365 days"]`, `"scoreLabel": "Profile index"`, `"scoreCaption": "Preview · Illustrative data"`, `"kpis": { engagement, Posts/wk, Growth }`, `"sidebar": "Free overview · 5 premium sections"`, `"premiumRows": ["Editorial diagnosis","Content","Reach","Comparison"]`, `"footnote": "The free summary shows the essentials. The full report goes deeper."`
+## Files to change
 
-## Estilo visual
+- **Code (TypeScript)**
+  - `src/lib/analysis/events.ts` — extend `logProviderCall()` input with `sourceContext: SourceContext`, default to `'unknown'`, log warning. Add `SourceContext` type export.
+  - `src/lib/analysis/apify-client.ts` (or its caller in `analyze-public-v1.ts`) — pass `sourceContext: 'public_analysis'` on every `logProviderCall` site.
+  - `src/lib/enrichment/run-enrichment.server.ts` — pass `sourceContext: 'enrich_comments'`.
+  - `src/lib/insights/openai-insights.server.ts` — pass `sourceContext: 'public_analysis'`.
+  - `src/lib/dataforseo/client.ts` (line 253 direct insert) — set `source_context: 'public_analysis'`.
+  - `src/lib/admin/overview-formulas.ts` — add `production_cost_30d`, `lab_cost_30d`, `other_cost_30d` to `KpiInput`; rewrite derived KPIs to use `production_cost_30d`; output the three new bucket fields.
+  - `src/lib/admin/system-queries.server.ts` — split `fetchExpense30d()` to return `{ production, lab, other, total, fresh_avg_cost_per_report }`. Update internal call sites.
+  - `src/routes/api/admin/overview-kpis.ts` — surface the three buckets in the JSON response; update `OverviewKpis` interface.
+  - `src/components/admin/v2/visao-geral/cost-summary-card.tsx`, `…/expense-section.tsx`, `src/components/admin/v2/receita/reconciliation-section.tsx`, `src/components/admin/v2/sistema/costs-detail-section.tsx`, `src/components/admin/cockpit/parts/cost-breakdown-panel.tsx` — render the new "I&D · Apify Lab" row alongside Production.
+  - `src/lib/admin/billing-reconciliation.server.ts` — group reconciliation output by `source_context` so the Apify dashboard total can be compared to `production + lab` separately.
+  - `src/lib/security/apify-budget.server.ts` — no functional change to hard cap; add optional `getApifyProductionDailySpendUsd()`.
+  - `src/lib/admin/apify-actual-cost-backfill.server.ts` — when the backfill updates `apify_lab_runs.actual_cost_usd`, the trigger now syncs `provider_call_logs` automatically. Verify no double-write.
+  - `src/integrations/supabase/types.ts` — regenerated by the migration (do not edit manually).
 
-- Fundo `--hero-bg: #060A18` (navy near-black) com radial gradient subtil `--accent-luminous @ 8%` no canto superior direito + grain SVG opcional `opacity-[0.03]`.
-- Texto: headline `#FFFFFF`, subtitle `#C9D2E3` (contraste AA 8.3:1 sobre #060A18 ✓), trust items `#9AA8C2` (contraste 5.4:1 ✓), placeholder `#7E8CA8` em fundo input `rgba(255,255,255,0.04)` (contraste 4.6:1 ✓).
-- Headline Fraunces medium (regra core: H1 = Fraunces). Subtitle/UI/números Inter (regra 2-font). **Sem JetBrains Mono.** Números KPI `tabular-nums`.
-- Mockup: card glass `bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_30px_80px_-20px_rgba(0,0,0,0.6)]`. Chips locked: `border-white/8 text-white/40` + ícone `Lock` lucide 12px. Score card: highlight ring `ring-1 ring-cyan-400/20`. Premium rows blurred: `blur-[3px] select-none pointer-events-none` + overlay com micro-CTA.
-- Sem fake brand logos, sem screenshots, sem dados que pareçam de cliente real (badge "Preview · Dados ilustrativos" no score card resolve a regra).
-- CTA "Analisar": botão accent (consome `--hero-accent: #3772E5` ou cyan luminous). Já é o componente UI/button (locked) — variante via className.
+- **Tests**
+  - `src/lib/admin/overview-formulas.test.ts` — extend with: production excludes lab; total includes lab; cost-per-lead uses production only; missing `source_context` defaults to `'unknown'` and lands in `other`.
+  - New `src/lib/security/apify-budget.test.ts` (if not present) — hard cap includes lab; production sub-sum excludes lab.
+  - New `src/lib/admin/billing-reconciliation.test.ts` — output splits Lab vs production.
+  - Mirror trigger sanity: a small `tests/integration/apify-lab-mirror.sql.test.ts` or psql fixture that inserts an `apify_lab_runs` row and asserts a matching `provider_call_logs` row with `source_context='admin_lab'`.
 
-## Acessibilidade
+## Validation
 
-- Hero envolto em `<section aria-label="…">` mantido.
-- Tap targets ≥44px no input/CTA mobile.
-- Contraste AA validado nos 4 níveis de texto (números acima).
-- `aria-hidden="true"` nas linhas premium blurred (não devem ser anunciadas como conteúdo real).
-- Mockup é decorativo: wrapper com `role="img" aria-label="Pré-visualização ilustrativa do relatório"`.
-- Sem `text-[10px]`. Mínimo 12px em conteúdo lido.
+- `bunx tsc --noEmit`
+- `bunx vitest run` (formulas + budget + reconciliation tests)
+- Spot-check `/admin/visao-geral`: production cost matches previous total minus Lab; new "I&D" line shows ~$1.09 actual / $0.44 est for last 30 d.
+- Confirm `/admin/apify-lab` still records to `apify_lab_runs` (writer code untouched).
 
-## Mobile (<lg)
+## Out of scope (explicit)
 
-- Stack vertical: eyebrow → headline → subtitle → input → CTA → trust row → mockup compacto.
-- Input full-width acima do fold em 390×844.
-- Mockup mobile mostra: header mini + chips horizontais scrollable (com fade-edge à direita para indicar overflow — resolve também a issue conhecida do "60 day…" clipado) + score card + KPI row 3 cols. Esconde sidebar e premium rows (`hidden lg:block`).
-- Sem horizontal scroll na página.
+Public analysis behaviour, Apify actor configuration, onboarding, credits, report rendering, pricing, payments, thumbnails, emails — all untouched. No Apify actor calls are executed.
 
-## Dependências
+## Risks / open questions
 
-**Nenhuma.** Tudo construído com Tailwind + tokens scoped + componentes já existentes. Sem Spline, sem three, sem motion, sem aceternity.
+- The `actor` column in `provider_call_logs` is NOT NULL. For mirrored Lab rows we'll set `actor = COALESCE(NEW.mode, 'apify-lab')` — confirm this is acceptable, or relax to nullable in the migration.
+- 24 historical apify pcl rows with no `analysis_event_id` will end up as `'unknown'` (probably pre-instrumentation calls). They affect `other_cost_30d` not `production_cost_30d`, which is the safe choice.
+- The trigger fires SECURITY DEFINER under the table owner; double-check that the role has INSERT on `provider_call_logs` (it does — it's the table owner).
 
-## Animação
+## Deliverables checklist
 
-Reutilizar `BlurRevealText` (já no projecto) para headline e subtitle. Mockup com fade-in CSS staggered (`animation-delay` em chips/score/KPIs) — sem libs. Premium rows com pulse muito subtil `animate-pulse opacity-50` opcional.
-
-## Riscos
-
-1. **Dark island** num design system light-first pode parecer inconsistente se a transição entre hero e resto da página não for fluida. Mitigação: faixa de transição com gradient + dois screenshots antes/depois antes de merge.
-2. **Locked files** — necessária re-lock após merge com nota no `LOCKED_FILES.md`.
-3. **Tokens scoped vs globais** — futuros engenheiros podem tentar consumir `--hero-*` fora do hero. Mitigação: comentário no topo do `hero-dark.css` a delimitar uso.
-4. **Mockup pode parecer dados reais** — mitigado pelo badge "Preview · Dados ilustrativos" + valores deliberadamente neutros (37/100).
-5. **Faixa micro-proof actual** fica redundante — proposta de eliminação. Se o utilizador preferir manter, pode ficar como "social proof bar" com outro conteúdo (logos de imprensa, etc.) — decisão pendente.
-
-## Plano de implementação (sequência sugerida quando aprovado)
-
-1. Criar `src/styles/hero-dark.css` + import em `src/styles.css`.
-2. Criar `src/components/landing/hero-report-preview.tsx`.
-3. Actualizar `hero-aurora-background.tsx` para variante dark scoped.
-4. Actualizar `hero-action-bar.tsx` para consumir tokens `--hero-*` (mantém lógica intacta).
-5. Reescrever `hero-section.tsx` com layout split + remoção do `HandwrittenNote`.
-6. Actualizar `pt/landing.json` + `en/landing.json` com chaves novas.
-7. Actualizar faixa micro-proof em `routes/index.tsx` (eliminar ou converter em transição).
-8. Re-lock `LOCKED_FILES.md` com nota da data e do prompt de autorização.
-9. QA mobile 360/390 + desktop 1440 + contrast audit.
-
-Sem alterações de código até aprovação.
+- [ ] Migration approved (adds column, index, trigger, mirror function, backfills existing rows + Lab rows)
+- [ ] Code changes shipped behind the same migration
+- [ ] Tests green
+- [ ] `/admin/visao-geral` shows Production / Lab / Total split
+- [ ] `cost_per_lead` excludes Lab
+- [ ] Apify hard cap includes Lab (verified by mirroring)
