@@ -229,14 +229,6 @@ export function ReportShellV2({
           </div>
         </section>
 
-        {/* Compact product utility bar — appears on scroll, replaces the
-            institutional nav (hidden via analyze-header-collapse.css). */}
-        <ReportUtilityBar
-          result={result}
-          actions={actions}
-          visible={scrolled}
-        />
-
         {/* Tabs mobile sticky abaixo do hero */}
         <ReportBlockTopTabs
           variant={variant}
