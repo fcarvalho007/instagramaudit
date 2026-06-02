@@ -29,6 +29,7 @@ import {
   type VariantFeatures,
 } from "@/lib/report/report-variant";
 import { ReportTrackingProvider } from "./report-tracking-context";
+import { PremiumCtaProvider } from "./premium-cta-context";
 
 import { ReportFramedBlock } from "../report-framed-block";
 import { Lock, Sparkles } from "lucide-react";
@@ -165,6 +166,12 @@ export function ReportShellV2({
         variant,
       }}
     >
+    <PremiumCtaProvider
+      snapshotId={snapshotId ?? null}
+      handle={result.data.profile.username ?? null}
+      variant={variant}
+      premiumUnlocked={premiumUnlocked}
+    >
       <div
         className={cn(
           REDESIGN_TOKENS.pageCanvas,
@@ -189,7 +196,6 @@ export function ReportShellV2({
             snapshotId={snapshotId ?? null}
             handle={result.data.profile.username ?? null}
             variant={variant}
-            onUnlockClick={onUnlockClick}
           />
         </section>
 
@@ -410,13 +416,14 @@ export function ReportShellV2({
         {/* Sticky premium CTA: only after lead capture (post-unlock).
             Pre-lead the lead-magnet card is the single primary CTA. */}
         {unlocked && lockBoundary === "engagement" && (
-          <StickyUnlockBar onClick={handleUnlockClick} />
+          <StickyUnlockBar />
         )}
         <ReportShortcutDialog
           open={shortcutsOpen}
           onOpenChange={setShortcutsOpen}
         />
       </div>
+    </PremiumCtaProvider>
     </ReportTrackingProvider>
     </ReportDataProvider>
     </VariantFeaturesOverrideProvider>
