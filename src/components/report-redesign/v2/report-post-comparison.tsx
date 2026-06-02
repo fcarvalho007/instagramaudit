@@ -18,9 +18,7 @@ import { useLanguage } from "@/hooks/use-language";
 import { formatNumber } from "@/lib/i18n/format";
 import type { SupportedLanguage } from "@/i18n";
 import { InsightCallout } from "./overview/insight-callout";
-import { PremiumInterestDialog } from "./premium-interest-dialog";
-import { useReportTracking } from "./report-tracking-context";
-import { trackEvent } from "@/lib/tracking.functions";
+import { usePremiumCta } from "./premium-cta-context";
 
 type EnrichedPost = ReportEnriched["topPosts"][number];
 type ScatterPost = ReportEnriched["allPostsScatter"][number];
