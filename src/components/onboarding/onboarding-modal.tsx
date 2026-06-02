@@ -242,6 +242,9 @@ export function OnboardingModal({
       const res = await fetch("/api/onboarding/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        // Required so the browser accepts the Set-Cookie response when the
+        // app is loaded inside a third-party iframe (Lovable preview).
+        credentials: "include",
         body: JSON.stringify(payload),
       });
       const data = (await res

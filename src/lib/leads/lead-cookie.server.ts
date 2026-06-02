@@ -15,7 +15,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import {
   deleteCookie,
   getCookie,
-  setCookie,
+  setResponseHeader,
 } from "@tanstack/react-start/server";
 
 export const LEAD_COOKIE_NAME = "lead_session";
@@ -112,13 +112,28 @@ export function readLeadIdFromRequest(request: Request): string | null {
 
 /** Write the signed cookie on the current server response. */
 export function setLeadCookie(leadId: string): void {
-  setCookie(LEAD_COOKIE_NAME, encodeLeadCookie(leadId), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: MAX_AGE_SECONDS,
-  });
+  // Cookie attributes are tuned for two contexts at once:
+  //   1. Top-level navegation on production (auditprofiles.com etc.) — works
+  //      the same as Lax + Secure.
+  //   2. Third-party iframe (Lovable preview embedded in lovable.dev) — needs
+  //      SameSite=None + Secure to be sent back on subsequent same-origin
+  //      fetches from inside the iframe, and Partitioned (CHIPS) so Chrome
+  //      doesn't drop it under third-party cookie blocking.
+  //
+  // We write Set-Cookie manually because the h3 helper used by
+  // `setCookie()` doesn't yet expose the Partitioned attribute on this
+  // version of TanStack Start.
+  const value = encodeLeadCookie(leadId);
+  const parts = [
+    `${LEAD_COOKIE_NAME}=${value}`,
+    `Max-Age=${MAX_AGE_SECONDS}`,
+    `Path=/`,
+    `HttpOnly`,
+    `Secure`,
+    `SameSite=None`,
+    `Partitioned`,
+  ];
+  setResponseHeader("set-cookie", parts.join("; "));
 }
 
 /** Clear the cookie on the current server response. */

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
@@ -209,6 +209,12 @@ function AnalyzePage() {
   // Fase 3: se o backend devolver ONBOARDING_REQUIRED (cookie em falta /
   // expirado), reabrimos o modal de onboarding em vez de mostrar 402.
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  // Marca-se a `true` logo após `/api/onboarding/start` devolver ok=true.
+  // Se o `load()` seguinte voltar a receber ONBOARDING_REQUIRED, é sinal
+  // de que o cookie `lead_session` não foi guardado pelo browser (típico
+  // em iframes terceiros com cookies particionados). Em vez de reabrir o
+  // modal silenciosamente em loop, mostramos um erro acionável.
+  const justOnboardedRef = useRef(false);
 
   const load = useCallback(async () => {
     setState({ status: "loading" });
@@ -238,6 +244,18 @@ function AnalyzePage() {
     const analysis = await fetchPublicAnalysis(cleaned, competitors);
     if (!analysis.success) {
       if (analysis.error_code === "ONBOARDING_REQUIRED") {
+        if (justOnboardedRef.current) {
+          // Acabámos de submeter onboarding com sucesso mas o backend
+          // não vê o cookie. Não vale a pena reabrir o modal — ia
+          // entrar em loop. Mostra estado de erro com retry manual.
+          justOnboardedRef.current = false;
+          setState({
+            status: "error",
+            message: resolveErrorMessage("ONBOARDING_SESSION_LOST"),
+            errorCode: "ONBOARDING_SESSION_LOST",
+          });
+          return;
+        }
         setOnboardingOpen(true);
         setState({
           status: "error",
@@ -333,6 +351,7 @@ function AnalyzePage() {
         handle={cleaned}
         onSuccess={() => {
           setOnboardingOpen(false);
+          justOnboardedRef.current = true;
           void load();
         }}
       />
