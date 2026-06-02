@@ -20,6 +20,12 @@ export async function fetchPublicAnalysis(
     const res = await fetch("/api/analyze-public-v1", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      // Explicit `include` so the `lead_session` cookie is replayed even
+      // when the app is loaded inside a third-party iframe (Lovable
+      // preview embedded in lovable.dev). Default `same-origin` would be
+      // enough on a top-level page but is dropped under cookie
+      // partitioning in embed contexts.
+      credentials: "include",
       body: JSON.stringify({
         instagram_username: cleaned,
         competitor_usernames: competitors,
