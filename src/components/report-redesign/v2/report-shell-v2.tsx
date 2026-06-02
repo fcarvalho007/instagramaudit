@@ -423,13 +423,14 @@ export function ReportShellV2({
 
         {/* UX helpers — back to top, shortcut help, mobile unlock CTA */}
         <BackToTopButton />
-        {/* Sticky premium CTA: always visible on mobile when the report
-            has gated content and the user has not paid. In the
-            onboarding-first flow, every visitor reaching the shell has
-            already completed lead capture (the route enforces it via
-            ONBOARDING_REQUIRED), so the legacy `unlocked` sessionStorage
-            flag is no longer the right gate for premium CTAs. */}
-        {lockBoundary === "engagement" && !premiumUnlocked && (
+        {/* Sticky premium CTA: only visible on mobile enquanto o
+            utilizador ainda NÃO subscreveu (sem `lead_session` cookie).
+            No fluxo onboarding-first, qualquer visitante que atinja o
+            shell já tem conta gratuita criada → `unlocked === true` e
+            esta barra desaparece. Mantemos a dependência em `unlocked`
+            (em vez de remover de vez) para que estados futuros
+            (admin previews, deep-links sem cookie) possam reactivar. */}
+        {lockBoundary === "engagement" && !premiumUnlocked && !unlocked && (
           <StickyUnlockBar />
         )}
         <ReportShortcutDialog
