@@ -216,6 +216,12 @@ export function ReportPreviewBand() {
               <ArrowDown className="size-4" aria-hidden="true" />
             </Link>
           </div>
+          <p
+            className="text-center text-xs pt-3 px-4"
+            style={{ color: "rgb(var(--hero-text-tertiary))" }}
+          >
+            {t("dark.preview.disclaimer")}
+          </p>
         </div>
 
         {/* Subhighlights */}
