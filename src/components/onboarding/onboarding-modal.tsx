@@ -548,19 +548,19 @@ function LoginStepBody({
   if (sent) {
     const masked = maskEmail(sent);
     return (
-      <div className="px-7 py-8 sm:px-9 sm:py-9" data-testid="onboarding-login-success">
-        <DialogHeader className="text-left space-y-3">
+      <div className="px-5 py-7 sm:px-9 sm:py-9" data-testid="onboarding-login-success">
+        <DialogHeader className="text-left space-y-2.5">
           <p className="text-eyebrow-sm text-content-tertiary">
             {t("onboarding.login.eyebrow")}
           </p>
-          <DialogTitle className="font-display text-[26px] sm:text-[28px] leading-[1.15] tracking-[-0.01em] text-content-primary">
+          <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.08] tracking-[-0.015em] text-content-primary text-balance">
             {t("onboarding.login.success.title")}
           </DialogTitle>
-          <DialogDescription className="text-[13px] text-content-secondary leading-relaxed">
+          <DialogDescription className="text-[15px] text-content-secondary leading-[1.55]">
             {t("onboarding.login.success.body", { email: masked })}
           </DialogDescription>
         </DialogHeader>
-        <div className="mt-6">
+        <div className="mt-5">
           <Button
             type="button"
             variant="outline"
@@ -577,15 +577,15 @@ function LoginStepBody({
   }
 
   return (
-    <div className="px-7 py-8 sm:px-9 sm:py-9" data-testid="onboarding-login-step">
-      <DialogHeader className="text-left space-y-3">
+    <div className="px-5 py-7 sm:px-9 sm:py-9" data-testid="onboarding-login-step">
+      <DialogHeader className="text-left space-y-2.5">
         <p className="text-eyebrow-sm text-content-tertiary">
           {t("onboarding.login.eyebrow")}
         </p>
-        <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
+        <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.08] tracking-[-0.015em] text-content-primary text-balance">
           {t("onboarding.login.title")}
         </DialogTitle>
-        <DialogDescription className="text-[13px] text-content-secondary leading-relaxed">
+        <DialogDescription className="text-[15px] text-content-secondary leading-[1.55]">
           <Trans
             i18nKey="onboarding.login.subtitle"
             ns="gate"
@@ -595,15 +595,15 @@ function LoginStepBody({
         </DialogDescription>
       </DialogHeader>
 
-      <form onSubmit={onSubmit} className="mt-6 space-y-4" noValidate>
+      <form onSubmit={onSubmit} className="mt-5 space-y-4" noValidate>
         {error ? (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
 
-        <div className="space-y-1.5">
-          <Label htmlFor="onb-login-email" className="text-sm">
+        <div className="space-y-2">
+          <Label htmlFor="onb-login-email" className="text-[15px] font-medium text-content-primary">
             {t("onboarding.login.emailLabel")}
           </Label>
           <Input
@@ -616,6 +616,7 @@ function LoginStepBody({
             onChange={(e) => setEmail(e.target.value)}
             aria-invalid={Boolean(error)}
             data-testid="onboarding-login-email"
+            className="text-base"
           />
         </div>
 
@@ -636,12 +637,12 @@ function LoginStepBody({
           )}
         </Button>
 
-        <p className="text-center text-[12px] text-content-tertiary leading-relaxed">
+        <p className="text-center text-[13px] text-content-tertiary leading-[1.5]">
           {t("onboarding.login.secureHint")}
         </p>
 
         <div className="border-t border-border-default/50 pt-3">
-          <p className="text-center text-[12.5px] text-content-secondary">
+          <p className="text-center text-[13.5px] text-content-secondary">
             {t("onboarding.login.noAccount")}{" "}
             <button
               type="button"
