@@ -6,6 +6,11 @@
  * - Limpa em sucesso (caller chama `clear()` após `onSuccess`).
  *
  * Não persiste `gdpr_consent` (consentimento é por-sessão de submissão).
+ *
+ * Cross-handle: a identidade (`full_name`, `email`, `phone`,
+ * `marketing_consent`) persiste entre handles diferentes; as respostas
+ * contextuais (`profile_ownership`, `goal`) só são restauradas se o
+ * handle actual for igual ao `last_handle` guardado.
  */
 import { useEffect, useRef } from "react";
 import { z } from "zod";
@@ -23,6 +28,7 @@ const DraftSchema = z
     profile_ownership: z.string().max(40).optional(),
     goal: z.string().max(40).optional(),
     marketing_consent: z.boolean().optional(),
+    last_handle: z.string().max(64).optional(),
   })
   .strict();
 
@@ -66,19 +72,50 @@ export function loadOnboardingDraft(): OnboardingDraft | null {
 }
 
 /**
+ * Pure helper — devolve apenas os campos do draft seguros para hidratar o
+ * form, dado o handle actual.
+ *
+ * - identidade (full_name/email/phone/marketing_consent) preserva-se sempre
+ * - profile_ownership/goal só se `draft.last_handle === currentHandle`
+ */
+export function selectDraftForHandle(
+  draft: OnboardingDraft | null,
+  currentHandle: string,
+): OnboardingDraft | null {
+  if (!draft) return null;
+  const sameHandle =
+    typeof draft.last_handle === "string" &&
+    draft.last_handle.length > 0 &&
+    draft.last_handle === currentHandle;
+  if (sameHandle) return draft;
+  return {
+    full_name: draft.full_name,
+    email: draft.email,
+    phone: draft.phone,
+    marketing_consent: draft.marketing_consent,
+    // contexto resetado
+    profile_ownership: undefined,
+    goal: undefined,
+    last_handle: draft.last_handle,
+  };
+}
+
+/**
  * Wire um form de react-hook-form para persistir/hidratar via sessionStorage.
  * Hidratação ocorre uma única vez no primeiro mount (não force-write em rerenders).
  */
 export function useOnboardingDraft(
   form: UseFormReturn<UnlockFormValues>,
+  handle: string,
 ): { clear: () => void } {
   const hydratedRef = useRef(false);
   const writeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const normalizedHandle = handle.trim().toLowerCase();
 
   useEffect(() => {
     if (hydratedRef.current) return;
     hydratedRef.current = true;
-    const draft = readStorage();
+    const draft = selectDraftForHandle(readStorage(), normalizedHandle);
     if (!draft) return;
     form.reset(
       {
@@ -92,7 +129,7 @@ export function useOnboardingDraft(
       },
       { keepDefaultValues: true },
     );
-  }, [form]);
+  }, [form, normalizedHandle]);
 
   useEffect(() => {
     const sub = form.watch((values) => {
@@ -105,6 +142,7 @@ export function useOnboardingDraft(
           profile_ownership: values.profile_ownership || undefined,
           goal: values.goal || undefined,
           marketing_consent: values.marketing_consent ?? undefined,
+          last_handle: normalizedHandle || undefined,
         });
       }, 300);
     });
@@ -112,7 +150,7 @@ export function useOnboardingDraft(
       sub.unsubscribe();
       if (writeTimer.current) clearTimeout(writeTimer.current);
     };
-  }, [form]);
+  }, [form, normalizedHandle]);
 
   return { clear: clearOnboardingDraft };
 }
