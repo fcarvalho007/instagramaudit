@@ -1,29 +1,22 @@
-## Problema
+Plano para alinhar o topo real de `/analyze/$username` com o mockup anexado:
 
-Em `src/components/landing/hero-section.tsx`, a coluna do preview tem `order-2 lg:order-none`. `lg:order-none` resolve para `order: 0`, ficando ANTES da coluna de copy (`order-1`) em desktop. Resultado: simulador à esquerda e copy à direita — o oposto do pretendido.
+1. Ajustar o `ReportHeroV2` para funcionar como uma barra compacta única em desktop:
+   - Avatar pequeno à esquerda, com badge de verificação.
+   - Handle, tier e linha de métricas na mesma zona esquerda.
+   - Botões de PDF e partilha em formato icon-only.
+   - Botão `+ Novo` escuro ao lado das ações, como no mockup.
 
-## Correção
+2. Integrar o selector de período no mesmo topo em desktop:
+   - Em vez de aparecer como uma segunda card abaixo, passa para a direita da barra.
+   - Mantém eyebrow `PERÍODO`, texto de amostra grátis e chips `12 pub.`, `30 dias`, `60 dias`, `90 dias`, `365 dias`.
+   - Preserva o comportamento premium existente dos chips bloqueados.
 
-Trocar `lg:order-none` por `lg:order-2` na coluna do preview, garantindo:
+3. Preservar responsividade sem mexer na lógica do relatório:
+   - Desktop: identidade + ações + período numa única barra horizontal.
+   - Mobile/tablet: manter layout compacto/expandível para evitar overflow.
+   - Não alterar dados, premium logic, PDF/share logic, `/report.example`, nem geração de relatório.
 
-- **Desktop (lg+)**: copy + input à esquerda, simulador à direita (como na referência original).
-- **Mobile/tablet**: copy primeiro (order-1), simulador a seguir (order-2) — sem regressão.
-
-```tsx
-// antes
-<div className="order-2 lg:order-none w-full mt-10 sm:mt-12 lg:mt-0">
-// depois
-<div className="order-2 lg:order-2 w-full mt-10 sm:mt-12 lg:mt-0">
-```
-
-Tracking columns continuam `lg:grid-cols-[1.1fr_0.9fr]` (copy maior, preview menor).
-
-## Validação
-
-- Desktop ≥1024px: copy esquerda, preview direita.
-- Tablet 768px e mobile 411px: copy em cima, preview em baixo.
-- Sem alterações a tokens, copy, i18n ou ao próprio `HeroReportPreview`.
-
-## Fora de âmbito
-
-Qualquer mudança ao conteúdo do simulador, ao input/CTA, à secção `/analyze`, premium logic ou tokens.
+Ficheiros previstos:
+- `src/components/report-redesign/v2/report-hero-v2.tsx`
+- `src/components/report-redesign/v2/analysis-period-selector.tsx`
+- `src/components/report-redesign/v2/report-shell-v2.tsx`
