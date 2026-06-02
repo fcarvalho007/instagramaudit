@@ -20,7 +20,7 @@ import {
   publishVariantDraft,
   discardVariantDraft,
   resetVariantDefaults,
-} from "@/server/admin/variant-overrides.functions";
+} from "@/lib/admin/variant-overrides.functions";
 import { cn } from "@/lib/utils";
 import { Lock, Save, Upload, Trash2, RotateCcw, Loader2, ExternalLink, Eye, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
