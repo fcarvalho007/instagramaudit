@@ -379,18 +379,13 @@ export function OnboardingModal({
 function IntroStepBody({
   handle,
   onContinue,
+  onSignIn,
 }: {
   handle: string;
   onContinue: () => void;
+  onSignIn: () => void;
 }) {
   const { t } = useTranslation("gate");
-  const freeValue = t("onboarding.intro.freeValue", {
-    returnObjects: true,
-  }) as unknown;
-  const items: string[] = Array.isArray(freeValue)
-    ? (freeValue as string[])
-    : [];
-  const operator = useMemo(() => t("unlock.operator.name"), [t]);
 
   return (
     <div
@@ -402,10 +397,14 @@ function IntroStepBody({
           {t("onboarding.intro.eyebrow")}
         </p>
         <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
-          {t("onboarding.intro.title")}
+          <Trans
+            i18nKey="onboarding.intro.title"
+            ns="gate"
+            components={{ free: <span className="text-emerald-600" /> }}
+          />
         </DialogTitle>
-        <DialogDescription className="text-[13px] text-content-secondary leading-relaxed">
-          {t("onboarding.intro.subtitle")}
+        <DialogDescription className="sr-only">
+          {t("onboarding.intro.handleContext", { handle })}
         </DialogDescription>
       </DialogHeader>
 
@@ -433,33 +432,6 @@ function IntroStepBody({
           </p>
         </div>
 
-        <div className="rounded-xl border border-border-default/60 bg-surface-muted/30 p-4 space-y-3">
-          <p className="text-eyebrow-sm text-content-tertiary flex items-center gap-1.5">
-            <Sparkles className="size-3.5 text-primary" aria-hidden />
-            {t("onboarding.intro.freeValueTitle")}
-          </p>
-          <ul className="space-y-2">
-            {items.map((label, idx) => (
-              <li
-                key={idx}
-                className="flex items-start gap-2.5 text-[13px] text-content-primary"
-              >
-                <Check
-                  className="size-4 text-emerald-600 shrink-0 mt-0.5"
-                  aria-hidden
-                />
-                <span>{label}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="border-t border-dashed border-border-default/50 pt-3">
-            <p className="text-[12px] text-content-tertiary leading-relaxed flex items-start gap-1.5">
-              <Lock className="size-3 mt-0.5 shrink-0" aria-hidden />
-              <span>{t("onboarding.intro.premiumNote")}</span>
-            </p>
-          </div>
-        </div>
-
         <p className="text-[12px] text-content-tertiary leading-relaxed">
           {t("onboarding.intro.personalHint")}
         </p>
@@ -473,12 +445,209 @@ function IntroStepBody({
         >
           {t("onboarding.intro.cta")}
         </Button>
-        <p className="text-center text-[11px] text-content-tertiary">
-          {t("onboarding.intro.trustLine", { operator })}
-        </p>
+
+        <div className="border-t border-border-default/50 pt-3 space-y-2.5">
+          <p className="text-center text-[12.5px] text-content-secondary">
+            {t("onboarding.intro.haveAccount")}{" "}
+            <button
+              type="button"
+              onClick={onSignIn}
+              className="font-medium text-primary hover:underline"
+              data-testid="onboarding-intro-signin"
+            >
+              {t("onboarding.intro.haveAccountCta")}
+            </button>
+          </p>
+          <p className="text-center text-[11px] text-content-tertiary flex items-center justify-center gap-1">
+            <ShieldCheck className="size-3" aria-hidden />
+            {t("onboarding.intro.trustLine")}
+          </p>
+        </div>
       </div>
     </div>
   );
+}
+
+function LoginStepBody({
+  handle,
+  onBackToIntro,
+}: {
+  handle: string;
+  onBackToIntro: () => void;
+}) {
+  const { t } = useTranslation("gate");
+  const [email, setEmail] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState<string | null>(null);
+
+  const LOGIN_BACKEND_READY = false;
+
+  useEffect(() => {
+    trackOnboardingEvent({
+      event_type: "onboarding_step_view",
+      step: 0,
+      handle,
+      // marca a vista de login mesmo sem novo event_type formal — o step=0
+      // partilhado evita inflar o funil; usamos o error_code como tag.
+      error_code: "LOGIN_VIEW",
+    });
+  }, [handle]);
+
+  const isValid = /^\S+@\S+\.\S+$/.test(email.trim());
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!isValid) {
+      setError(t("onboarding.login.emailInvalid"));
+      return;
+    }
+    setSubmitting(true);
+    try {
+      if (LOGIN_BACKEND_READY) {
+        const res = await fetch("/api/onboarding/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ email: email.trim(), handle }),
+        });
+        if (!res.ok) throw new Error("login_failed");
+      }
+      setSent(email.trim());
+      trackOnboardingEvent({
+        event_type: LOGIN_BACKEND_READY
+          ? "onboarding_step_complete"
+          : "onboarding_error",
+        step: 0,
+        handle,
+        error_code: LOGIN_BACKEND_READY ? undefined : "LOGIN_PENDING_BACKEND",
+      });
+    } catch {
+      setError(t("onboarding.login.errors.network"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (sent) {
+    const masked = maskEmail(sent);
+    return (
+      <div className="px-7 py-8 sm:px-9 sm:py-9" data-testid="onboarding-login-success">
+        <DialogHeader className="text-left space-y-3">
+          <p className="text-eyebrow-sm text-content-tertiary">
+            {t("onboarding.login.eyebrow")}
+          </p>
+          <DialogTitle className="font-display text-[26px] sm:text-[28px] leading-[1.15] tracking-[-0.01em] text-content-primary">
+            {t("onboarding.login.success.title")}
+          </DialogTitle>
+          <DialogDescription className="text-[13px] text-content-secondary leading-relaxed">
+            {t("onboarding.login.success.body", { email: masked })}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="mt-6">
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="w-full rounded-lg"
+            onClick={onBackToIntro}
+          >
+            <ArrowLeft className="size-4" aria-hidden />
+            {t("onboarding.login.back")}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-7 py-8 sm:px-9 sm:py-9" data-testid="onboarding-login-step">
+      <DialogHeader className="text-left space-y-3">
+        <p className="text-eyebrow-sm text-content-tertiary">
+          {t("onboarding.login.eyebrow")}
+        </p>
+        <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.1] tracking-[-0.01em] text-content-primary">
+          {t("onboarding.login.title")}
+        </DialogTitle>
+        <DialogDescription className="text-[13px] text-content-secondary leading-relaxed">
+          <Trans
+            i18nKey="onboarding.login.subtitle"
+            ns="gate"
+            values={{ handle }}
+            components={{ 1: <span className="text-primary font-medium" /> }}
+          />
+        </DialogDescription>
+      </DialogHeader>
+
+      <form onSubmit={onSubmit} className="mt-6 space-y-4" noValidate>
+        {error ? (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        <div className="space-y-1.5">
+          <Label htmlFor="onb-login-email" className="text-sm">
+            {t("onboarding.login.emailLabel")}
+          </Label>
+          <Input
+            id="onb-login-email"
+            type="email"
+            autoFocus
+            autoComplete="email"
+            placeholder={t("onboarding.login.emailPlaceholder")}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            aria-invalid={Boolean(error)}
+            data-testid="onboarding-login-email"
+          />
+        </div>
+
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full rounded-lg font-medium"
+          disabled={submitting}
+          data-testid="onboarding-login-submit"
+        >
+          {submitting ? (
+            <>
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+              {t("onboarding.login.submitting")}
+            </>
+          ) : (
+            t("onboarding.login.cta")
+          )}
+        </Button>
+
+        <p className="text-center text-[12px] text-content-tertiary leading-relaxed">
+          {t("onboarding.login.secureHint")}
+        </p>
+
+        <div className="border-t border-border-default/50 pt-3">
+          <p className="text-center text-[12.5px] text-content-secondary">
+            {t("onboarding.login.noAccount")}{" "}
+            <button
+              type="button"
+              onClick={onBackToIntro}
+              className="font-medium text-primary hover:underline"
+              data-testid="onboarding-login-back"
+            >
+              {t("onboarding.login.noAccountCta")}
+            </button>
+          </p>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function maskEmail(email: string): string {
+  const [user, domain] = email.split("@");
+  if (!domain) return email;
+  const head = user.slice(0, 2);
+  return `${head}${user.length > 2 ? "•••" : ""}@${domain}`;
 }
 
 function ProgressSegments({ current, total }: { current: number; total: number }) {
