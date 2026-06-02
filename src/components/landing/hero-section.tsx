@@ -11,7 +11,7 @@ export function HeroSection() {
   const { t } = useTranslation("landing");
   return (
     <section
-      className="hero-dark relative w-full overflow-hidden flex items-center lg:min-h-[calc(100dvh-4rem)]"
+      className="hero-light relative w-full overflow-hidden flex items-center lg:min-h-[calc(100dvh-4rem)]"
       aria-label={t("hero.headline")}
     >
       <HeroAuroraBackground />
@@ -23,14 +23,13 @@ export function HeroSection() {
             {/* Eyebrow */}
             <div className="flex justify-center lg:justify-start">
               <span
-                className="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-eyebrow-sm"
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-eyebrow-sm text-accent-primary"
                 style={{
-                  color: "var(--hero-cyan)",
-                  borderColor: "var(--hero-cyan-soft)",
-                  backgroundColor: "var(--hero-cyan-soft)",
+                  borderColor: "rgb(var(--accent-primary) / 0.18)",
+                  backgroundColor: "rgb(var(--accent-primary) / 0.08)",
                 }}
               >
-                <span className="size-1.5 rounded-full bg-[var(--hero-cyan)]" />
+                <span className="size-1.5 rounded-full bg-accent-primary" />
                 {t("hero.eyebrow")}
               </span>
             </div>
@@ -38,16 +37,16 @@ export function HeroSection() {
             <BlurRevealText
               text={t("hero.headline")}
               as="h1"
-              className="font-display text-[1.75rem] sm:text-4xl md:text-5xl lg:text-6xl tracking-tight font-medium leading-[1.12] sm:leading-[1.08] text-balance max-w-[18ch] sm:max-w-[20ch] lg:max-w-[22ch] mx-auto lg:mx-0"
+              className="font-display text-[1.75rem] sm:text-4xl md:text-5xl lg:text-6xl tracking-tight font-medium leading-[1.12] sm:leading-[1.08] text-balance max-w-[18ch] sm:max-w-[20ch] lg:max-w-[22ch] mx-auto lg:mx-0 text-content-primary"
               delayMs={150}
               highlightTailWords={2}
-              highlightClassName="text-[var(--hero-cyan)]"
+              highlightClassName="text-accent-primary"
             />
 
             <BlurRevealText
               text={t("hero.subtitle")}
               as="p"
-              className="font-sans text-base md:text-lg leading-relaxed max-w-xl mx-auto lg:mx-0 text-[var(--hero-fg-muted)]"
+              className="font-sans text-base md:text-lg leading-relaxed max-w-xl mx-auto lg:mx-0 text-content-secondary"
               delayMs={500}
             />
 

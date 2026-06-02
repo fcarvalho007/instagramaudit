@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 /**
  * Pré-visualização ilustrativa do relatório, mostrada à direita do hero.
  * Apresentada com chrome de janela de browser (desktop) para reforçar a
- * percepção de produto de computador. Scoped ao wrapper `.hero-dark`.
+ * percepção de produto de computador. Consome tokens light globais.
  */
 export function HeroReportPreview() {
   const { t } = useTranslation("landing");
@@ -26,19 +26,19 @@ export function HeroReportPreview() {
         className="absolute -inset-8 -z-10 opacity-70"
         style={{
           background:
-            "radial-gradient(60% 50% at 60% 40%, rgb(79 140 255 / 0.18), transparent 70%)",
+            "radial-gradient(60% 50% at 60% 40%, rgb(var(--accent-primary) / 0.10), transparent 70%)",
           filter: "blur(40px)",
         }}
       />
 
       <div
-        className="rounded-2xl border-[1.5px] bg-[var(--hero-glass-bg)] backdrop-blur-xl shadow-[0_30px_80px_-20px_rgba(0,0,0,0.6)] overflow-hidden"
-        style={{ borderColor: "var(--hero-glass-border)" }}
+        className="rounded-2xl border bg-surface-elevated shadow-[0_24px_60px_-30px_rgb(15_27_61_/_0.18)] overflow-hidden"
+        style={{ borderColor: "rgb(var(--border-default) / 0.10)" }}
       >
         {/* Browser chrome */}
         <div
-          className="flex items-center gap-3 px-4 py-2.5 border-b"
-          style={{ borderColor: "var(--hero-border)" }}
+          className="flex items-center gap-3 px-4 py-2.5 border-b bg-surface-muted"
+          style={{ borderColor: "rgb(var(--border-default) / 0.08)" }}
         >
           {/* Traffic lights */}
           <div className="flex items-center gap-1.5 shrink-0" aria-hidden="true">
@@ -50,8 +50,8 @@ export function HeroReportPreview() {
           <div
             className="flex-1 min-w-0 mx-1 sm:mx-4 h-5 rounded-md border"
             style={{
-              borderColor: "var(--hero-border)",
-              backgroundColor: "rgb(255 255 255 / 0.03)",
+              borderColor: "rgb(var(--border-default) / 0.10)",
+              backgroundColor: "rgb(var(--surface-elevated))",
             }}
             aria-hidden="true"
           />
@@ -62,36 +62,32 @@ export function HeroReportPreview() {
         {/* Score card */}
         <div className="px-4 sm:px-5 pt-5">
           <div
-            className="rounded-xl border p-4 ring-1"
+            className="rounded-xl border p-4"
             style={{
-              borderColor: "var(--hero-border)",
-              backgroundColor: "var(--hero-bg-elevated)",
-              boxShadow: "inset 0 1px 0 rgb(255 255 255 / 0.04)",
-              ["--tw-ring-color" as never]: "rgb(109 211 231 / 0.2)",
+              borderColor: "rgb(var(--border-default) / 0.08)",
+              backgroundColor: "rgb(var(--surface-muted))",
             }}
           >
             <div
-              className="text-eyebrow-sm mb-2"
-              style={{ color: "var(--hero-fg-subtle)" }}
+              className="text-eyebrow-sm mb-2 text-content-tertiary"
             >
               {t("hero.previewMock.scoreLabel")}
             </div>
             <div
-              className="font-sans font-semibold text-2xl sm:text-3xl tabular-nums"
-              style={{ color: "var(--hero-fg)" }}
+              className="font-sans font-semibold text-2xl sm:text-3xl tabular-nums text-content-primary"
             >
               {t("hero.previewMock.scoreValue")}
             </div>
             <div
               className="mt-3 h-1.5 w-full rounded-full overflow-hidden"
-              style={{ backgroundColor: "var(--hero-border)" }}
+              style={{ backgroundColor: "rgb(var(--border-default) / 0.10)" }}
             >
               <div
                 className="h-full rounded-full"
                 style={{
                   width: "37%",
                   background:
-                    "linear-gradient(90deg, var(--hero-accent), var(--hero-cyan))",
+                    "linear-gradient(90deg, rgb(var(--accent-primary)), rgb(var(--accent-violet)))",
                 }}
               />
             </div>
@@ -108,19 +104,17 @@ export function HeroReportPreview() {
               key={kpi.label}
               className="rounded-lg border px-3 py-2"
               style={{
-                borderColor: "var(--hero-border)",
-                backgroundColor: "rgb(255 255 255 / 0.02)",
+                borderColor: "rgb(var(--border-default) / 0.08)",
+                backgroundColor: "rgb(var(--surface-muted))",
               }}
             >
               <div
-                className="text-[0.625rem] tracking-[0.14em] uppercase font-medium"
-                style={{ color: "var(--hero-fg-subtle)" }}
+                className="text-[0.625rem] tracking-[0.14em] uppercase font-medium text-content-tertiary"
               >
                 {kpi.label}
               </div>
               <div
-                className="font-sans font-semibold text-base tabular-nums mt-1"
-                style={{ color: "var(--hero-fg)" }}
+                className="font-sans font-semibold text-base tabular-nums mt-1 text-content-primary"
               >
                 {kpi.value}
               </div>
@@ -131,8 +125,7 @@ export function HeroReportPreview() {
         {/* Sidebar label + premium rows blurred (all viewports) */}
         <div className="px-4 sm:px-5 pt-4 pb-5">
           <div
-            className="text-eyebrow-sm mb-2.5"
-            style={{ color: "var(--hero-fg-subtle)" }}
+            className="text-eyebrow-sm mb-2.5 text-content-tertiary"
           >
             {t("hero.previewMock.sidebar")}
           </div>
@@ -140,24 +133,23 @@ export function HeroReportPreview() {
             {premiumRowKeys.map((key) => (
               <div
                 key={key}
-                className="flex items-center justify-between rounded-md border px-3 py-2 select-none backdrop-blur-sm"
+                className="flex items-center justify-between rounded-md border px-3 py-2 select-none"
                 style={{
-                  borderColor: "var(--hero-border)",
-                  backgroundColor: "rgb(255 255 255 / 0.02)",
+                  borderColor: "rgb(var(--border-default) / 0.08)",
+                  backgroundColor: "rgb(var(--surface-muted))",
                 }}
               >
                 <span
                   className="text-sm font-medium"
                   style={{
-                    color: "var(--hero-fg-muted)",
+                    color: "rgb(var(--text-secondary))",
                     filter: "blur(2.5px)",
                   }}
                 >
                   {t(`hero.previewMock.premiumRows.${key}`)}
                 </span>
                 <Lock
-                  className="size-3.5"
-                  style={{ color: "var(--hero-fg-faint)" }}
+                  className="size-3.5 text-content-tertiary"
                 />
               </div>
             ))}

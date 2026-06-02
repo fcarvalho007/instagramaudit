@@ -50,8 +50,7 @@ export function HeroActionBar() {
     <div className="relative w-full max-w-3xl mx-auto">
       {/* Micro-label above the bar */}
       <div
-        className="mb-3 flex items-center gap-2"
-        style={{ color: "var(--hero-fg-subtle)" }}
+        className="mb-3 flex items-center gap-2 text-content-tertiary"
       >
         <InstagramGlyph className="size-[18px]" />
         <span className="text-eyebrow-sm">{t("actionBar.microLabel")}</span>
@@ -59,12 +58,10 @@ export function HeroActionBar() {
 
       {/* The bar — glass card with input + button inline */}
       <div
-        className="relative rounded-2xl border backdrop-blur-xl shadow-2xl overflow-hidden hero-bar-breathe transition-colors"
+        className="relative rounded-2xl border bg-surface-elevated overflow-hidden hero-bar-breathe transition-colors"
         style={{
-          borderColor: "var(--hero-border-strong)",
-          backgroundColor: "rgb(255 255 255 / 0.04)",
-          boxShadow:
-            "inset 0 1px 0 rgb(255 255 255 / 0.06), 0 30px 60px -30px rgb(0 0 0 / 0.7)",
+          borderColor: "rgb(var(--border-default) / 0.12)",
+          boxShadow: "0 18px 40px -28px rgb(15 27 61 / 0.18)",
         }}
       >
         <form
@@ -74,8 +71,7 @@ export function HeroActionBar() {
           {/* Input zone */}
           <div className="relative flex-1">
             <AtSign
-              className="absolute left-5 top-1/2 -translate-y-1/2 size-5 pointer-events-none"
-              style={{ color: "var(--hero-fg-faint)" }}
+              className="absolute left-5 top-1/2 -translate-y-1/2 size-5 pointer-events-none text-content-tertiary"
               aria-hidden="true"
             />
             <input
@@ -88,8 +84,7 @@ export function HeroActionBar() {
               placeholder={t("actionBar.placeholder")}
               aria-label={t("actionBar.ariaInput")}
               aria-invalid={error ? true : undefined}
-              className="w-full h-16 sm:h-[72px] bg-transparent pl-14 pr-4 font-sans text-base md:text-lg focus:outline-none placeholder:text-[var(--hero-fg-faint)]"
-              style={{ color: "var(--hero-fg)" }}
+              className="w-full h-16 sm:h-[72px] bg-transparent pl-14 pr-4 font-sans text-base md:text-lg focus:outline-none text-content-primary placeholder:text-content-tertiary"
             />
           </div>
 
@@ -112,7 +107,7 @@ export function HeroActionBar() {
         <p
           role="alert"
           className="mt-3 font-sans text-sm"
-          style={{ color: "#FF8A8A" }}
+          style={{ color: "rgb(var(--signal-danger))" }}
         >
           {error}
         </p>
@@ -124,12 +119,10 @@ export function HeroActionBar() {
           {trustInline.map((item) => (
             <li
               key={item}
-              className="flex items-center gap-1.5 font-sans text-xs"
-              style={{ color: "var(--hero-fg-subtle)" }}
+              className="flex items-center gap-1.5 font-sans text-xs text-content-tertiary"
             >
               <Check
-                className="size-3.5"
-                style={{ color: "var(--hero-cyan)" }}
+                className="size-3.5 text-accent-primary"
                 aria-hidden="true"
               />
               {item}

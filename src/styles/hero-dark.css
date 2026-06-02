@@ -1,31 +1,9 @@
 /*
- * Hero dark island — scoped tokens used ONLY inside the `.hero-dark`
- * wrapper on the homepage. Do NOT consume these tokens elsewhere; the
- * rest of the app is light-first (see src/styles/tokens.css).
- *
- * Editado em 2026-06-02 com autorização do utilizador (prompt
- * "Redesign do hero — homepage AuditProfiles"). Re-lockar após merge.
+ * Hero — animations and helpers used by the homepage hero. O "dark
+ * island" foi removido em 2026-06-02 por instrução do owner; a homepage
+ * é agora 100% light e consome tokens globais (src/styles/tokens.css).
+ * Este ficheiro mantém apenas animações reutilizáveis.
  */
-.hero-dark {
-  --hero-bg: #060A18;
-  --hero-bg-elevated: #0B1226;
-  --hero-fg: #FFFFFF;
-  --hero-fg-muted: #C9D2E3;       /* AA 8.3:1 sobre --hero-bg */
-  --hero-fg-subtle: #9AA8C2;      /* AA 5.4:1 */
-  --hero-fg-faint: #7E8CA8;       /* AA 4.6:1 — usar só em placeholders/labels grandes */
-  --hero-border: rgb(255 255 255 / 0.10);
-  --hero-border-strong: rgb(255 255 255 / 0.16);
-  --hero-accent: #4F8CFF;
-  --hero-accent-soft: rgb(79 140 255 / 0.18);
-  --hero-cyan: #6DD3E7;
-  --hero-cyan-soft: rgb(109 211 231 / 0.16);
-  --hero-glass-bg: rgb(255 255 255 / 0.03);
-  --hero-glass-border: rgb(255 255 255 / 0.08);
-
-  background-color: var(--hero-bg);
-  color: var(--hero-fg);
-  color-scheme: dark;
-}
 
 /* Pré-visualização do relatório: fade-edge à direita para indicar overflow
  * nas chips temporais em mobile (resolve o clipping do "60 dias…"). */

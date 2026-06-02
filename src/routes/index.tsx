@@ -36,15 +36,6 @@ function Home() {
   return (
     <>
       <HeroSection />
-      {/* Costura dark→light entre o hero e o resto da página light. */}
-      <div
-        aria-hidden="true"
-        className="h-16 w-full"
-        style={{
-          background:
-            "linear-gradient(to bottom, #060A18 0%, rgb(var(--surface-base)) 100%)",
-        }}
-      />
       <SocialProofSection />
       <div id="como-funciona" style={{ scrollMarginTop: "5rem" }}>
         <HowItWorksSection />
