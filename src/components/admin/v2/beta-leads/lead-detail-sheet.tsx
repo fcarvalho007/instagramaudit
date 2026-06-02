@@ -305,6 +305,267 @@ function ContextField({
 
 // ── Main component ──────────────────────────────────────────────
 
+// ── Commercial status select (3 grupos) ──────────────────────────
+
+/** Data curta DD/MM (Inter tabular-nums, sem o ano). */
+function shortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("pt-PT", {
+    day: "2-digit",
+    month: "2-digit",
+  });
+}
+
+/**
+ * Devolve o timestamp em que cada estado automático aconteceu, ou `null`
+ * quando ainda não há sinal. Usado para mostrar ✓ + data nas linhas do
+ * grupo "Automático" do dropdown de estado comercial.
+ */
+function getAutoStateTimestamp(
+  lead: EnrichedLead,
+  key: string,
+  timeline: TimelineEvent[],
+  lastReportLinkSentAt: string | null,
+): string | null {
+  switch (key) {
+    case "lead_magnet": {
+      if (lead.lead_magnet?.last_event_at) return lead.lead_magnet.last_event_at;
+      if (lead.is_lead_magnet_subscriber) return lead.beta_consent_at ?? lead.created_at;
+      return null;
+    }
+    case "relatorio_gerado": {
+      const ev = timeline.find((e) => e.event_type === "report_generated");
+      if (ev) return ev.created_at;
+      const generated =
+        lead.report_status === "completed" ||
+        lead.report_status === "ready" ||
+        lead.report_status === "generated";
+      return generated ? lead.last_interaction : null;
+    }
+    case "link_enviado":
+      return lastReportLinkSentAt;
+    case "relatorio_visto": {
+      const ev = timeline.find((e) => e.event_type === "report_viewed");
+      if (ev) return ev.created_at;
+      return lead.report_views > 0 ? lead.last_interaction : null;
+    }
+    case "checkout_iniciado": {
+      const pay = lead.payment_summary;
+      return pay?.pending_checkout_started_at ?? pay?.last_payment_at ?? null;
+    }
+    default:
+      return null;
+  }
+}
+
+/** Marcador circular para um item do select (filled = activo, ring = inactivo). */
+function StatusBullet({
+  active,
+  done,
+  color,
+}: {
+  active: boolean;
+  done: boolean;
+  color?: string;
+}) {
+  if (active) {
+    return (
+      <span
+        className="inline-block h-2 w-2 rounded-full shrink-0"
+        style={{ backgroundColor: color ?? "rgb(var(--admin-info-500))" }}
+      />
+    );
+  }
+  if (done) {
+    return (
+      <CheckCircle2
+        size={13}
+        className="shrink-0 text-admin-text-tertiary"
+        strokeWidth={2}
+      />
+    );
+  }
+  return (
+    <span className="inline-block h-2 w-2 rounded-full shrink-0 border border-admin-text-primary/25" />
+  );
+}
+
+/** Header eyebrow de um grupo do dropdown, com ícone à esquerda. */
+function GroupLabel({
+  icon: Icon,
+  children,
+}: {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  children: React.ReactNode;
+}) {
+  return (
+    <SelectLabel className="flex items-center gap-1.5 text-eyebrow-sm text-admin-text-tertiary px-2 pt-2 pb-1">
+      <Icon size={11} className="opacity-70" />
+      <span>{children}</span>
+    </SelectLabel>
+  );
+}
+
+/**
+ * Dropdown de Estado comercial com 3 grupos:
+ *   1. Automático — sinais que o sistema atualiza (não clicáveis).
+ *   2. Pagamento  — marcos com valor em € (clicáveis).
+ *   3. A tua decisão — estados que o operador define (clicáveis).
+ */
+function CommercialStatusSelect({
+  lead,
+  value,
+  onChange,
+  timeline,
+  lastReportLinkSentAt,
+}: {
+  lead: EnrichedLead;
+  value: string;
+  onChange: (v: string) => void;
+  timeline: TimelineEvent[];
+  lastReportLinkSentAt: string | null;
+}) {
+  const visible = COMMERCIAL_STATUS_OPTIONS.filter((o) => !o.hidden);
+  const autoOpts = visible.filter((o) => o.kind === "auto");
+  const paymentOpts = visible.filter((o) => o.kind === "payment");
+  const manualOpts = visible.filter((o) => o.kind === "manual");
+
+  const paidProducts = lead.payment_summary?.paid_products ?? [];
+  const isPaid = (key: string): boolean => {
+    if (key === "pago_report") return paidProducts.includes("report_single");
+    if (key === "pago_pack5") return paidProducts.includes("pack_5");
+    return false;
+  };
+
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="h-10 text-[13px] rounded-lg" data-testid="commercial-status-trigger">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent className="max-h-[480px]">
+        {/* ── Grupo: Automático ───────────────────────────── */}
+        <SelectGroup>
+          <GroupLabel icon={Zap}>Automático · o sistema atualiza</GroupLabel>
+          {autoOpts.map((opt) => {
+            const isCurrent = opt.key === value;
+            const ts = getAutoStateTimestamp(lead, opt.key, timeline, lastReportLinkSentAt);
+            const done = !!ts;
+            return (
+              <SelectItem
+                key={opt.key}
+                value={opt.key}
+                disabled={!isCurrent}
+                hideIndicator
+                className={`text-[13px] ${
+                  isCurrent
+                    ? "bg-admin-info-50 text-admin-info-700"
+                    : done
+                      ? "text-admin-text-secondary"
+                      : "text-admin-text-tertiary"
+                }`}
+                title={
+                  isCurrent
+                    ? undefined
+                    : "Estado atualizado automaticamente pelo sistema"
+                }
+              >
+                <span className="flex items-center justify-between gap-3 w-full">
+                  <span className="flex items-center gap-2 min-w-0">
+                    <StatusBullet active={isCurrent} done={done} />
+                    <span className="truncate">{opt.label}</span>
+                  </span>
+                  {ts && (
+                    <span className="text-[11px] tabular-nums text-admin-text-tertiary shrink-0">
+                      {shortDate(ts)}
+                    </span>
+                  )}
+                </span>
+              </SelectItem>
+            );
+          })}
+        </SelectGroup>
+
+        <SelectSeparator />
+
+        {/* ── Grupo: Pagamento ───────────────────────────── */}
+        <SelectGroup>
+          <GroupLabel icon={Wallet}>Pagamento</GroupLabel>
+          {paymentOpts.map((opt) => {
+            const isCurrent = opt.key === value;
+            const paid = isPaid(opt.key) || isCurrent;
+            return (
+              <SelectItem
+                key={opt.key}
+                value={opt.key}
+                hideIndicator
+                className={`text-[13px] ${
+                  isCurrent
+                    ? "bg-admin-info-50 text-admin-info-700"
+                    : "text-admin-text-primary"
+                }`}
+              >
+                <span className="flex items-center justify-between gap-3 w-full">
+                  <span className="flex items-center gap-2 min-w-0">
+                    <StatusBullet
+                      active={isCurrent}
+                      done={paid}
+                      color={opt.color}
+                    />
+                    <span className="truncate">{opt.label}</span>
+                  </span>
+                  {opt.amount_eur !== undefined && (
+                    <span className="text-[12px] font-semibold tabular-nums text-admin-text-secondary shrink-0">
+                      {opt.amount_eur}€
+                    </span>
+                  )}
+                </span>
+              </SelectItem>
+            );
+          })}
+        </SelectGroup>
+
+        <SelectSeparator />
+
+        {/* ── Grupo: A tua decisão ───────────────────────── */}
+        <SelectGroup>
+          <GroupLabel icon={Sparkles}>A tua decisão</GroupLabel>
+          {manualOpts.map((opt) => {
+            const isCurrent = opt.key === value;
+            const isArchive = opt.key === "arquivado";
+            return (
+              <SelectItem
+                key={opt.key}
+                value={opt.key}
+                hideIndicator
+                className={`text-[13px] ${
+                  isCurrent
+                    ? "bg-admin-info-50 text-admin-info-700 font-medium"
+                    : isArchive
+                      ? "text-admin-text-tertiary"
+                      : "text-admin-text-primary"
+                }`}
+              >
+                <span className="flex items-center justify-between gap-3 w-full">
+                  <span className="flex items-center gap-2 min-w-0">
+                    {isArchive ? (
+                      <Archive size={13} className="shrink-0 text-admin-text-tertiary" />
+                    ) : (
+                      <StatusBullet active={isCurrent} done={false} color={opt.color} />
+                    )}
+                    <span className="truncate">{opt.label}</span>
+                  </span>
+                  {isCurrent && (
+                    <CheckCircle2 size={13} className="shrink-0 text-admin-info-500" />
+                  )}
+                </span>
+              </SelectItem>
+            );
+          })}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
+  );
+}
+
 /** Statuses that allow triggering a fresh report generation. */
 const GENERATABLE_STATUSES = ["approved", "pending_review", "failed"] as const;
 
