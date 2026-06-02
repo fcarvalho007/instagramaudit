@@ -79,7 +79,7 @@ export function ReportPreviewBand() {
                     @marca_exemplo
                   </div>
                   <div
-                    className="text-[10px]"
+                    className="text-xs"
                     style={{ color: "rgb(var(--hero-text-tertiary))" }}
                   >
                     {t("dark.preview.card.meta")}
@@ -87,7 +87,7 @@ export function ReportPreviewBand() {
                 </div>
               </div>
               <span
-                className="text-[10px] px-2.5 py-0.5 rounded-full"
+                className="text-xs px-2.5 py-0.5 rounded-full font-medium"
                 style={{
                   backgroundColor: "rgba(var(--hero-cyan), 0.12)",
                   color: "rgb(var(--hero-cyan-soft))",
@@ -125,7 +125,7 @@ export function ReportPreviewBand() {
                   style={{ backgroundColor: "rgba(255,255,255,0.03)" }}
                 >
                   <div
-                    className="text-[9px] uppercase tracking-wide mb-1.5"
+                    className="text-xs uppercase tracking-wide mb-1.5"
                     style={{ color: "rgb(var(--hero-text-tertiary))" }}
                   >
                     {k.label}
@@ -137,7 +137,7 @@ export function ReportPreviewBand() {
                     {k.value}
                   </div>
                   <div
-                    className="text-[10px] mt-1"
+                    className="text-xs mt-1"
                     style={{
                       color: k.positive
                         ? "#3DDC97"
@@ -152,7 +152,7 @@ export function ReportPreviewBand() {
 
             {/* Competitor bars */}
             <div
-              className="text-[10px] uppercase tracking-wide mb-2.5"
+              className="text-xs uppercase tracking-wide mb-2.5"
               style={{ color: "rgb(var(--hero-text-tertiary))" }}
             >
               {t("dark.preview.card.competitorsLabel")}
@@ -164,7 +164,7 @@ export function ReportPreviewBand() {
                   className="flex items-center gap-2.5"
                 >
                   <span
-                    className="text-[10px] w-24 truncate"
+                    className="text-xs w-24 truncate"
                     style={{
                       color: c.isOwner
                         ? "rgb(var(--hero-text-secondary))"
@@ -188,7 +188,7 @@ export function ReportPreviewBand() {
                     />
                   </div>
                   <span
-                    className="text-[10px] tabular-nums"
+                    className="text-xs tabular-nums"
                     style={{
                       color: c.isOwner
                         ? "rgb(var(--hero-text-primary))"
