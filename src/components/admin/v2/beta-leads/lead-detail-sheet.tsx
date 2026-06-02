@@ -239,6 +239,69 @@ function DetailRow({ label, icon: Icon, children }: { label: string; icon?: Reac
   );
 }
 
+/** Cartão de KPI do cabeçalho — label + valor grande, ícone discreto. */
+function KpiTile({
+  label,
+  value,
+  icon: Icon,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  icon?: React.ComponentType<{ size?: number; className?: string }>;
+  tone?: "default" | "danger";
+}) {
+  return (
+    <div className="rounded-lg border border-admin-text-primary/10 bg-admin-surface-muted/40 px-3 py-2.5">
+      <div className="flex items-center gap-1.5">
+        {Icon && (
+          <Icon
+            size={11}
+            className={
+              tone === "danger"
+                ? "text-admin-expense-600"
+                : "text-admin-text-tertiary"
+            }
+          />
+        )}
+        <span
+          className={`text-[10px] font-semibold uppercase tracking-wider ${
+            tone === "danger" ? "text-admin-expense-600" : "text-admin-text-tertiary"
+          }`}
+        >
+          {label}
+        </span>
+      </div>
+      <p className="m-0 mt-1 text-[15px] font-semibold text-admin-text-primary tabular-nums">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+/** Linha da grelha "Contexto do lead" — ícone + label eyebrow + valor humano. */
+function ContextField({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-start gap-2 min-w-0">
+      <Icon size={14} className="text-admin-text-tertiary shrink-0 mt-0.5" />
+      <div className="min-w-0">
+        <p className="admin-eyebrow-sm m-0 mb-0.5">{label}</p>
+        <p className="admin-body text-admin-text-primary m-0 truncate" title={value}>
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ──────────────────────────────────────────────
 
 /** Statuses that allow triggering a fresh report generation. */
