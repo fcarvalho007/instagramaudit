@@ -41,19 +41,16 @@ export function HeroSection() {
             <BlurRevealText
               text={t("hero.headline")}
               as="h1"
-              className="font-display text-[1.75rem] sm:text-4xl md:text-5xl lg:text-6xl tracking-tight font-medium leading-[1.12] sm:leading-[1.08] text-balance max-w-[18ch] sm:max-w-[20ch] lg:max-w-[22ch] mx-auto lg:mx-0"
-              style={{ color: "rgb(var(--hero-text-primary))" }}
+              className="font-display text-[1.75rem] sm:text-4xl md:text-5xl lg:text-6xl tracking-tight font-medium leading-[1.12] sm:leading-[1.08] text-balance max-w-[18ch] sm:max-w-[20ch] lg:max-w-[22ch] mx-auto lg:mx-0 text-[color:rgb(var(--hero-text-primary))]"
               delayMs={150}
               highlightTailWords={2}
-              highlightClassName=""
-              highlightStyle={{ color: "rgb(var(--hero-cyan-soft))" }}
+              highlightClassName="text-[color:rgb(var(--hero-cyan-soft))]"
             />
 
             <BlurRevealText
               text={t("hero.subtitle")}
               as="p"
-              className="font-sans text-base md:text-lg leading-relaxed max-w-xl mx-auto lg:mx-0"
-              style={{ color: "rgb(var(--hero-text-secondary))" }}
+              className="font-sans text-base md:text-lg leading-relaxed max-w-xl mx-auto lg:mx-0 text-[color:rgb(var(--hero-text-secondary))]"
               delayMs={500}
             />
 
