@@ -142,17 +142,19 @@ async function logServerOnboardingError(args: {
     handle: args.handle,
   });
   try {
-    await supabaseAdmin.from("product_events").insert({
-      event_type: "onboarding_error",
-      handle: args.handle,
-      metadata: {
-        step: 3,
-        source: "server",
-        error_code: args.errorCode,
-        issues: args.issues,
-        fields_present: args.fieldsPresent,
+    await supabaseAdmin.from("product_events").insert([
+      {
+        event_type: "onboarding_error",
+        handle: args.handle,
+        metadata: {
+          step: 3,
+          source: "server",
+          error_code: args.errorCode,
+          issues: args.issues,
+          fields_present: args.fieldsPresent,
+        },
       },
-    });
+    ]);
   } catch (err) {
     console.warn("[onboarding/start] product_events insert failed", err);
   }
