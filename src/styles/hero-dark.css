@@ -55,3 +55,22 @@
 @media (prefers-reduced-motion: reduce) {
   .hero-mock-fade { animation: none; opacity: 1; transform: none; }
 }
+/* Per-word reveal used by <BlurRevealText> in the hero. Visible by default;
+   the animation only adds an entrance — never hides text if CSS is late. */
+@keyframes hero-blur-reveal-kf {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+.hero-blur-reveal {
+  animation-name: hero-blur-reveal-kf;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both;
+}
