@@ -30,7 +30,7 @@ function Header() {
   const scrolled = useScrollPast(40);
   const [open, setOpen] = React.useState(false);
   const { t } = useTranslation("header");
-  const { session, loading } = useAuthSession();
+  const { session } = useAuthSession();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   // Nav items. "Preços" omitido até existir página dedicada.
