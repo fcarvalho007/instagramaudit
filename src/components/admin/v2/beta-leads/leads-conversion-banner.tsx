@@ -1,6 +1,10 @@
 /**
- * LeadsConversionBanner — 3 KPI cards no topo de `/admin/leads` com as
- * taxas de conversão Reports → LM, LM → Checkout, Checkout → Pago.
+ * LeadsConversionBanner — 3 KPI cards no topo de `/admin/leads`.
+ *
+ * Funil LM-first (o Lead Magnet é a inscrição inicial — todo lead na DB
+ * passou por LM, logo "Reports → LM" deixou de ter sinal):
+ *
+ *   Inscrições LM (absoluto)  →  Inscrição → Checkout  →  Checkout → Pago
  *
  * Dados reais via `/api/admin/leads-funnel` (janela 30 dias).
  */
@@ -17,7 +21,7 @@ interface FunnelRate {
 interface FunnelResponse {
   success: boolean;
   windowDays: number;
-  reportsToLm: FunnelRate;
+  lmSignups: number;
   lmToCheckout: FunnelRate;
   checkoutToPaid: FunnelRate;
 }
@@ -33,14 +37,14 @@ function formatRate(r: FunnelRate): string {
   return `${Math.round(r.rate * 1000) / 10}%`;
 }
 
-interface KpiCardProps {
+interface RateCardProps {
   label: string;
   hint: string;
   data: FunnelRate | null;
   isLoading: boolean;
 }
 
-function KpiCard({ label, hint, data, isLoading }: KpiCardProps) {
+function RateCard({ label, hint, data, isLoading }: RateCardProps) {
   return (
     <div
       className="flex flex-col gap-1.5 rounded-lg border border-[var(--color-admin-border)] bg-admin-surface px-4 py-3.5"
@@ -58,6 +62,31 @@ function KpiCard({ label, hint, data, isLoading }: KpiCardProps) {
           ? `${data.numerator} / ${data.denominator} · ${hint}`
           : hint}
       </p>
+    </div>
+  );
+}
+
+interface CountCardProps {
+  label: string;
+  hint: string;
+  value: number | null;
+  isLoading: boolean;
+}
+
+function CountCard({ label, hint, value, isLoading }: CountCardProps) {
+  return (
+    <div
+      className="flex flex-col gap-1.5 rounded-lg border border-[var(--color-admin-border)] bg-admin-surface px-4 py-3.5"
+    >
+      <p className="text-eyebrow-sm text-admin-text-tertiary">{label}</p>
+      {isLoading ? (
+        <div className="h-7 w-16 rounded bg-admin-surface-muted animate-pulse" />
+      ) : (
+        <p className="text-[26px] font-semibold leading-none text-admin-text-primary tabular-nums">
+          {value ?? 0}
+        </p>
+      )}
+      <p className="text-[11px] text-admin-text-tertiary tabular-nums">{hint}</p>
     </div>
   );
 }
@@ -84,19 +113,19 @@ export function LeadsConversionBanner() {
 
   return (
     <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
-      <KpiCard
-        label="Reports → LM"
+      <CountCard
+        label="Inscrições LM"
         hint={windowLabel}
-        data={data?.reportsToLm ?? null}
+        value={data?.lmSignups ?? null}
         isLoading={isLoading}
       />
-      <KpiCard
-        label="LM → Checkout"
+      <RateCard
+        label="Inscrição → Checkout"
         hint={windowLabel}
         data={data?.lmToCheckout ?? null}
         isLoading={isLoading}
       />
-      <KpiCard
+      <RateCard
         label="Checkout → Pago"
         hint={windowLabel}
         data={data?.checkoutToPaid ?? null}
