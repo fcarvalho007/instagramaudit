@@ -1893,10 +1893,10 @@ function LeadReportsList({
       : "Sem créditos atribuídos";
 
   return (
-    <div className="px-4 sm:px-6 py-5 space-y-4">
+    <div className="px-4 sm:px-6 py-6 space-y-5">
       {/* Cabeçalho compacto — contador + CTA "Gerar para este lead" */}
       <div className="flex items-center justify-between gap-3">
-        <p className="m-0 text-[13px] text-admin-text-primary tabular-nums">
+        <p className="m-0 text-[13px] text-admin-text-primary tabular-nums leading-tight">
           <span className="font-semibold">{count}</span>{" "}
           {count === 1 ? "relatório" : "relatórios"}
           <span className="mx-1.5 text-admin-text-tertiary">·</span>
@@ -1915,7 +1915,7 @@ function LeadReportsList({
           onClick={canGenerate ? onGenerateClick : undefined}
           disabled={!canGenerate}
           title={generateDisabledReason ?? "Gerar nova análise para este lead"}
-          className={`inline-flex items-center gap-1 text-[12px] font-medium transition-colors ${
+          className={`inline-flex items-center gap-1.5 text-[12px] font-medium transition-colors ${
             canGenerate
               ? "text-admin-info-500 hover:text-admin-info-700"
               : "text-admin-text-tertiary cursor-not-allowed"
@@ -1942,7 +1942,7 @@ function LeadReportsList({
           </button>
         </div>
       ) : rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-admin-text-primary/15 bg-admin-surface-muted/30 p-5 text-center">
+        <div className="rounded-xl border border-dashed border-admin-text-primary/15 bg-admin-surface-muted/40 p-6 text-center">
           <p className="m-0 text-[13px] text-admin-text-tertiary">
             Este lead ainda não pediu nenhum relatório.
           </p>
@@ -1962,28 +1962,24 @@ function LeadReportsList({
             return (
               <li
                 key={r.id}
-                className="rounded-xl border border-admin-text-primary/10 bg-white p-3"
+                className="rounded-xl border border-admin-text-primary/10 bg-white p-3.5 hover:border-admin-text-primary/20 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   {/* Avatar quadrado */}
                   <div
-                    className="shrink-0 rounded-lg flex items-center justify-center"
-                    style={{
-                      width: 36,
-                      height: 36,
-                      backgroundColor: "rgba(44,44,42,0.05)",
-                    }}
+                    className="shrink-0 rounded-lg flex items-center justify-center bg-admin-text-primary/5"
+                    style={{ width: 36, height: 36 }}
                   >
                     <Instagram size={16} className="text-admin-text-tertiary" />
                   </div>
 
                   {/* Meta — handle + estado + data */}
-                  <div className="min-w-0 flex-1 flex items-center gap-2 flex-wrap">
+                  <div className="min-w-0 flex-1 flex items-center gap-2.5 flex-wrap">
                     <span className="text-[13px] font-semibold text-admin-text-primary">
                       @{r.instagram_username}
                     </span>
                     <AdminBadge variant={state.tone}>{state.label}</AdminBadge>
-                    <span className="text-[11px] text-admin-text-tertiary tabular-nums">
+                    <span className="text-[12px] text-admin-text-tertiary tabular-nums">
                       {formatShortDateTime(r.created_at)}
                     </span>
                   </div>
@@ -2036,11 +2032,11 @@ function LeadReportsList({
                 </div>
 
                 {(showViewed || showNotViewed) && (
-                  <p className="m-0 mt-2 pl-[48px] text-[11px] text-admin-text-tertiary flex items-center gap-1.5">
+                  <p className="m-0 mt-2 pl-[48px] text-[12px] text-admin-text-tertiary flex items-center gap-1.5">
                     {showViewed ? (
                       <>
                         <CheckCircle2
-                          size={11}
+                          size={12}
                           className="text-admin-revenue-500"
                         />
                         Visto {lead.report_views}{" "}
@@ -2048,7 +2044,7 @@ function LeadReportsList({
                       </>
                     ) : (
                       <>
-                        <EyeOff size={11} />
+                        <EyeOff size={12} />
                         Ainda não foi visto pelo lead.
                       </>
                     )}
