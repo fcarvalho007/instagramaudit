@@ -1,112 +1,117 @@
-## Backfill — `actual_cost_usd` da Apify a partir do run metadata
 
-**Sem novas execuções de actor. Apenas leituras `GET /v2/actor-runs/{runId}` para `apify_run_id` já registados.**
+# Prompt A — Auditoria da fuga de logging Apify
 
----
+Sem alterações de código. Sem chamadas Apify. Pura auditoria.
 
-### Estado actual (consulta real à DB)
+## 1. Inventário de call sites do `runActor*`
 
-| Tabela | Total | `actual_cost_usd` em 0/NULL | Com `apify_run_id` | Sem `apify_run_id` |
-|---|---|---|---|---|
-| `provider_call_logs` (apify) | 72 | **65** | 70 | 2 |
-| `apify_lab_runs` | 36 | **21** | 34 | 2 |
+A única porta de saída para a API Apify é `src/lib/analysis/apify-client.ts`
+(`runActor` e `runActorWithMetadata`). Os 3 únicos call sites confirmados são:
 
-- Soma estimada PCL apify: **$0.6485**
-- Soma actual PCL apify: **$0.4991** (7 rows já com valor)
-- 4 runs (2 PCL + 2 Lab) sem `apify_run_id` → não-backfillable, listados no relatório final.
+| # | Ficheiro | Wrapper | Escreve em `provider_call_logs`? | Escreve em `apify_lab_runs`? |
+|---|----------|---------|----------------------------------|------------------------------|
+| 1 | `src/routes/api/analyze-public-v1.ts` (linha 241) | `runActorWithMetadata` | **Sim** — `recordProviderCall` é chamado 2x (linhas 297 e 325) | Não |
+| 2 | `src/lib/analysis/comment-scraper.server.ts` (linha 270), invocado por `src/routes/api/public/enrich-comments.ts` | `runActorWithMetadata` | **Sim** — `recordProviderCall` linhas 133 e 194 de `enrich-comments.ts` | Não |
+| 3 | `src/routes/api/admin/apify-lab.ts` (linha 297) | `runActorWithMetadata` | **Não** — só faz `insert` em `apify_lab_runs` | Sim |
 
-### Arquitectura
+`/api/analyze/refresh.ts` e `/api/admin/generate-beta-report.ts` delegam
+para `/api/analyze-public-v1` por HTTP server-to-server, pelo que o
+logging ocorre dentro de `analyze-public-v1` (caso #1). Não introduzem
+nova superfície.
 
-Já existe wrapper que sabe ler `usageTotalUsd` do endpoint canónico em `src/lib/analysis/apify-client.ts:355-366`. Vamos reutilizar a mesma URL (`GET https://api.apify.com/v2/actor-runs/{runId}?token=…`) num helper de backfill dedicado, sem tocar nas chamadas live.
+Não existe nenhum outro `fetch` para `api.apify.com` no repo
+(`grep apify.com` confirma só `apify-client.ts`).
 
-### Mudanças propostas (build mode)
+## 2. Cruzamento com a janela "Apify dashboard 21:01–21:09 UTC, 11 runs"
 
-#### 1) Novo helper `src/lib/admin/apify-actual-cost-backfill.server.ts`
+A última row em `provider_call_logs` (provider=apify) é
+`2026-06-01 16:07:53 UTC`. Entre 16:07 e a meia-noite só existe actividade
+no Lab. Contagem em `apify_lab_runs`:
 
-Server-only. Função única `backfillApifyActualCost(options)`:
+| Janela | Rows no Lab |
+|--------|-------------|
+| 2026-06-01 18:00–19:00 UTC | 21 |
+| 2026-06-01 19:00–20:00 UTC | 2  |
+| 2026-06-01 20:00–21:00 UTC | 13 |
+| **2026-06-01 20:01–20:10 UTC** | **13** (todas com `apify_run_id`) |
 
-- `options.scope`: `"provider_call_logs" | "apify_lab_runs" | "both"` (default `both`)
-- `options.limit`: cap defensivo (default 500)
-- `options.since`: opcional, ISO timestamp; default `null` (todas as rows com `actual_cost_usd` NULL ou 0)
-- `options.driftThresholdPct`: default `30` — abaixo flag `drift`
+O burst de 20:01–20:09 UTC corresponde a uma matriz Lab (3 perfis ×
+5 janelas com alguns retries/timeouts) — `frederico.m.carvalho`,
+`martimsilvai`, `mariiana.ai` em `baseline / 30d / 60d / 90d`.
 
-Fluxo por row:
-1. SELECT batches de 50 com `apify_run_id IS NOT NULL` e `(actual_cost_usd IS NULL OR actual_cost_usd = 0)`.
-2. Para cada `apify_run_id`: `GET /v2/actor-runs/{runId}` com `Authorization: Bearer ${APIFY_TOKEN}` (mesmo helper `apifyFetch`, timeout 10 s). Rate limit: `await sleep(120)` entre chamadas → ~8 req/s, muito abaixo dos limites Apify.
-3. Leitura de `data.usageTotalUsd` (number). Se `null/undefined` → marca `missing_usage` no relatório, NÃO escreve.
-4. `UPDATE` da row com `actual_cost_usd = usageTotalUsd`. Para PCL, se já houver `estimated_cost_usd` e `|actual − estimated| / max(estimated, 0.001) > driftThresholdPct/100`, regista alerta em `usage_alerts` (kind=`apify_cost_drift`, severity=`warning`, metric_name=`actual_vs_estimated_pct`, metric_value=`drift_pct`, threshold_value=`driftThresholdPct`, notes inclui `run_id` e ambos os valores).
-5. Erros HTTP 404 (run apagada na Apify) → marca `missing_remote`, NÃO escreve, continua.
-6. Erros 401/403 → aborta imediatamente (token inválido).
+A diferença horária bate certo com **WEST (UTC+1)**: o dashboard Apify
+em hora local de Lisboa mostra `21:01–21:09`, mas em UTC são
+`20:01–20:09`. Os "11 runs" do dashboard mapeiam quase 1-para-1 com as
+13 rows de Lab nessa janela (a diferença de 2 explica-se pelas runs
+`status='failed'`/`timeout` sem `apify_run_id`, que o dashboard pode
+agregar de forma diferente, ou por filtro de duração no dashboard).
 
-Devolve resumo estruturado:
-```ts
-{
-  scope, scanned, updated, skipped_missing_usage, skipped_missing_remote,
-  skipped_no_run_id, drift_flagged, errors,
-  sum_estimated_before, sum_actual_before, sum_actual_after,
-  missing_run_ids: string[]   // IDs do PCL/Lab que não tinham apify_run_id
-}
-```
+Conclusão: **nenhum dos 11 runs em falta corresponde a uma chamada
+fora do wrapper**. Todos passam por `runActorWithMetadata`. O que
+falta é a escrita em `provider_call_logs` para o caminho Lab.
 
-#### 2) Registar batch em `provider_billing_import_batches`
+## 3. Causa identificada
 
-No fim do run, inserir uma linha:
-```
-provider               = 'apify'
-period_start/period_end = min/max created_at das rows tocadas
-imported_total_raw_cost_usd     = sum_actual_after − sum_actual_before (delta importado neste run)
-imported_total_displayed_cost_usd = sum_actual_after (snapshot)
-dashboard_total_actual_cost_usd   = 0  -- não temos comparação directa neste batch
-reconciliation_status  = 'partial' se sobraram missing_*, senão 'completed'
-source_note            = 'backfill_run_metadata'
-```
-Não é o caso de uso "ideal" da tabela (que é para importar invoice mensal), mas é o slot canónico para audit-trail e batem com `/admin` Receita > Billing Import.
+A fuga é **estrutural, não acidental**:
 
-#### 3) Rota admin TanStack `src/routes/api/admin/apify-backfill-actual-cost.ts`
+- `src/routes/admin.apify-lab.tsx` (linha 351) declara explicitamente
+  que "Nada é escrito em `report_snapshots`, `provider_call_logs`,
+  `leads` ou pipelines de produção".
+- `src/routes/api/admin/apify-lab.ts` insere apenas em `apify_lab_runs`
+  e nunca chama `recordProviderCall`.
 
-`POST /api/admin/apify-backfill-actual-cost` com `requireAdminAuth` (mesmo padrão de `apify-lab.ts`). Body:
-```json
-{ "scope": "both", "limit": 500, "driftThresholdPct": 30, "dryRun": false }
-```
-- `dryRun: true` → faz as chamadas, calcula deltas e drift, mas NÃO escreve em DB nem cria `usage_alerts` nem `provider_billing_import_batches`. Permite preview no admin.
-- Resposta = resumo do helper.
+Resultado: cada execução do Lab consome créditos reais Apify, aparece
+no dashboard Apify, mas é invisível para:
 
-#### 4) Botão no admin
+- `/admin` Despesa 24h / 30d (lê `provider_call_logs`)
+- `cost_daily` (agregado de `provider_call_logs` via
+  `cost-sync.server.ts`)
+- `apify-budget.server.ts` (kill-switch baseado em
+  `provider_call_logs.estimated_cost_usd`)
+- Reconciliação `provider_billing_imports`
 
-Em `src/components/admin/v2/sistema/` (ou `system-jobs-card.tsx` se existir, senão card novo "Backfill Apify actual cost"):
-- Botão "Pré-visualizar" → `dryRun: true`.
-- Botão "Aplicar backfill" → `dryRun: false`, com confirmação.
-- Mostra a resposta: scanned, updated, drift_flagged, missing_run_ids (collapsible), sum antes/depois.
+## 4. Resposta às hipóteses do prompt
 
-#### 5) Sem mudanças nos KPIs `/admin`
+| Hipótese | Veredicto |
+|----------|-----------|
+| (1) Runs do `/admin/apify-lab` que não entram em `provider_call_logs` | **CONFIRMADO** — é esta a causa |
+| (2) Calls directas fora do wrapper | **Descartado** — único `fetch` para `api.apify.com` está em `apify-client.ts` |
+| (3) Scheduled actors / uso externo do `APIFY_TOKEN` | **Não evidenciado no repo.** Resta a pergunta operacional (Apify Console): se houver schedules/webhooks/actor calls com o mesmo token feitos fora desta app, só a Apify Console os mostra. As 11 runs em causa são integralmente explicadas pelo Lab — esta hipótese fica em aberto como verificação manual mas sem indício de drift. |
 
-Hoje os KPIs já chamam `resolveCallCost(row)` (`src/lib/admin/cost-resolution.ts`) que prefere `actual_cost_usd` quando > 0 e cai para `estimated`. Backfill simplesmente fará as KPIs passarem a usar valores reais sem alterações de código.
+## 5. Ficheiros implicados
 
-### O que NÃO se altera
+- `src/lib/analysis/apify-client.ts` — wrapper único
+- `src/lib/analysis/events.ts` — `recordProviderCall` (a função que o Lab não chama)
+- `src/routes/api/admin/apify-lab.ts` — call site sem logging
+- `src/routes/admin.apify-lab.tsx` — UI que documenta o gap como intencional
+- `src/lib/admin/cost-sync.server.ts` — consumidor a jusante (não vê Lab)
+- `src/lib/security/apify-budget.server.ts` — kill-switch a jusante (não vê Lab)
 
-- Sem novas execuções de actor.
-- Sem alterar wrapper `runActorWithMetadata` (já lê `usageTotalUsd`).
-- Sem alterar contabilização Lab vs Produção (issue separado da auditoria anterior).
-- Sem alterar `cost_daily` directamente — fica para o próximo `syncApifyCosts` reagregar a partir de PCL agora que as rows têm `actual_cost_usd`.
+## 6. Resultado
 
-### Checkpoint ☐
+- **Bug de logging real?** Não no sentido clássico — é uma decisão
+  documentada do Lab para não poluir métricas de produção. Mas é um
+  **gap de accounting real**: créditos Apify queimados pelo Lab são
+  invisíveis na contabilidade global.
+- **Drift Lab → dashboard:** as 11 runs órfãs do dashboard são Lab,
+  não chamadas fantasma.
+- **Próximo passo recomendado (a fazer noutro prompt, em Plan Mode):**
+  adicionar `source_context` em `provider_call_logs`
+  (`public_analysis | admin_lab | admin_refresh | backfill`) e fazer
+  o Lab escrever uma linha com `source_context='admin_lab'` em paralelo
+  com `apify_lab_runs`. `/admin` passa a poder filtrar/segmentar custo
+  por origem em vez de esconder Lab. Reconciliação contra Apify
+  Console deixa de ter falsos positivos.
 
-- ☐ `src/lib/admin/apify-actual-cost-backfill.server.ts` criado, sem efeitos colaterais em `dryRun`.
-- ☐ `src/routes/api/admin/apify-backfill-actual-cost.ts` com `requireAdminAuth`.
-- ☐ Card admin com pré-visualização + aplicar (sem regressões noutros cards).
-- ☐ `usage_alerts` gerados só para drift ≥30% e apenas em modo aplicar.
-- ☐ Linha em `provider_billing_import_batches` com `source_note='backfill_run_metadata'` por cada run aplicado.
-- ☐ Não há novos `provider_call_logs` criados, nem actor runs novos.
-- ☐ Resposta da rota inclui: scanned, updated, drift_flagged, sum_estimated_before, sum_actual_before, sum_actual_after, missing_run_ids.
+## 7. Verificação operacional pendente (fora do repo)
 
-### Riscos e mitigações
+Para fechar a hipótese (3) com 100%:
 
-- **Rate limit Apify**: 120 ms entre chamadas, batches de 50, cap 500 → ~60 s por run no pior caso. Aceitável para chamada admin manual.
-- **Runs antigas purgadas pela Apify** (retenção de dataset ≠ retenção do run record; runs costumam ficar): tratadas como `missing_remote`, registadas e ignoradas.
-- **`usageTotalUsd` ainda não finalizado**: para runs antigas (>1h) é sempre final; não há risco.
-- **Token inválido**: aborta imediatamente, sem rows escritas.
-- **Dupla escrita do batch em retries**: `dryRun` para verificar; em modo aplicar, batch é criado uma vez por chamada — não usar onConflict.
+- Apify Console → **Schedules**: confirmar que não há schedules activos.
+- Apify Console → **Integrations / Webhooks**: confirmar que o token
+  não está colado em outro produto.
+- Apify Console → **API tokens**: confirmar que só existe o token
+  configurado em Lovable.
 
-### Próximo prompt sugerido (depois deste)
-
-> "Plano: actualizar `syncApifyCosts` para reagregar `cost_daily` a partir do PCL agora que `actual_cost_usd` está preenchido (mesmo padrão do OpenAI/DataForSEO em `cost-sync.server.ts`), em vez de depender só do endpoint mensal `/users/me/usage/monthly`."
+Sem isto, a auditoria por código não consegue provar (3) — pode apenas
+afirmar que dentro do repo não há outro caller.
