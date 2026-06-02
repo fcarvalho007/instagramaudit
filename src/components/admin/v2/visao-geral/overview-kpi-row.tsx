@@ -45,12 +45,34 @@ export function OverviewKpiRow() {
     return <SectionError error={error as Error} onRetry={() => refetch()} />;
 
   const marginNegative =
-    data.margin_per_lead !== null && data.margin_per_lead < 0;
-  const marginAccent = marginNegative
-    ? "expense"
-    : data.margin_per_lead && data.margin_per_lead > 0
-      ? "revenue"
-      : "neutral";
+    data.margin_status === "negative" && data.revenue_active;
+  const marginAccent: "expense" | "revenue" | "neutral" =
+    data.margin_status === "negative"
+      ? "expense"
+      : data.margin_status === "positive"
+        ? "revenue"
+        : "neutral";
+
+  const revenueValue = data.revenue_active
+    ? fmtEur(data.revenue_total_30d)
+    : "—";
+  const revenueSub = data.revenue_active
+    ? "30 dias"
+    : "ainda não activa";
+
+  const marginValue = data.revenue_active
+    ? fmtUsd(data.margin_per_lead)
+    : "em validação";
+  const marginSub = data.revenue_active
+    ? data.cost_per_lead !== null
+      ? `custo ${fmtUsd(data.cost_per_lead)} · receita ${fmtUsd(data.revenue_per_lead)}`
+      : "sem leads no período"
+    : data.cost_per_lead !== null
+      ? `custo/lead ${fmtUsd(data.cost_per_lead)} · receita pendente`
+      : "à espera de leads e checkout";
+
+  // Silence unused warning while keeping the variable for future logic.
+  void marginNegative;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -63,8 +85,8 @@ export function OverviewKpiRow() {
       />
       <KPICard
         eyebrow="Receita"
-        value={fmtEur(data.revenue_total_30d)}
-        sub={data.checkout_enabled ? "30 dias" : "checkout por ligar"}
+        value={revenueValue}
+        sub={revenueSub}
         accent="revenue"
         variant="accent-left"
       />
@@ -77,12 +99,8 @@ export function OverviewKpiRow() {
       />
       <KPICard
         eyebrow="Margem / lead"
-        value={fmtUsd(data.margin_per_lead)}
-        sub={
-          data.cost_per_lead !== null
-            ? `custo ${fmtUsd(data.cost_per_lead)} · receita ${fmtUsd(data.revenue_per_lead)}`
-            : "sem leads no período"
-        }
+        value={marginValue}
+        sub={marginSub}
         accent={marginAccent}
         variant="accent-left"
       />
