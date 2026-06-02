@@ -10,24 +10,21 @@ import { useInView } from "@/components/landing/use-in-view";
  */
 export function Reveal({
   children,
-  as: Tag = "div",
   className,
   delayMs = 0,
 }: {
   children: ReactNode;
-  as?: "div" | "section" | "article" | "li";
   className?: string;
   delayMs?: number;
 }) {
   const { ref, inView } = useInView<HTMLDivElement>();
   return (
-    // @ts-expect-error — dynamic tag with shared ref type
-    <Tag
+    <div
       ref={ref}
       className={cn("dark-reveal", inView && "is-in", className)}
       style={delayMs ? { transitionDelay: `${delayMs}ms` } : undefined}
     >
       {children}
-    </Tag>
+    </div>
   );
 }
