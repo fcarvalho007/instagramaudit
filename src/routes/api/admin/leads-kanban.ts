@@ -372,6 +372,11 @@ export const Route = createFileRoute("/api/admin/leads-kanban")({
               pending_checkout_started_at: null,
               total_paid_cents: 0,
             };
+          const credits = creditsByLead.get(lead.id) ?? {
+            granted: 0,
+            used: 0,
+            remaining: 0,
+          };
 
           return {
             id: lead.id,
@@ -404,6 +409,9 @@ export const Route = createFileRoute("/api/admin/leads-kanban")({
             marketing_consent: !!lead.marketing_consent,
             is_lead_magnet_subscriber: isLmSubscriber,
             payment_summary: paymentSummary,
+            credits_granted: credits.granted,
+            credits_used: credits.used,
+            credits_remaining: credits.remaining,
           };
         });
 
