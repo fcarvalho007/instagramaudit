@@ -167,13 +167,7 @@ function formatDate(iso: string): string {
 
 function SectionDivider() {
   return (
-    <div
-      className="mx-6"
-      style={{
-        height: 1,
-        background: "linear-gradient(to right, rgba(44,44,42,0.10), transparent 80%)",
-      }}
-    />
+    <div className="mx-6 h-px bg-admin-text-primary/10" />
   );
 }
 
@@ -253,11 +247,11 @@ function KpiTile({
   tone?: "default" | "danger";
 }) {
   return (
-    <div className="rounded-lg border border-admin-text-primary/10 bg-admin-surface-muted/40 px-3 py-2.5">
+    <div className="rounded-lg border border-admin-text-primary/10 bg-admin-surface-muted/50 px-3 py-3">
       <div className="flex items-center gap-1.5">
         {Icon && (
           <Icon
-            size={11}
+            size={12}
             className={
               tone === "danger"
                 ? "text-admin-expense-500"
@@ -266,14 +260,14 @@ function KpiTile({
           />
         )}
         <span
-          className={`text-[10px] font-semibold uppercase tracking-wider ${
+          className={`text-[11px] font-semibold uppercase tracking-[0.08em] ${
             tone === "danger" ? "text-admin-expense-500" : "text-admin-text-tertiary"
           }`}
         >
           {label}
         </span>
       </div>
-      <p className="m-0 mt-1 text-[15px] font-semibold text-admin-text-primary tabular-nums">
+      <p className="m-0 mt-1.5 text-[16px] leading-none font-semibold text-admin-text-primary tabular-nums">
         {value}
       </p>
     </div>
