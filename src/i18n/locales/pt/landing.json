@@ -3,20 +3,10 @@
     "title": "AuditProfiles · O benchmark de Instagram que faltava ao mercado",
     "description": "Análise pública e imediata de qualquer perfil de Instagram. Comparação com benchmarks atualizados e relatório detalhado por email."
   },
-  "microProof": {
-    "fast": "CONTA GRATUITA",
-    "noSignup": "2 RELATÓRIOS GRÁTIS",
-    "gdpr": "RGPD"
-  },
   "hero": {
     "eyebrow": "Benchmark de Instagram",
     "headline": "Analisa qualquer perfil de Instagram em segundos.",
     "subtitle": "Benchmark, diagnóstico editorial e pistas claras para melhorar a presença digital.",
-    "trust": {
-      "freeReports": "2 relatórios grátis",
-      "publicData": "Só dados públicos",
-      "freeAccount": "Conta gratuita"
-    },
     "previewMock": {
       "header": "Pré-visualização do relatório",
       "urlBar": "auditprofiles.com/report/preview",
