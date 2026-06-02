@@ -22,6 +22,7 @@ import { AdminCard } from "../admin-card";
 import { AdminSectionHeader } from "../admin-section-header";
 import { SectionError, SectionSkeleton } from "../section-state";
 import { adminFetch } from "@/lib/admin/fetch";
+import type { OverviewKpis } from "@/routes/api/admin/overview-kpis";
 
 interface BetaStage {
   key: string;
@@ -60,6 +61,16 @@ export function AcquisitionFunnel() {
     },
     staleTime: 30_000,
   });
+  const { data: kpis } = useQuery<OverviewKpis>({
+    queryKey: ["admin", "overview-kpis"],
+    queryFn: async () => {
+      const res = await adminFetch("/api/admin/overview-kpis");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
+  const revenueActive = kpis?.revenue_active ?? false;
 
   return (
     <AdminCard>
@@ -73,13 +84,13 @@ export function AcquisitionFunnel() {
       ) : error || !data?.success ? (
         <SectionError error={(error as Error) ?? data?.error} onRetry={() => refetch()} />
       ) : (
-        <FunnelBody data={data} />
+        <FunnelBody data={data} revenueActive={revenueActive} />
       )}
     </AdminCard>
   );
 }
 
-function FunnelBody({ data }: { data: BetaResponse }) {
+function FunnelBody({ data, revenueActive }: { data: BetaResponse; revenueActive: boolean }) {
   const stages = data.stages ?? [];
   const get = (key: string) => stages.find((s) => s.key === key)?.count ?? 0;
 
@@ -102,7 +113,15 @@ function FunnelBody({ data }: { data: BetaResponse }) {
     { label: "Email submetido", count: emailCount, pct: emailCount / base },
     { label: "Conta criada (lead)", count: leadCount, pct: leadCount / base },
     { label: "Feedback recebido", count: feedbackCount, pct: feedbackCount / base },
-    { label: "Convertido (pago)", count: convertedCount, pct: convertedCount / base },
+    revenueActive
+      ? { label: "Convertido (pago)", count: convertedCount, pct: convertedCount / base }
+      : {
+          label: "Convertido (pago)",
+          count: 0,
+          pct: 0,
+          note: "checkout por ligar",
+          unavailable: true,
+        },
   ];
 
   const zeroStages = display.filter(
@@ -117,9 +136,11 @@ function FunnelBody({ data }: { data: BetaResponse }) {
         ))}
       </div>
       <p className="mt-5 pt-4 border-t border-admin-border text-[12px] text-admin-text-tertiary leading-relaxed m-0">
-        {zeroStages > 0
-          ? `${zeroStages} etapa${zeroStages > 1 ? "s" : ""} a 0% por dependerem de tracker de visitantes e checkout — ambos por ligar.`
-          : "Tracker de visitantes ainda por ligar — a primeira etapa fica em placeholder."}
+        {revenueActive
+          ? zeroStages > 0
+            ? `${zeroStages} etapa${zeroStages > 1 ? "s" : ""} a 0% nesta janela.`
+            : "Tracker de visitantes ainda por ligar — a primeira etapa fica em placeholder."
+          : "Tracker de visitantes e checkout ainda por ligar — duas etapas ficam em placeholder."}
       </p>
     </>
   );
