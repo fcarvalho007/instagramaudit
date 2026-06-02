@@ -1710,115 +1710,149 @@ function mapFeedbackError(code: string | undefined): string {
 
 // ── Feedback beta section ───────────────────────────────────────
 
+const FEEDBACK_SCORE_EMOJI: Record<number, { emoji: string; label: string }> = {
+  5: { emoji: "😍", label: "Muito útil" },
+  4: { emoji: "😊", label: "Útil" },
+  3: { emoji: "🙂", label: "Razoável" },
+  2: { emoji: "😐", label: "Pouco útil" },
+  1: { emoji: "😞", label: "Nada útil" },
+};
+
 function FeedbackBetaSection({
-  feedback,
+  lead,
+  onPedirFeedback,
+  pedirDisabledReason,
 }: {
-  feedback: EnrichedLead["feedback"];
+  lead: EnrichedLead;
+  onPedirFeedback: () => void;
+  pedirDisabledReason: string | null;
 }) {
+  const feedback = lead.feedback;
+  const pedirDisabled = pedirDisabledReason != null;
+
   if (!feedback) {
     return (
-      <div className="px-4 sm:px-6 py-5">
-        <SectionTitle>Feedback beta</SectionTitle>
-        <div
-          className="rounded-xl p-4 admin-body text-admin-text-tertiary"
-          style={{
-            backgroundColor: "rgba(44,44,42,0.03)",
-            border: "1px dashed rgba(44,44,42,0.12)",
-          }}
-        >
-          Sem feedback ainda. Usa <strong>Pedir feedback</strong> na secção
-          Relatório para enviar o pedido ao lead.
+      <div className="px-4 sm:px-6 py-5 space-y-5">
+        {/* (A) Empty state — emoji + CTA */}
+        <div className="rounded-xl border border-admin-text-primary/10 bg-white p-6 text-center">
+          <p className="m-0 text-[44px] leading-none">😊</p>
+          <p className="m-0 mt-3 text-[14px] text-admin-text-secondary">
+            Ainda sem feedback deste lead.
+          </p>
+          <Button
+            size="sm"
+            onClick={pedirDisabled ? undefined : onPedirFeedback}
+            disabled={pedirDisabled}
+            title={pedirDisabledReason ?? undefined}
+            className="mt-4 bg-admin-info-500 hover:bg-admin-info-700 text-white"
+          >
+            <Send size={13} className="mr-1.5" /> Pedir feedback por email
+          </Button>
+        </div>
+
+        {/* Illustrative preview — clearly labelled "Exemplo" */}
+        <div>
+          <p className="admin-eyebrow mb-2 flex items-center gap-2">
+            <span>Como aparece quando responde</span>
+            <span className="text-[10px] font-medium text-admin-text-tertiary px-1.5 py-0.5 rounded bg-admin-surface-muted/70 normal-case tracking-normal">
+              Exemplo
+            </span>
+          </p>
+          <div className="rounded-xl border border-dashed border-admin-text-primary/15 bg-admin-surface-muted/30 p-3.5">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[20px] leading-none">😍</span>
+              <span className="text-[13px] font-semibold text-admin-text-primary">
+                Muito útil
+              </span>
+            </div>
+            <p className="m-0 text-[11px] text-admin-text-tertiary mb-2">
+              sobre o relatório de @{lead.handle ?? "exemplo"} · há 2 dias
+            </p>
+            <p className="m-0 text-[13px] italic text-admin-text-secondary">
+              &ldquo;Adorei a clareza do diagnóstico. Faltou comparar com concorrentes.&rdquo;
+            </p>
+          </div>
         </div>
       </div>
     );
   }
 
+  // (B) With feedback — emoji + label + texts + commercial signal
   const intent = interpretFeedback(feedback);
+  const scoreInfo =
+    FEEDBACK_SCORE_EMOJI[feedback.usefulness_score] ??
+    { emoji: "🙂", label: `${feedback.usefulness_score}/5` };
   const pricingLabel = feedback.pricing_preference
     ? PRICING_PREFERENCE_LABELS[
         feedback.pricing_preference as keyof typeof PRICING_PREFERENCE_LABELS
       ] ?? feedback.pricing_preference
-    : "—";
+    : null;
 
   return (
-    <div className="px-4 sm:px-6 py-5">
-      <div className="flex items-center justify-between mb-3">
-        <SectionTitle>Feedback beta</SectionTitle>
-        <span className="admin-meta text-admin-text-tertiary">
-          {relativeTime(feedback.created_at)}
-        </span>
-      </div>
-
-      {/* Score dots */}
-      <div className="flex items-center gap-1.5 mb-3" aria-label={`Score ${feedback.usefulness_score} de 5`}>
-        {[1, 2, 3, 4, 5].map((n) => (
-          <span
-            key={n}
-            className="rounded-full"
-            style={{
-              width: 10,
-              height: 10,
-              backgroundColor:
-                n <= feedback.usefulness_score
-                  ? "var(--admin-accent-info-500, #3772E5)"
-                  : "rgba(44,44,42,0.12)",
-            }}
-          />
-        ))}
-        <span className="admin-meta text-admin-text-secondary ml-2 tabular-nums">
-          {feedback.usefulness_score}/5
-        </span>
-      </div>
-
-      <DetailRow label="Disposto a pagar">
-        <AdminBadge
-          variant={
-            feedback.purchase_intent === "sim"
-              ? "revenue"
-              : feedback.purchase_intent === "talvez"
-                ? "signal"
-                : "neutral"
-          }
-        >
-          {PURCHASE_INTENT_LABELS[feedback.purchase_intent]}
-        </AdminBadge>
-      </DetailRow>
-      <DetailRow label="Opção preferida">{pricingLabel}</DetailRow>
-      <DetailRow label="Permite contacto">
-        {feedback.contact_consent ? "Sim" : "Não"}
-      </DetailRow>
-
-      {feedback.clarity_text && (
-        <div className="mt-3">
-          <p className="admin-eyebrow mb-1">O que ficou mais claro</p>
-          <p className="admin-body text-admin-text-primary m-0 whitespace-pre-wrap">
-            {feedback.clarity_text}
-          </p>
+    <div className="px-4 sm:px-6 py-5 space-y-4">
+      <div className="rounded-xl border border-admin-text-primary/10 bg-white p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="text-[26px] leading-none shrink-0">{scoreInfo.emoji}</span>
+            <div className="min-w-0">
+              <p className="m-0 text-[14px] font-semibold text-admin-text-primary">
+                {scoreInfo.label}
+              </p>
+              <p className="m-0 text-[11px] text-admin-text-tertiary">
+                sobre o relatório de @{lead.handle ?? "—"} ·{" "}
+                {relativeTime(feedback.created_at)}
+              </p>
+            </div>
+          </div>
+          <AdminBadge variant={intent.accent}>{intent.label}</AdminBadge>
         </div>
-      )}
-      {feedback.missing_text && (
-        <div className="mt-3">
-          <p className="admin-eyebrow mb-1">O que faltou</p>
-          <p className="admin-body text-admin-text-primary m-0 whitespace-pre-wrap">
-            {feedback.missing_text}
-          </p>
+
+        {feedback.clarity_text && (
+          <div className="mt-3 pt-3 border-t border-admin-text-primary/10">
+            <p className="admin-eyebrow-sm mb-1">O que ficou mais claro</p>
+            <p className="m-0 text-[13px] text-admin-text-primary whitespace-pre-wrap">
+              {feedback.clarity_text}
+            </p>
+          </div>
+        )}
+        {feedback.missing_text && (
+          <div className="mt-3 pt-3 border-t border-admin-text-primary/10">
+            <p className="admin-eyebrow-sm mb-1">O que faltou</p>
+            <p className="m-0 text-[13px] text-admin-text-primary whitespace-pre-wrap">
+              {feedback.missing_text}
+            </p>
+          </div>
+        )}
+
+        <div className="mt-3 pt-3 border-t border-admin-text-primary/10 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-[12px]">
+          <span className="text-admin-text-tertiary">Disposto a pagar</span>
+          <span className="text-admin-text-primary">
+            {PURCHASE_INTENT_LABELS[feedback.purchase_intent]}
+          </span>
+          {pricingLabel && (
+            <>
+              <span className="text-admin-text-tertiary">Opção preferida</span>
+              <span className="text-admin-text-primary">{pricingLabel}</span>
+            </>
+          )}
+          <span className="text-admin-text-tertiary">Permite contacto</span>
+          <span className="text-admin-text-primary">
+            {feedback.contact_consent ? "Sim" : "Não"}
+          </span>
         </div>
-      )}
+      </div>
 
       <div
-        className="mt-4 rounded-xl p-3.5 flex items-start gap-2.5"
+        className="rounded-xl p-3.5 flex items-start gap-2.5"
         style={{
           backgroundColor: "rgba(55,114,229,0.06)",
           borderLeft: "3px solid rgba(55,114,229,0.4)",
         }}
       >
-        <Lightbulb size={15} className="text-admin-text-tertiary shrink-0 mt-0.5" />
+        <Lightbulb size={15} className="text-admin-info-500 shrink-0 mt-0.5" />
         <div className="min-w-0">
-          <p className="admin-eyebrow mb-1 flex items-center gap-2">
-            Sinal comercial
-            <AdminBadge variant={intent.accent}>{intent.label}</AdminBadge>
-          </p>
-          <p className="admin-body text-admin-text-primary font-medium m-0">
+          <p className="admin-eyebrow mb-1 text-admin-info-700">Sinal comercial</p>
+          <p className="m-0 text-[13px] font-medium text-admin-text-primary">
             {intent.nextAction}
           </p>
         </div>
