@@ -9,12 +9,13 @@ import { useTranslation } from "react-i18next";
  */
 export function HeroReportPreview() {
   const { t } = useTranslation("landing");
-  const lockedWindows = t("hero.previewMock.windowsLocked", {
-    returnObjects: true,
-  }) as string[];
-  const premiumRows = t("hero.previewMock.premiumRows", {
-    returnObjects: true,
-  }) as string[];
+  const lockedWindowKeys = ["d30", "d60", "d90", "d365"] as const;
+  const premiumRowKeys = [
+    "diagnostic",
+    "content",
+    "reach",
+    "comparison",
+  ] as const;
 
   return (
     <div
@@ -77,9 +78,9 @@ export function HeroReportPreview() {
               <span className="size-1.5 rounded-full bg-[var(--hero-accent)]" />
               {t("hero.previewMock.sampleActive")}
             </span>
-            {lockedWindows.map((label) => (
+            {lockedWindowKeys.map((key) => (
               <span
-                key={label}
+                key={key}
                 className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border"
                 style={{
                   color: "var(--hero-fg-faint)",
@@ -87,7 +88,7 @@ export function HeroReportPreview() {
                 }}
               >
                 <Lock className="size-3" aria-hidden="true" />
-                {label}
+                {t(`hero.previewMock.windowsLocked.${key}`)}
               </span>
             ))}
           </div>
@@ -172,9 +173,9 @@ export function HeroReportPreview() {
             {t("hero.previewMock.sidebar")}
           </div>
           <div className="space-y-1.5" aria-hidden="true">
-            {premiumRows.map((row) => (
+            {premiumRowKeys.map((key) => (
               <div
-                key={row}
+                key={key}
                 className="flex items-center justify-between rounded-md border px-3 py-2 select-none"
                 style={{
                   borderColor: "var(--hero-border)",
@@ -188,7 +189,7 @@ export function HeroReportPreview() {
                     filter: "blur(2.5px)",
                   }}
                 >
-                  {row}
+                  {t(`hero.previewMock.premiumRows.${key}`)}
                 </span>
                 <Lock
                   className="size-3.5"

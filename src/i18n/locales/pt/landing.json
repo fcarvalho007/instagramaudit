@@ -20,7 +20,12 @@
     "previewMock": {
       "header": "Pré-visualização do relatório",
       "sampleActive": "Últimas 12 publicações",
-      "windowsLocked": ["30 dias", "60 dias", "90 dias", "365 dias"],
+      "windowsLocked": {
+        "d30": "30 dias",
+        "d60": "60 dias",
+        "d90": "90 dias",
+        "d365": "365 dias"
+      },
       "scoreLabel": "Índice do perfil",
       "scoreValue": "37/100",
       "scoreCaption": "Preview · Dados ilustrativos",
@@ -30,12 +35,12 @@
         "growth": "Crescimento"
       },
       "sidebar": "Visão geral grátis · 5 secções premium",
-      "premiumRows": [
-        "Diagnóstico editorial",
-        "Conteúdo",
-        "Procura",
-        "Comparação"
-      ],
+      "premiumRows": {
+        "diagnostic": "Diagnóstico editorial",
+        "content": "Conteúdo",
+        "reach": "Procura",
+        "comparison": "Comparação"
+      },
       "footnote": "O resumo gratuito mostra o essencial. O relatório completo aprofunda o diagnóstico."
     }
   },
