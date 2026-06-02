@@ -906,42 +906,13 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
               {/* (c) Estado comercial — select agrupado manual/auto */}
               <div>
                 <p className="admin-eyebrow mb-2">Estado comercial</p>
-                <Select value={lead.commercial_status} onValueChange={handleStatusChange}>
-                  <SelectTrigger className="h-10 text-[13px] rounded-lg">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectLabel className="text-eyebrow-sm text-admin-text-tertiary">
-                        Decisão comercial
-                      </SelectLabel>
-                      {statusOptionsManual.map((opt) => (
-                        <SelectItem key={opt.key} value={opt.key} className="text-[13px]">
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                    <SelectGroup>
-                      <SelectLabel className="text-eyebrow-sm text-admin-text-tertiary mt-1">
-                        Automático · atualizado pelo sistema
-                      </SelectLabel>
-                      {statusOptionsAuto.map((opt) => {
-                        const isCurrent = opt.key === lead.commercial_status;
-                        return (
-                          <SelectItem
-                            key={opt.key}
-                            value={opt.key}
-                            disabled={!isCurrent}
-                            className="text-[13px] text-admin-text-tertiary"
-                            title="Estado atualizado automaticamente pelo sistema"
-                          >
-                            {opt.label}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                <CommercialStatusSelect
+                  lead={lead}
+                  value={lead.commercial_status}
+                  onChange={handleStatusChange}
+                  timeline={timeline}
+                  lastReportLinkSentAt={lastReportLinkSentAt}
+                />
               </div>
 
               {/* (d) Notas internas */}
