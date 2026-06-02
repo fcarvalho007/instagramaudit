@@ -73,9 +73,18 @@ describe.each(LOCALES)("[%s] onboarding gate copy", (locale, errors, gate) => {
     expect(note).toMatch(/\b2\b/);
   });
 
-  it("intro.freeValue lists at least 3 deliverables", () => {
-    expect(Array.isArray(gate.onboarding.intro.freeValue)).toBe(true);
-    expect(gate.onboarding.intro.freeValue.length).toBeGreaterThanOrEqual(3);
+  it("intro exposes a returning-user entry point", () => {
+    expect(gate.onboarding.intro.haveAccount).toBeTruthy();
+    expect(gate.onboarding.intro.haveAccountCta).toBeTruthy();
+  });
+
+  it("login variant has eyebrow, title, subtitle and CTA", () => {
+    const l = gate.onboarding.login;
+    expect(l.eyebrow).toBeTruthy();
+    expect(l.title).toBeTruthy();
+    expect(l.subtitle).toContain("{{handle}}");
+    expect(l.cta).toBeTruthy();
+    expect(l.noAccountCta).toBeTruthy();
   });
 
   it("intro.cta is a short, non-empty button label", () => {
