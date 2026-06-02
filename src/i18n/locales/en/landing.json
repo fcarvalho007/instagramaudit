@@ -117,21 +117,17 @@
       "headline": "What takes an afternoon, in seconds.",
       "manual": {
         "label": "By hand",
-        "items": [
-          "Open the profile and count likes one by one",
-          "Calculate rates in spreadsheets",
-          "No tier reference",
-          "Subjective interpretation"
-        ]
+        "item1": "Open the profile and count likes one by one",
+        "item2": "Calculate rates in spreadsheets",
+        "item3": "No tier reference",
+        "item4": "Subjective interpretation"
       },
       "tool": {
         "label": "AuditProfiles",
-        "items": [
-          "One username, report in seconds",
-          "Metrics calculated automatically",
-          "Benchmark against the right tier",
-          "Professional editorial reading"
-        ]
+        "item1": "One username, report in seconds",
+        "item2": "Metrics calculated automatically",
+        "item3": "Benchmark against the right tier",
+        "item4": "Professional editorial reading"
       }
     },
     "preview": {
@@ -149,11 +145,11 @@
         "formatHint": "62% of mix",
         "competitorsLabel": "Competitor comparison"
       },
-      "subhighlights": [
-        { "title": "Actionable metrics", "hint": "what matters, nothing that distracts" },
-        { "title": "Instant comparison", "hint": "against tier and competitors" },
-        { "title": "Editorial reading", "hint": "AI-generated insights" }
-      ]
+      "sub": {
+        "data": { "title": "Actionable metrics", "hint": "what matters, nothing that distracts" },
+        "benchmark": { "title": "Instant comparison", "hint": "against tier and competitors" },
+        "ai": { "title": "Editorial reading", "hint": "AI-generated insights" }
+      }
     },
     "how": {
       "eyebrow": "How it works",
