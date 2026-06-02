@@ -55,7 +55,9 @@
       "share": "Share",
       "coming_soon": "Coming soon",
       "coming_soon_detail": "July 2026",
-      "coming_soon_tooltip": "Feature in development · launch planned for July 2026 on the roadmap."
+      "coming_soon_tooltip": "Feature in development · launch planned for July 2026 on the roadmap.",
+      "expand": "Show more details",
+      "collapse": "Collapse header"
     },
     "avatar_alt": "Avatar of {{name}}"
   },
