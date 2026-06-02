@@ -50,7 +50,8 @@ export function HeroActionBar() {
     <div className="relative w-full max-w-3xl mx-auto">
       {/* Micro-label above the bar */}
       <div
-        className="mb-3 flex items-center gap-2 text-content-tertiary"
+        className="mb-3 flex items-center gap-2"
+        style={{ color: "rgb(var(--hero-cyan-soft))" }}
       >
         <InstagramGlyph className="size-[18px]" />
         <span className="text-eyebrow-sm">{t("actionBar.microLabel")}</span>
@@ -58,10 +59,12 @@ export function HeroActionBar() {
 
       {/* The bar — glass card with input + button inline */}
       <div
-        className="relative rounded-2xl border bg-surface-elevated overflow-hidden hero-bar-breathe transition-colors"
+        className="relative rounded-2xl border overflow-hidden hero-bar-breathe transition-colors backdrop-blur-xl"
         style={{
-          borderColor: "rgb(var(--border-default) / 0.12)",
-          boxShadow: "0 18px 40px -28px rgb(15 27 61 / 0.18)",
+          borderColor: "var(--hero-glass-border)",
+          backgroundColor: "var(--hero-glass-bg)",
+          boxShadow:
+            "0 20px 60px -28px rgba(56,189,248,0.35), 0 1px 0 rgba(255,255,255,0.04) inset",
         }}
       >
         <form
@@ -71,7 +74,8 @@ export function HeroActionBar() {
           {/* Input zone */}
           <div className="relative flex-1">
             <AtSign
-              className="absolute left-5 top-1/2 -translate-y-1/2 size-5 pointer-events-none text-content-tertiary"
+              className="absolute left-5 top-1/2 -translate-y-1/2 size-5 pointer-events-none"
+              style={{ color: "rgb(var(--hero-cyan))" }}
               aria-hidden="true"
             />
             <input
@@ -84,7 +88,7 @@ export function HeroActionBar() {
               placeholder={t("actionBar.placeholder")}
               aria-label={t("actionBar.ariaInput")}
               aria-invalid={error ? true : undefined}
-              className="w-full h-16 sm:h-[72px] bg-transparent pl-14 pr-4 font-sans text-base md:text-lg focus:outline-none text-content-primary placeholder:text-content-tertiary"
+              className="w-full h-16 sm:h-[72px] bg-transparent pl-14 pr-4 font-sans text-base md:text-lg focus:outline-none text-[color:rgb(var(--hero-text-primary))] placeholder:text-[color:rgb(var(--hero-text-tertiary))]"
             />
           </div>
 
@@ -119,10 +123,12 @@ export function HeroActionBar() {
           {trustInline.map((item) => (
             <li
               key={item}
-              className="flex items-center gap-1.5 font-sans text-xs text-content-tertiary"
+              className="flex items-center gap-1.5 font-sans text-xs"
+              style={{ color: "rgb(var(--hero-text-tertiary))" }}
             >
               <Check
-                className="size-3.5 text-accent-primary"
+                className="size-3.5"
+                style={{ color: "rgb(var(--hero-cyan))" }}
                 aria-hidden="true"
               />
               {item}
