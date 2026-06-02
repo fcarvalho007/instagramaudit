@@ -64,7 +64,7 @@ export function AnalysisPeriodSelector({
   return (
     <section
       aria-label={t("selector.eyebrow")}
-      className="w-full px-4 sm:px-6 pb-2 sm:pb-4"
+      className="w-full px-3 sm:px-6 pb-1.5 sm:pb-4"
     >
       <div className="mx-auto max-w-[1520px]">
         <div className="rounded-xl sm:rounded-2xl border border-border-default bg-white shadow-card">
@@ -75,16 +75,16 @@ export function AnalysisPeriodSelector({
             aria-expanded={expanded}
             aria-controls={expandedId}
             className={cn(
-              "sm:hidden w-full flex items-center gap-2 px-3 py-2 rounded-xl",
+              "sm:hidden w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl",
               "text-left transition-colors hover:bg-surface-muted/50",
               "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40",
             )}
           >
             <Calendar
-              className="size-3.5 text-content-tertiary shrink-0"
+              className="size-3 text-content-tertiary shrink-0"
               aria-hidden="true"
             />
-            <span className="text-[12px] text-content-secondary truncate flex-1 min-w-0">
+            <span className="text-[11px] text-content-secondary truncate flex-1 min-w-0 leading-tight">
               <span className="font-semibold text-content-primary">
                 {t("selector.active_sample", { count: sampleSize })}
               </span>
@@ -98,7 +98,7 @@ export function AnalysisPeriodSelector({
             </span>
             <ChevronDown
               className={cn(
-                "size-3.5 text-content-tertiary shrink-0 transition-transform duration-200",
+                "size-3 text-content-tertiary shrink-0 transition-transform duration-200",
                 expanded && "rotate-180",
               )}
               aria-hidden="true"
