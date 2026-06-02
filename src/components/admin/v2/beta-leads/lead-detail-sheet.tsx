@@ -992,105 +992,53 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
           {/* ── Tab: Relatório ──────────────────────────── */}
           <TabsContent value="relatorio" className="flex-1 overflow-y-auto mt-0">
-            <div className="px-4 sm:px-6 py-5 border-b" style={{ borderColor: "rgb(var(--admin-border-default))" }}>
-              <SectionTitle>Histórico de pedidos</SectionTitle>
-              <LeadReportsList leadId={lead.id} />
-            </div>
-
-            <div className="px-4 sm:px-6 py-5 pb-8">
-              <SectionTitle>Último relatório</SectionTitle>
-              <ProgressTracker
-                reportStatus={lead.report_status}
-                pdfStatus={lead.pdf_status}
-              />
-
-              <DetailRow label="Estado" icon={FileText}>
-                <AdminBadge variant={STATUS_ACCENT[lead.report_status ?? ""] ?? "neutral"}>
-                  {lead.report_status ?? "—"}
-                </AdminBadge>
-              </DetailRow>
-              {lead.pdf_status && lead.pdf_status !== "not_generated" && (
-                <DetailRow label="PDF" icon={FileText}>
-                  <AdminBadge variant={STATUS_ACCENT[lead.pdf_status] ?? "neutral"}>
-                    {lead.pdf_status}
-                  </AdminBadge>
-                </DetailRow>
-              )}
-              <DetailRow label="Última interação" icon={Clock}>
-                {formatDate(lead.last_interaction)}
-              </DetailRow>
-
-              {lead.handle ? (
-                <div className="flex flex-wrap gap-2 mt-4">
-                  <AdminActionButton
-                    size="md"
-                    onClick={() => window.open(`/analyze/${lead.handle}`, "_blank")}
-                  >
-                    <ExternalLink size={14} /> Abrir relatório
-                  </AdminActionButton>
-                  <AdminActionButton size="md" onClick={handleCopyLink}>
-                    <Link2 size={14} /> Copiar link
-                  </AdminActionButton>
-                  <SendLinkButton
-                    lead={lead}
-                    lastSentAt={lastReportLinkSentAt}
-                    onClick={() => setSendLinkOpen(true)}
-                  />
-                  <FeedbackRequestButton
-                    lead={lead}
-                    onClick={() => setFeedbackOpen(true)}
-                  />
-                  {lead.report_request_id &&
-                    GENERATABLE_STATUSES.includes(lead.report_status as typeof GENERATABLE_STATUSES[number]) && (
-                    <AdminActionButton
-                      size="md"
-                      onClick={() => setGenerateOpen(true)}
-                      className="!border-admin-signal-500/40 !text-admin-signal-700 hover:!bg-admin-signal-50"
-                    >
-                      <Zap size={14} /> Gerar relatório
-                    </AdminActionButton>
-                  )}
-                </div>
-              ) : (
-                <p className="admin-meta text-admin-text-tertiary mt-4">
-                  Sem handle Instagram associado — ações de relatório indisponíveis.
-                </p>
-              )}
-            </div>
+            <LeadReportsList
+              leadId={lead.id}
+              lead={lead}
+              canGenerate={
+                !!lead.report_request_id &&
+                GENERATABLE_STATUSES.includes(
+                  lead.report_status as typeof GENERATABLE_STATUSES[number],
+                )
+              }
+              generateDisabledReason={
+                !lead.report_request_id
+                  ? "Sem pedido de relatório associado"
+                  : !GENERATABLE_STATUSES.includes(
+                      lead.report_status as typeof GENERATABLE_STATUSES[number],
+                    )
+                    ? "Já existe um relatório gerado para este pedido"
+                    : null
+              }
+              onGenerateClick={() => setGenerateOpen(true)}
+              onResendLink={() => setSendLinkOpen(true)}
+            />
           </TabsContent>
 
           {/* ── Tab: Feedback ───────────────────────────── */}
           <TabsContent value="feedback" className="flex-1 overflow-y-auto mt-0">
-            <FeedbackBetaSection feedback={lead.feedback} />
+            <FeedbackBetaSection
+              lead={lead}
+              onPedirFeedback={() => setFeedbackOpen(true)}
+              pedirDisabledReason={
+                !lead.report_request_id
+                  ? "Sem pedido de relatório associado"
+                  : !lead.email
+                    ? "Lead sem email"
+                    : !lead.handle
+                      ? "Handle Instagram em falta"
+                      : null
+              }
+            />
           </TabsContent>
 
           {/* ── Tab: Histórico (inclui comunicação) ─────── */}
           <TabsContent value="historico" className="flex-1 overflow-y-auto mt-0">
-            <div className="px-6 py-5 space-y-5">
-              {lead.lead_magnet && lead.lead_magnet.status !== "none" && (
-                <div className="rounded-lg border border-[var(--color-admin-border)] bg-white p-3">
-                  <p className="m-0 text-eyebrow-sm text-admin-text-tertiary">
-                    Lead-magnet
-                  </p>
-                  <p className="m-0 mt-1 text-[13px] text-admin-text-primary">
-                    Estado: <strong>{lead.lead_magnet.status}</strong> ·{" "}
-                    {lead.lead_magnet.sent_count} envio
-                    {lead.lead_magnet.sent_count === 1 ? "" : "s"}
-                  </p>
-                  {lead.lead_magnet.last_event_at && (
-                    <p className="m-0 mt-0.5 text-[12px] text-admin-text-tertiary">
-                      Último evento: {lead.lead_magnet.last_event_type} ·{" "}
-                      {new Date(lead.lead_magnet.last_event_at).toLocaleString("pt-PT")}
-                    </p>
-                  )}
-                </div>
-              )}
-              <LeadCommunicationTimeline timeline={timeline} loading={timelineLoading} />
-            </div>
-            <TimelineSection
-              timeline={groupConsecutiveViews(timeline)}
+            <LeadHistoryTimeline
+              lead={lead}
+              timeline={timeline}
               loading={timelineLoading}
-              title="Eventos do produto"
+              suggestedStep={displayedSuggestion}
             />
           </TabsContent>
         </Tabs>
