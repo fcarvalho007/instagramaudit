@@ -103,5 +103,112 @@
     "insightLabel": "Priority insight",
     "insightBody": "Reels performance is 23% above benchmark. Frequency can go from 3.2 to 4 posts/week without saturating — competitors post less but with lower engagement.",
     "lockedHint": "Full content in the report"
+  },
+  "dark": {
+    "stats": {
+      "eyebrow": "Up-to-date benchmarks",
+      "headline": "Fresh Instagram data, analyzed every month.",
+      "posts": { "label": "posts analyzed", "hint": "(Socialinsider, 2025-2026)" },
+      "engagement": { "label": "average engagement on reels" },
+      "tiers": { "label": "comparison tiers" }
+    },
+    "manualVsTool": {
+      "eyebrow": "Why not do it by hand",
+      "headline": "What takes an afternoon, in seconds.",
+      "manual": {
+        "label": "By hand",
+        "item1": "Open the profile and count likes one by one",
+        "item2": "Calculate rates in spreadsheets",
+        "item3": "No tier reference",
+        "item4": "Subjective interpretation"
+      },
+      "tool": {
+        "label": "AuditProfiles",
+        "item1": "One username, report in seconds",
+        "item2": "Metrics calculated automatically",
+        "item3": "Benchmark against the right tier",
+        "item4": "Professional editorial reading"
+      }
+    },
+    "preview": {
+      "eyebrow": "Product preview",
+      "headline": "The report you get.",
+      "lead": "Clear metrics, visual benchmark and competitor comparison — ready to share.",
+      "cta": "View full report · +7 sections",
+      "card": {
+        "meta": "30 posts · last 30 days",
+        "tag": "Full report",
+        "kpiEngagement": "Engagement",
+        "kpiFrequency": "Frequency",
+        "kpiFormat": "Format",
+        "frequencyHint": "posts/week",
+        "formatHint": "62% of mix",
+        "competitorsLabel": "Competitor comparison"
+      },
+      "sub": {
+        "data": { "title": "Actionable metrics", "hint": "what matters, nothing that distracts" },
+        "benchmark": { "title": "Instant comparison", "hint": "against tier and competitors" },
+        "ai": { "title": "Editorial reading", "hint": "AI-generated insights" }
+      }
+    },
+    "how": {
+      "eyebrow": "How it works",
+      "headline": "Report in 3 steps.",
+      "stepLabel": "STEP {{number}}",
+      "step1": { "title": "Enter the username", "desc": "Any public profile. Optionally, up to two competitors to compare." },
+      "step2": { "title": "Automatic analysis", "desc": "Recent posts are processed against up-to-date tier benchmarks." },
+      "step3": { "title": "Report ready", "desc": "Metrics, competitor ranking and strategic insights, saved to your account." }
+    },
+    "bento": {
+      "eyebrow": "What you'll see",
+      "headline": "Everything in one report.",
+      "benchmark": {
+        "title": "Benchmark by tier",
+        "body": "The number alone says nothing. We show where you stand against profiles of the same size.",
+        "aboveAverage": "above average"
+      },
+      "engagement": { "title": "Engagement rate", "hint": "likes, comments and shares" },
+      "frequency": { "title": "Frequency", "hint": "rhythm and consistency" },
+      "format": { "title": "Dominant format", "hint": "reels, carousels, images" },
+      "competitors": { "title": "Competitors", "hint": "side-by-side comparison" }
+    },
+    "personas": {
+      "eyebrow": "Who it's for",
+      "headline": "Built for decision-makers.",
+      "consultants": { "title": "Consultants", "body": "Quick diagnostics to present to clients." },
+      "social": { "title": "Social media managers", "body": "Track accounts and report results." },
+      "brands": { "title": "Brands & SMBs", "body": "Understand presence without hiring an agency." },
+      "creators": { "title": "Creators", "body": "Compare with peers and refine your content." }
+    },
+    "transparency": {
+      "eyebrow": "Transparency",
+      "headline": "No login. Public data only.",
+      "body": "We never ask for your Instagram access. We analyze only what's already public, with benchmarks built from industry reference studies.",
+      "chips": {
+        "noLogin": "No Instagram login",
+        "publicOnly": "Public data only",
+        "gdpr": "GDPR compliant"
+      }
+    },
+    "pricing": {
+      "eyebrow": "Pricing",
+      "headline": "No subscription. Pay as you go.",
+      "lead": "Start with 2 free reports.",
+      "urgency": "Launch price — rises to €19 after the beta.",
+      "free": { "label": "Try it", "price": "Free", "unit": "2 reports · no card", "cta": "Start" },
+      "single": { "label": "Single", "unit": "per report", "cta": "Buy 1" },
+      "pack": { "label": "Pack of 5", "unit": "€5.60 each · save 20%", "cta": "Buy pack", "badge": "Best value" }
+    },
+    "finalCta": {
+      "headline": "Analyze your first profile now.",
+      "lead": "2 free reports. No card, no Instagram login."
+    },
+    "miniFooter": {
+      "tagline": "Instagram benchmarking, clear and auditable.",
+      "pricing": "Pricing",
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "contact": "Contact"
+    }
   }
 }

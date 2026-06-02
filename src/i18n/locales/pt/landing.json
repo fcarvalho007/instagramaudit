@@ -103,5 +103,124 @@
     "insightLabel": "Insight prioritário",
     "insightBody": "A performance em Reels está 23% acima do benchmark. A frequência pode subir de 3,2 para 4 publicações/semana sem saturar — os concorrentes publicam menos mas com menor envolvimento.",
     "lockedHint": "Conteúdo completo no relatório"
+  },
+  "dark": {
+    "stats": {
+      "eyebrow": "Benchmarks atualizados",
+      "headline": "Dados frescos do Instagram, analisados todos os meses.",
+      "posts": {
+        "label": "posts analisados",
+        "hint": "(Socialinsider, 2025-2026)"
+      },
+      "engagement": { "label": "engagement médio em reels" },
+      "tiers": { "label": "escalões de comparação" }
+    },
+    "manualVsTool": {
+      "eyebrow": "Porquê não fazer à mão",
+      "headline": "O que demora uma tarde, em segundos.",
+      "manual": {
+        "label": "À mão",
+        "item1": "Abrir o perfil e contar gostos um a um",
+        "item2": "Calcular taxas em folhas de cálculo",
+        "item3": "Sem referência do escalão",
+        "item4": "Interpretação subjetiva"
+      },
+      "tool": {
+        "label": "AuditProfiles",
+        "item1": "Um username, relatório em segundos",
+        "item2": "Métricas calculadas automaticamente",
+        "item3": "Benchmark face ao escalão certo",
+        "item4": "Leitura editorial profissional"
+      }
+    },
+    "preview": {
+      "eyebrow": "Preview do produto",
+      "headline": "O relatório que recebes.",
+      "lead": "Métricas claras, benchmark visual e comparação com concorrentes — pronto a partilhar.",
+      "cta": "Ver relatório completo · +7 secções",
+      "card": {
+        "meta": "30 publicações · últimos 30 dias",
+        "tag": "Relatório completo",
+        "kpiEngagement": "Envolvimento",
+        "kpiFrequency": "Frequência",
+        "kpiFormat": "Formato",
+        "frequencyHint": "posts/semana",
+        "formatHint": "62% do mix",
+        "competitorsLabel": "Comparação com concorrentes"
+      },
+      "sub": {
+        "data": { "title": "Métricas acionáveis", "hint": "o que importa, nada que distrai" },
+        "benchmark": { "title": "Comparação imediata", "hint": "face ao escalão e concorrentes" },
+        "ai": { "title": "Leitura editorial", "hint": "insights gerados por IA" }
+      }
+    },
+    "how": {
+      "eyebrow": "Como funciona",
+      "headline": "Relatório em 3 passos.",
+      "stepLabel": "PASSO {{number}}",
+      "step1": {
+        "title": "Inserir o username",
+        "desc": "Qualquer perfil público. Opcionalmente, até dois concorrentes para comparar."
+      },
+      "step2": {
+        "title": "Análise automática",
+        "desc": "Os posts recentes são processados contra benchmarks atualizados do escalão."
+      },
+      "step3": {
+        "title": "Relatório pronto",
+        "desc": "Métricas, ranking de concorrentes e insights estratégicos, guardado na tua conta."
+      }
+    },
+    "bento": {
+      "eyebrow": "O que vais ver",
+      "headline": "Tudo num só relatório.",
+      "benchmark": {
+        "title": "Benchmark com o escalão",
+        "body": "O número sozinho não diz nada. Mostramos-te onde estás face a perfis do mesmo tamanho.",
+        "aboveAverage": "acima da média"
+      },
+      "engagement": { "title": "Taxa de engagement", "hint": "gostos, comentários e partilhas" },
+      "frequency": { "title": "Frequência", "hint": "ritmo e consistência" },
+      "format": { "title": "Formato dominante", "hint": "reels, carrosséis, imagens" },
+      "competitors": { "title": "Concorrentes", "hint": "confronto lado a lado" }
+    },
+    "personas": {
+      "eyebrow": "Para quem é",
+      "headline": "Feito para quem decide.",
+      "consultants": { "title": "Consultores", "body": "Diagnósticos rápidos para apresentar a clientes." },
+      "social": { "title": "Social media managers", "body": "Acompanhar contas e reportar resultados." },
+      "brands": { "title": "Marcas e PME", "body": "Perceber a presença sem contratar agência." },
+      "creators": { "title": "Criadores", "body": "Comparar com pares e afinar conteúdo." }
+    },
+    "transparency": {
+      "eyebrow": "Transparência",
+      "headline": "Sem login. Só dados públicos.",
+      "body": "Nunca pedimos o teu acesso ao Instagram. Analisamos apenas o que já é público, com benchmarks construídos a partir de estudos de referência da indústria.",
+      "chips": {
+        "noLogin": "Sem login do Instagram",
+        "publicOnly": "Apenas dados públicos",
+        "gdpr": "Conforme o RGPD"
+      }
+    },
+    "pricing": {
+      "eyebrow": "Preços",
+      "headline": "Sem subscrição. Pagas o que usas.",
+      "lead": "Começa com 2 relatórios grátis.",
+      "urgency": "Preço de lançamento — sobe para 19€ após a beta.",
+      "free": { "label": "Experimentar", "price": "Grátis", "unit": "2 relatórios · sem cartão", "cta": "Começar" },
+      "single": { "label": "Avulso", "unit": "por relatório", "cta": "Comprar 1" },
+      "pack": { "label": "Pack 5", "unit": "5,60€ cada · poupa 20%", "cta": "Comprar pack", "badge": "Melhor valor" }
+    },
+    "finalCta": {
+      "headline": "Analisa o primeiro perfil agora.",
+      "lead": "2 relatórios grátis. Sem cartão, sem login do Instagram."
+    },
+    "miniFooter": {
+      "tagline": "Benchmarking de Instagram, claro e auditável.",
+      "pricing": "Preços",
+      "privacy": "Privacidade",
+      "terms": "Termos",
+      "contact": "Contacto"
+    }
   }
 }
