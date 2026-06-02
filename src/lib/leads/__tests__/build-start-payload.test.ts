@@ -71,4 +71,11 @@ describe("buildStartPayload", () => {
     const payload = buildStartPayload(baseValues, "Ana", "", 1);
     expect(payload.gdpr_consent).toBe(true);
   });
+
+  it("omits handle when not provided, includes it when given", () => {
+    const noHandle = buildStartPayload(baseValues, "Ana", "", 1);
+    expect("handle" in noHandle).toBe(false);
+    const withHandle = buildStartPayload(baseValues, "Ana", "", 1, "frederico.m.carvalho");
+    expect(withHandle.handle).toBe("frederico.m.carvalho");
+  });
 });

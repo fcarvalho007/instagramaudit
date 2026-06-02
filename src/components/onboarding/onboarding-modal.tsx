@@ -91,6 +91,7 @@ interface OnboardingApiFail {
   ok: false;
   error_code: string;
   message: string;
+  issues?: { field: string; code: string }[];
 }
 type OnboardingApiResponse = OnboardingApiOk | OnboardingApiFail;
 
@@ -236,6 +237,7 @@ export function OnboardingModal({
         parsed.full_name,
         honeypot,
         formStartedAtRef.current,
+        handle,
       );
       const res = await fetch("/api/onboarding/start", {
         method: "POST",
@@ -254,11 +256,45 @@ export function OnboardingModal({
           data && "error_code" in data && data.error_code
             ? data.error_code
             : `HTTP_${res.status}`;
+        // Mapeia issues do servidor para erros de campo no react-hook-form
+        // e foca o primeiro input afectado. Para `gdpr_consent` e
+        // `_t`/`website` (sem input visível) caímos só no banner.
+        const issues =
+          data && data.ok === false && Array.isArray(data.issues)
+            ? data.issues
+            : [];
+        const fieldErrorMap: Record<string, keyof UnlockFormValues> = {
+          name: "full_name",
+          email: "email",
+          phone: "phone",
+          gdpr_consent: "gdpr_consent",
+          purpose: "goal",
+          profile_ownership: "profile_ownership",
+        };
+        let firstFocus: keyof UnlockFormValues | null = null;
+        for (const issue of issues) {
+          const target = fieldErrorMap[issue.field];
+          if (!target) continue;
+          const fieldMsg =
+            t(`onboarding.errors.fields.${issue.field}`, {
+              defaultValue: msg,
+            }) || msg;
+          form.setError(target, { type: "server", message: fieldMsg });
+          if (!firstFocus) firstFocus = target;
+        }
+        if (firstFocus && firstFocus !== "gdpr_consent") {
+          try {
+            form.setFocus(firstFocus);
+          } catch {
+            // setFocus falha silenciosamente se o input não estiver montado.
+          }
+        }
+        const errorCode = issues.length > 0 ? `${code}_${issues[0].field}` : code;
         trackOnboardingEvent({
           event_type: "onboarding_error",
           step: 3,
           handle,
-          error_code: code,
+          error_code: errorCode,
         });
         return;
       }

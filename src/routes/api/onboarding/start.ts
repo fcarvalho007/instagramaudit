@@ -15,7 +15,7 @@
  */
 
 import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
+import { z, type ZodIssue } from "zod";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getBalance, grantInitialCredits } from "@/lib/credits/credits.server";
@@ -42,6 +42,9 @@ const PayloadSchema = z.object({
   // (timestamp do form start em ms) deve estar pelo menos 2s no passado.
   website: z.string().max(0).optional(),
   _t: z.number().int().positive().optional(),
+  // Tracking-only — não persiste em `leads`, serve para correlacionar
+  // erros de validação com o handle que o utilizador estava a analisar.
+  handle: z.string().trim().max(60).optional(),
 });
 
 type Payload = z.infer<typeof PayloadSchema>;
@@ -52,6 +55,11 @@ interface OkBody {
   credits: number;
 }
 
+export interface FieldIssue {
+  field: string;
+  code: string;
+}
+
 interface FailBody {
   ok: false;
   error_code:
@@ -59,10 +67,98 @@ interface FailBody {
     | "PERSISTENCE_FAILED"
     | "INTERNAL_ERROR";
   message: string;
+  /** Lista determinística de campos com problema (sem valores, sem PII). */
+  issues?: FieldIssue[];
 }
 
 const GENERIC_FALLBACK_MESSAGE =
   "Não foi possível preparar o acesso ao relatório. Tenta novamente dentro de instantes.";
+
+// Mensagens humanas PT-PT por campo. Mantemos pequeno e fechado: o
+// cliente pode optar por traduzir via i18n, mas o servidor garante
+// sempre uma mensagem útil de fallback.
+const FIELD_MESSAGES_PT: Record<string, string> = {
+  gdpr_consent: "Falta aceitar o tratamento de dados para continuar.",
+  email: "O endereço de email indicado parece inválido.",
+  name: "Falta indicar o teu nome.",
+  phone: "O número de telefone indicado parece inválido.",
+  purpose: "Volta ao passo anterior e escolhe o que queres perceber.",
+  profile_ownership:
+    "Volta ao passo anterior e indica a tua relação com o perfil.",
+  _t: "Foste demasiado rápido a submeter. Confirma os campos e tenta de novo.",
+  website: "Pedido recusado por verificação anti-spam.",
+};
+const FIELD_FALLBACK_PT = "Há um campo que precisa de revisão.";
+
+function mapZodIssues(issues: readonly ZodIssue[]): FieldIssue[] {
+  const seen = new Set<string>();
+  const out: FieldIssue[] = [];
+  for (const i of issues) {
+    const field = (i.path[0] as string | undefined) ?? "_root";
+    if (seen.has(field)) continue;
+    seen.add(field);
+    // Normaliza códigos zod para um vocabulário curto e estável.
+    let code = "invalid";
+    if (i.code === "invalid_type" && i.received === "undefined")
+      code = "missing";
+    else if (i.code === "invalid_literal") code = "missing";
+    else if (i.code === "invalid_string") code = "format";
+    else if (i.code === "too_small") code = "too_short";
+    else if (i.code === "too_big") code = "too_long";
+    out.push({ field, code });
+  }
+  return out;
+}
+
+function messageForIssues(issues: FieldIssue[]): string {
+  if (issues.length === 0) return FIELD_FALLBACK_PT;
+  const first = issues[0];
+  return FIELD_MESSAGES_PT[first.field] ?? FIELD_FALLBACK_PT;
+}
+
+function safeHandle(raw: unknown): string | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const h = (raw as { handle?: unknown }).handle;
+  return typeof h === "string" && h.length > 0 && h.length <= 60
+    ? h.toLowerCase()
+    : null;
+}
+
+function presentFieldNames(raw: unknown): string[] {
+  if (typeof raw !== "object" || raw === null) return [];
+  return Object.keys(raw as Record<string, unknown>);
+}
+
+async function logServerOnboardingError(args: {
+  errorCode: "INVALID_PAYLOAD" | "INVALID_TIMING";
+  issues: FieldIssue[];
+  handle: string | null;
+  fieldsPresent: string[];
+}): Promise<void> {
+  console.warn("[onboarding/start] rejected", {
+    error_code: args.errorCode,
+    issues: args.issues,
+    fields_present: args.fieldsPresent,
+    handle: args.handle,
+  });
+  try {
+    await supabaseAdmin.from("product_events").insert([
+      {
+        event_type: "onboarding_error",
+        handle: args.handle,
+        metadata: {
+          step: 3,
+          source: "server",
+          error_code: args.errorCode,
+          issues: args.issues.map((i) => ({ field: i.field, code: i.code })),
+          fields_present: args.fieldsPresent,
+        },
+      },
+    ]);
+  } catch (err) {
+    console.warn("[onboarding/start] product_events insert failed", err);
+  }
+}
 
 function warnIfSecretMisconfigured(): void {
   const secret = process.env.SESSION_SECRET;
@@ -168,7 +264,8 @@ export async function handleOnboardingStart(
       {
         ok: false,
         error_code: "INVALID_PAYLOAD",
-        message: "Pedido inválido.",
+        message: "Pedido inválido (formato JSON).",
+        issues: [{ field: "_root", code: "invalid_json" }],
       },
       400,
     );
@@ -176,11 +273,20 @@ export async function handleOnboardingStart(
 
   const parsed = PayloadSchema.safeParse(raw);
   if (!parsed.success) {
+    const issues = mapZodIssues(parsed.error.issues);
+    const handle = safeHandle(raw);
+    await logServerOnboardingError({
+      errorCode: "INVALID_PAYLOAD",
+      issues,
+      handle,
+      fieldsPresent: presentFieldNames(raw),
+    });
     return json(
       {
         ok: false,
         error_code: "INVALID_PAYLOAD",
-        message: "Dados inválidos. Verificar os campos.",
+        message: messageForIssues(issues),
+        issues,
       },
       400,
     );
@@ -208,11 +314,19 @@ export async function handleOnboardingStart(
   if (typeof parsed.data._t === "number") {
     const ageMs = Date.now() - parsed.data._t;
     if (ageMs >= 0 && ageMs < 2_000) {
+      const issues: FieldIssue[] = [{ field: "_t", code: "too_fast" }];
+      await logServerOnboardingError({
+        errorCode: "INVALID_TIMING",
+        issues,
+        handle: safeHandle(raw),
+        fieldsPresent: presentFieldNames(raw),
+      });
       return json(
         {
           ok: false,
           error_code: "INVALID_PAYLOAD",
-          message: "Dados inválidos. Verificar os campos.",
+          message: messageForIssues(issues),
+          issues,
         },
         400,
       );

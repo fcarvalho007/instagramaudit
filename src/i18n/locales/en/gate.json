@@ -234,7 +234,15 @@
     "preparingAnalysis": "Preparing the profile analysis…",
     "errors": {
       "generic": "We couldn't prepare access to the report. Please try again in a moment.",
-      "network": "Connection error. Check your internet and try again."
+      "network": "Connection error. Check your internet and try again.",
+      "fields": {
+        "gdpr_consent": "You need to accept the data processing terms to continue.",
+        "email": "Please double-check your email — it looks invalid.",
+        "name": "Please enter your name.",
+        "phone": "The phone number looks invalid.",
+        "purpose": "Go back one step and pick what you want to understand.",
+        "profile_ownership": "Go back one step and pick your relationship with the profile."
+      }
     }
   }
 }

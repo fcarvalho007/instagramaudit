@@ -234,7 +234,15 @@
     "preparingAnalysis": "A preparar a análise do perfil…",
     "errors": {
       "generic": "Não foi possível preparar o acesso ao relatório. Tenta novamente dentro de instantes.",
-      "network": "Erro de ligação. Verifica a internet e tenta novamente."
+      "network": "Erro de ligação. Verifica a internet e tenta novamente.",
+      "fields": {
+        "gdpr_consent": "Falta aceitar o tratamento de dados para continuar.",
+        "email": "Confirma o teu email — parece inválido.",
+        "name": "Falta indicar o teu nome.",
+        "phone": "O número de telefone parece inválido.",
+        "purpose": "Volta ao passo anterior e escolhe o que queres perceber.",
+        "profile_ownership": "Volta ao passo anterior e indica a tua relação com o perfil."
+      }
     }
   }
 }
