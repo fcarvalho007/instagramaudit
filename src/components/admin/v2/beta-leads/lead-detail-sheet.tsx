@@ -2190,7 +2190,7 @@ function HistoryDot({
         style={{
           width: 11,
           height: 11,
-          backgroundColor: color ?? "rgb(55,114,229)",
+          backgroundColor: color ?? "rgb(var(--admin-info-500))",
         }}
       />
     );
@@ -2198,24 +2198,20 @@ function HistoryDot({
   if (style === "ring") {
     return (
       <span
-        className="block rounded-full"
+        className="block rounded-full bg-white border-2 border-admin-info-500"
         style={{
           width: 11,
           height: 11,
-          border: "2px solid rgb(55,114,229)",
-          backgroundColor: "white",
         }}
       />
     );
   }
   return (
     <span
-      className="block rounded-full"
+      className="block rounded-full bg-white border-[1.5px] border-dashed border-admin-text-primary/40"
       style={{
         width: 11,
         height: 11,
-        border: "1.5px dashed rgba(44,44,42,0.4)",
-        backgroundColor: "white",
       }}
     />
   );
@@ -2239,7 +2235,7 @@ function LeadHistoryTimeline({
 
   if (loading) {
     return (
-      <div className="px-4 sm:px-6 py-5 flex items-center gap-2 text-[12px] text-admin-text-tertiary">
+      <div className="px-4 sm:px-6 py-6 flex items-center gap-2 text-[12px] text-admin-text-tertiary">
         <Loader2 size={13} className="animate-spin" /> A carregar histórico…
       </div>
     );
@@ -2247,7 +2243,7 @@ function LeadHistoryTimeline({
 
   if (entries.length === 0) {
     return (
-      <div className="px-4 sm:px-6 py-5">
+      <div className="px-4 sm:px-6 py-6">
         <p className="text-[12px] text-admin-text-tertiary">
           Sem eventos registados para este lead.
         </p>
@@ -2256,38 +2252,38 @@ function LeadHistoryTimeline({
   }
 
   return (
-    <div className="px-4 sm:px-6 py-5">
+    <div className="px-4 sm:px-6 py-6">
       <ol className="list-none p-0 m-0">
         {entries.map((entry, i) => {
           const isLast = i === entries.length - 1;
           const isPending = entry.style === "pending";
           const nextIsPending = !isLast && entries[i + 1].style === "pending";
           return (
-            <li key={entry.id} className="relative pl-6 pb-4 last:pb-0">
+            <li key={entry.id} className="relative pl-7 pb-5 last:pb-0">
               {/* Vertical rail */}
               {!isLast && (
                 <span
                   aria-hidden
-                  className="absolute left-[5px] top-3"
+                  className="absolute left-[5px] top-3.5"
                   style={{
                     width: 1,
                     bottom: 0,
                     backgroundColor: nextIsPending
                       ? "transparent"
-                      : "rgba(44,44,42,0.15)",
+                      : "rgb(var(--admin-neutral-900) / 0.15)",
                     backgroundImage: nextIsPending
-                      ? "linear-gradient(to bottom, rgba(44,44,42,0.3) 50%, transparent 50%)"
+                      ? "linear-gradient(to bottom, rgb(var(--admin-neutral-900) / 0.3) 50%, transparent 50%)"
                       : undefined,
                     backgroundSize: nextIsPending ? "1px 5px" : undefined,
                     backgroundRepeat: nextIsPending ? "repeat-y" : undefined,
                   }}
                 />
               )}
-              <span className="absolute left-0 top-1">
+              <span className="absolute left-0 top-1.5">
                 <HistoryDot style={entry.style} color={entry.color} />
               </span>
               <p
-                className={`m-0 text-[13px] ${
+                className={`m-0 text-[13px] leading-snug ${
                   isPending
                     ? "italic text-admin-text-tertiary"
                     : "font-medium text-admin-text-primary"
@@ -2297,7 +2293,7 @@ function LeadHistoryTimeline({
                 {isPending && "…"}
               </p>
               {entry.meta && (
-                <p className="m-0 mt-0.5 text-[11px] text-admin-text-tertiary">
+                <p className="m-0 mt-1 text-[12px] text-admin-text-tertiary">
                   {entry.meta}
                   {entry.timestamp && (
                     <>
@@ -2310,7 +2306,7 @@ function LeadHistoryTimeline({
                 </p>
               )}
               {!entry.meta && entry.timestamp && (
-                <p className="m-0 mt-0.5 text-[11px] text-admin-text-tertiary tabular-nums">
+                <p className="m-0 mt-1 text-[12px] text-admin-text-tertiary tabular-nums">
                   {formatShortDateTime(entry.timestamp)}
                 </p>
               )}
