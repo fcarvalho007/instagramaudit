@@ -44,7 +44,7 @@ import { ReportHeroV2 } from "./report-hero-v2";
 import { AnalysisPeriodSelector } from "./analysis-period-selector";
 import { ReportOverviewBlock } from "./report-overview-block";
 import { ReportDiagnosticBlock } from "./report-diagnostic-block";
-import { BlockFeedback } from "./feedback/block-feedback";
+// BlockFeedback removido — feedback agora só no EndFeedbackStrip (fim do bloco gratuito).
 import { ReportEndOfFreeBlock } from "./end-of-free-block";
 import { EndFeedbackStrip } from "./feedback/end-feedback-strip";
 import { useTranslation } from "react-i18next";
@@ -277,18 +277,6 @@ export function ReportShellV2({
                     />
                   </section>
                 )}
-
-              {/* Estado B/C · Feedback do Bloco 1 (emojis "breve pausa para te
-                  ouvirmos") — só após captura de lead. */}
-              {features.blockOverview !== "hidden" && unlocked && (
-                <div className="mt-6 md:mt-8 mb-2">
-                  <BlockFeedback
-                    handle={result.data.profile.username}
-                    snapshotId={snapshotId ?? null}
-                    block="overview"
-                  />
-                </div>
-              )}
 
               {/* Fluxo público: blocos 2–6 só em premium. Sidebar/tabs
                   comunicam "5 por desbloquear". Em estado B (lead capturado

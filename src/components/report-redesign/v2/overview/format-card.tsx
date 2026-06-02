@@ -326,9 +326,9 @@ export function FormatCard({
           <div
             role="img"
             aria-label={ariaLabel}
-            className="grid gap-1"
+            className="grid gap-2"
             style={{
-              gridTemplateColumns: `repeat(${Math.min(sortedPosts.length, 6)}, 1fr)`,
+              gridTemplateColumns: `repeat(${Math.min(sortedPosts.length, 4)}, 1fr)`,
             }}
           >
             {sortedPosts.map((post, idx) => {
@@ -340,7 +340,7 @@ export function FormatCard({
                 <span
                   key={`${post.date}-${idx}`}
                   title={t("format.thumb_aria", { label, date: post.date })}
-                  className="relative rounded-[4px] overflow-hidden bg-surface-muted border border-border-subtle/40"
+                  className="relative rounded-md overflow-hidden bg-surface-muted border border-border-subtle/40"
                   style={{ aspectRatio: "3/4" }}
                 >
                   {post.thumbnailUrl ? (
@@ -352,12 +352,12 @@ export function FormatCard({
                     />
                   ) : (
                     <span className="absolute inset-0 flex items-center justify-center">
-                      <Icon className={`size-3.5 ${style.iconColor}`} aria-hidden="true" />
+                      <Icon className={`size-5 ${style.iconColor}`} aria-hidden="true" />
                     </span>
                   )}
                   {/* Small format dot indicator — bottom-right */}
                   <span
-                    className={`absolute bottom-0.5 right-0.5 size-[6px] rounded-full ring-1 ring-white ${style.dot}`}
+                    className={`absolute bottom-1 right-1 size-2 rounded-full ring-1 ring-white ${style.dot}`}
                     aria-hidden="true"
                   />
                 </span>
