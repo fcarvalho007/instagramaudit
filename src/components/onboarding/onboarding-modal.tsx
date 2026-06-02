@@ -919,8 +919,8 @@ function Step2Context({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-5 sm:flex-row sm:gap-6">
-        <div className="flex-1 space-y-2">
+      <div className="flex flex-col gap-5">
+        <div className="space-y-2">
         <p className="text-[13px] font-medium text-content-primary">
           <Trans
             i18nKey="onboarding.steps.2.relationshipQuestion"
@@ -946,7 +946,7 @@ function Step2Context({
         />
         </div>
 
-        <div className="flex-1 space-y-2">
+        <div className="space-y-2">
         <p className="text-[13px] font-medium text-content-primary">
           {t("onboarding.steps.2.goalQuestion")}
         </p>
