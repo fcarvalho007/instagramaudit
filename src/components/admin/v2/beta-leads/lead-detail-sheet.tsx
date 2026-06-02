@@ -834,12 +834,12 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
           className="flex-1 min-h-0 flex flex-col"
         >
           <div className="px-6 border-b border-admin-text-primary/10 shrink-0">
-            <TabsList className="h-auto bg-transparent p-0 gap-5 rounded-none justify-start">
+            <TabsList className="h-auto bg-transparent p-0 gap-6 rounded-none justify-start">
               {TABS.map((t) => (
                 <TabsTrigger
                   key={t.key}
                   value={t.key}
-                  className="relative h-9 px-0 rounded-none bg-transparent text-[13px] font-medium text-admin-text-tertiary data-[state=active]:text-admin-text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:-bottom-px data-[state=active]:after:h-[2px] data-[state=active]:after:bg-admin-text-primary"
+                  className="relative h-10 px-0 rounded-none bg-transparent text-[13px] font-medium text-admin-text-tertiary hover:text-admin-text-secondary transition-colors data-[state=active]:text-admin-text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:-bottom-px data-[state=active]:after:h-[2px] data-[state=active]:after:bg-admin-info-500"
                 >
                   {t.label}
                 </TabsTrigger>
@@ -849,20 +849,14 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
           {/* ── Tab: Resumo ─────────────────────────────── */}
           <TabsContent value="resumo" className="flex-1 overflow-y-auto mt-0">
-            <div className="px-6 py-5 space-y-6">
+            <div className="px-6 py-6 space-y-7">
               {/* (a) Próximo passo — callout com CTA */}
-              <div
-                className="rounded-xl p-3.5 flex items-center justify-between gap-3"
-                style={{
-                  backgroundColor: "rgba(55,114,229,0.08)",
-                  border: "1px solid rgba(55,114,229,0.18)",
-                }}
-              >
-                <div className="flex items-start gap-2.5 min-w-0">
+              <div className="rounded-xl p-4 flex items-center justify-between gap-3 bg-admin-info-50 border border-admin-info-500/20">
+                <div className="flex items-start gap-3 min-w-0">
                   <Lightbulb size={16} className="text-admin-info-500 shrink-0 mt-0.5" />
                   <div className="min-w-0">
-                    <p className="admin-eyebrow mb-0.5 text-admin-info-700">Próximo passo</p>
-                    <p className="admin-body text-admin-text-primary font-medium m-0">
+                    <p className="admin-eyebrow mb-1 text-admin-info-700">Próximo passo</p>
+                    <p className="admin-body text-admin-text-primary font-medium m-0 leading-snug">
                       {displayedSuggestion}
                     </p>
                   </div>
@@ -880,8 +874,8 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
               {/* (b) Contexto do lead — grelha 2×2 traduzida */}
               <div>
-                <p className="admin-eyebrow mb-3">Contexto do lead</p>
-                <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+                <p className="admin-eyebrow mb-4">Contexto do lead</p>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                   <ContextField
                     icon={User}
                     label="Relação"
@@ -907,7 +901,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
               {/* (c) Estado comercial — select agrupado manual/auto */}
               <div>
-                <p className="admin-eyebrow mb-2">Estado comercial</p>
+                <p className="admin-eyebrow mb-2.5">Estado comercial</p>
                 <CommercialStatusSelect
                   lead={lead}
                   value={lead.commercial_status}
