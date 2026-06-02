@@ -66,4 +66,9 @@ describe("buildStartPayload", () => {
     const b = buildStartPayload(baseValues, "", "", 1);
     expect(b.name).toBe("Ana Marques");
   });
+
+  it("always sends gdpr_consent === true", () => {
+    const payload = buildStartPayload(baseValues, "Ana", "", 1);
+    expect(payload.gdpr_consent).toBe(true);
+  });
 });
