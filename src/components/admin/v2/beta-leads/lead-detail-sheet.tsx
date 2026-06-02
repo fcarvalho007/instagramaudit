@@ -755,14 +755,6 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
     followupEligible,
   ]);
 
-  // Estado comercial agrupado para o select.
-  const statusOptionsManual = COMMERCIAL_STATUS_OPTIONS.filter(
-    (o) => o.kind === "manual",
-  );
-  const statusOptionsAuto = COMMERCIAL_STATUS_OPTIONS.filter(
-    (o) => o.kind === "auto",
-  );
-
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
