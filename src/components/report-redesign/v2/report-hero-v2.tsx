@@ -58,7 +58,7 @@ export function ReportHeroV2({
   return (
     <section
       aria-label={handle}
-      className="w-full px-4 sm:px-6 pt-2 pb-1 sm:pt-3 sm:pb-2"
+      className="w-full px-3 sm:px-6 pt-1.5 pb-0.5 sm:pt-3 sm:pb-2"
     >
       <div className="mx-auto max-w-[1520px]">
         <div
@@ -68,9 +68,9 @@ export function ReportHeroV2({
           )}
         >
           {/* ── COMPACT BAR (sempre visível) ─────────────────────── */}
-          <div className="flex flex-row items-center gap-2 sm:gap-4 px-3 sm:px-5 py-2 sm:py-3">
+          <div className="flex flex-row items-center gap-1.5 sm:gap-4 px-2.5 sm:px-5 py-1.5 sm:py-3">
             {/* Identity */}
-            <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
               <CompactAvatar
                 avatarUrl={avatarUrl}
                 fullName={fullName || handle}
@@ -79,7 +79,7 @@ export function ReportHeroV2({
               />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap min-w-0">
-                  <span className="font-display text-[14px] sm:text-base font-semibold text-content-primary tracking-tight truncate min-w-0">
+                  <span className="font-display text-[13px] sm:text-base font-semibold text-content-primary tracking-tight truncate min-w-0 leading-tight">
                     {handleWrappable}
                   </span>
                   {tierLabel && (
@@ -112,11 +112,11 @@ export function ReportHeroV2({
                 aria-controls={expandedId}
                 aria-label={t(expanded ? "hero.actions.collapse" : "hero.actions.expand")}
                 title={t(expanded ? "hero.actions.collapse" : "hero.actions.expand")}
-                className="shrink-0 inline-flex items-center justify-center size-7 sm:size-8 rounded-lg text-content-tertiary hover:text-content-primary hover:bg-surface-muted transition-colors"
+                className="shrink-0 inline-flex items-center justify-center size-6 sm:size-8 rounded-lg text-content-tertiary hover:text-content-primary hover:bg-surface-muted transition-colors"
               >
                 <ChevronDown
                   className={cn(
-                    "size-3.5 sm:size-4 transition-transform duration-200",
+                    "size-3 sm:size-4 transition-transform duration-200",
                     expanded && "rotate-180",
                   )}
                   aria-hidden="true"
@@ -134,7 +134,7 @@ export function ReportHeroV2({
                 aria-label={t("hero.actions.pdf")}
                 title={t("hero.actions.pdf")}
                 className={cn(
-                  "inline-flex items-center justify-center size-8 sm:size-9 rounded-lg",
+                  "inline-flex items-center justify-center size-7 sm:size-9 rounded-lg",
                   "border border-border-default bg-white text-content-secondary",
                   "transition-colors duration-150",
                   "hover:bg-surface-muted hover:border-border-strong hover:text-content-primary",
@@ -142,9 +142,9 @@ export function ReportHeroV2({
                 )}
               >
                 {actions.pdfBusy ? (
-                  <Loader2 className="size-3.5 sm:size-4 animate-spin" aria-hidden="true" />
+                  <Loader2 className="size-3 sm:size-4 animate-spin" aria-hidden="true" />
                 ) : (
-                  <Download className="size-3.5 sm:size-4" aria-hidden="true" />
+                  <Download className="size-3 sm:size-4" aria-hidden="true" />
                 )}
               </button>
               <ShareReportPopover
@@ -153,7 +153,7 @@ export function ReportHeroV2({
                 triggerLabel=""
                 aria-label={t("hero.actions.share")}
                 className={cn(
-                  "inline-flex items-center justify-center size-8 sm:size-9 rounded-lg",
+                  "inline-flex items-center justify-center size-7 sm:size-9 rounded-lg",
                   "border border-border-default bg-white text-content-secondary",
                   "transition-colors duration-150",
                   "hover:bg-surface-muted hover:border-border-strong hover:text-content-primary",
@@ -309,7 +309,7 @@ function ExpandedMetricLine({
 }
 
 function CompactAvatar(props: AvatarProps) {
-  return <BaseAvatar {...props} sizeClass="size-8 sm:size-10" badgeSizeClass="size-3.5 sm:size-4" checkSize="size-2 sm:size-2.5" />;
+  return <BaseAvatar {...props} sizeClass="size-7 sm:size-10" badgeSizeClass="size-3 sm:size-4" checkSize="size-2 sm:size-2.5" />;
 }
 
 function ExpandedAvatar(props: AvatarProps) {
