@@ -13,10 +13,23 @@ export interface KpiInput {
   analyses_30d: number;
   fresh_analyses_30d: number;
   reports_unlocked_30d: number;
-  /** total platform cost 30d (provider_call_logs success+cache, all origins) */
+  /** Total platform cost 30d — includes Lab/I&D. */
   cost_total_30d: number;
-  /** cost attributed to public fresh reports (provider calls linked to analysis_event_id) */
+  /**
+   * Cost attributed to public fresh reports (provider calls linked to
+   * analysis_event_id). Kept for backwards-compat with the UI; the
+   * production-vs-lab split below is the canonical input for per-lead KPIs.
+   */
   cost_public_30d: number;
+  /**
+   * Production provider cost 30d — `public_analysis` + `enrich_comments`.
+   * Drives cost-per-lead, cost-per-analysis, margin. Excludes Lab/I&D.
+   */
+  production_cost_30d: number;
+  /** Admin Apify Lab / I&D cost 30d. Counted in totals, EXCLUDED from per-lead. */
+  lab_cost_30d: number;
+  /** Admin refresh / backfill / unknown legacy cost 30d. */
+  other_cost_30d: number;
   /** linked-cost avg per fresh report — comes straight from fetchExpense30d */
   fresh_avg_cost_per_report: number | null;
   /** revenue (EUR) on lead_payments with status='paid' in 30d */
@@ -40,9 +53,12 @@ function safeDiv(num: number, den: number): number | null {
 }
 
 export function computeKpis(input: KpiInput): KpiOutput {
-  const cost_per_lead = safeDiv(input.cost_public_30d, input.leads_30d);
+  // Per-lead, per-analysis and per-unlocked KPIs use PRODUCTION cost only.
+  // Lab/I&D spend (admin_lab) inflates platform total but must never
+  // distort cost-per-lead or margin.
+  const cost_per_lead = safeDiv(input.production_cost_30d, input.leads_30d);
   const cost_per_unlocked_report = safeDiv(
-    input.cost_public_30d,
+    input.production_cost_30d,
     input.reports_unlocked_30d,
   );
   const cost_per_analysis = input.fresh_avg_cost_per_report;

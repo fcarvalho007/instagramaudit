@@ -91,3 +91,39 @@ export async function assertApifyDailyBudgetAvailable(): Promise<void> {
   const spent = await getApifyDailySpendUsd();
   if (spent >= cap) throw new BudgetExceededError(spent, cap);
 }
+
+/**
+ * Production-only Apify spend (USD) since 00:00 UTC today.
+ *
+ * Excludes `admin_lab` (Apify Lab / I&D) rows. Use this for a future
+ * production-only budget warning — the hard cap deliberately stays on
+ * the whole-table sum so Lab spend can also trip it.
+ *
+ * Not currently wired into the request gate — exported so admin diagnostics
+ * can render "production budget headroom" separately from "total headroom".
+ */
+export async function getApifyProductionDailySpendUsd(
+  now: Date = new Date(),
+): Promise<number> {
+  try {
+    const { data, error } = await (supabaseAdmin as any)
+      .from("provider_call_logs")
+      .select("estimated_cost_usd, actual_cost_usd")
+      .eq("provider", "apify")
+      .in("source_context", ["public_analysis", "enrich_comments"])
+      .gte("created_at", startOfUtcDayIso(now))
+      .limit(5000);
+    if (error) {
+      console.error("[apify-budget] production sum query failed", error.message);
+      return 0;
+    }
+    return (data ?? []).reduce((sum: number, r: any) => {
+      const raw = r.actual_cost_usd ?? r.estimated_cost_usd ?? 0;
+      const v = typeof raw === "string" ? Number.parseFloat(raw) : Number(raw);
+      return sum + (Number.isFinite(v) ? v : 0);
+    }, 0);
+  } catch (err) {
+    console.error("[apify-budget] production unexpected", err);
+    return 0;
+  }
+}

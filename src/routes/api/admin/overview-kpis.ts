@@ -27,6 +27,12 @@ export interface OverviewKpis {
   reports_unlocked_30d: number;
   cost_total_30d: number;
   cost_public_30d: number;
+  /** Production provider cost 30d (public_analysis + enrich_comments). */
+  production_cost_30d: number;
+  /** Admin Apify Lab / I&D cost 30d. Mirrored from `apify_lab_runs`. */
+  lab_cost_30d: number;
+  /** Admin refresh / backfill / unknown legacy cost 30d. */
+  other_cost_30d: number;
   revenue_total_30d: number;
   revenue_active: boolean;
   cost_per_lead: number | null;
@@ -129,6 +135,11 @@ export const Route = createFileRoute("/api/admin/overview-kpis")({
         // "Custo público" = chamadas ligadas a fresh events (exclui lab e órfãs).
         // Melhor proxy honesto disponível sem mexer no pipeline de custos.
         const cost_public_30d = Number(expense.fresh_linked_total_usd ?? 0);
+        // Production/Lab/Other split (source_context — fonte canónica para
+        // cost-per-lead e margem).
+        const production_cost_30d = Number(expense.production_cost_30d ?? 0);
+        const lab_cost_30d = Number(expense.lab_cost_30d ?? 0);
+        const other_cost_30d = Number(expense.other_cost_30d ?? 0);
 
         // Receita: soma dos `lead_payments` pagos nos últimos 30 dias.
         // `revenue_active` flip-flap pela existência de QUALQUER pagamento
@@ -147,6 +158,9 @@ export const Route = createFileRoute("/api/admin/overview-kpis")({
           reports_unlocked_30d,
           cost_total_30d,
           cost_public_30d,
+          production_cost_30d,
+          lab_cost_30d,
+          other_cost_30d,
           fresh_avg_cost_per_report: expense.fresh_avg_cost_per_report ?? null,
           revenue_30d,
           revenue_active,
@@ -163,6 +177,9 @@ export const Route = createFileRoute("/api/admin/overview-kpis")({
           reports_unlocked_30d,
           cost_total_30d: Number(cost_total_30d.toFixed(4)),
           cost_public_30d: Number(cost_public_30d.toFixed(4)),
+          production_cost_30d: Number(production_cost_30d.toFixed(4)),
+          lab_cost_30d: Number(lab_cost_30d.toFixed(4)),
+          other_cost_30d: Number(other_cost_30d.toFixed(4)),
           revenue_total_30d: Number(revenue_30d.toFixed(2)),
           revenue_active,
           cost_per_lead: round(formulas.cost_per_lead),
