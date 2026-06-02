@@ -193,7 +193,7 @@ describe("POST /api/onboarding/start", () => {
     expect(setLeadCookieMock).toHaveBeenCalledWith(body.lead_id);
   });
 
-  it("invalid payload (missing email) → 400 INVALID_PAYLOAD, no cookie, no field leak", async () => {
+  it("invalid payload (missing email) → 400 INVALID_PAYLOAD with field issues + human message", async () => {
     const res = await handleOnboardingStart(
       post({ name: "Ana" }) /* missing email */,
     );
@@ -202,14 +202,20 @@ describe("POST /api/onboarding/start", () => {
       ok: boolean;
       error_code: string;
       message: string;
+      issues?: { field: string; code: string }[];
     };
     expect(body.ok).toBe(false);
     expect(body.error_code).toBe("INVALID_PAYLOAD");
     expect(setLeadCookieMock).not.toHaveBeenCalled();
     expect(grantInitialCreditsMock).not.toHaveBeenCalled();
-    // mensagem genérica em PT, não revela campos zod
-    expect(body.message.toLowerCase()).not.toContain("email");
+    // mensagem específica do campo email, sem detalhes internos do Zod
+    expect(body.message.toLowerCase()).toContain("email");
     expect(body.message.toLowerCase()).not.toContain("zod");
+    expect(body.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: "email" }),
+      ]),
+    );
   });
 
   it("duplicate email → same lead_id, credits stays at 2 (no double grant)", async () => {
@@ -281,10 +287,21 @@ describe("POST /api/onboarding/start", () => {
       post({ name: "Ana", email: "nogdpr@example.com", gdpr_consent: undefined }),
     );
     expect(res.status).toBe(400);
-    const body = (await res.json()) as { ok: boolean; error_code: string };
+    const body = (await res.json()) as {
+      ok: boolean;
+      error_code: string;
+      message: string;
+      issues?: { field: string; code: string }[];
+    };
     expect(body.ok).toBe(false);
     expect(body.error_code).toBe("INVALID_PAYLOAD");
     expect(setLeadCookieMock).not.toHaveBeenCalled();
+    expect(body.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: "gdpr_consent" }),
+      ]),
+    );
+    expect(body.message.toLowerCase()).toContain("tratamento de dados");
   });
 
   it("gdpr_consent === false → 400 INVALID_PAYLOAD", async () => {
