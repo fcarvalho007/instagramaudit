@@ -160,21 +160,36 @@
   "onboarding": {
     "intro": {
       "eyebrow": "ANTES DE COMEÇAR",
-      "title": "Cria a tua conta e abre o relatório",
-      "subtitle": "3 perguntas rápidas (~1 min) e a tua conta fica criada — com este e os próximos relatórios guardados.",
+      "title": "Cria a tua conta e abre o relatório <free>grátis</free>",
       "handleContext": "Vais analisar <1>@{{handle}}</1>",
       "creditNote": "Começas com <strong>2 créditos grátis</strong>. Esta análise usa 1.",
-      "freeBadge": "Grátis",
-      "freeValueTitle": "O que recebes grátis",
-      "freeValue": [
-        "Índice e diagnóstico geral",
-        "Métricas-base vs escalão",
-        "Conta para rever quando quiseres"
-      ],
-      "premiumNote": "As secções avançadas fazem parte do relatório premium.",
-      "cta": "Começar",
-      "trustLine": "RGPD · sem spam · {{operator}}",
-      "personalHint": "Funciona melhor com perfis públicos Creator ou Empresa. Alguns perfis pessoais podem não devolver publicações suficientes."
+      "cta": "Começar grátis  →",
+      "trustLine": "Respeitamos o RGPD · sem spam",
+      "personalHint": "Funciona melhor com perfis públicos Creator ou Empresa.",
+      "haveAccount": "Já tens conta?",
+      "haveAccountCta": "Entrar"
+    },
+    "login": {
+      "eyebrow": "BEM-VINDO DE VOLTA",
+      "title": "Entra e abre o relatório",
+      "subtitle": "Indica o email da tua conta. Vamos analisar <1>@{{handle}}</1> com os teus créditos.",
+      "emailLabel": "Email da conta",
+      "emailPlaceholder": "o-teu@email.pt",
+      "emailInvalid": "Confirma o teu email — parece inválido.",
+      "cta": "Entrar e analisar  →",
+      "submitting": "A enviar link…",
+      "secureHint": "Enviamos um link de acesso seguro para o teu email.",
+      "noAccount": "Ainda não tens conta?",
+      "noAccountCta": "Criar conta grátis",
+      "success": {
+        "title": "Verifica o teu email",
+        "body": "Se existir uma conta para {{email}}, enviámos um link de acesso seguro. Abre-o no mesmo dispositivo para retomar a análise."
+      },
+      "back": "Voltar",
+      "errors": {
+        "generic": "Não foi possível enviar o link. Tenta novamente em instantes.",
+        "network": "Erro de ligação. Verifica a internet e tenta novamente."
+      }
     },
     "steps": {
       "1": {

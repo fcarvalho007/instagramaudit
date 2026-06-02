@@ -160,21 +160,36 @@
   "onboarding": {
     "intro": {
       "eyebrow": "BEFORE WE START",
-      "title": "Create your account and open the report",
-      "subtitle": "3 quick questions (~1 min) and your account is ready — with this report and all future ones saved.",
+      "title": "Create your account and open the report <free>free</free>",
       "handleContext": "You'll analyse <1>@{{handle}}</1>",
       "creditNote": "You start with <strong>2 free credits</strong>. This analysis uses 1.",
-      "freeBadge": "Free",
-      "freeValueTitle": "What you get for free",
-      "freeValue": [
-        "Overall index and diagnosis",
-        "Base metrics vs tier",
-        "Account to review anytime"
-      ],
-      "premiumNote": "The advanced sections are part of the premium report.",
-      "cta": "Get started",
-      "trustLine": "GDPR · no spam · {{operator}}",
-      "personalHint": "Works best with public Creator or Business profiles. Some personal profiles may not return enough posts."
+      "cta": "Start free  →",
+      "trustLine": "We respect GDPR · no spam",
+      "personalHint": "Works best with public Creator or Business profiles.",
+      "haveAccount": "Already have an account?",
+      "haveAccountCta": "Sign in"
+    },
+    "login": {
+      "eyebrow": "WELCOME BACK",
+      "title": "Sign in and open the report",
+      "subtitle": "Enter your account email. We'll analyse <1>@{{handle}}</1> using your credits.",
+      "emailLabel": "Account email",
+      "emailPlaceholder": "you@email.com",
+      "emailInvalid": "Please double-check your email — it looks invalid.",
+      "cta": "Sign in and analyse  →",
+      "submitting": "Sending link…",
+      "secureHint": "We'll send a secure access link to your email.",
+      "noAccount": "Don't have an account yet?",
+      "noAccountCta": "Create a free account",
+      "success": {
+        "title": "Check your email",
+        "body": "If an account exists for {{email}}, we've sent a secure access link. Open it on the same device to resume the analysis."
+      },
+      "back": "Back",
+      "errors": {
+        "generic": "We couldn't send the link. Please try again in a moment.",
+        "network": "Connection error. Check your internet and try again."
+      }
     },
     "steps": {
       "1": {
