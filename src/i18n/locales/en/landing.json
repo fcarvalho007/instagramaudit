@@ -29,8 +29,7 @@
     "ariaInput": "Instagram profile username or URL",
     "submit": "Analyze",
     "trustInline": {
-      "freeReports": "2 free reports included",
-      "publicData": "Public data only"
+      "freeReports": "2 free reports included"
     },
     "errors": {
       "empty": "Enter a valid username to continue",
