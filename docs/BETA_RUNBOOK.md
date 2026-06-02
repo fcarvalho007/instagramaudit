@@ -14,6 +14,16 @@ Documento operacional. Para uso interno do operador durante a fase de beta priva
 
 ---
 
+## QA URLs and Environments
+
+> **QA URLs:**
+> - Use `id-preview--...lovable.app` to validate the live editor preview.
+> - Use `instagramaudit.lovable.app` to validate the published build.
+> - Do not use `preview--instagramaudit.lovable.app`; it may serve a stale build.
+> - The public `/analyze/$username` route intentionally shows onboarding/sign-up gate to anonymous users.
+
+---
+
 ## 1. Como convidar um beta tester
 
 1. Confirmar que o handle de teste está em `APIFY_ALLOWLIST` (admin → `/admin/sistema`).
