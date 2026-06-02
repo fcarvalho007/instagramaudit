@@ -149,6 +149,12 @@ export interface EnrichedLead {
   is_lead_magnet_subscriber: boolean;
   /** Resumo de pagamentos (vindo de `lead_payments`). */
   payment_summary: LeadPaymentSummary;
+  /** Total de créditos concedidos (SUM(delta>0) em `credit_ledger`). */
+  credits_granted: number;
+  /** Total de créditos consumidos (SUM(-delta WHERE delta<0)). */
+  credits_used: number;
+  /** Saldo actual (SUM(delta)). */
+  credits_remaining: number;
 }
 
 export interface BetaFeedbackSummary {
