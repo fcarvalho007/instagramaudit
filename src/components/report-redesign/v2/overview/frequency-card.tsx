@@ -591,9 +591,9 @@ export function FrequencyCard({
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="px-4 sm:px-5 md:px-6 pt-5 sm:pt-6 md:pt-8 space-y-2.5">
+      <div className="px-4 sm:px-5 md:px-6 pt-5 sm:pt-5 md:pt-6 space-y-2">
         <div className="flex items-start gap-3">
-          <h3 className="font-display text-[1.25rem] sm:text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight break-words">
+          <h3 className="font-display text-[1.125rem] sm:text-[1.25rem] md:text-[1.5rem] font-semibold tracking-tight text-content-primary leading-tight break-words">
             {t("frequency.title")}{" "}
             {!isInsufficient ? (
             <span
@@ -615,11 +615,11 @@ export function FrequencyCard({
           </h3>
         </div>
         {subtitleLine ? (
-          <p className="text-[15px] text-content-secondary leading-relaxed">
+          <p className="text-[14px] text-content-secondary leading-relaxed">
             {subtitleLine}
           </p>
         ) : isInsufficient ? (
-          <p className="text-[15px] text-content-secondary leading-relaxed">
+          <p className="text-[14px] text-content-secondary leading-relaxed">
             {headline}
           </p>
         ) : null}
@@ -642,7 +642,7 @@ export function FrequencyCard({
 
       {/* Calendar grid — always visible */}
       {weeks.length > 0 && (
-        <div className="px-4 sm:px-5 md:px-6 mt-4 sm:mt-6">
+        <div className="px-4 sm:px-5 md:px-6 mt-4 sm:mt-5">
           <div className="flex flex-col gap-0.5 min-w-0">
             <span className="text-eyebrow-sm text-content-tertiary">
               {t("frequency.calendar.eyebrow", { days: effectiveWindowDays })}
@@ -657,13 +657,13 @@ export function FrequencyCard({
             </span>
           </div>
 
-          <div className="mt-3">
+          <div className="mt-2.5 max-w-[420px]">
           {/* Weekday headers */}
           <div className="grid grid-cols-7 gap-1 md:gap-1.5 mb-1 md:mb-1.5">
             {weekdayShort.map((wd, i) => (
               <span
                 key={i}
-                className="text-xs font-medium text-content-secondary text-center leading-none select-none"
+                className="text-[11px] font-medium text-content-tertiary text-center leading-none select-none"
               >
                 {wd}
               </span>
@@ -674,7 +674,7 @@ export function FrequencyCard({
           <div
             role="img"
             aria-label={t("frequency.calendar.aria", { published: publishedCount, paused: pausedCount })}
-            className="grid gap-1 md:gap-1.5"
+            className="grid gap-1"
             style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
           >
             {weeks.flatMap((week, wi) =>
@@ -684,7 +684,7 @@ export function FrequencyCard({
                   return (
                     <span
                       key={`pad-${wi}-${di}`}
-                      className="aspect-[5/3] rounded-md"
+                      className="aspect-square rounded-[5px]"
                     />
                   );
                 }
@@ -701,12 +701,12 @@ export function FrequencyCard({
                   <span
                     key={day.date}
                     title={`${dateLabel} · ${tooltipPosts}`}
-                    className="relative aspect-[5/3] rounded-md flex items-center justify-center transition-colors"
+                    className="relative aspect-square rounded-[5px] flex items-center justify-center transition-colors"
                     style={{ background: cellStyle(day.postCount).bg, border: cellStyle(day.postCount).border }}
                   >
                     {day.postCount > 1 && (
                       <span
-                        className="text-xs font-bold leading-none text-white select-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]"
+                        className="text-[10px] font-bold leading-none text-white select-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]"
                         aria-hidden="true"
                       >
                         {day.postCount}
@@ -719,10 +719,10 @@ export function FrequencyCard({
           </div>
 
           {/* Legend — fixed 3 states: sem post / 1 post / 2 posts */}
-          <div className="flex items-center gap-4 md:gap-5 mt-3 md:mt-3.5">
+          <div className="flex items-center gap-3 md:gap-4 mt-2.5">
             <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
               <span
-                className="size-[10px] rounded-[3px] shrink-0"
+                className="size-[9px] rounded-[2px] shrink-0"
                 aria-hidden="true"
                 style={{ background: legendBg(0), border: "1px solid rgba(148,163,184,0.35)" }}
               />
@@ -730,7 +730,7 @@ export function FrequencyCard({
             </span>
             <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
               <span
-                className="size-[10px] rounded-[3px] shrink-0"
+                className="size-[9px] rounded-[2px] shrink-0"
                 aria-hidden="true"
                 style={{ background: legendBg(1) }}
               />
@@ -738,7 +738,7 @@ export function FrequencyCard({
             </span>
             <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
               <span
-                className="size-[10px] rounded-[3px] shrink-0"
+                className="size-[9px] rounded-[2px] shrink-0"
                 aria-hidden="true"
                 style={{ background: legendBg(2) }}
               />
@@ -751,7 +751,7 @@ export function FrequencyCard({
 
       {/* Verdict — suppressed when cadence is insufficient (no strong claims). */}
       {!isInsufficient && (
-      <InsightCallout tone={verdictTone} label={verdictLabel} className="mt-auto mx-4 sm:mx-5 md:mx-6 mb-5 sm:mb-6 md:mb-8">
+      <InsightCallout tone={verdictTone} label={verdictLabel} className="mt-5 mx-4 sm:mx-5 md:mx-6 mb-5 sm:mb-6">
         <p>
           <span className="font-semibold">{verdict.strong}</span>{" "}
           {verdict.rest}

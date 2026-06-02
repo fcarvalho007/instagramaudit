@@ -288,9 +288,9 @@ export function FormatCard({
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="px-5 md:px-6 pt-6 md:pt-8 space-y-2.5">
+      <div className="px-5 md:px-6 pt-5 md:pt-6 space-y-2">
         <div className="flex items-start gap-3">
-          <h3 className="font-display text-[1.25rem] sm:text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight">
+          <h3 className="font-display text-[1.125rem] sm:text-[1.25rem] md:text-[1.5rem] font-semibold tracking-tight text-content-primary leading-tight">
             {t("format.title")}{" "}
             <span
               className="font-semibold"
@@ -309,7 +309,7 @@ export function FormatCard({
             </span>
           </h3>
         </div>
-        <p className="text-[15px] text-content-secondary leading-relaxed">
+        <p className="text-[14px] text-content-secondary leading-relaxed">
           {subtitleLine}
         </p>
       </div>
@@ -319,17 +319,14 @@ export function FormatCard({
 
       {/* Thumbnail grid */}
       {sortedPosts.length > 0 && (
-        <div className="px-5 md:px-6 mt-6">
-          <span className="text-xs uppercase tracking-[0.04em] text-content-tertiary block mb-1.5">
+        <div className="px-5 md:px-6 mt-5">
+          <span className="text-xs uppercase tracking-[0.04em] text-content-tertiary block mb-2">
             {t("format.analyzed_count", { count: postsAnalyzed })}
           </span>
           <div
             role="img"
             aria-label={ariaLabel}
-            className="grid gap-2"
-            style={{
-              gridTemplateColumns: `repeat(${Math.min(sortedPosts.length, 4)}, 1fr)`,
-            }}
+            className="grid gap-1.5 grid-cols-6 sm:grid-cols-8 max-w-[520px]"
           >
             {sortedPosts.map((post, idx) => {
               const fk = TYPE_TO_FORMAT_KEY[post.type] ?? "unknown";
@@ -341,7 +338,7 @@ export function FormatCard({
                   key={`${post.date}-${idx}`}
                   title={t("format.thumb_aria", { label, date: post.date })}
                   className="relative rounded-md overflow-hidden bg-surface-muted border border-border-subtle/40"
-                  style={{ aspectRatio: "3/4" }}
+                  style={{ aspectRatio: "1/1" }}
                 >
                   {post.thumbnailUrl ? (
                     <PostThumb
@@ -357,7 +354,7 @@ export function FormatCard({
                   )}
                   {/* Small format dot indicator — bottom-right */}
                   <span
-                    className={`absolute bottom-1 right-1 size-2 rounded-full ring-1 ring-white ${style.dot}`}
+                    className={`absolute bottom-0.5 right-0.5 size-1.5 rounded-full ring-1 ring-white ${style.dot}`}
                     aria-hidden="true"
                   />
                 </span>
@@ -381,7 +378,7 @@ export function FormatCard({
       )}
 
       {/* Verdict */}
-      <InsightCallout tone={calloutTone} label={calloutLabel} className="mt-auto mx-5 md:mx-6 mb-6 md:mb-8">
+      <InsightCallout tone={calloutTone} label={calloutLabel} className="mt-auto mx-5 md:mx-6 mb-5 sm:mb-6">
         <p>
           <span className="font-semibold">{verdict.strong}</span>{" "}
           {verdict.rest}
@@ -487,8 +484,8 @@ function FormatBreakdown({
   rows.forEach((k, i) => pctByKey.set(k, rounded[i]));
 
   // Donut geometry
-  const size = 88;
-  const stroke = 11;
+  const size = 76;
+  const stroke = 9;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   let offsetAcc = 0;
@@ -496,7 +493,7 @@ function FormatBreakdown({
   return (
     <div className="px-5 md:px-6 mt-5">
       <div
-        className="flex items-center gap-5 md:gap-6 rounded-xl bg-surface-muted/60 border border-border-subtle/50 px-4 md:px-5 py-3.5"
+        className="flex items-center gap-4 md:gap-5 rounded-xl bg-surface-muted/60 border border-border-subtle/50 px-4 md:px-5 py-3"
         role="img"
         aria-label={t("format.aria_breakdown", {
           total,
@@ -550,7 +547,7 @@ function FormatBreakdown({
             })}
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-            <span className="text-[1.5rem] font-semibold text-content-primary tabular-nums">
+            <span className="text-[1.25rem] font-semibold text-content-primary tabular-nums">
               {total}
             </span>
           </div>
@@ -566,7 +563,7 @@ function FormatBreakdown({
             return (
               <Fragment key={k}>
                 <span
-                  className={`flex items-center gap-2 text-[15px] ${
+                  className={`flex items-center gap-2 text-[14px] ${
                     isZero ? "text-content-tertiary" : "text-content-primary"
                   }`}
                 >
@@ -582,7 +579,7 @@ function FormatBreakdown({
                   {tFormatLegend(t, k)}
                 </span>
                 <span
-                  className={`text-[15px] font-semibold tabular-nums text-right ${
+                  className={`text-[14px] font-semibold tabular-nums text-right ${
                     isZero ? "text-content-tertiary" : "text-content-primary"
                   }`}
                 >
