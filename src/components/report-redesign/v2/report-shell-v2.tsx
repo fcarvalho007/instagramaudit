@@ -208,17 +208,15 @@ export function ReportShellV2({
         <section className="bg-surface-base">
           {/* Top bar: identity + actions à esquerda, selector de período
               à direita (desktop). Em mobile/tablet, empilhado. */}
-          <div className="w-full px-3 sm:px-6 pt-1.5 pb-1.5 sm:pt-3 sm:pb-4">
+          <div className="w-full px-3 sm:px-6 pt-2 pb-2 sm:pt-3 sm:pb-3">
             <div className="mx-auto max-w-[1520px]">
-              <div className="flex flex-col lg:flex-row lg:items-stretch gap-2 sm:gap-3">
+              <div className="flex flex-col lg:flex-row lg:items-stretch rounded-xl sm:rounded-2xl border border-border-default bg-white shadow-card overflow-hidden">
                 <ReportHeroV2
                   result={result}
                   actions={actions}
                   analyzedAtIso={analyzedAtIso ?? null}
                   expiresAtIso={expiresAtIso ?? null}
                 />
-                {/* Analysis period selector (read-only premium teaser).
-                    Read-only; does NOT mutate report data. */}
                 <AnalysisPeriodSelector
                   sampleSize={result.data.profile.postsAnalyzed ?? 0}
                   observedDays={result.coverage.windowDays ?? 0}
@@ -242,7 +240,7 @@ export function ReportShellV2({
 
         {/* Layout 2-col a partir do bloco 01 */}
         <div className="mx-auto max-w-[1520px] px-5 md:px-6 lg:px-8">
-          <div className="flex gap-8 lg:gap-10 pt-5 lg:pt-6">
+          <div className="flex gap-8 lg:gap-10 pt-3 lg:pt-4">
             <ReportBlockSidebar
               variant={variant}
               features={features}
