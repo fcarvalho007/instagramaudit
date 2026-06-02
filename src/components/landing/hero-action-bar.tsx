@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { ArrowRight, AtSign, Plus } from "lucide-react";
+import { ArrowRight, AtSign, Check } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { InstagramGlyph } from "./instagram-glyph";
 import { normalizeInstagramHandle } from "@/lib/instagram/normalize-handle";
 import { OnboardingModal } from "@/components/onboarding/onboarding-modal";
@@ -22,15 +21,8 @@ export function HeroActionBar() {
   const navigate = useNavigate();
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [competitorsOpen, setCompetitorsOpen] = useState(false);
-  const [competitor1, setCompetitor1] = useState("");
-  const [competitor2, setCompetitor2] = useState("");
-  const [competitorError, setCompetitorError] = useState<string | null>(null);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
-  const [pendingNav, setPendingNav] = useState<{
-    username: string;
-    competitors: string[];
-  } | null>(null);
+  const [pendingNav, setPendingNav] = useState<{ username: string } | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,30 +33,17 @@ export function HeroActionBar() {
     }
     setError(null);
 
-    // Validate optional competitors. Silently drop empties, reject invalid.
-    const rawCompetitors = competitorsOpen ? [competitor1, competitor2] : [];
-    const competitors: string[] = [];
-    for (const raw of rawCompetitors) {
-      const c = extractUsername(raw);
-      if (!c) {
-        if (raw.trim()) {
-        setCompetitorError(t("actionBar.errors.competitorInvalid"));
-        return;
-      }
-        continue;
-      }
-      if (c === username) continue; // skip duplicate of primary
-      if (competitors.includes(c)) continue; // dedupe
-      competitors.push(c);
-    }
-    setCompetitorError(null);
-
     // Fase 3: NÃO navegar directamente — abrir onboarding modal primeiro.
     // O modal vai submeter a /api/onboarding/start (cookie + créditos)
     // antes de qualquer chamada ao provider.
-    setPendingNav({ username, competitors });
+    setPendingNav({ username });
     setOnboardingOpen(true);
   };
+
+  const trustInline = [
+    t("actionBar.trustInline.freeReports"),
+    t("actionBar.trustInline.publicData"),
+  ];
 
   return (
     <>
@@ -138,85 +117,26 @@ export function HeroActionBar() {
           {error}
         </p>
       ) : (
-        <p
-          className="mt-3 font-sans text-xs"
-          style={{ color: "var(--hero-fg-subtle)" }}
+        <ul
+          className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5"
+          aria-label="Trust"
         >
-          {t("actionBar.personalHint")}
-        </p>
+          {trustInline.map((item) => (
+            <li
+              key={item}
+              className="flex items-center gap-1.5 font-sans text-xs"
+              style={{ color: "var(--hero-fg-subtle)" }}
+            >
+              <Check
+                className="size-3.5"
+                style={{ color: "var(--hero-cyan)" }}
+                aria-hidden="true"
+              />
+              {item}
+            </li>
+          ))}
+        </ul>
       )}
-
-      {/* Progressive reveal: competitors */}
-      <div className="mt-4 flex">
-        {!competitorsOpen ? (
-          <button
-            type="button"
-            onClick={() => setCompetitorsOpen(true)}
-            className="group inline-flex items-center gap-2 font-sans text-sm transition-colors duration-[150ms]"
-            style={{ color: "var(--hero-fg-subtle)" }}
-          >
-            <Plus className="size-4 transition-transform group-hover:rotate-90 duration-[250ms]" />
-            {t("actionBar.addCompetitors")}
-          </button>
-        ) : (
-          <div className="w-full space-y-3 animate-fade-in">
-            <div className="flex items-center justify-between">
-              <span
-                className="text-eyebrow"
-                style={{ color: "var(--hero-fg-subtle)" }}
-              >
-                {t("actionBar.competitorsLabel")}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setCompetitorsOpen(false);
-                  setCompetitor1("");
-                  setCompetitor2("");
-                  setCompetitorError(null);
-                }}
-                className="font-sans text-xs transition-colors"
-                style={{ color: "var(--hero-fg-subtle)" }}
-              >
-                {t("actionBar.remove")}
-              </button>
-            </div>
-            <Input
-              variant="glass"
-              inputSize="md"
-              leftIcon={<AtSign />}
-              placeholder={t("actionBar.competitor1Placeholder")}
-              aria-label={t("actionBar.competitor1Aria")}
-              value={competitor1}
-              onChange={(e) => {
-                setCompetitor1(e.target.value);
-                if (competitorError) setCompetitorError(null);
-              }}
-            />
-            <Input
-              variant="glass"
-              inputSize="md"
-              leftIcon={<AtSign />}
-              placeholder={t("actionBar.competitor2Placeholder")}
-              aria-label={t("actionBar.competitor2Aria")}
-              value={competitor2}
-              onChange={(e) => {
-                setCompetitor2(e.target.value);
-                if (competitorError) setCompetitorError(null);
-              }}
-            />
-            {competitorError ? (
-              <p
-                role="alert"
-                className="font-sans text-sm"
-                style={{ color: "#FF8A8A" }}
-              >
-                {competitorError}
-              </p>
-            ) : null}
-          </div>
-        )}
-      </div>
 
       <style>{`
         .hero-bar-breathe {
@@ -241,10 +161,7 @@ export function HeroActionBar() {
           navigate({
             to: "/analyze/$username",
             params: { username: handle },
-            search:
-              pendingNav.competitors.length > 0
-                ? { vs: pendingNav.competitors.join(",") }
-                : {},
+            search: {},
           });
         }}
       />

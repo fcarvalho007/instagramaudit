@@ -6,15 +6,9 @@ import { HeroActionBar } from "@/components/landing/hero-action-bar";
 import { HeroAuroraBackground } from "@/components/landing/hero-aurora-background";
 import { HeroReportPreview } from "@/components/landing/hero-report-preview";
 import { ScrollIndicator } from "@/components/landing/scroll-indicator";
-import { Check } from "lucide-react";
 
 export function HeroSection() {
   const { t } = useTranslation("landing");
-  const trustItems = [
-    t("hero.trust.freeReports"),
-    t("hero.trust.publicData"),
-    t("hero.trust.freeAccount"),
-  ];
   return (
     <section
       className="hero-dark relative min-h-[calc(100dvh-4rem)] w-full overflow-hidden flex items-center"
@@ -58,27 +52,6 @@ export function HeroSection() {
             <div className="pt-4 lg:pt-2">
               <HeroActionBar />
             </div>
-
-            {/* Trust row */}
-            <ul
-              className="flex flex-wrap items-center justify-center lg:justify-start gap-x-6 gap-y-2 pt-2"
-              aria-label="Trust"
-            >
-              {trustItems.map((item) => (
-                <li
-                  key={item}
-                  className="flex items-center gap-2 text-sm"
-                  style={{ color: "var(--hero-fg-subtle)" }}
-                >
-                  <Check
-                    className="size-4"
-                    style={{ color: "var(--hero-cyan)" }}
-                    aria-hidden="true"
-                  />
-                  {item}
-                </li>
-              ))}
-            </ul>
           </div>
 
           {/* Right — report preview */}

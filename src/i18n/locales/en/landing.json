@@ -19,20 +19,12 @@
     },
     "previewMock": {
       "header": "Report preview",
-      "sampleActive": "Latest 12 posts",
-      "windowsLocked": {
-        "d30": "30 days",
-        "d60": "60 days",
-        "d90": "90 days",
-        "d365": "365 days"
-      },
+      "urlBar": "auditprofiles.com/report/preview",
       "scoreLabel": "Profile index",
       "scoreValue": "37 / 100",
-      "scoreCaption": "Preview · Illustrative data",
       "kpis": {
-        "engagement": "Engagement",
-        "frequency": "Posts/wk",
-        "costPerPost": "Cost/post"
+        "engagement": "Engagement rate",
+        "frequency": "Posting frequency"
       },
       "sidebar": "1 of 6 sections unlocked",
       "premiumRows": {
@@ -49,18 +41,13 @@
     "placeholder": "@profile or Instagram URL",
     "ariaInput": "Instagram profile username or URL",
     "submit": "Analyze",
-    "addCompetitors": "Add up to 2 competitors to compare",
-    "competitorsLabel": "Competitors (optional)",
-    "remove": "Remove",
-    "competitor1Placeholder": "@competitor 1",
-    "competitor1Aria": "First competitor username",
-    "competitor2Placeholder": "@competitor 2 (optional)",
-    "competitor2Aria": "Second competitor username",
-    "personalHint": "Works best with public Creator/Business profiles. Some personal profiles may not return enough posts for analysis.",
+    "trustInline": {
+      "freeReports": "2 free reports included",
+      "publicData": "Public data only"
+    },
     "errors": {
       "empty": "Enter a valid username to continue",
-      "invalid": "Enter a public Instagram profile, e.g. @brand or instagram.com/brand.",
-      "competitorInvalid": "Invalid competitor. Enter an @ handle or an instagram.com/brand link."
+      "invalid": "Enter a public Instagram profile, e.g. @brand or instagram.com/brand."
     }
   },
   "handwritten": {
