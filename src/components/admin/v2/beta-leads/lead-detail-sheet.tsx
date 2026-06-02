@@ -68,7 +68,7 @@ import {
   ChevronDown,
   MessageCircle,
 } from "lucide-react";
-import { Zap, Flame, Repeat, Wallet, FileBarChart, CalendarClock } from "lucide-react";
+import { Zap, Repeat, Wallet, FileBarChart, CalendarClock } from "lucide-react";
 import { Plus, Download, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -706,21 +706,15 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
     null;
   const suggestedStep = suggestNextLeadAction(lead).label;
   const feedbackIntent = interpretFeedback(lead.feedback);
-  // When feedback exists, override the heuristic intent with the commercial signal.
-  const displayedIntent = lead.feedback
-    ? { label: feedbackIntent.label, accent: feedbackIntent.accent }
-    : intent;
+  // `intent` heuristic is kept for the suggestion text fallback; the dedicated
+  // "Intenção" field was removed from the context grid because it is derived,
+  // not provided by the lead in the onboarding modal.
+  void intent;
   const displayedSuggestion = lead.feedback ? feedbackIntent.nextAction : suggestedStep;
   const columnDef = KANBAN_COLUMNS.find((c) => c.key === lead.commercial_status);
-
-  // Commercial follow-up button is only available when the lead has shown
-  // measurable purchase intent in their feedback AND is still in the funnel.
-  const followupEligible =
-    !!lead.email &&
-    !!lead.feedback &&
-    (feedbackIntent.intent === "alto" || feedbackIntent.intent === "medio") &&
-    lead.commercial_status !== "convertido" &&
-    lead.commercial_status !== "arquivado";
+  // (Follow-up eligibility now lives inside the `nextStepCta` memo above so
+  // hooks order stays stable when `lead` is null.)
+  void feedbackIntent;
 
   const handleSaveNotes = () => {
     onUpdate(lead.id, { internal_notes: notesText });
