@@ -1710,7 +1710,7 @@ function mapFeedbackError(code: string | undefined): string {
 
 // ── Feedback beta section ───────────────────────────────────────
 
-const FEEDBACK_SCORE_EMOJI: Record<number, { emoji: string; label: string }> = {
+export const FEEDBACK_SCORE_EMOJI: Record<number, { emoji: string; label: string }> = {
   5: { emoji: "😍", label: "Muito útil" },
   4: { emoji: "😊", label: "Útil" },
   3: { emoji: "🙂", label: "Razoável" },
