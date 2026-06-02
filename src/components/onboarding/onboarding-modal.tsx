@@ -19,7 +19,22 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Trans, useTranslation } from "react-i18next";
-import { ArrowLeft, Check, Loader2, ShieldCheck, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  Binoculars,
+  Briefcase,
+  Check,
+  CheckCircle2,
+  Lightbulb,
+  Loader2,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  TrendingUp,
+  User,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 
 import {
   Dialog,
@@ -828,7 +843,7 @@ function ChipGroup<T extends string>({
   error,
 }: {
   name: string;
-  options: { value: T; label: string }[];
+  options: { value: T; label: string; icon: LucideIcon }[];
   value: T | undefined;
   onChange: (v: T) => void;
   error?: string;
@@ -838,10 +853,11 @@ function ChipGroup<T extends string>({
       <div
         role="radiogroup"
         aria-label={name}
-        className="grid grid-cols-2 gap-2"
+        className="grid grid-cols-2 gap-2 sm:grid-cols-4"
       >
         {options.map((o) => {
           const selected = value === o.value;
+          const Icon = o.icon;
           return (
             <button
               key={o.value}
@@ -850,14 +866,22 @@ function ChipGroup<T extends string>({
               aria-checked={selected}
               onClick={() => onChange(o.value)}
               className={
-                "rounded-lg border px-3 py-2.5 text-left text-[13px] font-medium transition-colors " +
+                "flex flex-col items-center justify-center gap-1.5 rounded-lg border px-2 py-3 min-h-[76px] text-center text-[12px] font-semibold transition-colors " +
                 (selected
-                  ? "border-primary bg-primary/[0.06] text-content-primary"
+                  ? "border-primary bg-primary/[0.06] text-primary"
                   : "border-border-default/60 bg-card text-content-secondary hover:border-primary/40 hover:text-content-primary")
               }
               data-testid={`chip-${name}-${o.value}`}
             >
-              {o.label}
+              <Icon
+                className={
+                  "size-5 " +
+                  (selected ? "text-primary" : "text-content-tertiary")
+                }
+                aria-hidden="true"
+                strokeWidth={1.75}
+              />
+              <span className="leading-tight">{o.label}</span>
             </button>
           );
         })}
@@ -880,6 +904,19 @@ function Step2Context({
   const ownershipError = form.formState.errors.profile_ownership?.message;
   const goalError = form.formState.errors.goal?.message;
 
+  const ownershipIcons: Record<(typeof RELATIONSHIP_VALUES)[number], LucideIcon> = {
+    own_profile: User,
+    client_profile: Briefcase,
+    brand_profile: Star,
+    competitor_research: Binoculars,
+  };
+  const goalIcons: Record<(typeof GOAL_VALUES)[number], LucideIcon> = {
+    improve_content: Lightbulb,
+    benchmark_competitors: Users,
+    grow_audience: TrendingUp,
+    validate_brand: CheckCircle2,
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-5 sm:flex-row sm:gap-6">
@@ -897,6 +934,7 @@ function Step2Context({
           options={RELATIONSHIP_VALUES.map((v) => ({
             value: v,
             label: t(`onboarding.compactOptions.profileOwnership.${v}`),
+            icon: ownershipIcons[v],
           }))}
           value={ownership as ProfileOwnership | undefined}
           onChange={(v) =>
@@ -917,6 +955,7 @@ function Step2Context({
           options={GOAL_VALUES.map((v) => ({
             value: v,
             label: t(`onboarding.compactOptions.goal.${v}`),
+            icon: goalIcons[v],
           }))}
           value={goal as Goal | undefined}
           onChange={(v) =>

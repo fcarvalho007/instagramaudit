@@ -203,10 +203,10 @@
       "2": {
         "eyebrow": "PASSO 2 DE 3",
         "title": "Para afinarmos a análise",
-        "subtitle": "Duas escolhas rápidas — ajustam o tom e o foco do relatório.",
+        "subtitle": "Duas escolhas rápidas — ajudam-nos a evoluir o produto.",
         "relationshipQuestion": "Que relação tens com <1>@{{handle}}</1>?",
         "goalQuestion": "O que mais te interessa perceber?",
-        "consequenceLine": "Vamos usar isto para evoluir o produto e personalizar próximos relatórios."
+        "consequenceLine": "Vamos usar isto para evoluir o produto."
       },
       "3": {
         "eyebrow": "PASSO 3 DE 3",
@@ -229,14 +229,14 @@
       "profileOwnership": {
         "own_profile": "É meu",
         "client_profile": "De um cliente",
-        "brand_profile": "Da minha marca",
+        "brand_profile": "Minha marca",
         "competitor_research": "Concorrente"
       },
       "goal": {
-        "improve_content": "Melhorar conteúdo",
-        "benchmark_competitors": "Comparar concorrentes",
-        "grow_audience": "Crescer audiência",
-        "validate_brand": "Validar a marca"
+        "improve_content": "Conteúdo",
+        "benchmark_competitors": "Concorrentes",
+        "grow_audience": "Audiência",
+        "validate_brand": "Validar"
       }
     },
     "cta": {
