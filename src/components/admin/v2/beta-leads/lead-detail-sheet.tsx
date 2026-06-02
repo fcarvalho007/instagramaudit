@@ -69,6 +69,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { Zap, Flame, Repeat, Wallet, FileBarChart, CalendarClock } from "lucide-react";
+import { Plus, Download, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import {
   KANBAN_COLUMNS,
@@ -78,7 +79,6 @@ import {
 import { suggestNextLeadAction } from "@/lib/admin/lead-lifecycle";
 import { USER_TYPE_LABELS, type UserType } from "@/lib/unlock-flow";
 import { getEventLabel } from "@/lib/admin/event-labels";
-import { LeadCommunicationTimeline } from "./lead-communication-timeline";
 import { interpretFeedback } from "@/lib/admin/feedback-intent";
 import { AdminCallout } from "@/components/admin/v2/admin-callout";
 import {
