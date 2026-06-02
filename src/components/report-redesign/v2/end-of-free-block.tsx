@@ -1,10 +1,7 @@
-import { useState } from "react";
 import { ArrowRight, BarChart3, Bell, FileText, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import { trackEvent } from "@/lib/tracking.functions";
-import { PremiumInterestDialog } from "./premium-interest-dialog";
-import { useReportTracking } from "./report-tracking-context";
+import { usePremiumCta } from "./premium-cta-context";
 
 // Preços do lançamento (waitlist). Hardcoded até existir checkout real.
 const LAUNCH_PRICE = "7";
@@ -22,24 +19,13 @@ const CURRENCY = "€";
  * em variantes não-gated (no gated, o paywall já comunica "há mais").
  */
 export function ReportEndOfFreeBlock({ className }: { className?: string }) {
-  const { snapshotId, handle, variant } = useReportTracking();
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const { handlePremiumAccessClick } = usePremiumCta();
   const { t } = useTranslation("report");
 
   const openInterest = () => {
-    trackEvent({
-      data: {
-        eventType: "unlock_clicked",
-        snapshotId: snapshotId ?? undefined,
-        handle: handle ?? undefined,
-        metadata: {
-          variant,
-          source_component: "end_of_free_teaser",
-          cta: "guarantee_launch_price",
-        },
-      },
-    }).catch(() => {});
-    setDialogOpen(true);
+    handlePremiumAccessClick("lock_gate", {
+      cta: "guarantee_launch_price",
+    });
   };
 
   const chips = [
@@ -126,7 +112,7 @@ export function ReportEndOfFreeBlock({ className }: { className?: string }) {
               "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40 focus-visible:ring-offset-2",
             )}
           >
-            {t("end_of_free.cta")}
+            {t("nav.access.cta")}
             <ArrowRight className="size-4" aria-hidden="true" />
           </button>
         </div>
@@ -136,15 +122,6 @@ export function ReportEndOfFreeBlock({ className }: { className?: string }) {
           {t("end_of_free.footnote")}
         </p>
       </div>
-
-      <PremiumInterestDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        snapshotId={snapshotId}
-        handle={handle}
-        variant={variant}
-        sourceComponent="end_of_free_teaser"
-      />
     </section>
   );
 }

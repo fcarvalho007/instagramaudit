@@ -44,6 +44,10 @@ export const EVENT_LABELS: Record<string, string> = {
   pricing_clicked: "Preço clicado",
   pricing_option_clicked: "Opção de preço clicada",
 
+  // Premium CTA (unified — relatório público)
+  premium_cta_clicked: "CTA premium clicado",
+  premium_window_interest: "Janela temporal premium aberta",
+
   // Report / pedido
   report_viewed: "Relatório visualizado",
   report_generated: "Relatório gerado",

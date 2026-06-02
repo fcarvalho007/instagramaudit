@@ -1,10 +1,8 @@
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { Crown, Lock, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import { trackEvent } from "@/lib/tracking.functions";
-import { PremiumInterestDialog } from "./premium-interest-dialog";
-import { useReportTracking } from "./report-tracking-context";
+import { usePremiumCta } from "./premium-cta-context";
 
 interface Props {
   /** Title of the premium feature. */
@@ -32,22 +30,17 @@ export function PremiumCallout({
   children,
   className,
   unlockEnabled = false,
-  sourceComponent = "premium_callout",
+  sourceComponent: _sourceComponent = "premium_callout",
 }: Props) {
-  const { snapshotId, handle, variant } = useReportTracking();
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const { handlePremiumAccessClick } = usePremiumCta();
   const { t } = useTranslation("report");
+  // Marker so the unused-prop check is silenced; `sourceComponent` is
+  // accepted for backwards compat but the unified flow tags every callout
+  // as `premium_section` so the funnel stays clean.
+  void _sourceComponent;
 
   const handleUnlock = () => {
-    trackEvent({
-      data: {
-        eventType: "unlock_clicked",
-        snapshotId: snapshotId ?? undefined,
-        handle: handle ?? undefined,
-        metadata: { variant, source_component: sourceComponent },
-      },
-    }).catch(() => {});
-    setDialogOpen(true);
+    handlePremiumAccessClick("premium_section");
   };
 
   return (
@@ -85,30 +78,20 @@ export function PremiumCallout({
           <div className="mt-2">{children}</div>
         ) : null}
         {unlockEnabled ? (
-          <>
-            <div className="mt-3">
-              <button
-                type="button"
-                onClick={handleUnlock}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5",
-                  "text-eyebrow-sm bg-amber-600 text-white hover:bg-amber-700",
-                  "transition-colors",
-                )}
-              >
-                <Sparkles className="size-3" aria-hidden="true" />
-                {t("premium.register_interest")}
-              </button>
-            </div>
-            <PremiumInterestDialog
-              open={dialogOpen}
-              onOpenChange={setDialogOpen}
-              snapshotId={snapshotId}
-              handle={handle}
-              variant={variant}
-              sourceComponent={sourceComponent}
-            />
-          </>
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={handleUnlock}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5",
+                "text-eyebrow-sm bg-amber-600 text-white hover:bg-amber-700",
+                "transition-colors",
+              )}
+            >
+              <Sparkles className="size-3" aria-hidden="true" />
+              {t("nav.access.cta")}
+            </button>
+          </div>
         ) : null}
       </div>
     </div>

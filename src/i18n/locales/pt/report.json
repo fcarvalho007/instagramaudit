@@ -25,11 +25,11 @@
     "premium_365": "365 dias",
     "footnote": "A versão gratuita usa uma amostra recente. Janelas maiores ficam disponíveis no relatório premium.",
     "locked": {
-      "title": "Disponível no relatório premium",
+      "title": "Disponível no relatório completo",
       "body": "Analisa mais histórico para perceber evolução, consistência e padrões de conteúdo ao longo do tempo.",
-      "cta": "Ver opções de acesso",
+      "cta": "Desbloquear relatório completo",
       "secondary": "Continuar com visão gratuita",
-      "aria": "{{window}} — disponível no premium"
+      "aria": "{{window}} — disponível no relatório completo"
     }
   },
   "hero": {

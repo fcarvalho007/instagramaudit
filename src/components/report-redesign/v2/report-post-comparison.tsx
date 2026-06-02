@@ -18,9 +18,7 @@ import { useLanguage } from "@/hooks/use-language";
 import { formatNumber } from "@/lib/i18n/format";
 import type { SupportedLanguage } from "@/i18n";
 import { InsightCallout } from "./overview/insight-callout";
-import { PremiumInterestDialog } from "./premium-interest-dialog";
-import { useReportTracking } from "./report-tracking-context";
-import { trackEvent } from "@/lib/tracking.functions";
+import { usePremiumCta } from "./premium-cta-context";
 
 type EnrichedPost = ReportEnriched["topPosts"][number];
 type ScatterPost = ReportEnriched["allPostsScatter"][number];
@@ -821,27 +819,14 @@ function ScatterTooltip({
 // ─── Premium Reveal ────────────────────────────────────────────────
 
 function PremiumReveal({ lockedCount, t }: { lockedCount: number; t: TR }) {
-  const { snapshotId, handle, variant } = useReportTracking();
-  const [open, setOpen] = useState(false);
+  const { handlePremiumAccessClick } = usePremiumCta();
 
   const openInterest = () => {
-    trackEvent({
-      data: {
-        eventType: "unlock_clicked",
-        snapshotId: snapshotId ?? undefined,
-        handle: handle ?? undefined,
-        metadata: {
-          variant,
-          source_component: "post_comparison_reveal",
-        },
-      },
-    }).catch(() => {});
-    setOpen(true);
+    handlePremiumAccessClick("premium_section");
   };
 
   return (
-    <>
-      <div
+    <div
         className={cn(
           "flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4",
           "rounded-xl border-l-2 border-l-accent-primary border border-border-subtle",
@@ -865,17 +850,7 @@ function PremiumReveal({ lockedCount, t }: { lockedCount: number; t: TR }) {
           {t("posts.premium.cta")}
           <span aria-hidden="true">→</span>
         </button>
-      </div>
-
-      <PremiumInterestDialog
-        open={open}
-        onOpenChange={setOpen}
-        snapshotId={snapshotId}
-        handle={handle}
-        variant={variant}
-        sourceComponent="post_comparison_reveal"
-      />
-    </>
+    </div>
   );
 }
 

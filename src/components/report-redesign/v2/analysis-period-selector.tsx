@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Check, Lock, Calendar } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -8,15 +7,17 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { PremiumInterestDialog } from "./premium-interest-dialog";
+import { usePremiumCta } from "./premium-cta-context";
 
 interface AnalysisPeriodSelectorProps {
   sampleSize: number;
   observedDays: number;
-  snapshotId: string | null;
-  handle: string | null;
-  variant: string;
-  onUnlockClick?: () => void;
+  /** Kept for backwards compat in the props shape — currently unused
+   *  because the unified `PremiumCtaProvider` already knows snapshot,
+   *  handle and variant. Safe to drop in a follow-up. */
+  snapshotId?: string | null;
+  handle?: string | null;
+  variant?: string;
 }
 
 const PREMIUM_WINDOWS = [30, 60, 90, 365] as const;
@@ -25,8 +26,9 @@ const PREMIUM_WINDOWS = [30, 60, 90, 365] as const;
  * Read-only "Analysis period" selector mounted between the hero and the
  * blocks. The active state is always the free sample ("Latest N posts").
  * Premium windows are visible but locked — clicking opens a popover that
- * routes to the existing premium flow (delegates to `onUnlockClick` when
- * available, otherwise opens the standalone PremiumInterestDialog).
+ * routes to the unified premium flow via `PremiumCtaProvider`. The CTA
+ * inside the popover opens the same `PremiumInterestDialog` used by the
+ * sidebar — never the lead-capture UnlockModal.
  *
  * IMPORTANT: this component is purely presentational. It MUST NOT mutate
  * report data, navigate, change query params, refresh snapshots or call
@@ -35,14 +37,10 @@ const PREMIUM_WINDOWS = [30, 60, 90, 365] as const;
 export function AnalysisPeriodSelector({
   sampleSize,
   observedDays,
-  snapshotId,
-  handle,
-  variant,
-  onUnlockClick,
 }: AnalysisPeriodSelectorProps) {
   const { t } = useTranslation("report");
-  const [openWindow, setOpenWindow] = useState<number | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const { handlePremiumAccessClick, trackPremiumWindowInterest } =
+    usePremiumCta();
 
   const observedBadge =
     observedDays > 0
@@ -54,13 +52,10 @@ export function AnalysisPeriodSelector({
         )
       : null;
 
-  const handleCta = () => {
-    setOpenWindow(null);
-    if (onUnlockClick) {
-      onUnlockClick();
-      return;
-    }
-    setDialogOpen(true);
+  const handleCta = (days: number) => {
+    handlePremiumAccessClick("analysis_period_selector", {
+      selected_window: `${days}d`,
+    });
   };
 
   return (
@@ -113,8 +108,9 @@ export function AnalysisPeriodSelector({
               return (
                 <Popover
                   key={days}
-                  open={openWindow === days}
-                  onOpenChange={(o) => setOpenWindow(o ? days : null)}
+                  onOpenChange={(o) => {
+                    if (o) trackPremiumWindowInterest(days);
+                  }}
                 >
                   <PopoverTrigger asChild>
                     <button
@@ -160,7 +156,7 @@ export function AnalysisPeriodSelector({
                     <div className="mt-4 flex flex-col gap-1.5">
                       <button
                         type="button"
-                        onClick={handleCta}
+                        onClick={() => handleCta(days)}
                         className={cn(
                           "inline-flex w-full items-center justify-center rounded-lg h-9 px-4",
                           "bg-accent-primary text-white text-sm font-semibold",
@@ -169,13 +165,9 @@ export function AnalysisPeriodSelector({
                       >
                         {t("selector.locked.cta")}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setOpenWindow(null)}
-                        className="inline-flex w-full items-center justify-center rounded-lg h-8 px-3 text-xs font-medium text-content-secondary hover:text-content-primary"
-                      >
+                      <p className="text-center text-xs leading-relaxed text-content-tertiary">
                         {t("selector.locked.secondary")}
-                      </button>
+                      </p>
                     </div>
                   </PopoverContent>
                 </Popover>
@@ -189,17 +181,6 @@ export function AnalysisPeriodSelector({
           </p>
         </div>
       </div>
-
-      {/* Fallback dialog when no onUnlockClick is provided (e.g. snapshot
-          public route). Mirrors the premium flow used elsewhere. */}
-      <PremiumInterestDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        snapshotId={snapshotId}
-        handle={handle}
-        variant={variant}
-        sourceComponent="analysis_period_selector"
-      />
     </section>
   );
 }

@@ -2,17 +2,18 @@ import { Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
-
-interface Props {
-  onClick: () => void;
-}
+import { usePremiumCta } from "./premium-cta-context";
 
 /**
  * Mobile-only sticky bar that surfaces the unlock CTA when the report
  * is gated. Sits above the bottom tabs bar (which is fixed bottom-0).
+ *
+ * Wired to the unified premium CTA flow via `usePremiumCta`. Source is
+ * tagged as `sticky_unlock_bar` in tracking.
  */
-export function StickyUnlockBar({ onClick }: Props) {
+export function StickyUnlockBar() {
   const { t } = useTranslation("report");
+  const { handlePremiumAccessClick } = usePremiumCta();
   return (
     <div
       className={cn(
@@ -37,7 +38,7 @@ export function StickyUnlockBar({ onClick }: Props) {
         </p>
         <button
           type="button"
-          onClick={onClick}
+          onClick={() => handlePremiumAccessClick("sticky_unlock_bar")}
           className={cn(
             "shrink-0 rounded-lg bg-white px-3 py-1.5",
             "text-[11px] font-bold uppercase tracking-[0.08em] text-content-primary",

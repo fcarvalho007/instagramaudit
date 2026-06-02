@@ -25,11 +25,11 @@
     "premium_365": "365 days",
     "footnote": "The free version uses a recent sample. Larger windows are available in the premium report.",
     "locked": {
-      "title": "Available in the premium report",
+      "title": "Available in the full report",
       "body": "Analyze more history to understand evolution, consistency and content patterns over time.",
-      "cta": "View access options",
+      "cta": "Unlock full report",
       "secondary": "Continue with free overview",
-      "aria": "{{window}} — available in premium"
+      "aria": "{{window}} — available in the full report"
     }
   },
   "hero": {
