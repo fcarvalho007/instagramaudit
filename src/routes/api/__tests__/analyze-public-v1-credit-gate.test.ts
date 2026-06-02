@@ -460,8 +460,10 @@ describe("analyze-public-v1 · Phase 2 credit gate contract", () => {
   it("2. lead com saldo 0 → INSUFFICIENT_CREDITS e Apify NÃO é chamado", async () => {
     await credits.grantInitialCredits(LEAD_ID);
     const r1 = await credits.reserveCredit({ leadId: LEAD_ID });
+    if (r1.kind !== "reserved") throw new Error("expected reserved");
     await credits.confirmReservation({ leadId: LEAD_ID, reservationId: r1.reservationId });
     const r2 = await credits.reserveCredit({ leadId: LEAD_ID });
+    if (r2.kind !== "reserved") throw new Error("expected reserved");
     await credits.confirmReservation({ leadId: LEAD_ID, reservationId: r2.reservationId });
     expect(await credits.getBalance(LEAD_ID)).toBe(0);
 
