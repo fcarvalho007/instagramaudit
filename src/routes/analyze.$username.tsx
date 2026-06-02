@@ -382,20 +382,14 @@ function AnalyzeReady({
       .catch(() => { /* silent fallback — static defaults used */ });
   }, []);
 
-  // UI-only unlock state (Phase 2): persisted in sessionStorage so that QA
-  // reloads keep the unlocked view, but never hits backend / cookies.
-  const [unlocked, setUnlocked] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    try {
-      if (snapshotId && window.sessionStorage.getItem(`ib_unlock:${snapshotId}`) === "1") {
-        return true;
-      }
-      // legacy global key (Phase 2 fallback)
-      return window.sessionStorage.getItem("ib_unlock_preview") === "1";
-    } catch {
-      return false;
-    }
-  });
+  // Onboarding-first flow: chegar a este componente já implica
+  // `lead_session` cookie válido (o servidor devolve ONBOARDING_REQUIRED
+  // caso contrário em `/api/analyze-public-v1`). Logo, todos os
+  // utilizadores que vêem o relatório estão "subscritos" (conta gratuita
+  // criada) e têm direito a Bloco 1 completo — sem LockGatePremium,
+  // sem StickyUnlockBar. O UnlockModal só permanece como fallback para
+  // fluxos legados que entrem com o snapshot já cacheado em outro tab.
+  const [unlocked, setUnlocked] = useState<boolean>(true);
   const [unlockOpen, setUnlockOpen] = useState(false);
 
   // Track report view (fire-and-forget). Guarded por module-level Set +
