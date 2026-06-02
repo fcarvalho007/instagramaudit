@@ -1706,11 +1706,11 @@ function FeedbackBetaSection({
 
   if (!feedback) {
     return (
-      <div className="px-4 sm:px-6 py-5 space-y-5">
+      <div className="px-4 sm:px-6 py-6 space-y-6">
         {/* (A) Empty state — emoji + CTA */}
-        <div className="rounded-xl border border-admin-text-primary/10 bg-white p-6 text-center">
+        <div className="rounded-xl border border-admin-text-primary/10 bg-white p-7 text-center">
           <p className="m-0 text-[44px] leading-none">😊</p>
-          <p className="m-0 mt-3 text-[14px] text-admin-text-secondary">
+          <p className="m-0 mt-4 text-[14px] text-admin-text-secondary">
             Ainda sem feedback deste lead.
           </p>
           <Button
@@ -1718,7 +1718,7 @@ function FeedbackBetaSection({
             onClick={pedirDisabled ? undefined : onPedirFeedback}
             disabled={pedirDisabled}
             title={pedirDisabledReason ?? undefined}
-            className="mt-4 bg-admin-info-500 hover:bg-admin-info-700 text-white"
+            className="mt-5 bg-admin-info-500 hover:bg-admin-info-700 text-white"
           >
             <Send size={13} className="mr-1.5" /> Pedir feedback por email
           </Button>
@@ -1726,20 +1726,20 @@ function FeedbackBetaSection({
 
         {/* Illustrative preview — clearly labelled "Exemplo" */}
         <div>
-          <p className="admin-eyebrow mb-2 flex items-center gap-2">
+          <p className="admin-eyebrow mb-2.5 flex items-center gap-2">
             <span>Como aparece quando responde</span>
-            <span className="text-[10px] font-medium text-admin-text-tertiary px-1.5 py-0.5 rounded bg-admin-surface-muted/70 normal-case tracking-normal">
+            <span className="text-[11px] font-medium text-admin-text-tertiary px-1.5 py-0.5 rounded bg-admin-surface-muted normal-case tracking-normal">
               Exemplo
             </span>
           </p>
-          <div className="rounded-xl border border-dashed border-admin-text-primary/15 bg-admin-surface-muted/30 p-3.5">
-            <div className="flex items-center gap-2 mb-1">
+          <div className="rounded-xl border border-dashed border-admin-text-primary/15 bg-admin-surface-muted/40 p-4">
+            <div className="flex items-center gap-2 mb-1.5">
               <span className="text-[20px] leading-none">😍</span>
               <span className="text-[13px] font-semibold text-admin-text-primary">
                 Muito útil
               </span>
             </div>
-            <p className="m-0 text-[11px] text-admin-text-tertiary mb-2">
+            <p className="m-0 text-[12px] text-admin-text-tertiary mb-2">
               sobre o relatório de @{lead.handle ?? "exemplo"} · há 2 dias
             </p>
             <p className="m-0 text-[13px] italic text-admin-text-secondary">
@@ -1763,16 +1763,16 @@ function FeedbackBetaSection({
     : null;
 
   return (
-    <div className="px-4 sm:px-6 py-5 space-y-4">
-      <div className="rounded-xl border border-admin-text-primary/10 bg-white p-4">
+    <div className="px-4 sm:px-6 py-6 space-y-5">
+      <div className="rounded-xl border border-admin-text-primary/10 bg-white p-5">
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex items-center gap-3 min-w-0">
             <span className="text-[26px] leading-none shrink-0">{scoreInfo.emoji}</span>
             <div className="min-w-0">
-              <p className="m-0 text-[14px] font-semibold text-admin-text-primary">
+              <p className="m-0 text-[14px] font-semibold text-admin-text-primary leading-tight">
                 {scoreInfo.label}
               </p>
-              <p className="m-0 text-[11px] text-admin-text-tertiary">
+              <p className="m-0 mt-0.5 text-[12px] text-admin-text-tertiary tabular-nums">
                 sobre o relatório de @{lead.handle ?? "—"} ·{" "}
                 {relativeTime(feedback.created_at)}
               </p>
@@ -1782,23 +1782,23 @@ function FeedbackBetaSection({
         </div>
 
         {feedback.clarity_text && (
-          <div className="mt-3 pt-3 border-t border-admin-text-primary/10">
-            <p className="admin-eyebrow-sm mb-1">O que ficou mais claro</p>
-            <p className="m-0 text-[13px] text-admin-text-primary whitespace-pre-wrap">
+          <div className="mt-4 pt-4 border-t border-admin-text-primary/10">
+            <p className="admin-eyebrow-sm mb-1.5">O que ficou mais claro</p>
+            <p className="m-0 text-[13px] leading-relaxed text-admin-text-primary whitespace-pre-wrap">
               {feedback.clarity_text}
             </p>
           </div>
         )}
         {feedback.missing_text && (
-          <div className="mt-3 pt-3 border-t border-admin-text-primary/10">
-            <p className="admin-eyebrow-sm mb-1">O que faltou</p>
-            <p className="m-0 text-[13px] text-admin-text-primary whitespace-pre-wrap">
+          <div className="mt-4 pt-4 border-t border-admin-text-primary/10">
+            <p className="admin-eyebrow-sm mb-1.5">O que faltou</p>
+            <p className="m-0 text-[13px] leading-relaxed text-admin-text-primary whitespace-pre-wrap">
               {feedback.missing_text}
             </p>
           </div>
         )}
 
-        <div className="mt-3 pt-3 border-t border-admin-text-primary/10 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-[12px]">
+        <div className="mt-4 pt-4 border-t border-admin-text-primary/10 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-[12px]">
           <span className="text-admin-text-tertiary">Disposto a pagar</span>
           <span className="text-admin-text-primary">
             {PURCHASE_INTENT_LABELS[feedback.purchase_intent]}
@@ -1816,17 +1816,11 @@ function FeedbackBetaSection({
         </div>
       </div>
 
-      <div
-        className="rounded-xl p-3.5 flex items-start gap-2.5"
-        style={{
-          backgroundColor: "rgba(55,114,229,0.06)",
-          borderLeft: "3px solid rgba(55,114,229,0.4)",
-        }}
-      >
+      <div className="rounded-xl p-4 flex items-start gap-3 bg-admin-info-50/60 border-l-[3px] border-admin-info-500/50">
         <Lightbulb size={15} className="text-admin-info-500 shrink-0 mt-0.5" />
         <div className="min-w-0">
-          <p className="admin-eyebrow mb-1 text-admin-info-700">Sinal comercial</p>
-          <p className="m-0 text-[13px] font-medium text-admin-text-primary">
+          <p className="admin-eyebrow mb-1.5 text-admin-info-700">Sinal comercial</p>
+          <p className="m-0 text-[13px] leading-snug font-medium text-admin-text-primary">
             {intent.nextAction}
           </p>
         </div>
