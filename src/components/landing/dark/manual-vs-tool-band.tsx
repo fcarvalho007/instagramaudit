@@ -10,12 +10,18 @@ import { Reveal } from "./reveal";
 export function ManualVsToolBand() {
   const { t } = useTranslation("landing");
 
-  const manualItems = t("dark.manualVsTool.manual.items", {
-    returnObjects: true,
-  }) as string[];
-  const toolItems = t("dark.manualVsTool.tool.items", {
-    returnObjects: true,
-  }) as string[];
+  const manualItems = [
+    t("dark.manualVsTool.manual.item1"),
+    t("dark.manualVsTool.manual.item2"),
+    t("dark.manualVsTool.manual.item3"),
+    t("dark.manualVsTool.manual.item4"),
+  ];
+  const toolItems = [
+    t("dark.manualVsTool.tool.item1"),
+    t("dark.manualVsTool.tool.item2"),
+    t("dark.manualVsTool.tool.item3"),
+    t("dark.manualVsTool.tool.item4"),
+  ];
 
   return (
     <section
