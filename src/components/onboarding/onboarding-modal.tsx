@@ -668,7 +668,7 @@ function maskEmail(email: string): string {
 
 function ProgressSegments({ current, total }: { current: number; total: number }) {
   return (
-    <div className="flex gap-1.5 pt-1" aria-hidden>
+    <div className="flex gap-2 pt-2" aria-hidden>
       {Array.from({ length: total }).map((_, i) => {
         const filled = i < current;
         return (
