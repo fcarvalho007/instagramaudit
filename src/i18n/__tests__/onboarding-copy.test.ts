@@ -20,8 +20,16 @@ type Gate = {
     intro: {
       handleContext: string;
       creditNote: string;
-      freeValue: string[];
       cta: string;
+      haveAccount: string;
+      haveAccountCta: string;
+    };
+    login: {
+      eyebrow: string;
+      title: string;
+      subtitle: string;
+      cta: string;
+      noAccountCta: string;
     };
     errors: { generic: string; network: string };
     steps: Record<
