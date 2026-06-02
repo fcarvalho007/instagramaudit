@@ -1242,35 +1242,29 @@ function ProgressTracker({
   ];
 
   return (
-    <div className="flex items-center gap-1 mb-4">
+    <div className="flex items-center gap-1.5 mb-4">
       {steps.map((step, i) => (
-        <div key={step.label} className="flex items-center gap-1 flex-1">
+        <div key={step.label} className="flex items-center gap-1.5 flex-1">
           <div
-            className="flex items-center justify-center rounded-full shrink-0"
-            style={{
-              width: 22,
-              height: 22,
-              fontSize: 11,
-              fontWeight: 600,
-              backgroundColor: step.done ? "rgba(5,150,105,0.15)" : "rgba(44,44,42,0.06)",
-              color: step.done ? "#059669" : "rgba(44,44,42,0.4)",
-            }}
+            className={`flex items-center justify-center rounded-full shrink-0 text-[11px] font-semibold ${
+              step.done
+                ? "bg-admin-revenue-500/15 text-admin-revenue-500"
+                : "bg-admin-text-primary/5 text-admin-text-tertiary"
+            }`}
+            style={{ width: 22, height: 22 }}
           >
             {step.done ? "✓" : i + 1}
           </div>
           <span
-            className="admin-meta"
-            style={{ color: step.done ? "#059669" : undefined }}
+            className={`admin-meta ${step.done ? "text-admin-revenue-500 font-medium" : ""}`}
           >
             {step.label}
           </span>
           {i < steps.length - 1 && (
             <div
-              className="flex-1 mx-1"
-              style={{
-                height: 1,
-                backgroundColor: step.done ? "rgba(5,150,105,0.3)" : "rgba(44,44,42,0.10)",
-              }}
+              className={`flex-1 mx-1 h-px ${
+                step.done ? "bg-admin-revenue-500/30" : "bg-admin-text-primary/10"
+              }`}
             />
           )}
         </div>
