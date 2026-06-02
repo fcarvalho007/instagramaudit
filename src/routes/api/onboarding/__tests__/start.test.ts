@@ -112,10 +112,14 @@ function leadsBuilder() {
 vi.mock("@/integrations/supabase/client.server", () => ({
   supabaseAdmin: {
     from: (table: string) => {
-      if (table !== "leads") {
-        throw new Error(`unexpected table in test: ${table}`);
+      if (table === "leads") return leadsBuilder();
+      if (table === "product_events") {
+        // Server logs server-side rejections in product_events; swallow.
+        return {
+          insert: (_rows: unknown) => Promise.resolve({ data: null, error: null }),
+        };
       }
-      return leadsBuilder();
+      throw new Error(`unexpected table in test: ${table}`);
     },
   },
 }));
