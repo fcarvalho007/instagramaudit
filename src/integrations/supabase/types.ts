@@ -898,6 +898,8 @@ export type Database = {
           created_at: string
           email: string
           email_normalized: string
+          gdpr_consent_at: string | null
+          gdpr_consent_version: string | null
           id: string
           internal_notes: string | null
           marketing_consent: boolean
@@ -922,6 +924,8 @@ export type Database = {
           created_at?: string
           email: string
           email_normalized: string
+          gdpr_consent_at?: string | null
+          gdpr_consent_version?: string | null
           id?: string
           internal_notes?: string | null
           marketing_consent?: boolean
@@ -946,6 +950,8 @@ export type Database = {
           created_at?: string
           email?: string
           email_normalized?: string
+          gdpr_consent_at?: string | null
+          gdpr_consent_version?: string | null
           id?: string
           internal_notes?: string | null
           marketing_consent?: boolean
