@@ -1,7 +1,7 @@
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Info } from "lucide-react";
 import type { ReactNode } from "react";
 
-type Variant = "warning";
+type Variant = "warning" | "info";
 
 const VARIANT_STYLES: Record<
   Variant,
@@ -11,6 +11,11 @@ const VARIANT_STYLES: Record<
     bg: "rgb(var(--tint-warning))",
     border: "1px solid rgb(var(--signal-warning) / 0.25)",
     accent: "rgb(var(--signal-warning))",
+  },
+  info: {
+    bg: "rgb(var(--admin-info-50))",
+    border: "1px solid rgb(var(--admin-info-500) / 0.25)",
+    accent: "rgb(var(--admin-info-700))",
   },
 };
 
@@ -34,11 +39,11 @@ export function AdminCallout({
   const style = VARIANT_STYLES[variant];
   const resolvedIcon =
     icon ?? (
-      <AlertTriangle
-        size={15}
-        className="shrink-0 mt-0.5"
-        style={{ color: style.accent }}
-      />
+      variant === "info" ? (
+        <Info size={15} className="shrink-0 mt-0.5" style={{ color: style.accent }} />
+      ) : (
+        <AlertTriangle size={15} className="shrink-0 mt-0.5" style={{ color: style.accent }} />
+      )
     );
 
   return (
