@@ -815,8 +815,8 @@ function Step1Name({
   const { t } = useTranslation("gate");
   const error = form.formState.errors.full_name?.message;
   return (
-    <div className="space-y-1.5">
-      <Label htmlFor="onb-full-name" className="text-sm">
+    <div className="space-y-2">
+      <Label htmlFor="onb-full-name" className="text-[15px] font-medium text-content-primary">
         {t("onboarding.steps.1.nameLabel")}
       </Label>
       <Input
@@ -826,12 +826,13 @@ function Step1Name({
         autoComplete="name"
         placeholder={t("onboarding.steps.1.namePlaceholder")}
         aria-invalid={Boolean(error)}
+        className="text-base"
         {...form.register("full_name")}
       />
-      <p className="text-[11px] text-content-tertiary">
+      <p className="text-[13px] text-content-tertiary leading-[1.45]">
         {t("onboarding.steps.1.nameHint")}
       </p>
-      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
     </div>
   );
 }
