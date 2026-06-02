@@ -1,108 +1,204 @@
 
 ## Âmbito
 
-Apenas o dropdown "Estado comercial" no painel Resumo da ficha de cliente (`lead-detail-sheet.tsx`). As três tabs Relatórios / Feedback / Histórico **já têm conteúdo** (lista de pedidos, FeedbackBetaSection, LeadCommunicationTimeline + product_events) — não estão vazias. Confirmar no fim se queres iterar essas tabs noutro prompt.
+Refazer as 3 tabs da ficha de cliente — **Relatórios**, **Feedback**, **Histórico** — segundo os mockups. Cada tab responde a uma pergunta distinta:
 
-## O que muda
+- **Relatórios** = o que ele tem
+- **Feedback** = o que ele acha
+- **Histórico** = o que aconteceu
 
-Substituir o `Select` actual (2 grupos plano: Decisão comercial / Automático) por um dropdown com **3 secções visuais** e comportamento misto (linhas informativas vs. linhas clicáveis), tal como o mockup.
+Sem sobreposição. Mantenho a tab Resumo intacta (mudámo-la no prompt anterior).
+
+---
+
+## TAB 1 — Relatórios
+
+### Layout
 
 ```
-ESTADO COMERCIAL
-┌─ [● Novo pedido                                 ▾] ─┐
-│                                                     │
-│  ⚡ AUTOMÁTICO · O SISTEMA ATUALIZA                 │
-│     ✓ Subscreveu lead magnet              01/06    │  ← cinza claro
-│     ✓ Relatório gerado                    01/06    │  ← cinza claro
-│     ○ Link enviado                                  │  ← desactivado
-│     ○ Relatório visto                               │  ← desactivado
-│     ○ Checkout iniciado                             │  ← desactivado
-│  ─────────────────────────────────────────────      │
-│  💳 PAGAMENTO                                       │
-│     ○ Pagou 1 relatório                       7€   │
-│     ○ Pagou pack de 5                        28€   │
-│  ─────────────────────────────────────────────      │
-│  ✋ A TUA DECISÃO                                   │
-│     ● Novo pedido                              ✓   │  ← realçado azul
-│     ○ Em análise por mim                            │
-│     ○ Interessado                                   │
-│     ○ Potencial cliente                             │
-│     ○ Convertido                                    │
-│     🗄 Arquivar / Expirado                          │
-└─────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│ 1 relatório · 1 crédito por usar       + Gerar para este lead │
+├─────────────────────────────────────────────────────────────┤
+│ ┌───┐  @webhspt  [Gerado]  01/06 · 07:15  · índice 41   ⎘ ↓ │
+│ └───┘                                                        │
+│       👁 Ainda não foi visto pelo lead.                      │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Mapeamento de estados (17 → 3 grupos)
+### Conteúdo
 
-| Grupo | Estado actual (DB) | Label novo | Clicável? |
-|---|---|---|---|
-| Automático | `lead_magnet` | Subscreveu lead magnet | não |
-| Automático | `relatorio_gerado` | Relatório gerado | não |
-| Automático | `link_enviado` | Link enviado | não |
-| Automático | `relatorio_visto` | Relatório visto | não |
-| Automático | `checkout_iniciado` | Checkout iniciado | não |
-| Pagamento | `pago_report` | Pagou 1 relatório · 7€ | sim |
-| Pagamento | `pago_pack5` | Pagou pack de 5 · 28€ | sim |
-| Decisão | `novo_pedido` | Novo pedido | sim |
-| Decisão | `em_analise` | Em análise por mim | sim |
-| Decisão | `interessado` | Interessado | sim |
-| Decisão | `potencial_cliente` | Potencial cliente | sim |
-| Decisão | `convertido` | Convertido | sim |
-| Decisão | `arquivado` / `expirado` | Arquivar / Expirado | sim (vai para `arquivado`) |
-| Removidos do dropdown | `feedback_pedido`, `feedback_recebido` | — | passam para tab Feedback |
+**Cabeçalho do bloco** (uma linha):
+- Esquerda: `N relatório(s) · X / Y créditos por usar` (X = `credits_remaining`, Y = `credits_granted`). Inter SemiBold tabular-nums.
+- Direita: link `+ Gerar para este lead` — abre o `GenerateReportDialog` existente, só visível quando o lead tem `report_request_id` e `report_status ∈ approved|pending_review|failed`. Caso contrário fica desactivado com tooltip.
 
-`pago_report` e `pago_pack5` ficam clicáveis (a entrar manualmente um pagamento confirmado é cenário raro mas legítimo de correcção). Posso desactivá-los se preferires; diz só.
+**Cada relatório** (uma linha por `report_request`, dados via endpoint actual `/api/admin/report-requests?lead_id=...`):
+- Avatar quadrado pequeno (Instagram glyph 32×32, bg `--admin-surface-muted`).
+- `@handle` Inter SemiBold.
+- Chip de estado: `Gerado` (verde) / `A processar` (azul) / `Por aprovar` (cinza) / `Falhou` (vermelho) — mapeado de `request_status`.
+- Data curta `DD/MM · HH:MM`.
+- ~~`· índice 41`~~ → **não temos `score`/`índice` em `analysis_snapshots`** (verifiquei em `types.ts`); mostro apenas a data e fica preparado para acrescentar quando o campo existir. Se quiseres já o índice, abre um prompt para adicionar a coluna.
+- Ações à direita: ícone `Abrir` (link `/analyze/$handle`) e ícone `PDF` (download de `pdf_storage_path` quando `pdf_status='generated'`, senão desactivado com tooltip "PDF ainda não foi gerado").
+- Linha abaixo (sub-meta cinzenta):
+  - Se `report_views === 0` → 👁 *"Ainda não foi visto pelo lead."*
+  - Se `report_views > 0` → ✓ *"Visto N vezes · última vez {data}"*
 
-### Timestamps e marcadores nas linhas "Automático"
+**Estado vazio**: "Este lead ainda não pediu nenhum relatório." + botão `+ Gerar para este lead` quando aplicável.
 
-Cada linha mostra ✓ + data quando o evento já aconteceu, senão ○ a cinzento:
+### Reaproveitamento
+- A função `LeadReportsList` actual (linhas 1873–1984) já chama o endpoint correcto — reescrevo só o render para o layout novo, sem mexer no endpoint.
 
-- Subscreveu lead magnet → `lead.lead_magnet.last_event_at` (ou `beta_consent_at`)
-- Relatório gerado → primeiro evento `report.generated` no `timeline`, ou fallback: `report_status` ∈ ready/generated
-- Link enviado → `lastReportLinkSentAt` (já existe no componente)
-- Relatório visto → `report_views > 0` (data do 1º view do timeline, se disponível)
-- Checkout iniciado → `payment_summary.pending_checkout_started_at` ou `last_payment_at`
+---
 
-Quando não houver data, mostra só ✓ sem timestamp; quando o evento ainda não aconteceu, círculo vazio cinzento.
+## TAB 2 — Feedback
 
-### Marcadores nas linhas "Pagamento"
+### Layout
 
-Mostrar ✓ azul quando `payment_summary.paid_products.includes("report_single" / "pack_5")`. Valor à direita em Inter SemiBold tabular-nums.
+Dois estados possíveis no mesmo card grande, decididos por `lead.feedback`:
 
-### Marcador na linha actual (qualquer grupo)
+**(A) Sem feedback ainda** (estado actual da maioria dos leads):
+```
+        😊  (emoji grande, centrado)
+   Ainda sem feedback deste lead.
+   [ ✈ Pedir feedback por email ]   ← CTA primária (azul)
+   ─────────────────────────────────
+   COMO APARECE QUANDO RESPONDE
+   ┌──────────────────────────────┐
+   │ 😍  Muito útil               │
+   │ sobre o relatório de @x · há 2 dias │
+   │ "Adorei a clareza..."        │
+   └──────────────────────────────┘   ← preview ilustrativo, etiquetado
+```
+- Botão "Pedir feedback por email" abre o `FeedbackRequestDialog` existente.
+- Disabled + tooltip quando o lead não tem email ou não tem relatório pronto.
+- Preview ilustrativo: card com bg `--admin-surface-muted` e badge "Exemplo" no canto, para o operador saber como vai parecer. Posso esconder este preview atrás de um `<details>` se preferires não ter exemplo permanente — diz só.
 
-`● Estado · ✓` em azul (`--admin-info-500`), bg `--admin-info-50`, igual ao mockup.
+**(B) Com feedback recebido**:
+```
+┌────────────────────────────────────────────┐
+│ 😍 Muito útil                  ▸ Alto      │
+│ sobre o relatório de @handle · há 2 dias   │
+│                                            │
+│ "Adorei a clareza do diagnóstico.          │
+│  Faltou comparar com concorrentes."        │
+│                                            │
+│ ── Disposto a pagar: Sim ──────────────    │
+│ ── Opção preferida: Pack 5 (28€) ──────    │
+│ ── Permite contacto: Sim ──────────────    │
+└────────────────────────────────────────────┘
+
+┌─ 💡 SINAL COMERCIAL ──────────────────────┐
+│ Alto · feedback positivo + intenção de    │
+│ compra → enviar follow-up com pack 5      │
+└───────────────────────────────────────────┘
+```
+
+### Mapeamento score → emoji + label
+
+| Score | Emoji | Label |
+|---|---|---|
+| 5 | 😍 | Muito útil |
+| 4 | 😊 | Útil |
+| 3 | 🙂 | Razoável |
+| 2 | 😐 | Pouco útil |
+| 1 | 😞 | Nada útil |
+
+(Já existe `interpretFeedback` para o sinal comercial — reutilizo.)
+
+### Reaproveitamento
+- Refaço o `FeedbackBetaSection` (linhas 1757–1872) para o layout novo. Mantenho os campos `usefulness_score`, `purchase_intent`, `pricing_preference`, `clarity_text`, `missing_text`, `created_at` — todos já vêm da query existente.
+
+---
+
+## TAB 3 — Histórico
+
+### Layout (timeline vertical com rail à esquerda)
+
+```
+●━━━ Criou conta e pediu análise de @webhspt
+│      via modal de onboarding · 01/06, 07:15
+│
+●━━━ Relatório gerado · 1 crédito usado
+│      01/06, 07:16
+│
+○━━━ Email com o link enviado
+┊      01/06, 07:16
+┊
+◌╴╴╴ À espera de o lead abrir o relatório…
+```
+
+- **Cheio (●)** → evento já aconteceu.
+- **Vazio com borda (○)** → evento aconteceu mas é informativo (envio automático).
+- **Tracejado (◌)** → estado pendente / à espera (não é um evento, é uma projecção do próximo passo).
+- Linha vertical a `1px solid` para concluídos, `1px dashed` entre o último concluído e o pendente.
+- Sem ícones dentro dos bullets — só cor + forma (mais limpo que o `TimelineSection` actual).
+
+### Fonte de dados
+
+Pega no `timeline` actual (`/api/admin/lead-timeline/$id` → `product_events`) e mapeia para entradas humanas. Os eventos relevantes já são registados hoje (confirmei em `event-labels.ts`):
+
+| Entrada UI | Evento(s) de origem |
+|---|---|
+| "Criou conta e pediu análise de @handle" | `beta_request_created` (ou `unlock_email_submitted` para leads via desbloqueio) |
+| "Relatório gerado · N créditos usados" | `report_generated` (+ olhar `credit_ledger` para o `N`) |
+| "Email com o link enviado" | `report_link_sent` |
+| "Lead abriu o relatório" | `report_viewed` (agrupar consecutivos com count) |
+| "Feedback pedido por email" | `feedback_requested` |
+| "Feedback recebido" | `feedback_submitted` |
+| "Pagou Xeur · pack/relatório" | `pricing_option_clicked` → ou um futuro `payment_confirmed` (ver nota) |
+| "Follow-up comercial enviado" | `commercial_followup_sent` |
+
+**Projecção do próximo passo** (último item tracejado): derivada de `suggestNextLeadAction(lead).label`. Quando o estado é terminal (`convertido`, `arquivado`), não mostro projecção.
+
+### Reaproveitamento
+- Crio novo componente `LeadHistoryTimeline` no mesmo ficheiro. **Não** uso o `TimelineSection` actual nesta tab (visual diferente). O `LeadCommunicationTimeline` desaparece desta tab — fica disponível só para uso interno de debug se quiseres mantê-lo, mas removo o import na tab.
+- Mantenho o agrupamento de `report_viewed` consecutivos (`groupConsecutiveViews`) — só muda o render.
+
+---
+
+## O reparo honesto sobre eventos
+
+Verifiquei `src/lib/admin/event-labels.ts` e os call-sites em `lead-events.server.ts` + `feedback.functions.ts` + endpoints de envio de email. Os eventos que a timeline da ficha precisa **já são registados hoje**:
+
+- ✅ `beta_request_created` — criado em `/api/onboarding/start` e em `unlock.server.ts`.
+- ✅ `report_generated` — registado em `generate-beta-report`.
+- ✅ `report_link_sent` — registado em `send-report-link`.
+- ✅ `report_viewed` — registado quando o relatório público é aberto.
+- ✅ `feedback_requested` / `feedback_submitted` — registados nos endpoints respectivos.
+- ✅ `commercial_followup_sent` — registado em `send-commercial-followup`.
+
+**Buracos conhecidos**:
+- ❌ Não há evento explícito de **pagamento confirmado** (`payment_confirmed`) — hoje só temos `pricing_option_clicked` (intenção, não confirmação) e a tabela `lead_payments`. Para a timeline, derivo o evento "Pagou X€" a partir do `payment_summary.paid_products` + `last_payment_at`, mas fica sem um `product_event` próprio. Se quiseres timeline e dashboard alinhados, abrir prompt separado para emitir `payment_confirmed` no webhook eupago — é o tracking de funil que mencionas.
+- ❌ Não há evento `lead_created` específico para distinguir "via onboarding modal" vs "via desbloqueio direto" — uso `source` do lead + presença de `unlock_email_submitted` no timeline para inferir.
+
+Não fecho estes buracos neste prompt — só os deixo documentados.
+
+---
 
 ## Ficheiros tocados
 
-1. **`src/lib/admin/kanban-columns.ts`**
-   - Alargar `COMMERCIAL_STATUS_OPTIONS[].kind` para `"manual" | "auto" | "payment"`.
-   - Reetiquetar `em_analise` → "Em análise por mim", `pago_report` → "Pagou 1 relatório", `pago_pack5` → "Pagou pack de 5".
-   - Adicionar campo opcional `amount_eur?: number` para os dois `payment`.
-   - Remover `feedback_pedido` / `feedback_recebido` do array (ou marcá-los `hidden: true` para não partir leads legados — preferência: `hidden`).
+1. **`src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`**
+   - Reescrever o conteúdo de `TabsContent value="relatorio"` (linhas 985–1052): drop dos `DetailRow`/`ProgressTracker`/`SectionTitle "Último relatório"` actuais. Fica apenas o cabeçalho compacto + lista nova de relatórios.
+   - Reescrever `LeadReportsList` (linhas 1873–1984) com o card novo (avatar + meta + sub-linha "visto/não visto").
+   - Reescrever `FeedbackBetaSection` (linhas 1757–1872) com os estados (A) sem feedback / (B) com feedback.
+   - Substituir o conteúdo de `TabsContent value="historico"` (linhas 1059–1087) por um novo `LeadHistoryTimeline` (timeline vertical com rail). Remover `LeadCommunicationTimeline` desta tab.
 
-2. **`src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`**
-   - Substituir o bloco do `Select` (linhas 652–691) por um novo componente local `CommercialStatusSelect` que renderiza os 3 grupos com a hierarquia visual acima.
-   - Receber `lead` (para timestamps), `value`, `onChange`.
-   - Continua a usar `shadcn/ui` Select por baixo, com `SelectGroup` + `SelectSeparator` + `SelectLabel` (eyebrow com ícone). Linhas "auto" usam `disabled` + classe cinzenta + sufixo de data; linhas "payment" mostram `€` alinhado à direita; linhas "decisão" são clicáveis a cor plena.
-   - Adicionar um pequeno helper `getAutoStateTimestamp(lead, key, timeline)` colocado dentro do mesmo ficheiro (não justifica módulo novo).
+2. **`src/components/admin/v2/beta-leads/__tests__/lead-history-timeline.test.tsx`** (novo)
+   - Mapeia `beta_request_created`, `report_generated`, `report_link_sent`, `report_viewed` para entradas legíveis.
+   - Última entrada tracejada quando o estado não é terminal.
+   - Não mostra projecção quando `commercial_status ∈ {convertido, arquivado, expirado}`.
 
-3. **`src/components/admin/v2/beta-leads/__tests__/`**
-   - Novo `commercial-status-select.test.tsx`: render dos 3 grupos, linhas auto desactivadas, datas presentes/ausentes, selecção de "Arquivar" emite `arquivado`.
-   - Actualizar testes existentes que façam snapshot do select antigo (se algum partir).
+3. **`src/components/admin/v2/beta-leads/__tests__/feedback-beta-section.test.tsx`** (novo)
+   - Estado A: emoji + CTA "Pedir feedback por email" + preview ilustrativo.
+   - Estado B: emoji correcto por score, mostra `clarity_text` + `missing_text` + sinal comercial.
 
-## Notas honestas
+4. **Não tocar**: `kanban-columns.ts`, `event-labels.ts`, `/api/admin/lead-timeline/$id`, `/api/admin/report-requests`.
 
-- **Sem migração de DB.** Os 17 valores em `commercial_status` continuam válidos; só muda o agrupamento visual e os labels.
-- **`em_analise`** é actualmente classificado como `auto` em `kanban-columns.ts` (linha 60). Vais reclassificá-lo como **manual** porque é uma decisão tua, não do sistema. Verifico que nenhuma rotina de servidor (`lead-events.server.ts`, `automation-flow.ts`) escreve `em_analise` automaticamente — se escrever, deixo o auto-write a funcionar mas o UI mostra-o sempre no grupo "A tua decisão".
-- **Tabs Relatórios / Feedback / Histórico já têm conteúdo real** (não são "só nomes"). Se quiseres iterá-las (ex.: timeline de feedback com pedidos enviados, ou unificar Relatórios+Histórico) abre um prompt separado — não as toco aqui.
-- **"Arquivar / Expirado"** colapsa dois estados num só item da UI. Internamente continuo a escrever `arquivado`; `expirado` continua a poder vir do servidor (kill switch de créditos) e é mostrado correctamente porque o select aceita ambos como current value.
+---
 
 ## Checkpoint
 
-- ☐ `kanban-columns.ts` actualizado (kinds, labels, amount_eur, hidden em feedback_*)
-- ☐ `CommercialStatusSelect` renderiza 3 grupos com hierarquia visual do mockup
-- ☐ Linhas auto mostram ✓ + data quando o evento aconteceu, ○ cinzento quando não
-- ☐ Linhas pagamento mostram valor € à direita e ✓ quando pago
-- ☐ Linha actual realçada a azul com ✓
-- ☐ Testes passam (`bunx vitest run lead-detail-sheet commercial-status-select`)
+- ☐ TAB Relatórios: cabeçalho com créditos + CTA "Gerar para este lead"; cada linha com avatar, handle, estado, data, acções abrir/PDF, sub-linha "visto/não visto"
+- ☐ TAB Feedback: estado A com emoji + CTA + preview etiquetado; estado B com emoji por score + texto + sinal comercial
+- ☐ TAB Histórico: timeline vertical com bullets cheios/vazios/tracejados; sem `LeadCommunicationTimeline`
+- ☐ Os 3 reparos honestos documentados (índice ausente, payment_confirmed ausente, source heurística)
+- ☐ Testes novos passam (`bunx vitest run lead-history-timeline feedback-beta-section`)
