@@ -36,6 +36,11 @@
     rgba(0, 0, 0, 1) calc(100% - 24px),
     rgba(0, 0, 0, 0) 100%
   );
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.hero-chips-scroll::-webkit-scrollbar {
+  display: none;
 }
 
 /* Stagger fade-in para o mockup. Sem libs. */
