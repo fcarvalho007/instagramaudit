@@ -58,17 +58,17 @@ export function ReportHeroV2({
   return (
     <section
       aria-label={handle}
-      className="w-full px-5 md:px-6 pt-3 pb-2"
+      className="w-full px-4 sm:px-6 pt-2 pb-1 sm:pt-3 sm:pb-2"
     >
       <div className="mx-auto max-w-[1520px]">
         <div
           className={cn(
-            "rounded-2xl border border-border-default bg-white shadow-card overflow-hidden",
+            "rounded-xl sm:rounded-2xl border border-border-default bg-white shadow-card overflow-hidden",
             "transition-all duration-200",
           )}
         >
           {/* ── COMPACT BAR (sempre visível) ─────────────────────── */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3">
+          <div className="flex flex-row items-center gap-2 sm:gap-4 px-3 sm:px-5 py-2 sm:py-3">
             {/* Identity */}
             <div className="flex items-center gap-3 min-w-0 flex-1">
               <CompactAvatar
@@ -79,22 +79,31 @@ export function ReportHeroV2({
               />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap min-w-0">
-                  <span className="font-display text-[15px] sm:text-base font-semibold text-content-primary tracking-tight truncate min-w-0">
+                  <span className="font-display text-[14px] sm:text-base font-semibold text-content-primary tracking-tight truncate min-w-0">
                     {handleWrappable}
                   </span>
                   {tierLabel && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-muted text-[11px] font-medium text-content-secondary border border-border-default whitespace-nowrap">
+                    <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full bg-surface-muted text-[11px] font-medium text-content-secondary border border-border-default whitespace-nowrap">
                       {tierLabel}
                     </span>
                   )}
                 </div>
-                <CompactMetricLine
-                  followers={followers}
-                  postsCount={postsCount}
-                  postsAnalyzed={postsAnalyzed}
-                  language={language}
-                  t={t}
-                />
+                <div className="hidden sm:block">
+                  <CompactMetricLine
+                    followers={followers}
+                    postsCount={postsCount}
+                    postsAnalyzed={postsAnalyzed}
+                    language={language}
+                    t={t}
+                  />
+                </div>
+                <div className="sm:hidden">
+                  <MobileMicroMetric
+                    followers={followers}
+                    language={language}
+                    t={t}
+                  />
+                </div>
               </div>
               <button
                 type="button"
@@ -103,11 +112,11 @@ export function ReportHeroV2({
                 aria-controls={expandedId}
                 aria-label={t(expanded ? "hero.actions.collapse" : "hero.actions.expand")}
                 title={t(expanded ? "hero.actions.collapse" : "hero.actions.expand")}
-                className="shrink-0 inline-flex items-center justify-center size-8 rounded-lg text-content-tertiary hover:text-content-primary hover:bg-surface-muted transition-colors"
+                className="shrink-0 inline-flex items-center justify-center size-7 sm:size-8 rounded-lg text-content-tertiary hover:text-content-primary hover:bg-surface-muted transition-colors"
               >
                 <ChevronDown
                   className={cn(
-                    "size-4 transition-transform duration-200",
+                    "size-3.5 sm:size-4 transition-transform duration-200",
                     expanded && "rotate-180",
                   )}
                   aria-hidden="true"
@@ -116,7 +125,7 @@ export function ReportHeroV2({
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
               <button
                 type="button"
                 onClick={actions.onExportPdf}
@@ -125,7 +134,7 @@ export function ReportHeroV2({
                 aria-label={t("hero.actions.pdf")}
                 title={t("hero.actions.pdf")}
                 className={cn(
-                  "inline-flex items-center justify-center size-9 rounded-lg",
+                  "inline-flex items-center justify-center size-8 sm:size-9 rounded-lg",
                   "border border-border-default bg-white text-content-secondary",
                   "transition-colors duration-150",
                   "hover:bg-surface-muted hover:border-border-strong hover:text-content-primary",
@@ -133,9 +142,9 @@ export function ReportHeroV2({
                 )}
               >
                 {actions.pdfBusy ? (
-                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  <Loader2 className="size-3.5 sm:size-4 animate-spin" aria-hidden="true" />
                 ) : (
-                  <Download className="size-4" aria-hidden="true" />
+                  <Download className="size-3.5 sm:size-4" aria-hidden="true" />
                 )}
               </button>
               <ShareReportPopover
@@ -144,7 +153,7 @@ export function ReportHeroV2({
                 triggerLabel=""
                 aria-label={t("hero.actions.share")}
                 className={cn(
-                  "inline-flex items-center justify-center size-9 rounded-lg",
+                  "inline-flex items-center justify-center size-8 sm:size-9 rounded-lg",
                   "border border-border-default bg-white text-content-secondary",
                   "transition-colors duration-150",
                   "hover:bg-surface-muted hover:border-border-strong hover:text-content-primary",
