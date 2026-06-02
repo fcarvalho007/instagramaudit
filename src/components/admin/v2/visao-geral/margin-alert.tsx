@@ -23,15 +23,29 @@ export function MarginAlert() {
   });
 
   if (!data) return null;
-  if (data.margin_per_lead === null) return null;
-  if (data.margin_per_lead >= 0) return null;
 
   const costPerLead = data.cost_per_lead ?? 0;
+  const costPerAnalysis = data.cost_per_analysis ?? 0;
+
+  // Sem receita activa → card informativo, não alerta de margem.
+  if (!data.revenue_active) {
+    return (
+      <AdminCallout variant="info" title="Receita ainda não activa">
+        Cada lead custa ~${costPerLead.toFixed(2)} e cada análise ~$
+        {costPerAnalysis.toFixed(2)}. A margem por lead só será calculada
+        quando o checkout estiver ligado e existirem pagamentos reais.
+      </AdminCallout>
+    );
+  }
+
+  if (data.margin_status !== "negative" || data.margin_per_lead === null) {
+    return null;
+  }
 
   return (
-    <AdminCallout title="A gerar custo sem receita">
-      Cada lead custa ~${costPerLead.toFixed(2)} e o checkout ainda não está
-      ligado — prioridade para fechar a margem.
+    <AdminCallout title="Margem negativa por lead">
+      Cada lead custa ~${costPerLead.toFixed(2)} mas a receita por lead é
+      inferior — rever pricing ou eficiência de custo.
     </AdminCallout>
   );
 }

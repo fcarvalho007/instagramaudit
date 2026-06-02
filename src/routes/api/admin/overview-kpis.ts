@@ -15,17 +15,26 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
 import { fetchExpense30d } from "@/lib/admin/system-queries.server";
+import { computeKpis, type MarginStatus } from "@/lib/admin/overview-formulas";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export interface OverviewKpis {
   leads_30d: number;
   leads_7d: number;
+  analyses_30d: number;
+  fresh_analyses_30d: number;
+  reports_unlocked_30d: number;
   cost_total_30d: number;
+  cost_public_30d: number;
   revenue_total_30d: number;
+  revenue_active: boolean;
   cost_per_lead: number | null;
+  cost_per_analysis: number | null;
+  cost_per_unlocked_report: number | null;
   revenue_per_lead: number | null;
   margin_per_lead: number | null;
+  margin_status: MarginStatus;
   avg_cost_per_report: number | null;
   reliability_pct: number;
   checkout_enabled: boolean;
@@ -50,7 +59,17 @@ export const Route = createFileRoute("/api/admin/overview-kpis")({
         const since30 = new Date(Date.now() - 30 * DAY_MS).toISOString();
         const since7 = new Date(Date.now() - 7 * DAY_MS).toISOString();
 
-        const [leads30Res, leads7Res, expense, caps] = await Promise.all([
+        const [
+          leads30Res,
+          leads7Res,
+          analyses30Res,
+          freshAnalyses30Res,
+          reportsUnlocked30Res,
+          paid30Res,
+          paidAllTimeRes,
+          expense,
+          caps,
+        ] = await Promise.all([
           supabaseAdmin
             .from("leads")
             .select("id", { count: "exact", head: true })
@@ -59,6 +78,31 @@ export const Route = createFileRoute("/api/admin/overview-kpis")({
             .from("leads")
             .select("id", { count: "exact", head: true })
             .gte("created_at", since7),
+          supabaseAdmin
+            .from("analysis_events")
+            .select("id", { count: "exact", head: true })
+            .eq("outcome", "success")
+            .in("data_source", ["fresh", "cache"])
+            .gte("created_at", since30),
+          supabaseAdmin
+            .from("analysis_events")
+            .select("id", { count: "exact", head: true })
+            .eq("outcome", "success")
+            .eq("data_source", "fresh")
+            .gte("created_at", since30),
+          supabaseAdmin
+            .from("lead_reports")
+            .select("id", { count: "exact", head: true })
+            .gte("created_at", since30),
+          supabaseAdmin
+            .from("lead_payments")
+            .select("amount_cents", { count: "exact" })
+            .eq("status", "paid")
+            .gte("paid_at", since30),
+          supabaseAdmin
+            .from("lead_payments")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "paid"),
           fetchExpense30d(),
           // Reads cost_cap_* from app_config (default 29/25/50).
           (async () => {
@@ -77,30 +121,59 @@ export const Route = createFileRoute("/api/admin/overview-kpis")({
 
         const leads_30d = leads30Res.count ?? 0;
         const leads_7d = leads7Res.count ?? 0;
-        const cost_total_30d = Number(expense.total ?? 0);
-        // TODO confirm formula: receita fixa a 0 até EuPago/Stripe ligarem.
-        const revenue_total_30d = 0;
+        const analyses_30d = analyses30Res.count ?? 0;
+        const fresh_analyses_30d = freshAnalyses30Res.count ?? 0;
+        const reports_unlocked_30d = reportsUnlocked30Res.count ?? 0;
 
-        // TODO confirm formula: denominador = leads (não análises).
-        const cost_per_lead = leads_30d > 0 ? cost_total_30d / leads_30d : null;
-        const revenue_per_lead = leads_30d > 0 ? revenue_total_30d / leads_30d : null;
-        const margin_per_lead =
-          cost_per_lead !== null && revenue_per_lead !== null
-            ? revenue_per_lead - cost_per_lead
-            : null;
+        const cost_total_30d = Number(expense.total ?? 0);
+        // "Custo público" = chamadas ligadas a fresh events (exclui lab e órfãs).
+        // Melhor proxy honesto disponível sem mexer no pipeline de custos.
+        const cost_public_30d = Number(expense.fresh_linked_total_usd ?? 0);
+
+        // Receita: soma dos `lead_payments` pagos nos últimos 30 dias.
+        // `revenue_active` flip-flap pela existência de QUALQUER pagamento
+        // (all-time) — se nunca houve checkout real, KPI de margem fica null.
+        const paidRows = (paid30Res.data ?? []) as Array<{ amount_cents: number | null }>;
+        const revenue_30d = paidRows.reduce(
+          (s, r) => s + (Number(r.amount_cents ?? 0) / 100),
+          0,
+        );
+        const revenue_active = (paidAllTimeRes.count ?? 0) > 0;
+
+        const formulas = computeKpis({
+          leads_30d,
+          analyses_30d,
+          fresh_analyses_30d,
+          reports_unlocked_30d,
+          cost_total_30d,
+          cost_public_30d,
+          fresh_avg_cost_per_report: expense.fresh_avg_cost_per_report ?? null,
+          revenue_30d,
+          revenue_active,
+        });
+
+        const round = (n: number | null) =>
+          n === null ? null : Number(n.toFixed(4));
 
         const body: OverviewKpis = {
           leads_30d,
           leads_7d,
+          analyses_30d,
+          fresh_analyses_30d,
+          reports_unlocked_30d,
           cost_total_30d: Number(cost_total_30d.toFixed(4)),
-          revenue_total_30d,
-          cost_per_lead: cost_per_lead !== null ? Number(cost_per_lead.toFixed(4)) : null,
-          revenue_per_lead,
-          margin_per_lead:
-            margin_per_lead !== null ? Number(margin_per_lead.toFixed(4)) : null,
+          cost_public_30d: Number(cost_public_30d.toFixed(4)),
+          revenue_total_30d: Number(revenue_30d.toFixed(2)),
+          revenue_active,
+          cost_per_lead: round(formulas.cost_per_lead),
+          cost_per_analysis: round(formulas.cost_per_analysis),
+          cost_per_unlocked_report: round(formulas.cost_per_unlocked_report),
+          revenue_per_lead: round(formulas.revenue_per_lead),
+          margin_per_lead: round(formulas.margin_per_lead),
+          margin_status: formulas.margin_status,
           avg_cost_per_report: expense.fresh_avg_cost_per_report ?? null,
           reliability_pct: Number(expense.provider_linkage_rate_pct ?? 0),
-          checkout_enabled: false,
+          checkout_enabled: revenue_active,
           providers: {
             apify: { total: Number(expense.apify_total ?? 0), cap: caps.apify },
             openai: { total: Number(expense.openai_total ?? 0), cap: caps.openai },
