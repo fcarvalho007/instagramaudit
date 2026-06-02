@@ -36,6 +36,13 @@ explicitly asks for a modification in a new prompt.
 > integrar i18n (PT/EN), seletor de idioma e link de login/conta. Continua
 > locked para futuras alterações.
 
+> **Edição autorizada (2026-06-02, Option B2):** `app-shell.tsx` e
+> `header.tsx` ganharam branch route-aware para `/` (homepage dark
+> coerente). Novo `src/components/layout/dark-footer.tsx` para o footer
+> dark da homepage. Restantes rotas (`/analyze`, `/app`, `/admin`,
+> account, report) ficam intactas. Continuam locked para futuras
+> alterações.
+
 ## Landing Components (locked since Sprint 1, Prompt 1.1)
 - /src/components/landing/hero-section.tsx
 - /src/components/landing/hero-aurora-background.tsx
