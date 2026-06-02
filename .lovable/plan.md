@@ -1,122 +1,108 @@
-## Redesenhar a ficha de cliente como modal central
 
-Substituir o `Sheet` lateral (`LeadDetailSheet`) por um **modal centrado** com foco numa sessão de trabalho do lead. Manter API pública (`open`, `onOpenChange`, `lead`, `onUpdate`, `onRefresh`) e ponto de entrada (`/admin/leads` via `?lead=`), para não tocar nas tabelas/kanban que já o consomem.
+## Âmbito
 
-### 1. Posição & contentor
+Apenas o dropdown "Estado comercial" no painel Resumo da ficha de cliente (`lead-detail-sheet.tsx`). As três tabs Relatórios / Feedback / Histórico **já têm conteúdo** (lista de pedidos, FeedbackBetaSection, LeadCommunicationTimeline + product_events) — não estão vazias. Confirmar no fim se queres iterar essas tabs noutro prompt.
 
-- Trocar `Sheet/SheetContent` por `Dialog/DialogContent` (shadcn) — modal central sobre `bg-black/60` (`DialogOverlay`).
-- Largura: `max-w-[640px]`, altura máxima `min(88vh, 880px)`, scroll interno.
-- Cantos `rounded-2xl`, sombra de elevação, header sticky com fecho `×`.
-- Manter foco do teclado e fechar com `Esc` (já é o default do `Dialog`).
-- Sem alteração ao `admin.leads.tsx`: continua a abrir via `setActiveLeadId`.
+## O que muda
 
-### 2. Cabeçalho (identidade + estado)
+Substituir o `Select` actual (2 grupos plano: Decisão comercial / Automático) por um dropdown com **3 secções visuais** e comportamento misto (linhas informativas vs. linhas clicáveis), tal como o mockup.
 
 ```
-[Avatar JP]  João Pereira                                    [Novo pedido ▾chip]
-             smoketest+pt@auditprofiles.test
+ESTADO COMERCIAL
+┌─ [● Novo pedido                                 ▾] ─┐
+│                                                     │
+│  ⚡ AUTOMÁTICO · O SISTEMA ATUALIZA                 │
+│     ✓ Subscreveu lead magnet              01/06    │  ← cinza claro
+│     ✓ Relatório gerado                    01/06    │  ← cinza claro
+│     ○ Link enviado                                  │  ← desactivado
+│     ○ Relatório visto                               │  ← desactivado
+│     ○ Checkout iniciado                             │  ← desactivado
+│  ─────────────────────────────────────────────      │
+│  💳 PAGAMENTO                                       │
+│     ○ Pagou 1 relatório                       7€   │
+│     ○ Pagou pack de 5                        28€   │
+│  ─────────────────────────────────────────────      │
+│  ✋ A TUA DECISÃO                                   │
+│     ● Novo pedido                              ✓   │  ← realçado azul
+│     ○ Em análise por mim                            │
+│     ○ Interessado                                   │
+│     ○ Potencial cliente                             │
+│     ○ Convertido                                    │
+│     🗄 Arquivar / Expirado                          │
+└─────────────────────────────────────────────────────┘
 ```
 
-- Avatar com iniciais (já existe `getInitials`).
-- Chip de estado comercial à direita usa cor do `COMMERCIAL_STATUS_OPTIONS` (apenas leitura aqui, é editável abaixo).
+### Mapeamento de estados (17 → 3 grupos)
 
-### 3. KPI strip — 4 métricas accionáveis
+| Grupo | Estado actual (DB) | Label novo | Clicável? |
+|---|---|---|---|
+| Automático | `lead_magnet` | Subscreveu lead magnet | não |
+| Automático | `relatorio_gerado` | Relatório gerado | não |
+| Automático | `link_enviado` | Link enviado | não |
+| Automático | `relatorio_visto` | Relatório visto | não |
+| Automático | `checkout_iniciado` | Checkout iniciado | não |
+| Pagamento | `pago_report` | Pagou 1 relatório · 7€ | sim |
+| Pagamento | `pago_pack5` | Pagou pack de 5 · 28€ | sim |
+| Decisão | `novo_pedido` | Novo pedido | sim |
+| Decisão | `em_analise` | Em análise por mim | sim |
+| Decisão | `interessado` | Interessado | sim |
+| Decisão | `potencial_cliente` | Potencial cliente | sim |
+| Decisão | `convertido` | Convertido | sim |
+| Decisão | `arquivado` / `expirado` | Arquivar / Expirado | sim (vai para `arquivado`) |
+| Removidos do dropdown | `feedback_pedido`, `feedback_recebido` | — | passam para tab Feedback |
 
-Substituir Views/Custo/Idade por:
+`pago_report` e `pago_pack5` ficam clicáveis (a entrar manualmente um pagamento confirmado é cenário raro mas legítimo de correcção). Posso desactivá-los se preferires; diz só.
 
-| Label | Valor | Fonte |
-|---|---|---|
-| RELATÓRIOS | `report_request_id ? 1 : 0` (placeholder até existir contador real) | `lead.report_request_id` |
-| CRÉDITOS | `credits_remaining / credits_granted` (ex.: `1 / 2`) | já existe |
-| GASTO | `€{(total_paid_cents/100).toFixed(0)}` | `lead.payment_summary.total_paid_cents` |
-| INSCRITO HÁ | `{daysSince(created_at)}d` | já existe |
+### Timestamps e marcadores nas linhas "Automático"
 
-Cartões iguais em grelha 4×1, com label uppercase pequeno (`text-eyebrow-sm`) + valor em Inter SemiBold tabular-nums. Sem cor de destaque excepto se `credits_remaining === 0 && credits_granted > 0` → label "CRÉDITOS" a vermelho admin (sinal de esgotado).
+Cada linha mostra ✓ + data quando o evento já aconteceu, senão ○ a cinzento:
 
-> ⚠️ Os números reais (relatórios, gasto) dependem de `report_request_id` e `payment_summary`. Se faltarem, mostrar `—` (nunca `0` enganador).
+- Subscreveu lead magnet → `lead.lead_magnet.last_event_at` (ou `beta_consent_at`)
+- Relatório gerado → primeiro evento `report.generated` no `timeline`, ou fallback: `report_status` ∈ ready/generated
+- Link enviado → `lastReportLinkSentAt` (já existe no componente)
+- Relatório visto → `report_views > 0` (data do 1º view do timeline, se disponível)
+- Checkout iniciado → `payment_summary.pending_checkout_started_at` ou `last_payment_at`
 
-### 4. Tabs (4, não 5)
+Quando não houver data, mostra só ✓ sem timestamp; quando o evento ainda não aconteceu, círculo vazio cinzento.
 
-`Resumo · Relatórios · Feedback · Histórico` — fundir "Comunicação" dentro de "Histórico" (passa a render `LeadCommunicationTimeline` + product_events na mesma timeline ordenada). Tabs em `TabsList` com underline (estilo da imagem).
+### Marcadores nas linhas "Pagamento"
 
-### 5. Tab "Resumo" — conteúdo central
+Mostrar ✓ azul quando `payment_summary.paid_products.includes("report_single" / "pack_5")`. Valor à direita em Inter SemiBold tabular-nums.
 
-**(a) Próximo passo — callout com botão accionável**
+### Marcador na linha actual (qualquer grupo)
 
-```
-💡 PRÓXIMO PASSO
-   Aprovar pedido e gerar relatório            [Gerar →]
-```
+`● Estado · ✓` em azul (`--admin-info-500`), bg `--admin-info-50`, igual ao mockup.
 
-- Texto vem de `suggestNextLeadAction(lead)` (já existe em `lead-lifecycle`).
-- Botão CTA muda consoante a sugestão (Gerar relatório / Pedir feedback / Enviar email / Oferecer pack). Se a sugestão for "ver" sem acção, esconder o botão.
-- Cor do callout: `bg-info-50` com `border-info-200`.
+## Ficheiros tocados
 
-**(b) Contexto do lead — grelha 2×2 com tradução humana**
+1. **`src/lib/admin/kanban-columns.ts`**
+   - Alargar `COMMERCIAL_STATUS_OPTIONS[].kind` para `"manual" | "auto" | "payment"`.
+   - Reetiquetar `em_analise` → "Em análise por mim", `pago_report` → "Pagou 1 relatório", `pago_pack5` → "Pagou pack de 5".
+   - Adicionar campo opcional `amount_eur?: number` para os dois `payment`.
+   - Remover `feedback_pedido` / `feedback_recebido` do array (ou marcá-los `hidden: true` para não partir leads legados — preferência: `hidden`).
 
-```
-👤 Relação            🎯 Objetivo
-   É o perfil dele       Melhorar conteúdo
+2. **`src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`**
+   - Substituir o bloco do `Select` (linhas 652–691) por um novo componente local `CommercialStatusSelect` que renderiza os 3 grupos com a hierarquia visual acima.
+   - Receber `lead` (para timestamps), `value`, `onChange`.
+   - Continua a usar `shadcn/ui` Select por baixo, com `SelectGroup` + `SelectSeparator` + `SelectLabel` (eyebrow com ícone). Linhas "auto" usam `disabled` + classe cinzenta + sufixo de data; linhas "payment" mostram `€` alinhado à direita; linhas "decisão" são clicáveis a cor plena.
+   - Adicionar um pequeno helper `getAutoStateTimestamp(lead, key, timeline)` colocado dentro do mesmo ficheiro (não justifica módulo novo).
 
-🔀 Origem             🔥 Intenção
-   Modal de onboarding   Baixa — sem relatório visto
-```
+3. **`src/components/admin/v2/beta-leads/__tests__/`**
+   - Novo `commercial-status-select.test.tsx`: render dos 3 grupos, linhas auto desactivadas, datas presentes/ausentes, selecção de "Arquivar" emite `arquivado`.
+   - Actualizar testes existentes que façam snapshot do select antigo (se algum partir).
 
-- Criar mapas de tradução (PT, sentence case) num ficheiro novo `src/lib/admin/lead-context-labels.ts`:
-  - `PROFILE_OWNERSHIP_LABELS`: `own_profile → "É o perfil dele"`, `competitor → "É um concorrente"`, `client → "É de um cliente"`, etc. (cobrir todos os valores que aparecem em `leads.profile_ownership`).
-  - `PURPOSE_LABELS`: `improve_content → "Melhorar conteúdo"`, `understand_competition → "Estudar concorrência"`, `sell_to_client → "Vender a cliente"`, etc.
-  - `SOURCE_LABELS`: `onboarding_modal → "Modal de onboarding"`, `beta_form → "Formulário beta"`, `qa → "QA interno"`, etc.
-- Intenção usa `deriveIntentSignal` (já existe) e força sentence case.
-- Cada campo: ícone Lucide pequeno + label `text-eyebrow-sm` + valor Inter regular.
-- Fallback `—` quando o campo é null.
+## Notas honestas
 
-**(c) Estado comercial — Select agrupado (corrigir o pior problema)**
+- **Sem migração de DB.** Os 17 valores em `commercial_status` continuam válidos; só muda o agrupamento visual e os labels.
+- **`em_analise`** é actualmente classificado como `auto` em `kanban-columns.ts` (linha 60). Vais reclassificá-lo como **manual** porque é uma decisão tua, não do sistema. Verifico que nenhuma rotina de servidor (`lead-events.server.ts`, `automation-flow.ts`) escreve `em_analise` automaticamente — se escrever, deixo o auto-write a funcionar mas o UI mostra-o sempre no grupo "A tua decisão".
+- **Tabs Relatórios / Feedback / Histórico já têm conteúdo real** (não são "só nomes"). Se quiseres iterá-las (ex.: timeline de feedback com pedidos enviados, ou unificar Relatórios+Histórico) abre um prompt separado — não as toco aqui.
+- **"Arquivar / Expirado"** colapsa dois estados num só item da UI. Internamente continuo a escrever `arquivado`; `expirado` continua a poder vir do servidor (kill switch de créditos) e é mostrado correctamente porque o select aceita ambos como current value.
 
-Reorganizar `COMMERCIAL_STATUS_OPTIONS` em dois grupos visíveis dentro do `SelectContent`:
+## Checkpoint
 
-- **Decisão comercial** (editável à mão, ordem por etapa do funil):
-  `lead_magnet`, `interessado`, `potencial_cliente`, `checkout_iniciado`, `pago_report`, `pago_pack5`, `convertido`, `arquivado`, `expirado`.
-- **Automático — só leitura** (renderizados como `SelectItem disabled`, com cinzento e tooltip "Atualizado pelo sistema"):
-  `novo_pedido`, `em_analise`, `relatorio_gerado`, `link_enviado`, `relatorio_visto`, `feedback_pedido`, `feedback_recebido`.
-
-Implementação:
-- Adicionar campo `kind: "manual" | "auto"` a `COMMERCIAL_STATUS_OPTIONS` em `src/lib/admin/kanban-columns.ts` (sem remover `group` para não partir consumidores existentes).
-- Render via `SelectGroup` + `SelectLabel` ("Decisão comercial" / "Automático").
-- Se o lead estiver actualmente num estado "auto", mostrar no trigger normalmente (chip), mas no dropdown ele aparece desactivado para não ser re-selecionado à mão.
-
-**(d) Notas internas** — `Textarea` igual ao actual, com contador.
-
-**(e) Acções rápidas** — grelha 3+1:
-
-```
-[✉ Email]  [💬 WhatsApp]  [✓ Contactado]
-[         🗄 Arquivar                    ]
-```
-
-- Email/WhatsApp/Contactado reaproveitam handlers existentes.
-- Arquivar abre `ConfirmDialog` (já existe), faz `onUpdate(id, { commercial_status: "arquivado" })`.
-
-### 6. Tabs "Relatórios", "Feedback", "Histórico"
-
-- **Relatórios**: mover bloco "Relatório" actual (request status + pdf + actions) para esta tab. Quando houver mais que um relatório por lead no futuro, esta tab passa a lista.
-- **Feedback**: bloco actual de `interpretFeedback` + `PRICING_PREFERENCE_LABELS` / `PURCHASE_INTENT_LABELS`.
-- **Histórico**: timeline unificada — eventos de produto (`product_events` via `useQuery` já existente) + `LeadCommunicationTimeline`, ordenados por `created_at` desc.
-
-### 7. Limpeza
-
-- Apagar `SectionDivider`, `STATUS_ACCENT` não usado, e cabeçalhos do drawer antigo que deixam de existir.
-- Não tocar em: `LeadsTable`, `KanbanBoard`, `LeadCard`, `admin.leads.tsx` (a invocação continua igual).
-- `COMMERCIAL_STATUS_OPTIONS` ganha campo `kind` mas mantém `group/key/label/color` — consumidores actuais continuam a funcionar.
-
-### Ficheiros tocados
-
-- `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` — reescrita estrutural (Sheet → Dialog, novas secções).
-- `src/lib/admin/kanban-columns.ts` — adicionar `kind: "manual" | "auto"` a cada opção.
-- `src/lib/admin/lead-context-labels.ts` — **novo** ficheiro com os 3 mapas de tradução.
-- `src/components/admin/v2/beta-leads/__tests__/` — actualizar/adicionar teste de smoke que confirme: (1) render como `role="dialog"`, (2) tradução de `own_profile` aparece como "É o perfil dele", (3) opções "auto" estão `disabled` no select.
-
-### Notas honestas (do briefing do user)
-
-- **KPIs reais**: "Relatórios" e "Gasto" usam dados existentes mas podem ficar a `—` quando não há `report_request_id` ou `payment_summary.total_paid_cents=0`. Não inflacionar.
-- **Sugestão de próximo passo**: já existe `suggestNextLeadAction`. Confirmar que cobre os 4 estados ("gerar", "pedir feedback", "oferecer pack", "ver"). Se faltar mapeamento para o CTA do botão, completar nesse helper (sem duplicar lógica em UI).
-- **Renomear ficheiro**: não renomear `lead-detail-sheet.tsx` para evitar churn de imports — fica como nome legado, o componente passa a ser modal.
+- ☐ `kanban-columns.ts` actualizado (kinds, labels, amount_eur, hidden em feedback_*)
+- ☐ `CommercialStatusSelect` renderiza 3 grupos com hierarquia visual do mockup
+- ☐ Linhas auto mostram ✓ + data quando o evento aconteceu, ○ cinzento quando não
+- ☐ Linhas pagamento mostram valor € à direita e ✓ quando pago
+- ☐ Linha actual realçada a azul com ✓
+- ☐ Testes passam (`bunx vitest run lead-detail-sheet commercial-status-select`)
