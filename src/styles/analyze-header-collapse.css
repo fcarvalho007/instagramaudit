@@ -1,0 +1,12 @@
+/* Collapses the global institutional nav pill (Analisar / Como funciona /
+ * Exemplos / Preços) on report views once the user scrolls past the hero.
+ * Targets the locked header by a structural selector — no header edits needed.
+ *
+ * Scope is double-guarded:
+ *  - body[data-report-view="true"] is only set inside /analyze and /reports
+ *  - body[data-report-scrolled="true"] is toggled by the report shell
+ */
+
+body[data-report-view="true"][data-report-scrolled="true"] header nav[aria-label] {
+  display: none;
+}

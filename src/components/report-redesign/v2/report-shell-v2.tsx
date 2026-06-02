@@ -42,6 +42,7 @@ import { ReportBlockSidebar, ReportBlockTopTabs } from "./report-block-nav";
 import { ReportBlockSection } from "./report-block-section";
 import { ReportHeroV2 } from "./report-hero-v2";
 import { AnalysisPeriodSelector } from "./analysis-period-selector";
+import { ReportUtilityBar } from "./report-utility-bar";
 import { ReportOverviewBlock } from "./report-overview-block";
 import { ReportDiagnosticBlock } from "./report-diagnostic-block";
 // BlockFeedback removido — feedback agora só no EndFeedbackStrip (fim do bloco gratuito).
@@ -181,6 +182,42 @@ export function ReportShellV2({
     onShowHelp: () => setShortcutsOpen(true),
   });
 
+  // Scroll signal — toggles `data-report-scrolled` on body (drives the
+  // `analyze-header-collapse.css` rule that hides the institutional nav)
+  // and the local `scrolled` state that fades in the utility bar. Uses
+  // hysteresis to avoid flicker near the threshold.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const y = window.scrollY;
+      setScrolled((prev) => {
+        if (!prev && y > 96) {
+          document.body.setAttribute("data-report-scrolled", "true");
+          return true;
+        }
+        if (prev && y < 64) {
+          document.body.removeAttribute("data-report-scrolled");
+          return false;
+        }
+        return prev;
+      });
+    };
+    const onScroll = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(update);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (raf) window.cancelAnimationFrame(raf);
+      document.body.removeAttribute("data-report-scrolled");
+    };
+  }, []);
+
   return (
     <ReportVariantProvider value={variant}>
     <VariantFeaturesOverrideProvider value={featuresOverride ?? null}>
@@ -228,6 +265,14 @@ export function ReportShellV2({
             </div>
           </div>
         </section>
+
+        {/* Compact product utility bar — appears on scroll, replaces the
+            institutional nav (hidden via analyze-header-collapse.css). */}
+        <ReportUtilityBar
+          result={result}
+          actions={actions}
+          visible={scrolled}
+        />
 
         {/* Tabs mobile sticky abaixo do hero */}
         <ReportBlockTopTabs
