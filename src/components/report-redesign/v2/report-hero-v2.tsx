@@ -154,8 +154,7 @@ export function ReportHeroV2({
                 result={result}
                 variant="ghost"
                 triggerLabel=""
-                triggerAriaLabel={t("hero.actions.share")}
-                iconOnly
+                aria-label={t("hero.actions.share")}
                 className={cn(
                   "inline-flex items-center justify-center size-9 rounded-lg",
                   "border border-border-default bg-white text-content-secondary",
