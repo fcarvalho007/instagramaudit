@@ -808,10 +808,15 @@ export async function ackAlert(id: string): Promise<void> {
 
 /* =================================================== Expense 30d -- */
 
-export async function fetchExpense30d(): Promise<Expense30d> {
+export async function fetchExpense30d(
+  sinceIsoOverride?: string,
+): Promise<Expense30d> {
   // Fonte primária: provider_call_logs (mesma regra que /admin/sistema 24h),
   // garantindo que os totais batem certo entre páginas para a mesma janela.
-  const sinceIso = new Date(Date.now() - 30 * DAY_MS).toISOString();
+  // `sinceIsoOverride` permite chamadores como /admin/relatorios reutilizarem
+  // este helper com janelas diferentes de 30d (default).
+  const sinceIso =
+    sinceIsoOverride ?? new Date(Date.now() - 30 * DAY_MS).toISOString();
   const { totals, daily } = await aggregateCostsFromLogs(sinceIso);
 
   // Cost split by source_context (production / lab / other).
@@ -821,7 +826,7 @@ export async function fetchExpense30d(): Promise<Expense30d> {
 
   // cost_daily continua a existir só para extras de reconciliação:
   // saldo DataForSEO e faturação real Apify (monthly usage API).
-  const startDay = dayKey(new Date(Date.now() - 30 * DAY_MS));
+  const startDay = dayKey(new Date(sinceIso));
   const { data: dailyRows } = await supabaseAdmin
     .from("cost_daily")
     .select("provider, day, amount_usd, details")
