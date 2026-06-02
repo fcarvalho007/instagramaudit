@@ -16,6 +16,7 @@ afterEach(() => {
 describe("fetchPublicAnalysis — in-flight guard", () => {
   it("dedupes chamadas concorrentes com o mesmo (username, competitors)", async () => {
     let resolveFetch: ((v: unknown) => void) | null = null;
+    void resolveFetch;
     const fetchMock = vi.fn().mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -31,7 +32,10 @@ describe("fetchPublicAnalysis — in-flight guard", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
-    resolveFetch?.({ success: true, data: { handle: "foo" } });
+    (resolveFetch as ((v: unknown) => void) | null)?.({
+      success: true,
+      data: { handle: "foo" },
+    });
     const [r1, r2] = await Promise.all([p1, p2]);
     expect(r1).toBe(r2);
   });
