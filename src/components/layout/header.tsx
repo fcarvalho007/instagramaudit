@@ -26,12 +26,17 @@ function useScrollPast(threshold: number) {
   return past;
 }
 
-function Header() {
+interface HeaderProps {
+  variant?: "light" | "dark";
+}
+
+function Header({ variant = "light" }: HeaderProps = {}) {
   const scrolled = useScrollPast(40);
   const [open, setOpen] = React.useState(false);
   const { t } = useTranslation("header");
   const { session } = useAuthSession();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isDark = variant === "dark";
 
   // Nav items. "Preços" omitido até existir página dedicada.
   const navItems: { labelKey: string; href: string; match: (p: string) => boolean }[] = [
@@ -43,11 +48,14 @@ function Header() {
   return (
     <header
       className={cn(
-        "sticky top-0 w-full bg-surface-base/80",
+        "sticky top-0 w-full",
+        isDark ? "bg-[rgb(var(--hero-bg-base))]/70" : "bg-surface-base/80",
         "transition-[backdrop-filter,border-color] duration-[250ms] ease-[cubic-bezier(0.16,1,0.3,1)]",
         "border-b",
         scrolled
-          ? "backdrop-blur-lg border-border-subtle"
+          ? isDark
+            ? "backdrop-blur-lg border-white/10"
+            : "backdrop-blur-lg border-border-subtle"
           : "backdrop-blur-md border-transparent",
       )}
       style={{ zIndex: "var(--z-sticky)" } as React.CSSProperties}
@@ -59,14 +67,26 @@ function Header() {
             <span className="inline-flex shadow-[0_6px_18px_-6px_rgba(99,102,241,0.45)] rounded-[10px] transition-transform duration-200 group-hover:-translate-y-px">
               <BrandMark size={32} />
             </span>
-            <span className="font-display text-xl font-semibold tracking-tight text-content-primary">
+            <span
+              className={cn(
+                "font-display text-xl font-semibold tracking-tight",
+                isDark ? "text-white" : "text-content-primary",
+              )}
+            >
               AuditProfiles
             </span>
           </Link>
 
           {/* Center: Pill nav (desktop) */}
           <nav className="hidden lg:block" aria-label={t("aria.primary_nav")}>
-            <ul className="inline-flex items-center gap-1 rounded-full border border-border-subtle bg-surface-muted/60 p-1.5">
+            <ul
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border p-1.5",
+                isDark
+                  ? "border-white/10 bg-white/[0.04]"
+                  : "border-border-subtle bg-surface-muted/60",
+              )}
+            >
               {navItems.map((item) => {
                 const active = item.match(pathname);
                 return (
@@ -76,9 +96,13 @@ function Header() {
                       aria-current={active ? "page" : undefined}
                       className={cn(
                         "inline-flex items-center rounded-full px-4 py-1.5 text-sm transition-colors duration-[150ms]",
-                        active
-                          ? "bg-surface-base text-content-primary font-medium shadow-[0_1px_3px_rgba(15,23,42,0.08)]"
-                          : "text-content-secondary hover:text-content-primary",
+                        isDark
+                          ? active
+                            ? "bg-white/10 text-white font-medium"
+                            : "text-white/70 hover:text-white"
+                          : active
+                            ? "bg-surface-base text-content-primary font-medium shadow-[0_1px_3px_rgba(15,23,42,0.08)]"
+                            : "text-content-secondary hover:text-content-primary",
                       )}
                     >
                       {t(item.labelKey)}
@@ -93,14 +117,20 @@ function Header() {
           <div className="flex items-center gap-2">
             <LanguageSwitcher
               variant="compact"
-              className="hidden sm:inline-flex"
+              className={cn(
+                "hidden sm:inline-flex",
+                isDark && "text-white/80 hover:text-white",
+              )}
             />
 
             {/* Auth link — render optimistically; swaps if session resolves. */}
             <Button
               variant="ghost"
               size="sm"
-              className="hidden sm:inline-flex"
+              className={cn(
+                "hidden sm:inline-flex",
+                isDark && "text-white/80 hover:text-white hover:bg-white/5",
+              )}
               asChild
             >
               <Link to={session ? "/app" : "/login"}>
@@ -125,7 +155,7 @@ function Header() {
                 <Button
                   size="icon"
                   aria-label={t("aria.open_menu")}
-                  className="lg:hidden"
+                  className={cn("lg:hidden", isDark && "text-white")}
                 >
                   <Menu />
                 </Button>
