@@ -75,3 +75,104 @@
   animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   animation-fill-mode: both;
 }
+
+/* ============================================================
+ * Landing dark island (post-hero → mini-footer)
+ * Scoped helpers usados pelas bandas em src/components/landing/dark/.
+ * Não introduz libs novas; tudo CSS + IntersectionObserver.
+ * ============================================================ */
+
+.landing-dark {
+  background-color: rgb(var(--hero-bg-base));
+  color: rgb(var(--hero-text-primary));
+}
+
+.landing-dark .dark-hairline {
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
+.landing-dark .dark-card {
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+}
+
+.landing-dark .dark-card-emphasis {
+  background-color: rgba(var(--hero-cyan), 0.07);
+  border: 1px solid rgba(var(--hero-cyan), 0.28);
+  border-radius: 16px;
+}
+
+.landing-dark .dark-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgb(var(--hero-text-tertiary));
+}
+
+/* Scroll-reveal helper (paired with useInView). */
+.dark-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 700ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.dark-reveal.is-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .dark-reveal,
+  .dark-reveal.is-in {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Report preview fade-out mask: corta o cartão em baixo a fundir com o bg. */
+.dark-preview-mask {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    black 0,
+    black 62%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    black 0,
+    black 62%,
+    transparent 100%
+  );
+}
+
+/* Arrow-flow: seta entre passos com pulsar discreto. */
+@keyframes dark-arrow-flow-kf {
+  0%, 100% { transform: translateX(0); opacity: 0.7; }
+  50%      { transform: translateX(3px); opacity: 1; }
+}
+.dark-arrow-flow {
+  animation: dark-arrow-flow-kf 2.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dark-arrow-flow { animation: none; }
+}
+
+/* Spotlight do CTA final — halo radial cyan no topo. */
+.dark-spotlight::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: min(520px, 80%);
+  height: 180px;
+  transform: translateX(-50%);
+  background: radial-gradient(
+    ellipse at center top,
+    rgba(var(--hero-cyan), 0.22),
+    transparent 70%
+  );
+  pointer-events: none;
+}
