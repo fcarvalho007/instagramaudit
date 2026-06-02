@@ -31,6 +31,7 @@ interface MetricsApi {
   avg_cost_usd: number | null;
   total_cost_usd?: number | null;
   apify_cost_usd?: number | null;
+  lab_cost_usd?: number | null;
   window_days: number;
 }
 
@@ -54,6 +55,7 @@ export function MetricsSection({ period }: { period: AdminPeriod }) {
   const avgCost = data?.avg_cost_usd;
   const totalCost = data?.total_cost_usd ?? null;
   const apifyCost = data?.apify_cost_usd ?? null;
+  const labCost = data?.lab_cost_usd ?? null;
 
   return (
     <section className="flex flex-col gap-4">
@@ -81,12 +83,16 @@ export function MetricsSection({ period }: { period: AdminPeriod }) {
         <ReportKpi
           accent="revenue-alt"
           eyebrow="Custo médio · análise"
-          info="Custo Apify na janela ÷ nº de snapshots gerados. Alinha com a reconciliação Apify em /admin/receita (cost_daily + provider_billing_imports)."
+          info="Custo de produção (Apify + OpenAI das análises públicas e enriquecimento) ÷ análises fresh. Exclui Apify Lab/I&D e refreshes — alinha com cost-per-lead em /admin/visao-geral."
           value={avgCost != null ? `$${avgCost.toFixed(3)}` : "—"}
           sub={
             totalCost != null && apifyCost != null
-              ? `Apify por análise nova · Total janela $${totalCost.toFixed(3)} (Apify $${apifyCost.toFixed(3)})`
-              : "Apify por análise nova"
+              ? `Produção $${totalCost.toFixed(3)} · Apify $${apifyCost.toFixed(3)}${
+                  labCost != null && labCost > 0
+                    ? ` · Lab $${labCost.toFixed(3)} (excluído)`
+                    : ""
+                }`
+              : "Produção por análise fresh"
           }
         />
       </div>

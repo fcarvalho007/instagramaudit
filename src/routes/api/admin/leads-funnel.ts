@@ -1,13 +1,14 @@
 /**
- * GET /api/admin/leads-funnel — 3 taxas de conversão do funil de receita,
- * janela móvel de 30 dias (default).
+ * GET /api/admin/leads-funnel — funil de conversão (LM-first), janela 30d.
  *
- * - reportsToLm: leads com relatório → subscritores do Lead Magnet
- *   (lead.marketing_consent OR product_events com email LM enviado).
- * - lmToCheckout: subscritores LM → leads com checkout iniciado
- *   (lead_payments com pelo menos 1 linha, qualquer status).
- * - checkoutToPaid: leads com checkout iniciado → leads com pagamento
- *   `paid` confirmado.
+ * Modelo actual: o Lead Magnet é a inscrição inicial. Todo lead na DB
+ * passou por LM, logo "Reports → LM" deixou de ter sinal. O funil é:
+ *
+ *   Inscrição LM  →  Checkout iniciado  →  Pago
+ *
+ * - lmSignups       : leads criados na janela (absoluto).
+ * - lmToCheckout    : inscrição LM → ≥1 linha em lead_payments (qq status).
+ * - checkoutToPaid  : leads com checkout iniciado → ≥1 lead_payments.paid.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -55,10 +56,10 @@ export const Route = createFileRoute("/api/admin/leads-funnel")({
           Date.now() - windowDays * 24 * 60 * 60 * 1000,
         ).toISOString();
 
-        // 1. Leads criados na janela.
+        // 1. Inscrições LM = leads criados na janela.
         const { data: leads, error: leadsErr } = await supabaseAdmin
           .from("leads")
-          .select("id, marketing_consent, created_at")
+          .select("id")
           .gte("created_at", since);
 
         if (leadsErr) {
@@ -70,44 +71,19 @@ export const Route = createFileRoute("/api/admin/leads-funnel")({
         }
 
         const leadIds = (leads ?? []).map((l) => l.id);
-        if (leadIds.length === 0) {
+        const lmCount = leadIds.length;
+
+        if (lmCount === 0) {
           return jsonResponse({
             success: true,
             windowDays,
-            reportsToLm: rate(0, 0),
+            lmSignups: lmCount,
             lmToCheckout: rate(0, 0),
             checkoutToPaid: rate(0, 0),
           });
         }
 
-        // 2. Leads com relatório (denominador A): report_requests dentro da janela.
-        const { data: requests } = await supabaseAdmin
-          .from("report_requests")
-          .select("lead_id")
-          .in("lead_id", leadIds);
-
-        const leadsWithReport = new Set(
-          (requests ?? []).map((r) => r.lead_id as string).filter(Boolean),
-        );
-
-        // 3. Subscritores LM: marketing_consent OU evento LM relevante.
-        const lmSubscribers = new Set<string>();
-        for (const l of leads ?? []) {
-          if (l.marketing_consent) lmSubscribers.add(l.id);
-        }
-        const { data: lmEvents } = await supabaseAdmin
-          .from("product_events")
-          .select("lead_id")
-          .in("lead_id", leadIds)
-          .in("event_type", [
-            "beta_welcome_email_sent",
-            "report_summary_email_sent",
-          ]);
-        for (const ev of lmEvents ?? []) {
-          if (ev.lead_id) lmSubscribers.add(ev.lead_id as string);
-        }
-
-        // 4. Pagamentos por lead.
+        // 2. Pagamentos por lead (todos os statuses).
         const { data: payments } = await supabaseAdmin
           .from("lead_payments")
           .select("lead_id, status")
@@ -122,31 +98,15 @@ export const Route = createFileRoute("/api/admin/leads-funnel")({
           if (p.status === "paid") leadsPaid.add(lid);
         }
 
-        // 5. Cálculo das 3 taxas.
-        // A. Reports → LM (entre quem teve report, quantos são LM subscriber)
-        const denomA = leadsWithReport.size;
-        let numA = 0;
-        for (const id of leadsWithReport) {
-          if (lmSubscribers.has(id)) numA++;
-        }
-
-        // B. LM → Checkout
-        const denomB = lmSubscribers.size;
-        let numB = 0;
-        for (const id of lmSubscribers) {
-          if (leadsWithCheckout.has(id)) numB++;
-        }
-
-        // C. Checkout → Pago
-        const denomC = leadsWithCheckout.size;
-        const numC = leadsPaid.size;
+        const checkoutCount = leadsWithCheckout.size;
+        const paidCount = leadsPaid.size;
 
         return jsonResponse({
           success: true,
           windowDays,
-          reportsToLm: rate(numA, denomA),
-          lmToCheckout: rate(numB, denomB),
-          checkoutToPaid: rate(numC, denomC),
+          lmSignups: lmCount,
+          lmToCheckout: rate(checkoutCount, lmCount),
+          checkoutToPaid: rate(paidCount, checkoutCount),
         });
       },
     },

@@ -14,6 +14,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
 import { resolvePeriod } from "@/lib/admin/period";
+import { fetchExpense30d } from "@/lib/admin/system-queries.server";
 import {
   buildPipelineSummary,
   type PipelineRequestInput,
@@ -97,25 +98,15 @@ export const Route = createFileRoute("/api/admin/report-requests/pipeline")({
           summary;
         const successRate = total > 0 ? (delivered / total) * 100 : null;
 
-        // Custo médio na janela (provider_call_logs ÷ análises totais).
+        // Custo médio na janela: usa fonte canónica (production cost only,
+        // exclui Apify Lab e refreshes) dividida por análises fresh — alinha
+        // com /admin/visao-geral.cost_per_unlocked_report.
         let avgCost: number | null = null;
         if (total > 0) {
-          const { data: logs } = await supabaseAdmin
-            .from("provider_call_logs")
-            .select("estimated_cost_usd, actual_cost_usd")
-            .gte("created_at", sinceISO)
-            .limit(5000);
-          const totalCost = (logs ?? []).reduce(
-            (acc, l) =>
-              acc +
-              Number(
-                (l as { actual_cost_usd?: number | null }).actual_cost_usd ??
-                  (l as { estimated_cost_usd?: number | null }).estimated_cost_usd ??
-                  0,
-              ),
-            0,
-          );
-          avgCost = totalCost / total;
+          const expense = await fetchExpense30d(sinceISO);
+          const production = Number(expense.production_cost_30d ?? 0);
+          const fresh = Number(expense.fresh_reports ?? 0);
+          avgCost = fresh > 0 ? production / fresh : null;
         }
 
         return jsonResponse({

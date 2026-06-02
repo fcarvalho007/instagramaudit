@@ -12,6 +12,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
 import { resolvePeriod } from "@/lib/admin/period";
+import { fetchExpense30d } from "@/lib/admin/system-queries.server";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -120,32 +121,20 @@ export const Route = createFileRoute("/api/admin/report-requests/metrics")({
         const avgDeliveryMinutes =
           deliveryN > 0 ? deliverySum / deliveryN / 60000 : null;
 
-        let avgCostUsd: number | null = null;
-        let totalCostUsd = 0;
-        let apifyCostUsd = 0;
-        {
-          const { data: logs } = await supabaseAdmin
-            .from("provider_call_logs")
-            .select("actor, estimated_cost_usd, actual_cost_usd")
-            .gte("created_at", sinceISO)
-            .limit(5000);
-          for (const l of logs ?? []) {
-            const row = l as {
-              actor?: string | null;
-              actual_cost_usd?: number | null;
-              estimated_cost_usd?: number | null;
-            };
-            const cost = Number(row.actual_cost_usd ?? row.estimated_cost_usd ?? 0);
-            if (!Number.isFinite(cost)) continue;
-            totalCostUsd += cost;
-            if (typeof row.actor === "string" && row.actor.startsWith("apify")) {
-              apifyCostUsd += cost;
-            }
-          }
-          if (totalAnalyses > 0) {
-            avgCostUsd = apifyCostUsd / totalAnalyses;
-          }
-        }
+        // Custos: fonte canónica `provider_call_logs` filtrada por
+        // source_context (production = public_analysis + enrich_comments).
+        // Lab/I&D e refreshes não devem contaminar o KPI "custo médio".
+        // Reutiliza fetchExpense30d para garantir o mesmo cálculo das outras
+        // secções (Visão Geral / Receita).
+        const expense = await fetchExpense30d(sinceISO);
+        const totalCostUsd = Number(expense.production_cost_30d ?? 0);
+        const apifyCostUsd = Number(expense.apify_total ?? 0);
+        const labCostUsd = Number(expense.lab_cost_30d ?? 0);
+        // Denominador alinhado com /admin/visao-geral (cost_per_unlocked_report):
+        // só análises com chamada paga (fresh) entram. Cache não custa nada.
+        const freshAnalyses = Number(expense.fresh_reports ?? 0);
+        const avgCostUsd =
+          freshAnalyses > 0 ? totalCostUsd / freshAnalyses : null;
 
         return jsonResponse({
           success: true,
@@ -161,6 +150,7 @@ export const Route = createFileRoute("/api/admin/report-requests/metrics")({
           avg_cost_usd: avgCostUsd,
           total_cost_usd: totalCostUsd,
           apify_cost_usd: apifyCostUsd,
+          lab_cost_usd: labCostUsd,
         });
       },
     },

@@ -167,6 +167,11 @@ export function CostSummaryCard() {
               </span>
             </span>
           </div>
+
+          <p className="mt-3 text-[11px] text-admin-text-tertiary">
+            Custo/lead, custo/análise e margem usam apenas Produção. Apify Lab
+            entra no total mas é excluído (ver /admin/apify-lab).
+          </p>
         </>
       )}
     </AdminCard>
