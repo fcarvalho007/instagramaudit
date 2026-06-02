@@ -38,7 +38,7 @@ export function HeroSection() {
             <BlurRevealText
               text={t("hero.headline")}
               as="h1"
-              className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl tracking-tight font-medium leading-[1.08] text-balance max-w-[22ch] mx-auto lg:mx-0"
+              className="font-display text-[1.75rem] sm:text-4xl md:text-5xl lg:text-6xl tracking-tight font-medium leading-[1.12] sm:leading-[1.08] text-balance max-w-[18ch] sm:max-w-[20ch] lg:max-w-[22ch] mx-auto lg:mx-0"
               delayMs={150}
               highlightTailWords={2}
               highlightClassName="text-[var(--hero-cyan)]"
