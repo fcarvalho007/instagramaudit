@@ -33,34 +33,49 @@ export const KANBAN_COLUMNS: KanbanColumnDef[] = [
 export const COMMERCIAL_STATUS_OPTIONS: Array<{
   group: "Funil" | "Legado";
   /**
-   * `manual`  → estado que o operador define à mão (decisão comercial).
+   * `manual`  → decisão comercial do operador (clicável a cores plenas).
    * `auto`    → estado actualizado pelo sistema a partir de eventos
-   *             (geração, envios, visualizações, feedback). Não deve ser
-   *             editável directamente no UI; aparece desactivado no select.
+   *             (geração, envios, visualizações, feedback). Aparece
+   *             desactivado no dropdown de estado comercial.
+   * `payment` → marco de pagamento confirmado. Mostrado num grupo
+   *             próprio com o valor em €.
    */
-  kind: "manual" | "auto";
+  kind: "manual" | "auto" | "payment";
   key: string;
   label: string;
   color: string;
+  /** Valor em € (apenas para `kind: "payment"`). */
+  amount_eur?: number;
+  /**
+   * Quando `true`, a opção continua a ser usada para renderizar pills/labels
+   * (ex.: leads legados), mas é omitida do dropdown de Estado comercial na
+   * ficha de cliente. Útil para estados que já não são da responsabilidade
+   * deste select (ex.: `feedback_pedido`, `feedback_recebido` que pertencem
+   * agora à tab Feedback).
+   */
+  hidden?: boolean;
 }> = [
-  // Decisão comercial — editável à mão
-  { group: "Funil", kind: "manual", key: "lead_magnet", label: "Subscreveu Lead Magnet", color: "#3772E5" },
+  // ── Decisão comercial — clicável (grupo "A tua decisão") ──────────────
+  { group: "Legado", kind: "manual", key: "novo_pedido", label: "Novo pedido", color: "#534AB7" },
+  { group: "Legado", kind: "manual", key: "em_analise", label: "Em análise por mim", color: "#BA7517" },
   { group: "Legado", kind: "manual", key: "interessado", label: "Interessado", color: "#3B82F6" },
   { group: "Legado", kind: "manual", key: "potencial_cliente", label: "Potencial cliente", color: "#EF9F27" },
-  { group: "Funil", kind: "manual", key: "checkout_iniciado", label: "Checkout iniciado · €", color: "#7664E4" },
-  { group: "Funil", kind: "manual", key: "pago_report", label: "Pagou 1 report · 7€", color: "#1D9E75" },
-  { group: "Funil", kind: "manual", key: "pago_pack5", label: "Pagou Pack 5 · 28€", color: "#059669" },
   { group: "Legado", kind: "manual", key: "convertido", label: "Convertido", color: "#059669" },
-  { group: "Legado", kind: "manual", key: "arquivado", label: "Arquivado", color: "#888780" },
+  { group: "Legado", kind: "manual", key: "arquivado", label: "Arquivar / Expirado", color: "#888780" },
   { group: "Funil", kind: "manual", key: "expirado", label: "Expirado / Cancelado", color: "#888780" },
-  // Automático — actualizado pelo sistema
-  { group: "Legado", kind: "auto", key: "novo_pedido", label: "Novo pedido", color: "#534AB7" },
-  { group: "Legado", kind: "auto", key: "em_analise", label: "Em análise", color: "#BA7517" },
+  // ── Pagamento — marco com valor em € ──────────────────────────────────
+  { group: "Funil", kind: "payment", key: "pago_report", label: "Pagou 1 relatório", color: "#1D9E75", amount_eur: 7 },
+  { group: "Funil", kind: "payment", key: "pago_pack5", label: "Pagou pack de 5", color: "#059669", amount_eur: 28 },
+  // ── Automático — actualizado pelo sistema (não clicável) ──────────────
+  { group: "Funil", kind: "auto", key: "lead_magnet", label: "Subscreveu lead magnet", color: "#3772E5" },
   { group: "Legado", kind: "auto", key: "relatorio_gerado", label: "Relatório gerado", color: "#185FA5" },
   { group: "Legado", kind: "auto", key: "link_enviado", label: "Link enviado", color: "#3772E5" },
   { group: "Legado", kind: "auto", key: "relatorio_visto", label: "Relatório visto", color: "#1D9E75" },
-  { group: "Legado", kind: "auto", key: "feedback_pedido", label: "Feedback pedido", color: "#D85A30" },
-  { group: "Legado", kind: "auto", key: "feedback_recebido", label: "Feedback recebido", color: "#0E9488" },
+  { group: "Funil", kind: "auto", key: "checkout_iniciado", label: "Checkout iniciado", color: "#7664E4" },
+  // Mantidos só para render de labels/pills em leads legados — não aparecem
+  // no dropdown da ficha de cliente (passaram para a tab Feedback).
+  { group: "Legado", kind: "auto", key: "feedback_pedido", label: "Feedback pedido", color: "#D85A30", hidden: true },
+  { group: "Legado", kind: "auto", key: "feedback_recebido", label: "Feedback recebido", color: "#0E9488", hidden: true },
 ];
 
 export type PaymentProduct = "report_single" | "pack_5";
