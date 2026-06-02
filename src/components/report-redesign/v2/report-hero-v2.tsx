@@ -309,11 +309,31 @@ function ExpandedMetricLine({
 }
 
 function CompactAvatar(props: AvatarProps) {
-  return <BaseAvatar {...props} sizeClass="size-10" badgeSizeClass="size-4" checkSize="size-2.5" />;
+  return <BaseAvatar {...props} sizeClass="size-8 sm:size-10" badgeSizeClass="size-3.5 sm:size-4" checkSize="size-2 sm:size-2.5" />;
 }
 
 function ExpandedAvatar(props: AvatarProps) {
   return <BaseAvatar {...props} sizeClass="size-16 md:size-24" badgeSizeClass="size-5 md:size-6" checkSize="size-3 md:size-3.5" />;
+}
+
+function MobileMicroMetric({
+  followers,
+  language,
+  t,
+}: {
+  followers: number;
+  language: "pt" | "en";
+  t: (k: string, opts?: Record<string, unknown>) => string;
+}) {
+  if (followers <= 0) return null;
+  return (
+    <p className="mt-0.5 text-[12px] text-content-secondary leading-tight truncate">
+      <span className="font-semibold text-content-primary tabular-nums">
+        {formatCompactNumber(followers, language)}
+      </span>{" "}
+      {t(followers === 1 ? "hero.metric_followers_one" : "hero.metric_followers")}
+    </p>
+  );
 }
 
 interface AvatarProps {
