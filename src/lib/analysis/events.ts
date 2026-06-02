@@ -100,6 +100,28 @@ export type ProviderCallStatus =
   | "config_error"
   | "network_error";
 
+/**
+ * Where a provider call originated. Drives the production-vs-lab split in
+ * admin cost KPIs. See `mem://features/cost-source-of-truth` and the
+ * `provider_call_logs.source_context` column.
+ *
+ * - `public_analysis` — end-user public report flow (Apify profile scraper,
+ *   OpenAI insights, DataForSEO market signals, etc.)
+ * - `enrich_comments` — async comment-enrichment job
+ * - `admin_lab` — written by a DB trigger that mirrors `apify_lab_runs`.
+ *   Application code SHOULD NOT pass this value; it exists for the type only.
+ * - `admin_refresh` — admin-triggered manual refresh of a snapshot
+ * - `backfill` — scripted historical re-import
+ * - `unknown` — safety default for legacy / unclassified rows
+ */
+export type SourceContext =
+  | "public_analysis"
+  | "enrich_comments"
+  | "admin_lab"
+  | "admin_refresh"
+  | "backfill"
+  | "unknown";
+
 export interface RecordProviderCallInput {
   network?: string;
   provider?: "apify" | "dataforseo" | "openai" | string;
@@ -123,6 +145,12 @@ export interface RecordProviderCallInput {
   errorMessage?: string | null;
   /** Link this provider call to an existing analysis_event_id. */
   analysisEventId?: string | null;
+  /**
+   * Origin of this call. Defaults to `'unknown'` for safety, but every
+   * production call site MUST pass an explicit value so the cost lands in
+   * the right admin bucket (production vs lab vs other).
+   */
+  sourceContext?: SourceContext;
 }
 
 /**
@@ -152,6 +180,7 @@ export async function recordProviderCall(
       error_excerpt: input.errorMessage
         ? sanitizeErrorExcerpt(input.errorMessage)
         : null,
+      source_context: input.sourceContext ?? "unknown",
     };
     if (input.model != null) row.model = input.model;
     if (input.promptTokens != null) row.prompt_tokens = input.promptTokens;

@@ -481,6 +481,7 @@ async function logCall(input: LogCallInput): Promise<void> {
     totalTokens: input.cost.totalTokens,
     errorMessage: input.errorMessage ?? undefined,
     analysisEventId: input.analysisEventId ?? null,
+    sourceContext: "public_analysis",
   });
 }
 
