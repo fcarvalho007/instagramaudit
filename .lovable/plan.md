@@ -1,69 +1,86 @@
-# Refinamento UI da Ficha de Cliente
+# Auditoria — CTAs premium em `/analyze/$username`
 
-Trabalho **puramente de apresentação** em `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` (e componentes filhos quando necessário). Sem alterações de lógica, dados ou endpoints.
+Apenas auditoria. Sem alterações de código nesta fase.
 
-## Princípios
+## 1. Mapa atual de CTAs
 
-1. **Escala tipográfica única, derivada dos tokens** — Inter para tudo o que é UI, Fraunces só em headings editoriais (nome do lead). Zero font-mono em zonas públicas; números com `tabular-nums`.
-2. **Hierarquia clara em 3 níveis** por secção: eyebrow → título → corpo. Nada cai abaixo de 12px (`text-xs`) excepto eixos de gráfico.
-3. **Espaçamento ritmado** numa escala 4/8/12/16/24/32 — sem valores ad-hoc. Densidade aumenta em listas (relatórios, timeline), respira em headers e KPIs.
-4. **Cores semânticas apenas** (`content-primary/secondary/tertiary`, `surface/surface-muted`, `border-default`, accents `signal-*`). Eliminar qualquer `slate-*`, `gray-*`, `text-white/80` ou hex inline que tenha sobrado.
-5. **Contraste AA garantido** em todos os pares texto/fundo, incluindo estados disabled e badges.
+| # | Origem | Componente | Label visível (PT) | Handler atual | Modal que abre |
+|---|---|---|---|---|---|
+| A | Sidebar (lead já capturado, `unlocked=true`) | `report-block-nav.tsx` → `PremiumBlockCard` → `openDialog()` | "Desbloquear relatório completo" (`nav.access.cta`) | Estado **local** `dialogOpen` dentro de `SidebarList` | `PremiumInterestDialog` (modal de pricing/acesso) ✅ |
+| B | Sidebar (lead ainda **não** capturado, `unlocked=false`) | `report-block-nav.tsx` → `ContinueReadingCard` → `focusLeadMagnet()` | "Continuar a ler" / variante grátis | Faz scroll para `#lead-magnet-card`; se não existir, chama `onUnlockClick?.()` | `UnlockModal` (5-step lead-capture) — não é pricing |
+| C | Selector de período → popover de cada janela bloqueada (30/60/90/365) | `analysis-period-selector.tsx` → `handleCta()` | "Ver opções de acesso" (`selector.locked.cta`) | Delega em `onUnlockClick` (prop vinda de `ReportShellV2` → rota) | `UnlockModal` (lead-capture) ❌ — devia ser `PremiumInterestDialog` |
+| D | Selector (fallback quando `onUnlockClick` não é passado, ex.: snapshot público) | mesmo componente | "Ver opções de acesso" | Estado local `dialogOpen` | `PremiumInterestDialog` ✅ (mas caminho morto na rota autenticada) |
+| E | `PremiumCallout` em vários blocos | `premium-callout.tsx` | "Registar interesse" (`premium.register_interest`) | Estado local | `PremiumInterestDialog` ✅ |
 
-## Escala aplicada
-
-```text
-Eyebrow secção    text-[11px] uppercase tracking-[0.12em] Inter Medium     content-tertiary
-Título secção     text-sm     font-semibold                Inter            content-primary
-Nome do lead      text-2xl    font-normal                  Fraunces         content-primary
-Handle / email    text-sm     Inter                                          content-secondary
-Label de campo    text-xs     Inter Medium                                   content-tertiary
-Valor de campo    text-sm     Inter                                          content-primary
-KPI número        text-xl     Inter SemiBold tabular-nums                    content-primary
-KPI legenda       text-xs     Inter                                          content-secondary
-Meta/timestamp    text-xs     Inter tabular-nums                             content-tertiary
-Body longo        text-sm     leading-relaxed                                content-secondary
+Em `src/routes/analyze.$username.tsx:431-432`:
 ```
-
-## Espaçamento aplicado
-
-```text
-Modal padding             p-8 (header), px-8 py-6 (tabs body)
-Gap entre secções         space-y-8
-Gap dentro de secção      space-y-4
-Gap entre cards/linhas    gap-3 (denso) / gap-4 (normal)
-Padding de card           p-4 (linha lista) / p-5 (card destacado)
-Header → conteúdo         mt-6 depois do header
-Tabs trigger              h-10, px-4, gap-6 entre triggers
+premiumUnlocked={false}
+onUnlockClick={() => setUnlockOpen(true)}   // ← abre UnlockModal
 ```
+`UnlockModal` (`src/components/product/unlock-modal.tsx`) é o formulário de 5 passos de captura de lead, não o modal de pricing.
 
-## Cores revistas por zona
+## 2. Causa raiz
 
-- **Header**: fundo `surface`, borda inferior `border-default`. Status badge usa accent semântico (`signal-positive/warning/info/neutral`) com fundo a 10% e texto a 100%.
-- **KPI strip**: cards em `surface-muted` com borda `border-default/60`; números `content-primary`, labels `content-secondary`.
-- **Tabs**: trigger inactivo `content-tertiary`, hover `content-secondary`, activo `content-primary` com underline `accent-primary` 2px.
-- **Dropdown estado comercial**: grupo "Automático" em `content-tertiary` (read-only visual); "Pagamento" valores à direita em Inter SemiBold tabular-nums `content-primary`; "A tua decisão" item activo com fundo `accent-primary/10` + texto `accent-primary`.
-- **Tab Relatórios**: linhas com hover `surface-muted/60`; "não visto" badge `signal-warning` subtil, não amarelo gritante.
-- **Tab Feedback**: callouts usam variantes existentes do `AdminCallout`, sem inventar cores.
-- **Tab Histórico**: rail da timeline `border-default`, bullets pintadas por categoria (`accent-primary` auto, `signal-positive` payment, `content-tertiary` system).
+- A prop `onUnlockClick` na rota está cablada **exclusivamente** ao `UnlockModal` (lead-capture).
+- O `AnalysisPeriodSelector` foi desenhado para "delegar quando possível, senão usar `PremiumInterestDialog` local". Como a rota fornece sempre `onUnlockClick`, o branch correto (dialog premium local) nunca corre — passa sempre pelo lead-capture.
+- A sidebar, por acaso, contorna o bug porque tem o seu **próprio** `PremiumInterestDialog` interno (CTA A) e só cai em `onUnlockClick` no ramo `unlocked=false` (CTA B, fallback do `focusLeadMagnet`).
+- Resultado: dois "tipos" de modal a sair de CTAs premium conforme o ponto de entrada, e o selector apanha o pior caminho.
 
-## Limpeza de inconsistências
+## 3. Respostas diretas
 
-- Substituir todos os `text-white`, `text-slate-*`, `text-gray-*`, `bg-slate-*` e hex literais por tokens.
-- Remover `font-mono`/`JetBrains` que tenha ficado em metadata, contadores, valores comerciais.
-- Uniformizar ícones Lucide para `h-4 w-4` em linha de texto e `h-5 w-5` em headers de secção; cor `content-tertiary` por defeito, `content-primary` quando enfatizado.
-- Botões `size="sm"` em acções secundárias, `size="default"` em CTA principal. Labels em sentence case.
+1. Sidebar "Desbloquear relatório completo": `ReportBlockSidebar` → `SidebarList` → `PremiumBlockCard` em `src/components/report-redesign/v2/report-block-nav.tsx` (linhas 407–517).
+2. Selector "Ver opções de acesso": `AnalysisPeriodSelector` em `src/components/report-redesign/v2/analysis-period-selector.tsx` (linhas 35–204).
+3. **Handlers diferentes.** Sidebar usa estado local `dialogOpen` para abrir o pricing. Selector delega em `onUnlockClick` da rota, que aponta para o lead-capture.
+4. Sidebar (`unlocked=true`) → `PremiumInterestDialog`. Selector → `UnlockModal`. Sidebar (`unlocked=false` ramo "Continuar") → scroll para lead-magnet ou `UnlockModal`.
+5. **Sim** — o selector tem um `PremiumInterestDialog` local declarado como "fallback" (linhas 195–202), mas nunca é o que abre na rota autenticada porque `onUnlockClick` está sempre presente e ganha prioridade no `handleCta`.
+6. O shell `ReportShellV2` recebe `unlocked` (estado de lead capturado) mas **não** sabe se houve compra premium. `premiumUnlocked` está hard-coded a `false` na rota (linha 431).
+7. `lead_session` está disponível indiretamente: a rota persiste `ib_unlock:{snapshotId}` e `ib_unlock_lead:{snapshotId}` em `sessionStorage` (linhas 455–458), e o cookie `lead_session` é definido pelo servidor após `UnlockModal.onUnlock`. Não há leitura desta info no handler de CTA premium.
+8. **Não.** Não existe verificação de "já comprou premium". `premiumUnlocked` é literal `false` em todos os renders.
+9. `premiumUnlocked` só aparece em `report-shell-v2.tsx` (prop com default `false`) e em `analyze.$username.tsx:431` (sempre `false`). Não há nenhum sítio que o defina a `true`.
+10. Tracking: `trackEvent({ eventType: "unlock_clicked", metadata: { source_component } })` é disparado em `report-block-nav.tsx` (`openDialog`, `focusLeadMagnet`) com `source_component: "sidebar_access"` / `"sidebar_continue_free"`. **O selector não dispara nada** quando o CTA é clicado.
 
-## Checkpoint
+## 4. Fonte única de verdade recomendada
 
-- ☐ Escala tipográfica aplicada em todo o `LeadDetailSheet` e subcomponentes (`CommercialStatusSelect`, `LeadReportsList`, `FeedbackBetaSection`, `LeadHistoryTimeline`).
-- ☐ Espaçamento normalizado à escala 4/8/12/16/24/32.
-- ☐ Zero `slate-*`/`gray-*`/hex inline; zero `font-mono` em zona pública.
-- ☐ Contraste AA verificado em header, KPIs, dropdown agrupado, tabs e timeline.
-- ☐ Sem alterações de comportamento, dados ou tipos.
+Criar um único hook/contexto no shell (ex.: `useReportPremiumCta()`) com:
+- Estado: `{ premiumUnlocked, leadUnlocked, paymentEnabled }`.
+- Acção única: `openPremiumAccess(source: string)` que:
+  1. Dispara `trackEvent('premium_cta_clicked', { source_component, snapshotId, handle })`.
+  2. Se `premiumUnlocked === true` → não faz nada (CTA não devia estar visível; fallback: scroll ao primeiro bloco premium).
+  3. Caso contrário → abre **sempre** o `PremiumInterestDialog` (que já cobre os modos "pagamento ativo" e "interesse" via `pending_note`).
+- Toda a árvore (`AnalysisPeriodSelector`, `ReportBlockSidebar`, `PremiumCallout`, `EndOfFreeBlock`, `ReportPostComparison`) consome esse hook e deixa de instanciar `PremiumInterestDialog` ou `dialogOpen` locais.
+- A rota deixa de cablar `onUnlockClick` ao `UnlockModal`. O `UnlockModal` passa a ser invocado apenas pelo lead-magnet card e pelo onboarding existente, nunca a partir de um CTA premium.
+- Label unificada: `nav.access.cta` ("Desbloquear relatório completo" / "Unlock full report"). Eliminar `selector.locked.cta` ("Ver opções de acesso") e substituir pela mesma chave (ou aliasar).
 
-## Ficheiros tocados (previsão)
+## 5. Plano mínimo de implementação (a executar noutro turno)
 
-- `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` (principal)
-- Eventualmente pequenos ajustes em `admin-callout.tsx` / `admin-badge.tsx` **só** se faltar variante semântica — caso contrário, intactos.
-- Nenhum ficheiro de `LOCKED_FILES.md` será modificado.
+1. Adicionar `PremiumCtaProvider` em `report-shell-v2.tsx` (estado + handler único + render único de `PremiumInterestDialog`).
+2. Expor `usePremiumCta()` e substituir, num único commit por componente:
+   - `analysis-period-selector.tsx`: remover `onUnlockClick`, remover `PremiumInterestDialog` local; `handleCta` chama `openPremiumAccess('analysis_period_selector')`.
+   - `report-block-nav.tsx`: remover `dialogOpen` local e `PremiumInterestDialog` interno; `PremiumBlockCard` e `ContinueReadingCard` chamam `openPremiumAccess('sidebar_access' | 'sidebar_continue')`.
+   - `premium-callout.tsx`, `end-of-free-block.tsx`, `report-post-comparison.tsx`: idem.
+3. Em `analyze.$username.tsx`: remover `onUnlockClick={() => setUnlockOpen(true)}`. Manter `UnlockModal` apenas para o lead-magnet (mantém o uso atual via card dedicado).
+4. Unificar string PT/EN para "Desbloquear relatório completo" / "Unlock full report" e atualizar `selector.locked.cta`.
+5. Adicionar evento `premium_cta_clicked` único; remover/aliasar os `unlock_clicked` antigos.
+
+## 6. Ficheiros provavelmente afetados
+
+- `src/routes/analyze.$username.tsx`
+- `src/components/report-redesign/v2/report-shell-v2.tsx`
+- `src/components/report-redesign/v2/analysis-period-selector.tsx`
+- `src/components/report-redesign/v2/report-block-nav.tsx`
+- `src/components/report-redesign/v2/premium-callout.tsx`
+- `src/components/report-redesign/v2/end-of-free-block.tsx`
+- `src/components/report-redesign/v2/report-post-comparison.tsx`
+- `src/i18n/locales/{pt,en}/report.json`
+- Novo: `src/components/report-redesign/v2/premium-cta-context.tsx` (provider + hook)
+- Testes: snapshots de `analysis-period-selector` e `report-block-nav`
+
+Sem tocar em: onboarding-modal, `/api/onboarding/start`, `/api/analyze-public-v1`, lógica de créditos, Apify/OpenAI/DataForSEO, scoring, thumbnails, dados do período, pricing, gateway de pagamento, emails.
+
+## 7. Riscos
+
+- **Regressão de tracking**: se mantivermos `unlock_clicked` e adicionarmos `premium_cta_clicked`, métricas duplicam; decidir antes se renomear é breaking.
+- **Lead-magnet card**: o ramo `ContinueReadingCard` faz scroll a `#lead-magnet-card`; se o card desaparecer noutra iteração, o fallback tem de continuar a abrir o premium e não o `UnlockModal`.
+- **Snapshot público** (sem rota autenticada): garantir que o provider funciona sem `lead_session` e que `PremiumInterestDialog` continua a aceitar `snapshotId`/`handle` opcionais.
+- **`premiumUnlocked` sempre false**: enquanto não houver gateway, o handler deve resolver-se sempre como "abrir pricing/interesse". Quando ligarem pagamentos, o flag passa a vir de leitura real (cookie/endpoint) — desenhar o provider com essa porta já prevista.
+- **Tab key / a11y**: ao remover dialogs locais, garantir que o foco volta ao botão de origem (gerir `triggerRef` no provider).
