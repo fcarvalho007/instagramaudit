@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import {
   getProfileEngagementHistory,
   type ProfileEngagementHistoryItem,
-} from "@/lib/server/profile-history.functions";
+} from "@/lib/profile-history.functions";
 
 interface Props {
   /** Handle do perfil analisado (sem @). */
