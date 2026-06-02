@@ -100,27 +100,52 @@ export interface ReserveResult {
 }
 
 /**
+ * Discriminated outcome do `reserveCredit`. `duplicate` significa que já
+ * existe uma reserva ativa para `(lead_id, cache_key)` — protegido pelo
+ * índice único parcial `uniq_credit_ledger_reserve_per_report`.
+ */
+export type ReserveOutcome =
+  | { kind: "reserved"; reservationId: string; balanceAfter: number }
+  | { kind: "duplicate" };
+
+/**
  * Decrements balance by 1 and returns a `reservationId` that must later be
  * confirmed or released. Throws InsufficientCreditsError if balance < 1.
+ *
+ * Quando `cacheKey` está presente e já existe uma reserva ativa para o
+ * mesmo `(lead_id, cache_key)`, devolve `{ kind: "duplicate" }` em vez de
+ * lançar — o caller serve a resposta sem reservar nem confirmar (a
+ * primeira chamada concorrente trata do ciclo de vida).
  */
 export async function reserveCredit(input: {
   leadId: string;
   handle?: string | null;
   cacheKey?: string | null;
-}): Promise<ReserveResult> {
+}): Promise<ReserveOutcome> {
   const balance = await getBalance(input.leadId);
   if (balance < 1) {
     throw new InsufficientCreditsError(input.leadId, balance);
   }
   const reservationId = randomUUID();
-  await insertLedger({
-    lead_id: input.leadId,
-    delta: -1,
-    reason: "reserve",
-    handle: input.handle ?? null,
-    cache_key: input.cacheKey ?? null,
-    reservation_id: reservationId,
-  });
+  try {
+    await insertLedger({
+      lead_id: input.leadId,
+      delta: -1,
+      reason: "reserve",
+      handle: input.handle ?? null,
+      cache_key: input.cacheKey ?? null,
+      reservation_id: reservationId,
+    });
+  } catch (err) {
+    // 23505 no insert do `reserve` com cache_key → outra request já
+    // reservou esta combinação (lead_id, cache_key). Devolver duplicate
+    // para o caller servir a resposta sem reservar de novo.
+    const message = err instanceof Error ? err.message : String(err);
+    if (input.cacheKey && message.includes("uniq_credit_ledger_reserve_per_report")) {
+      return { kind: "duplicate" };
+    }
+    throw err;
+  }
   const balanceAfter = await getBalance(input.leadId);
   if (balanceAfter < 0) {
     // Concurrent over-spend → compensate by releasing this reservation.
@@ -133,7 +158,7 @@ export async function reserveCredit(input: {
     });
     throw new InsufficientCreditsError(input.leadId, balanceAfter + 1);
   }
-  return { reservationId, balanceAfter };
+  return { kind: "reserved", reservationId, balanceAfter };
 }
 
 /**

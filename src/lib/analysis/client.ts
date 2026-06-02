@@ -6,6 +6,14 @@
 
 import type { PublicAnalysisResponse } from "./types";
 
+/**
+ * In-flight guard: anula chamadas duplicadas resultantes de React
+ * StrictMode / double mount. Defesa em profundidade — a invariante
+ * "1 crédito por (lead, cache_key)" é garantida no servidor pelo índice
+ * único parcial `uniq_credit_ledger_reserve_per_report`.
+ */
+const inflight = new Map<string, Promise<PublicAnalysisResponse>>();
+
 export async function fetchPublicAnalysis(
   username: string,
   competitorUsernames: string[] = [],
@@ -16,7 +24,12 @@ export async function fetchPublicAnalysis(
     .filter((c) => c.length > 0)
     .slice(0, 2);
 
-  try {
+  const key = `${cleaned.toLowerCase()}|${competitors.map((c) => c.toLowerCase()).join(",")}`;
+  const existing = inflight.get(key);
+  if (existing) return existing;
+
+  const promise = (async (): Promise<PublicAnalysisResponse> => {
+    try {
     const res = await fetch("/api/analyze-public-v1", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -46,11 +59,19 @@ export async function fetchPublicAnalysis(
       message:
         "Não foi possível analisar este perfil neste momento. Tentar novamente dentro de instantes.",
     };
-  } catch {
+    } catch {
     return {
       success: false,
       error_code: "NETWORK_ERROR",
       message: "Falha de ligação. Tentar novamente.",
     };
+    }
+  })();
+
+  inflight.set(key, promise);
+  try {
+    return await promise;
+  } finally {
+    inflight.delete(key);
   }
 }

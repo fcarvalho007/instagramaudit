@@ -1,115 +1,100 @@
-# Unificar CTAs premium no relatório público
+## Causa raiz
 
-Implementação do plano aprovado na auditoria anterior, agora com o detalhe extra pedido (copy do popover, evento `premium_window_interest`, validações).
+Duas chamadas quase concorrentes ao `/api/analyze-public-v1` (StrictMode / double mount) para o mesmo `lead_id + cache_key`:
 
-## 1. Novo provider partilhado
+1. Ambas leem `leadOwnsReport(lead, cache_key)` → `false` (ainda ninguém escreveu em `lead_reports`).
+2. Ambas chamam `reserveCredit` → cada uma insere `-1` em `credit_ledger` com `reason='reserve'`.
+3. Ambas terminam, ambas fazem `confirm` + `upsertLeadReport`.
+4. Saldo final: `+2 − 1 − 1 = 0` em vez de `1`.
 
-Criar `src/components/report-redesign/v2/premium-cta-context.tsx`:
+`upsertLeadReport` tem `UNIQUE(lead_id, cache_key)`, mas só é escrito **depois** do snapshot pronto, demasiado tarde para servir de gate.
 
-- `PremiumCtaProvider` recebe `{ snapshotId, handle, variant, premiumUnlocked }` e mantém estado `{ open, source }`.
-- Expõe hook `usePremiumCta()` com:
-  - `handlePremiumAccessClick(source, extra?)` — dispara `premium_cta_clicked` (fire-and-forget, try/catch) com `{ source_component, handle, snapshot_id, selected_window? }` e abre o dialog. Se `premiumUnlocked === true`, faz `scrollToBlock('compare')` em vez de abrir.
-  - `trackPremiumWindowInterest(windowDays)` — dispara `premium_window_interest`.
-- Renderiza **um único** `<PremiumInterestDialog>` controlado, com `sourceComponent` igual ao último `source` clicado.
-- `source` aceita `'sidebar' | 'analysis_period_selector' | 'lock_gate' | 'sticky_unlock_bar' | 'premium_section'`.
+## Estratégia escolhida
 
-## 2. Wiring no shell
+Idempotência atómica no `credit_ledger` via índice único parcial. É a mais pequena, totalmente atómica em Postgres, e não altera a semântica do `lead_reports` (continua a representar "entregue").
 
-`src/components/report-redesign/v2/report-shell-v2.tsx`:
-- Envolver o conteúdo com `<PremiumCtaProvider>` recebendo as props já existentes (`snapshotId`, `handle`/`payload.instagram_username`, `variant`, `premiumUnlocked`).
-- Remover `onUnlockClick` da assinatura pública (ou mantê-lo deprecated e ignorá-lo) — todos os consumidores passam a usar o hook.
+- **Migração**: índice único parcial em `credit_ledger(lead_id, cache_key) WHERE reason = 'reserve' AND cache_key IS NOT NULL`.
+- **Código**: `reserveCredit` capta `23505` no insert do `reserve` e devolve um sinal `duplicate`. O endpoint trata duplicado como "skip reserve" (igual ao caminho `alreadyAssociated`): serve a resposta sem reservar/confirmar/libertar — a primeira chamada já está a tratar do ciclo.
+- **Frontend**: guarda de in-flight em `fetchPublicAnalysis` por `(username, competitors)` para anular o double-mount no cliente.
 
-`src/routes/analyze.$username.tsx`:
-- Deixar de passar `onUnlockClick={() => setUnlockOpen(true)}`. `UnlockModal` (lead-capture) **mantém-se** apenas montado para o card lead-magnet existente — não é mais alvo de CTAs premium.
-- Manter `premiumUnlocked={false}` com `// TODO: ligar a estado real quando o gateway estiver ativo`.
+## Detalhes técnicos
 
-## 3. Consumidores migrados
+### 1. Migração (nova)
 
-Todos passam a chamar `usePremiumCta().handlePremiumAccessClick(...)` e perdem o seu `PremiumInterestDialog`/`dialogOpen` local:
+```sql
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_credit_ledger_reserve_per_report
+  ON public.credit_ledger (lead_id, cache_key)
+  WHERE reason = 'reserve' AND cache_key IS NOT NULL;
+```
 
-- `analysis-period-selector.tsx`
-- `report-block-nav.tsx` (`PremiumBlockCard` → `'sidebar'`; `ContinueReadingCard` continua a fazer scroll ao lead-magnet, mas o fallback chama `handlePremiumAccessClick('sidebar')` em vez de `onUnlockClick`)
-- `premium-callout.tsx` → `'premium_section'`
-- `end-of-free-block.tsx` → `'lock_gate'`
-- `report-post-comparison.tsx` → `'premium_section'`
+Notas:
+- Parcial → só restringe linhas `reason='reserve'` com `cache_key` definido. Não afeta `initial_grant`, `confirm`, `release`, nem reservas legacy sem `cache_key`.
+- Se houver duplicados pré-existentes em produção, o índice falha a criar. Mitigação: a migração começa com um `SELECT` em modo `NOTICE` listando duplicados (apenas log) e usa `CREATE UNIQUE INDEX` direto (a migração corre em transação e aborta se houver duplicados; será sinalizado ao operador).
+- Sem alterações de RLS/GRANT (tabela já é acedida só via service role).
 
-## 4. Selector — copy + comportamento
+### 2. `src/lib/credits/credits.server.ts`
 
-`analysis-period-selector.tsx`:
-- Remover prop `onUnlockClick`, remover dialog fallback local, remover estado `dialogOpen`.
-- No `onOpenChange` de cada popover (quando abre), chamar `trackPremiumWindowInterest(days)` (uma vez por abertura).
-- `handleCta(days)` → `handlePremiumAccessClick('analysis_period_selector', { selected_window: \`${days}d\` })`.
-- Atualizar chaves i18n usadas pelo popover para a nova copy.
+- Adicionar tipo `ReserveOutcome = { kind: "reserved"; reservationId; balanceAfter } | { kind: "duplicate" }`.
+- `reserveCredit` passa a:
+  1. Ler `balance`. Se `< 1` → `InsufficientCreditsError` (inalterado).
+  2. Insert do `reserve` com `cache_key`. Se erro `23505` **e** `cacheKey` presente → devolver `{ kind: "duplicate" }` sem ler saldo nem libertar.
+  3. Caso contrário: recheck de saldo (lógica de compensação atual mantida).
+- Compatibilidade: callers existentes que esperam `ReserveResult` recebem `kind: "reserved"` (manter export retro-compatível com type guard).
 
-Chaves i18n a atualizar/criar em `src/i18n/locales/{pt,en}/report.json` (secção `selector.locked`):
+### 3. `src/routes/api/analyze-public-v1.ts`
 
-PT:
-- `title`: "Disponível no relatório completo"
-- `body`: "Analisa mais histórico para perceber evolução, consistência e padrões de conteúdo ao longo do tempo."
-- `cta`: "Desbloquear relatório completo"
-- `secondary`: "Continuar com visão gratuita"
+- Bloco do gate (linhas ~507–548):
+  - Após `alreadyAssociated = await leadOwnsReport(...)`, decidir `skipReserve` como hoje.
+  - No `try` do `reserveCredit`, se resultado for `duplicate`: tratar igual a `skipReserve` — `reservation = null`, marcar flag `duplicateInFlight = true`. **Não** abortar pedido (relatório ainda tem de ser servido — o primeiro vai escrever em `lead_reports`).
+  - `finalizeCredit` já é no-op quando `reservation === null` (linha 557), portanto não confirma nem liberta.
+- `logEvent` adicional para outcome `duplicate_reservation_skipped` (não bloqueia; apenas métrica).
 
-EN:
-- `title`: "Available in the full report"
-- `body`: "Analyze more history to understand evolution, consistency and content patterns over time."
-- `cta`: "Unlock full report"
-- `secondary`: "Continue with free overview"
+### 4. `src/lib/analysis/client.ts`
 
-## 5. Label unificada nos restantes CTAs
+- Adicionar `Map<string, Promise<PublicAnalysisResponse>>` no module-scope. Chave = `${cleaned}|${competitors.join(",")}`. Antes do `fetch`, se já existe promise → devolver a mesma. `finally` remove a chave.
+- Razão: defesa em profundidade; o backend já garante a invariante.
 
-Auditar `nav.access.cta`, `premium.register_interest`, `endOfFree.cta` (e equivalentes) em PT/EN. Onde forem CTAs de "abrir pricing" devem ler **exatamente** "Desbloquear relatório completo" / "Unlock full report". Ajustar só os strings que forem CTA primário do mesmo fluxo — manter copy de apoio inalterada.
+### 5. Testes
 
-## 6. Tracking
+Atualizar `src/routes/api/__tests__/analyze-public-v1-credits.test.ts` + `src/lib/credits/__tests__/credits.test.ts`:
 
-Reutilizar `trackEvent` já existente em `report-block-nav.tsx`:
-- Renomear `unlock_clicked` (sidebar) → `premium_cta_clicked` com `source_component: 'sidebar'`.
-- Novo `premium_window_interest` disparado uma vez por abertura de popover do selector.
-- Metadata nunca inclui email/telefone. Todas as chamadas com `.catch(() => {})` para não bloquear.
+1. Fresh success — saldo 2 → 1.
+2. **(novo)** Sequencial duplicado mesmo `lead+cache_key` → consome 1 total, segunda chamada loga `duplicate_reservation_skipped`.
+3. **(novo)** Concorrente: `Promise.all` de duas chamadas → 1 só `reserve` no ledger, ambas devolvem `success`.
+4. `lead_reports` já existe → 0 créditos (mantém).
+5. Provider error → release, saldo 2 (mantém).
+6. Personal no feed → release, saldo 2 (mantém).
+7. Internal bypass → 0 mutações no ledger (mantém).
+8. Cache hit novo para o lead → consome 1, cria associação (mantém).
 
-## 7. Guardas
+Mock do `supabaseAdmin.from('credit_ledger').insert` precisa de simular a violação de unique para `(lead_id, cache_key, reason='reserve')` — adicionar Map em memória no teste já existente.
 
-Confirmar (revisão de código + teste) que o handler:
-- não escreve em `sessionStorage`/cookies de unlock;
-- não navega nem mexe em query params;
-- não invoca server functions de análise;
-- não consome créditos.
+Frontend: pequeno teste em `src/lib/analysis/__tests__/` para o in-flight guard (duas chamadas paralelas → um só `fetch`).
 
-O selector continua puramente apresentacional: chip locked só abre popover; CTA só chama o handler.
-
-## 8. Testes
-
-Novos / atualizados em `src/components/report-redesign/v2/__tests__/`:
-
-- `premium-cta-context.test.tsx` — `handlePremiumAccessClick` abre dialog, regista evento com `source_component` correto, faz no-op + scroll quando `premiumUnlocked`.
-- `analysis-period-selector.test.tsx` — chip locked dispara `premium_window_interest`, CTA usa label unificada (PT e EN via i18n mock), `handlePremiumAccessClick` recebe `selected_window` correto, clique não muda estado do selector.
-- Garantir que nenhum teste novo importa `UnlockModal` ou copy de onboarding.
-- Atualizar snapshots existentes que dependam das chaves de i18n alteradas.
-
-## 9. Validação final
+## Validação
 
 - `bunx tsc --noEmit`
-- `bunx vitest run src/components/report-redesign/v2/`
-- Verificação manual via preview: sidebar CTA e selector CTA abrem **o mesmo** `PremiumInterestDialog`; `UnlockModal` não abre a partir de nenhum CTA premium; nenhum request de rede ao clicar.
+- `bunx vitest run src/lib/credits src/routes/api/__tests__/analyze-public-v1-credits.test.ts src/lib/analysis/__tests__`
+- Smoke manual no preview:
+  - Lead fresco → onboarding → relatório abre.
+  - `psql` ao `credit_ledger` filtrado pelo `lead_id`: exatamente `initial_grant +2`, `reserve -1`, `confirm 0`. Saldo = 1.
+  - Recarregar mesmo relatório → ledger inalterado, saldo = 1.
 
 ## Ficheiros afetados
 
-- novo: `src/components/report-redesign/v2/premium-cta-context.tsx`
-- novo: `src/components/report-redesign/v2/__tests__/premium-cta-context.test.tsx`
-- novo: `src/components/report-redesign/v2/__tests__/analysis-period-selector.test.tsx`
-- `src/components/report-redesign/v2/report-shell-v2.tsx`
-- `src/components/report-redesign/v2/analysis-period-selector.tsx`
-- `src/components/report-redesign/v2/report-block-nav.tsx`
-- `src/components/report-redesign/v2/premium-callout.tsx`
-- `src/components/report-redesign/v2/end-of-free-block.tsx`
-- `src/components/report-redesign/v2/report-post-comparison.tsx`
-- `src/routes/analyze.$username.tsx`
-- `src/i18n/locales/pt/report.json`
-- `src/i18n/locales/en/report.json`
+- `supabase/migrations/<timestamp>_credit_ledger_reserve_unique.sql` (novo)
+- `src/lib/credits/credits.server.ts`
+- `src/routes/api/analyze-public-v1.ts` (apenas bloco do gate + logEvent)
+- `src/lib/analysis/client.ts`
+- `src/lib/credits/__tests__/credits.test.ts`
+- `src/routes/api/__tests__/analyze-public-v1-credits.test.ts`
+- `src/lib/analysis/__tests__/fetch-public-analysis-inflight.test.ts` (novo)
 
-Sem tocar em: onboarding, lead session, `/api/analyze-public-v1`, créditos, Apify/OpenAI/DataForSEO, geração de janela temporal, scoring, gateway, pricing, thumbnails, emails, `UnlockModal`.
+## Não-alterado
+
+Onboarding modal, `/api/onboarding/start`, cookies, Apify, OpenAI, DataForSEO, UI do relatório, pricing, gating premium, thumbnails, emails.
 
 ## Riscos
 
-- Renomear `unlock_clicked` → `premium_cta_clicked` quebra dashboards existentes. Mitigação: manter um disparo extra `unlock_clicked` durante o período de transição **se** o user confirmar que há analítica a consumir. Pergunto antes se mantenho compat ou se faço corte limpo.
-- `ContinueReadingCard` (sidebar com `unlocked=false`) hoje faz scroll ao lead-magnet — mantém-se igual, só muda o fallback. Verificar visualmente que continua a aterrar no card certo.
-- `PremiumInterestDialog` partilhado significa um só `open` global; se houver overlap (dois CTAs em rápida sucessão) o último `source` ganha. Aceitável para tracking.
+- **Duplicados pré-existentes em produção** podem impedir a criação do índice. Mitigação: correr `SELECT lead_id, cache_key, count(*) FROM credit_ledger WHERE reason='reserve' AND cache_key IS NOT NULL GROUP BY 1,2 HAVING count(*) > 1` antes (já pedido ao approver no momento da migração). Se houver, limpar com um script de reconciliação que mantém o primeiro `reserve` e marca os outros como compensados.
+- **Reservas legacy sem `cache_key`** ficam fora do índice (intencional) — não retroquebra nada.

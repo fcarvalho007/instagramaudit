@@ -88,7 +88,6 @@ import {
   InsufficientCreditsError,
   releaseReservation,
   reserveCredit,
-  type ReserveResult,
 } from "@/lib/credits/credits.server";
 import { readLeadIdFromRequest } from "@/lib/leads/lead-cookie.server";
 import {
@@ -497,7 +496,8 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         //   • Bypass com Authorization: Bearer $INTERNAL_API_TOKEN (admin /
         //     /api/analyze/refresh / /api/admin/refresh-profile).
         let leadId: string | null = null;
-        let reservation: ReserveResult | null = null;
+        let reservation: { reservationId: string } | null = null;
+        let duplicateInFlight = false;
         let alreadyAssociated = false;
         // Lookup adiantado: necessário para decidir se vamos cobrar crédito
         // antes de reservar. Reutilizado mais à frente como `existing`.
@@ -523,11 +523,20 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           const skipReserve = cacheFreshHit && alreadyAssociated;
           if (!skipReserve) {
             try {
-              reservation = await reserveCredit({
+              const outcome = await reserveCredit({
                 leadId,
                 handle: primary,
                 cacheKey,
               });
+              if (outcome.kind === "duplicate") {
+                duplicateInFlight = true;
+                console.info(
+                  "[analyze-public-v1] duplicate_reservation_skipped",
+                  JSON.stringify({ handle: primary, cacheKey, leadId }),
+                );
+              } else {
+                reservation = { reservationId: outcome.reservationId };
+              }
             } catch (err) {
               if (err instanceof InsufficientCreditsError) {
                 await logEvent({
