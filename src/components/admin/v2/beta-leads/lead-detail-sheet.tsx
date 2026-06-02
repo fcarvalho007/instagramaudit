@@ -769,8 +769,8 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
         <DialogTitle className="sr-only">Ficha de cliente · {displayName(lead)}</DialogTitle>
 
         {/* ── Cabeçalho (identidade + estado) ─────────────── */}
-        <div className="px-6 pt-6 pb-4 border-b border-admin-text-primary/10 shrink-0">
-          <div className="flex items-start justify-between gap-3">
+        <div className="px-6 pt-6 pb-5 border-b border-admin-text-primary/10 shrink-0">
+          <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3 min-w-0">
               <div
                 className="shrink-0 flex items-center justify-center rounded-full text-white font-semibold"
@@ -778,7 +778,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                   width: 44,
                   height: 44,
                   fontSize: 15,
-                  backgroundColor: columnDef?.color ?? "#534AB7",
+                  backgroundColor: columnDef?.color ?? "rgb(var(--admin-leads-500))",
                 }}
               >
                 {getInitials(displayName(lead) !== "Sem nome" ? displayName(lead) : lead.email)}
@@ -786,13 +786,13 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
               <div className="min-w-0">
                 <h2
                   className="m-0 truncate text-admin-text-primary"
-                  style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.2 }}
+                  style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.25, letterSpacing: "-0.01em" }}
                 >
                   {displayName(lead)}
                 </h2>
                 <a
                   href={`mailto:${lead.email}`}
-                  className="admin-body text-admin-text-secondary mt-1 truncate block hover:text-admin-text-primary transition-colors"
+                  className="admin-body text-admin-text-secondary mt-0.5 truncate block hover:text-admin-text-primary transition-colors"
                   title={lead.email}
                 >
                   {lead.email}
@@ -801,11 +801,11 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
             </div>
             {columnDef && (
               <span
-                className="shrink-0 rounded-lg px-2.5 py-1 text-[12px] font-medium"
+                className="shrink-0 rounded-md px-2.5 py-1 text-[12px] font-medium leading-none"
                 style={{
-                  backgroundColor: `${columnDef.color}15`,
+                  backgroundColor: `${columnDef.color}1A`,
                   color: columnDef.color,
-                  border: `1px solid ${columnDef.color}30`,
+                  border: `1px solid ${columnDef.color}33`,
                 }}
               >
                 {columnDef.label}
@@ -814,7 +814,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
           </div>
 
           {/* KPI strip — 4 métricas accionáveis */}
-          <div className="grid grid-cols-4 gap-2 mt-4">
+          <div className="grid grid-cols-4 gap-2 mt-5">
             <KpiTile label="Relatórios" value={kpiReports} icon={FileBarChart} />
             <KpiTile
               label="Créditos"
