@@ -1,118 +1,109 @@
-## 1. Auditoria — onde vive o dinheiro hoje
+## Diagnóstico
 
-Mapeei cada secção, o endpoint que serve e a fonte SQL. Resumo:
+No fluxo onboarding-first atual, qualquer utilizador que chega a `/analyze/$username` já completou o onboarding (caso contrário o backend devolve `ONBOARDING_REQUIRED` e reabre o modal). Apesar disso, o estado `unlocked` em `analyze.$username.tsx` continua a ser lido de `sessionStorage["ib_unlock:{snapshotId}"]`, que **nunca é escrito pelo onboarding** — só pelo antigo `UnlockModal` de 5 passos. Resultado:
 
-```
-Secção                  Endpoint                                  Fonte de dados                                  source_context filtrado?
-────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-Visão Geral · KPIs       /api/admin/overview-kpis                  fetchExpense30d() + lead_payments                ✅ sim (production/lab/other)
-Visão Geral · Custos     /api/admin/sistema/expense-30d            fetchExpense30d()                                ✅ sim
-Visão Geral · Funil      /api/admin/funnel                         analysis_events + leads + report_requests        n/a (não usa custos)
-Receita · Despesas       /api/admin/sistema/expense-30d            fetchExpense30d()  (mesmo helper)                ✅ sim
-Receita · Pré-receita    /api/admin/pre-revenue-signals            lead_payments + beta_feedback + pricing_interest n/a
-Relatórios · Métricas    /api/admin/report-requests/metrics        SOMA CRUA de provider_call_logs                  ❌ NÃO
-Relatórios · Pipeline    /api/admin/report-requests/pipeline       SOMA CRUA de provider_call_logs                  ❌ NÃO
-Contactos · Banner       /api/admin/leads-funnel                   leads + report_requests + payments + LM events   n/a
-Contactos · Tabela/Kpis  /api/admin/leads-kanban                   leads enriquecidos + lead_payments               n/a
-```
+- `unlocked === false` permanentemente pós-onboarding.
+- `ReportLockGate` (body) renderiza e o botão "Ver relatório gratuito →" chama `handleUnlockClick` → abre o `UnlockModal` antigo ("PASSO 1 DE 5 · ~1 MIN"). Não emite `premium_cta_clicked`. ❌
+- `StickyUnlockBar` está condicionado a `unlocked && lockBoundary === "engagement"`, portanto **nunca aparece** no mobile pós-onboarding. ❌
 
-### Problemas encontrados
+O *AnalysisPeriodSelector* e o `ReportEndOfFreeBlock` já passam pelo `PremiumCtaProvider` corretamente.
 
-**P1 — Inconsistência grave em /admin/relatorios (KPI "Custo médio por relatório" e "Custo médio por análise")**
-`report-requests.metrics.ts` e `report-requests.pipeline.ts` somam `provider_call_logs.estimated/actual_cost_usd` SEM:
-- filtrar por `source_context` → corridas Apify Lab (admin_lab) e refreshes inflam o KPI;
-- filtrar por `status in (success, cache)` → erros entram na soma;
-- usar `resolveCallCost()` → não respeita a regra canónica de actual_cost vs estimated.
-
-Resultado: o "custo médio" mostrado em Relatórios pode estar até 30-50% acima do real quando há Lab activo. Contradiz directamente o `mem://features/cost-source-of-truth` (provider_call_logs como fonte única, com taxonomia source_context).
-
-**P2 — Banner Contactos desactualizado ao novo fluxo LM-first**
-O banner mostra "Reports → LM · 100% · 8/8". No fluxo antigo (oferta com piece-of-report → LM) fazia sentido. No novo fluxo (LM é a inscrição inicial, relatório só existe depois) o denominador "leads com relatório" ≈ "subscritores LM" — daí o 100% permanente. KPI deixa de ter sinal.
-
-**P3 — Sem problemas em Visão Geral nem Receita**
-Ambas chamam `fetchExpense30d()` que usa `aggregateCostsBySourceContext()` e `resolveCallCost()`. Números coincidem.
+No selector, o overflow no mobile vem dos chips com labels longos ("60 dias", "90 dias", "365 dias") — já existe `overflow-x-auto` no mobile, mas a UX é pobre (parece corte, não scroll intencional).
 
 ---
 
-## 2. Correcções propostas
+## Fix 1 — Body CTA (`ReportLockGate`) passa a abrir o modal premium
 
-### A. Unificar Relatórios na mesma fonte das outras secções
+Em `src/components/report-redesign/v2/report-shell-v2.tsx`, no bloco `lead-magnet-card` (linhas 248–257), trocar o `onUnlockClick={handleUnlockClick}` por um handler que consome `usePremiumCta()`:
 
-Refactor de dois endpoints para passarem a usar `fetchExpense30d()` (ou um helper irmão parametrizado por período) em vez de somarem `provider_call_logs` à mão:
+- Extrair pequeno wrapper inline `<LockGatePremium handle={...} />` dentro de `ReportShellV2` (já está dentro do `PremiumCtaProvider`).
+- O wrapper chama `handlePremiumAccessClick("lock_gate", { cta: "body_unlock" })` em vez de abrir o `UnlockModal`.
+- Eficácia: emite `premium_cta_clicked` com `source_component: "lock_gate"`, não toca em onboarding, Apify, OpenAI, nem créditos.
 
-- `src/routes/api/admin/report-requests.metrics.ts`
-  - substituir o bloco final de cálculo de custos pelo resultado de `fetchExpense30d()`;
-  - `total_cost_usd` ← `production_cost_30d` (consistente com cost-per-lead);
-  - `apify_cost_usd` ← passa a ser parte de production_cost (filtrado por actor='apify');
-  - `avg_cost_usd` ← `production_cost_30d / total_analyses` (excluindo Lab);
-  - adicionar `lab_cost_usd` separado para transparência.
-- `src/routes/api/admin/report-requests.pipeline.ts`
-  - mesmo tratamento para `avg_cost_usd`.
+`handleUnlockClick` continua a ser passado a `ReportBlockSidebar`/`ReportBlockTopTabs`/`onUnlockClick` do shell — esses caminhos já são premium (sidebar usa `usePremiumCta` diretamente; o `onUnlockClick` da rota não é invocado por mais nenhum CTA visível pós-onboarding). Mantém-se a prop como defensiva.
 
-Generalizar `fetchExpense30d()` para aceitar `sinceIso` (hoje hardcoded a 30d) — preserva back-compat criando wrapper.
+Manter a copy `lockGate.cta` ("Ver relatório gratuito →") na PT por causa de outros consumos? Não — `ReportLockGate` só é renderizado aqui. Em vez de mexer no componente partilhado, **passamos o `onUnlockClick` premium** e deixamos o componente intacto (zero alteração em `report-lock-gate.tsx`). O texto do CTA mantém-se mas o destino é o modal premium correto.
 
-### B. Reescrever banner Contactos para reflectir o fluxo LM-first
-
-Substituir os 3 cards actuais por uma sequência alinhada com o novo funil real:
-
-```
-Visitantes → Inscrição LM   →  Inscrição LM → Checkout   →  Checkout → Pago
-   (—, sem tracker)              (real)                          (real)
-```
-
-Onde:
-- **Inscrição LM** = leads criados na janela (todos passam por LM agora).
-- **Checkout iniciado** = leads com ≥1 linha em `lead_payments` (qualquer status).
-- **Pago** = leads com pelo menos um `lead_payments.status='paid'`.
-
-`/api/admin/leads-funnel`:
-- remover `reportsToLm` (deixa de ter sinal);
-- adicionar opcional `visitorsToLm` (devolve `null` enquanto não houver tracker, igual ao FunnelSection);
-- manter `lmToCheckout` e `checkoutToPaid` mas com denominador = todos os leads da janela (em vez de subset LM via marketing_consent + events). Justificação: se LM é inscrição inicial, todo lead é LM-subscriber por construção. O subset `marketing_consent` mede consentimento de marketing, é outra coisa.
-
-`LeadsConversionBanner`:
-- 3 cards: "Inscrições LM (30d)" · "Inscrição → Checkout" · "Checkout → Pago".
-- O primeiro mostra absoluto (ex.: 8 inscrições), não percentagem.
-- Labels em sentence case, sem "REPORTS → LM".
-
-### C. Coerência narrativa
-
-- Renomear `cost_public_30d` → `cost_production_30d` no payload do `/api/admin/overview-kpis` (ou alias) para alinhar com a nova taxonomia já vigente noutros sítios. Não-bloqueador.
-- Adicionar uma linha em rodapé do `CostSummaryCard` e do `ExpenseSection`: "Inclui apenas produção (Apify Lab excluído — ver /admin/apify-lab)".
+> Nota: a copy "Ver relatório gratuito" perde sentido pós-onboarding. Não é parte deste ticket reescrevê-la (o user pediu explicitamente opção A: mesma copy/posição, comportamento premium). Fica registado como follow-up de copy.
 
 ---
 
-## 3. Plano de execução
+## Fix 2 — Selector mobile: labels compactos + sem clipping visual
 
-1. **Refactor de custos em /relatorios** (P1) — `report-requests.metrics.ts` e `report-requests.pipeline.ts` passam a chamar `fetchExpense30d()` parametrizado. Ajustar `MetricsSection` e `PipelineSection` para mostrar `lab_cost_30d` como sub-linha informativa.
-2. **Banner Contactos** (P2) — reescrever `/api/admin/leads-funnel` e `LeadsConversionBanner` com a sequência LM→Checkout→Pago, removendo "Reports → LM".
-3. **Rodapés explicativos** (C) — adicionar disclaimer "produção (Lab excluído)" em CostSummaryCard e ExpenseSection.
-4. **Testes** — actualizar `src/lib/admin/__tests__/overview-kpis.test.ts` e criar smoke test que confirme: `overview-kpis.cost_total_30d ≈ report-requests/metrics.total_cost_usd + lab_cost_30d`.
-5. **Validação** — `bunx tsc --noEmit` + browser QA dos KPIs antes/depois com query SQL de controlo em `provider_call_logs`.
+Em `src/components/report-redesign/v2/analysis-period-selector.tsx`:
 
-## 4. Ficheiros a tocar
+- Adicionar keys i18n compactas em `report.json` (PT e EN):
+  - `selector.premium_30_compact` = "30d"
+  - `selector.premium_60_compact` = "60d"
+  - `selector.premium_90_compact` = "90d"
+  - `selector.premium_365_compact` = "365d"
+- Renderizar dois spans por chip:
+  - `<span class="sm:hidden">{compact}</span>`
+  - `<span class="hidden sm:inline">{full}</span>`
+- O `aria-label` continua a usar o label completo (`selector.locked.aria` com `{window: full}`) — leitores de ecrã ouvem "30 dias".
+- Manter `overflow-x-auto` no container (defensivo para viewports ≤320px), mas com labels compactos os 4 chips + chip ativo cabem em 360px sem scroll.
 
-- `src/lib/admin/system-queries.server.ts` — `fetchExpense30d(sinceIso?)` parametrizável.
-- `src/routes/api/admin/report-requests.metrics.ts` — usar fetchExpense30d, devolver lab_cost separado.
-- `src/routes/api/admin/report-requests.pipeline.ts` — idem para avg_cost.
-- `src/components/admin/v2/relatorios/metrics-section.tsx` — render lab_cost como secondary.
-- `src/routes/api/admin/leads-funnel.ts` — novo shape (visitors/lm/checkout/paid).
-- `src/components/admin/v2/beta-leads/leads-conversion-banner.tsx` — 3 cards LM-first.
-- `src/components/admin/v2/visao-geral/cost-summary-card.tsx` e `.../expense-section.tsx` — rodapé "Lab excluído".
-- `src/lib/admin/__tests__/overview-kpis.test.ts` — novos asserts de coerência.
-
-## 5. Risco e fora-de-escopo
-
-- **Fora**: alterar `aggregateCostsBySourceContext`, mexer em `apify_lab_runs` mirror trigger, ou tocar Receita's pré-receita (já honesto).
-- **Risco baixo**: o refactor é puramente de leitura, não escreve em provider_call_logs nem altera RLS. O único risco é cosmético — KPIs em /relatorios vão BAIXAR quando o Lab estiver activo, o que é o comportamento desejado.
+Não toca no popover, no estado activo, no tracking nem na lógica de locked.
 
 ---
 
-## Perguntas antes de avançar
+## Fix 3 — Sticky unlock bar restaurada no mobile
 
-Duas decisões para confirmar:
+Em `src/components/report-redesign/v2/report-shell-v2.tsx`, alterar a condição do `<StickyUnlockBar />` (linha 418):
 
-1. **Banner Contactos** — confirmas que o 1.º card passa a ser "Inscrições LM" (número absoluto, sem percentagem) e que se remove de vez "Reports → LM"? Ou preferes manter um "Análise pública → Inscrição LM" se mais tarde tivermos tracker anónimo?
-2. **KPI "custo médio por relatório" em /relatorios** — quando refazer com `production_cost_30d`, o denominador deve ser `total_analyses` (todas as análises, incluindo cache) ou apenas `fresh_analyses` (que efectivamente gastaram dinheiro)? Hoje é `total_analyses` (artificialmente baixa o custo médio). Recomendo `fresh_analyses` para alinhar com `cost_per_unlocked_report` da Visão Geral.
+- Antes: `unlocked && lockBoundary === "engagement"`.
+- Depois: `lockBoundary === "engagement" && !premiumUnlocked`.
 
-Se confirmares ambas, avanço com a implementação tal como descrita.
+Justificação (em comentário no código): no fluxo onboarding-first, qualquer utilizador que chega ao shell já tem `lead_session`; o `unlocked` baseado em sessionStorage está obsoleto para gating de CTAs premium. O sticky bar deve aparecer sempre que há conteúdo gated por pagar.
+
+Posicionamento: `bottom-[64px]` mantém-se (acima da bottom-nav mobile). Não há overlap com o period selector (topo da página). Componente já usa `usePremiumCta()` com `source_component: "sticky_unlock_bar"`. Não emite tracking duplicado.
+
+---
+
+## Testes
+
+Estender `src/components/report-redesign/v2/__tests__/premium-cta-unification.test.ts`:
+
+1. Assert das 4 keys `selector.premium_{30,60,90,365}_compact` em PT e EN (valores "30d", "60d", "90d", "365d").
+2. Assert defensivo: `lockGate.cta` continua a existir em ambos os locales (regressão se removerem por engano).
+3. Em `report-shell-v2.tsx`: o uso de `<StickyUnlockBar />` depende de `lockBoundary` e não de `unlocked` — verificável por leitura do source (regex), em linha com o estilo dos testes existentes.
+
+Não adicionamos teste React renderizado (a suite atual é node-pure). Validação visual fica para o smoke manual.
+
+---
+
+## Validação
+
+- `bunx tsc --noEmit`
+- `bunx vitest run src/components/report-redesign/v2/__tests__/premium-cta-unification.test.ts`
+- Visual manual no preview (360×800 e 390×844):
+  - Selector chips: sem clipping, "30d/60d/90d/365d".
+  - Sticky bar visível acima da bottom-nav.
+  - Body CTA, period selector e sticky bar abrem o **mesmo** `PremiumInterestDialog`; nenhum abre o `UnlockModal` de 5 passos.
+  - Nenhum dos cliques desencadeia `/api/analyze-public-v1` (verificar Network).
+
+---
+
+## Ficheiros tocados
+
+- `src/components/report-redesign/v2/report-shell-v2.tsx` — wrapper `LockGatePremium` + nova condição do sticky bar + comentário.
+- `src/components/report-redesign/v2/analysis-period-selector.tsx` — chips com dual-label (compact/full).
+- `src/i18n/locales/pt/report.json` — 4 novas keys compactas.
+- `src/i18n/locales/en/report.json` — 4 novas keys compactas.
+- `src/components/report-redesign/v2/__tests__/premium-cta-unification.test.ts` — assertions extra.
+
+## Não toca
+
+- `onSuccess` do onboarding, `/api/onboarding/start`, `/api/analyze-public-v1`.
+- Lógica de créditos, Apify, OpenAI, DataForSEO, scoring, payload.
+- `UnlockModal` antigo (mantém-se em código para casos legacy / fallback do `onUnlockClick` da rota).
+- `report-lock-gate.tsx` (zero alterações no componente partilhado).
+- Preços, emails, thumbnails, admin cost accounting.
+
+## Checkpoint
+
+- ☐ Fix 1 — body CTA abre `PremiumInterestDialog` e emite `premium_cta_clicked`
+- ☐ Fix 2 — chips mobile sem clipping (labels compactos)
+- ☐ Fix 3 — sticky bar restaurada no mobile
+- ☐ Testes verdes + `tsc --noEmit` limpo
+- ☐ Smoke manual a 360 e 390 px confirma os 3 fixes
