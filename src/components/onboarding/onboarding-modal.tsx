@@ -237,6 +237,7 @@ export function OnboardingModal({
         parsed.full_name,
         honeypot,
         formStartedAtRef.current,
+        handle,
       );
       const res = await fetch("/api/onboarding/start", {
         method: "POST",
