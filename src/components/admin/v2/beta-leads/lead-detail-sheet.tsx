@@ -843,12 +843,12 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
           className="flex-1 min-h-0 flex flex-col"
         >
           <div className="px-6 border-b border-admin-text-primary/10 shrink-0">
-            <TabsList className="h-auto bg-transparent p-0 gap-6 rounded-none justify-start">
+            <TabsList className="h-auto bg-transparent p-0 gap-7 rounded-none justify-start">
               {TABS.map((t) => (
                 <TabsTrigger
                   key={t.key}
                   value={t.key}
-                  className="relative h-10 px-0 rounded-none bg-transparent text-[13px] font-medium text-admin-text-tertiary hover:text-admin-text-secondary transition-colors data-[state=active]:text-admin-text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:-bottom-px data-[state=active]:after:h-[2px] data-[state=active]:after:bg-admin-info-500"
+                  className="relative h-10 px-0 rounded-none bg-transparent text-[13px] font-medium text-admin-text-secondary hover:text-admin-text-primary transition-colors data-[state=active]:text-admin-text-primary data-[state=active]:font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:-bottom-px data-[state=active]:after:h-[2px] data-[state=active]:after:bg-admin-info-500"
                 >
                   {t.label}
                 </TabsTrigger>
@@ -900,12 +900,11 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                     label="Origem"
                     value={labelSource(lead.source)}
                   />
-                  <ContextField
-                    icon={Flame}
-                    label="Intenção"
-                    value={displayedIntent.label}
-                  />
                 </div>
+                <p className="admin-meta text-admin-text-tertiary mt-2">
+                  Só o que o lead respondeu no onboarding. Sinais derivados
+                  (intenção, próximo passo) aparecem acima.
+                </p>
               </div>
 
               {/* (c) Estado comercial — select agrupado manual/auto */}
