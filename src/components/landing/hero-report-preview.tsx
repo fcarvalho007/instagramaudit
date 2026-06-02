@@ -3,13 +3,11 @@ import { useTranslation } from "react-i18next";
 
 /**
  * Pré-visualização ilustrativa do relatório, mostrada à direita do hero.
- * Dark glass card scoped ao wrapper `.hero-dark` (ver src/styles/hero-dark.css).
- * Os valores são deliberadamente neutros e marcados como "Preview · Dados
- * ilustrativos" — não devem ser confundidos com dados reais de um cliente.
+ * Apresentada com chrome de janela de browser (desktop) para reforçar a
+ * percepção de produto de computador. Scoped ao wrapper `.hero-dark`.
  */
 export function HeroReportPreview() {
   const { t } = useTranslation("landing");
-  const lockedWindowKeys = ["d30", "d60", "d90", "d365"] as const;
   const premiumRowKeys = [
     "diagnostic",
     "content",
@@ -35,67 +33,41 @@ export function HeroReportPreview() {
       />
 
       <div
-        className="rounded-2xl border bg-[var(--hero-glass-bg)] backdrop-blur-xl shadow-[0_30px_80px_-20px_rgba(0,0,0,0.6)] overflow-hidden"
+        className="rounded-2xl border-[1.5px] bg-[var(--hero-glass-bg)] backdrop-blur-xl shadow-[0_30px_80px_-20px_rgba(0,0,0,0.6)] overflow-hidden"
         style={{ borderColor: "var(--hero-glass-border)" }}
       >
-        {/* Header mini */}
+        {/* Browser chrome */}
         <div
-          className="flex items-center justify-between px-5 py-3 border-b"
+          className="flex items-center gap-3 px-4 py-2.5 border-b"
           style={{ borderColor: "var(--hero-border)" }}
         >
-          <div className="flex items-center gap-2">
-            <span className="size-2 rounded-full bg-[var(--hero-cyan)]" />
-            <span
-              className="text-eyebrow-sm"
-              style={{ color: "var(--hero-fg-subtle)" }}
-            >
-              {t("hero.previewMock.header")}
-            </span>
+          {/* Traffic lights */}
+          <div className="flex items-center gap-1.5 shrink-0" aria-hidden="true">
+            <span className="size-3 rounded-full" style={{ backgroundColor: "#FF5F57" }} />
+            <span className="size-3 rounded-full" style={{ backgroundColor: "#FEBC2E" }} />
+            <span className="size-3 rounded-full" style={{ backgroundColor: "#28C840" }} />
           </div>
-          <span
-            className="text-[0.625rem] tracking-[0.14em] uppercase font-medium px-2 py-0.5 rounded-full border"
+          {/* URL pill */}
+          <div
+            className="flex-1 min-w-0 mx-1 sm:mx-4 rounded-md border px-3 py-1 text-center"
             style={{
-              color: "var(--hero-cyan)",
-              borderColor: "var(--hero-cyan-soft)",
-              backgroundColor: "var(--hero-cyan-soft)",
+              borderColor: "var(--hero-border)",
+              backgroundColor: "rgb(255 255 255 / 0.03)",
             }}
           >
-            {t("hero.previewMock.scoreCaption")}
-          </span>
-        </div>
-
-        {/* Chips temporais */}
-        <div className="px-5 pt-4 pb-3">
-          <div className="hero-chips-scroll flex gap-2 overflow-x-auto scrollbar-none">
             <span
-              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border"
-              style={{
-                color: "var(--hero-fg)",
-                backgroundColor: "var(--hero-accent-soft)",
-                borderColor: "var(--hero-accent)",
-              }}
+              className="block truncate text-xs tabular-nums"
+              style={{ color: "var(--hero-fg-subtle)" }}
             >
-              <span className="size-1.5 rounded-full bg-[var(--hero-accent)]" />
-              {t("hero.previewMock.sampleActive")}
+              {t("hero.previewMock.urlBar")}
             </span>
-            {lockedWindowKeys.map((key) => (
-              <span
-                key={key}
-                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border"
-                style={{
-                  color: "var(--hero-fg-faint)",
-                  borderColor: "var(--hero-border)",
-                }}
-              >
-                <Lock className="size-3" aria-hidden="true" />
-                {t(`hero.previewMock.windowsLocked.${key}`)}
-              </span>
-            ))}
           </div>
+          {/* Spacer to balance traffic lights */}
+          <div className="size-3 shrink-0" aria-hidden="true" />
         </div>
 
         {/* Score card */}
-        <div className="px-5">
+        <div className="px-5 pt-5">
           <div
             className="rounded-xl border p-4 ring-1"
             style={{
@@ -134,11 +106,10 @@ export function HeroReportPreview() {
         </div>
 
         {/* KPI row */}
-        <div className="px-5 pt-4 grid grid-cols-3 gap-2">
+        <div className="px-5 pt-4 grid grid-cols-2 gap-2">
           {[
             { label: t("hero.previewMock.kpis.engagement"), value: "4,2%" },
             { label: t("hero.previewMock.kpis.frequency"), value: "2,8" },
-            { label: t("hero.previewMock.kpis.costPerPost"), value: "134" },
           ].map((kpi) => (
             <div
               key={kpi.label}
