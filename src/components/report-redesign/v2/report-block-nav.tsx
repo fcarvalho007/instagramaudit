@@ -15,8 +15,8 @@ import {
 } from "@/lib/report/report-variant";
 import { useBlocks, type BlockConfig } from "./block-config";
 import { scrollToBlock, useActiveBlock } from "./use-active-block";
-import { PremiumInterestDialog } from "./premium-interest-dialog";
 import { useReportTracking } from "./report-tracking-context";
+import { usePremiumCta } from "./premium-cta-context";
 import { trackEvent } from "@/lib/tracking.functions";
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -421,24 +421,18 @@ function SidebarList({
 }) {
   const { t } = useTranslation("report");
   const { snapshotId, handle, variant: trackingVariant } = useReportTracking();
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const { handlePremiumAccessClick } = usePremiumCta();
   const incluidos = items.filter((i) => i.group === "incluido");
   const premium = items.filter((i) => i.group === "premium");
   const isPublic = variant === "public_mvp";
 
   const openDialog = () => {
-    trackEvent({
-      data: {
-        eventType: "unlock_clicked",
-        snapshotId: snapshotId ?? undefined,
-        handle: handle ?? undefined,
-        metadata: { variant: trackingVariant, source_component: "sidebar_access" },
-      },
-    }).catch(() => {});
-    setDialogOpen(true);
+    handlePremiumAccessClick("sidebar");
   };
 
   const focusLeadMagnet = () => {
+    // Lead-capture flow (NOT premium). Keep `unlock_clicked` for
+    // backwards-compat with existing funnel dashboards.
     trackEvent({
       data: {
         eventType: "unlock_clicked",
@@ -503,15 +497,6 @@ function SidebarList({
           <ContinueReadingCard items={premium} onContinue={focusLeadMagnet} />
         )
       )}
-
-      <PremiumInterestDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        snapshotId={snapshotId}
-        handle={handle}
-        variant={trackingVariant}
-        sourceComponent="sidebar_access"
-      />
     </div>
   );
 }
