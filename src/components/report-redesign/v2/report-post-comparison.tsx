@@ -572,7 +572,6 @@ function ConstellationScatter({
               cy={bestPoint.y}
               tone="best"
               label={t("posts.scatter.best_marker")}
-              symbol="★"
               postId={best.id}
               hovered={hoveredId === best.id}
               setHovered={setHoveredId}
@@ -586,7 +585,6 @@ function ConstellationScatter({
               cy={worstPoint.y}
               tone="worst"
               label={t("posts.scatter.worst_marker")}
-              symbol="▾"
               postId={worst.id}
               hovered={hoveredId === worst.id}
               setHovered={setHoveredId}
