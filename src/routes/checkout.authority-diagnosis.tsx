@@ -44,6 +44,13 @@ const searchSchema = z.object({
     .regex(/^\/[A-Za-z0-9/_\-.?=&%]*$/)
     .optional(),
   source: z.string().trim().min(1).max(80).optional(),
+  coupon: z
+    .string()
+    .trim()
+    .min(1)
+    .max(40)
+    .regex(/^[A-Za-z0-9_-]+$/)
+    .optional(),
 });
 
 export const Route = createFileRoute("/checkout/authority-diagnosis")({
@@ -156,6 +163,7 @@ function CheckoutFlow() {
           report_cache_key: search.report_cache_key,
           return_path: "/checkout/authority-diagnosis?status=success",
           source_component: search.source ?? "checkout_flow",
+          coupon_code: search.coupon,
           qualification: {
             objective: qualification.objective ?? "other",
             objective_other: qualification.objective_other.trim() || undefined,
