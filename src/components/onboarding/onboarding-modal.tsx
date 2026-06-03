@@ -874,7 +874,7 @@ function ChipGroup<T extends string>({
               aria-checked={selected}
               onClick={() => onChange(o.value)}
               className={
-                "flex flex-col items-center justify-center gap-2 rounded-lg border px-2.5 py-3.5 min-h-[88px] text-center text-[14px] font-semibold transition-colors " +
+                "flex flex-col items-center justify-center gap-1.5 sm:gap-2 rounded-lg border px-2.5 py-2.5 sm:py-3.5 min-h-[68px] sm:min-h-[88px] text-center text-[14px] font-semibold transition-colors " +
                 (selected
                   ? "border-primary bg-primary/[0.06] text-primary"
                   : "border-border-default/60 bg-card text-content-secondary hover:border-primary/40 hover:text-content-primary")
@@ -883,7 +883,7 @@ function ChipGroup<T extends string>({
             >
               <Icon
                 className={
-                  "size-[22px] " +
+                  "size-[18px] sm:size-[22px] " +
                   (selected ? "text-primary" : "text-content-tertiary")
                 }
                 aria-hidden="true"
