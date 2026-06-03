@@ -734,35 +734,50 @@
     "interest_registered_aria": "Interest registered",
     "registered": "Registered",
     "dialog": {
-      "title": "Unlock premium access",
-      "subtitle": "The first block remains free. The remaining premium sections become available after unlock.",
+      "eyebrow": "Access options",
+      "title": "Choose how to go deeper",
+      "subtitle": "The initial overview is free. Unlock the full report, or book a human reading to turn the diagnosis into next steps.",
       "free": {
         "label": "Included",
-        "title": "Initial profile overview",
-        "bullet_block": "Block 1 always available",
-        "bullet_diag": "Editorial diagnosis available in premium",
-        "cta": "Keep exploring"
+        "title": "Initial overview",
+        "price": "€0",
+        "bullets": [
+          "Index and overview",
+          "Recent sample",
+          "Account to save reports"
+        ],
+        "cta": "Keep it free"
       },
       "single": {
-        "label": "Premium",
-        "title": "1 report",
-        "price": "€7",
-        "launch_price": "Launch price",
-        "bullet_combined": "1 profile · all premium sections",
-        "note": "Ideal for a one-off analysis",
-        "cta": "Choose 1 report"
+        "label": "Automatic",
+        "title": "Full report",
+        "price": "€9",
+        "unit": "one-off payment · no subscription",
+        "bullets": [
+          "All 6 sections",
+          "Editorial reading + competitors",
+          "Practical recommendations"
+        ],
+        "cta": "Unlock report"
       },
-      "pack": {
-        "label": "Best value",
-        "title": "Pack of 5 reports",
-        "price": "€28",
-        "bullet_reports": "5 profiles",
-        "bullet_unit": "€5.60/report",
-        "savings_badge": "Save 20%",
-        "cta": "Choose pack of 5"
+      "hero": {
+        "label": "Report + human",
+        "badge": "Most useful",
+        "title": "Digital Authority Diagnosis",
+        "price": "€97",
+        "strike": "€149",
+        "launch": "launch price · rises to €149",
+        "bullets": [
+          "Full report included",
+          "30-minute call",
+          "3 improvement priorities"
+        ]
       },
-      "trust_note": "No subscription. No automatic renewal.",
-      "pending_note": "Payment coming soon — the button registers your interest."
+      "footer": {
+        "trust": "No subscription · no automatic renewal",
+        "services_question": "Need to analyse several digital assets or prepare training for your team?",
+        "services_cta": "Talk about audit or training"
+      }
     }
   },
   "engagement": {
