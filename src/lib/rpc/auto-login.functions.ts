@@ -4,13 +4,13 @@
  * client so it can do a standard signInWithPassword. Zero friction.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { randomBytes } from "crypto";
 
 const ALLOWED_EMAIL = "fredericodigital@gmail.com";
 
 export const autoLogin = createServerFn({ method: "POST" })
   .handler(async () => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // 1. Find or create the user
     const { data: listData } = await supabaseAdmin.auth.admin.listUsers();
     let user = listData?.users?.find(
