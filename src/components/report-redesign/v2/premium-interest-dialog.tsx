@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowRight, Building2, Check, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Dialog,
   DialogContent,
@@ -16,7 +16,6 @@ import {
   PricingInterestModal,
   type PricingInterestOption,
 } from "@/components/pricing/pricing-interest-modal";
-import { ReserveDiagnosisButton } from "@/components/payments/reserve-diagnosis-button";
 import { CouponInput } from "@/components/pricing/coupon-input";
 
 // The 9€ flow is not yet wired to a real checkout — it still opens
