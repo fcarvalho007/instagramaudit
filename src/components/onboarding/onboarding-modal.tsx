@@ -1039,7 +1039,7 @@ function Step3EmailGdpr({
           className="text-base"
           {...form.register("phone")}
         />
-        <p className="text-[13px] text-content-tertiary leading-[1.45]">
+        <p className="hidden sm:block text-[13px] text-content-tertiary leading-[1.45]">
           {t("onboarding.steps.3.phoneHint")}
         </p>
         {phoneError ? (
@@ -1047,7 +1047,7 @@ function Step3EmailGdpr({
         ) : null}
       </div>
 
-      <div className="rounded-xl border border-border-default/40 bg-surface-muted/40 p-4 space-y-3">
+      <div className="rounded-xl border border-border-default/40 bg-surface-muted/40 p-3 space-y-2.5 sm:p-4 sm:space-y-3">
         <label
           htmlFor="onb-gdpr"
           className="flex items-start gap-2.5 cursor-pointer"
@@ -1065,7 +1065,7 @@ function Step3EmailGdpr({
             aria-invalid={Boolean(consentError)}
             className="mt-0.5"
           />
-          <span className="text-[14px] text-content-secondary leading-[1.55] flex-1">
+          <span className="text-[13.5px] sm:text-[14px] text-content-secondary leading-[1.5] sm:leading-[1.55] flex-1">
             <Trans
               i18nKey="onboarding.steps.3.consentText"
               ns="gate"
@@ -1110,7 +1110,7 @@ function Step3EmailGdpr({
             }
             className="mt-0.5"
           />
-          <span className="text-[14px] text-content-secondary leading-[1.55] flex-1">
+          <span className="text-[13.5px] sm:text-[14px] text-content-secondary leading-[1.5] sm:leading-[1.55] flex-1">
             {t("onboarding.steps.3.marketingText")}{" "}
             <span className="text-content-tertiary">
               {t("onboarding.steps.3.marketingOptional")}
