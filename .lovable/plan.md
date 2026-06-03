@@ -1,32 +1,34 @@
-## Diagnóstico
+## Diagnóstico atual
 
-Confirmei no preview que a homepage está a carregar o hero escuro, mas há inconsistência visual no chrome:
+No preview que abri em `/`, a homepage aparece em dark corretamente: header navy, hero dark e CTA roxo. Isto indica que o código atual já contém a versão dark.
 
-- Header aparece com faixa branca/translúcida por cima do hero.
-- A área fora/entre blocos deixa ver fundo branco.
-- O footer pode cair para a versão light ou revelar branco quando a página não está toda coberta pelo fundo dark.
-- O código já tenta usar `Header variant="dark"` e `DarkFooter`, por isso o problema parece ser de cobertura de fundo e estilos globais/herdados, não de conteúdo da página.
+A inconsistência mais provável é uma destas duas situações:
+
+1. **URL presa a uma versão antiga**: a sessão anterior estava a abrir `/?__lovable_sha=71d649b9`, que força uma build antiga no preview.
+2. **Domínio publicado/custom domain desatualizado**: se estiver a ver `auditprofiles.com` ou `instagramaudit.lovable.app`, pode estar a ver a versão publicada anterior, não o preview mais recente.
+3. **Fallback de shell/light por rota ou hidratação**: se algum URL não for exatamente `/`, o `AppShell` pode não entrar no ramo `isHome` e renderizar header/footer light.
 
 ## Plano de correção
 
-1. **Fechar a homepage num contexto dark explícito**
-   - Garantir que o shell da rota `/` pinta o wrapper inteiro, `main`, e o fundo base com `rgb(var(--hero-bg-base))`.
-   - Evitar que `body`/fundo global branco apareça em qualquer gap entre hero, ilha dark e footer.
+1. **Confirmar todos os URLs que estão a servir a homepage**
+   - Testar `/` no preview sem `?__lovable_sha`.
+   - Testar a mesma rota com query string.
+   - Confirmar se o problema aparece no preview ou só no domínio publicado/custom domain.
 
-2. **Tornar o header dark independente do scroll/cache visual**
-   - Ajustar o `Header` quando `variant="dark"` para usar fundo navy real e texto/bordas coerentes.
-   - Manter translucidez apenas se não revelar branco por trás.
+2. **Tornar a deteção da homepage mais robusta**
+   - Ajustar o `AppShell` para tratar a homepage dark de forma explícita e resistente a variações de URL.
+   - Garantir que qualquer renderização de `/` usa sempre `Header variant="dark"`, `DarkFooter` e wrapper `.hero-dark`.
 
-3. **Eliminar a falha branca entre primeira e segunda dobra**
-   - Rever a transição `HeroSection` → `LandingDarkIsland`.
-   - Remover margens/gaps que exponham `surface-base` branco.
-   - Garantir que `LandingDarkIsland` começa imediatamente em fundo dark.
+3. **Blindar o fundo dark no nível da página**
+   - Além do `AppShell`, envolver a própria route `/` num contexto dark mínimo.
+   - Isto impede que a homepage volte a mostrar fundo light caso o shell falhe ou a hidratação renderize um estado intermédio.
 
-4. **Garantir footer dark na homepage**
-   - Confirmar que `/` usa sempre `DarkFooter`.
-   - Dar ao footer e ao wrapper externo um fundo dark contínuo para não depender de transparência.
+4. **Rever header/footer sem mexer em ficheiros gerados**
+   - Confirmar que `Header` não depende de variáveis CSS fora do scope `.hero-dark`.
+   - Confirmar que `DarkFooter` não revela fundo transparente branco.
+   - Não voltar a editar `src/routeTree.gen.ts`, porque é ficheiro gerado.
 
-5. **Verificação no preview**
-   - Abrir `/` no viewport atual `1445x885`.
-   - Validar topo, dobra hero→segunda secção e footer.
-   - Confirmar que páginas internas continuam com header/footer light normais.
+5. **Refresh/validação final**
+   - Recarregar `/` no preview.
+   - Validar visualmente header, primeira dobra, transição para a segunda dobra e footer.
+   - Se o problema só existir no domínio publicado, a correção final é publicar a versão atual depois da validação.
