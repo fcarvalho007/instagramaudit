@@ -9,13 +9,13 @@ export const Route = createFileRoute("/precos")({
       {
         name: "description",
         content:
-          "Preços simples e transparentes do AuditProfiles: 1 relatório por 7€ ou pack de 5 por 28€. Sem subscrição.",
+          "Visão inicial grátis. Relatório completo por 9€. Diagnóstico de Autoridade Digital por 97€ (preço de lançamento). Sem subscrição.",
       },
       { property: "og:title", content: "Preços — AuditProfiles" },
       {
         property: "og:description",
         content:
-          "Preços simples e transparentes do AuditProfiles: 1 relatório por 7€ ou pack de 5 por 28€. Sem subscrição.",
+          "Do diagnóstico automático à leitura humana. Começa grátis. Sobe quando quiseres — sem subscrição.",
       },
       { property: "og:url", content: "https://auditprofiles.com/precos" },
     ],

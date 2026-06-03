@@ -1,323 +1,327 @@
 import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
-import { Check, ShieldCheck } from "lucide-react";
-import { useTranslation } from "react-i18next";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { ArrowRight, Briefcase, Check, GraduationCap } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { trackEvent } from "@/lib/tracking.functions";
 import { cn } from "@/lib/utils";
-import { usePricing } from "@/lib/pricing/use-pricing";
-import {
-  PricingInterestModal,
-  type PricingInterestOption,
-} from "./pricing-interest-modal";
+import { trackEvent } from "@/lib/tracking.functions";
+import { ReserveDiagnosisButton } from "@/components/payments/reserve-diagnosis-button";
+import { CouponInput } from "./coupon-input";
+import { PricingFAQ } from "./pricing-faq";
 
-// Checkout is not yet wired. CTAs only emit a typed `pricing_option_clicked`
-// event so we can measure intent without faking a payment flow.
-type PricingOption = "free" | "single_report" | "pack_5_reports";
-
-interface AccessStep {
-  title: string;
-  body: string;
-}
+const SOURCE = "pricing_page";
 
 export function PricingPage() {
-  const { t } = useTranslation("pricing");
   const navigate = useNavigate();
-  const { plans } = usePricing();
-  const [selected, setSelected] = useState<PricingOption | null>(null);
-  const [interestOption, setInterestOption] =
-    useState<PricingInterestOption | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [coupon, setCoupon] = useState<string | null>(null);
 
-  const handleSelect = (option: PricingOption) => {
-    setSelected(option);
+  const track = (option: string) => {
     trackEvent({
       data: {
         eventType: "pricing_option_clicked",
-        metadata: {
-          pricing_option: option,
-          source_component: "pricing_page",
-        },
+        metadata: { pricing_option: option, source_component: SOURCE },
       },
     }).catch(() => {});
-    if (option === "free") {
-      navigate({ to: "/" }).catch(() => {});
-      return;
-    }
-    setInterestOption(option);
-    setModalOpen(true);
-  };
-
-  const accessSteps = t("access.steps", {
-    returnObjects: true,
-  }) as AccessStep[];
-  const freeBullets = t("free.bullets", { returnObjects: true }) as string[];
-  const singleBullets = t("single.bullets", { returnObjects: true }) as string[];
-  const packBullets = t("pack.bullets", { returnObjects: true }) as string[];
-
-  const interestMeta: Record<PricingInterestOption, { label: string; price: string }> = {
-    single_report: {
-      label: plans.single_report.label,
-      price: plans.single_report.priceFormatted,
-    },
-    pack_5_reports: {
-      label: plans.pack_5_reports.label,
-      price: plans.pack_5_reports.priceFormatted,
-    },
   };
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-surface-base">
-      {/* Decorative prism shapes — subtle depth, hidden on mobile */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 -z-0 hidden md:block"
-      >
-        <div className="absolute left-[8%] top-[140px] size-[320px] rounded-full bg-gradient-to-br from-accent-primary/20 via-accent-secondary/10 to-transparent blur-3xl opacity-60" />
-        <div className="absolute right-[6%] top-[260px] size-[380px] rounded-full bg-gradient-to-tr from-accent-secondary/20 via-accent-primary/10 to-transparent blur-3xl opacity-50" />
-        <div className="absolute left-1/2 top-[520px] size-[260px] -translate-x-1/2 rounded-full bg-gradient-to-b from-accent-primary/10 to-transparent blur-3xl opacity-50" />
-      </div>
-
-      <section className="relative mx-auto max-w-3xl px-4 pt-16 pb-10 sm:pt-24 sm:pb-12 text-center">
+    <main className="min-h-screen bg-surface-base">
+      {/* Zona 1 — cabeçalho */}
+      <section className="mx-auto max-w-3xl px-4 pt-16 pb-10 sm:pt-24 text-center">
         <h1 className="font-fraunces text-4xl sm:text-5xl font-medium tracking-tight text-content-primary">
-          {t("hero.title")}
+          Do diagnóstico automático à leitura humana.
         </h1>
-        <p className="mt-4 text-base sm:text-lg text-content-secondary leading-relaxed">
-          {t("hero.subtitle")}
+        <p className="mt-4 text-base text-content-secondary leading-relaxed">
+          Começa grátis. Sobe quando quiseres mais profundidade — sem
+          subscrição, pagas só o que usas.
         </p>
       </section>
 
-      <section className="relative mx-auto max-w-5xl px-4 pb-10">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-5 md:items-stretch">
+      {/* Zona 2 — 3 níveis */}
+      <section className="mx-auto max-w-5xl px-4 pb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:items-stretch">
+          {/* Free */}
           <PricingCard
-            id="free"
-            tone="free"
-            label={t("free.label")}
-            title={t("free.title")}
-            priceWord={t("free.price_word")}
-            bullets={freeBullets}
-            cta={t("free.cta")}
-            selected={selected === "free"}
-            onSelect={handleSelect}
-          />
-          <PricingCard
-            id="single_report"
-            tone="premium"
-            label={t("single.label")}
-            title={plans.single_report.label}
-            price={plans.single_report.priceFormatted}
-            bullets={singleBullets}
-            cta={t("single.cta")}
-            selected={selected === "single_report"}
-            onSelect={handleSelect}
-          />
-          <PricingCard
-            id="pack_5_reports"
-            tone="best-value"
-            label={t("pack.label")}
-            title={plans.pack_5_reports.label}
-            price={plans.pack_5_reports.priceFormatted}
-            unit={plans.pack_5_reports.unitLabel ?? t("pack.unit")}
-            badge={t("pack.savings_badge")}
-            bullets={packBullets}
-            cta={t("pack.cta")}
-            selected={selected === "pack_5_reports"}
-            onSelect={handleSelect}
-          />
-        </div>
-
-        <p className="mt-6 flex items-center justify-center gap-1.5 text-xs text-content-tertiary">
-          <ShieldCheck className="size-3.5" aria-hidden="true" />
-          {t("trust_note")}
-        </p>
-        <p className="mt-2 text-center text-xs text-content-tertiary leading-relaxed">
-          {t("pending_note")}
-        </p>
-      </section>
-
-      <section className="relative mx-auto max-w-5xl px-4 pb-24">
-        <h2 className="font-fraunces text-2xl sm:text-3xl font-medium tracking-tight text-content-primary text-center">
-          {t("access.title")}
-        </h2>
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-5">
-          {accessSteps.map((step, idx) => (
-            <div
-              key={step.title}
-              className="relative overflow-hidden rounded-2xl border border-border-default bg-white/80 backdrop-blur-sm p-6 shadow-[0_18px_48px_-32px_rgba(15,23,42,0.18)]"
+            chip="Incluído"
+            chipTone="muted"
+            title="Visão inicial"
+            context="Para perceber o ponto de partida do perfil."
+            price="0€"
+            bullets={[
+              "Índice e visão geral do perfil",
+              "Métricas-base vs escalão",
+              "Amostra recente",
+              "Conta para guardar relatórios",
+            ]}
+          >
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                track("free");
+                navigate({ to: "/" }).catch(() => {});
+              }}
             >
-              <div
-                aria-hidden="true"
-                className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent-primary/30 to-transparent"
-              />
-              <span
-                aria-hidden="true"
-                className="font-fraunces text-3xl text-accent-primary tabular-nums"
-              >
-                {idx + 1}
-              </span>
-              <h3 className="mt-2 text-base font-semibold text-content-primary">
-                {step.title}
-              </h3>
-              <p className="mt-1 text-sm text-content-secondary leading-relaxed">
-                {step.body}
-              </p>
-            </div>
-          ))}
+              Continuar grátis
+            </Button>
+          </PricingCard>
+
+          {/* Relatório completo */}
+          <PricingCard
+            chip="Automático"
+            chipTone="primary"
+            title="Relatório completo"
+            context="Todo o diagnóstico, gerado automaticamente."
+            price="9€"
+            priceNote="por relatório · pagamento único"
+            bullets={[
+              "Tudo da visão inicial",
+              "Diagnóstico editorial e desempenho",
+              "Conteúdo, procura e comparação",
+              "Recomendações práticas",
+            ]}
+          >
+            <ReserveDiagnosisButton
+              productCode="report_full_9"
+              sourceComponent={SOURCE}
+              returnPath="/precos"
+              label="Desbloquear relatório"
+              couponCode={coupon}
+              className="w-full"
+            />
+          </PricingCard>
+
+          {/* Diagnóstico — herói */}
+          <PricingCard
+            chip="Relatório + humano"
+            chipTone="primary"
+            badge="Mais útil"
+            highlighted
+            title="Diagnóstico de Autoridade Digital"
+            context="O relatório, mais uma leitura humana dos próximos passos."
+            price="97€"
+            strikePrice="149€"
+            priceNote="preço de lançamento · sobe para 149€"
+            bullets={[
+              "Relatório completo incluído",
+              "Chamada de 30 minutos contigo",
+              "3 prioridades de melhoria",
+              "Orientação para conteúdo e posicionamento",
+            ]}
+          >
+            <ReserveDiagnosisButton
+              productCode="authority_diagnosis_97"
+              sourceComponent={SOURCE}
+              returnPath="/precos"
+              couponCode={coupon}
+              className="w-full"
+            />
+          </PricingCard>
+        </div>
+
+        {/* Linha discreta: cupão + agência */}
+        <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <CouponInput
+            productCode="authority_diagnosis_97"
+            appliedCode={coupon}
+            onApplied={setCoupon}
+          />
+          <Link
+            to="/servicos"
+            search={{ topico: "agencia" }}
+            className="text-xs text-content-tertiary hover:text-accent-primary transition-colors inline-flex items-center gap-1"
+            onClick={() => track("agency_link")}
+          >
+            Vários perfis ou clientes? Pack de agência
+            <ArrowRight className="size-3" aria-hidden="true" />
+          </Link>
         </div>
       </section>
 
-      <PricingInterestModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        option={interestOption}
-        planLabel={interestOption ? interestMeta[interestOption].label : ""}
-        planPrice={interestOption ? interestMeta[interestOption].price : ""}
-      />
+      {/* Zona 3 — Serviços (dark) */}
+      <section className="hero-dark landing-dark mt-16">
+        <div className="mx-auto max-w-5xl px-4 py-16 sm:py-20">
+          <p className="dark-eyebrow">Serviços · sob consulta</p>
+          <h2 className="mt-3 font-fraunces text-3xl sm:text-4xl font-medium tracking-tight">
+            Quando o diagnóstico precisa de ir mais longe.
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm sm:text-base text-[rgb(var(--hero-text-secondary))] leading-relaxed">
+            Para marcas e equipas que querem transformar a análise em estratégia
+            e execução.
+          </p>
+
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+            <ServiceCard
+              icon={<Briefcase className="size-5" aria-hidden="true" />}
+              title="Auditoria de Autoridade Digital"
+              body="Vai além do Instagram: website, LinkedIn, SEO, presença de marca e funil de contacto. Plano de melhoria prioritário."
+              priceAnchor="A partir de 300€"
+              ctaLabel="Pedir auditoria"
+              topic="auditoria"
+              onClick={() => track("service_audit")}
+            />
+            <ServiceCard
+              icon={<GraduationCap className="size-5" aria-hidden="true" />}
+              title="Formação: Redes Sociais e IA"
+              body="Workshop para equipas, com benchmarks reais dos perfis da marca. Dados transformados em plano editorial."
+              priceAnchor="A partir de 1.500€"
+              ctaLabel="Falar sobre formação"
+              topic="formacao"
+              onClick={() => track("service_training")}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Zona 4 — FAQ */}
+      <PricingFAQ />
     </main>
   );
 }
 
-type PricingTone = "free" | "premium" | "best-value";
-
 interface PricingCardProps {
-  id: PricingOption;
-  tone: PricingTone;
-  label: string;
-  title: string;
-  price?: string;
-  priceWord?: string;
-  unit?: string;
-  bullets: string[];
-  cta: string;
+  chip: string;
+  chipTone: "muted" | "primary";
   badge?: string;
-  selected: boolean;
-  onSelect: (id: PricingOption) => void;
+  highlighted?: boolean;
+  title: string;
+  context: string;
+  price: string;
+  strikePrice?: string;
+  priceNote?: string;
+  bullets: string[];
+  children: React.ReactNode;
 }
 
 function PricingCard({
-  id,
-  tone,
-  label,
-  title,
-  price,
-  priceWord,
-  unit,
-  bullets,
-  cta,
+  chip,
+  chipTone,
   badge,
-  selected,
-  onSelect,
+  highlighted,
+  title,
+  context,
+  price,
+  strikePrice,
+  priceNote,
+  bullets,
+  children,
 }: PricingCardProps) {
-  const isBest = tone === "best-value";
-  const isFree = tone === "free";
-
   return (
-    <div className="relative">
-      {isBest ? (
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 hidden md:block translate-x-2 translate-y-2 rounded-2xl border border-border-default bg-white/40 opacity-60"
-        />
-      ) : null}
-
-      <div
-        className={cn(
-          "relative flex h-full flex-col overflow-hidden rounded-2xl border p-6 backdrop-blur-sm",
-          "transition-shadow",
-          isFree
-            ? "bg-surface-muted/70 border-border-default"
-            : "bg-white/85 border-border-default shadow-[0_24px_60px_-32px_rgba(15,23,42,0.18)]",
-          isBest && "md:-translate-y-1 ring-1 ring-accent-secondary/30",
-          selected && "ring-2 ring-accent-primary/40",
-        )}
-      >
-        {/* Prism reflection line */}
-        <div
-          aria-hidden="true"
-          className={cn(
-            "absolute inset-x-0 top-0 h-px",
-            isFree
-              ? "bg-gradient-to-r from-transparent via-border-default to-transparent"
-              : "bg-gradient-to-r from-transparent via-accent-primary/40 to-transparent",
-          )}
-        />
-
-        {badge ? (
-          <span
-            className={cn(
-              "absolute right-4 top-4 inline-flex items-center rounded-full",
-              "px-2 py-0.5 text-eyebrow-sm",
-              "bg-accent-secondary/10 text-accent-secondary ring-1 ring-accent-secondary/20",
-            )}
-          >
-            {badge}
-          </span>
-        ) : null}
-
+    <div
+      className={cn(
+        "relative flex h-full flex-col rounded-2xl border bg-white p-6",
+        "border-border-default shadow-[0_18px_48px_-32px_rgba(15,23,42,0.18)]",
+        highlighted &&
+          "ring-1 ring-accent-primary/25 shadow-[0_24px_60px_-30px_rgba(55,114,229,0.35)]",
+      )}
+    >
+      {badge ? (
         <span
           className={cn(
-            "inline-flex w-fit items-center rounded-full px-2 py-0.5 text-eyebrow-sm",
-            isFree && "bg-surface-base text-content-tertiary ring-1 ring-border-default",
-            tone === "premium" &&
-              "bg-accent-primary/10 text-accent-primary ring-1 ring-accent-primary/20",
-            isBest &&
-              "bg-accent-secondary/10 text-accent-secondary ring-1 ring-accent-secondary/20",
+            "absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center rounded-full",
+            "bg-accent-primary text-white px-3 py-1 text-[10px] font-semibold tracking-wide uppercase",
           )}
         >
-          {label}
+          {badge}
         </span>
+      ) : null}
 
-        <h3 className="mt-3 text-base font-semibold text-content-primary">
-          {title}
-        </h3>
-
-        {price ? (
-          <p className="mt-2 text-4xl font-semibold text-content-primary tabular-nums">
-            {price}
-          </p>
-        ) : (
-          <p className="mt-2 font-fraunces text-4xl font-medium tracking-tight text-content-primary">
-            {priceWord ?? "—"}
-          </p>
+      <span
+        className={cn(
+          "inline-flex w-fit items-center rounded-full px-2 py-0.5 text-eyebrow-sm",
+          chipTone === "muted" &&
+            "bg-surface-muted text-content-tertiary ring-1 ring-border-default",
+          chipTone === "primary" &&
+            "bg-accent-primary/10 text-accent-primary ring-1 ring-accent-primary/20",
         )}
+      >
+        {chip}
+      </span>
 
-        {unit ? (
-          <p className="mt-1 text-xs text-content-tertiary tabular-nums">
-            {unit}
-          </p>
+      <h3 className="mt-3 font-fraunces text-xl font-medium text-content-primary">
+        {title}
+      </h3>
+      <p className="mt-1.5 text-sm text-content-secondary leading-relaxed">
+        {context}
+      </p>
+
+      <div className="mt-4 flex items-baseline gap-2">
+        <span className="text-4xl font-bold text-content-primary tabular-nums leading-none">
+          {price}
+        </span>
+        {strikePrice ? (
+          <span className="text-base text-content-tertiary line-through tabular-nums">
+            {strikePrice}
+          </span>
         ) : null}
-
-        <ul className="mt-5 space-y-2.5">
-          {bullets.map((b) => (
-            <li
-              key={b}
-              className="flex items-start gap-2 text-sm text-content-secondary"
-            >
-              <Check
-                aria-hidden="true"
-                className={cn(
-                  "mt-0.5 size-4 shrink-0",
-                  isFree ? "text-content-tertiary" : "text-accent-primary",
-                )}
-              />
-              <span>{b}</span>
-            </li>
-          ))}
-        </ul>
-
-        <div className="mt-6 sm:mt-auto pt-2">
-          <Button
-            type="button"
-            onClick={() => onSelect(id)}
-            variant={isBest ? "primary" : isFree ? "ghost" : "outline"}
-            className="w-full"
-            aria-pressed={selected}
-          >
-            {cta}
-          </Button>
-        </div>
       </div>
+      {priceNote ? (
+        <p className="mt-1 text-xs text-content-tertiary leading-relaxed">
+          {priceNote}
+        </p>
+      ) : null}
+
+      <ul className="mt-5 space-y-2">
+        {bullets.map((b) => (
+          <li
+            key={b}
+            className="flex items-start gap-2 text-sm text-content-secondary"
+          >
+            <Check
+              aria-hidden="true"
+              className="mt-0.5 size-4 shrink-0 text-accent-primary"
+            />
+            <span>{b}</span>
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-6 sm:mt-auto pt-2">{children}</div>
     </div>
+  );
+}
+
+interface ServiceCardProps {
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+  priceAnchor: string;
+  ctaLabel: string;
+  topic: "auditoria" | "formacao";
+  onClick: () => void;
+}
+
+function ServiceCard({
+  icon,
+  title,
+  body,
+  priceAnchor,
+  ctaLabel,
+  topic,
+  onClick,
+}: ServiceCardProps) {
+  return (
+    <article className="dark-card p-6 flex flex-col">
+      <div className="text-[rgb(var(--hero-cyan))]">{icon}</div>
+      <h3 className="mt-3 text-base font-semibold">{title}</h3>
+      <p className="mt-2 text-sm text-[rgb(var(--hero-text-secondary))] leading-relaxed flex-1">
+        {body}
+      </p>
+      <div className="mt-5 flex items-center justify-between gap-3 border-t dark-hairline pt-4">
+        <span className="text-eyebrow-sm text-[rgb(var(--hero-text-tertiary))]">
+          {priceAnchor}
+        </span>
+        <Link
+          to="/servicos"
+          search={{ topico: topic }}
+          onClick={onClick}
+          className="inline-flex items-center gap-1 text-sm font-medium text-[rgb(var(--hero-cyan))] hover:text-[rgb(var(--hero-cyan-soft))] transition-colors"
+        >
+          {ctaLabel}
+          <ArrowRight className="size-4" aria-hidden="true" />
+        </Link>
+      </div>
+    </article>
   );
 }

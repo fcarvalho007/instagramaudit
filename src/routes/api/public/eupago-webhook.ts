@@ -97,31 +97,31 @@ export const Route = createFileRoute("/api/public/eupago-webhook")({
 
         // Resolve payment row: prefer provider_payment_id, fall back to
         // our internal id we passed as `identifier`.
-        let row:
-          | {
-              id: string;
-              lead_id: string;
-              product: string;
-              status: string;
-              paid_at: string | null;
-            }
-          | null = null;
+        type PaymentRow = {
+          id: string;
+          lead_id: string;
+          product: string;
+          status: string;
+          paid_at: string | null;
+          metadata: Record<string, unknown> | null;
+        };
+        let row: PaymentRow | null = null;
 
         if (providerPaymentId) {
           const { data } = await supabaseAdmin
             .from("lead_payments")
-            .select("id, lead_id, product, status, paid_at")
+            .select("id, lead_id, product, status, paid_at, metadata")
             .eq("provider_payment_id", providerPaymentId)
             .maybeSingle();
-          row = data ?? null;
+          row = (data as PaymentRow | null) ?? null;
         }
         if (!row && identifier && UUID_RE.test(identifier)) {
           const { data } = await supabaseAdmin
             .from("lead_payments")
-            .select("id, lead_id, product, status, paid_at")
+            .select("id, lead_id, product, status, paid_at, metadata")
             .eq("id", identifier)
             .maybeSingle();
-          row = data ?? null;
+          row = (data as PaymentRow | null) ?? null;
         }
 
         if (!row) {
@@ -158,6 +158,26 @@ export const Route = createFileRoute("/api/public/eupago-webhook")({
             });
           } catch (err) {
             console.error("[eupago-webhook] grantEntitlement failed", err);
+          }
+
+          // Register coupon redemption (idempotent) if the payment was created
+          // with one.
+          const couponCode =
+            (row.metadata?.coupon_code as string | null | undefined) ?? null;
+          if (couponCode) {
+            try {
+              const { redeemCouponForPayment } = await import(
+                "@/lib/payments/coupons.server"
+              );
+              await redeemCouponForPayment({
+                couponCode,
+                paymentId: row.id,
+                productCode: row.product,
+                leadId: row.lead_id,
+              });
+            } catch (err) {
+              console.error("[eupago-webhook] coupon redemption failed", err);
+            }
           }
 
           await recordProductEvent({

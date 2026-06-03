@@ -15,10 +15,10 @@ export interface ServerProduct {
 }
 
 export const SERVER_PRODUCTS: Record<ProductCode, ServerProduct> = {
-  authority_diagnosis_49: {
-    code: "authority_diagnosis_49",
+  authority_diagnosis_97: {
+    code: "authority_diagnosis_97",
     namePt: "Diagnóstico de Autoridade Digital",
-    amountCents: 4900,
+    amountCents: 9700,
     currency: "EUR",
     description:
       "Diagnóstico de Autoridade Digital — relatório completo + sessão humana de 30 min + 3 prioridades.",

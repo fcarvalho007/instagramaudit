@@ -392,6 +392,48 @@ export type Database = {
         }
         Relationships: []
       }
+      coupon_redemptions: {
+        Row: {
+          coupon_code: string
+          id: string
+          lead_id: string | null
+          payment_id: string | null
+          product_code: string
+          redeemed_at: string
+        }
+        Insert: {
+          coupon_code: string
+          id?: string
+          lead_id?: string | null
+          payment_id?: string | null
+          product_code: string
+          redeemed_at?: string
+        }
+        Update: {
+          coupon_code?: string
+          id?: string
+          lead_id?: string | null
+          payment_id?: string | null
+          product_code?: string
+          redeemed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_redemptions_coupon_code_fkey"
+            columns: ["coupon_code"]
+            isOneToOne: false
+            referencedRelation: "payment_coupons"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "coupon_redemptions_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "lead_payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       credit_ledger: {
         Row: {
           analysis_snapshot_id: string | null
@@ -1022,6 +1064,45 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_coupons: {
+        Row: {
+          active: boolean
+          applies_to: string[]
+          code: string
+          created_at: string
+          discount_percent: number
+          expires_at: string | null
+          max_uses: number | null
+          notes: string | null
+          updated_at: string
+          uses: number
+        }
+        Insert: {
+          active?: boolean
+          applies_to?: string[]
+          code: string
+          created_at?: string
+          discount_percent: number
+          expires_at?: string | null
+          max_uses?: number | null
+          notes?: string | null
+          updated_at?: string
+          uses?: number
+        }
+        Update: {
+          active?: boolean
+          applies_to?: string[]
+          code?: string
+          created_at?: string
+          discount_percent?: number
+          expires_at?: string | null
+          max_uses?: number | null
+          notes?: string | null
+          updated_at?: string
+          uses?: number
+        }
+        Relationships: []
+      }
       pricing_interest: {
         Row: {
           comment: string | null
@@ -1554,6 +1635,51 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           variant?: string
+        }
+        Relationships: []
+      }
+      service_inquiries: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string
+          id: string
+          ip_hash: string | null
+          message: string
+          name: string
+          referrer: string | null
+          status: string
+          topic: string
+          updated_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          ip_hash?: string | null
+          message: string
+          name: string
+          referrer?: string | null
+          status?: string
+          topic: string
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          ip_hash?: string | null
+          message?: string
+          name?: string
+          referrer?: string | null
+          status?: string
+          topic?: string
+          updated_at?: string
+          user_agent?: string | null
         }
         Relationships: []
       }
