@@ -104,24 +104,25 @@ export const Route = createFileRoute("/api/public/eupago-webhook")({
               product: string;
               status: string;
               paid_at: string | null;
+              metadata: Record<string, unknown> | null;
             }
           | null = null;
 
         if (providerPaymentId) {
           const { data } = await supabaseAdmin
             .from("lead_payments")
-            .select("id, lead_id, product, status, paid_at")
+            .select("id, lead_id, product, status, paid_at, metadata")
             .eq("provider_payment_id", providerPaymentId)
             .maybeSingle();
-          row = data ?? null;
+          row = (data as typeof row) ?? null;
         }
         if (!row && identifier && UUID_RE.test(identifier)) {
           const { data } = await supabaseAdmin
             .from("lead_payments")
-            .select("id, lead_id, product, status, paid_at")
+            .select("id, lead_id, product, status, paid_at, metadata")
             .eq("id", identifier)
             .maybeSingle();
-          row = data ?? null;
+          row = (data as typeof row) ?? null;
         }
 
         if (!row) {
@@ -158,6 +159,26 @@ export const Route = createFileRoute("/api/public/eupago-webhook")({
             });
           } catch (err) {
             console.error("[eupago-webhook] grantEntitlement failed", err);
+          }
+
+          // Register coupon redemption (idempotent) if the payment was created
+          // with one.
+          const couponCode =
+            (row.metadata?.coupon_code as string | null | undefined) ?? null;
+          if (couponCode) {
+            try {
+              const { redeemCouponForPayment } = await import(
+                "@/lib/payments/coupons.server"
+              );
+              await redeemCouponForPayment({
+                couponCode,
+                paymentId: row.id,
+                productCode: row.product,
+                leadId: row.lead_id,
+              });
+            } catch (err) {
+              console.error("[eupago-webhook] coupon redemption failed", err);
+            }
           }
 
           await recordProductEvent({

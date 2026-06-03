@@ -33,6 +33,13 @@ const inputSchema = z
       .regex(/^\/[A-Za-z0-9/_\-.?=&%]*$/, "must be a relative path")
       .optional(),
     source_component: z.string().trim().min(1).max(80).optional(),
+    coupon_code: z
+      .string()
+      .trim()
+      .min(1)
+      .max(40)
+      .regex(/^[A-Za-z0-9_-]+$/)
+      .optional(),
   })
   .strict();
 
@@ -59,6 +66,9 @@ export const createEupagoCheckout = createServerFn({ method: "POST" })
       "./eupago.server"
     );
     const { recordProductEvent } = await import("@/lib/tracking.server");
+    const { validateCouponForProduct, normalizeCouponCode } = await import(
+      "./coupons.server"
+    );
 
     const leadId = getLeadFromCookie();
     if (!leadId) {
@@ -67,13 +77,30 @@ export const createEupagoCheckout = createServerFn({ method: "POST" })
 
     const product = getServerProduct(data.product_code);
 
+    // Re-validate the coupon server-side. The client value is advisory only.
+    let appliedCents = product.amountCents;
+    let appliedCoupon: string | null = null;
+    let appliedDiscountPercent: number | null = null;
+    if (data.coupon_code) {
+      const couponResult = await validateCouponForProduct(
+        data.coupon_code,
+        data.product_code,
+        product.amountCents,
+      );
+      if (couponResult.valid && couponResult.finalCents) {
+        appliedCents = couponResult.finalCents;
+        appliedCoupon = normalizeCouponCode(data.coupon_code);
+        appliedDiscountPercent = couponResult.discountPercent ?? null;
+      }
+    }
+
     // Insert pending payment row first so we have a stable internal id.
     const { data: paymentRow, error: insertErr } = await supabaseAdmin
       .from("lead_payments")
       .insert({
         lead_id: leadId,
         product: product.code,
-        amount_cents: product.amountCents,
+        amount_cents: appliedCents,
         currency: product.currency,
         status: "pending",
         provider: "eupago",
@@ -82,6 +109,9 @@ export const createEupagoCheckout = createServerFn({ method: "POST" })
         checkout_started_at: new Date().toISOString(),
         metadata: {
           source_component: data.source_component ?? null,
+          coupon_code: appliedCoupon,
+          discount_percent: appliedDiscountPercent,
+          original_amount_cents: appliedCoupon ? product.amountCents : null,
         } as never,
       })
       .select("id")
@@ -112,7 +142,7 @@ export const createEupagoCheckout = createServerFn({ method: "POST" })
     try {
       const result = await providerCreate({
         productCode: product.code,
-        amountCents: product.amountCents,
+        amountCents: appliedCents,
         currency: product.currency,
         description: product.description,
         internalPaymentId: paymentRow.id,
@@ -136,10 +166,27 @@ export const createEupagoCheckout = createServerFn({ method: "POST" })
         metadata: {
           payment_id: paymentRow.id,
           product_code: product.code,
-          amount_cents: product.amountCents,
+          amount_cents: appliedCents,
+          original_amount_cents: product.amountCents,
+          coupon_code: appliedCoupon,
+          discount_percent: appliedDiscountPercent,
           source_component: data.source_component ?? null,
         },
       });
+
+      if (appliedCoupon) {
+        await recordProductEvent({
+          eventType: "pricing_coupon_applied",
+          leadId,
+          metadata: {
+            payment_id: paymentRow.id,
+            product_code: product.code,
+            coupon_code: appliedCoupon,
+            discount_percent: appliedDiscountPercent,
+            final_cents: appliedCents,
+          },
+        }).catch(() => {});
+      }
 
       return {
         ok: true,
