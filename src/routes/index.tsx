@@ -32,6 +32,7 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   return (
+    // Dark hero landing — published bundle refresh marker
     <div
       className="hero-dark"
       style={{ backgroundColor: "rgb(var(--hero-bg-base))" }}
