@@ -82,6 +82,7 @@ export const getOwnedReport = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { userId } = context;
 
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: report, error } = await supabaseAdmin
       .from("report_requests")
       .select(
@@ -138,6 +139,7 @@ export const getReportPdfUrl = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { userId } = context;
 
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: report, error } = await supabaseAdmin
       .from("report_requests")
       .select("id, pdf_status, pdf_storage_path, user_id")
