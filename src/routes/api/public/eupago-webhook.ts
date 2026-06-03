@@ -97,16 +97,15 @@ export const Route = createFileRoute("/api/public/eupago-webhook")({
 
         // Resolve payment row: prefer provider_payment_id, fall back to
         // our internal id we passed as `identifier`.
-        let row:
-          | {
-              id: string;
-              lead_id: string;
-              product: string;
-              status: string;
-              paid_at: string | null;
-              metadata: Record<string, unknown> | null;
-            }
-          | null = null;
+        type PaymentRow = {
+          id: string;
+          lead_id: string;
+          product: string;
+          status: string;
+          paid_at: string | null;
+          metadata: Record<string, unknown> | null;
+        };
+        let row: PaymentRow | null = null;
 
         if (providerPaymentId) {
           const { data } = await supabaseAdmin
@@ -114,7 +113,7 @@ export const Route = createFileRoute("/api/public/eupago-webhook")({
             .select("id, lead_id, product, status, paid_at, metadata")
             .eq("provider_payment_id", providerPaymentId)
             .maybeSingle();
-          row = (data as typeof row) ?? null;
+          row = (data as PaymentRow | null) ?? null;
         }
         if (!row && identifier && UUID_RE.test(identifier)) {
           const { data } = await supabaseAdmin
@@ -122,7 +121,7 @@ export const Route = createFileRoute("/api/public/eupago-webhook")({
             .select("id, lead_id, product, status, paid_at, metadata")
             .eq("id", identifier)
             .maybeSingle();
-          row = (data as typeof row) ?? null;
+          row = (data as PaymentRow | null) ?? null;
         }
 
         if (!row) {
