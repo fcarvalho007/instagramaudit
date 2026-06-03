@@ -153,6 +153,9 @@ export const createEupagoCheckout = createServerFn({ method: "POST" })
           coupon_code: appliedCoupon,
           discount_percent: appliedDiscountPercent,
           original_amount_cents: appliedCoupon ? product.amountCents : null,
+          qualification: data.qualification ?? null,
+          upsell_interest: data.upsell_interest ?? null,
+          billing: data.billing ?? null,
         } as never,
       })
       .select("id")
