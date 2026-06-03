@@ -15,7 +15,7 @@ import {
   Send,
   Search,
 } from "lucide-react";
-import { getOwnedReport, getReportPdfUrl } from "@/server/reports.functions";
+import { getOwnedReport, getReportPdfUrl } from "@/lib/server/reports.functions";
 import { cn } from "@/lib/utils";
 import {
   getReportExpiresAt,
