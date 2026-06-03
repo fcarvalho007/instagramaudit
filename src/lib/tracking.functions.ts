@@ -55,6 +55,12 @@ const ALLOWED_EVENTS = [
   // Premium CTA flow (report — unified entry points)
   "premium_cta_clicked",
   "premium_window_interest",
+  // Payments (EuPago)
+  "payment_cta_clicked",
+  "payment_checkout_created",
+  "payment_checkout_failed",
+  "payment_webhook_paid",
+  "payment_webhook_failed",
 ] as const;
 
 const trackEventSchema = z.object({

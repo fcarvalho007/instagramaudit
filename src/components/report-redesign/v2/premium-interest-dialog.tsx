@@ -16,6 +16,7 @@ import {
   PricingInterestModal,
   type PricingInterestOption,
 } from "@/components/pricing/pricing-interest-modal";
+import { ReserveDiagnosisButton } from "@/components/payments/reserve-diagnosis-button";
 
 // NOTE: Real checkout endpoint is not yet wired. CTAs only emit a typed
 // `pricing_option_clicked` event so we can measure intent without faking a
@@ -99,6 +100,33 @@ export function PremiumInterestDialog({
             {t("premium.dialog.subtitle")}
           </DialogDescription>
         </DialogHeader>
+
+        <div
+          className={cn(
+            "mt-4 rounded-xl border border-accent-primary/30 bg-accent-primary/[0.04]",
+            "px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-4",
+          )}
+        >
+          <div className="min-w-0 flex-1">
+            <p className="text-eyebrow-sm text-accent-primary">
+              Beta · oferta limitada
+            </p>
+            <p className="mt-1 text-sm font-semibold text-content-primary">
+              Diagnóstico de Autoridade Digital — 49€ beta
+            </p>
+            <p className="mt-1 text-xs text-content-secondary leading-relaxed">
+              Relatório completo + sessão humana de 30 min + 3 prioridades de
+              melhoria + follow-up por email.
+            </p>
+          </div>
+          <ReserveDiagnosisButton
+            productCode="authority_diagnosis_49"
+            sourceComponent={sourceComponent}
+            instagramUsername={handle ?? undefined}
+            returnPath="/"
+            className="shrink-0"
+          />
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-3 items-stretch">
           <PricingCard
