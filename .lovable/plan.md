@@ -1,59 +1,64 @@
-## Problema
+# Pricing ladder — copy & visual refinements
 
-No mobile (≤414px) os passos 2 e 3 do `OnboardingModal` ficam altos demais para o `max-h-[92vh]` do `DialogContent`. A barra de ações (Voltar / Continuar / Gerar relatório) faz parte do fluxo scrollável, logo o utilizador vê o botão "Continuar" cortado a meio (screenshot do passo 2) e precisa de scrollar para chegar ao CTA — má leitura e fricção real de conversão.
+Scope: copy, i18n, visual hierarchy and small display logic. **No** changes to payment flow, EuPago, webhook, DB schema, product codes/prices, entitlements, onboarding, report logic, credits, providers or admin.
 
-Causas concretas em `src/components/onboarding/onboarding-modal.tsx`:
+## Files to change
 
-- `FormStepBody` (l. 717-809): o container é um único `div` com padding `py-7`; o bloco de botões (l. 771) está dentro do mesmo flow scrollable, sem `sticky`.
-- `ChipGroup` (l. 873): cada chip tem `min-h-[88px]` + `py-3.5` + ícone `size-[22px]` → 2 grupos de 4 chips em mobile (2 colunas) ocupam ~2×(2×88px + gaps) ≈ 370px só de chips no passo 2.
-- `Step3EmailGdpr`: o cartão de consentimentos (l. 1046) usa `p-4 space-y-3` e os labels têm `leading-[1.55]` com texto `[14px]` — cresce muito em 411px.
-- Header (l. 719-737) usa `space-y-2.5` + `DialogTitle` `text-[28px]` + `ProgressSegments` extra; em mobile isto come ~140-160px antes de qualquer campo.
+### 1. `src/i18n/locales/en/report.json` — `premium.dialog`
+Rewrite to mirror PT (0€ / 9€ / 97€ ladder). Currently still shows €7 + Pack of 5 + €28.
 
-## Objetivo
+New EN keys:
+- `eyebrow`: "Access options"
+- `title`: "Choose how to deepen the analysis"
+- `subtitle`: "The initial overview is free. Unlock the full report, or book a human reading to turn the diagnosis into next steps."
+- `free`: label "Included", title "Initial overview", price "€0", bullets ["Index and profile overview", "Recent sample", "Account to save reports"], cta "Keep it free"
+- `single`: label "Automatic", title "Full report", price "€9", unit "one-off payment · no subscription", bullets ["All 6 sections", "Editorial reading + competitors", "Practical recommendations"], cta "Unlock report"
+- `hero`: label "Report + human", badge "Most useful", title "Digital Authority Diagnosis", price "€97", strike "€149", launch "launch price · rises to €149", bullets ["Full report included", "30-minute call", "3 improvement priorities"]
+- `footer`: trust "No subscription · no automatic renewal", services_question "Need to analyse several digital assets or prepare training for your team?", services_cta "Talk about audit or training"
 
-Garantir que, em mobile, o botão primário (Continuar / Gerar o meu relatório) está sempre visível sem precisar de scroll, mantendo o desktop praticamente igual ao atual.
+Drop `pack` block entirely.
 
-## Alterações (apenas UI, ficheiro único)
+### 2. `src/i18n/locales/pt/pricing.json`
+- `meta.description` → "Visão inicial grátis. Relatório completo por 9€. Diagnóstico de Autoridade Digital por 97€ (preço de lançamento). Sem subscrição."
+- `single.price` "7€" → "9€"; `single.bullets` → ["1 perfil", "Pagamento único", "Sem subscrição"]
+- Drop `pack` block.
+- Add `diagnosis` block: label "Beta", title "Diagnóstico de Autoridade Digital", price "97€", strike "149€", launch_note "preço de lançamento · sobe para 149€", bullets ["Relatório completo incluído", "Chamada de 30 minutos", "3 prioridades de melhoria", "Orientação para conteúdo e posicionamento"], cta "Reservar diagnóstico".
 
-Ficheiro: `src/components/onboarding/onboarding-modal.tsx`
+### 3. `src/i18n/locales/en/pricing.json`
+Mirror #2 in English (price labels "€9" / "€97" / strike "€149").
 
-1. **Footer sticky no `FormStepBody`**
-   - Tornar o `<div>` raiz do `FormStepBody` um `flex flex-col` com `max-h-[92vh]` (ou `h-full` herdando o `max-h` do `DialogContent`).
-   - Body do form passa a `flex-1 overflow-y-auto` (com padding mantido).
-   - A barra de botões (l. 771) sai de dentro do `<form>` scrollável e fica num footer `sticky bottom-0` com `bg-background`, `border-t`, e `pb-[max(env(safe-area-inset-bottom),0.75rem)]` para respeitar a safe area do Android/iOS. O `<form>` continua a envolver tudo (mantém submit por Enter); o botão `type="submit"` continua no footer.
+### 4. `src/i18n/locales/pt/landing.json` and `src/i18n/locales/en/landing.json`
+Section `dark.pricing`:
+- `urgency` → PT "Preço de lançamento — sobe para 149€ após a beta." / EN "Launch price — rises to €149 after the beta."
+- Rename `single` → keep label "Relatório" / "Report", unit "pagamento único" / "one-off payment", cta "Desbloquear" / "Unlock".
+- Replace `pack` with `diagnosis`: label "Diagnóstico" / "Diagnosis", unit "leitura humana + 3 prioridades" / "human reading + 3 priorities", cta "Reservar" / "Book", badge "Mais útil" / "Most useful".
 
-2. **Densidade no passo 2 (`ChipGroup` + `Step2Context`)**
-   - `min-h-[88px]` → `min-h-[68px] sm:min-h-[88px]`.
-   - `py-3.5` → `py-2.5 sm:py-3.5`.
-   - `gap-2` no chip e ícone `size-[22px]` → `size-[18px] sm:size-[22px]`.
-   - `Step2Context`: `space-y-5` exterior → `space-y-4 sm:space-y-5`; `flex flex-col gap-5` → `gap-4 sm:gap-5`.
-   - Remover a linha `consequenceLine` em mobile (`hidden sm:block`) — é redundante com o subtítulo no topo e poupa ~32px.
+### 5. `src/components/landing/dark/pricing-teaser-band.tsx`
+Currently hardcodes the old `7€ / strike 19€ / 28€ Pack 5`. Replace the three `<Tier>` calls with:
+- Tier 1: `price="0€"`, free tier (unchanged).
+- Tier 2: `price="9€"` (no strike), uses `t("dark.pricing.single.*")`.
+- Tier 3: `price="97€"`, `strike="149€"`, `featured`, badge "Mais útil" / "Most useful", uses `t("dark.pricing.diagnosis.*")`.
 
-3. **Densidade no passo 3 (`Step3EmailGdpr`)**
-   - Cartão de consentimentos: `p-4 space-y-3` → `p-3 space-y-2.5 sm:p-4 sm:space-y-3`.
-   - Texto dos labels: `text-[14px] leading-[1.55]` → `text-[13.5px] leading-[1.5] sm:text-[14px] sm:leading-[1.55]`.
-   - Hint do telemóvel: ocultar em mobile (`hidden sm:block`) — o "opcional" no label já comunica isto.
+### 6. `src/components/pricing/pricing-page.tsx`
+- Replace agency-link copy "Vários perfis ou clientes? Pack de agência" → "Vários perfis ou clientes? Opção de agência" (keep `?topico=agencia` deep link).
+- No other changes — the page already renders the correct ladder.
 
-4. **Densidade do header em mobile (`FormStepBody`)**
-   - Container: `px-5 py-7` → `px-5 py-5 sm:px-9 sm:py-9`.
-   - `DialogTitle`: `text-[28px]` → `text-[24px] sm:text-[30px]`, `leading-[1.08]` mantém.
-   - `space-y-2.5` no header → `space-y-2 sm:space-y-2.5`.
-   - Espaço entre header e form: `mt-5` → `mt-4 sm:mt-5`.
+### 7. `src/components/pricing/pricing-interest-modal.tsx`
+The modal currently does `planFromDb?.priceFormatted ?? planPrice`. The DB still has the legacy 7€ / 28€ rows (user excluded DB changes), so the modal shows 7€ when the 9€ card opens the interest flow. Flip the precedence to **prefer the prop over DB** so the displayed price always matches the card the user clicked:
+- `const effectiveLabel = planLabel ?? planFromDb?.label;`
+- `const effectivePrice = planPrice ?? planFromDb?.priceFormatted;`
 
-5. **Botões mobile (preservar hierarquia visível)**
-   - Manter `flex-col-reverse` (Continuar acima do Voltar em mobile — convenção atual).
-   - Reduzir `gap-2.5` → `gap-2` em mobile.
-   - Garantir que ambos têm `h-12` consistente (já têm via `size="lg"`).
+Pure display fix; no payment or DB logic touched.
 
-## Out of scope
+## Out of scope (documented, not changed)
 
-- Não alterar copy do `gate.json`.
-- Não tocar nos passos 0 (Intro), 1 (Nome) nem `LoginStepBody`.
-- Não mexer em lógica, validação, tracking, payload, schemas, rotas, server functions ou tokens globais.
-- Sem alterações desktop visíveis (todos os overrides são em mobile via breakpoint `sm:`).
+- DB `pricing_plans` rows still legacy (7€ / 28€). The display-precedence flip in #7 shields the UI from it.
+- The 9€ "Desbloquear relatório" path inside `PremiumInterestDialog` still opens the interest modal (not real checkout) — that requires wiring `ReserveDiagnosisButton` and is excluded by "no payment logic" constraints.
+- `pack_5_reports` enum in `PricingInterestModal` and the public API remains — no consumer left after these edits, but removal would touch the public API surface.
 
-## Verificação
+## Validation
 
-- `bunx tsc --noEmit`.
-- Browser tool em viewport 411×742 (o viewport real do user): abrir homepage → escrever handle → entrar no onboarding → screenshot dos passos 2 e 3 confirmando que "Continuar" / "Gerar o meu relatório" estão visíveis sem scroll, e que com scroll o footer fica fixo no fundo.
-- Confirmar desktop (1280×720) inalterado com screenshot do passo 2.
+- `bunx tsc --noEmit`
+- Visual check on `/precos` and the in-report premium dialog at desktop 1460px and mobile 390px.
+- Grep confirms no remaining "Pack 5", "Pack of 5", "7€", "€7", "28€", "€28", "19€", "€19" in public surfaces (`src/components/landing`, `src/components/pricing`, `src/components/report-redesign`, `src/i18n/locales/**/pricing.json`, `**/landing.json`, `**/report.json`).
+- Confirm no edits under `src/lib/payments`, `src/routes/api/public/eupago-webhook.ts`, `supabase/migrations`, `src/integrations`, `src/lib/credits`, `src/lib/admin`.

@@ -194,11 +194,11 @@
     "pricing": {
       "eyebrow": "Pricing",
       "headline": "No subscription. Pay as you go.",
-      "lead": "Start with 2 free reports.",
-      "urgency": "Launch price — rises to €19 after the beta.",
-      "free": { "label": "Try it", "price": "Free", "unit": "2 reports · no card", "cta": "Start" },
-      "single": { "label": "Single", "unit": "per report", "cta": "Buy 1" },
-      "pack": { "label": "Pack of 5", "unit": "€5.60 each · save 20%", "cta": "Buy pack", "badge": "Best value" }
+      "lead": "Start with the free initial overview.",
+      "urgency": "Launch price — rises to €149 after the beta.",
+      "free": { "label": "Initial overview", "price": "€0", "unit": "no card · no subscription", "cta": "Start free" },
+      "single": { "label": "Full report", "unit": "one-off payment · no subscription", "cta": "Unlock" },
+      "diagnosis": { "label": "Authority Diagnosis", "unit": "human reading + 3 priorities", "cta": "Book", "badge": "Most useful" }
     },
     "finalCta": {
       "headline": "Analyze your first profile now.",

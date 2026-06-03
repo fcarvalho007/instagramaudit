@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Pricing — AuditProfiles",
-    "description": "Simple, transparent AuditProfiles pricing: 1 report for €7 or a pack of 5 for €28. No subscription."
+    "description": "Free initial overview. Full report for €9. Digital Authority Diagnosis for €97 (launch price). No subscription."
   },
   "hero": {
     "title": "Simple pricing with progressive access",
@@ -18,28 +18,31 @@
     "cta": "Start free"
   },
   "single": {
-    "label": "Premium",
-    "title": "1 report",
-    "price": "€7",
+    "label": "Automatic",
+    "title": "Full report",
+    "price": "€9",
+    "unit": "one-off payment · no subscription",
     "bullets": [
       "1 profile",
-      "1 premium unlock",
-      "Ideal for a one-off analysis"
+      "One-off payment",
+      "No subscription"
     ],
-    "cta": "Choose 1 report"
+    "cta": "Unlock report"
   },
-  "pack": {
-    "label": "Best value",
-    "title": "Pack of 5 reports",
-    "price": "€28",
-    "unit": "€5.60/report",
+  "diagnosis": {
+    "label": "Report + human",
+    "badge": "Most useful",
+    "title": "Digital Authority Diagnosis",
+    "price": "€97",
+    "strike": "€149",
+    "launch_note": "launch price · rises to €149",
     "bullets": [
-      "5 reports",
-      "Best for comparing several profiles",
-      "More flexibility for less cost"
+      "Full report included",
+      "30-minute call",
+      "3 improvement priorities",
+      "Guidance on content and positioning"
     ],
-    "savings_badge": "Save 20%",
-    "cta": "Choose pack of 5"
+    "cta": "Book diagnosis"
   },
   "trust_note": "No subscription. No automatic renewal.",
   "pending_note": "Payment coming soon — the button registers your interest.",

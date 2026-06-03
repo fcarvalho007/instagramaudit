@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Preços — AuditProfiles",
-    "description": "Preços simples e transparentes do AuditProfiles: 1 relatório por 7€ ou pack de 5 por 28€. Sem subscrição."
+    "description": "Visão inicial grátis. Relatório completo por 9€. Diagnóstico de Autoridade Digital por 97€ (preço de lançamento). Sem subscrição."
   },
   "hero": {
     "title": "Preços simples, com acesso progressivo",
@@ -18,28 +18,31 @@
     "cta": "Começar grátis"
   },
   "single": {
-    "label": "Premium",
-    "title": "1 relatório",
-    "price": "7€",
+    "label": "Automático",
+    "title": "Relatório completo",
+    "price": "9€",
+    "unit": "pagamento único · sem subscrição",
     "bullets": [
       "1 perfil",
-      "1 desbloqueio premium",
-      "Ideal para uma análise pontual"
+      "Pagamento único",
+      "Sem subscrição"
     ],
-    "cta": "Escolher 1 relatório"
+    "cta": "Desbloquear relatório"
   },
-  "pack": {
-    "label": "Melhor valor",
-    "title": "Pack 5 relatórios",
-    "price": "28€",
-    "unit": "5,60€/relatório",
+  "diagnosis": {
+    "label": "Relatório + humano",
+    "badge": "Mais útil",
+    "title": "Diagnóstico de Autoridade Digital",
+    "price": "97€",
+    "strike": "149€",
+    "launch_note": "preço de lançamento · sobe para 149€",
     "bullets": [
-      "5 relatórios",
-      "Melhor para comparar vários perfis",
-      "Mais flexibilidade por menos custo"
+      "Relatório completo incluído",
+      "Chamada de 30 minutos",
+      "3 prioridades de melhoria",
+      "Orientação para conteúdo e posicionamento"
     ],
-    "savings_badge": "Poupa 20%",
-    "cta": "Escolher pack de 5"
+    "cta": "Reservar diagnóstico"
   },
   "trust_note": "Sem subscrição. Sem renovação automática.",
   "pending_note": "Pagamento brevemente disponível — o botão regista o teu interesse.",
