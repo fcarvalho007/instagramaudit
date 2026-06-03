@@ -1304,11 +1304,11 @@
       "more_sections": "+ 5 sections"
     },
     "price": {
-      "launch": "7",
-      "list": "19",
+      "launch": "9",
+      "list": "9",
       "currency": "€",
-      "caption_prefix": "Launch price ·",
-      "caption_suffix": "rises to 19€ after beta"
+      "caption_prefix": "",
+      "caption_suffix": "one-off payment · no subscription"
     },
     "cta": "Lock in launch price",
     "footnote": "Join the list and we'll let you know when it opens · one-time payment, no subscription"
