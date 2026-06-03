@@ -1312,11 +1312,11 @@
       "more_sections": "+ 5 secções"
     },
     "price": {
-      "launch": "7",
-      "list": "19",
+      "launch": "9",
+      "list": "9",
       "currency": "€",
-      "caption_prefix": "Preço de lançamento ·",
-      "caption_suffix": "sobe para 19€ após a beta"
+      "caption_prefix": "",
+      "caption_suffix": "pagamento único · sem subscrição"
     },
     "cta": "Garantir preço de lançamento",
     "footnote": "Entras na lista e avisamos-te quando abrir · pagamento único, sem subscrição"
