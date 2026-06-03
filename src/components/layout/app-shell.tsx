@@ -29,7 +29,7 @@ function AppShell({ children }: AppShellProps) {
     // contínuo entre hero, ilha dark e footer.
     return (
       <div
-        className="min-h-screen flex flex-col text-white"
+        className="hero-dark min-h-screen flex flex-col text-white"
         style={{ backgroundColor: "rgb(var(--hero-bg-base))" }}
       >
         <Header variant="dark" />

@@ -1,22 +1,32 @@
-## Problema
+## Diagnóstico
 
-Após remover o `max-w-[420px]` do wrapper, o calendário ocupa toda a largura do card. Como as células são `aspect-square`, ficaram quadradas gigantes (~190px de altura), criando um bloco visualmente desproporcional para um calendário de 30 dias.
+Confirmei no preview que a homepage está a carregar o hero escuro, mas há inconsistência visual no chrome:
 
-## Alteração mínima
+- Header aparece com faixa branca/translúcida por cima do hero.
+- A área fora/entre blocos deixa ver fundo branco.
+- O footer pode cair para a versão light ou revelar branco quando a página não está toda coberta pelo fundo dark.
+- O código já tenta usar `Header variant="dark"` e `DarkFooter`, por isso o problema parece ser de cobertura de fundo e estilos globais/herdados, não de conteúdo da página.
 
-Em `src/components/report-redesign/v2/overview/frequency-card.tsx`, trocar `aspect-square` por `aspect-[4/3]` nas duas células do calendário (padding e dia ativo, linhas 687 e 704).
+## Plano de correção
 
-- `aspect-[4/3]` mantém a célula nitidamente rectangular (mais larga que alta), reduzindo a altura para ~75% do quadrado actual.
-- Mantém a grelha responsiva: cresce/encolhe proporcionalmente com a largura do card.
-- Mantém legibilidade dos números "2 posts" (continua com espaço sobrado).
-- Mantém raio `rounded-[5px]`, gaps, headers de weekday e legenda.
+1. **Fechar a homepage num contexto dark explícito**
+   - Garantir que o shell da rota `/` pinta o wrapper inteiro, `main`, e o fundo base com `rgb(var(--hero-bg-base))`.
+   - Evitar que `body`/fundo global branco apareça em qualquer gap entre hero, ilha dark e footer.
 
-## Fora de scope
+2. **Tornar o header dark independente do scroll/cache visual**
+   - Ajustar o `Header` quando `variant="dark"` para usar fundo navy real e texto/bordas coerentes.
+   - Manter translucidez apenas se não revelar branco por trás.
 
-- Não mexer no `format-card.tsx`.
-- Não mexer em copy, dados, scoring, tokens, hover/tooltip, gate ou outros cards.
-- Não alterar o número de colunas (continua `grid-cols-7`).
+3. **Eliminar a falha branca entre primeira e segunda dobra**
+   - Rever a transição `HeroSection` → `LandingDarkIsland`.
+   - Remover margens/gaps que exponham `surface-base` branco.
+   - Garantir que `LandingDarkIsland` começa imediatamente em fundo dark.
 
-## Validação
+4. **Garantir footer dark na homepage**
+   - Confirmar que `/` usa sempre `DarkFooter`.
+   - Dar ao footer e ao wrapper externo um fundo dark contínuo para não depender de transparência.
 
-`bunx tsc --noEmit` + QA visual a 1440 e 390 (confirmar que as células ficam claramente rectangulares e o bloco do calendário deixa de dominar verticalmente).
+5. **Verificação no preview**
+   - Abrir `/` no viewport atual `1445x885`.
+   - Validar topo, dobra hero→segunda secção e footer.
+   - Confirmar que páginas internas continuam com header/footer light normais.
