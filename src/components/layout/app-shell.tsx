@@ -9,7 +9,7 @@ export interface AppShellProps {
   children: React.ReactNode;
 }
 
-const PUBLIC_CHROME_DISABLED_PREFIXES = ["/admin"];
+const PUBLIC_CHROME_DISABLED_PREFIXES = ["/admin", "/checkout"];
 
 function AppShell({ children }: AppShellProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
