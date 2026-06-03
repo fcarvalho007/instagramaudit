@@ -42,10 +42,37 @@ function requireEnv(name: string): string {
   return v;
 }
 
+const DEFAULT_PAYBYLINK_PATH = "/api/v1.02/paybylink/create";
+
+function resolvePayByLinkPath(): string {
+  const raw = process.env.EUPAGO_PAYBYLINK_PATH?.trim();
+  const path = raw && raw.length > 0 ? raw : DEFAULT_PAYBYLINK_PATH;
+  const withLeading = path.startsWith("/") ? path : `/${path}`;
+  return withLeading.replace(/\/+$/, "");
+}
+
+/**
+ * Redact anything that looks like a credential before logging or throwing.
+ * Keeps debugging useful without ever leaking the API key.
+ */
+function sanitize(text: string): string {
+  if (!text) return text;
+  const apiKey = process.env.EUPAGO_API_KEY;
+  let out = text;
+  if (apiKey) {
+    out = out.split(apiKey).join("[REDACTED_API_KEY]");
+  }
+  out = out.replace(/ApiKey\s+[A-Za-z0-9._-]+/gi, "ApiKey [REDACTED]");
+  out = out.replace(/Authorization"?\s*:\s*"?[^",}\s]+/gi, 'Authorization":"[REDACTED]"');
+  return out.length > 500 ? `${out.slice(0, 500)}…` : out;
+}
+
 /**
  * Create a Pay By Link payment. The exact endpoint depends on your EuPago
  * account contract — `EUPAGO_BASE_URL` is read from env so we can swap
- * between sandbox and production without code changes.
+ * between sandbox and production without code changes. The path under
+ * that host is configurable via `EUPAGO_PAYBYLINK_PATH` (defaults to
+ * `/api/v1.02/paybylink/create`, the current REST API contract).
  */
 export async function createEupagoCheckout(
   input: EuPagoCheckoutInput,
@@ -53,6 +80,7 @@ export async function createEupagoCheckout(
   const baseUrl = requireEnv("EUPAGO_BASE_URL").replace(/\/+$/, "");
   const apiKey = requireEnv("EUPAGO_API_KEY");
   const channelId = process.env.EUPAGO_CHANNEL_ID || undefined;
+  const path = resolvePayByLinkPath();
 
   const amountEuros = (input.amountCents / 100).toFixed(2);
 
@@ -75,7 +103,7 @@ export async function createEupagoCheckout(
     channel: channelId ? { id: channelId } : undefined,
   };
 
-  const res = await fetch(`${baseUrl}/clientes/rest_api/paybylink/create`, {
+  const res = await fetch(`${baseUrl}${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -84,13 +112,28 @@ export async function createEupagoCheckout(
     body: JSON.stringify(body),
   });
 
-  const raw = (await res.json().catch(() => null)) as
-    | Record<string, unknown>
-    | null;
+  // Read as text first so empty/non-JSON 4xx/5xx bodies still produce a
+  // useful, sanitized error message instead of swallowing it as `null`.
+  const rawText = await res.text().catch(() => "");
+  let raw: Record<string, unknown> | null = null;
+  if (rawText) {
+    try {
+      raw = JSON.parse(rawText) as Record<string, unknown>;
+    } catch {
+      raw = null;
+    }
+  }
 
   if (!res.ok || !raw) {
+    const snippet = sanitize(rawText || "(empty body)");
+    // eslint-disable-next-line no-console
+    console.error("[eupago] checkout failed", {
+      status: res.status,
+      path,
+      bodySnippet: snippet,
+    });
     throw new Error(
-      `EuPago checkout failed (${res.status}): ${JSON.stringify(raw)}`,
+      `EuPago checkout failed (${res.status} ${path}): ${snippet}`,
     );
   }
 

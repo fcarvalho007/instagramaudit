@@ -1,91 +1,66 @@
 ## Goal
 
-Fix the two smoke-test blockers on `/checkout/authority-diagnosis`:
+Resolve the `EuPago checkout failed (404): null` blocker by fixing the Pay By Link endpoint path. No other changes to UI, pricing, schemas, webhooks, entitlements or providers.
 
-1. The route renders all 4 steps even without a `lead_session`, then only fails at the final payment server fn.
-2. The focused checkout still shows the global marketing header + footer.
+## Root cause
 
-No changes to pricing, EuPago helper, webhook, product codes, schemas, onboarding, report logic, providers, admin, or homepage.
+`src/lib/payments/eupago.server.ts` calls:
+
+```
+${EUPAGO_BASE_URL}/clientes/rest_api/paybylink/create
+```
+
+EuPago's current REST API is versioned under `/api/v1.02/`. With `EUPAGO_BASE_URL=https://clientes.eupago.pt`, the working Pay By Link path is `/api/v1.02/paybylink/create`. The `/clientes/rest_api/...` shape is from a deprecated/different contract and returns 404 on the current account.
+
+Auth header (`Authorization: ApiKey <key>`) and JSON payload shape are consistent with the v1.02 contract and stay.
 
 ## Changes
 
-### 1. Hide global chrome on `/checkout/*`
+### 1. `src/lib/payments/eupago.server.ts`
 
-File: `src/components/layout/app-shell.tsx`
+- Treat `EUPAGO_BASE_URL` as host-only (e.g. `https://clientes.eupago.pt`), strip trailing slashes (already done).
+- Introduce a new optional env var **`EUPAGO_PAYBYLINK_PATH`**, default **`/api/v1.02/paybylink/create`**. Normalize so it always starts with `/` and has no trailing slash.
+- Build the request URL as `${baseUrl}${path}`.
+- Improve error handling on non-2xx / non-JSON responses:
+  - Read response as text first (fallback when body is empty/non-JSON, which is why the current 404 logs `null`).
+  - Throw an `Error` whose message contains: HTTP status, the **path only** (not full URL with query), and a sanitized snippet of the response body (max ~500 chars, with any `apiKey`/`Authorization`/`ApiKey ...` substrings redacted).
+  - Never include the API key in the thrown message or in `console.error`.
+- Add a single `console.error("[eupago] checkout failed", { status, path, bodySnippet })` before throwing, so server logs capture it without leaking secrets.
+- No change to payload shape, no change to response parsing for the success path, no change to `verifyWebhookSignature`.
 
-Add `"/checkout"` to `PUBLIC_CHROME_DISABLED_PREFIXES` so the marketing `Header` and `Footer` are skipped for any `/checkout/*` URL. The existing `CheckoutShell` (logo, progress, secure-payment note, container) already provides the focused chrome.
+### 2. `.env` / secrets
 
-Effect: `/checkout/authority-diagnosis` renders inside `CheckoutShell` only. Homepage, `/precos`, `/analyze/*`, and every other public route keep their current layouts (only `/admin` and `/checkout` are stripped).
+- `EUPAGO_BASE_URL` stays. Document it must be host-only: `https://clientes.eupago.pt` (or `https://sandbox.eupago.pt` for sandbox).
+- `EUPAGO_PAYBYLINK_PATH` is **optional**. Only set it if EuPago ever changes the versioned path again; default value is correct for v1.02.
+- No new secret added. `EUPAGO_API_KEY` and `EUPAGO_WEBHOOK_SECRET` are unchanged.
 
-### 2. Lead-session guard
+### 3. Tests — `src/lib/payments/__tests__/eupago-checkout.test.ts` (new)
 
-New tiny server fn that reports whether the current request carries a valid `lead_session` cookie. No auth middleware (the cookie is HttpOnly so the client cannot read it directly; the fn just inspects it server-side). No DB call — pure cookie decode using the existing `getLeadFromCookie` helper.
+Mock `globalThis.fetch` (vitest `vi.spyOn`) so no network is touched.
 
-File: `src/lib/leads/lead-session.functions.ts` (new)
+- **URL composition**: with `EUPAGO_BASE_URL=https://clientes.eupago.pt` and no `EUPAGO_PAYBYLINK_PATH`, the helper calls `https://clientes.eupago.pt/api/v1.02/paybylink/create`.
+- **Path override**: setting `EUPAGO_PAYBYLINK_PATH=/api/v9/paybylink/create` is respected; trailing slash on base or leading slash missing in path is normalized.
+- **Auth header**: request includes `Authorization: ApiKey <key>` and `Content-Type: application/json`.
+- **404 safe error**: when fetch resolves with `{ ok:false, status:404, text: async () => "<html>Not Found</html>" }`, the call rejects with an Error whose message includes `404` and `/api/v1.02/paybylink/create`, but does **not** include the API key.
+- **Empty body 404**: when response body is empty, the message still includes the status and path (no `null` swallowing).
+- **No payment side-effects**: this is a pure unit test on `createEupagoCheckout` — assert it throws and that no DB / Supabase module is imported (the helper has no DB access by design; the test reinforces this by spying on `supabaseAdmin` not being touched — covered indirectly by the helper being pure HTTP).
 
-```ts
-import { createServerFn } from "@tanstack/react-start";
+Existing `eupago-signature.test.ts` stays unchanged.
 
-export const getLeadSessionStatus = createServerFn({ method: "GET" }).handler(
-  async () => {
-    const { getLeadFromCookie } = await import("./lead-cookie.server");
-    return { hasLead: getLeadFromCookie() !== null };
-  },
-);
-```
+### 4. Validation
 
-File: `src/routes/checkout.authority-diagnosis.tsx`
-
-- Add a route `loader` that calls `getLeadSessionStatus` via `context.queryClient.ensureQueryData` with `queryOptions` (TanStack Query is already wired). Read it in the component via `useSuspenseQuery`.
-- If `hasLead === false`, render a focused message inside the existing `<div>` shell instead of the step flow:
-
-  Heading (Fraunces): "Para reservar o diagnóstico, começa por criar a tua conta gratuita."
-  Body (Inter, secondary): short one-liner explaining the next step.
-  Primary CTA: "Voltar aos preços" → `navigate({ to: "/precos" })`.
-  Secondary CTA: "Analisar perfil" → `navigate({ to: "/" })` (the analyze entry point is the homepage hero).
-
-- If `hasLead === true`, render the existing 4-step `CheckoutFlow` unchanged.
-
-- Keep `errorComponent` / `notFoundComponent` minimal (consistent with other routes) so a failed status check doesn't blank the page; on error, fall back to showing the same "missing session" CTA.
-
-The server-side `createEupagoCheckout` lead-session check is untouched — it stays as the authoritative backstop.
-
-### 3. Preserved
-
-- Step 1 → 4 flow, copy, tracking events, metadata sent to `createEupagoCheckout`.
-- `CheckoutShell`, `StepProgress`, `OfferCard`, `QualificationForm`, `UpsellInterest`, `BillingForm`, `OrderSummary`.
-- All payment / webhook / provider code.
+- `bunx tsc --noEmit`
+- `bunx vitest run src/lib/payments/__tests__/eupago-checkout.test.ts src/lib/payments/__tests__/eupago-signature.test.ts`
 
 ## Files changed
 
-- `src/components/layout/app-shell.tsx` — add `/checkout` to the chrome-disabled prefix list.
-- `src/lib/leads/lead-session.functions.ts` — new server fn `getLeadSessionStatus`.
-- `src/routes/checkout.authority-diagnosis.tsx` — loader + suspense query, gated render with focused "missing session" view.
+- `src/lib/payments/eupago.server.ts` — endpoint path config + safer error message
+- `src/lib/payments/__tests__/eupago-checkout.test.ts` — new test file
 
-## How the guard works
+## Smoke test retriability
 
-1. Browser hits `/checkout/authority-diagnosis`.
-2. Route loader calls `getLeadSessionStatus` server fn.
-3. Server fn reads + HMAC-verifies the `lead_session` cookie via `getLeadFromCookie()`.
-4. Component reads `{ hasLead }` with `useSuspenseQuery`:
-   - `true` → render the 4-step checkout.
-   - `false` → render the focused "criar conta gratuita" message with `Voltar aos preços` / `Analisar perfil` CTAs.
-5. `createEupagoCheckout` keeps its own lead-session check, so even a forged client cannot reach payment.
+After this fix, the focused checkout smoke test on `/checkout/authority-diagnosis` can be retried. If EuPago still returns 404 with the corrected `/api/v1.02/paybylink/create` path, the new error message will show the exact path + status + sanitized body, which pinpoints whether the remaining issue is auth-key scope, channel id, or base host (sandbox vs production) — without code changes.
 
-## How the layout is isolated
+## Out of scope (explicitly not touched)
 
-`AppShell` already has a chrome-skip path for `/admin`. Adding `/checkout` to the same prefix list means any `/checkout/*` URL bypasses `Header` + `Footer` + `DarkFooter` and renders the children straight, where `routes/checkout.tsx` wraps them in `CheckoutShell` (logo + progress + secure note). No other route is affected.
-
-## Validation
-
-- `bunx tsc --noEmit`.
-- Manual:
-  - Visit `/checkout/authority-diagnosis` with no cookie → focused message, no step UI, no global header/footer.
-  - Visit with a valid lead session → 4 steps render, header/footer absent.
-  - `/`, `/precos`, `/analyze/<u>` keep their current layouts.
-  - No payment is created (we stop before the final CTA).
-
-## Risks
-
-- If `SESSION_SECRET` is missing in the runtime env, `getLeadFromCookie` throws; the loader's `errorComponent` fallback must show the same "missing session" CTA, not a crash.
-- The cookie is set with `SameSite=None; Secure; Partitioned`. In sandboxed previews where cookies are blocked, every visit will look like "no lead session". This is correct behaviour but worth flagging during smoke tests.
+Checkout UI, pricing, product codes/amounts, `lead_payments` schema, `lead_entitlements`, webhook logic, onboarding, report logic, Apify/OpenAI/DataForSEO, admin, homepage, the pre-existing `checkout_*` tracking enum issue (separate task).
