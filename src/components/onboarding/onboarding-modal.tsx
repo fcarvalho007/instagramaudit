@@ -926,8 +926,8 @@ function Step2Context({
   };
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col gap-5">
+    <div className="space-y-4 sm:space-y-5">
+      <div className="flex flex-col gap-4 sm:gap-5">
         <div className="space-y-2">
         <p className="text-[15px] font-medium text-content-primary">
           <Trans
@@ -974,7 +974,7 @@ function Step2Context({
         </div>
       </div>
 
-      <p className="text-[13px] text-content-tertiary leading-[1.5]">
+      <p className="hidden sm:block text-[13px] text-content-tertiary leading-[1.5]">
         {t("onboarding.steps.2.consequenceLine")}
       </p>
     </div>
