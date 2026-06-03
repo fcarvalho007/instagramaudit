@@ -21,6 +21,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as DevLoadingPreviewRouteImport } from './routes/dev-loading-preview'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as CookiesRouteImport } from './routes/cookies'
+import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as AvisoLegalRouteImport } from './routes/aviso-legal'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -215,6 +216,11 @@ const DesignSystemRoute = DesignSystemRouteImport.update({
 const CookiesRoute = CookiesRouteImport.update({
   id: '/cookies',
   path: '/cookies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckoutRoute = CheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AvisoLegalRoute = AvisoLegalRouteImport.update({
@@ -952,6 +958,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRouteWithChildren
   '/aviso-legal': typeof AvisoLegalRoute
+  '/checkout': typeof CheckoutRoute
   '/cookies': typeof CookiesRoute
   '/design-system': typeof DesignSystemRoute
   '/dev-loading-preview': typeof DevLoadingPreviewRoute
@@ -1100,6 +1107,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/aviso-legal': typeof AvisoLegalRoute
+  '/checkout': typeof CheckoutRoute
   '/cookies': typeof CookiesRoute
   '/design-system': typeof DesignSystemRoute
   '/dev-loading-preview': typeof DevLoadingPreviewRoute
@@ -1249,6 +1257,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRouteWithChildren
   '/aviso-legal': typeof AvisoLegalRoute
+  '/checkout': typeof CheckoutRoute
   '/cookies': typeof CookiesRoute
   '/design-system': typeof DesignSystemRoute
   '/dev-loading-preview': typeof DevLoadingPreviewRoute
@@ -1400,6 +1409,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/app'
     | '/aviso-legal'
+    | '/checkout'
     | '/cookies'
     | '/design-system'
     | '/dev-loading-preview'
@@ -1548,6 +1558,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/aviso-legal'
+    | '/checkout'
     | '/cookies'
     | '/design-system'
     | '/dev-loading-preview'
@@ -1696,6 +1707,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/app'
     | '/aviso-legal'
+    | '/checkout'
     | '/cookies'
     | '/design-system'
     | '/dev-loading-preview'
@@ -1846,6 +1858,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AppRoute: typeof AppRouteWithChildren
   AvisoLegalRoute: typeof AvisoLegalRoute
+  CheckoutRoute: typeof CheckoutRoute
   CookiesRoute: typeof CookiesRoute
   DesignSystemRoute: typeof DesignSystemRoute
   DevLoadingPreviewRoute: typeof DevLoadingPreviewRoute
@@ -2038,6 +2051,13 @@ declare module '@tanstack/react-router' {
       path: '/cookies'
       fullPath: '/cookies'
       preLoaderRoute: typeof CookiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checkout': {
+      id: '/checkout'
+      path: '/checkout'
+      fullPath: '/checkout'
+      preLoaderRoute: typeof CheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/aviso-legal': {
@@ -3217,6 +3237,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   AppRoute: AppRouteWithChildren,
   AvisoLegalRoute: AvisoLegalRoute,
+  CheckoutRoute: CheckoutRoute,
   CookiesRoute: CookiesRoute,
   DesignSystemRoute: DesignSystemRoute,
   DevLoadingPreviewRoute: DevLoadingPreviewRoute,
