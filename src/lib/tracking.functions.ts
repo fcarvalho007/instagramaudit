@@ -61,6 +61,13 @@ const ALLOWED_EVENTS = [
   "payment_checkout_failed",
   "payment_webhook_paid",
   "payment_webhook_failed",
+  // Focused checkout flow (authority diagnosis)
+  "checkout_started",
+  "checkout_step_view",
+  "checkout_step_complete",
+  "checkout_upsell_interest",
+  "checkout_payment_started",
+  "checkout_payment_failed",
   // Pricing page coupon flow
   "pricing_coupon_attempt",
   "pricing_coupon_applied",
