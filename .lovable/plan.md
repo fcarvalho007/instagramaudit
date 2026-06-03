@@ -1,37 +1,77 @@
-## Diagnóstico
+## Root cause
 
-Comparei o código actual com o HTML servido em `https://auditprofiles.com/` e em `https://instagramaudit.lovable.app/` (ambos retornam exactamente o mesmo bundle, 53 535 bytes — logo o domínio custom está bem ligado, o problema não é DNS nem cache do browser).
+`@lovable.dev/vite-tanstack-config` passes this rule to TanStack's import-protection plugin (verified in `node_modules/@lovable.dev/vite-tanstack-config/dist/index.js:317-323`):
 
-**O que o código tem (correcto):**
-- `src/routes/index.tsx` renderiza `<HeroSection />` + `<LandingDarkIsland />` dentro de `<div class="hero-dark">` com fundo `--hero-bg-base` (dark).
-- Só existe **uma** rota `/` no `routeTree.gen.ts` (sem duplicações).
-- `bunx tsc --noEmit` passa sem erros.
-- Links internos verificados: `/`, `/precos`, `/servicos`, `/report/example` — todos resolvem para ficheiros existentes em `src/routes/`.
+```js
+importProtection: {
+  client: {
+    files: ["**/server/**"],
+    specifiers: ["server-only"],
+  },
+}
+```
 
-**O que o site publicado serve (desactualizado):**
-- 0 ocorrências de `hero-dark`, `HeroAurora`, `aurora`, `LandingDark` no HTML SSR.
-- Primeira `<section>` usa `bg-surface-base` (a landing clara antiga), não a dark.
-- H2 "Relatório em 3 passos simples." da versão clean ainda presente.
-- Title está correcto ("AuditProfiles · O benchmark…") — o que confirma que o `head()` da rota nova foi aplicado, mas o **bundle JS/SSR do componente** é antigo.
+Any file whose path matches `**/server/**` is denied in the **client** bundle. Renaming `src/server/` → `src/lib/server/` did NOT escape the glob — both still match `**/server/**`. That is why the production build still fails with:
 
-**Conclusão:** o build/deploy publicado é uma versão anterior à mudança para a dark landing. O Update que fizeste no diálogo de publicar ou falhou silenciosamente, ou subiu um bundle antigo (provavelmente um cache de build do worker). A custom domain serve o mesmo bundle que `.lovable.app`, então não é problema de domínio.
+```
+(import "src/lib/server/reports.functions")
+```
 
-## Acção recomendada (não requer alteração de código)
+The route files `src/routes/app.reports.tsx` and `src/routes/app.reports.$id.tsx` statically import from `@/lib/server/reports.functions`, which puts that module path into the client graph → violation.
 
-1. **Republicar o projecto.** Abrir o diálogo Publish → Update novamente. Se o botão ficar disabled (a indicar "já está actualizado"), forçar com uma alteração trivial (por exemplo gravar `src/routes/index.tsx` sem mudar nada, ou um pequeno bump em algum comentário) e republicar.
-2. Após publish, validar com:
-   ```
-   curl -sL https://auditprofiles.com/ | grep -c "hero-dark"
-   ```
-   Deve passar a retornar > 0.
-3. Se mesmo após republish continuar a servir a versão clara, é necessário escalar para suporte Lovable — o build da publicação está preso num snapshot antigo do worker.
+`createServerFn(...).handler(...)` modules are EXPLICITLY designed to be imported from client/route code (the Vite plugin replaces the handler body with an RPC stub on the client). The official rule (knowledge: `tanstack-server-functions`, `server-side-modern`) is: **do NOT place client-imported `.functions.ts` files under `src/server/`** — keep them in a client-safe path (`src/lib/...`, but not under a `server/` segment).
 
-## Não vou alterar código nesta passagem
+## Import chain
 
-- O código actual (rota `/`, componentes dark, i18n, premium-interest-dialog, /servicos, /precos, /api/public/eupago-webhook) está alinhado com o que vemos no preview.
-- Não foram detectados bugs, URLs partidos, nem conflitos de rota.
-- Tocar em ficheiros agora só ia mascarar o problema real, que é o estado do deploy.
+```
+src/routes/app.reports.tsx          ──┐
+src/routes/app.reports.$id.tsx      ──┤
+src/routes/app.tsx                  ──┤
+src/routes/app.account.tsx          ──┼─→  @/lib/server/*.functions.ts   ← blocked by **/server/**
+src/routes/login.tsx                ──┤
+src/routes/unsubscribe.tsx          ──┘
+```
 
-## Se preferires que eu force a publicação via edit trivial
+Secondary issue inside those modules (latent — will surface once they leave `server/`):
+- `account.functions.ts` top-level imports `@/integrations/supabase/client.server` and `@/lib/tracking.server` (both `*.server.*`, blocked from client).
+- `auto-login.functions.ts` top-level imports `@/integrations/supabase/client.server`.
+- `unsubscribe.functions.ts` top-level imports `client.server`, `tracking.server`, `email/unsubscribe-token.server`.
+- `reports.functions.ts` already uses dynamic `await import("...client.server")` inside handlers — no change needed there.
 
-Posso, em build mode, fazer um no-op commit (ex.: actualizar um comentário em `src/routes/index.tsx`) para "destrancar" o pipeline de publish e depois pedires Update — confirma se queres essa abordagem.
+Today `server/` shielded these top-level imports from the protection plugin (the entire directory was treated as server-side). Once we move them out, those `.server.*` specifiers become naked violations and must move inside the `.handler()` body via `await import(...)`.
+
+## Fix (minimal, no behavior change)
+
+1. **Rename directory** `src/lib/server/` → `src/lib/rpc/`. Keeps co-location, escapes the `**/server/**` glob. (Already the convention used by `src/lib/services/services-inquiry.functions.ts` and `src/lib/beta.functions.ts` — `.functions.ts` files outside any `server/` segment.)
+
+2. **Update the 6 importers** (search-replace `@/lib/server/` → `@/lib/rpc/`):
+   - `src/routes/app.tsx`
+   - `src/routes/app.account.tsx`
+   - `src/routes/app.reports.tsx`
+   - `src/routes/app.reports.$id.tsx`
+   - `src/routes/login.tsx`
+   - `src/routes/unsubscribe.tsx`
+
+3. **Move server-only top-level imports inside handlers** (dynamic `await import(...)` inside `.handler()` body, same pattern `reports.functions.ts` already uses):
+   - `src/lib/rpc/account.functions.ts`: `supabaseAdmin`, `recordProductEvent`
+   - `src/lib/rpc/auto-login.functions.ts`: `supabaseAdmin`
+   - `src/lib/rpc/unsubscribe.functions.ts`: `supabaseAdmin`, `recordProductEvent`, `verifyUnsubscribeToken`
+
+4. **Verify**: `bunx tsc --noEmit`, then ask the user to publish (production build runs on Lovable infra). Report exact result.
+
+## Why this respects the boundary
+
+- `*.functions.ts` files contain only `createServerFn` declarations + client-safe imports. The TanStack server-fn Vite plugin splits each `.handler()` body into a server-only chunk; the client receives an RPC stub. Safe to import from routes.
+- All real server-only modules keep the `*.server.ts` extension (`client.server`, `tracking.server`, `auth-middleware`, `unsubscribe-token.server`, etc.) — those remain blocked from the client by the default `**/*.server.*` rule.
+- No `*.server.*` module is reached from the client import graph after the move, because the only references are now inside `.handler()` bodies via `await import(...)`, which the splitter strips from the client chunk.
+- No directory under `**/server/**` is reachable from the client.
+
+## Out of scope (will not touch)
+
+UI, pricing, EuPago, onboarding, analysis/report logic, Supabase schema, homepage. Pure import-graph refactor.
+
+## Files changed
+
+- Rename: `src/lib/server/{account,auto-login,reports,unsubscribe}.functions.ts` → `src/lib/rpc/...`
+- Edit (dynamic imports inside handlers): `account.functions.ts`, `auto-login.functions.ts`, `unsubscribe.functions.ts`
+- Edit (import path update): 6 route files listed above
