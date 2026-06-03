@@ -1,117 +1,67 @@
 ## Objetivo
 
-Substituir `/precos` pela página da maquete: 3 níveis (0€, 9€, 97€ herói com 149€ riscado), secção dark de serviços, cupão funcional, FAQ. Atualizar diagnóstico de 49€ → 97€ em servidor + DB. Criar página `/servicos` com formulário para auditoria/formação.
+Alinhar o `PremiumInterestDialog` ao mockup: três cards a ler-se como escada de compromisso (0€ → 9€ → 97€), terceiro card é o herói, pack de 5 fora do destaque, link discreto de cupão no rodapé, callout "sob consulta" para auditoria/formação.
 
-## 1. Backend — diagnóstico passa a 97€ (riscado 149€)
+## Ficheiro a alterar
 
-### Migração DB
-- `ALTER TABLE lead_payments DROP CONSTRAINT` da CHECK atual em `product` e recriar com `('report_single','pack_5','authority_diagnosis_97','report_full_9')` — remove o `_49`.
-- `UPDATE lead_payments SET product='authority_diagnosis_97' WHERE product='authority_diagnosis_49'` (apenas para o caso de existirem linhas de teste — `lead_payments` está vazio).
-- `UPDATE lead_entitlements SET product_code='authority_diagnosis_97' WHERE product_code='authority_diagnosis_49'`.
+`src/components/report-redesign/v2/premium-interest-dialog.tsx` (único ficheiro tocado — modal isolado).
 
-### Catálogo servidor (`src/lib/payments/`)
-- `products.ts`: `PRODUCT_CODES` → `['authority_diagnosis_97','report_full_9']`. Renomear chave; `priceLabel: "97€"`, adicionar `strikePrice: "149€"` opcional + `eyebrow: "Preço de lançamento · sobe para 149€"`.
-- `products.server.ts`: chave `authority_diagnosis_97`, `amountCents: 9700`, descrição actualizada. Manter `report_full_9` em 900.
+Reusa componentes já existentes:
+- `CouponInput` (`src/components/pricing/coupon-input.tsx`) — já valida server-side e devolve código aplicado
+- `ReserveDiagnosisButton` — já liga ao checkout EuPago e aceita `couponCode`
 
-### Frontend que referencia o código antigo
-- `ReserveDiagnosisButton` prop `productCode` passa a `"authority_diagnosis_97"`.
-- `premium-interest-dialog.tsx` (no relatório): atualizar copy do banner 49€ → 97€/149€ e o `productCode`.
-- Testes em `src/lib/payments/__tests__/products.test.ts` actualizar valor esperado.
+## Mudanças concretas
 
-### Cupão (novo)
-- Tabela `payment_coupons` (migração separada): `code text PK`, `discount_percent int`, `applies_to text[]`, `max_uses int`, `uses int default 0`, `expires_at timestamptz`, `active bool default true`. GRANTs: só `service_role`. RLS on.
-- Tabela `coupon_redemptions` (`coupon_code`, `lead_id`, `payment_id`, `redeemed_at`).
-- ServerFn `validateCoupon({ code, productCode })` em `src/lib/payments/coupons.functions.ts` (público, sem auth) — retorna `{ valid, discountPercent, finalCents }` ou `{ valid:false, reason }`. Normaliza para uppercase, rate-limit por IP (5/min via `request_ip_hash`).
-- ServerFn `createEupagoCheckout` ganha input opcional `couponCode`; servidor revalida e aplica desconto sobre `amountCents`. Regista `coupon_code` em `lead_payments.metadata`.
-- Webhook: ao marcar `paid`, se `metadata.coupon_code` presente, inserir em `coupon_redemptions` e `UPDATE payment_coupons SET uses = uses + 1`.
+### 1. Remover banner superior do diagnóstico
+O banner azul (linhas 104–130) deixa de fazer sentido — o diagnóstico passa a ser o card 3 (herói). Eliminar esse bloco.
 
-## 2. Frontend — `/precos` reescrita
+### 2. Reescrever a grid de cards
+Substituir os três cards atuais por:
 
-Reescrever `src/components/pricing/pricing-page.tsx` (mantém rota `src/routes/precos.tsx` intacta) seguindo a maquete:
-
-### Zona 1 — Cabeçalho
-- H1 Fraunces: "Do diagnóstico automático à leitura humana."
-- Sub Inter: "Começa grátis. Sobe quando quiseres mais profundidade — sem subscrição, pagas só o que usas."
-
-### Zona 2 — Grid 3 níveis (cards brancos, light)
-Cada card: chip eyebrow, título, **linha de contexto** (nova), preço, bullets, CTA.
-
-| Slot | Chip | Título | Contexto | Preço | CTA |
+| Card | Eyebrow | Título | Preço | Bullets | CTA |
 |---|---|---|---|---|---|
-| Free | Incluído | Visão inicial | Para perceber o ponto de partida do perfil. | 0€ | Continuar grátis → `/` |
-| Auto | Automático | Relatório completo | Todo o diagnóstico, gerado automaticamente. | 9€ por relatório · pagamento único | Desbloquear relatório → server fn (já existe `report_full_9`, ainda `exposed:false`; expor agora; CTA chama checkout EuPago) |
-| Herói | Mais útil (badge azul absoluta) + chip "Relatório + humano" | Diagnóstico de Autoridade Digital | O relatório, mais uma leitura humana dos próximos passos. | **97€** com **149€** riscado + nota "preço de lançamento · sobe para 149€" | Reservar diagnóstico → `ReserveDiagnosisButton` (97€) |
+| 1 | "Incluído" (neutro) | Visão inicial | **0€** | Índice e visão geral · Amostra recente · Conta para guardar | "Continuar grátis" (outline) |
+| 2 | "Automático" (cyan/secondary) | Relatório completo | **9€** + "pagamento único · sem subscrição" | Todas as 6 secções · Leitura editorial + concorrentes · Recomendações práticas | "Desbloquear relatório" (outline) |
+| 3 (HERO) | "Relatório + humano" (accent) + badge "Mais útil" no topo | Diagnóstico de Autoridade Digital | **97€** + `<s>149€</s>` + "preço de lançamento · sobe para 149€" | Relatório completo incluído · Chamada de 30 minutos · 3 prioridades de melhoria | "Reservar diagnóstico" (primary, azul) |
 
-Linha por baixo do grid: à esquerda link discreto "Tenho um código de acesso" (abre popover/input que chama `validateCoupon` e guarda em estado local para passar ao checkout); à direita "Vários perfis ou clientes? Pack de agência →" (link para `/servicos#agencia`).
+Regra de riscado: só no card 3 (ancorar valor alto). Card 9€ comunica valor por "pagamento único · sem subscrição", sem riscado (não parecer saldo).
 
-### Zona 3 — Serviços (fundo dark, secção separada)
-Fundo `--surface-dark` (criar token se não existir; usar `oklch` baseado em `#0F1B3D` da paleta hero-dark já existente em `src/styles/hero-dark.css`). Conteúdo:
-- Eyebrow "Serviços · sob consulta"
-- H2 Fraunces: "Quando o diagnóstico precisa de ir mais longe."
-- Sub: "Para marcas e equipas que querem transformar a análise em estratégia e execução."
-- 2 cards dark com ícone:
-  - **Auditoria de Autoridade Digital** — "Vai além do Instagram: website, LinkedIn, SEO, presença de marca e funil de contacto. Plano de melhoria prioritário." — "A partir de 300€" + CTA "Pedir auditoria →" `/servicos?topico=auditoria`
-  - **Formação: Redes Sociais e IA** — "Workshop para equipas, com benchmarks reais dos perfis da marca. Dados transformados em plano editorial." — "A partir de 1.500€" + CTA "Falar sobre formação →" `/servicos?topico=formacao`
+Estilo herói card 3: fundo `accent-primary/[0.05]`, ring `accent-primary/40`, badge "Mais útil" canto superior direito (chip accent), sombra mais marcada. Cards 1 e 2 ficam neutros (white sobre muted, border default).
 
-### Zona 4 — FAQ
-Componente accordion (`@/components/ui/accordion` shadcn). 4 itens com a 2ª aberta por defeito:
-1. "Preciso de dar o meu login do Instagram?" — Não. Só usamos dados públicos do perfil.
-2. "De onde vêm os dados?" (open) — Apenas de dados públicos do perfil. Os benchmarks de comparação são construídos a partir de estudos de referência da indústria, usados como sinais direcionais.
-3. "É uma subscrição?" — Não. Pagamento único, sem renovação automática.
-4. "O que acontece na chamada de 30 minutos?" — Reveis o diagnóstico contigo, identifico 3 prioridades para os próximos 90 dias e respondo às tuas dúvidas.
+### 3. Wiring de CTAs
+- Card 1 (free): fecha modal + emite `pricing_option_clicked` com `pricing_option: "free"` (mantém comportamento atual).
+- Card 2 (9€): emite `pricing_option_clicked` com `pricing_option: "single_report"`. Por agora abre `PricingInterestModal` como hoje (checkout de 9€ não está ainda implementado server-side — só o de 97€ está). Mantemos o comportamento existente para não bloquear esta entrega.
+- Card 3 (97€): `<ReserveDiagnosisButton productCode="authority_diagnosis_97" sourceComponent={sourceComponent} instagramUsername={handle} returnPath="/" couponCode={appliedCoupon ?? undefined} />` — vai diretamente para o checkout EuPago real, aplicando cupão se houver.
 
-Toda a copy em PT, em `src/i18n/locales/pt/pricing.json` (substituir conteúdo). EN idem para paridade.
+### 4. Rodapé do modal (substitui o trust/pending note actual)
+Duas linhas:
+- Esquerda: link discreto "Tenho um código" (Tag icon) que expande para `<CouponInput onApplied={code => setAppliedCoupon(code)} />`. Quando aplicado, mostra chip com o código e botão "remover".
+- Direita: badge "Sem subscrição · sem renovação automática" (ShieldCheck icon).
+- Por baixo: callout cinzento full-width com ícone Building2, texto "Precisas de analisar vários ativos digitais ou preparar formação para a tua equipa?" + link `<Link to="/servicos">Falar sobre auditoria ou formação →</Link>` (fecha o modal).
 
-## 3. Página `/servicos` (nova)
+### 5. Pack de 5
+Remover do dialog. Não precisamos de o referenciar aqui — vive na `/precos`. Limpar imports e a entry `pack_5_reports` em `interestMeta` e `PricingOption`.
 
-- `src/routes/servicos.tsx` — meta SEO próprio.
-- `src/components/services/services-page.tsx` — hero dark + 2 secções (auditoria, formação) com mais detalhe + formulário de pedido.
-- Formulário: nome, email, empresa (opcional), tópico (select: auditoria/formação/outro — pré-seleciona via `?topico=`), mensagem. Server fn `submitServicesInquiry` que insere em nova tabela `service_inquiries` (`name, email, company, topic, message, ip_hash, created_at`) com RLS service-only.
+### 6. Tipos
+- `PricingOption` passa a `"free" | "single_report"` (sem `pack_5_reports`).
+- Adicionar `const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);`
 
-## 4. Tracking
+## Copy (i18n)
 
-Adicionar a `src/lib/tracking.functions.ts`:
-- `pricing_coupon_attempt` (metadata: code_hash, valid, product)
-- `pricing_coupon_applied`
-- `services_inquiry_submitted` (metadata: topic)
+A copy nova vive em chaves existentes em `report.json` quando possível. As que faltam — eyebrows, novo título "Visão inicial", bullets "Índice e visão geral", "Amostra recente", "Conta para guardar", "Todas as 6 secções", "Leitura editorial + concorrentes", "Recomendações práticas", "Relatório completo incluído", "Chamada de 30 minutos", "3 prioridades de melhoria", badge "Mais útil", linha "preço de lançamento · sobe para 149€", "pagamento único · sem subscrição", footer callout — adicionar a `src/i18n/locales/pt/report.json` namespace `premium.dialog.*`. Sem strings hardcoded em PT no JSX.
 
-`pricing_option_clicked` já existe — reutilizar com novos `pricing_option`: `"free" | "report_full_9" | "authority_diagnosis_97" | "service_audit" | "service_training"`.
+## Tokens
 
-## 5. Ficheiros
+Apenas tokens semânticos: `accent-primary`, `accent-secondary`, `content-primary/secondary/tertiary`, `surface-base/muted`, `border-default`. Fontes Inter (default Tailwind do projeto). Sem cores hex em componentes.
 
-**Criar:**
-- `src/components/services/services-page.tsx`
-- `src/components/services/services-inquiry-form.tsx`
-- `src/components/pricing/coupon-input.tsx`
-- `src/components/pricing/pricing-faq.tsx`
-- `src/lib/payments/coupons.functions.ts`
-- `src/lib/payments/coupons.server.ts`
-- `src/lib/services/services-inquiry.functions.ts`
-- `src/routes/servicos.tsx`
-- 2 migrations (rename product + coupons/inquiries/redemptions)
+## Fora de scope
 
-**Alterar:**
-- `src/components/pricing/pricing-page.tsx` (reescrita completa)
-- `src/i18n/locales/pt/pricing.json` + `en/pricing.json`
-- `src/lib/payments/products.ts` + `products.server.ts`
-- `src/lib/payments/eupago.functions.ts` (aceitar `couponCode`, aplicar desconto server-side)
-- `src/routes/api/public/eupago-webhook.ts` (registar redemption)
-- `src/components/payments/reserve-diagnosis-button.tsx` (aceitar `couponCode` opcional, novo code)
-- `src/components/report-redesign/v2/premium-interest-dialog.tsx` (copy + code)
-- `src/lib/payments/__tests__/products.test.ts`
-- `src/lib/tracking.functions.ts` (novos eventos)
+- Não tocar em `pricing-page.tsx`, `/servicos`, fluxos de checkout, `report.example`, ou onboarding.
+- Não criar componentes novos — reusar `CouponInput`, `ReserveDiagnosisButton`, `PricingInterestModal`.
+- Não implementar checkout direto para o card 9€ (continua a abrir `PricingInterestModal` como hoje; está fora de scope desta entrega).
 
-**Não tocar:** `/report.example`, restantes rotas `app.*`, onboarding, pipeline de análise.
+## Riscos / questões abertas
 
-## 6. Validação
-
-- Testes Vitest: catálogo (97/900), validação de cupão (válido/expirado/limite atingido), webhook ainda idempotente.
-- `bunx tsc --noEmit`.
-- Smoke manual: `/precos` renderiza 3 cards, cupão inválido mostra erro, CTA Reservar abre EuPago, link agência → `/servicos`, formulário grava em DB.
-
-## 7. Riscos / notas
-
-- Trocar `authority_diagnosis_49` → `_97` é breaking se já existirem pagamentos. Confirmado vazio.
-- Secção dark dentro de página light: usar tokens existentes da hero dark para coerência; não criar paleta nova.
-- Cupão: não exposto a humanos no UI (só link discreto). Códigos criados via SQL admin por agora — sem CRUD UI nesta iteração.
-- Página `/servicos` é mínima: form simples + DB. Não envia email automático (pode vir depois via Brevo).
+1. Tracking: mantemos `pricing_option_clicked` com os mesmos valores. Adicionar `pricing_coupon_applied` quando cupão é aplicado dentro do modal? **Proponho sim**, reusando o evento já existente.
+2. Pack de 5 sai completamente do modal — assumido conforme a tua mensagem ("o pack saiu do destaque"). Confirmas?
+3. CTA do card 9€ continua a abrir `PricingInterestModal` (recolhe interesse, não cobra). Aceitas isso nesta fase, ou queres já desbloquear pagamento real de 9€ também?
