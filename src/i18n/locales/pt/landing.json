@@ -206,11 +206,11 @@
     "pricing": {
       "eyebrow": "Preços",
       "headline": "Sem subscrição. Pagas o que usas.",
-      "lead": "Começa com 2 relatórios grátis.",
-      "urgency": "Preço de lançamento — sobe para 19€ após a beta.",
-      "free": { "label": "Experimentar", "price": "Grátis", "unit": "2 relatórios · sem cartão", "cta": "Começar" },
-      "single": { "label": "Avulso", "unit": "por relatório", "cta": "Comprar 1" },
-      "pack": { "label": "Pack 5", "unit": "5,60€ cada · poupa 20%", "cta": "Comprar pack", "badge": "Melhor valor" }
+      "lead": "Começa pela visão inicial grátis.",
+      "urgency": "Preço de lançamento — sobe para 149€ após a beta.",
+      "free": { "label": "Visão inicial", "price": "0€", "unit": "sem cartão · sem subscrição", "cta": "Começar grátis" },
+      "single": { "label": "Relatório completo", "unit": "pagamento único · sem subscrição", "cta": "Desbloquear" },
+      "diagnosis": { "label": "Diagnóstico de Autoridade", "unit": "leitura humana + 3 prioridades", "cta": "Reservar", "badge": "Mais útil" }
     },
     "finalCta": {
       "headline": "Analisa o primeiro perfil agora.",
