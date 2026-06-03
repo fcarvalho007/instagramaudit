@@ -22,7 +22,7 @@ export async function grantEntitlement(
       lead_id: input.leadId,
       product_code: input.productCode,
       payment_id: input.paymentId,
-      metadata: input.metadata ?? {},
+      metadata: (input.metadata ?? {}) as never,
     })
     .select("id")
     .single();
