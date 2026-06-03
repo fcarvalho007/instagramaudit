@@ -110,13 +110,25 @@ export function PricingPage() {
               "Orientação para conteúdo e posicionamento",
             ]}
           >
-            <ReserveDiagnosisButton
-              productCode="authority_diagnosis_97"
-              sourceComponent={SOURCE}
-              returnPath="/precos"
-              couponCode={coupon}
-              className="w-full"
-            />
+            <Button
+              type="button"
+              variant="primary"
+              className="w-full gap-2"
+              onClick={() => {
+                track("authority_diagnosis_97");
+                navigate({
+                  to: "/checkout/authority-diagnosis",
+                  search: {
+                    source: SOURCE,
+                    return: "/precos",
+                    coupon: coupon ?? undefined,
+                  },
+                }).catch(() => {});
+              }}
+            >
+              Reservar diagnóstico
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </Button>
           </PricingCard>
         </div>
 

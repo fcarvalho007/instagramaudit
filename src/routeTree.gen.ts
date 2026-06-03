@@ -21,6 +21,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as DevLoadingPreviewRouteImport } from './routes/dev-loading-preview'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as CookiesRouteImport } from './routes/cookies'
+import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as AvisoLegalRouteImport } from './routes/aviso-legal'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -29,6 +30,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ReportsSnapshotIdRouteImport } from './routes/reports.$snapshotId'
 import { Route as ReportExampleRouteImport } from './routes/report.example'
 import { Route as FeedbackRequestIdRouteImport } from './routes/feedback.$requestId'
+import { Route as CheckoutAuthorityDiagnosisRouteImport } from './routes/checkout.authority-diagnosis'
 import { Route as BetaRequestRouteImport } from './routes/beta.request'
 import { Route as AppReportsRouteImport } from './routes/app.reports'
 import { Route as AppPlanRouteImport } from './routes/app.plan'
@@ -217,6 +219,11 @@ const CookiesRoute = CookiesRouteImport.update({
   path: '/cookies',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CheckoutRoute = CheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AvisoLegalRoute = AvisoLegalRouteImport.update({
   id: '/aviso-legal',
   path: '/aviso-legal',
@@ -257,6 +264,12 @@ const FeedbackRequestIdRoute = FeedbackRequestIdRouteImport.update({
   path: '/feedback/$requestId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CheckoutAuthorityDiagnosisRoute =
+  CheckoutAuthorityDiagnosisRouteImport.update({
+    id: '/authority-diagnosis',
+    path: '/authority-diagnosis',
+    getParentRoute: () => CheckoutRoute,
+  } as any)
 const BetaRequestRoute = BetaRequestRouteImport.update({
   id: '/beta/request',
   path: '/beta/request',
@@ -952,6 +965,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRouteWithChildren
   '/aviso-legal': typeof AvisoLegalRoute
+  '/checkout': typeof CheckoutRouteWithChildren
   '/cookies': typeof CookiesRoute
   '/design-system': typeof DesignSystemRoute
   '/dev-loading-preview': typeof DevLoadingPreviewRoute
@@ -989,6 +1003,7 @@ export interface FileRoutesByFullPath {
   '/app/plan': typeof AppPlanRoute
   '/app/reports': typeof AppReportsRouteWithChildren
   '/beta/request': typeof BetaRequestRoute
+  '/checkout/authority-diagnosis': typeof CheckoutAuthorityDiagnosisRoute
   '/feedback/$requestId': typeof FeedbackRequestIdRoute
   '/report/example': typeof ReportExampleRoute
   '/reports/$snapshotId': typeof ReportsSnapshotIdRoute
@@ -1100,6 +1115,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/aviso-legal': typeof AvisoLegalRoute
+  '/checkout': typeof CheckoutRouteWithChildren
   '/cookies': typeof CookiesRoute
   '/design-system': typeof DesignSystemRoute
   '/dev-loading-preview': typeof DevLoadingPreviewRoute
@@ -1136,6 +1152,7 @@ export interface FileRoutesByTo {
   '/app/plan': typeof AppPlanRoute
   '/app/reports': typeof AppReportsRouteWithChildren
   '/beta/request': typeof BetaRequestRoute
+  '/checkout/authority-diagnosis': typeof CheckoutAuthorityDiagnosisRoute
   '/feedback/$requestId': typeof FeedbackRequestIdRoute
   '/report/example': typeof ReportExampleRoute
   '/reports/$snapshotId': typeof ReportsSnapshotIdRoute
@@ -1249,6 +1266,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRouteWithChildren
   '/aviso-legal': typeof AvisoLegalRoute
+  '/checkout': typeof CheckoutRouteWithChildren
   '/cookies': typeof CookiesRoute
   '/design-system': typeof DesignSystemRoute
   '/dev-loading-preview': typeof DevLoadingPreviewRoute
@@ -1286,6 +1304,7 @@ export interface FileRoutesById {
   '/app/plan': typeof AppPlanRoute
   '/app/reports': typeof AppReportsRouteWithChildren
   '/beta/request': typeof BetaRequestRoute
+  '/checkout/authority-diagnosis': typeof CheckoutAuthorityDiagnosisRoute
   '/feedback/$requestId': typeof FeedbackRequestIdRoute
   '/report/example': typeof ReportExampleRoute
   '/reports/$snapshotId': typeof ReportsSnapshotIdRoute
@@ -1400,6 +1419,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/app'
     | '/aviso-legal'
+    | '/checkout'
     | '/cookies'
     | '/design-system'
     | '/dev-loading-preview'
@@ -1437,6 +1457,7 @@ export interface FileRouteTypes {
     | '/app/plan'
     | '/app/reports'
     | '/beta/request'
+    | '/checkout/authority-diagnosis'
     | '/feedback/$requestId'
     | '/report/example'
     | '/reports/$snapshotId'
@@ -1548,6 +1569,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/aviso-legal'
+    | '/checkout'
     | '/cookies'
     | '/design-system'
     | '/dev-loading-preview'
@@ -1584,6 +1606,7 @@ export interface FileRouteTypes {
     | '/app/plan'
     | '/app/reports'
     | '/beta/request'
+    | '/checkout/authority-diagnosis'
     | '/feedback/$requestId'
     | '/report/example'
     | '/reports/$snapshotId'
@@ -1696,6 +1719,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/app'
     | '/aviso-legal'
+    | '/checkout'
     | '/cookies'
     | '/design-system'
     | '/dev-loading-preview'
@@ -1733,6 +1757,7 @@ export interface FileRouteTypes {
     | '/app/plan'
     | '/app/reports'
     | '/beta/request'
+    | '/checkout/authority-diagnosis'
     | '/feedback/$requestId'
     | '/report/example'
     | '/reports/$snapshotId'
@@ -1846,6 +1871,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AppRoute: typeof AppRouteWithChildren
   AvisoLegalRoute: typeof AvisoLegalRoute
+  CheckoutRoute: typeof CheckoutRouteWithChildren
   CookiesRoute: typeof CookiesRoute
   DesignSystemRoute: typeof DesignSystemRoute
   DevLoadingPreviewRoute: typeof DevLoadingPreviewRoute
@@ -2040,6 +2066,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CookiesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/checkout': {
+      id: '/checkout'
+      path: '/checkout'
+      fullPath: '/checkout'
+      preLoaderRoute: typeof CheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/aviso-legal': {
       id: '/aviso-legal'
       path: '/aviso-legal'
@@ -2095,6 +2128,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/feedback/$requestId'
       preLoaderRoute: typeof FeedbackRequestIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/checkout/authority-diagnosis': {
+      id: '/checkout/authority-diagnosis'
+      path: '/authority-diagnosis'
+      fullPath: '/checkout/authority-diagnosis'
+      preLoaderRoute: typeof CheckoutAuthorityDiagnosisRouteImport
+      parentRoute: typeof CheckoutRoute
     }
     '/beta/request': {
       id: '/beta/request'
@@ -3085,6 +3125,18 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface CheckoutRouteChildren {
+  CheckoutAuthorityDiagnosisRoute: typeof CheckoutAuthorityDiagnosisRoute
+}
+
+const CheckoutRouteChildren: CheckoutRouteChildren = {
+  CheckoutAuthorityDiagnosisRoute: CheckoutAuthorityDiagnosisRoute,
+}
+
+const CheckoutRouteWithChildren = CheckoutRoute._addFileChildren(
+  CheckoutRouteChildren,
+)
+
 interface ApiAdminEmailTemplatesKeyRouteChildren {
   ApiAdminEmailTemplatesKeyPreviewRoute: typeof ApiAdminEmailTemplatesKeyPreviewRoute
 }
@@ -3217,6 +3269,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   AppRoute: AppRouteWithChildren,
   AvisoLegalRoute: AvisoLegalRoute,
+  CheckoutRoute: CheckoutRouteWithChildren,
   CookiesRoute: CookiesRoute,
   DesignSystemRoute: DesignSystemRoute,
   DevLoadingPreviewRoute: DevLoadingPreviewRoute,

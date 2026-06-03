@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowRight, Building2, Check, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Dialog,
   DialogContent,
@@ -16,7 +16,6 @@ import {
   PricingInterestModal,
   type PricingInterestOption,
 } from "@/components/pricing/pricing-interest-modal";
-import { ReserveDiagnosisButton } from "@/components/payments/reserve-diagnosis-button";
 import { CouponInput } from "@/components/pricing/coupon-input";
 
 // The 9€ flow is not yet wired to a real checkout — it still opens
@@ -42,6 +41,7 @@ export function PremiumInterestDialog({
   sourceComponent,
 }: Props) {
   const { t } = useTranslation("report");
+  const navigate = useNavigate();
   const [interestOption, setInterestOption] =
     useState<PricingInterestOption | null>(null);
   const [interestOpen, setInterestOpen] = useState(false);
@@ -137,14 +137,38 @@ export function PremiumInterestDialog({
             launch={t("premium.dialog.hero.launch")}
             bullets={t("premium.dialog.hero.bullets", { returnObjects: true }) as string[]}
           >
-            <ReserveDiagnosisButton
-              productCode="authority_diagnosis_97"
-              sourceComponent={sourceComponent}
-              instagramUsername={handle ?? undefined}
-              returnPath="/"
-              couponCode={appliedCoupon}
-              className="w-full"
-            />
+            <Button
+              type="button"
+              variant="primary"
+              className="w-full gap-2"
+              onClick={() => {
+                trackEvent({
+                  data: {
+                    eventType: "payment_cta_clicked",
+                    snapshotId: snapshotId ?? undefined,
+                    handle: handle ?? undefined,
+                    metadata: {
+                      product_code: "authority_diagnosis_97",
+                      source_component: sourceComponent,
+                      variant,
+                    },
+                  },
+                }).catch(() => {});
+                onOpenChange(false);
+                navigate({
+                  to: "/checkout/authority-diagnosis",
+                  search: {
+                    source: sourceComponent,
+                    username: handle ?? undefined,
+                    return: "/",
+                    coupon: appliedCoupon ?? undefined,
+                  },
+                }).catch(() => {});
+              }}
+            >
+              Reservar diagnóstico
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </Button>
           </HeroCard>
         </div>
 
