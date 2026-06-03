@@ -715,8 +715,16 @@ function FormStepBody({
     step === 3 ? t("onboarding.steps.3.badge", { defaultValue: "" }) : "";
 
   return (
-    <div className="min-w-0 px-5 py-7 sm:px-9 sm:py-9">
-      <DialogHeader className="min-w-0 text-left space-y-2.5">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        void goNext();
+      }}
+      noValidate
+      className="min-w-0 flex flex-col max-h-[92vh]"
+    >
+      <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-9 sm:py-9">
+      <DialogHeader className="min-w-0 text-left space-y-2 sm:space-y-2.5">
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
           <p className="text-eyebrow-sm text-content-tertiary">{eyebrow}</p>
           {badge ? (
@@ -725,7 +733,7 @@ function FormStepBody({
             </span>
           ) : null}
         </div>
-        <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.08] tracking-[-0.015em] text-content-primary min-w-0 break-words text-balance">
+        <DialogTitle className="font-display text-[24px] sm:text-[30px] leading-[1.08] tracking-[-0.015em] text-content-primary min-w-0 break-words text-balance">
           <Trans i18nKey={`onboarding.steps.${stepKey}.title`} ns="gate" components={{ em: <em className="not-italic text-primary" /> }}>
             {title}
           </Trans>
@@ -736,14 +744,7 @@ function FormStepBody({
         <ProgressSegments current={step} total={TOTAL_STEPS} />
       </DialogHeader>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void goNext();
-        }}
-        className="space-y-5 mt-5"
-        noValidate
-      >
+      <div className="space-y-5 mt-4 sm:mt-5">
         {/* Honeypot — invisível para humanos, atrai bots */}
         <div className="absolute -left-[9999px] top-auto h-0 w-0 overflow-hidden" aria-hidden>
           <label htmlFor="onb-website">Website</label>
@@ -767,8 +768,12 @@ function FormStepBody({
             <AlertDescription>{serverError}</AlertDescription>
           </Alert>
         ) : null}
+      </div>
+      </div>
 
-        <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:gap-3 border-t border-border-default/40 -mx-5 sm:-mx-9 px-5 sm:px-9 pt-5 mt-2 min-w-0">
+      <div
+        className="sticky bottom-0 z-10 flex flex-col-reverse gap-2 sm:flex-row sm:gap-3 border-t border-border-default/40 bg-background px-5 sm:px-9 pt-3 sm:pt-4 pb-[max(env(safe-area-inset-bottom),0.75rem)] sm:pb-4 min-w-0"
+      >
           <Button
             type="button"
             variant="outline"
@@ -803,9 +808,8 @@ function FormStepBody({
               t("onboarding.cta.continue")
             )}
           </Button>
-        </div>
-      </form>
-    </div>
+      </div>
+    </form>
   );
 }
 
