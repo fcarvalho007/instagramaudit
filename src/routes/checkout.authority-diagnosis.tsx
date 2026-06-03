@@ -266,12 +266,12 @@ function CheckoutFlow() {
             onBack={goBack}
             nextLabel="Continuar"
             onNext={() => {
-              trackStepComplete(upsell);
+              trackStepComplete({ ...upsell });
               if (upsell.audit || upsell.workshop) {
                 trackEvent({
                   data: {
                     eventType: "checkout_upsell_interest",
-                    metadata: upsell,
+                    metadata: { ...upsell },
                   },
                 }).catch(() => {});
               }
