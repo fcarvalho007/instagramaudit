@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getAccountDetails, updateDisplayName, updateMarketingConsent } from "@/server/account.functions";
+import { getAccountDetails, updateDisplayName, updateMarketingConsent } from "@/lib/server/account.functions";
 import { User, Calendar, Mail, Shield, LogOut, Pencil, Check, X, Loader2, BellRing } from "lucide-react";
 
 export const Route = createFileRoute("/app/account")({

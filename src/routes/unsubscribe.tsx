@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
-import { unsubscribeWithToken, type UnsubscribeResult } from "@/server/unsubscribe.functions";
+import { unsubscribeWithToken, type UnsubscribeResult } from "@/lib/server/unsubscribe.functions";
 
 const searchSchema = z.object({
   token: z.string().min(1).max(4096).optional(),

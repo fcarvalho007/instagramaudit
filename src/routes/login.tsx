@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AuthCard } from "@/components/auth/auth-card";
 import { Button } from "@/components/ui/button";
 import { Loader2, LogIn } from "lucide-react";
-import { autoLogin } from "@/server/auto-login.functions";
+import { autoLogin } from "@/lib/server/auto-login.functions";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
