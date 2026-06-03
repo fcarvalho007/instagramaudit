@@ -3,9 +3,8 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { usePremiumCta } from "./premium-cta-context";
 
-// Preços do lançamento (waitlist). Hardcoded até existir checkout real.
-const LAUNCH_PRICE = "7";
-const LIST_PRICE = "19";
+// Preço do relatório completo. Pagamento único, sem subscrição.
+const LAUNCH_PRICE = "9";
 const CURRENCY = "€";
 
 /**
@@ -86,14 +85,9 @@ export function ReportEndOfFreeBlock({ className }: { className?: string }) {
             {LAUNCH_PRICE}
             {CURRENCY}
           </span>
-          <span className="text-lg text-content-tertiary line-through tabular-nums">
-            {LIST_PRICE}
-            {CURRENCY}
-          </span>
         </div>
 
         <p className="mt-2 text-[13px] text-content-tertiary">
-          {t("end_of_free.price.caption_prefix")}{" "}
           <span className="text-content-secondary">
             {t("end_of_free.price.caption_suffix")}
           </span>
