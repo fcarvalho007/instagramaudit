@@ -1,10 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { recordProductEvent } from "@/lib/tracking.server";
-import { verifyUnsubscribeToken } from "@/lib/email/unsubscribe-token.server";
-
 const inputSchema = z.object({
   token: z.string().min(1).max(4096),
 });
@@ -24,6 +20,9 @@ function maskEmail(email: string | null): string | null {
 export const unsubscribeWithToken = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => inputSchema.parse(input))
   .handler(async ({ data }): Promise<UnsubscribeResult> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { recordProductEvent } = await import("@/lib/tracking.server");
+    const { verifyUnsubscribeToken } = await import("@/lib/email/unsubscribe-token.server");
     const verified = verifyUnsubscribeToken(data.token);
     if (!verified) {
       return { ok: false, reason: "invalid_token" };
