@@ -65,6 +65,7 @@ import { Route as ApiPublicPricingFeedbackRouteImport } from './routes/api/publi
 import { Route as ApiPublicOnboardingEventRouteImport } from './routes/api/public/onboarding-event'
 import { Route as ApiPublicLookupLeadRouteImport } from './routes/api/public/lookup-lead'
 import { Route as ApiPublicInlineFeedbackRouteImport } from './routes/api/public/inline-feedback'
+import { Route as ApiPublicEupagoWebhookRouteImport } from './routes/api/public/eupago-webhook'
 import { Route as ApiPublicEnrichSnapshotRouteImport } from './routes/api/public/enrich-snapshot'
 import { Route as ApiPublicEnrichCommentsRouteImport } from './routes/api/public/enrich-comments'
 import { Route as ApiOnboardingStartRouteImport } from './routes/api/onboarding/start'
@@ -437,6 +438,11 @@ const ApiPublicLookupLeadRoute = ApiPublicLookupLeadRouteImport.update({
 const ApiPublicInlineFeedbackRoute = ApiPublicInlineFeedbackRouteImport.update({
   id: '/api/public/inline-feedback',
   path: '/api/public/inline-feedback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicEupagoWebhookRoute = ApiPublicEupagoWebhookRouteImport.update({
+  id: '/api/public/eupago-webhook',
+  path: '/api/public/eupago-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicEnrichSnapshotRoute = ApiPublicEnrichSnapshotRouteImport.update({
@@ -1021,6 +1027,7 @@ export interface FileRoutesByFullPath {
   '/api/onboarding/start': typeof ApiOnboardingStartRoute
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
+  '/api/public/eupago-webhook': typeof ApiPublicEupagoWebhookRoute
   '/api/public/inline-feedback': typeof ApiPublicInlineFeedbackRoute
   '/api/public/lookup-lead': typeof ApiPublicLookupLeadRoute
   '/api/public/onboarding-event': typeof ApiPublicOnboardingEventRoute
@@ -1166,6 +1173,7 @@ export interface FileRoutesByTo {
   '/api/onboarding/start': typeof ApiOnboardingStartRoute
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
+  '/api/public/eupago-webhook': typeof ApiPublicEupagoWebhookRoute
   '/api/public/inline-feedback': typeof ApiPublicInlineFeedbackRoute
   '/api/public/lookup-lead': typeof ApiPublicLookupLeadRoute
   '/api/public/onboarding-event': typeof ApiPublicOnboardingEventRoute
@@ -1314,6 +1322,7 @@ export interface FileRoutesById {
   '/api/onboarding/start': typeof ApiOnboardingStartRoute
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
+  '/api/public/eupago-webhook': typeof ApiPublicEupagoWebhookRoute
   '/api/public/inline-feedback': typeof ApiPublicInlineFeedbackRoute
   '/api/public/lookup-lead': typeof ApiPublicLookupLeadRoute
   '/api/public/onboarding-event': typeof ApiPublicOnboardingEventRoute
@@ -1463,6 +1472,7 @@ export interface FileRouteTypes {
     | '/api/onboarding/start'
     | '/api/public/enrich-comments'
     | '/api/public/enrich-snapshot'
+    | '/api/public/eupago-webhook'
     | '/api/public/inline-feedback'
     | '/api/public/lookup-lead'
     | '/api/public/onboarding-event'
@@ -1608,6 +1618,7 @@ export interface FileRouteTypes {
     | '/api/onboarding/start'
     | '/api/public/enrich-comments'
     | '/api/public/enrich-snapshot'
+    | '/api/public/eupago-webhook'
     | '/api/public/inline-feedback'
     | '/api/public/lookup-lead'
     | '/api/public/onboarding-event'
@@ -1755,6 +1766,7 @@ export interface FileRouteTypes {
     | '/api/onboarding/start'
     | '/api/public/enrich-comments'
     | '/api/public/enrich-snapshot'
+    | '/api/public/eupago-webhook'
     | '/api/public/inline-feedback'
     | '/api/public/lookup-lead'
     | '/api/public/onboarding-event'
@@ -1882,6 +1894,7 @@ export interface RootRouteChildren {
   ApiOnboardingStartRoute: typeof ApiOnboardingStartRoute
   ApiPublicEnrichCommentsRoute: typeof ApiPublicEnrichCommentsRoute
   ApiPublicEnrichSnapshotRoute: typeof ApiPublicEnrichSnapshotRoute
+  ApiPublicEupagoWebhookRoute: typeof ApiPublicEupagoWebhookRoute
   ApiPublicInlineFeedbackRoute: typeof ApiPublicInlineFeedbackRoute
   ApiPublicLookupLeadRoute: typeof ApiPublicLookupLeadRoute
   ApiPublicOnboardingEventRoute: typeof ApiPublicOnboardingEventRoute
@@ -2320,6 +2333,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/inline-feedback'
       fullPath: '/api/public/inline-feedback'
       preLoaderRoute: typeof ApiPublicInlineFeedbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/eupago-webhook': {
+      id: '/api/public/eupago-webhook'
+      path: '/api/public/eupago-webhook'
+      fullPath: '/api/public/eupago-webhook'
+      preLoaderRoute: typeof ApiPublicEupagoWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/enrich-snapshot': {
@@ -3237,6 +3257,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOnboardingStartRoute: ApiOnboardingStartRoute,
   ApiPublicEnrichCommentsRoute: ApiPublicEnrichCommentsRoute,
   ApiPublicEnrichSnapshotRoute: ApiPublicEnrichSnapshotRoute,
+  ApiPublicEupagoWebhookRoute: ApiPublicEupagoWebhookRoute,
   ApiPublicInlineFeedbackRoute: ApiPublicInlineFeedbackRoute,
   ApiPublicLookupLeadRoute: ApiPublicLookupLeadRoute,
   ApiPublicOnboardingEventRoute: ApiPublicOnboardingEventRoute,
