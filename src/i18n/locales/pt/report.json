@@ -742,35 +742,50 @@
     "interest_registered_aria": "Interesse registado",
     "registered": "Registado",
     "dialog": {
-      "title": "Desbloquear acesso premium",
-      "subtitle": "O primeiro bloco continua gratuito. As restantes secções premium ficam disponíveis com desbloqueio.",
+      "eyebrow": "Opções de acesso",
+      "title": "Escolhe como aprofundar a análise",
+      "subtitle": "A visão inicial é gratuita. Desbloqueia o relatório completo, ou reserva uma leitura humana para transformares o diagnóstico em próximos passos.",
       "free": {
         "label": "Incluído",
-        "title": "Visão inicial do perfil",
-        "bullet_block": "Bloco 1 sempre disponível",
-        "bullet_diag": "Diagnóstico editorial disponível em premium",
-        "cta": "Continuar a explorar"
+        "title": "Visão inicial",
+        "price": "0€",
+        "bullets": [
+          "Índice e visão geral",
+          "Amostra recente",
+          "Conta para guardar"
+        ],
+        "cta": "Continuar grátis"
       },
       "single": {
-        "label": "Premium",
-        "title": "1 relatório",
-        "price": "7€",
-        "launch_price": "Preço de lançamento",
-        "bullet_combined": "1 perfil · todas as secções premium",
-        "note": "Ideal para uma análise pontual",
-        "cta": "Escolher 1 relatório"
+        "label": "Automático",
+        "title": "Relatório completo",
+        "price": "9€",
+        "unit": "pagamento único · sem subscrição",
+        "bullets": [
+          "Todas as 6 secções",
+          "Leitura editorial + concorrentes",
+          "Recomendações práticas"
+        ],
+        "cta": "Desbloquear relatório"
       },
-      "pack": {
-        "label": "Melhor valor",
-        "title": "Pack 5 relatórios",
-        "price": "28€",
-        "bullet_reports": "5 perfis",
-        "bullet_unit": "5,60€/relatório",
-        "savings_badge": "Poupa 20%",
-        "cta": "Escolher pack de 5"
+      "hero": {
+        "label": "Relatório + humano",
+        "badge": "Mais útil",
+        "title": "Diagnóstico de Autoridade Digital",
+        "price": "97€",
+        "strike": "149€",
+        "launch": "preço de lançamento · sobe para 149€",
+        "bullets": [
+          "Relatório completo incluído",
+          "Chamada de 30 minutos",
+          "3 prioridades de melhoria"
+        ]
       },
-      "trust_note": "Sem subscrição. Sem renovação automática.",
-      "pending_note": "Pagamento brevemente disponível — o botão regista o teu interesse."
+      "footer": {
+        "trust": "Sem subscrição · sem renovação automática",
+        "services_question": "Precisas de analisar vários ativos digitais ou preparar formação para a tua equipa?",
+        "services_cta": "Falar sobre auditoria ou formação"
+      }
     }
   },
   "engagement": {
