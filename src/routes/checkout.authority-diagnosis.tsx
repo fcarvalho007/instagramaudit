@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -25,6 +26,7 @@ import {
 } from "@/components/checkout/billing-form";
 import { OrderSummary } from "@/components/checkout/order-summary";
 import { createEupagoCheckout } from "@/lib/payments/eupago.functions";
+import { getLeadSessionStatus } from "@/lib/leads/lead-session.functions";
 import { trackEvent } from "@/lib/tracking.functions";
 
 const STEP_LABELS = [
@@ -53,8 +55,16 @@ const searchSchema = z.object({
     .optional(),
 });
 
+const leadSessionQueryOptions = queryOptions({
+  queryKey: ["checkout", "lead-session"],
+  queryFn: () => getLeadSessionStatus(),
+  staleTime: 0,
+});
+
 export const Route = createFileRoute("/checkout/authority-diagnosis")({
   validateSearch: (search) => searchSchema.parse(search),
+  loader: ({ context }) =>
+    context.queryClient.ensureQueryData(leadSessionQueryOptions),
   head: () => ({
     meta: [
       { title: "Diagnóstico de Autoridade Digital — Checkout" },
@@ -68,6 +78,11 @@ function CheckoutFlow() {
   const search = Route.useSearch();
   const navigate = useNavigate();
   const createCheckout = useServerFn(createEupagoCheckout);
+  const { data: leadStatus } = useSuspenseQuery(leadSessionQueryOptions);
+
+  if (!leadStatus.hasLead) {
+    return <MissingLeadSession />;
+  }
 
   const [step, setStep] = useState(1);
   const [qualification, setQualification] = useState<QualificationValue>({
