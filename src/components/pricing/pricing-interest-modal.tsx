@@ -41,10 +41,10 @@ export function PricingInterestModal({
   const { t } = useTranslation("pricing");
   const { plans } = usePricing();
   const planFromDb = option ? plans[option] : null;
-  // Preferimos sempre o valor vindo da DB; caímos para o prop apenas se ainda
-  // não temos resposta (placeholderData garante valor imediato).
-  const effectiveLabel = planFromDb?.label ?? planLabel;
-  const effectivePrice = planFromDb?.priceFormatted ?? planPrice;
+  // Preferimos o prop (vindo do card clicado) para manter consistência com a
+  // oferta visível na UI; só caímos para a DB se o prop não for fornecido.
+  const effectiveLabel = planLabel || planFromDb?.label || "";
+  const effectivePrice = planPrice || planFromDb?.priceFormatted || "";
   const [wouldPay, setWouldPay] = useState<WouldPay | "">("");
   const [fairness, setFairness] = useState<Fairness | "">("");
   const [email, setEmail] = useState("");
