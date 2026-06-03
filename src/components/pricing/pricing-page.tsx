@@ -118,7 +118,11 @@ export function PricingPage() {
                 track("authority_diagnosis_97");
                 navigate({
                   to: "/checkout/authority-diagnosis",
-                  search: { source: SOURCE, return: "/precos" },
+                  search: {
+                    source: SOURCE,
+                    return: "/precos",
+                    coupon: coupon ?? undefined,
+                  },
                 }).catch(() => {});
               }}
             >
