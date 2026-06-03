@@ -40,6 +40,47 @@ const inputSchema = z
       .max(40)
       .regex(/^[A-Za-z0-9_-]+$/)
       .optional(),
+    qualification: z
+      .object({
+        objective: z.enum([
+          "improve_content",
+          "growth_diagnostic",
+          "brand_strategy",
+          "competitor_compare",
+          "other",
+        ]),
+        objective_other: z.string().trim().max(200).optional(),
+        profile_ownership: z.enum([
+          "mine",
+          "my_brand",
+          "client",
+          "competitor",
+        ]),
+      })
+      .optional(),
+    upsell_interest: z
+      .object({
+        audit: z.boolean(),
+        workshop: z.boolean(),
+      })
+      .optional(),
+    billing: z
+      .object({
+        name: z.string().trim().min(1).max(200),
+        tax_id: z
+          .string()
+          .trim()
+          .regex(/^\d{9}$/)
+          .optional(),
+        address: z.string().trim().min(1).max(200),
+        postal_code: z
+          .string()
+          .trim()
+          .regex(/^\d{4}-?\d{3}$/),
+        city: z.string().trim().min(1).max(120),
+        invoice_email: z.string().trim().email().max(200),
+      })
+      .optional(),
   })
   .strict();
 
