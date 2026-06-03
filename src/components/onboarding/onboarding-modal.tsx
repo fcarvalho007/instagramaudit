@@ -715,8 +715,16 @@ function FormStepBody({
     step === 3 ? t("onboarding.steps.3.badge", { defaultValue: "" }) : "";
 
   return (
-    <div className="min-w-0 px-5 py-7 sm:px-9 sm:py-9">
-      <DialogHeader className="min-w-0 text-left space-y-2.5">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        void goNext();
+      }}
+      noValidate
+      className="min-w-0 flex flex-col max-h-[92vh]"
+    >
+      <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-9 sm:py-9">
+      <DialogHeader className="min-w-0 text-left space-y-2 sm:space-y-2.5">
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
           <p className="text-eyebrow-sm text-content-tertiary">{eyebrow}</p>
           {badge ? (
@@ -725,7 +733,7 @@ function FormStepBody({
             </span>
           ) : null}
         </div>
-        <DialogTitle className="font-display text-[28px] sm:text-[30px] leading-[1.08] tracking-[-0.015em] text-content-primary min-w-0 break-words text-balance">
+        <DialogTitle className="font-display text-[24px] sm:text-[30px] leading-[1.08] tracking-[-0.015em] text-content-primary min-w-0 break-words text-balance">
           <Trans i18nKey={`onboarding.steps.${stepKey}.title`} ns="gate" components={{ em: <em className="not-italic text-primary" /> }}>
             {title}
           </Trans>
@@ -736,14 +744,7 @@ function FormStepBody({
         <ProgressSegments current={step} total={TOTAL_STEPS} />
       </DialogHeader>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void goNext();
-        }}
-        className="space-y-5 mt-5"
-        noValidate
-      >
+      <div className="space-y-5 mt-4 sm:mt-5">
         {/* Honeypot — invisível para humanos, atrai bots */}
         <div className="absolute -left-[9999px] top-auto h-0 w-0 overflow-hidden" aria-hidden>
           <label htmlFor="onb-website">Website</label>
@@ -767,8 +768,12 @@ function FormStepBody({
             <AlertDescription>{serverError}</AlertDescription>
           </Alert>
         ) : null}
+      </div>
+      </div>
 
-        <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:gap-3 border-t border-border-default/40 -mx-5 sm:-mx-9 px-5 sm:px-9 pt-5 mt-2 min-w-0">
+      <div
+        className="sticky bottom-0 z-10 flex flex-col-reverse gap-2 sm:flex-row sm:gap-3 border-t border-border-default/40 bg-background px-5 sm:px-9 pt-3 sm:pt-4 pb-[max(env(safe-area-inset-bottom),0.75rem)] sm:pb-4 min-w-0"
+      >
           <Button
             type="button"
             variant="outline"
@@ -803,9 +808,8 @@ function FormStepBody({
               t("onboarding.cta.continue")
             )}
           </Button>
-        </div>
-      </form>
-    </div>
+      </div>
+    </form>
   );
 }
 
@@ -870,7 +874,7 @@ function ChipGroup<T extends string>({
               aria-checked={selected}
               onClick={() => onChange(o.value)}
               className={
-                "flex flex-col items-center justify-center gap-2 rounded-lg border px-2.5 py-3.5 min-h-[88px] text-center text-[14px] font-semibold transition-colors " +
+                "flex flex-col items-center justify-center gap-1.5 sm:gap-2 rounded-lg border px-2.5 py-2.5 sm:py-3.5 min-h-[68px] sm:min-h-[88px] text-center text-[14px] font-semibold transition-colors " +
                 (selected
                   ? "border-primary bg-primary/[0.06] text-primary"
                   : "border-border-default/60 bg-card text-content-secondary hover:border-primary/40 hover:text-content-primary")
@@ -879,7 +883,7 @@ function ChipGroup<T extends string>({
             >
               <Icon
                 className={
-                  "size-[22px] " +
+                  "size-[18px] sm:size-[22px] " +
                   (selected ? "text-primary" : "text-content-tertiary")
                 }
                 aria-hidden="true"
@@ -922,8 +926,8 @@ function Step2Context({
   };
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col gap-5">
+    <div className="space-y-4 sm:space-y-5">
+      <div className="flex flex-col gap-4 sm:gap-5">
         <div className="space-y-2">
         <p className="text-[15px] font-medium text-content-primary">
           <Trans
@@ -970,7 +974,7 @@ function Step2Context({
         </div>
       </div>
 
-      <p className="text-[13px] text-content-tertiary leading-[1.5]">
+      <p className="hidden sm:block text-[13px] text-content-tertiary leading-[1.5]">
         {t("onboarding.steps.2.consequenceLine")}
       </p>
     </div>
@@ -1035,7 +1039,7 @@ function Step3EmailGdpr({
           className="text-base"
           {...form.register("phone")}
         />
-        <p className="text-[13px] text-content-tertiary leading-[1.45]">
+        <p className="hidden sm:block text-[13px] text-content-tertiary leading-[1.45]">
           {t("onboarding.steps.3.phoneHint")}
         </p>
         {phoneError ? (
@@ -1043,7 +1047,7 @@ function Step3EmailGdpr({
         ) : null}
       </div>
 
-      <div className="rounded-xl border border-border-default/40 bg-surface-muted/40 p-4 space-y-3">
+      <div className="rounded-xl border border-border-default/40 bg-surface-muted/40 p-3 space-y-2.5 sm:p-4 sm:space-y-3">
         <label
           htmlFor="onb-gdpr"
           className="flex items-start gap-2.5 cursor-pointer"
@@ -1061,7 +1065,7 @@ function Step3EmailGdpr({
             aria-invalid={Boolean(consentError)}
             className="mt-0.5"
           />
-          <span className="text-[14px] text-content-secondary leading-[1.55] flex-1">
+          <span className="text-[13.5px] sm:text-[14px] text-content-secondary leading-[1.5] sm:leading-[1.55] flex-1">
             <Trans
               i18nKey="onboarding.steps.3.consentText"
               ns="gate"
@@ -1106,7 +1110,7 @@ function Step3EmailGdpr({
             }
             className="mt-0.5"
           />
-          <span className="text-[14px] text-content-secondary leading-[1.55] flex-1">
+          <span className="text-[13.5px] sm:text-[14px] text-content-secondary leading-[1.5] sm:leading-[1.55] flex-1">
             {t("onboarding.steps.3.marketingText")}{" "}
             <span className="text-content-tertiary">
               {t("onboarding.steps.3.marketingOptional")}

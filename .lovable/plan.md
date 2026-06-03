@@ -1,77 +1,59 @@
-## Root cause
+## Problema
 
-`@lovable.dev/vite-tanstack-config` passes this rule to TanStack's import-protection plugin (verified in `node_modules/@lovable.dev/vite-tanstack-config/dist/index.js:317-323`):
+No mobile (≤414px) os passos 2 e 3 do `OnboardingModal` ficam altos demais para o `max-h-[92vh]` do `DialogContent`. A barra de ações (Voltar / Continuar / Gerar relatório) faz parte do fluxo scrollável, logo o utilizador vê o botão "Continuar" cortado a meio (screenshot do passo 2) e precisa de scrollar para chegar ao CTA — má leitura e fricção real de conversão.
 
-```js
-importProtection: {
-  client: {
-    files: ["**/server/**"],
-    specifiers: ["server-only"],
-  },
-}
-```
+Causas concretas em `src/components/onboarding/onboarding-modal.tsx`:
 
-Any file whose path matches `**/server/**` is denied in the **client** bundle. Renaming `src/server/` → `src/lib/server/` did NOT escape the glob — both still match `**/server/**`. That is why the production build still fails with:
+- `FormStepBody` (l. 717-809): o container é um único `div` com padding `py-7`; o bloco de botões (l. 771) está dentro do mesmo flow scrollable, sem `sticky`.
+- `ChipGroup` (l. 873): cada chip tem `min-h-[88px]` + `py-3.5` + ícone `size-[22px]` → 2 grupos de 4 chips em mobile (2 colunas) ocupam ~2×(2×88px + gaps) ≈ 370px só de chips no passo 2.
+- `Step3EmailGdpr`: o cartão de consentimentos (l. 1046) usa `p-4 space-y-3` e os labels têm `leading-[1.55]` com texto `[14px]` — cresce muito em 411px.
+- Header (l. 719-737) usa `space-y-2.5` + `DialogTitle` `text-[28px]` + `ProgressSegments` extra; em mobile isto come ~140-160px antes de qualquer campo.
 
-```
-(import "src/lib/server/reports.functions")
-```
+## Objetivo
 
-The route files `src/routes/app.reports.tsx` and `src/routes/app.reports.$id.tsx` statically import from `@/lib/server/reports.functions`, which puts that module path into the client graph → violation.
+Garantir que, em mobile, o botão primário (Continuar / Gerar o meu relatório) está sempre visível sem precisar de scroll, mantendo o desktop praticamente igual ao atual.
 
-`createServerFn(...).handler(...)` modules are EXPLICITLY designed to be imported from client/route code (the Vite plugin replaces the handler body with an RPC stub on the client). The official rule (knowledge: `tanstack-server-functions`, `server-side-modern`) is: **do NOT place client-imported `.functions.ts` files under `src/server/`** — keep them in a client-safe path (`src/lib/...`, but not under a `server/` segment).
+## Alterações (apenas UI, ficheiro único)
 
-## Import chain
+Ficheiro: `src/components/onboarding/onboarding-modal.tsx`
 
-```
-src/routes/app.reports.tsx          ──┐
-src/routes/app.reports.$id.tsx      ──┤
-src/routes/app.tsx                  ──┤
-src/routes/app.account.tsx          ──┼─→  @/lib/server/*.functions.ts   ← blocked by **/server/**
-src/routes/login.tsx                ──┤
-src/routes/unsubscribe.tsx          ──┘
-```
+1. **Footer sticky no `FormStepBody`**
+   - Tornar o `<div>` raiz do `FormStepBody` um `flex flex-col` com `max-h-[92vh]` (ou `h-full` herdando o `max-h` do `DialogContent`).
+   - Body do form passa a `flex-1 overflow-y-auto` (com padding mantido).
+   - A barra de botões (l. 771) sai de dentro do `<form>` scrollável e fica num footer `sticky bottom-0` com `bg-background`, `border-t`, e `pb-[max(env(safe-area-inset-bottom),0.75rem)]` para respeitar a safe area do Android/iOS. O `<form>` continua a envolver tudo (mantém submit por Enter); o botão `type="submit"` continua no footer.
 
-Secondary issue inside those modules (latent — will surface once they leave `server/`):
-- `account.functions.ts` top-level imports `@/integrations/supabase/client.server` and `@/lib/tracking.server` (both `*.server.*`, blocked from client).
-- `auto-login.functions.ts` top-level imports `@/integrations/supabase/client.server`.
-- `unsubscribe.functions.ts` top-level imports `client.server`, `tracking.server`, `email/unsubscribe-token.server`.
-- `reports.functions.ts` already uses dynamic `await import("...client.server")` inside handlers — no change needed there.
+2. **Densidade no passo 2 (`ChipGroup` + `Step2Context`)**
+   - `min-h-[88px]` → `min-h-[68px] sm:min-h-[88px]`.
+   - `py-3.5` → `py-2.5 sm:py-3.5`.
+   - `gap-2` no chip e ícone `size-[22px]` → `size-[18px] sm:size-[22px]`.
+   - `Step2Context`: `space-y-5` exterior → `space-y-4 sm:space-y-5`; `flex flex-col gap-5` → `gap-4 sm:gap-5`.
+   - Remover a linha `consequenceLine` em mobile (`hidden sm:block`) — é redundante com o subtítulo no topo e poupa ~32px.
 
-Today `server/` shielded these top-level imports from the protection plugin (the entire directory was treated as server-side). Once we move them out, those `.server.*` specifiers become naked violations and must move inside the `.handler()` body via `await import(...)`.
+3. **Densidade no passo 3 (`Step3EmailGdpr`)**
+   - Cartão de consentimentos: `p-4 space-y-3` → `p-3 space-y-2.5 sm:p-4 sm:space-y-3`.
+   - Texto dos labels: `text-[14px] leading-[1.55]` → `text-[13.5px] leading-[1.5] sm:text-[14px] sm:leading-[1.55]`.
+   - Hint do telemóvel: ocultar em mobile (`hidden sm:block`) — o "opcional" no label já comunica isto.
 
-## Fix (minimal, no behavior change)
+4. **Densidade do header em mobile (`FormStepBody`)**
+   - Container: `px-5 py-7` → `px-5 py-5 sm:px-9 sm:py-9`.
+   - `DialogTitle`: `text-[28px]` → `text-[24px] sm:text-[30px]`, `leading-[1.08]` mantém.
+   - `space-y-2.5` no header → `space-y-2 sm:space-y-2.5`.
+   - Espaço entre header e form: `mt-5` → `mt-4 sm:mt-5`.
 
-1. **Rename directory** `src/lib/server/` → `src/lib/rpc/`. Keeps co-location, escapes the `**/server/**` glob. (Already the convention used by `src/lib/services/services-inquiry.functions.ts` and `src/lib/beta.functions.ts` — `.functions.ts` files outside any `server/` segment.)
+5. **Botões mobile (preservar hierarquia visível)**
+   - Manter `flex-col-reverse` (Continuar acima do Voltar em mobile — convenção atual).
+   - Reduzir `gap-2.5` → `gap-2` em mobile.
+   - Garantir que ambos têm `h-12` consistente (já têm via `size="lg"`).
 
-2. **Update the 6 importers** (search-replace `@/lib/server/` → `@/lib/rpc/`):
-   - `src/routes/app.tsx`
-   - `src/routes/app.account.tsx`
-   - `src/routes/app.reports.tsx`
-   - `src/routes/app.reports.$id.tsx`
-   - `src/routes/login.tsx`
-   - `src/routes/unsubscribe.tsx`
+## Out of scope
 
-3. **Move server-only top-level imports inside handlers** (dynamic `await import(...)` inside `.handler()` body, same pattern `reports.functions.ts` already uses):
-   - `src/lib/rpc/account.functions.ts`: `supabaseAdmin`, `recordProductEvent`
-   - `src/lib/rpc/auto-login.functions.ts`: `supabaseAdmin`
-   - `src/lib/rpc/unsubscribe.functions.ts`: `supabaseAdmin`, `recordProductEvent`, `verifyUnsubscribeToken`
+- Não alterar copy do `gate.json`.
+- Não tocar nos passos 0 (Intro), 1 (Nome) nem `LoginStepBody`.
+- Não mexer em lógica, validação, tracking, payload, schemas, rotas, server functions ou tokens globais.
+- Sem alterações desktop visíveis (todos os overrides são em mobile via breakpoint `sm:`).
 
-4. **Verify**: `bunx tsc --noEmit`, then ask the user to publish (production build runs on Lovable infra). Report exact result.
+## Verificação
 
-## Why this respects the boundary
-
-- `*.functions.ts` files contain only `createServerFn` declarations + client-safe imports. The TanStack server-fn Vite plugin splits each `.handler()` body into a server-only chunk; the client receives an RPC stub. Safe to import from routes.
-- All real server-only modules keep the `*.server.ts` extension (`client.server`, `tracking.server`, `auth-middleware`, `unsubscribe-token.server`, etc.) — those remain blocked from the client by the default `**/*.server.*` rule.
-- No `*.server.*` module is reached from the client import graph after the move, because the only references are now inside `.handler()` bodies via `await import(...)`, which the splitter strips from the client chunk.
-- No directory under `**/server/**` is reachable from the client.
-
-## Out of scope (will not touch)
-
-UI, pricing, EuPago, onboarding, analysis/report logic, Supabase schema, homepage. Pure import-graph refactor.
-
-## Files changed
-
-- Rename: `src/lib/server/{account,auto-login,reports,unsubscribe}.functions.ts` → `src/lib/rpc/...`
-- Edit (dynamic imports inside handlers): `account.functions.ts`, `auto-login.functions.ts`, `unsubscribe.functions.ts`
-- Edit (import path update): 6 route files listed above
+- `bunx tsc --noEmit`.
+- Browser tool em viewport 411×742 (o viewport real do user): abrir homepage → escrever handle → entrar no onboarding → screenshot dos passos 2 e 3 confirmando que "Continuar" / "Gerar o meu relatório" estão visíveis sem scroll, e que com scroll o footer fica fixo no fundo.
+- Confirmar desktop (1280×720) inalterado com screenshot do passo 2.
