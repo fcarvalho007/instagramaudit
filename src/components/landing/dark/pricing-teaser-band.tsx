@@ -135,18 +135,18 @@ export function PricingTeaserBand() {
           />
           <Tier
             label={t("dark.pricing.single.label")}
-            price="7€"
-            strike="19€"
+            price="9€"
             unit={t("dark.pricing.single.unit")}
             cta={t("dark.pricing.single.cta")}
           />
           <Tier
-            label={t("dark.pricing.pack.label")}
-            price="28€"
-            unit={t("dark.pricing.pack.unit")}
-            cta={t("dark.pricing.pack.cta")}
+            label={t("dark.pricing.diagnosis.label")}
+            price="97€"
+            strike="149€"
+            unit={t("dark.pricing.diagnosis.unit")}
+            cta={t("dark.pricing.diagnosis.cta")}
             featured
-            badge={t("dark.pricing.pack.badge")}
+            badge={t("dark.pricing.diagnosis.badge")}
           />
         </div>
       </Reveal>
