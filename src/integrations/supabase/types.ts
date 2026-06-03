@@ -798,6 +798,48 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_entitlements: {
+        Row: {
+          granted_at: string
+          id: string
+          lead_id: string
+          metadata: Json
+          payment_id: string | null
+          product_code: string
+        }
+        Insert: {
+          granted_at?: string
+          id?: string
+          lead_id: string
+          metadata?: Json
+          payment_id?: string | null
+          product_code: string
+        }
+        Update: {
+          granted_at?: string
+          id?: string
+          lead_id?: string
+          metadata?: Json
+          payment_id?: string | null
+          product_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_entitlements_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_entitlements_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "lead_payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_payments: {
         Row: {
           amount_cents: number
@@ -806,12 +848,16 @@ export type Database = {
           currency: string
           expired_at: string | null
           id: string
+          instagram_username: string | null
           lead_id: string
           metadata: Json
           paid_at: string | null
           product: string
           provider: string | null
+          provider_checkout_url: string | null
+          provider_payment_id: string | null
           provider_reference: string | null
+          report_cache_key: string | null
           status: string
           updated_at: string
         }
@@ -822,12 +868,16 @@ export type Database = {
           currency?: string
           expired_at?: string | null
           id?: string
+          instagram_username?: string | null
           lead_id: string
           metadata?: Json
           paid_at?: string | null
           product: string
           provider?: string | null
+          provider_checkout_url?: string | null
+          provider_payment_id?: string | null
           provider_reference?: string | null
+          report_cache_key?: string | null
           status?: string
           updated_at?: string
         }
@@ -838,12 +888,16 @@ export type Database = {
           currency?: string
           expired_at?: string | null
           id?: string
+          instagram_username?: string | null
           lead_id?: string
           metadata?: Json
           paid_at?: string | null
           product?: string
           provider?: string | null
+          provider_checkout_url?: string | null
+          provider_payment_id?: string | null
           provider_reference?: string | null
+          report_cache_key?: string | null
           status?: string
           updated_at?: string
         }
