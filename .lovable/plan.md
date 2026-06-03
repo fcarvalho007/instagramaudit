@@ -1,96 +1,117 @@
 ## Objetivo
 
-Integrar EuPago como camada mínima de pagamento, com foco em vender o produto `authority_diagnosis_49` (Diagnóstico de Autoridade Digital — 49€ beta) nos próximos 7 dias. `report_full_9` fica preparado em código mas não exposto agora.
+Substituir `/precos` pela página da maquete: 3 níveis (0€, 9€, 97€ herói com 149€ riscado), secção dark de serviços, cupão funcional, FAQ. Atualizar diagnóstico de 49€ → 97€ em servidor + DB. Criar página `/servicos` com formulário para auditoria/formação.
 
-## Decisões de arquitetura
+## 1. Backend — diagnóstico passa a 97€ (riscado 149€)
 
-1. **Reutilizar `lead_payments` (já existe)** em vez de criar `payments` nova. Já tem `lead_id`, `product`, `amount_cents`, `currency`, `status`, `provider`, `provider_reference`, `paid_at`, `expired_at`, `metadata`, índices e trigger `updated_at`. Migration mínima: relaxar/atualizar o CHECK de `product` para permitir `authority_diagnosis_49` e `report_full_9`, adicionar colunas `provider_payment_id text`, `provider_checkout_url text`, `report_cache_key text`, `instagram_username text`, índice único parcial em `provider_payment_id WHERE provider_payment_id IS NOT NULL`, índices em `report_cache_key` e `provider_payment_id`. Manter RLS desativado (acesso apenas server-side via `supabaseAdmin`).
-2. **Sessão de lead** já existe via cookie `lead_session` (`src/lib/leads/lead-cookie.server.ts`). Reutilizar.
-3. **Catálogo de produtos** server-side em `src/lib/payments/products.ts` (constantes — `code`, `amount_cents`, `currency`, `name_pt`). Frontend nunca decide preço.
-4. **Entitlements**: adicionar tabela mínima `lead_entitlements(id, lead_id, product_code, payment_id, granted_at, metadata)` com índice único em `(lead_id, product_code)` para idempotência. Para `report_full_9`, o gate de relatório consulta esta tabela (futuro). Para `authority_diagnosis_49`, basta criar entitlement + marcar payment paid; sem unlock automático de produto (é um serviço humano).
-5. **Provider EuPago**: cliente em `src/lib/payments/eupago.server.ts` (criar Pay By Link / referência MB WAY+Multibanco via REST). Tudo lido de `process.env` dentro de handlers. Sem chamadas em testes (mock).
+### Migração DB
+- `ALTER TABLE lead_payments DROP CONSTRAINT` da CHECK atual em `product` e recriar com `('report_single','pack_5','authority_diagnosis_97','report_full_9')` — remove o `_49`.
+- `UPDATE lead_payments SET product='authority_diagnosis_97' WHERE product='authority_diagnosis_49'` (apenas para o caso de existirem linhas de teste — `lead_payments` está vazio).
+- `UPDATE lead_entitlements SET product_code='authority_diagnosis_97' WHERE product_code='authority_diagnosis_49'`.
 
-## Ficheiros a criar
+### Catálogo servidor (`src/lib/payments/`)
+- `products.ts`: `PRODUCT_CODES` → `['authority_diagnosis_97','report_full_9']`. Renomear chave; `priceLabel: "97€"`, adicionar `strikePrice: "149€"` opcional + `eyebrow: "Preço de lançamento · sobe para 149€"`.
+- `products.server.ts`: chave `authority_diagnosis_97`, `amountCents: 9700`, descrição actualizada. Manter `report_full_9` em 900.
 
-- `src/lib/payments/products.ts` — catálogo + tipos partilhados (client-safe; só constantes públicas: code/name/price formatado).
-- `src/lib/payments/products.server.ts` — getter server-side autoritativo (amount_cents).
-- `src/lib/payments/eupago.server.ts` — `createCheckout()`, `verifyWebhookSignature()`.
-- `src/lib/payments/entitlements.server.ts` — `grantEntitlement(leadId, productCode, paymentId)` (idempotente via unique).
-- `src/lib/payments/eupago.functions.ts` — `createEupagoCheckout` server fn (POST), com validação Zod e middleware de lead session.
-- `src/routes/api/public/eupago-webhook.ts` — server route público (assinatura/HMAC obrigatória).
-- `src/components/payments/reserve-diagnosis-button.tsx` — botão CTA que chama o server fn e faz `window.location = checkout_url`.
-- `src/lib/payments/__tests__/products.test.ts` — valida catálogo + preços.
-- `src/lib/payments/__tests__/eupago-webhook.test.ts` — assinatura + idempotência (mock EuPago).
-- `src/lib/payments/__tests__/create-checkout.test.ts` — rejeita anónimo, preço server-side.
-- Migration: `supabase/migrations/<ts>_payments_eupago.sql`.
+### Frontend que referencia o código antigo
+- `ReserveDiagnosisButton` prop `productCode` passa a `"authority_diagnosis_97"`.
+- `premium-interest-dialog.tsx` (no relatório): atualizar copy do banner 49€ → 97€/149€ e o `productCode`.
+- Testes em `src/lib/payments/__tests__/products.test.ts` actualizar valor esperado.
 
-## Ficheiros a alterar
+### Cupão (novo)
+- Tabela `payment_coupons` (migração separada): `code text PK`, `discount_percent int`, `applies_to text[]`, `max_uses int`, `uses int default 0`, `expires_at timestamptz`, `active bool default true`. GRANTs: só `service_role`. RLS on.
+- Tabela `coupon_redemptions` (`coupon_code`, `lead_id`, `payment_id`, `redeemed_at`).
+- ServerFn `validateCoupon({ code, productCode })` em `src/lib/payments/coupons.functions.ts` (público, sem auth) — retorna `{ valid, discountPercent, finalCents }` ou `{ valid:false, reason }`. Normaliza para uppercase, rate-limit por IP (5/min via `request_ip_hash`).
+- ServerFn `createEupagoCheckout` ganha input opcional `couponCode`; servidor revalida e aplica desconto sobre `amountCents`. Regista `coupon_code` em `lead_payments.metadata`.
+- Webhook: ao marcar `paid`, se `metadata.coupon_code` presente, inserir em `coupon_redemptions` e `UPDATE payment_coupons SET uses = uses + 1`.
 
-- `src/components/report-redesign/v2/premium-interest-dialog.tsx` — substituir CTA principal por `Reservar diagnóstico — 49€ beta`, manter `Relatório completo — 9€` em segundo plano (oculto por flag por enquanto).
-- `src/lib/tracking.functions.ts` (ou tipos de eventos) — adicionar event types: `payment_cta_clicked`, `payment_checkout_created`, `payment_checkout_failed`, `payment_webhook_paid`, `payment_webhook_failed`.
+## 2. Frontend — `/precos` reescrita
 
-## Endpoint — criar checkout
+Reescrever `src/components/pricing/pricing-page.tsx` (mantém rota `src/routes/precos.tsx` intacta) seguindo a maquete:
 
-`createEupagoCheckout` (server fn POST):
-- Input Zod: `product_code` (enum), `instagram_username` (opt), `report_cache_key` (opt), `return_path` (opt, validado como path relativo).
-- Lê `lead_session` cookie via helper existente; rejeita se ausente (401).
-- Resolve produto server-side; valida `amount_cents`.
-- INSERT em `lead_payments` (status `pending`).
-- Chama EuPago (Pay By Link); persiste `provider_payment_id`, `provider_reference`, `provider_checkout_url`.
-- Emite `payment_checkout_created` (ou `_failed`).
-- Retorna `{ ok: true, checkout_url, payment_id }`.
+### Zona 1 — Cabeçalho
+- H1 Fraunces: "Do diagnóstico automático à leitura humana."
+- Sub Inter: "Começa grátis. Sobe quando quiseres mais profundidade — sem subscrição, pagas só o que usas."
 
-## Webhook público
+### Zona 2 — Grid 3 níveis (cards brancos, light)
+Cada card: chip eyebrow, título, **linha de contexto** (nova), preço, bullets, CTA.
 
-`POST /api/public/eupago-webhook`:
-- Lê body raw, valida assinatura com `EUPAGO_WEBHOOK_SECRET` (HMAC ou decifragem AES conforme docs EuPago — confirmar formato; ver "Open questions").
-- Encontra payment via `provider_payment_id` ou `provider_reference`.
-- Idempotência: se já `paid`, retorna 200 sem reaplicar; entitlement insert usa `ON CONFLICT (lead_id, product_code) DO NOTHING`.
-- Sucesso → `status='paid'`, `paid_at=now()`, `grantEntitlement`, evento `payment_webhook_paid`.
-- Falha/expirado/cancelado → status correspondente, evento `payment_webhook_failed`.
-- Retorna 200 sempre que o evento for processado (ou já tinha sido); 401 só em assinatura inválida.
+| Slot | Chip | Título | Contexto | Preço | CTA |
+|---|---|---|---|---|---|
+| Free | Incluído | Visão inicial | Para perceber o ponto de partida do perfil. | 0€ | Continuar grátis → `/` |
+| Auto | Automático | Relatório completo | Todo o diagnóstico, gerado automaticamente. | 9€ por relatório · pagamento único | Desbloquear relatório → server fn (já existe `report_full_9`, ainda `exposed:false`; expor agora; CTA chama checkout EuPago) |
+| Herói | Mais útil (badge azul absoluta) + chip "Relatório + humano" | Diagnóstico de Autoridade Digital | O relatório, mais uma leitura humana dos próximos passos. | **97€** com **149€** riscado + nota "preço de lançamento · sobe para 149€" | Reservar diagnóstico → `ReserveDiagnosisButton` (97€) |
 
-## Secrets necessários
+Linha por baixo do grid: à esquerda link discreto "Tenho um código de acesso" (abre popover/input que chama `validateCoupon` e guarda em estado local para passar ao checkout); à direita "Vários perfis ou clientes? Pack de agência →" (link para `/servicos#agencia`).
 
-`EUPAGO_API_KEY`, `EUPAGO_WEBHOOK_SECRET`, `EUPAGO_BASE_URL`, `EUPAGO_CHANNEL_ID` (se aplicável), `APP_BASE_URL`. Pedir via `add_secret` quando entrarmos em build mode.
+### Zona 3 — Serviços (fundo dark, secção separada)
+Fundo `--surface-dark` (criar token se não existir; usar `oklch` baseado em `#0F1B3D` da paleta hero-dark já existente em `src/styles/hero-dark.css`). Conteúdo:
+- Eyebrow "Serviços · sob consulta"
+- H2 Fraunces: "Quando o diagnóstico precisa de ir mais longe."
+- Sub: "Para marcas e equipas que querem transformar a análise em estratégia e execução."
+- 2 cards dark com ícone:
+  - **Auditoria de Autoridade Digital** — "Vai além do Instagram: website, LinkedIn, SEO, presença de marca e funil de contacto. Plano de melhoria prioritário." — "A partir de 300€" + CTA "Pedir auditoria →" `/servicos?topico=auditoria`
+  - **Formação: Redes Sociais e IA** — "Workshop para equipas, com benchmarks reais dos perfis da marca. Dados transformados em plano editorial." — "A partir de 1.500€" + CTA "Falar sobre formação →" `/servicos?topico=formacao`
 
-## Catálogo de produtos (server)
+### Zona 4 — FAQ
+Componente accordion (`@/components/ui/accordion` shadcn). 4 itens com a 2ª aberta por defeito:
+1. "Preciso de dar o meu login do Instagram?" — Não. Só usamos dados públicos do perfil.
+2. "De onde vêm os dados?" (open) — Apenas de dados públicos do perfil. Os benchmarks de comparação são construídos a partir de estudos de referência da indústria, usados como sinais direcionais.
+3. "É uma subscrição?" — Não. Pagamento único, sem renovação automática.
+4. "O que acontece na chamada de 30 minutos?" — Reveis o diagnóstico contigo, identifico 3 prioridades para os próximos 90 dias e respondo às tuas dúvidas.
 
-| code | name_pt | amount_cents | exposto agora |
-|---|---|---|---|
-| `authority_diagnosis_49` | Diagnóstico de Autoridade Digital | 4900 | sim |
-| `report_full_9` | Relatório completo | 900 | não (preparado) |
+Toda a copy em PT, em `src/i18n/locales/pt/pricing.json` (substituir conteúdo). EN idem para paridade.
 
-## Tracking
+## 3. Página `/servicos` (nova)
 
-Eventos novos: `payment_cta_clicked`, `payment_checkout_created`, `payment_checkout_failed`, `payment_webhook_paid`, `payment_webhook_failed`. Metadata permitida: `product_code`, `amount_cents`, `source_component`, `lead_id` (server-side só). Nunca enviar `EUPAGO_API_KEY` nem payload bruto do provider para o cliente.
+- `src/routes/servicos.tsx` — meta SEO próprio.
+- `src/components/services/services-page.tsx` — hero dark + 2 secções (auditoria, formação) com mais detalhe + formulário de pedido.
+- Formulário: nome, email, empresa (opcional), tópico (select: auditoria/formação/outro — pré-seleciona via `?topico=`), mensagem. Server fn `submitServicesInquiry` que insere em nova tabela `service_inquiries` (`name, email, company, topic, message, ip_hash, created_at`) com RLS service-only.
 
-## Admin
+## 4. Tracking
 
-Sem dashboard novo. Já existe `lead_payments` — se houver listagem trivial em admin existente, adicionar coluna `product_code`/`provider_reference`. Caso contrário, deixar para tarefa seguinte.
+Adicionar a `src/lib/tracking.functions.ts`:
+- `pricing_coupon_attempt` (metadata: code_hash, valid, product)
+- `pricing_coupon_applied`
+- `services_inquiry_submitted` (metadata: topic)
 
-## Validação
+`pricing_option_clicked` já existe — reutilizar com novos `pricing_option`: `"free" | "report_full_9" | "authority_diagnosis_97" | "service_audit" | "service_training"`.
 
+## 5. Ficheiros
+
+**Criar:**
+- `src/components/services/services-page.tsx`
+- `src/components/services/services-inquiry-form.tsx`
+- `src/components/pricing/coupon-input.tsx`
+- `src/components/pricing/pricing-faq.tsx`
+- `src/lib/payments/coupons.functions.ts`
+- `src/lib/payments/coupons.server.ts`
+- `src/lib/services/services-inquiry.functions.ts`
+- `src/routes/servicos.tsx`
+- 2 migrations (rename product + coupons/inquiries/redemptions)
+
+**Alterar:**
+- `src/components/pricing/pricing-page.tsx` (reescrita completa)
+- `src/i18n/locales/pt/pricing.json` + `en/pricing.json`
+- `src/lib/payments/products.ts` + `products.server.ts`
+- `src/lib/payments/eupago.functions.ts` (aceitar `couponCode`, aplicar desconto server-side)
+- `src/routes/api/public/eupago-webhook.ts` (registar redemption)
+- `src/components/payments/reserve-diagnosis-button.tsx` (aceitar `couponCode` opcional, novo code)
+- `src/components/report-redesign/v2/premium-interest-dialog.tsx` (copy + code)
+- `src/lib/payments/__tests__/products.test.ts`
+- `src/lib/tracking.functions.ts` (novos eventos)
+
+**Não tocar:** `/report.example`, restantes rotas `app.*`, onboarding, pipeline de análise.
+
+## 6. Validação
+
+- Testes Vitest: catálogo (97/900), validação de cupão (válido/expirado/limite atingido), webhook ainda idempotente.
 - `bunx tsc --noEmit`.
-- Vitest: catálogo (preço hardcoded), webhook idempotente (2 calls → 1 entitlement, 1 paid_at), assinatura inválida → 401, anónimo → 401, frontend ignora preço (server resolve).
-- Sem chamadas reais EuPago: mock de `eupago.server.ts`.
+- Smoke manual: `/precos` renderiza 3 cards, cupão inválido mostra erro, CTA Reservar abre EuPago, link agência → `/servicos`, formulário grava em DB.
 
-## Configuração EuPago (instruções para o utilizador no fim)
+## 7. Riscos / notas
 
-- **Webhook endpoint**: `https://<APP_BASE_URL>/api/public/eupago-webhook`
-- **Webhooks 2.0** com encriptação ativada; chave a guardar como `EUPAGO_WEBHOOK_SECRET`.
-- **Métodos de pagamento**: MB WAY + Multibanco (mínimo).
-- **Eventos**: `payment.paid`, `payment.failed`, `payment.expired`, `payment.cancelled`.
-- **Canal/Channel ID**: copiar para `EUPAGO_CHANNEL_ID` se a API exigir.
-- **API key**: copiar para `EUPAGO_API_KEY`. Nunca colar em código.
-
-## Riscos e perguntas em aberto
-
-1. **Formato exato da assinatura EuPago Webhooks 2.0**: HMAC-SHA256 do body? AES decryption? Necessita confirmação na conta EuPago antes de implementar — proponho começar com HMAC e ajustar após primeiro teste real.
-2. **Pay By Link vs Referência direta**: Pay By Link dá UX uniforme (MB WAY+Multibanco numa só URL). Recomendo Pay By Link.
-3. **`report_full_9` entitlement → unlock**: não há ainda gate baseado em `lead_entitlements`. Fica preparado, mas integração com `lead_reports` faz-se em tarefa separada.
-4. **Cookie de lead em /report público sem onboarding**: confirmar que utilizadores que abrem CTA no relatório partilhado já têm `lead_session` (sim — vem do gate). Se ausente, botão mostra "iniciar sessão primeiro".
-
-## Não tocar
-
-Onboarding, créditos, Apify/OpenAI/DataForSEO, scoring, thumbnails, custos admin, `lead_reports`, acesso gratuito ao relatório, `/report.example`.
+- Trocar `authority_diagnosis_49` → `_97` é breaking se já existirem pagamentos. Confirmado vazio.
+- Secção dark dentro de página light: usar tokens existentes da hero dark para coerência; não criar paleta nova.
+- Cupão: não exposto a humanos no UI (só link discreto). Códigos criados via SQL admin por agora — sem CRUD UI nesta iteração.
+- Página `/servicos` é mínima: form simples + DB. Não envia email automático (pode vir depois via Brevo).
