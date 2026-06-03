@@ -133,7 +133,7 @@ export function PricingPage() {
             className="text-xs text-content-tertiary hover:text-accent-primary transition-colors inline-flex items-center gap-1"
             onClick={() => track("agency_link")}
           >
-            Vários perfis ou clientes? Pack de agência
+            Vários perfis ou clientes? Opção de agência
             <ArrowRight className="size-3" aria-hidden="true" />
           </Link>
         </div>
