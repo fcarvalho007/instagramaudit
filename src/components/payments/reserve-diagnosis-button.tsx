@@ -20,6 +20,8 @@ interface Props {
   returnPath?: string;
   className?: string;
   label?: string;
+  /** Optional discount coupon validated server-side. */
+  couponCode?: string | null;
 }
 
 /**
@@ -34,6 +36,7 @@ export function ReserveDiagnosisButton({
   returnPath,
   className,
   label,
+  couponCode,
 }: Props) {
   const createCheckout = useServerFn(createEupagoCheckout);
   const [loading, setLoading] = useState(false);
@@ -41,7 +44,7 @@ export function ReserveDiagnosisButton({
   const product = PUBLIC_PRODUCTS[productCode];
   const buttonLabel =
     label ??
-    (productCode === "authority_diagnosis_49"
+    (productCode === "authority_diagnosis_97"
       ? "Reservar diagnóstico"
       : `Comprar ${product.namePt}`);
 
@@ -67,6 +70,7 @@ export function ReserveDiagnosisButton({
           report_cache_key: reportCacheKey ?? undefined,
           return_path: returnPath,
           source_component: sourceComponent,
+          coupon_code: couponCode ?? undefined,
         },
       });
 

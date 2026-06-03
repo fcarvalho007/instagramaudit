@@ -112,7 +112,8 @@ export function PremiumInterestDialog({
               Beta · oferta limitada
             </p>
             <p className="mt-1 text-sm font-semibold text-content-primary">
-              Diagnóstico de Autoridade Digital — 49€ beta
+              Diagnóstico de Autoridade Digital — 97€{" "}
+              <span className="text-content-tertiary line-through font-normal">149€</span>
             </p>
             <p className="mt-1 text-xs text-content-secondary leading-relaxed">
               Relatório completo + sessão humana de 30 min + 3 prioridades de
@@ -120,7 +121,7 @@ export function PremiumInterestDialog({
             </p>
           </div>
           <ReserveDiagnosisButton
-            productCode="authority_diagnosis_49"
+            productCode="authority_diagnosis_97"
             sourceComponent={sourceComponent}
             instagramUsername={handle ?? undefined}
             returnPath="/"

@@ -61,6 +61,11 @@ const ALLOWED_EVENTS = [
   "payment_checkout_failed",
   "payment_webhook_paid",
   "payment_webhook_failed",
+  // Pricing page coupon flow
+  "pricing_coupon_attempt",
+  "pricing_coupon_applied",
+  // Services inquiries
+  "services_inquiry_submitted",
 ] as const;
 
 const trackEventSchema = z.object({
