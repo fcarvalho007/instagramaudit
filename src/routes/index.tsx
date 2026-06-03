@@ -32,9 +32,12 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   return (
-    <>
+    <div
+      className="hero-dark"
+      style={{ backgroundColor: "rgb(var(--hero-bg-base))" }}
+    >
       <HeroSection />
       <LandingDarkIsland />
-    </>
+    </div>
   );
 }
