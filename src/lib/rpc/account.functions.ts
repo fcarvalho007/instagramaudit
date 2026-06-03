@@ -1,13 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { withSupabaseHeaders } from "@/lib/auth-middleware-client";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { recordProductEvent } from "@/lib/tracking.server";
 
 export const getAccountDetails = createServerFn({ method: "GET" })
   .middleware([withSupabaseHeaders, requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // Fetch profile
     const { data: profile, error: profileError } = await supabase
@@ -80,6 +79,8 @@ export const updateMarketingConsent = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { recordProductEvent } = await import("@/lib/tracking.server");
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
@@ -130,6 +131,7 @@ export const ensureReportAssociation = createServerFn({ method: "POST" })
   .middleware([withSupabaseHeaders, requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // Get user email from auth
     const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);

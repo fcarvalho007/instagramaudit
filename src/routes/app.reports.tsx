@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { getUserReports, type UserReport } from "@/lib/server/reports.functions";
+import { getUserReports, type UserReport } from "@/lib/rpc/reports.functions";
 import {
   FileText,
   CheckCircle2,
