@@ -684,7 +684,7 @@ export function FrequencyCard({
                   return (
                     <span
                       key={`pad-${wi}-${di}`}
-                      className="aspect-[4/3] rounded-[5px]"
+                      className="aspect-square rounded-[5px]"
                     />
                   );
                 }
@@ -701,7 +701,7 @@ export function FrequencyCard({
                   <span
                     key={day.date}
                     title={`${dateLabel} · ${tooltipPosts}`}
-                    className="relative aspect-[4/3] rounded-[5px] flex items-center justify-center transition-colors"
+                    className="relative aspect-square rounded-[5px] flex items-center justify-center transition-colors"
                     style={{ background: cellStyle(day.postCount).bg, border: cellStyle(day.postCount).border }}
                   >
                     {day.postCount > 1 && (
