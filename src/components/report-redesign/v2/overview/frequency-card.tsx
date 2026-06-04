@@ -751,7 +751,7 @@ export function FrequencyCard({
 
       {/* Verdict — suppressed when cadence is insufficient (no strong claims). */}
       {!isInsufficient && (
-      <InsightCallout tone={verdictTone} label={verdictLabel} className="mt-5 mx-4 sm:mx-5 md:mx-6 mb-5 sm:mb-6">
+      <InsightCallout tone={verdictTone} label={verdictLabel} className="mt-5 mx-5 md:mx-6 mb-5 sm:mb-6">
         <p>
           <span className="font-semibold">{verdict.strong}</span>{" "}
           {verdict.rest}
@@ -774,7 +774,7 @@ export function FrequencyCard({
           socialinsiderRef?.image ??
           null
         }
-        className="px-4 sm:px-5 md:px-6 pb-5 sm:pb-6 md:pb-8 -mt-2 text-xs text-content-tertiary leading-relaxed"
+        className="px-5 md:px-6 pb-5 sm:pb-6 md:pb-8 -mt-2 text-xs text-content-tertiary leading-relaxed"
       />
     </article>
   );
@@ -813,7 +813,7 @@ function ExternalReferenceNote({
     range,
   });
   return (
-    <div className="px-4 sm:px-5 md:px-6 mt-2 space-y-1.5">
+    <div className="px-5 md:px-6 mt-2 space-y-1.5">
       {hasUsableData ? (
         <p className="text-[13px] text-content-secondary leading-relaxed">
           {t("frequency.external_ref.profile_line", {
