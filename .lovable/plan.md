@@ -1,132 +1,98 @@
+## Scope
 
-# Controlled live payment test — EuPago `authority_diagnosis_97`
+Visual-only refinement of the two free-report cards on `/analyze/$username`:
+`overview/frequency-card.tsx` ("Frequência de publicação") and
+`overview/format-card.tsx` ("Formato pouco variado"). No data, scoring,
+copy logic, gating, payments, providers, routes or schema touched.
 
-This plan executes one real €97 payment end-to-end to validate:
-**payment completion → EuPago webhook → `lead_payments.status=paid` → `lead_entitlements` granted → `product_events` recorded → idempotency.**
+## Findings
 
-No code, secrets, DB rows, or webhook payloads will be modified or forged. The only state change comes from the real EuPago payment and its real webhook callback.
+Both card titles already share the same Tailwind classes
+(`font-display text-[1.125rem] sm:text-[1.25rem] md:text-[1.5rem] font-semibold tracking-tight leading-tight`).
+The inconsistency the user feels comes from:
 
----
+- frequency card outer padding `px-4 sm:px-5 md:px-6` vs format card
+  `px-5 md:px-6` (mobile mismatch).
+- calendar cells use `aspect-[4/3]` over full 7-col width → on desktop
+  each cell becomes ~60×45px, dominating the card.
+- thumbnail grid uses `grid-cols-6 sm:grid-cols-10 md:grid-cols-12` for
+  12 posts → single tight row on desktop, thumbs ~40px wide.
+- subtle eyebrow inconsistencies (one uses `text-eyebrow-sm`, the other
+  `text-xs uppercase tracking-[0.04em]`).
 
-## Pre-flight (read-only, before you confirm)
+## Changes
 
-Before opening the browser session I will:
+### 1. Title system (shared)
 
-1. `supabase--cloud_status` — confirm backend `ACTIVE_HEALTHY`.
-2. Confirm `EUPAGO_BASE_URL`, `EUPAGO_API_KEY`, `EUPAGO_CHANNEL_ID`, `EUPAGO_WEBHOOK_SECRET`, `APP_BASE_URL` are all set (presence-only check, no values printed).
-3. Snapshot baseline counts:
-   - `SELECT count(*) FROM lead_payments WHERE product='authority_diagnosis_97' AND status='paid'`
-   - `SELECT count(*) FROM lead_entitlements WHERE product_code='authority_diagnosis_97'`
-   - latest `product_events` of types `payment_webhook_paid` / `payment_webhook_failed`.
+Keep the existing class string but normalize the two headers so they are
+identical (same padding-top, same `space-y-2`, same eyebrow style). No
+new component, no new tokens — pure class normalization. Both cards end
+up with:
 
-These are pure reads — no state change.
+- header wrapper: `px-5 md:px-6 pt-5 md:pt-6 space-y-2`
+- title: existing `font-display text-[1.125rem] sm:text-[1.25rem] md:text-[1.5rem] font-semibold tracking-tight text-content-primary leading-tight`
+- subtitle: existing `text-[14px] text-content-secondary leading-relaxed`
 
----
+### 2. Frequency card — calendar compaction
 
-## Required confirmation before I proceed
+Inside `frequency-card.tsx` only:
 
-I will **stop here and ask** before doing anything that costs money. You must confirm:
+- Cap the calendar's horizontal footprint on desktop so cells stay small
+  and elegant. Wrap the calendar grid in `max-w-[440px]` (left-aligned)
+  so on ≥md the 7 columns produce ~55px cells max; mobile keeps full
+  width.
+- Change cell aspect from `aspect-[4/3]` to `aspect-square` for a calmer
+  geometry, and keep `gap-1`.
+- Tighten weekly-rhythm padding from `px-5 sm:py-5` to `px-4 py-4` and
+  reduce `BAR_MAX` from 36 to 28 so the rhythm chart is more compact
+  and proportional with the smaller calendar.
+- Normalize outer padding to `px-5 md:px-6` (drop the `sm:` step) to
+  match the format card.
+- Keep legend, eyebrow, insight callout and all i18n strings untouched.
 
-- [ ] You authorize charging **€97,00** to a real payment method (MB WAY / Multibanco / card) on the live EuPago Pay By Link.
-- [ ] You will perform the actual payment yourself in the browser (I cannot enter MB WAY PINs, card numbers, or confirm MB references).
-- [ ] You accept that an entitlement will be permanently granted to the test lead (idempotency guarantees no duplicate, but the row will exist).
-- [ ] Optional: confirm you want me to run this against the **preview** sandbox (so webhook hits the preview URL configured in `APP_BASE_URL`) — and that `APP_BASE_URL` currently points to the host whose `/api/public/eupago-webhook` you want to validate.
+### 3. Format card — thumbnail proportion
 
-If any box is not ticked, I will NOT proceed.
+Inside `format-card.tsx` only:
 
----
+- Replace `grid-cols-6 sm:grid-cols-10 md:grid-cols-12` with
+  `grid-cols-3 sm:grid-cols-4 md:grid-cols-6` so 12 posts render as
+  3×4 mobile / 4×3 tablet / 6×2 desktop. Bumps desktop thumb size from
+  ~40px to ~90–110px — premium and legible without ballooning.
+- Increase gap from `gap-1.5` to `gap-2` for editorial breathing.
+- Bump the small format dot from `size-1.5` to `size-2` and the
+  fallback icon from `size-5` to `size-6` so they read at the larger
+  thumbnail size.
+- Switch the "12 posts analisados" eyebrow from local
+  `text-xs uppercase tracking-[0.04em]` to the shared `text-eyebrow-sm
+  text-content-tertiary` class used by the frequency card.
 
-## Execution sequence (after confirmation)
+### 4. Spacing harmony
 
-### A. Create the checkout (driven by the real UI)
+- Same outer padding (`px-5 md:px-6`) on both cards.
+- Same `pt-5 md:pt-6` on both headers.
+- Same `mb-5 sm:mb-6` on the insight callout (already aligned).
 
-1. `browser--navigate_to_sandbox` → `/` (desktop viewport).
-2. Complete onboarding to create a lead session (or reuse current session if `__Host-lead` cookie already present).
-3. Navigate `/checkout/authority-diagnosis` → fill Steps 1-4 → click **"Confirmar e pagar"**.
-4. Capture the network call to `createEupagoCheckout` → record:
-   - `payment_id` (UUID)
-   - `provider_payment_id`
-   - `provider_checkout_url` (must be `clientes.eupago.pt/...`)
-5. Immediately query and record **payment row BEFORE payment**:
-   ```sql
-   SELECT id, lead_id, status, paid_at, provider, provider_payment_id,
-          provider_checkout_url, amount_cents, currency, metadata, created_at
-   FROM lead_payments WHERE id = :payment_id;
-   ```
-   Expected: `status='pending'`, `paid_at IS NULL`, `amount_cents=9700`.
+## Files changed
 
-### B. You complete the payment
+- `src/components/report-redesign/v2/overview/frequency-card.tsx`
+- `src/components/report-redesign/v2/overview/format-card.tsx`
 
-6. Browser opens the EuPago Pay By Link page. **You** complete the payment manually with your chosen method.
-7. I will **not** interact with the EuPago page beyond observing — no field fills, no clicks on payment confirmations.
+No other files touched. No new components, no new tokens, no i18n keys
+added or renamed.
 
-### C. Wait for webhook + validate (polling, read-only)
+## Validation
 
-8. Poll every ~5s for up to 3 minutes:
-   ```sql
-   SELECT status, paid_at, provider_payment_id
-   FROM lead_payments WHERE id = :payment_id;
-   ```
-9. Once `status='paid'`, capture **payment row AFTER webhook** and assert:
-   - `status = 'paid'`
-   - `paid_at IS NOT NULL`
-   - `provider_payment_id` unchanged (stable)
-   - `provider_checkout_url` still present
-10. Query **entitlement**:
-    ```sql
-    SELECT id, lead_id, product_code, payment_id, granted_at, metadata
-    FROM lead_entitlements
-    WHERE lead_id = :lead_id AND product_code = 'authority_diagnosis_97';
-    ```
-    Assert exactly **one** row, `payment_id` matches.
-11. Query **product_events** for this payment:
-    ```sql
-    SELECT event_type, created_at, metadata
-    FROM product_events
-    WHERE metadata->>'payment_id' = :payment_id
-    ORDER BY created_at;
-    ```
-    Assert `payment_webhook_paid` present, `payment_webhook_failed` absent.
+1. `bunx tsc --noEmit` — expect exit 0.
+2. Browser QA on `/analyze/frederico.m.carvalho` at 360, 390, 768, 1440
+   viewports. Verify:
+   - both card titles render at the same scale and feel,
+   - calendar cells are clearly smaller on desktop and do not dominate,
+   - rhythm chart and calendar feel balanced,
+   - thumbnails on desktop are visibly larger (6×2) and legible on mobile (3×4),
+   - no horizontal overflow, no awkward title wrap.
 
-### D. Idempotency check (best-effort, no forging)
+## Out of scope (confirmed untouched)
 
-12. Check whether EuPago naturally re-delivers (some methods send a confirmation + a settlement webhook). Re-query after 60s:
-    - entitlement count for `(lead_id, product_code)` MUST still be exactly 1.
-    - `lead_payments.status` MUST still be `paid` (no downgrade).
-    - `lead_payments.paid_at` MUST NOT advance on re-delivery.
-13. I will NOT manually re-POST the webhook (would require forging HMAC). Idempotency from natural re-delivery is reported as "observed / not observed in window".
-
-### E. User-facing state
-
-14. Return to the app, verify the UI does not show a generic failure. Capture screenshot of the post-payment state (success / processing / report unlock — whichever the current implementation renders).
-
----
-
-## Output I will deliver
-
-A structured report with:
-
-- Full request/payment sequence (timestamps).
-- `payment row BEFORE payment` (JSON).
-- `payment row AFTER webhook` (JSON).
-- `entitlement row` (JSON).
-- `product_events` for this `payment_id` (list).
-- Idempotency observation (observed re-delivery? duplicate prevented? state stable?).
-- User-facing screenshot + verbal confirmation.
-- **Verdict:** `READY TO SELL` / `NEEDS FIX` / `BLOCKED` — with reasons and any P0/P1 follow-ups.
-
----
-
-## Hard guarantees
-
-- No source files will be edited.
-- No secrets will be added, updated, or read by value.
-- No `INSERT`/`UPDATE`/`DELETE` on `lead_payments`, `lead_entitlements`, `product_events`, `leads`, or any other table.
-- No manual webhook POST / HMAC forgery.
-- If the webhook does not arrive within 3 minutes, I stop and report `BLOCKED — webhook not delivered` along with diagnostics (EuPago dashboard pointer, `APP_BASE_URL` value masked, recent server logs for `/api/public/eupago-webhook`).
-
----
-
-## Please confirm to proceed
-
-Reply with **"Confirmo, avançar"** (and tell me which environment — **preview** or **published `auditprofiles.com`**) and I will switch to build/test mode and execute. Any other reply pauses execution.
+Data fetching, scoring (`computeFrequencia`, `getFormatVariationStatus`),
+copy logic, premium gating, payments, EuPago, onboarding, credits,
+Apify/OpenAI/DataForSEO, admin, routes, DB schema, i18n strings.
