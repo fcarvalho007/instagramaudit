@@ -591,7 +591,7 @@ export function FrequencyCard({
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="px-4 sm:px-5 md:px-6 pt-5 sm:pt-5 md:pt-6 space-y-2">
+      <div className="px-5 md:px-6 pt-5 md:pt-6 space-y-2">
         <div className="flex items-start gap-3">
           <h3 className="font-display text-[1.125rem] sm:text-[1.25rem] md:text-[1.5rem] font-semibold tracking-tight text-content-primary leading-tight break-words">
             {t("frequency.title")}{" "}
@@ -642,8 +642,8 @@ export function FrequencyCard({
 
       {/* Calendar grid — always visible */}
       {weeks.length > 0 && (
-        <div className="px-4 sm:px-5 md:px-6 mt-4 sm:mt-5">
-          <div className="flex flex-col gap-0.5 min-w-0">
+        <div className="px-5 md:px-6 mt-5">
+          <div className="flex flex-col gap-0.5 min-w-0 max-w-[440px]">
             <span className="text-eyebrow-sm text-content-tertiary">
               {t("frequency.calendar.eyebrow", { days: effectiveWindowDays })}
             </span>
@@ -657,7 +657,7 @@ export function FrequencyCard({
             </span>
           </div>
 
-          <div className="mt-2.5">
+          <div className="mt-2.5 max-w-[440px]">
           {/* Weekday headers */}
           <div className="grid grid-cols-7 gap-1 md:gap-1.5 mb-1 md:mb-1.5">
             {weekdayShort.map((wd, i) => (
