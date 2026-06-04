@@ -320,13 +320,13 @@ export function FormatCard({
       {/* Thumbnail grid */}
       {sortedPosts.length > 0 && (
         <div className="px-5 md:px-6 mt-5">
-          <span className="text-xs uppercase tracking-[0.04em] text-content-tertiary block mb-2">
+          <span className="text-eyebrow-sm text-content-tertiary block mb-2">
             {t("format.analyzed_count", { count: postsAnalyzed })}
           </span>
           <div
             role="img"
             aria-label={ariaLabel}
-            className="grid gap-1.5 grid-cols-6 sm:grid-cols-10 md:grid-cols-12"
+            className="grid gap-2 grid-cols-3 sm:grid-cols-4 md:grid-cols-6"
           >
             {sortedPosts.map((post, idx) => {
               const fk = TYPE_TO_FORMAT_KEY[post.type] ?? "unknown";
@@ -349,12 +349,12 @@ export function FormatCard({
                     />
                   ) : (
                     <span className="absolute inset-0 flex items-center justify-center">
-                      <Icon className={`size-5 ${style.iconColor}`} aria-hidden="true" />
+                      <Icon className={`size-6 ${style.iconColor}`} aria-hidden="true" />
                     </span>
                   )}
                   {/* Small format dot indicator — bottom-right */}
                   <span
-                    className={`absolute bottom-0.5 right-0.5 size-1.5 rounded-full ring-1 ring-white ${style.dot}`}
+                    className={`absolute bottom-1 right-1 size-2 rounded-full ring-1 ring-white ${style.dot}`}
                     aria-hidden="true"
                   />
                 </span>

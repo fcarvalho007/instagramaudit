@@ -200,7 +200,7 @@ function WeeklyRhythm({ days, t }: { days: DayEntry[]; t: TFunction }) {
     (t("frequency.weekday_short", { returnObjects: true }) as string[]) ?? [];
 
   // Bar heights: peak full, others scaled, quiet bar collapsed to ~3px.
-  const BAR_MAX = 36;
+  const BAR_MAX = 28;
   const BAR_MIN = 6;
   const BAR_QUIET = 3;
 
@@ -225,8 +225,8 @@ function WeeklyRhythm({ days, t }: { days: DayEntry[]; t: TFunction }) {
   })();
 
   return (
-    <div className="px-4 sm:px-5 md:px-6 mt-4">
-      <div className="rounded-xl border border-border-default bg-surface-muted/60 px-4 py-4 sm:px-5 sm:py-5">
+    <div className="px-5 md:px-6 mt-4">
+      <div className="rounded-xl border border-border-default bg-surface-muted/60 px-4 py-4">
         <span className="text-eyebrow-sm text-content-tertiary block mb-4">
           {t("frequency.weekly_rhythm.title")}
         </span>
@@ -367,7 +367,7 @@ function FrequencyKpiStrip({
     : t("frequency.kpi.peak_caption_none");
 
   return (
-    <div className="px-4 sm:px-5 md:px-6 mt-4">
+    <div className="px-5 md:px-6 mt-4">
       <div className="rounded-xl border border-border-default bg-white grid grid-cols-1 sm:grid-cols-3 overflow-hidden divide-y divide-border-default/60 sm:divide-y-0">
         {/* Cadência */}
         <div className="px-4 py-4 sm:px-5 sm:py-5">
@@ -591,7 +591,7 @@ export function FrequencyCard({
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="px-4 sm:px-5 md:px-6 pt-5 sm:pt-5 md:pt-6 space-y-2">
+      <div className="px-5 md:px-6 pt-5 md:pt-6 space-y-2">
         <div className="flex items-start gap-3">
           <h3 className="font-display text-[1.125rem] sm:text-[1.25rem] md:text-[1.5rem] font-semibold tracking-tight text-content-primary leading-tight break-words">
             {t("frequency.title")}{" "}
@@ -642,8 +642,8 @@ export function FrequencyCard({
 
       {/* Calendar grid — always visible */}
       {weeks.length > 0 && (
-        <div className="px-4 sm:px-5 md:px-6 mt-4 sm:mt-5">
-          <div className="flex flex-col gap-0.5 min-w-0">
+        <div className="px-5 md:px-6 mt-5">
+          <div className="flex flex-col gap-0.5 min-w-0 max-w-[440px]">
             <span className="text-eyebrow-sm text-content-tertiary">
               {t("frequency.calendar.eyebrow", { days: effectiveWindowDays })}
             </span>
@@ -657,7 +657,7 @@ export function FrequencyCard({
             </span>
           </div>
 
-          <div className="mt-2.5">
+          <div className="mt-2.5 max-w-[440px]">
           {/* Weekday headers */}
           <div className="grid grid-cols-7 gap-1 md:gap-1.5 mb-1 md:mb-1.5">
             {weekdayShort.map((wd, i) => (
@@ -684,7 +684,7 @@ export function FrequencyCard({
                   return (
                     <span
                       key={`pad-${wi}-${di}`}
-                      className="aspect-[4/3] rounded-[5px]"
+                      className="aspect-square rounded-[5px]"
                     />
                   );
                 }
@@ -701,7 +701,7 @@ export function FrequencyCard({
                   <span
                     key={day.date}
                     title={`${dateLabel} · ${tooltipPosts}`}
-                    className="relative aspect-[4/3] rounded-[5px] flex items-center justify-center transition-colors"
+                    className="relative aspect-square rounded-[5px] flex items-center justify-center transition-colors"
                     style={{ background: cellStyle(day.postCount).bg, border: cellStyle(day.postCount).border }}
                   >
                     {day.postCount > 1 && (
@@ -751,7 +751,7 @@ export function FrequencyCard({
 
       {/* Verdict — suppressed when cadence is insufficient (no strong claims). */}
       {!isInsufficient && (
-      <InsightCallout tone={verdictTone} label={verdictLabel} className="mt-5 mx-4 sm:mx-5 md:mx-6 mb-5 sm:mb-6">
+      <InsightCallout tone={verdictTone} label={verdictLabel} className="mt-5 mx-5 md:mx-6 mb-5 sm:mb-6">
         <p>
           <span className="font-semibold">{verdict.strong}</span>{" "}
           {verdict.rest}
@@ -774,7 +774,7 @@ export function FrequencyCard({
           socialinsiderRef?.image ??
           null
         }
-        className="px-4 sm:px-5 md:px-6 pb-5 sm:pb-6 md:pb-8 -mt-2 text-xs text-content-tertiary leading-relaxed"
+        className="px-5 md:px-6 pb-5 sm:pb-6 md:pb-8 -mt-2 text-xs text-content-tertiary leading-relaxed"
       />
     </article>
   );
@@ -813,7 +813,7 @@ function ExternalReferenceNote({
     range,
   });
   return (
-    <div className="px-4 sm:px-5 md:px-6 mt-2 space-y-1.5">
+    <div className="px-5 md:px-6 mt-2 space-y-1.5">
       {hasUsableData ? (
         <p className="text-[13px] text-content-secondary leading-relaxed">
           {t("frequency.external_ref.profile_line", {
