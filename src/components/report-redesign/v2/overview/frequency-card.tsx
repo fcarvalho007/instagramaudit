@@ -367,7 +367,7 @@ function FrequencyKpiStrip({
     : t("frequency.kpi.peak_caption_none");
 
   return (
-    <div className="px-4 sm:px-5 md:px-6 mt-4">
+    <div className="px-5 md:px-6 mt-4">
       <div className="rounded-xl border border-border-default bg-white grid grid-cols-1 sm:grid-cols-3 overflow-hidden divide-y divide-border-default/60 sm:divide-y-0">
         {/* Cadência */}
         <div className="px-4 py-4 sm:px-5 sm:py-5">
