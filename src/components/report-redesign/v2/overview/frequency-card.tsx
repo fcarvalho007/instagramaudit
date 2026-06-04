@@ -706,7 +706,7 @@ export function FrequencyCard({
                   >
                     {day.postCount > 1 && (
                       <span
-                        className="text-[10px] font-bold leading-none text-white select-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]"
+                        className="text-[9px] font-semibold leading-none text-white select-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]"
                         aria-hidden="true"
                       >
                         {day.postCount}
