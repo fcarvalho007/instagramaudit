@@ -1,114 +1,132 @@
 
-# Auditoria Final — AuditProfiles
+# Controlled live payment test — EuPago `authority_diagnosis_97`
 
-Objetivo: validar, ponto a ponto, que a app está pronta para utilizadores reais. Sem alterar código. Output final = relatório com PASS / WARN / FAIL por área + lista priorizada de correções (se houver).
+This plan executes one real €97 payment end-to-end to validate:
+**payment completion → EuPago webhook → `lead_payments.status=paid` → `lead_entitlements` granted → `product_events` recorded → idempotency.**
 
-## Áreas a auditar
+No code, secrets, DB rows, or webhook payloads will be modified or forged. The only state change comes from the real EuPago payment and its real webhook callback.
 
-### 1. Infra e saúde
-- `cloud_status` (Lovable Cloud ACTIVE_HEALTHY)
-- `supabase--db_health` (conexões, WAL, deadlocks)
-- `supabase--linter` (RLS, policies, exposições)
-- Segredos presentes: EUPAGO_* , APIFY_*, DATAFORSEO_*, OPENAI_*, BREVO_*, RESEND_*, SESSION_SECRET, UNSUBSCRIBE_TOKEN_SECRET, ADMIN_ALLOWED_EMAILS
-- `/api/admin/sistema/health` + `/runtime-checks` (todos OK)
+---
 
-### 2. Build e tipos
-- `bunx tsc --noEmit`
-- `bunx vitest run` (suite completa)
-- Verificar warnings de import / rotas fantasma
+## Pre-flight (read-only, before you confirm)
 
-### 3. Rotas públicas (smoke em mobile 411×742 e desktop 1366×768)
-- `/` landing — hero, CTAs, footer, links legais
-- `/precos`, `/servicos`, `/design-system`
-- `/login`, `/signup`, `/reset-password` (forms + validação)
-- `/aviso-legal`, `/privacidade`, `/termos`, `/cookies`
-- `/sitemap.xml`, `/robots.txt`
-- `/report.example` (mockup intacto)
-- 404 (rota inexistente) renderiza notFoundComponent
+Before opening the browser session I will:
 
-### 4. Fluxo principal de análise
-- `/` → input handle → `/analyze/$username`
-- Cache hit vs fresh (provider_call_logs)
-- Estados: loading, erro, perfil privado, perfil inexistente
-- Benchmark, competitors, insights AI
+1. `supabase--cloud_status` — confirm backend `ACTIVE_HEALTHY`.
+2. Confirm `EUPAGO_BASE_URL`, `EUPAGO_API_KEY`, `EUPAGO_CHANNEL_ID`, `EUPAGO_WEBHOOK_SECRET`, `APP_BASE_URL` are all set (presence-only check, no values printed).
+3. Snapshot baseline counts:
+   - `SELECT count(*) FROM lead_payments WHERE product='authority_diagnosis_97' AND status='paid'`
+   - `SELECT count(*) FROM lead_entitlements WHERE product_code='authority_diagnosis_97'`
+   - latest `product_events` of types `payment_webhook_paid` / `payment_webhook_failed`.
 
-### 5. Onboarding + Checkout + Pagamento
-- `/checkout/authority-diagnosis` — 4 steps, validação, upsell
-- `createEupagoCheckout` → 302 para `clientes.eupago.pt`
-- `lead_payments` row criada (pending)
-- Webhook `/api/public/eupago-webhook` (assinatura HMAC, idempotência) — verificar logs recentes
-- Tracking: 6 eventos `checkout_*` aceites pelo Zod enum (já corrigido)
-- Provider isolation: 0 calls Apify/OpenAI/DFS antes do pagamento
+These are pure reads — no state change.
 
-### 6. Pós-pagamento e entitlements
-- `lead_entitlements` criado no webhook paid
-- Email de confirmação (Brevo/Resend)
-- Acesso a `/app/reports/$id` desbloqueado
-- Auto-login token funcional
+---
 
-### 7. Área autenticada `/app/*`
-- `/app`, `/app/reports`, `/app/reports/$id`, `/app/account`, `/app/plan`
-- Sidebar, topbar, logout
-- RLS: utilizador só vê os próprios relatórios
+## Required confirmation before I proceed
 
-### 8. Admin `/admin/*`
-- Gate por `ADMIN_ALLOWED_EMAILS`
-- `sistema` (health, secrets, caps, runtime-checks)
-- `visao-geral`, `receita`, `leads`, `beta-leads`, `beta-requests`, `clientes`, `perfis`, `relatorios`, `automacoes`, `apify-lab`, `email-lab`, `estudo-mercado`, `conhecimento`, `report-preview`
-- Kill-switches APIFY/DFS/OPENAI funcionais
-- Custos: `provider_call_logs` como fonte única (memory rule)
+I will **stop here and ask** before doing anything that costs money. You must confirm:
 
-### 9. Beta + Feedback
-- `/beta/request` → submissão → `/beta/submitted/$id`
-- `/feedback/$requestId` e inline feedback
-- `/unsubscribe` com token
+- [ ] You authorize charging **€97,00** to a real payment method (MB WAY / Multibanco / card) on the live EuPago Pay By Link.
+- [ ] You will perform the actual payment yourself in the browser (I cannot enter MB WAY PINs, card numbers, or confirm MB references).
+- [ ] You accept that an entitlement will be permanently granted to the test lead (idempotency guarantees no duplicate, but the row will exist).
+- [ ] Optional: confirm you want me to run this against the **preview** sandbox (so webhook hits the preview URL configured in `APP_BASE_URL`) — and that `APP_BASE_URL` currently points to the host whose `/api/public/eupago-webhook` you want to validate.
 
-### 10. Email + PDF
-- `/api/send-report-email` (template, links unsubscribe)
-- `/api/generate-report-pdf` (PDFShift) + `/api/public/public-report-pdf`
-- Storage `report-pdfs` permissões
+If any box is not ticked, I will NOT proceed.
 
-### 11. Cron / hooks públicos
-- `sync-apify-costs`, `sync-dataforseo-costs`, `sync-openai-costs`, `cleanup-expired-report-snapshots` — verificar últimas execuções
+---
 
-### 12. i18n + SEO
-- PT/EN bundles completos
-- `<head>` por rota (title, description, og:*, canonical)
-- Sitemap inclui rotas públicas
+## Execution sequence (after confirmation)
 
-### 13. Design system (mobile + desktop)
-- Tokens semânticos (sem `slate-*`, sem cores hardcoded)
-- Tipografia: Fraunces + Inter em público; JetBrains Mono só admin
-- Ocean Breeze no relatório light
-- Contraste, focus rings, touch targets ≥44px em mobile
+### A. Create the checkout (driven by the real UI)
 
-### 14. Segurança
-- `security--run_security_scan`
-- RLS em todas as tabelas com dados de utilizador
-- `user_roles` separado (não no profiles)
-- Webhooks com signature verification
-- Sem secrets no bundle cliente
+1. `browser--navigate_to_sandbox` → `/` (desktop viewport).
+2. Complete onboarding to create a lead session (or reuse current session if `__Host-lead` cookie already present).
+3. Navigate `/checkout/authority-diagnosis` → fill Steps 1-4 → click **"Confirmar e pagar"**.
+4. Capture the network call to `createEupagoCheckout` → record:
+   - `payment_id` (UUID)
+   - `provider_payment_id`
+   - `provider_checkout_url` (must be `clientes.eupago.pt/...`)
+5. Immediately query and record **payment row BEFORE payment**:
+   ```sql
+   SELECT id, lead_id, status, paid_at, provider, provider_payment_id,
+          provider_checkout_url, amount_cents, currency, metadata, created_at
+   FROM lead_payments WHERE id = :payment_id;
+   ```
+   Expected: `status='pending'`, `paid_at IS NULL`, `amount_cents=9700`.
 
-### 15. Performance
-- Console limpa (sem erros/warnings críticos)
-- Network: 200s, sem 4xx/5xx em rotas públicas
-- LCP da landing aceitável em mobile
+### B. You complete the payment
 
-## Método
+6. Browser opens the EuPago Pay By Link page. **You** complete the payment manually with your chosen method.
+7. I will **not** interact with the EuPago page beyond observing — no field fills, no clicks on payment confirmations.
 
-1. Tooling read-only: `cloud_status`, `db_health`, `linter`, `security_scan`, `read_query`, `server-function-logs`, `tsc`, `vitest`.
-2. Browser: navegar rotas críticas em mobile (411×742) e desktop (1366×768); screenshots quando algo suspeito.
-3. Cross-check com runtime checks do `/admin/sistema`.
-4. Não tocar em dados live: não completar pagamento, não apagar nada, não disparar emails reais.
+### C. Wait for webhook + validate (polling, read-only)
 
-## Output
+8. Poll every ~5s for up to 3 minutes:
+   ```sql
+   SELECT status, paid_at, provider_payment_id
+   FROM lead_payments WHERE id = :payment_id;
+   ```
+9. Once `status='paid'`, capture **payment row AFTER webhook** and assert:
+   - `status = 'paid'`
+   - `paid_at IS NOT NULL`
+   - `provider_payment_id` unchanged (stable)
+   - `provider_checkout_url` still present
+10. Query **entitlement**:
+    ```sql
+    SELECT id, lead_id, product_code, payment_id, granted_at, metadata
+    FROM lead_entitlements
+    WHERE lead_id = :lead_id AND product_code = 'authority_diagnosis_97';
+    ```
+    Assert exactly **one** row, `payment_id` matches.
+11. Query **product_events** for this payment:
+    ```sql
+    SELECT event_type, created_at, metadata
+    FROM product_events
+    WHERE metadata->>'payment_id' = :payment_id
+    ORDER BY created_at;
+    ```
+    Assert `payment_webhook_paid` present, `payment_webhook_failed` absent.
 
-Relatório estruturado:
-- Tabela por área com PASS / WARN / FAIL + evidência (status, log, screenshot, query)
-- Lista priorizada P0 / P1 / P2 de issues encontrados
-- Veredicto final: **READY FOR PUBLIC LAUNCH** / **NEEDS FIX (Px)** / **BLOCKED**
+### D. Idempotency check (best-effort, no forging)
 
-## Não inclui
-- Alterações de código (auditoria é read-only; correções ficam para build mode subsequente)
-- Pagamento real EuPago (já validado como READY FOR LIVE PAYMENT)
-- Edição de `/report.example`
+12. Check whether EuPago naturally re-delivers (some methods send a confirmation + a settlement webhook). Re-query after 60s:
+    - entitlement count for `(lead_id, product_code)` MUST still be exactly 1.
+    - `lead_payments.status` MUST still be `paid` (no downgrade).
+    - `lead_payments.paid_at` MUST NOT advance on re-delivery.
+13. I will NOT manually re-POST the webhook (would require forging HMAC). Idempotency from natural re-delivery is reported as "observed / not observed in window".
+
+### E. User-facing state
+
+14. Return to the app, verify the UI does not show a generic failure. Capture screenshot of the post-payment state (success / processing / report unlock — whichever the current implementation renders).
+
+---
+
+## Output I will deliver
+
+A structured report with:
+
+- Full request/payment sequence (timestamps).
+- `payment row BEFORE payment` (JSON).
+- `payment row AFTER webhook` (JSON).
+- `entitlement row` (JSON).
+- `product_events` for this `payment_id` (list).
+- Idempotency observation (observed re-delivery? duplicate prevented? state stable?).
+- User-facing screenshot + verbal confirmation.
+- **Verdict:** `READY TO SELL` / `NEEDS FIX` / `BLOCKED` — with reasons and any P0/P1 follow-ups.
+
+---
+
+## Hard guarantees
+
+- No source files will be edited.
+- No secrets will be added, updated, or read by value.
+- No `INSERT`/`UPDATE`/`DELETE` on `lead_payments`, `lead_entitlements`, `product_events`, `leads`, or any other table.
+- No manual webhook POST / HMAC forgery.
+- If the webhook does not arrive within 3 minutes, I stop and report `BLOCKED — webhook not delivered` along with diagnostics (EuPago dashboard pointer, `APP_BASE_URL` value masked, recent server logs for `/api/public/eupago-webhook`).
+
+---
+
+## Please confirm to proceed
+
+Reply with **"Confirmo, avançar"** (and tell me which environment — **preview** or **published `auditprofiles.com`**) and I will switch to build/test mode and execute. Any other reply pauses execution.
