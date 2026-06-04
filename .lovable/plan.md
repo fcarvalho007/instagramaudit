@@ -1,98 +1,87 @@
 ## Scope
 
-Visual-only refinement of the two free-report cards on `/analyze/$username`:
-`overview/frequency-card.tsx` ("Frequência de publicação") and
-`overview/format-card.tsx` ("Formato pouco variado"). No data, scoring,
-copy logic, gating, payments, providers, routes or schema touched.
+Second visual pass on `overview/frequency-card.tsx` and
+`overview/format-card.tsx`. CSS-only. No data, logic, routes, payments,
+providers.
+
+Both cards stack full-width in a single column (see
+`report-overview-block.tsx` lines 202–221), so the available width on
+desktop is the full report column (~960px inside the shell).
 
 ## Findings
 
-Both card titles already share the same Tailwind classes
-(`font-display text-[1.125rem] sm:text-[1.25rem] md:text-[1.5rem] font-semibold tracking-tight leading-tight`).
-The inconsistency the user feels comes from:
-
-- frequency card outer padding `px-4 sm:px-5 md:px-6` vs format card
-  `px-5 md:px-6` (mobile mismatch).
-- calendar cells use `aspect-[4/3]` over full 7-col width → on desktop
-  each cell becomes ~60×45px, dominating the card.
-- thumbnail grid uses `grid-cols-6 sm:grid-cols-10 md:grid-cols-12` for
-  12 posts → single tight row on desktop, thumbs ~40px wide.
-- subtle eyebrow inconsistencies (one uses `text-eyebrow-sm`, the other
-  `text-xs uppercase tracking-[0.04em]`).
+After pass 1:
+- titles already share the same class string, but the responsive ramp
+  (`text-[1.125rem] → 1.25rem → 1.5rem`) makes them feel small on
+  desktop relative to other report headings.
+- frequency calendar cells are now square and capped to 440px, but the
+  3-row block still reads as the centre of gravity of the card.
+- format thumbnails at `md:grid-cols-6` (12 items → 6×2) on a 960px
+  column give ~150px thumbs — but the card lives in a constrained
+  inner padding band, and the user reports they still feel small. A
+  4-column desktop grid (3 rows of 4) at ~220px each is the editorial
+  sweet spot and matches Iconosquare-style post tiles.
 
 ## Changes
 
-### 1. Title system (shared)
+### 1. Unified, slightly larger card title (both cards)
 
-Keep the existing class string but normalize the two headers so they are
-identical (same padding-top, same `space-y-2`, same eyebrow style). No
-new component, no new tokens — pure class normalization. Both cards end
-up with:
+Replace the current title classes on both cards with:
 
-- header wrapper: `px-5 md:px-6 pt-5 md:pt-6 space-y-2`
-- title: existing `font-display text-[1.125rem] sm:text-[1.25rem] md:text-[1.5rem] font-semibold tracking-tight text-content-primary leading-tight`
-- subtitle: existing `text-[14px] text-content-secondary leading-relaxed`
+```
+font-display text-[1.25rem] sm:text-[1.5rem] md:text-[1.75rem]
+font-semibold tracking-tight text-content-primary leading-[1.15]
+```
 
-### 2. Frequency card — calendar compaction
+Same value on both cards → identical editorial presence. Subtitle
+unchanged.
 
-Inside `frequency-card.tsx` only:
+### 2. Frequency calendar — less dominant
 
-- Cap the calendar's horizontal footprint on desktop so cells stay small
-  and elegant. Wrap the calendar grid in `max-w-[440px]` (left-aligned)
-  so on ≥md the 7 columns produce ~55px cells max; mobile keeps full
-  width.
-- Change cell aspect from `aspect-[4/3]` to `aspect-square` for a calmer
-  geometry, and keep `gap-1`.
-- Tighten weekly-rhythm padding from `px-5 sm:py-5` to `px-4 py-4` and
-  reduce `BAR_MAX` from 36 to 28 so the rhythm chart is more compact
-  and proportional with the smaller calendar.
-- Normalize outer padding to `px-5 md:px-6` (drop the `sm:` step) to
-  match the format card.
-- Keep legend, eyebrow, insight callout and all i18n strings untouched.
+In `frequency-card.tsx`:
+- Tighten the calendar max width from `max-w-[440px]` to
+  `max-w-[360px]` so each cell sits at ~45px on desktop (down from
+  ~55px).
+- Reduce inter-cell gap from `gap-1` to `gap-[3px]` and the
+  weekday-header gap from `gap-1 md:gap-1.5` to `gap-[3px]`.
+- Drop the 2-count number overlay font from `text-[10px] font-bold` to
+  `text-[9px] font-semibold` so it stays readable but visually quieter.
+- Reduce the muted state contrast by switching cell background from
+  `rgb(241,245,249)` to `rgb(244,247,251)` (one tone calmer) — keeps
+  the green hierarchy but lowers overall density.
 
-### 3. Format card — thumbnail proportion
+### 3. Format thumbnails — more presence on desktop
 
-Inside `format-card.tsx` only:
+In `format-card.tsx`:
+- Grid: `grid-cols-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4`
+  (12 posts → 3×4 mobile, 4×3 from sm upward). At ~960px column this
+  gives ~220px thumbnails on desktop.
+- Keep `gap-2` and `aspect-square`.
+- Bump the bottom-right format dot from `size-2` to `size-2.5` and
+  fallback icon from `size-6` to `size-8` so they read at the new
+  thumb size.
 
-- Replace `grid-cols-6 sm:grid-cols-10 md:grid-cols-12` with
-  `grid-cols-3 sm:grid-cols-4 md:grid-cols-6` so 12 posts render as
-  3×4 mobile / 4×3 tablet / 6×2 desktop. Bumps desktop thumb size from
-  ~40px to ~90–110px — premium and legible without ballooning.
-- Increase gap from `gap-1.5` to `gap-2` for editorial breathing.
-- Bump the small format dot from `size-1.5` to `size-2` and the
-  fallback icon from `size-5` to `size-6` so they read at the larger
-  thumbnail size.
-- Switch the "12 posts analisados" eyebrow from local
-  `text-xs uppercase tracking-[0.04em]` to the shared `text-eyebrow-sm
-  text-content-tertiary` class used by the frequency card.
+### 4. Editorial system parity (already in place)
 
-### 4. Spacing harmony
-
-- Same outer padding (`px-5 md:px-6`) on both cards.
-- Same `pt-5 md:pt-6` on both headers.
-- Same `mb-5 sm:mb-6` on the insight callout (already aligned).
+Both cards keep the same outer padding (`px-5 md:px-6`), same header
+rhythm (`pt-5 md:pt-6 space-y-2`), same eyebrow class
+(`text-eyebrow-sm text-content-tertiary`), same insight callout margin.
+No additional changes needed.
 
 ## Files changed
 
 - `src/components/report-redesign/v2/overview/frequency-card.tsx`
 - `src/components/report-redesign/v2/overview/format-card.tsx`
 
-No other files touched. No new components, no new tokens, no i18n keys
-added or renamed.
-
 ## Validation
 
-1. `bunx tsc --noEmit` — expect exit 0.
-2. Browser QA on `/analyze/frederico.m.carvalho` at 360, 390, 768, 1440
-   viewports. Verify:
-   - both card titles render at the same scale and feel,
-   - calendar cells are clearly smaller on desktop and do not dominate,
-   - rhythm chart and calendar feel balanced,
-   - thumbnails on desktop are visibly larger (6×2) and legible on mobile (3×4),
-   - no horizontal overflow, no awkward title wrap.
+- `bunx tsc --noEmit` → expect exit 0.
+- Visual sanity: card titles now read as equal-weight editorial
+  headings; calendar occupies clearly less vertical/horizontal weight;
+  thumbnails on desktop are obviously larger and legible without
+  ballooning the card.
 
-## Out of scope (confirmed untouched)
+## Out of scope
 
-Data fetching, scoring (`computeFrequencia`, `getFormatVariationStatus`),
-copy logic, premium gating, payments, EuPago, onboarding, credits,
-Apify/OpenAI/DataForSEO, admin, routes, DB schema, i18n strings.
+Data, scoring, copy, gating, payments, EuPago, onboarding, credits,
+providers, admin, routes, schema, i18n keys.

@@ -480,7 +480,7 @@ function backFillToWindow(days: DayEntry[], windowDays: number): DayEntry[] {
  */
 function cellStyle(count: number): { bg: string; border: string } {
   if (count === 0)
-    return { bg: "rgb(241,245,249)", border: "1px solid rgba(148,163,184,0.35)" };
+    return { bg: "rgb(244,247,251)", border: "1px solid rgba(148,163,184,0.28)" };
   if (count === 1)
     return { bg: "rgba(29,158,117,0.40)", border: "1px solid rgba(29,158,117,0.55)" };
   if (count === 2)
@@ -490,7 +490,7 @@ function cellStyle(count: number): { bg: string; border: string } {
 
 /** Flat bg colour for legend swatches — matches cell fill. */
 function legendBg(count: number): string {
-  if (count === 0) return "rgb(241,245,249)";
+  if (count === 0) return "rgb(244,247,251)";
   if (count === 1) return "rgba(29,158,117,0.40)";
   if (count === 2) return "rgba(29,158,117,0.65)";
   return "rgba(29,158,117,0.90)";
@@ -593,7 +593,7 @@ export function FrequencyCard({
       {/* Header */}
       <div className="px-5 md:px-6 pt-5 md:pt-6 space-y-2">
         <div className="flex items-start gap-3">
-          <h3 className="font-display text-[1.125rem] sm:text-[1.25rem] md:text-[1.5rem] font-semibold tracking-tight text-content-primary leading-tight break-words">
+          <h3 className="font-display text-[1.25rem] sm:text-[1.5rem] md:text-[1.75rem] font-semibold tracking-tight text-content-primary leading-[1.15] break-words">
             {t("frequency.title")}{" "}
             {!isInsufficient ? (
             <span
@@ -643,7 +643,7 @@ export function FrequencyCard({
       {/* Calendar grid — always visible */}
       {weeks.length > 0 && (
         <div className="px-5 md:px-6 mt-5">
-          <div className="flex flex-col gap-0.5 min-w-0 max-w-[440px]">
+          <div className="flex flex-col gap-0.5 min-w-0 max-w-[360px]">
             <span className="text-eyebrow-sm text-content-tertiary">
               {t("frequency.calendar.eyebrow", { days: effectiveWindowDays })}
             </span>
@@ -657,9 +657,9 @@ export function FrequencyCard({
             </span>
           </div>
 
-          <div className="mt-2.5 max-w-[440px]">
+          <div className="mt-2.5 max-w-[360px]">
           {/* Weekday headers */}
-          <div className="grid grid-cols-7 gap-1 md:gap-1.5 mb-1 md:mb-1.5">
+          <div className="grid grid-cols-7 gap-[3px] mb-1">
             {weekdayShort.map((wd, i) => (
               <span
                 key={i}
@@ -674,7 +674,7 @@ export function FrequencyCard({
           <div
             role="img"
             aria-label={t("frequency.calendar.aria", { published: publishedCount, paused: pausedCount })}
-            className="grid gap-1"
+            className="grid gap-[3px]"
             style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
           >
             {weeks.flatMap((week, wi) =>
@@ -706,7 +706,7 @@ export function FrequencyCard({
                   >
                     {day.postCount > 1 && (
                       <span
-                        className="text-[10px] font-bold leading-none text-white select-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]"
+                        className="text-[9px] font-semibold leading-none text-white select-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]"
                         aria-hidden="true"
                       >
                         {day.postCount}
