@@ -290,7 +290,7 @@ export function FormatCard({
       {/* Header */}
       <div className="px-5 md:px-6 pt-5 md:pt-6 space-y-2">
         <div className="flex items-start gap-3">
-          <h3 className="font-display text-[1.125rem] sm:text-[1.25rem] md:text-[1.5rem] font-semibold tracking-tight text-content-primary leading-tight">
+          <h3 className="font-display text-[1.25rem] sm:text-[1.5rem] md:text-[1.75rem] font-semibold tracking-tight text-content-primary leading-[1.15]">
             {t("format.title")}{" "}
             <span
               className="font-semibold"
@@ -326,7 +326,7 @@ export function FormatCard({
           <div
             role="img"
             aria-label={ariaLabel}
-            className="grid gap-2 grid-cols-3 sm:grid-cols-4 md:grid-cols-6"
+            className="grid gap-2 grid-cols-3 sm:grid-cols-4 md:grid-cols-4"
           >
             {sortedPosts.map((post, idx) => {
               const fk = TYPE_TO_FORMAT_KEY[post.type] ?? "unknown";
@@ -349,12 +349,12 @@ export function FormatCard({
                     />
                   ) : (
                     <span className="absolute inset-0 flex items-center justify-center">
-                      <Icon className={`size-6 ${style.iconColor}`} aria-hidden="true" />
+                      <Icon className={`size-8 ${style.iconColor}`} aria-hidden="true" />
                     </span>
                   )}
                   {/* Small format dot indicator — bottom-right */}
                   <span
-                    className={`absolute bottom-1 right-1 size-2 rounded-full ring-1 ring-white ${style.dot}`}
+                    className={`absolute bottom-1.5 right-1.5 size-2.5 rounded-full ring-1 ring-white ${style.dot}`}
                     aria-hidden="true"
                   />
                 </span>
