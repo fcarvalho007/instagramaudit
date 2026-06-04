@@ -200,7 +200,7 @@ function WeeklyRhythm({ days, t }: { days: DayEntry[]; t: TFunction }) {
     (t("frequency.weekday_short", { returnObjects: true }) as string[]) ?? [];
 
   // Bar heights: peak full, others scaled, quiet bar collapsed to ~3px.
-  const BAR_MAX = 36;
+  const BAR_MAX = 28;
   const BAR_MIN = 6;
   const BAR_QUIET = 3;
 
@@ -225,8 +225,8 @@ function WeeklyRhythm({ days, t }: { days: DayEntry[]; t: TFunction }) {
   })();
 
   return (
-    <div className="px-4 sm:px-5 md:px-6 mt-4">
-      <div className="rounded-xl border border-border-default bg-surface-muted/60 px-4 py-4 sm:px-5 sm:py-5">
+    <div className="px-5 md:px-6 mt-4">
+      <div className="rounded-xl border border-border-default bg-surface-muted/60 px-4 py-4">
         <span className="text-eyebrow-sm text-content-tertiary block mb-4">
           {t("frequency.weekly_rhythm.title")}
         </span>
