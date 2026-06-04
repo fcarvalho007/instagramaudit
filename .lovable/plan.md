@@ -1,66 +1,114 @@
-## Goal
 
-Resolve the `EuPago checkout failed (404): null` blocker by fixing the Pay By Link endpoint path. No other changes to UI, pricing, schemas, webhooks, entitlements or providers.
+# Auditoria Final — AuditProfiles
 
-## Root cause
+Objetivo: validar, ponto a ponto, que a app está pronta para utilizadores reais. Sem alterar código. Output final = relatório com PASS / WARN / FAIL por área + lista priorizada de correções (se houver).
 
-`src/lib/payments/eupago.server.ts` calls:
+## Áreas a auditar
 
-```
-${EUPAGO_BASE_URL}/clientes/rest_api/paybylink/create
-```
+### 1. Infra e saúde
+- `cloud_status` (Lovable Cloud ACTIVE_HEALTHY)
+- `supabase--db_health` (conexões, WAL, deadlocks)
+- `supabase--linter` (RLS, policies, exposições)
+- Segredos presentes: EUPAGO_* , APIFY_*, DATAFORSEO_*, OPENAI_*, BREVO_*, RESEND_*, SESSION_SECRET, UNSUBSCRIBE_TOKEN_SECRET, ADMIN_ALLOWED_EMAILS
+- `/api/admin/sistema/health` + `/runtime-checks` (todos OK)
 
-EuPago's current REST API is versioned under `/api/v1.02/`. With `EUPAGO_BASE_URL=https://clientes.eupago.pt`, the working Pay By Link path is `/api/v1.02/paybylink/create`. The `/clientes/rest_api/...` shape is from a deprecated/different contract and returns 404 on the current account.
-
-Auth header (`Authorization: ApiKey <key>`) and JSON payload shape are consistent with the v1.02 contract and stay.
-
-## Changes
-
-### 1. `src/lib/payments/eupago.server.ts`
-
-- Treat `EUPAGO_BASE_URL` as host-only (e.g. `https://clientes.eupago.pt`), strip trailing slashes (already done).
-- Introduce a new optional env var **`EUPAGO_PAYBYLINK_PATH`**, default **`/api/v1.02/paybylink/create`**. Normalize so it always starts with `/` and has no trailing slash.
-- Build the request URL as `${baseUrl}${path}`.
-- Improve error handling on non-2xx / non-JSON responses:
-  - Read response as text first (fallback when body is empty/non-JSON, which is why the current 404 logs `null`).
-  - Throw an `Error` whose message contains: HTTP status, the **path only** (not full URL with query), and a sanitized snippet of the response body (max ~500 chars, with any `apiKey`/`Authorization`/`ApiKey ...` substrings redacted).
-  - Never include the API key in the thrown message or in `console.error`.
-- Add a single `console.error("[eupago] checkout failed", { status, path, bodySnippet })` before throwing, so server logs capture it without leaking secrets.
-- No change to payload shape, no change to response parsing for the success path, no change to `verifyWebhookSignature`.
-
-### 2. `.env` / secrets
-
-- `EUPAGO_BASE_URL` stays. Document it must be host-only: `https://clientes.eupago.pt` (or `https://sandbox.eupago.pt` for sandbox).
-- `EUPAGO_PAYBYLINK_PATH` is **optional**. Only set it if EuPago ever changes the versioned path again; default value is correct for v1.02.
-- No new secret added. `EUPAGO_API_KEY` and `EUPAGO_WEBHOOK_SECRET` are unchanged.
-
-### 3. Tests — `src/lib/payments/__tests__/eupago-checkout.test.ts` (new)
-
-Mock `globalThis.fetch` (vitest `vi.spyOn`) so no network is touched.
-
-- **URL composition**: with `EUPAGO_BASE_URL=https://clientes.eupago.pt` and no `EUPAGO_PAYBYLINK_PATH`, the helper calls `https://clientes.eupago.pt/api/v1.02/paybylink/create`.
-- **Path override**: setting `EUPAGO_PAYBYLINK_PATH=/api/v9/paybylink/create` is respected; trailing slash on base or leading slash missing in path is normalized.
-- **Auth header**: request includes `Authorization: ApiKey <key>` and `Content-Type: application/json`.
-- **404 safe error**: when fetch resolves with `{ ok:false, status:404, text: async () => "<html>Not Found</html>" }`, the call rejects with an Error whose message includes `404` and `/api/v1.02/paybylink/create`, but does **not** include the API key.
-- **Empty body 404**: when response body is empty, the message still includes the status and path (no `null` swallowing).
-- **No payment side-effects**: this is a pure unit test on `createEupagoCheckout` — assert it throws and that no DB / Supabase module is imported (the helper has no DB access by design; the test reinforces this by spying on `supabaseAdmin` not being touched — covered indirectly by the helper being pure HTTP).
-
-Existing `eupago-signature.test.ts` stays unchanged.
-
-### 4. Validation
-
+### 2. Build e tipos
 - `bunx tsc --noEmit`
-- `bunx vitest run src/lib/payments/__tests__/eupago-checkout.test.ts src/lib/payments/__tests__/eupago-signature.test.ts`
+- `bunx vitest run` (suite completa)
+- Verificar warnings de import / rotas fantasma
 
-## Files changed
+### 3. Rotas públicas (smoke em mobile 411×742 e desktop 1366×768)
+- `/` landing — hero, CTAs, footer, links legais
+- `/precos`, `/servicos`, `/design-system`
+- `/login`, `/signup`, `/reset-password` (forms + validação)
+- `/aviso-legal`, `/privacidade`, `/termos`, `/cookies`
+- `/sitemap.xml`, `/robots.txt`
+- `/report.example` (mockup intacto)
+- 404 (rota inexistente) renderiza notFoundComponent
 
-- `src/lib/payments/eupago.server.ts` — endpoint path config + safer error message
-- `src/lib/payments/__tests__/eupago-checkout.test.ts` — new test file
+### 4. Fluxo principal de análise
+- `/` → input handle → `/analyze/$username`
+- Cache hit vs fresh (provider_call_logs)
+- Estados: loading, erro, perfil privado, perfil inexistente
+- Benchmark, competitors, insights AI
 
-## Smoke test retriability
+### 5. Onboarding + Checkout + Pagamento
+- `/checkout/authority-diagnosis` — 4 steps, validação, upsell
+- `createEupagoCheckout` → 302 para `clientes.eupago.pt`
+- `lead_payments` row criada (pending)
+- Webhook `/api/public/eupago-webhook` (assinatura HMAC, idempotência) — verificar logs recentes
+- Tracking: 6 eventos `checkout_*` aceites pelo Zod enum (já corrigido)
+- Provider isolation: 0 calls Apify/OpenAI/DFS antes do pagamento
 
-After this fix, the focused checkout smoke test on `/checkout/authority-diagnosis` can be retried. If EuPago still returns 404 with the corrected `/api/v1.02/paybylink/create` path, the new error message will show the exact path + status + sanitized body, which pinpoints whether the remaining issue is auth-key scope, channel id, or base host (sandbox vs production) — without code changes.
+### 6. Pós-pagamento e entitlements
+- `lead_entitlements` criado no webhook paid
+- Email de confirmação (Brevo/Resend)
+- Acesso a `/app/reports/$id` desbloqueado
+- Auto-login token funcional
 
-## Out of scope (explicitly not touched)
+### 7. Área autenticada `/app/*`
+- `/app`, `/app/reports`, `/app/reports/$id`, `/app/account`, `/app/plan`
+- Sidebar, topbar, logout
+- RLS: utilizador só vê os próprios relatórios
 
-Checkout UI, pricing, product codes/amounts, `lead_payments` schema, `lead_entitlements`, webhook logic, onboarding, report logic, Apify/OpenAI/DataForSEO, admin, homepage, the pre-existing `checkout_*` tracking enum issue (separate task).
+### 8. Admin `/admin/*`
+- Gate por `ADMIN_ALLOWED_EMAILS`
+- `sistema` (health, secrets, caps, runtime-checks)
+- `visao-geral`, `receita`, `leads`, `beta-leads`, `beta-requests`, `clientes`, `perfis`, `relatorios`, `automacoes`, `apify-lab`, `email-lab`, `estudo-mercado`, `conhecimento`, `report-preview`
+- Kill-switches APIFY/DFS/OPENAI funcionais
+- Custos: `provider_call_logs` como fonte única (memory rule)
+
+### 9. Beta + Feedback
+- `/beta/request` → submissão → `/beta/submitted/$id`
+- `/feedback/$requestId` e inline feedback
+- `/unsubscribe` com token
+
+### 10. Email + PDF
+- `/api/send-report-email` (template, links unsubscribe)
+- `/api/generate-report-pdf` (PDFShift) + `/api/public/public-report-pdf`
+- Storage `report-pdfs` permissões
+
+### 11. Cron / hooks públicos
+- `sync-apify-costs`, `sync-dataforseo-costs`, `sync-openai-costs`, `cleanup-expired-report-snapshots` — verificar últimas execuções
+
+### 12. i18n + SEO
+- PT/EN bundles completos
+- `<head>` por rota (title, description, og:*, canonical)
+- Sitemap inclui rotas públicas
+
+### 13. Design system (mobile + desktop)
+- Tokens semânticos (sem `slate-*`, sem cores hardcoded)
+- Tipografia: Fraunces + Inter em público; JetBrains Mono só admin
+- Ocean Breeze no relatório light
+- Contraste, focus rings, touch targets ≥44px em mobile
+
+### 14. Segurança
+- `security--run_security_scan`
+- RLS em todas as tabelas com dados de utilizador
+- `user_roles` separado (não no profiles)
+- Webhooks com signature verification
+- Sem secrets no bundle cliente
+
+### 15. Performance
+- Console limpa (sem erros/warnings críticos)
+- Network: 200s, sem 4xx/5xx em rotas públicas
+- LCP da landing aceitável em mobile
+
+## Método
+
+1. Tooling read-only: `cloud_status`, `db_health`, `linter`, `security_scan`, `read_query`, `server-function-logs`, `tsc`, `vitest`.
+2. Browser: navegar rotas críticas em mobile (411×742) e desktop (1366×768); screenshots quando algo suspeito.
+3. Cross-check com runtime checks do `/admin/sistema`.
+4. Não tocar em dados live: não completar pagamento, não apagar nada, não disparar emails reais.
+
+## Output
+
+Relatório estruturado:
+- Tabela por área com PASS / WARN / FAIL + evidência (status, log, screenshot, query)
+- Lista priorizada P0 / P1 / P2 de issues encontrados
+- Veredicto final: **READY FOR PUBLIC LAUNCH** / **NEEDS FIX (Px)** / **BLOCKED**
+
+## Não inclui
+- Alterações de código (auditoria é read-only; correções ficam para build mode subsequente)
+- Pagamento real EuPago (já validado como READY FOR LIVE PAYMENT)
+- Edição de `/report.example`
