@@ -480,7 +480,7 @@ function backFillToWindow(days: DayEntry[], windowDays: number): DayEntry[] {
  */
 function cellStyle(count: number): { bg: string; border: string } {
   if (count === 0)
-    return { bg: "rgb(241,245,249)", border: "1px solid rgba(148,163,184,0.35)" };
+    return { bg: "rgb(244,247,251)", border: "1px solid rgba(148,163,184,0.28)" };
   if (count === 1)
     return { bg: "rgba(29,158,117,0.40)", border: "1px solid rgba(29,158,117,0.55)" };
   if (count === 2)
@@ -490,7 +490,7 @@ function cellStyle(count: number): { bg: string; border: string } {
 
 /** Flat bg colour for legend swatches — matches cell fill. */
 function legendBg(count: number): string {
-  if (count === 0) return "rgb(241,245,249)";
+  if (count === 0) return "rgb(244,247,251)";
   if (count === 1) return "rgba(29,158,117,0.40)";
   if (count === 2) return "rgba(29,158,117,0.65)";
   return "rgba(29,158,117,0.90)";
