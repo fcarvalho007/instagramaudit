@@ -1,100 +1,152 @@
 
-# Auditoria do lifecycle de email e plano de consolidação
+# Step 2 — `payment_confirmed` transactional email (kill-switch OFF by default)
 
-Sem alterações de código. Sem envio de emails reais. Sem mudanças em preços, EuPago, checkout, créditos, geração de relatórios ou schema (salvo prova explícita).
+Scope strictly limited to creating one new transactional email + safe fire-and-forget wire on the EuPago paid branch. Zero changes to prices, checkout, EuPago payload, entitlements, credits, report generation or schema.
 
-## 1. Ficheiros inspecionados
+## 1. Files to create / edit
 
-Templates e senders:
-- `src/lib/email/templates/{request-received,report-ready,feedback-request,personal-area-saved,welcome-beta,report-summary,commercial-followup,default-parts,index}.ts`
-- `src/lib/email/report-email-template.ts` (delivery transacional com signed URL — separado do registry)
-- `src/lib/email/{send-welcome-beta,send-report-summary,send-personal-area-saved}.server.ts`
-- `src/lib/email/{lead-magnet-sequence.server.ts,transactional-email.server.ts,template-overrides.server.ts,build-report-summary-data.server.ts,sender.ts,shared.ts,url.ts,unsubscribe-token.server.ts}`
-- `src/lib/admin/email-template-registry.ts`
-
-Triggers / call-sites:
-- `src/lib/unlock.server.ts` (chama `sendLeadMagnetSequence` no primeiro unlock)
-- `src/lib/beta.functions.ts` (dispara `request_received` no submit do beta form)
-- `src/routes/api/send-report-email.ts` (usa `report-email-template.ts`, signed URL)
-- `src/routes/api/admin/send-report-link.ts` (manual: `report_ready`)
-- `src/routes/api/admin/send-feedback-request.ts` (manual: `feedback_request`)
-- `src/routes/api/admin/send-commercial-followup.ts` (manual: `commercial_followup`)
-
-Admin UI:
-- `src/routes/admin.email-lab.tsx`, `src/components/admin/v2/email-lab/email-lab-page.tsx`
-- `src/routes/admin.automacoes.*`, `src/components/admin/v2/automacoes/*` (flow-page, automation-node, edge, stage-group, templates-tab, people-tab, metrics-tab, template-editor)
-- `src/routes/api/admin/email-templates*.ts` (preview + overrides)
-
-Pagamentos / eventos:
-- `src/routes/api/public/eupago-webhook.ts` (emite `payment_webhook_paid` / `payment_webhook_failed`; **não envia email**)
-- `src/lib/payments/entitlements.server.ts` (chamado pelo webhook; não envia email)
-
-## 2. Mapa atual
-
-| # | Template (key) | Trigger atual | Wired? | Observações |
-|---|---|---|---|---|
-| 1 | `request_received` | `beta.functions.ts` (submit beta form) | sim | Só dispara no fluxo beta antigo; não dispara no fluxo público de unlock. |
-| 2 | `report_ready` | `/api/admin/send-report-link` (manual) | sim manual | Há outro path: `/api/send-report-email` usa `report-email-template.ts` (signed URL), fora do registry. Duplicação semântica. |
-| 3 | `welcome_beta` | `lead-magnet-sequence` no 1.º unlock | sim auto | Sobrepõe-se ao `report_summary` no mesmo evento (envio duplo). |
-| 4 | `report_summary` | `lead-magnet-sequence` em cada unlock | sim auto | Não menciona créditos restantes nem insights reais; KPIs apenas. |
-| 5 | `personal_area_saved` | nenhum | **não wired** | Reservado para futuro signup de conta. |
-| 6 | `feedback_request` | `/api/admin/send-feedback-request` (manual) | sim manual | Sem trigger automático D+1 / após view. |
-| 7 | `commercial_followup` | `/api/admin/send-commercial-followup` (manual) | sim manual | Copy genérica ("mais secções"), não dá continuidade narrativa. |
-| – | `report-email-template.ts` | `/api/send-report-email` | sim | Fora do registry e do EmailLab; invisível para admin. |
-| – | **Payment confirmed** | — | **não existe** | EuPago webhook só persiste estado e emite product events; nunca dispara email. |
-
-Gaps adicionais:
-- `lead-magnet-sequence` envia welcome + summary no mesmo trigger → sobreposição.
-- Nenhum email expõe saldo de créditos (2 iniciais, 1 usado, 1 restante).
-- `report_summary` usa KPIs estáticos, não os "3 insights personalizados" pedidos.
-- `feedback_request` automático depende de evento seguro (preferir `report_viewed` se existir; fallback D+1 a partir de `report_summary_email_sent`).
-- Em `/admin/automacoes` há blocos que correspondem a templates não-wired ou a triggers manuais — confunde "automação" com "ação admin".
-
-## 3. Keep / Merge / Rename / Deprecate / Wire
-
-| Template | Decisão | Notas |
+| Action | File | Purpose |
 |---|---|---|
-| `request_received` | **Keep** | Continua válido para o fluxo beta. Avaliar se também faz sentido no fluxo público de unlock (fora de scope desta fase). |
-| `report_ready` (registry) + `report-email-template.ts` | **Merge** num único `report_ready` no registry | Manter signed URL como variante; expor no EmailLab. Sem mudar o endpoint que entrega o PDF. |
-| `welcome_beta` + `report_summary` | **Merge → novo `report_saved`** | Substitui ambos no 1.º unlock. Conteúdo: relatório guardado · 2 créditos iniciais / 1 usado / 1 restante · 3 insights personalizados · CTA "Analisar outro perfil" / "Abrir relatório". Em unlocks seguintes do mesmo lead, enviar versão curta sem "boas-vindas". |
-| `personal_area_saved` | **Deprecate (por ora)** | Manter ficheiro, marcar `wired: false` com nota clara. Reativar quando houver signup real. |
-| `feedback_request` | **Keep + auto-wire** | Disparar via job idempotente: D+1 de `report_summary_email_sent` **ou** após `report_viewed` (o que vier primeiro). Incluir 1 insight real do relatório. |
-| `commercial_followup` | **Rename + reescrever copy** | Nova narrativa: "o relatório gratuito levantou uma pergunta; o completo responde." Preserva preços e CTAs existentes. Continua manual nesta fase; auto-trigger numa fase futura. |
-| **NOVO** `payment_confirmed` | **Criar** | Disparado por `eupago-webhook` quando o pagamento transita para `paid`, idempotente por `payment_id`. Confirma: produto desbloqueado, valor (lido de `lead_payments.amount_cents` — sem alterar), método e referência se disponíveis, CTA para abrir o relatório desbloqueado. Não toca em preços, entitlements, nem em lógica de webhook (só adiciona um `void send...` no final do branch `paid`). |
+| Create | `src/lib/email/templates/payment-confirmed.ts` | Pure renderer (subject, preheader, headline, body_html, body_text). Same shape as other templates (`EmailTemplateParts` + `RenderedEmail`). |
+| Create | `src/lib/email/send-payment-confirmed.server.ts` | Server-only sender. Loads payment + lead inside, builds context, calls `sendTransactionalEmail`, never throws, returns structured result. Owns the kill-switch + idempotency check + `payment_confirmation_email_sent` / `payment_confirmation_email_failed` / `payment_confirmation_email_skipped` events. |
+| Edit | `src/lib/email/templates/index.ts` | Re-export the new template renderer + parts. |
+| Edit | `src/lib/email/transactional-email.server.ts` | Add `"payment-confirmed"` to `TxFlow` union and `FLOW_FAILURE_EVENT` map (`payment_confirmation_email_failed`). Strictly additive — no other changes. |
+| Edit | `src/lib/admin/email-template-registry.ts` | Register `payment_confirmed` entry (category `pagamento`, wired but gated by kill-switch, realistic preview data). Add `CATEGORY_LABELS["pagamento"]` and append `"pagamento"` to `CATEGORY_ORDER`. |
+| Edit | `src/routes/api/public/eupago-webhook.ts` | One additive line at the very end of the `normalized === "paid"` branch (after the existing `recordProductEvent("payment_webhook_paid")`), wrapped in `void` so failure cannot affect the 200 response or any prior step. No other edits. |
 
-## 4. Ordem de implementação (segura)
+Optional / conditional:
+- If a Vitest config is detected (`vitest.config.ts` is present), add `src/lib/email/__tests__/send-payment-confirmed.test.ts` with 3 unit tests (kill-switch OFF, idempotency dedup, missing optional fields). Tests will mock `supabaseAdmin`, `sendTransactionalEmail` and `recordProductEvent`. If mocking proves heavy in practice, fall back to manual checklist only — no test will be skipped silently.
 
-1. **Documentação + decisões** — registar este mapa em `docs/BETA_RUNBOOK.md` (secção Email lifecycle) e atualizar o registry com `wiredNote`/`wired` corrigidos. Sem mudar comportamento.
-2. **`payment_confirmed` (novo)** — template + sender + product event `payment_confirmation_email_sent`. Wire dentro do branch `paid` de `eupago-webhook.ts` (fire-and-forget, idempotente). Não toca em preço, entitlement, nem em status. Atrás de kill-switch `PAYMENT_CONFIRMATION_EMAIL_ENABLED` (default OFF até validar em staging).
-3. **Merge `welcome_beta` + `report_summary` → `report_saved`** — criar template novo + builder que lê `credit_balance` e top-3 insights do snapshot. Substituir chamada em `lead-magnet-sequence.server.ts`. Manter os templates antigos no disco e no registry com `deprecated: true` até confirmar 1 ciclo limpo; só depois remover.
-4. **Auto-trigger `feedback_request`** — adicionar job/cron idempotente (D+1 de `report_summary_email_sent` **ou** `report_viewed`). Continuar a permitir envio manual no admin.
-5. **Reescrita de copy do `commercial_followup`** — só copy + 1 variável extra opcional (insight de continuidade). Sem novos triggers automáticos.
-6. **`/admin/email-lab` e `/admin/automacoes`** — refletir o novo conjunto (5 estados claros), badges de "auto / manual / planeado", preview ligado ao novo `report_saved` e `payment_confirmed`. Apenas UI; sem lógica de negócio.
-7. **Limpeza final** — remover `welcome_beta` e `report_summary` do registry após 1 ciclo bem-sucedido em produção. `personal_area_saved` fica como reserva documentada.
+## 2. Template content (pt-PT)
 
-Cada passo é independente e reversível. Kill-switches por template (`*_EMAIL_ENABLED`) garantem rollback sem deploy.
+- Subject: `"Pagamento confirmado — relatório completo desbloqueado"`. If `handle` is known, optional variant `"Pagamento confirmado — @{handle}"` may be used; default stays the generic one to avoid awkward fallback.
+- Preheader: `"O relatório completo de @{handle} já está disponível na tua conta."` Fallback (no handle): `"O teu relatório completo já está disponível na tua conta."`
+- Headline (card): `"Pagamento confirmado."`
+- Body (in order):
+  1. Greeting via existing `greetingHtml(firstName)` (handles null gracefully → `"Olá,"`).
+  2. Intro paragraph: `"Obrigado{firstName ? ', '+firstName : ''}. O relatório completo de {handle ?? 'o teu relatório'} está desbloqueado e fica guardado na tua conta."`
+  3. **Receipt card** rendered as a 2-column `<table>` with rows for: Produto, Valor pago, Método de pagamento (only if available), Referência (only if available), Total. Rows for optional fields are emitted conditionally — no empty placeholder lines.
+  4. Primary CTA via `renderButtonHtml("Abrir relatório completo", reportUrl)` + `renderUrlFallbackHtml(reportUrl)`.
+  5. `pMuted("Pagamento único, sem subscrição nem renovação automática.")`
+  6. `pMuted("Qualquer questão sobre o pagamento ou o relatório, responde a este email.")`
+  7. `signatureHtml("Até já,")`.
+- Plain-text body mirrors the same structure (same conditional skipping).
+- No unsubscribe link (pure transactional). `wrapHtml` already renders the dark navy header band and footer in the project's existing style — reused as-is.
 
-## 5. Ficheiros a editar por passo
+### Data rules (no hardcoded prices)
 
-1. `docs/BETA_RUNBOOK.md`, `src/lib/admin/email-template-registry.ts`
-2. `src/lib/email/templates/payment-confirmed.ts` (novo), `src/lib/email/send-payment-confirmed.server.ts` (novo), `src/lib/email/templates/index.ts`, `src/lib/admin/email-template-registry.ts`, `src/routes/api/public/eupago-webhook.ts` (apenas um `void send...` no fim do branch `paid`)
-3. `src/lib/email/templates/report-saved.ts` (novo), `src/lib/email/send-report-saved.server.ts` (novo), `src/lib/email/build-report-saved-data.server.ts` (novo, lê créditos + insights), `src/lib/email/lead-magnet-sequence.server.ts` (substitui chamada), `src/lib/admin/email-template-registry.ts`
-4. `src/routes/api/public/hooks/feedback-request-dispatcher.ts` (novo, cron), `src/lib/email/dispatch-feedback-request.server.ts` (novo), `src/lib/admin/email-template-registry.ts`
-5. `src/lib/email/templates/commercial-followup.ts` (copy), `src/lib/admin/email-template-registry.ts`
-6. `src/components/admin/v2/email-lab/email-lab-page.tsx`, `src/components/admin/v2/automacoes/*` (flow, stage-group, templates-tab), `src/routes/api/admin/automation-flow.ts` (se necessário expor novos blocos)
-7. Remoções controladas em `src/lib/email/templates/{welcome-beta,report-summary}.ts` e respetivos senders, após validação.
+- `amountLabel` is built from `lead_payments.amount_cents` + `lead_payments.currency` using `Intl.NumberFormat("pt-PT", { style: "currency", currency })`. Never a hardcoded "9€" / "97€".
+- `productName` comes from `PUBLIC_PRODUCTS[product].namePt` (lookup only — read-only).
+- `paymentMethod`: read from `lead_payments.metadata.payment_method` if string and non-empty; otherwise the whole row is omitted.
+- `paymentReference`: prefer `lead_payments.provider_reference`; fallback `lead_payments.provider_payment_id`. If neither, row omitted.
+- `handle`: prefer `lead_payments.instagram_username`; fallback `null`. Used to build `reportUrl` via the existing `resolveReportUrl` helper.
+- `firstName`: read from `leads.first_name` (or `parseFullName(leads.name).first` if `first_name` is empty). Null is fine — greeting handles it.
+- `reportUrl`: built via existing `resolveReportUrl(handle, reportSnapshotId)`. If neither handle nor snapshot id is available, the email is **skipped** (recorded as `payment_confirmation_email_skipped` with `reason: "NO_REPORT_URL"`) to avoid sending a CTA-less email.
 
-Nada disto exige migração de schema. Se durante o passo 3 se confirmar que `credit_balance` ou "top-3 insights" não estão acessíveis a partir do snapshot atual, paramos e voltamos a pedir aprovação antes de qualquer DDL.
+## 3. Sender contract (`send-payment-confirmed.server.ts`)
 
-## 6. Garantias de não-regressão
+```ts
+export interface SendPaymentConfirmedArgs {
+  paymentId: string;       // lead_payments.id (required, idempotency key)
+  reportSnapshotId?: string | null; // optional override
+}
 
-- Preços de produto: intocáveis. Nenhuma alteração em `src/lib/payments/products.ts`, `pricing/*`, `lead_payments.amount_cents`, ou no payload EuPago.
-- Lógica de checkout e webhook EuPago: intocável. O passo 2 adiciona apenas um `void sendPaymentConfirmedEmail(...)` no fim do branch `paid`, com try/catch interno.
-- Créditos: intocáveis. O passo 3 apenas **lê** saldo para apresentar no email.
-- Geração de relatórios e snapshots: intocável.
-- Schema: nenhum `ALTER`/`CREATE` planeado.
-- Todos os novos envios atrás de kill-switch e idempotentes por `(lead_id|payment_id, template_key)`.
+export type SendPaymentConfirmedResult =
+  | { ok: true; provider: "brevo" | "resend"; messageId: string | null }
+  | { ok: false; reason: string };
 
-## 7. Aprovação
+export async function sendPaymentConfirmedEmail(
+  args: SendPaymentConfirmedArgs,
+): Promise<SendPaymentConfirmedResult>;
+```
 
-Confirmas que avanço pela ordem 1 → 7, um passo por prompt, começando pelo passo 1 (documentação + correção de metadata no registry, zero envios)? Se preferires começar antes pelo `payment_confirmed` (passo 2) ou pelo merge `report_saved` (passo 3), indica e ajusto.
+Internal flow (all inside one try/catch):
+
+1. **Kill-switch check.** If `process.env.PAYMENT_CONFIRMATION_EMAIL_ENABLED?.trim().toLowerCase() !== "true"` → record `payment_confirmation_email_skipped` with `reason: "DISABLED_BY_FLAG"` and `metadata.payment_id`; return `{ ok: false, reason: "DISABLED_BY_FLAG" }`. **Default OFF** (any missing/empty/non-"true" value disables sending).
+2. **Idempotency check.** Query `product_events` for an existing row with `event_type = 'payment_confirmation_email_sent'` AND `metadata @> { payment_id: <id> }`. If found → return `{ ok: false, reason: "ALREADY_SENT" }`. Same defensive `.contains("metadata", ...)` pattern used in `lead-magnet-sequence.server.ts::eventAlreadyEmitted`.
+3. **Load payment row.** `lead_payments` by `id`. If missing or `status !== "paid"`, record `payment_confirmation_email_skipped` (reason `PAYMENT_NOT_FOUND` or `PAYMENT_NOT_PAID`) and exit.
+4. **Load lead row.** `leads.email`, `first_name`, `name`. If no email → skip (`NO_EMAIL`).
+5. **Build report URL.** Via `resolveReportUrl(handle, reportSnapshotId)`. If empty → skip (`NO_REPORT_URL`).
+6. **Render template** via `renderPaymentConfirmed({...})` wrapped with `renderWithOverride("payment_confirmed", ...)` so the admin override system keeps working.
+7. **Send** via `sendTransactionalEmail({ flowType: "payment-confirmed", to: email, leadId, handle, metadata: { payment_id } })`.
+8. **On success** → `recordProductEvent("payment_confirmation_email_sent", { leadId, handle, metadata: { payment_id, product_code, amount_cents, currency, message_id, provider } })` and return ok.
+9. **On failure** → `sendTransactionalEmail` already records `payment_confirmation_email_failed` (because we added it to `FLOW_FAILURE_EVENT`). We additionally enrich with `metadata.payment_id` via the `metadata` field passed into the sender so dedupe + audit work.
+10. **Catch-all** logs to `console.error` and returns `{ ok: false, reason: "UNEXPECTED:..." }`. Never throws.
+
+## 4. Webhook wire (additive only)
+
+In `src/routes/api/public/eupago-webhook.ts`, inside the existing `if (normalized === "paid") { ... }` block, after `await recordProductEvent({ eventType: "payment_webhook_paid", ... })` and **before** `return new Response("ok", { status: 200 })`, add exactly:
+
+```ts
+// Fire-and-forget transactional confirmation email.
+// Sender owns its own try/catch, kill-switch (PAYMENT_CONFIRMATION_EMAIL_ENABLED)
+// and idempotency (product_events::payment_confirmation_email_sent dedup by payment_id).
+// Failure here must never affect payment state, entitlement or webhook response.
+void (async () => {
+  try {
+    const { sendPaymentConfirmedEmail } = await import(
+      "@/lib/email/send-payment-confirmed.server"
+    );
+    await sendPaymentConfirmedEmail({ paymentId: row.id });
+  } catch (err) {
+    console.error("[eupago-webhook] payment_confirmed dispatch error", err);
+  }
+})();
+```
+
+That is the only edit to the webhook file. Status transition, `updated_at`, `grantEntitlement`, coupon redemption and `payment_webhook_paid` event remain byte-identical.
+
+The webhook still re-runs on EuPago re-delivery, but the existing `if (row.status === "paid" && row.paid_at) return ok` short-circuits BEFORE this block, and the sender's own dedup is a second safety net.
+
+## 5. Kill-switch behaviour (exact)
+
+| `PAYMENT_CONFIRMATION_EMAIL_ENABLED` value | Behaviour |
+|---|---|
+| unset / empty / `"false"` / `"0"` / anything ≠ `"true"` (case-insensitive, trimmed) | **No send.** Skipped event recorded (`payment_confirmation_email_skipped`, reason `DISABLED_BY_FLAG`). |
+| `"true"` (case-insensitive, trimmed) | Send attempted; subject to the other guards (idempotency, missing data). |
+
+**Default: OFF.** No secret needs to be created. Brevo / Resend kill-switches still apply on top.
+
+## 6. Idempotency event (exact)
+
+- Sent event: `payment_confirmation_email_sent`
+- Failed event: `payment_confirmation_email_failed` (added to `FLOW_FAILURE_EVENT` map)
+- Skipped event: `payment_confirmation_email_skipped` (consistent with existing `lead_magnet_sequence_skipped` style)
+- Idempotency key: `metadata.payment_id` on `payment_confirmation_email_sent`. Dedup query: `event_type = 'payment_confirmation_email_sent' AND metadata @> { payment_id: <id> }`.
+
+## 7. Registry entry (preview)
+
+In `src/lib/admin/email-template-registry.ts`:
+
+- Extend `CATEGORY_LABELS` with `pagamento: "Pagamento"` and append `"pagamento"` to `CATEGORY_ORDER`.
+- Extend `EmailTemplateKey` and `TEMPLATE_VARIABLES` with `payment_confirmed: ["firstName", "instagramHandle", "productName", "amountLabel", "paymentMethod", "paymentReference", "reportUrl"]`.
+- Add entry:
+  - `key: "payment_confirmed"`, `category: "pagamento"`, `wired: true`,
+  - `wiredAt: "src/routes/api/public/eupago-webhook.ts (branch paid)"`,
+  - `wiredNote: "Disparado pelo webhook EuPago após pagamento confirmado. Atrás do kill-switch PAYMENT_CONFIRMATION_EMAIL_ENABLED (default OFF). Idempotente por payment_id."`,
+  - Preview sample: firstName "Frederico", handle "webhspt", productName "Relatório completo", amountLabel `"9,00\u00A0€"` (mocked string — does **not** flow back into pricing), paymentMethod "MB WAY", paymentReference "AP-2026-0142".
+
+`/admin/email-lab` already iterates `EMAIL_TEMPLATES` and uses the preview API (`/api/admin/email-templates/:key/preview`) — no changes needed there.
+
+## 8. Non-regression confirmations
+
+- Prices: `src/lib/payments/products.ts` and `products.server.ts` are **not touched**. The email reads `amount_cents` + `currency` from the existing paid row and formats client-side.
+- Checkout creation: untouched. No edits in `src/lib/payments/eupago.server.ts`, no edits in `src/routes/api/...` other than the additive `void` block in the webhook.
+- Entitlements: `grantEntitlement` is called before the new `void` block — order preserved, no changes.
+- Schema: no migration. `product_events.metadata` (jsonb) already accepts arbitrary keys.
+
+## 9. Manual validation checklist (post-merge, before flipping the flag ON)
+
+1. **Kill-switch OFF (default).** With `PAYMENT_CONFIRMATION_EMAIL_ENABLED` unset, simulate a paid webhook re-delivery in staging → `lead_payments.paid_at` unchanged, entitlement unchanged, `product_events` shows `payment_confirmation_email_skipped` with `reason: DISABLED_BY_FLAG`. No outgoing Brevo/Resend HTTP call.
+2. **Kill-switch ON.** Set the env to `"true"` in staging; replay a paid webhook → exactly one `payment_confirmation_email_sent` event with `metadata.payment_id = <row.id>`. Replay again → second insert short-circuits with `ALREADY_SENT` (no second send).
+3. **Missing optional fields.** Manually call the sender against a paid row with no `metadata.payment_method` and no `provider_reference`/`provider_payment_id` → rendered HTML omits those rows; no `undefined`/`null` placeholders in the inbox preview (inspect via `/admin/email-lab` preview override).
+4. **Webhook non-regression.** With the flag both OFF and ON, confirm the webhook still returns 200, `lead_payments.status = 'paid'`, exactly one `lead_entitlements` row, and `payment_webhook_paid` event is present (sender failure cannot break any of these).
+5. **Live payment test stays deferred.** This step does **not** unblock the deferred real 9€ test — that gate (`docs/BETA_RUNBOOK.md` checklist) remains in place.
+
+## 10. Risks & follow-up
+
+- **Idempotency race**: the dedup lookup is not transactional. If two webhook re-deliveries hit within the same hundred-millisecond window before the first insert lands, both could pass the check. Mitigated by EuPago's natural inter-delivery gap and by the existing `row.status === "paid"` short-circuit; if duplicates are observed in production logs, follow up with a partial unique index on `product_events (event_type, (metadata->>'payment_id'))` — schema-level change requiring a separate plan and approval.
+- **`payment_method` storage**: the current EuPago checkout flow does not consistently persist the chosen method into `lead_payments.metadata.payment_method`. Until that field is populated upstream, the row will simply be hidden in the email. No code change requested here; flagged for the future "EuPago metadata enrichment" pass.
+- **Snapshot URL freshness**: `resolveReportUrl(handle, null)` returns a handle-based URL that may show the current latest snapshot rather than the one paid for. Acceptable for now; future improvement is to persist the paid snapshot id on `lead_payments.metadata` and pass it into the sender.
+
+Ask for approval before switching to build mode.

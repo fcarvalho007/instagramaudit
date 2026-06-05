@@ -190,6 +190,26 @@ export const Route = createFileRoute("/api/public/eupago-webhook")({
             },
           });
 
+          // Fire-and-forget transactional confirmation email.
+          // The sender owns its own try/catch, the kill-switch
+          // (PAYMENT_CONFIRMATION_EMAIL_ENABLED, default OFF) and the
+          // idempotency check (product_events.payment_confirmation_email_sent
+          // deduped by payment_id). A failure here MUST NOT affect payment
+          // state, entitlement granting or the webhook response.
+          void (async () => {
+            try {
+              const { sendPaymentConfirmedEmail } = await import(
+                "@/lib/email/send-payment-confirmed.server"
+              );
+              await sendPaymentConfirmedEmail({ paymentId: row.id });
+            } catch (err) {
+              console.error(
+                "[eupago-webhook] payment_confirmed dispatch error",
+                err,
+              );
+            }
+          })();
+
           return new Response("ok", { status: 200 });
         }
 
