@@ -556,6 +556,16 @@ function DetailHeader({
             {CATEGORY_LABELS[template.category]}
           </span>
         </p>
+        {template.lifecycleRole ? (
+          <p className="mt-1.5 text-[12px] text-admin-text-secondary">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-admin-text-tertiary">
+              Papel no lifecycle ·{" "}
+            </span>
+            <span className="font-medium text-admin-text-primary">
+              {LIFECYCLE_ROLE_LABELS[template.lifecycleRole]}
+            </span>
+          </p>
+        ) : null}
         <div className="mt-2">
           <StatusBadgeRow badges={badges} />
         </div>
