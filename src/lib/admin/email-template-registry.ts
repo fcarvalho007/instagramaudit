@@ -332,6 +332,56 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     preheader:
       "O relatório completo de @frederico.m.carvalho já está disponível na tua conta.",
   },
+  {
+    key: "report_saved",
+    title: "Relatório guardado",
+    internalName: "report_saved",
+    category: "conta",
+    shortDescription:
+      "Confirma que o relatório foi guardado, mostra saldo de créditos e 3 insights.",
+    wired: true,
+    wiredAt: "src/lib/email/lead-magnet-sequence.server.ts (após unlock)",
+    wiredNote:
+      "Disparado uma vez por unlock via `lead-magnet-sequence`. SUBSTITUI o par anterior `welcome_beta` + `report_summary`. Idempotente por (lead_id, report_request_id) — dedup honra também os eventos legacy. Kill-switch: LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED.",
+    variables: [
+      { key: "firstName", value: SAMPLE.firstName },
+      { key: "instagramHandle", value: SAMPLE.instagramHandle },
+      { key: "reportUrl", value: SAMPLE.reportUrl },
+      { key: "analyzeAnotherUrl", value: SAMPLE.analyzeAnotherUrl },
+      { key: "followersLabel", value: SAMPLE.followersLabel },
+      { key: "dominantFormat", value: SAMPLE.dominantFormat },
+      { key: "engagementRate", value: SAMPLE.engagementRate },
+      { key: "benchmarkDelta", value: SAMPLE.benchmarkDelta },
+      { key: "topPostFormat", value: SAMPLE.topPostFormat },
+      { key: "topPostEngagement", value: SAMPLE.topPostEngagement },
+      { key: "totalFreeCredits", value: String(SAMPLE.totalFreeCredits) },
+      { key: "usedCredits", value: String(SAMPLE.usedCredits) },
+      { key: "remainingCredits", value: String(SAMPLE.remainingCredits) },
+    ],
+    render: () =>
+      renderReportSaved({
+        firstName: SAMPLE.firstName,
+        instagramHandle: SAMPLE.instagramHandle,
+        reportUrl: SAMPLE.reportUrl,
+        analyzeAnotherUrl: SAMPLE.analyzeAnotherUrl,
+        variant: "welcome",
+        credits: {
+          totalFree: SAMPLE.totalFreeCredits,
+          used: SAMPLE.usedCredits,
+          remaining: SAMPLE.remainingCredits,
+        },
+        insights: {
+          followersLabel: SAMPLE.followersLabel,
+          dominantFormat: SAMPLE.dominantFormat,
+          engagementRate: SAMPLE.engagementRate,
+          benchmarkDelta: SAMPLE.benchmarkDelta,
+          topPostFormat: SAMPLE.topPostFormat,
+          topPostEngagement: SAMPLE.topPostEngagement,
+        },
+      }),
+    preheader:
+      "Usaste 1 análise grátis. Ainda tens 1 crédito para comparar outro perfil.",
+  },
 ];
 
 export function getTemplateByKey(
