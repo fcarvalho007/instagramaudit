@@ -168,10 +168,10 @@ function KpiRow({ kpis }: { kpis: NonNullable<AutomationFlowResponse["kpis"]> })
 
   const tiles = [
     {
-      label: "Sistema operacional",
-      value: `${kpis.systemActive.activeCount} automações activas`,
-      headline: null as string | null,
-      hint: `de ${kpis.systemActive.totalCount} blocos`,
+      label: "Fluxos operacionais",
+      value: kpis.systemActive.activeCount,
+      headline: "automáticos",
+      hint: `${kpis.systemActive.manualCount} manuais · ${kpis.systemActive.killSwitchOffCount} kill-switch OFF · ${kpis.systemActive.legacyCount} legado`,
       tokenColor: "admin-pill-active-fg",
       tokenBg: "admin-pill-active-bg",
       icon: <CheckCircle2 size={18} className="text-[rgb(var(--admin-pill-active-fg))]" />,
