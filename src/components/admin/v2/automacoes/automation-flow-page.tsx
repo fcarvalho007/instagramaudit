@@ -24,7 +24,6 @@ import type {
   StageDef,
   LifecycleBadge,
 } from "@/lib/admin/automation-flow-types";
-import { LIFECYCLE_BADGE_LABELS } from "@/lib/admin/automation-flow-types";
 import { LifecycleBadgeRow } from "./automation-node";
 
 async function fetchAutomationFlow(): Promise<AutomationFlowResponse> {
