@@ -83,41 +83,6 @@ function CheckoutFlow() {
   return <CheckoutSteps />;
 }
 
-function MissingLeadSession() {
-  const navigate = useNavigate();
-  return (
-    <section className="space-y-6 text-center sm:text-left">
-      <header className="space-y-3">
-        <h1 className="font-fraunces text-2xl sm:text-3xl font-medium text-content-primary leading-tight">
-          Para reservar o diagnóstico, começa por criar a tua conta gratuita.
-        </h1>
-        <p className="text-sm text-content-secondary leading-relaxed">
-          Precisamos de uma sessão ativa para associar o diagnóstico ao teu
-          perfil. Demora menos de um minuto.
-        </p>
-      </header>
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-        <Button
-          type="button"
-          variant="primary"
-          onClick={() => navigate({ to: "/precos" }).catch(() => {})}
-          className="gap-2"
-        >
-          Voltar aos preços
-          <ArrowRight className="size-4" aria-hidden="true" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => navigate({ to: "/" }).catch(() => {})}
-        >
-          Analisar perfil
-        </Button>
-      </div>
-    </section>
-  );
-}
-
 function CheckoutSteps() {
   const search = Route.useSearch();
   const navigate = useNavigate();
