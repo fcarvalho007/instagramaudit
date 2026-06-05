@@ -42,6 +42,8 @@ export const SAMPLE = {
   totalFreeCredits: 2,
   usedCredits: 1,
   remainingCredits: 1,
+  engagementVerdictSample: "está acima da média no engagement",
+  gapAreaSample: "há margem nos comentários e na consistência dos formatos",
 } as const;
 
 export type EmailTemplateKey =
