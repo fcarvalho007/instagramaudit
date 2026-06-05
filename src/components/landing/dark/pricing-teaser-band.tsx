@@ -110,7 +110,7 @@ export function PricingTeaserBand() {
           <p className="dark-eyebrow mb-2.5">{t("dark.pricing.eyebrow")}</p>
           <h2
             id="dark-pricing-title"
-            className="font-display text-2xl sm:text-3xl font-medium leading-[1.15] mb-2"
+            className="font-display text-3xl sm:text-4xl font-medium leading-[1.15] mb-2"
             style={{ color: "rgb(var(--hero-text-primary))" }}
           >
             {t("dark.pricing.headline")}
