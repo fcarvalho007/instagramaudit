@@ -1,92 +1,38 @@
-## P0 blocker check — RESOLVED
+## Status: already implemented in the previous build turn
 
-`createEupagoCheckout` (src/lib/payments/eupago.functions.ts) already resolves `lead_id` server-side from the signed `lead_session` cookie via `getLeadFromCookie()`, verifies the lead row exists in `leads` (lines 130–157), and only then inserts into `lead_payments`. Any client-sent `lead_id` is accepted by the schema but ignored. Missing/stale sessions throw `safeCheckoutPrepareError()` without leaking the FK error.
+Every requirement in this request was shipped in the last build pass. Re-stating against the spec:
 
-Conclusion: no `lead_payments_lead_id_fkey` risk remains. Safe to proceed with the upsell.
+### Files already changed
+- `src/components/checkout/human-diagnosis-upsell.tsx` (new) — upgrade card with 97€ / 149€ riscado, 4 bullets, primary CTA "Sim, quero diagnóstico humano" + clearly visible secondary "Continuar só com o relatório de 9€".
+- `src/routes/checkout.report-full.tsx` — 4-step flow (Confirmar desbloqueio · Prioridade · Leitura humana? · Faturação e pagamento), `selectedProduct` state, `StepProgress total={4}`, summary + return path bound to selected product.
+- `src/components/checkout/order-summary.tsx` — already accepts `productCode`; now receives `selectedProduct` so it shows 9€ or 97€ correctly.
+- `src/lib/payments/eupago.functions.ts` — schema accepts optional `upsell { presented, accepted, source_product }`; writes `source_product`, `target_product`, `final_product`, `upsell_presented`, `upsell_accepted`, `upsell_from`, `upsell_to` into `lead_payments.metadata`; extends server-side `payment_checkout_created` event metadata with the same fields. Amount is still resolved server-side via `getServerProduct(selectedProduct)`.
 
-## Recommended upsell architecture
+### Final flow (matches spec)
+Step 1 Confirm unlock → Step 2 Prioridade (existing qualifier kept between unlock and upsell) → Step 3 Upsell → Step 4 Billing + Confirmar e pagar. EuPago is called only on the final CTA.
 
-Single decision step inside `/checkout/report-full`. No new route, no parallel checkout. The choice swaps the `product_code` sent to `createEupagoCheckout`; the server already authoritatively prices `authority_diagnosis_97` at 97€ via `getServerProduct` — the client never sets price.
+Note: the spec lists only 3 steps (unlock → upsell → billing). The current build keeps the existing "Prioridade" qualifier as step 2 (already approved in the previous design pass and used for `report_priority` metadata). If you want it removed to land on exactly 3 steps as written, say so and I'll drop it.
 
-`/checkout/authority-diagnosis` keeps its current 3-step shape (qualification → audit/workshop interest capture → billing). No amount change, no extra payment row.
+### Metadata stored (on `lead_payments.metadata`)
+`source_product` (= `report_full_9`), `target_product`, `final_product`, `upsell_presented`, `upsell_accepted`, `upsell_from`, `upsell_to`, plus existing `billing`, `qualification`, `report_priority`, `source_component`, `coupon_code`. `instagram_username` and `report_cache_key` live on dedicated columns.
 
-## Final flow — /checkout/report-full (4 steps)
+Naming delta vs spec: stored key is `source_product`, not `initial_product`. If you want the literal `initial_product` key as well, I'll add it as an alias.
 
-```text
-1. Confirmar desbloqueio   (ConfirmUnlockCard, unchanged)
-2. Prioridade              (ReportPriorityForm, unchanged)
-3. Leitura humana?         (NEW upsell decision step)
-4. Faturação e pagamento   (Billing + summary, summary reflects chosen product)
-```
+### Tracking events emitted
+`checkout_upsell_seen` (on step 3 view, once), `checkout_upsell_accepted`, `checkout_upsell_declined`, `checkout_payment_started`, `checkout_payment_failed`, plus server-side `payment_checkout_created`. All carry `source_product` / `final_product` / `upsell_accepted` where relevant.
 
-Step 3 content:
-- Title: "Queres uma leitura humana dos dados?"
-- Subtitle: "O relatório mostra os sinais. O diagnóstico humano ajuda a transformar esses sinais em 3 prioridades concretas."
-- Card "Adicionar Diagnóstico de Autoridade Digital" with: relatório completo incluído · 30 min com humano · 3 prioridades · orientação de conteúdo e posicionamento · total 97€ (riscado 149€).
-- Primary CTA: "Sim, quero diagnóstico humano" → sets local state `selectedProduct = 'authority_diagnosis_97'`, fires `checkout_upsell_accepted`, advances.
-- Secondary CTA (equally legible, ghost variant, not hidden): "Continuar só com o relatório de 9€" → keeps `report_full_9`, fires `checkout_upsell_declined`, advances.
-- On step view: fire `checkout_upsell_seen` once.
+### Validation
+`bunx tsc --noEmit` ran clean at the end of the previous build turn. No checkout/payment tests beyond the existing `src/lib/payments/__tests__/checkout-errors.test.ts`, which is unrelated.
 
-Step 4 binds to `selectedProduct`:
-- `OrderSummary` shows the chosen product (price, line items).
-- `return_path` becomes `/checkout/<route>?status=success` keyed off product.
-- `submitPayment` passes `product_code: selectedProduct` plus upsell metadata (see below).
+### Risks before smoke test
+- None blocking. The only design call worth confirming is the kept "Prioridade" step (4 total) vs the spec's 3-step shape.
+- Mobile QA at 360/390 wasn't re-run after the upsell step was added; visual sweep recommended during smoke test.
 
-No new visible step in `/checkout/authority-diagnosis`. Audit/workshop interest already flows through `UpsellInterest` + `upsell_interest` metadata; we keep it as-is.
+## Proposed action
 
-## Metadata plan (stored in `lead_payments.metadata`)
+Switch to build mode only if you want one of these tweaks:
+1. Drop the "Prioridade" step to match the literal 3-step spec.
+2. Add `initial_product` as an alias key in metadata.
+3. Re-run `bunx tsc --noEmit` and walk the preview at 360/390/768/1440 to confirm no overflow.
 
-Extend the JSON object the server already writes — no schema change. New keys (all optional):
-- `source_product` — original product the user entered checkout for (`report_full_9`).
-- `target_product` — product offered in the upsell (`authority_diagnosis_97`).
-- `final_product` — product actually checked out (mirrors `lead_payments.product`, useful when querying metadata-only).
-- `upsell_presented` — boolean.
-- `upsell_accepted` — boolean.
-- `upsell_from` / `upsell_to` — convenience strings, only set when accepted.
-- Existing fields preserved: `qualification`, `upsell_interest`, `report_priority`, `billing`, `coupon_code`, `source_component`, `instagram_username` (already on the row column), `report_cache_key` (already a column).
-
-Server change: extend `inputSchema` in `eupago.functions.ts` with an optional `upsell` object `{ presented: boolean, accepted: boolean, source_product: ProductCode }` and write the derived keys above into the metadata block. No DB migration.
-
-## Tracking plan (via `trackEvent` → `product_events`)
-
-New / standardised events emitted from `/checkout/report-full`:
-- `checkout_upsell_seen` — on step 3 view. `{ source_product, target_product }`.
-- `checkout_upsell_accepted` — on primary CTA. `{ source_product, target_product, final_product }`.
-- `checkout_upsell_declined` — on secondary CTA. `{ source_product, final_product }`.
-- `checkout_payment_started` — already emitted; extend metadata with `final_product`, `source_product`, `upsell_accepted`.
-- `checkout_payment_failed` — already emitted; same extension.
-- `payment_checkout_created` — already emitted server-side; extend server metadata with `source_product`, `upsell_accepted` (read from input).
-
-Common metadata keys on every event (when known): `source_product`, `target_product`, `final_product`, `source_component`, `instagram_username`, `report_cache_key`.
-
-`/checkout/authority-diagnosis` keeps emitting `checkout_upsell_interest` for audit/workshop selections — no change.
-
-## Admin visibility plan (no UI work this task — just guarantee the data exists)
-
-All questions answerable via existing `product_events` + `lead_payments`:
-- Upsell funnel: count `checkout_upsell_seen` vs `checkout_upsell_accepted` vs `checkout_upsell_declined` over time.
-- Revenue per product: `SUM(amount_cents)` from `lead_payments WHERE status='paid' GROUP BY product`. Both `report_full_9` and `authority_diagnosis_97` are already first-class.
-- Pending vs failed vs paid by product: `GROUP BY product, status` on `lead_payments`.
-- Upsell-attributable revenue: `lead_payments` where `metadata->>'upsell_accepted' = 'true'`.
-- Audit / workshop interest count: `product_events WHERE event_type='checkout_upsell_interest'`, optionally `metadata->>'audit'`/`'workshop'`.
-
-Document these queries inside the plan note for the next admin-dashboard task; no `/admin` UI changes here.
-
-## Files expected to change (build phase)
-
-- `src/routes/checkout.report-full.tsx` — add step 3 upsell, lift `selectedProduct` state, pass to summary + server call, bind step labels to 4 entries, emit new tracking events.
-- `src/components/checkout/order-summary.tsx` — accept `productCode` prop (already does) and render correctly for both products; small copy tweak for upsell-accepted state ("Relatório completo incluído").
-- `src/components/checkout/` — new `human-diagnosis-upsell.tsx` (presentational card with primary + secondary CTA, both visible).
-- `src/lib/payments/eupago.functions.ts` — extend `inputSchema` with optional `upsell` block; write `source_product` / `target_product` / `final_product` / `upsell_presented` / `upsell_accepted` / `upsell_from` / `upsell_to` into metadata; include same keys in server-side `payment_checkout_created` event metadata.
-
-Not touched: EuPago server module, webhook, prices, product codes, report generator, onboarding, credits, Apify/OpenAI/DataForSEO, DB schema, `/admin` UI, `/checkout/authority-diagnosis`.
-
-## Implementation phases
-
-1. Server schema + metadata writer (eupago.functions.ts) — additive, optional fields.
-2. Upsell card component + step 3 wiring in report-full route + tracking events.
-3. Order summary + return path bound to `selectedProduct`.
-4. Smoke test (manual): see upsell → decline → 9€ pending row with `upsell_accepted=false`; restart → accept → 97€ pending row with `upsell_accepted=true`, `source_product=report_full_9`. Confirm no Apify/OpenAI/DataForSEO calls and no entitlement before payment.
-5. `bunx tsc --noEmit`.
-
-Admin dashboard work is intentionally out of scope; the metadata + events above are the contract.
+Otherwise the upsell is already live — no further code changes needed and you can proceed straight to smoke test.
