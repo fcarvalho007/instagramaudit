@@ -104,9 +104,11 @@ describe("renderFeedbackRequest", () => {
 describe("renderCommercialFollowup", () => {
   it("uses spec subject and preheader", () => {
     const out = renderCommercialFollowup({ instagramHandle: "x" });
-    expect(out.subject).toBe("Próximos passos para o relatório completo");
+    expect(out.subject).toBe(
+      "O que o relatório gratuito ainda não mostra sobre @x",
+    );
     expect(out.html).toContain(
-      "Duas opções para desbloquear o relatório completo. Sem subscrição.",
+      "A comparação com concorrentes e a evolução temporal ficam no relatório completo.",
     );
   });
 
@@ -115,7 +117,7 @@ describe("renderCommercialFollowup", () => {
       instagramHandle: "x",
       checkoutUrl: "https://pay.example.com/abc",
     });
-    expect(out.html).toContain("Desbloquear");
+    expect(out.html).toContain("Desbloquear relatório completo");
     expect(out.html).toContain("https://pay.example.com/abc");
     expect(out.text).toContain("https://pay.example.com/abc");
   });
@@ -129,12 +131,35 @@ describe("renderCommercialFollowup", () => {
     expect(out.text).toContain("ola@auditprofiles.com");
   });
 
-  it("mentions the two pricing options and academic use", () => {
+  it("continues the report narrative without hardcoded prices", () => {
     const out = renderCommercialFollowup({ instagramHandle: "x" });
-    expect(out.text).toContain("7€");
-    expect(out.text).toContain("28€");
+    expect(out.text).not.toContain("7€");
+    expect(out.text).not.toContain("28€");
     expect(out.text).not.toContain("IVA");
-    expect(out.text).toContain("docentes");
+    expect(out.text).toContain("A pergunta seguinte é mais importante");
+    expect(out.text).toContain("Não é uma subscrição.");
+    expect(out.text).toContain("comparação com perfis semelhantes");
+  });
+
+  it("renders neutral first-reading line when no insights provided", () => {
+    const out = renderCommercialFollowup({ instagramHandle: "x" });
+    expect(out.text).toContain(
+      "o que está a funcionar bem e onde ainda há margem para crescer.",
+    );
+    expect(out.html).not.toContain("{{");
+  });
+
+  it("renders insight-driven first-reading line when insights provided", () => {
+    const out = renderCommercialFollowup({
+      instagramHandle: "x",
+      insights: {
+        engagementVerdict: "está acima da média no engagement",
+        gapArea: "há margem nos comentários",
+      },
+    });
+    expect(out.text).toContain(
+      "o perfil está acima da média no engagement, mas ainda há margem nos comentários.",
+    );
   });
 });
 
