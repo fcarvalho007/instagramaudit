@@ -27,8 +27,9 @@ Documento operacional. Para uso interno do operador durante a fase de beta priva
 |-----------------------|-------------------------------------------------------|-------|-------|
 | `request_received`    | `beta.functions.ts` (submit do beta form)             | auto  | Apenas no fluxo beta; não dispara no unlock público. |
 | `report_ready`        | `/api/admin/send-report-link` (admin manual)          | manual| Existe um 2.º path (`/api/send-report-email` com signed URL) fora do registry. |
-| `welcome_beta`        | `lead-magnet-sequence` no 1.º unlock                  | auto  | Sobrepõe-se ao `report_summary` no mesmo evento. Será fundido em `report_saved`. |
-| `report_summary`      | `lead-magnet-sequence` em cada unlock                 | auto  | Sem saldo de créditos nem insights reais. Será fundido em `report_saved`. |
+| `report_saved`        | `lead-magnet-sequence` em cada unlock                 | auto  | **Step 3 concluído.** Substitui `welcome_beta` + `report_summary`. Idempotente por `(lead_id, report_request_id)`; dedup honra eventos legacy. |
+| `welcome_beta`        | — (legacy)                                            | não   | **LEGACY** — renderer/sender mantidos para histórico de overrides; já não é chamado pelo orquestrador. |
+| `report_summary`      | — (legacy)                                            | não   | **LEGACY** — renderer/sender mantidos para histórico de overrides; já não é chamado pelo orquestrador. |
 | `personal_area_saved` | —                                                     | não   | Reservado para futuro signup de conta. |
 | `feedback_request`    | `/api/admin/send-feedback-request` (admin manual)     | manual| Sem auto-trigger D+1 / após view. |
 | `commercial_followup` | `/api/admin/send-commercial-followup` (admin manual)  | manual| Copy genérica; será reescrito sem alterar preços nem CTAs. |

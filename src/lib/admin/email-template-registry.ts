@@ -14,6 +14,7 @@ import {
   renderWelcomeBeta,
   renderReportSummary,
   renderPaymentConfirmed,
+  renderReportSaved,
   type RenderedEmail,
   type EmailTemplateParts,
 } from "@/lib/email/templates";
@@ -24,6 +25,7 @@ export const SAMPLE = {
   firstName: "Frederico",
   instagramHandle: "frederico.m.carvalho",
   reportUrl: "https://example.com/analyze/frederico.m.carvalho",
+  analyzeAnotherUrl: "https://example.com/",
   feedbackUrl: "https://example.com/feedback/example",
   appUrl: "https://example.com/app/reports",
   checkoutUrl: "https://example.com/checkout/abc123",
@@ -31,6 +33,15 @@ export const SAMPLE = {
   amountLabel: "9,00\u00A0\u20AC",
   paymentMethod: "MB WAY",
   paymentReference: "AP-2026-0142",
+  followersLabel: "10,2 mil",
+  dominantFormat: "carrosséis",
+  engagementRate: "4,2%",
+  benchmarkDelta: "+1,1 pp acima da média",
+  topPostFormat: "carrossel",
+  topPostEngagement: "0,15%",
+  totalFreeCredits: 2,
+  usedCredits: 1,
+  remainingCredits: 1,
 } as const;
 
 export type EmailTemplateKey =
@@ -41,7 +52,8 @@ export type EmailTemplateKey =
   | "welcome_beta"
   | "report_summary"
   | "commercial_followup"
-  | "payment_confirmed";
+  | "payment_confirmed"
+  | "report_saved";
 
 export type EmailTemplateCategory =
   | "operacional"
@@ -103,6 +115,12 @@ export const TEMPLATE_VARIABLES: Record<EmailTemplateKey, string[]> = {
     "paymentMethod",
     "paymentReference",
     "reportUrl",
+  ],
+  report_saved: [
+    "firstName",
+    "instagramHandle",
+    "reportUrl",
+    "analyzeAnotherUrl",
   ],
 };
 
@@ -203,11 +221,11 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     title: "Boas-vindas à beta",
     internalName: "welcome_beta",
     category: "conta",
-    shortDescription: "Bem-vindo à beta — o que vais encontrar.",
-    wired: true,
-    wiredAt: "src/lib/email/send-welcome-beta.server.ts (primeiro unlock)",
+    shortDescription: "LEGACY — substituído por report_saved.",
+    wired: false,
+    wiredAt: null,
     wiredNote:
-      "Enviado uma única vez no primeiro unlock do lead via `lead-magnet-sequence`. AUDITORIA: sobrepõe-se ao `report_summary` no mesmo evento — planeado para ser fundido no novo `report_saved` (ver docs/BETA_RUNBOOK.md §0.1).",
+      "LEGACY — substituído por `report_saved` no lead-magnet-sequence (Step 3). Renderer e sender mantidos em disco para histórico de overrides e auditoria.",
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
@@ -226,11 +244,11 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     title: "Resumo do relatório",
     internalName: "report_summary",
     category: "comercial",
-    shortDescription: "As 3 conclusões principais em 60 segundos.",
-    wired: true,
-    wiredAt: "src/lib/email/send-report-summary.server.ts (após unlock)",
+    shortDescription: "LEGACY — substituído por report_saved.",
+    wired: false,
+    wiredAt: null,
     wiredNote:
-      "Disparado em sequência após cada unlock via `lead-magnet-sequence`. AUDITORIA: não mostra saldo de créditos nem insights reais — planeado para ser fundido no novo `report_saved` (ver docs/BETA_RUNBOOK.md §0.1).",
+      "LEGACY — substituído por `report_saved` no lead-magnet-sequence (Step 3). Renderer mantido para histórico de overrides e auditoria; sender deixou de ser chamado.",
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
@@ -313,6 +331,56 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
       }),
     preheader:
       "O relatório completo de @frederico.m.carvalho já está disponível na tua conta.",
+  },
+  {
+    key: "report_saved",
+    title: "Relatório guardado",
+    internalName: "report_saved",
+    category: "conta",
+    shortDescription:
+      "Confirma que o relatório foi guardado, mostra saldo de créditos e 3 insights.",
+    wired: true,
+    wiredAt: "src/lib/email/lead-magnet-sequence.server.ts (após unlock)",
+    wiredNote:
+      "Disparado uma vez por unlock via `lead-magnet-sequence`. SUBSTITUI o par anterior `welcome_beta` + `report_summary`. Idempotente por (lead_id, report_request_id) — dedup honra também os eventos legacy. Kill-switch: LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED.",
+    variables: [
+      { key: "firstName", value: SAMPLE.firstName },
+      { key: "instagramHandle", value: SAMPLE.instagramHandle },
+      { key: "reportUrl", value: SAMPLE.reportUrl },
+      { key: "analyzeAnotherUrl", value: SAMPLE.analyzeAnotherUrl },
+      { key: "followersLabel", value: SAMPLE.followersLabel },
+      { key: "dominantFormat", value: SAMPLE.dominantFormat },
+      { key: "engagementRate", value: SAMPLE.engagementRate },
+      { key: "benchmarkDelta", value: SAMPLE.benchmarkDelta },
+      { key: "topPostFormat", value: SAMPLE.topPostFormat },
+      { key: "topPostEngagement", value: SAMPLE.topPostEngagement },
+      { key: "totalFreeCredits", value: String(SAMPLE.totalFreeCredits) },
+      { key: "usedCredits", value: String(SAMPLE.usedCredits) },
+      { key: "remainingCredits", value: String(SAMPLE.remainingCredits) },
+    ],
+    render: () =>
+      renderReportSaved({
+        firstName: SAMPLE.firstName,
+        instagramHandle: SAMPLE.instagramHandle,
+        reportUrl: SAMPLE.reportUrl,
+        analyzeAnotherUrl: SAMPLE.analyzeAnotherUrl,
+        variant: "welcome",
+        credits: {
+          totalFree: SAMPLE.totalFreeCredits,
+          used: SAMPLE.usedCredits,
+          remaining: SAMPLE.remainingCredits,
+        },
+        insights: {
+          followersLabel: SAMPLE.followersLabel,
+          dominantFormat: SAMPLE.dominantFormat,
+          engagementRate: SAMPLE.engagementRate,
+          benchmarkDelta: SAMPLE.benchmarkDelta,
+          topPostFormat: SAMPLE.topPostFormat,
+          topPostEngagement: SAMPLE.topPostEngagement,
+        },
+      }),
+    preheader:
+      "Usaste 1 análise grátis. Ainda tens 1 crédito para comparar outro perfil.",
   },
 ];
 

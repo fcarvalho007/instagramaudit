@@ -15,6 +15,7 @@ import { getWelcomeBetaParts } from "./welcome-beta";
 import { getReportSummaryParts } from "./report-summary";
 import { getCommercialFollowupParts } from "./commercial-followup";
 import { getPaymentConfirmedParts } from "./payment-confirmed";
+import { getReportSavedParts } from "./report-saved";
 
 export type EmailTemplateKey =
   | "request_received"
@@ -24,7 +25,8 @@ export type EmailTemplateKey =
   | "welcome_beta"
   | "report_summary"
   | "commercial_followup"
-  | "payment_confirmed";
+  | "payment_confirmed"
+  | "report_saved";
 
 /**
  * Placeholder values used to render the editor "starting point" when no
@@ -43,6 +45,7 @@ export const PLACEHOLDER_VARS = {
   amountLabel: "{{amountLabel}}",
   paymentMethod: "{{paymentMethod}}",
   paymentReference: "{{paymentReference}}",
+  analyzeAnotherUrl: "{{analyzeAnotherUrl}}",
 } as const;
 
 /**
@@ -63,6 +66,23 @@ const REPORT_SUMMARY_SAMPLE = {
     engagementPct: 7.85,
     thumbnailUrl: null,
     permalink: null,
+  },
+};
+
+/**
+ * `report_saved` mistura blocos opcionais (créditos, insights) que não
+ * cabem em placeholders `{{var}}`. Seed o editor com dados de exemplo
+ * realistas — overrides em DB continuam a ser autoritativos.
+ */
+const REPORT_SAVED_SAMPLE = {
+  credits: { totalFree: 2, used: 1, remaining: 1 },
+  insights: {
+    followersLabel: "10,2 mil",
+    dominantFormat: "carrosséis",
+    engagementRate: "4,2%",
+    benchmarkDelta: "+1,1 pp acima da média",
+    topPostFormat: "carrossel",
+    topPostEngagement: "0,15%",
   },
 };
 
@@ -126,6 +146,16 @@ export function getTemplateDefaultParts(
         paymentMethod: v.paymentMethod,
         paymentReference: v.paymentReference,
         reportUrl: v.reportUrl,
+      });
+    case "report_saved":
+      return getReportSavedParts({
+        firstName: v.firstName,
+        instagramHandle: v.instagramHandle,
+        reportUrl: v.reportUrl,
+        analyzeAnotherUrl: v.analyzeAnotherUrl,
+        variant: "welcome",
+        credits: REPORT_SAVED_SAMPLE.credits,
+        insights: REPORT_SAVED_SAMPLE.insights,
       });
   }
 }

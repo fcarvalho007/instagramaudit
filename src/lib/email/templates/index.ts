@@ -51,6 +51,13 @@ export {
   getPaymentConfirmedParts,
   type PaymentConfirmedInput,
 } from "./payment-confirmed";
+export {
+  renderReportSaved,
+  getReportSavedParts,
+  type ReportSavedInput,
+  type ReportSavedCredits,
+  type ReportSavedInsights,
+} from "./report-saved";
 
 export {
   getTemplateDefaultParts,
