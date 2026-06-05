@@ -631,6 +631,7 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
             failuresTotal: d.failures,
             status,
             lifecycleBadges: d.lifecycleBadges,
+            note: d.note ?? null,
           };
         });
 
