@@ -22,16 +22,18 @@ export function UpsellInterest({ value, onChange }: Props) {
       <InterestCard
         icon={<Briefcase className="size-5" aria-hidden="true" />}
         title="Auditoria Digital completa"
-        priceHint="Serviço sob proposta"
         description="Website, Google, concorrência, conteúdo, reputação, email e redes sociais."
+        microcopy="Serviço sob proposta, com planos desde 499€ + IVA."
+        checkboxLabel="Tenho interesse numa auditoria"
         checked={value.audit}
         onToggle={(v) => onChange({ ...value, audit: v })}
       />
       <InterestCard
         icon={<GraduationCap className="size-5" aria-hidden="true" />}
         title="Workshop para equipa"
-        priceHint="Sob proposta"
         description="Sessão prática para transformar dados em plano editorial, decisões e processos."
+        microcopy="Sob proposta, conforme objectivos e duração."
+        checkboxLabel="Tenho interesse num workshop"
         checked={value.workshop}
         onToggle={(v) => onChange({ ...value, workshop: v })}
       />
@@ -42,15 +44,17 @@ export function UpsellInterest({ value, onChange }: Props) {
 function InterestCard({
   icon,
   title,
-  priceHint,
   description,
+  microcopy,
+  checkboxLabel,
   checked,
   onToggle,
 }: {
   icon: React.ReactNode;
   title: string;
-  priceHint: string;
   description: string;
+  microcopy: string;
+  checkboxLabel: string;
   checked: boolean;
   onToggle: (v: boolean) => void;
 }) {
@@ -67,16 +71,14 @@ function InterestCard({
         {icon}
       </span>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-semibold text-content-primary">
-            {title}
-          </h3>
-          <span className="text-xs text-content-tertiary tabular-nums shrink-0">
-            {priceHint}
-          </span>
-        </div>
+        <h3 className="text-sm font-semibold text-content-primary">
+          {title}
+        </h3>
         <p className="mt-1 text-xs text-content-secondary leading-relaxed">
           {description}
+        </p>
+        <p className="mt-1 text-xs text-content-tertiary leading-relaxed">
+          {microcopy}
         </p>
         <div className="mt-2 flex items-center gap-2">
           <input
@@ -86,7 +88,7 @@ function InterestCard({
             className="size-4 accent-accent-primary"
           />
           <span className="text-xs text-content-secondary">
-            Tenho interesse, contactem-me
+            {checkboxLabel}
           </span>
         </div>
       </div>
