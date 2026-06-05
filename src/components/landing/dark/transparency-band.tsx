@@ -16,7 +16,7 @@ export function TransparencyBand() {
   return (
     <section
       aria-labelledby="dark-transparency-title"
-      className="dark-hairline border-b px-6 py-10 sm:px-10 sm:py-12"
+      className="dark-hairline border-b px-6 py-8 sm:px-10 sm:py-10"
     >
       <Reveal>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-start">

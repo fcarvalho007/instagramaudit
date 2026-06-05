@@ -24,7 +24,7 @@ export function ManualVsToolBand() {
   return (
     <section
       aria-labelledby="dark-manual-title"
-      className="dark-hairline border-b px-6 py-10 sm:px-10 sm:py-12"
+      className="dark-hairline border-b px-6 py-8 sm:px-10 sm:py-10"
     >
       <Reveal>
         <p className="dark-eyebrow mb-2.5">
