@@ -118,7 +118,6 @@ function Header({ variant = "light" }: HeaderProps = {}) {
             <LanguageSwitcher
               variant="compact"
               className={cn(
-                "hidden sm:inline-flex",
                 isDark && "text-white/80 hover:text-white",
               )}
             />

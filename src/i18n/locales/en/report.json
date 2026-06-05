@@ -275,7 +275,13 @@
         "window": "Window: {{days}} days"
       },
       "disclaimer": "Comparative reading — not an official Instagram metric."
-    }
+    },
+    "fallback_cadence_qualifier": {
+      "window_30d": "Reading based on the last 30 days.",
+      "window_90d": "Reading based on the last 90 days.",
+      "sample_span": "Reading based on the recent sample."
+    },
+    "fallback_hashtags_absent": "No recurring hashtags in the sample."
   },
   "frequency": {
     "title": "Posting frequency",
@@ -592,7 +598,9 @@
       "body": "Add your name and email and answer 3 quick questions to save the full overview.",
       "cta": "Save overview",
       "cta_aria": "Save full overview"
-    }
+    },
+    "eyebrow_single": "Profile analysis",
+    "eyebrow_multi": "Comparing {{count}} profiles"
   },
   "shell": {
     "search_intro": "Instagram shows how the current audience reacts. Off-platform demand helps assess whether the same topics also spark search interest. Current values are Google Trends relative indices, not absolute search volume.",
