@@ -644,6 +644,23 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
         const activeFlows = flows.filter(
           (f) => f.status === "active" || f.status === "blocked",
         ).length;
+        // Breakdown that explicitly excludes legacy and kill-switch-off
+        // from the "operational" headline, so the KPI doesn't lie.
+        const legacyCount = flows.filter((f) => f.stage === "99_legado").length;
+        const killSwitchOffCount = flows.filter((f) =>
+          (f.lifecycleBadges ?? []).includes("kill_switch_off"),
+        ).length;
+        const manualCount = flows.filter(
+          (f) =>
+            f.stage !== "99_legado" &&
+            (f.lifecycleBadges ?? []).includes("manual"),
+        ).length;
+        const operationalActiveCount = flows.filter(
+          (f) =>
+            f.status === "active" &&
+            f.stage !== "99_legado" &&
+            !(f.lifecycleBadges ?? []).includes("kill_switch_off"),
+        ).length;
         // Leads que aguardam acção do admin = união (não soma) das fases
         // activas do lifecycle. Somar `eligibleCount` por flow duplicava
         // contagens entre flows que partilham as mesmas fases.
@@ -668,7 +685,13 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
               ) / 10
             : null;
         const kpis: AutomationKpis = {
-          systemActive: { activeCount: activeFlows, totalCount: flows.length },
+          systemActive: {
+            activeCount: operationalActiveCount,
+            manualCount,
+            killSwitchOffCount,
+            legacyCount,
+            totalCount: flows.length,
+          },
           sent: { last30d: sentLast30d, deltaVsYesterday: sentToday - sentYest },
           waiting: { eligibleTotal, nextEtaMinutes: null },
           failures: { last30d: failures30dCount, deliverabilityPct },
