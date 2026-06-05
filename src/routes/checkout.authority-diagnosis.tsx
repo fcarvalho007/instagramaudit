@@ -78,7 +78,12 @@ export const Route = createFileRoute("/checkout/authority-diagnosis")({
 function CheckoutFlow() {
   const { data: leadStatus } = useSuspenseQuery(leadSessionQueryOptions);
   if (!leadStatus.hasLead) {
-    return <MissingLeadSession />;
+    return (
+      <MissingLeadSession
+        title="Para reservar o diagnóstico, começa por criar a tua conta gratuita."
+        description="Precisamos de uma sessão ativa para associar o diagnóstico ao teu perfil. Demora menos de um minuto."
+      />
+    );
   }
   return <CheckoutSteps />;
 }
