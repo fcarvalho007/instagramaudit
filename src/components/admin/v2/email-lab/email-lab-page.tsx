@@ -42,6 +42,7 @@ import {
   LIFECYCLE_ORDER,
   LIFECYCLE_LABELS,
   STATUS_BADGE_LABELS,
+  LIFECYCLE_ROLE_LABELS,
   type EmailTemplateKey as TemplateKey,
   type EmailLifecycleStage,
   type EmailStatusBadge,
@@ -454,17 +455,21 @@ function TemplateCard({
     : orphan
       ? `1px dashed rgb(var(--admin-warning-500) / 0.6)`
       : legacy
-        ? `1px dashed rgb(var(--admin-text-tertiary) / 0.4)`
+        ? `1px solid rgb(var(--admin-text-tertiary) / 0.25)`
         : `1px solid rgb(var(--admin-border-default))`;
   const background = active
     ? "rgb(var(--admin-leads-500) / 0.06)"
-    : "rgb(var(--admin-surface-base))";
+    : legacy
+      ? "rgb(var(--admin-surface-muted))"
+      : "rgb(var(--admin-surface-base))";
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="rounded-xl px-3 py-3 text-left transition-colors"
+      className={`rounded-xl px-3 py-3 text-left transition-colors ${
+        legacy && !active ? "opacity-70" : ""
+      }`}
       style={{ border: borderStyle, background }}
     >
       <div className="flex items-start gap-2.5">
@@ -555,6 +560,16 @@ function DetailHeader({
             {CATEGORY_LABELS[template.category]}
           </span>
         </p>
+        {template.lifecycleRole ? (
+          <p className="mt-1.5 text-[12px] text-admin-text-secondary">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-admin-text-tertiary">
+              Papel no lifecycle ·{" "}
+            </span>
+            <span className="font-medium text-admin-text-primary">
+              {LIFECYCLE_ROLE_LABELS[template.lifecycleRole]}
+            </span>
+          </p>
+        ) : null}
         <div className="mt-2">
           <StatusBadgeRow badges={badges} />
         </div>
@@ -1171,13 +1186,45 @@ function StatusBadgeRow({
   badges: EmailStatusBadge[];
   max?: number;
 }) {
+  // Group badges into three logical clusters for clearer hierarchy:
+  //   Status (operational) · Mode (manual/transaccional) · Risco (kill-switch/legado/sem trigger)
+  const STATUS_SET: EmailStatusBadge[] = ["ligado", "desactivado", "planeado"];
+  const MODE_SET: EmailStatusBadge[] = ["manual", "transaccional"];
+  const RISK_SET: EmailStatusBadge[] = ["kill_switch_off", "legado", "sem_trigger"];
+  const pick = (set: EmailStatusBadge[]) =>
+    badges.filter((b) => set.includes(b));
+  const groups = [pick(STATUS_SET), pick(MODE_SET), pick(RISK_SET)].filter(
+    (g) => g.length > 0,
+  );
+
   const limit = max ?? badges.length;
-  const visible = badges.slice(0, limit);
-  const overflow = badges.length - visible.length;
+  let remaining = limit;
+  const renderedGroups: EmailStatusBadge[][] = [];
+  for (const g of groups) {
+    if (remaining <= 0) break;
+    const slice = g.slice(0, remaining);
+    renderedGroups.push(slice);
+    remaining -= slice.length;
+  }
+  const renderedCount = renderedGroups.reduce((a, g) => a + g.length, 0);
+  const overflow = badges.length - renderedCount;
+
   return (
     <div className="flex flex-wrap items-center gap-1">
-      {visible.map((b) => (
-        <StatusBadge key={b} badge={b} />
+      {renderedGroups.map((g, i) => (
+        <span key={i} className="flex flex-wrap items-center gap-1">
+          {i > 0 ? (
+            <span
+              aria-hidden="true"
+              className="mx-0.5 text-[10px] text-admin-text-tertiary/70"
+            >
+              ·
+            </span>
+          ) : null}
+          {g.map((b) => (
+            <StatusBadge key={b} badge={b} />
+          ))}
+        </span>
       ))}
       {overflow > 0 ? (
         <span className="text-[9px] font-semibold text-admin-text-tertiary">

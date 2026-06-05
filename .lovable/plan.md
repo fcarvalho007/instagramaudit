@@ -1,255 +1,189 @@
-# Step 6B — `/admin/automacoes` lifecycle map redesign
+# Step 7 — UI/UX & metadata consistency pass for `/admin/email-lab` and `/admin/automacoes`
 
-Goal: reshape the automations cockpit so every block maps cleanly onto the consolidated email lifecycle (00 Onboarding → 01 Captação → 02 Entrega → 03 Retenção → 04 Conversão → 05 Pagamento → Legado). Pure metadata/UI work — no triggers, prices, payments, credits, schema or sends are touched.
+Pure admin UI, copy, badges, KPI metrics and visual hierarchy. No edits to senders, routes, EuPago, prices, credits, entitlements, report generation, schema, kill-switches or trigger wiring.
 
-## Files changed
+---
 
-1. **`src/lib/admin/automation-flow-types.ts`** — extend `FlowStage`, `FlowKey`, `STAGE_DEFS`, `FLOW_EVENTS`; add `LifecycleBadge` + `lifecycleBadges?: LifecycleBadge[]` on `AutomationFlow`; add optional `description?` on `StageDef`.
-2. **`src/routes/api/admin/automation-flow.ts`** — declare two new flows (`report_saved`, `payment_confirmed`), re-stage existing flows, populate `lifecycleBadges`, point legacy flows at the new `99_legado` stage. No DB writes, no new tables, no schema.
-3. **`src/components/admin/v2/automacoes/automation-flow-page.tsx`** — KPI label wording (Sistema operacional / Enviados 30d / A aguardar / Falhas 30d); add a compact legend; thread stage `description` into `StageGroup`; update `computeStageMeta` for the new stages.
-4. **`src/components/admin/v2/automacoes/stage-group.tsx`** — optional `description` line under the title.
-5. **`src/components/admin/v2/automacoes/automation-node.tsx`** — render the optional `lifecycleBadges` row next to the existing status pill (additive, non-breaking).
-6. **`src/styles/admin-tokens.css`** — add `--admin-stage-retencao`, `--admin-stage-pagamento`, `--admin-stage-legado` (and `*-bg` pairs) to keep cores tokenised.
+## A. `/admin/email-lab` — `src/lib/admin/email-template-registry.ts`
 
-Not changed:
-- `src/lib/admin/email-template-registry.ts` (already carries the metadata after Step 6A).
-- Any sender, webhook, EuPago module, pricing, credit ledger, report generation, RPC, migration.
-- `template-editor.tsx`, `metrics-tab.tsx`, `people-tab.tsx` — out of scope.
+Metadata-only edits to existing entries. No new keys, no removed keys, no render changes.
 
-## 1) Types — `automation-flow-types.ts`
+1. `report_saved`
+   - `title` → "Relatório guardado" (already)
+   - `shortDescription` → **"Email principal automático após unlock. Substitui boas-vindas + resumo."**
+   - `statusBadges` → `["ligado", "transaccional"]` + add a new `"main_lifecycle"` semantic (see §A.3 — keep current badges array, the lifecycle role is rendered separately).
 
+2. `report_ready`
+   - `title` → **"Relatório pronto — envio manual / signed URL"**
+   - `shortDescription` → **"Variante manual ou legacy-compatible. Não é o email principal do novo lifecycle."**
+   - `statusBadges` unchanged: `["ligado", "manual", "transaccional"]`
+
+3. `welcome_beta`
+   - `title` → **"Boas-vindas à beta — legado"**
+
+4. `report_summary`
+   - `title` → **"Resumo do relatório — legado"**
+
+5. `personal_area_saved`
+   - `title` → **"Área pessoal guardada — planeado"**
+   - `statusBadges` → `["planeado", "sem_trigger"]` (reordered so "Planeado" leads).
+
+6. Add a new optional field to `EmailTemplateEntry`:
+   ```ts
+   lifecycleRole?:
+     | "main_lifecycle"      // "Email principal do lifecycle"
+     | "manual_fallback"     // "Fallback manual / signed URL"
+     | "transactional"       // "Email transaccional"
+     | "legacy"              // "Template legado"
+     | "planned";            // "Template futuro · planeado"
+   ```
+   Populate per template:
+   - `request_received` → `transactional`
+   - `report_saved` → `main_lifecycle`
+   - `report_ready` → `manual_fallback`
+   - `feedback_request` → `manual_fallback`
+   - `commercial_followup` → `manual_fallback`
+   - `payment_confirmed` → `transactional`
+   - `welcome_beta`, `report_summary` → `legacy`
+   - `personal_area_saved` → `planned`
+
+   Export `LIFECYCLE_ROLE_LABELS` map (PT-PT).
+
+---
+
+## A.2 `/admin/email-lab` page — `src/components/admin/v2/email-lab/email-lab-page.tsx`
+
+1. **Badge hierarchy clarification.** Group rendering in `StatusBadgeRow` into three logical sub-groups (one row, three visually-distinct mini-clusters):
+   - Operational status: `ligado` / `desactivado` / `planeado`
+   - Mode: `manual` / `transaccional` (+ implicit "automático" when none and ligado)
+   - Risk/control: `kill_switch_off` / `legado` / `sem_trigger`
+   
+   Implementation: keep existing `StatusBadgeRow` API but partition badges into the three buckets via a small `groupBadges()` helper and render with subtle separators (`·`) between non-empty groups. No new badge keys.
+
+2. **`DetailHeader` — add "Papel no lifecycle" row** right below the lifecycle chip + title, before badges:
+   ```
+   Papel no lifecycle · {LIFECYCLE_ROLE_LABELS[template.lifecycleRole]}
+   ```
+   Labels:
+   - `main_lifecycle` → "Email principal do lifecycle"
+   - `manual_fallback` → "Variante manual / fallback"
+   - `transactional` → "Email transaccional"
+   - `legacy` → "Template legado"
+   - `planned` → "Template futuro · planeado"
+
+3. **Quieter legacy cards in the left list.** In `TemplateCard`:
+   - When `lifecycleOf(t) === "legado"` → wrap card content in `opacity-70`, replace border with `1px solid rgb(var(--admin-text-tertiary) / 0.25)`, force background `rgb(var(--admin-surface-muted))` (unless active).
+   - Ensure a visible `"Legado"` badge is always part of the rendered badge row for these templates (already in registry — confirm visible after grouping).
+   - Active state still wins (selection ring + accent).
+
+4. **Preview sanity walk-through (no code change unless something is wrong).** Run renderers for `report_saved`, `feedback_request`, `commercial_followup`, `payment_confirmed` via the existing `template.render()` and confirm in the preview iframe:
+   - Dark navy header band, white body card, blue restrained CTA, mobile-readable spacing, no `{{placeholder}}` leaks, PT-PT copy. **No template renderer file is edited** — these templates were finalised in earlier steps. If a defect is found, list it in the closing report so the user can approve a follow-up; do not fix it in this pass.
+
+---
+
+## B. `/admin/automacoes`
+
+### B.1 KPI row — `automation-flow-page.tsx` (`KpiRow`) + `automation-flow.ts` (`kpis`)
+
+Replace the misleading "X automações activas" tile.
+
+**Backend (`/api/admin/automation-flow.ts`):** extend `AutomationKpis.systemActive` to carry the breakdown the frontend already needs. Add fields without removing existing ones (back-compat for any other reader):
 ```ts
-export type FlowStage =
-  | "00_onboarding"
-  | "01_captacao"
-  | "02_entrega"
-  | "03_retencao"
-  | "04_conversao"
-  | "05_pagamento"
-  | "99_legado";
-
-export type FlowKey =
-  | "welcome_beta"
-  | "pedido_recebido"
-  | "relatorio_gerado"
-  | "link_enviado"
-  | "report_saved"          // NEW
-  | "personal_area_saved"
-  | "relatorio_visto"
-  | "feedback_pedido"
-  | "report_summary"
-  | "feedback_recebido"
-  | "follow_up_comercial"
-  | "payment_confirmed";    // NEW
-
-export type LifecycleBadge =
-  | "activo"
-  | "manual"
-  | "transaccional"
-  | "kill_switch_off"
-  | "planeado"
-  | "bloqueado"
-  | "legado"
-  | "sem_trigger";
-
-export const LIFECYCLE_BADGE_LABELS: Record<LifecycleBadge, string> = {
-  activo: "Activo",
-  manual: "Manual",
-  transaccional: "Transaccional",
-  kill_switch_off: "Kill-switch OFF",
-  planeado: "Planeado",
-  bloqueado: "Bloqueado",
-  legado: "Legado",
-  sem_trigger: "Sem trigger",
-};
-
-export interface StageDef {
-  key: FlowStage;
-  number: string;
-  eyebrow: string;
-  title: string;
-  description?: string;        // NEW — short text per stage
-  tokenColor: string;
-  tokenBg: string;
-}
-
-export interface AutomationFlow {
-  // …existing fields…
-  lifecycleBadges?: LifecycleBadge[];  // NEW (optional, additive)
+systemActive: {
+  activeCount: number;     // automatic flows that are wired AND not legacy AND not kill-switch-off
+  manualCount: number;     // wired flows whose lifecycleBadges include "manual"
+  killSwitchOffCount: number;
+  legacyCount: number;     // stage === "99_legado"
+  totalCount: number;      // unchanged
 }
 ```
+Compute by iterating `flows` and inspecting `stage` + `lifecycleBadges` + `status`. No event changes, no DB changes.
 
-`STAGE_DEFS` rewritten:
+Mirror the new fields in `AutomationKpis` (`src/lib/admin/automation-flow-types.ts`) as required fields.
 
-| number | key | eyebrow | title | description |
-| --- | --- | --- | --- | --- |
-| 00 | `00_onboarding` | Onboarding · Beta | Entrada na plataforma | Boas-vindas e acesso. (Mostrado só se houver fluxos activos.) |
-| 01 | `01_captacao` | Captação | Pedido recebido até relatório gerado | Antes do relatório ficar disponível. |
-| 02 | `02_entrega` | Entrega | Relatório guardado e consumido | O relatório torna-se útil para o lead. |
-| 03 | `03_retencao` | Retenção | Pedido de feedback | Após valor entregue. |
-| 04 | `04_conversao` | Conversão | Follow-up comercial manual | Conversão para o relatório completo — manual nesta fase. |
-| 05 | `05_pagamento` | Pagamento | Confirmação de pagamento | Branch paid do EuPago — transaccional. |
-| 99 | `99_legado` | Legado / desactivado | Mantidos para auditoria | Não disparam em produção. |
+**Frontend `KpiRow`:** replace the four tiles with:
+1. **Fluxos operacionais** — value = `activeCount`, hint line: `"{manualCount} manuais · {killSwitchOffCount} kill-switch OFF · {legacyCount} legado"` (tertiary text, small).
+2. **Enviados 30d** — unchanged.
+3. **A aguardar** — unchanged.
+4. **Falhas 30d** — unchanged.
 
-`FLOW_EVENTS` adds:
-- `report_saved: { types: ["report_saved_email_sent"], instrumented: true }`
-- `payment_confirmed: { types: ["payment_confirmation_email_sent"], instrumented: true }`
+### B.2 `02 Entrega` hierarchy — `automation-flow-page.tsx` (`FlowStages`)
 
-The legacy entries (`welcome_beta`, `report_summary`, `personal_area_saved`) stay so existing event counts still work — only their `stage` is reassigned.
+Reorder flows inside stage `02_entrega` so that `report_saved` renders first, `link_enviado` (report_ready) second, `relatorio_visto` last. Implementation: small `STAGE_ORDER` map keyed by `flow.key` applied via stable sort within each stage before rendering. Then visually downgrade `link_enviado`:
+- In `AutomationNode`, accept an optional `variant?: "primary" | "secondary"` prop.
+- Pass `variant="secondary"` only for `link_enviado` (handled in `FlowStages` by checking `flow.key`).
+- Secondary variant: remove `shadow-admin-card`, reduce icon tile saturation (use 8% mix instead of 13%), wrap header content in a quieter title weight (`font-medium` 14px instead of 16px semibold), add a small inline note line under the description: `"Variante manual / signed URL — não é o email principal de entrega."`. Functionality unchanged.
 
-## 2) API — `automation-flow.ts`
+### B.3 `99 Legado / desactivado` stage treatment — `stage-group.tsx`
 
-Re-stage and add declarations. **No DB writes**; only the in-memory declarations and the existing aggregation queries change.
+Add optional `variant?: "default" | "muted"` to `StageGroup` (default keeps current style). Used by `FlowStages` when `stage.key === "99_legado"`.
 
-| FlowKey | Stage | `kind` | `wired` | `lifecycleBadges` |
-| --- | --- | --- | --- | --- |
-| `pedido_recebido` | `01_captacao` | automatic | true | `["activo", "transaccional"]` |
-| `relatorio_gerado` | `01_captacao` | manual | false (system) | `["bloqueado"]` |
-| `report_saved` (NEW) | `02_entrega` | automatic | true | `["activo", "transaccional"]` |
-| `link_enviado` (= report_ready) | `02_entrega` | manual | true | `["activo", "manual", "transaccional"]` |
-| `relatorio_visto` | `02_entrega` | automatic | true | `["bloqueado"]` (system event, no email) |
-| `feedback_pedido` | `03_retencao` | manual | true | `["activo", "manual"]` |
-| `follow_up_comercial` | `04_conversao` | manual | true | `["activo", "manual"]` (was `wired:false` and `timing.undefined`; switch to `kind:"immediate"` event `commercial_followup_sent` since Step 5 wired it to the admin route) |
-| `feedback_recebido` | `04_conversao` | automatic | true | `["bloqueado"]` (classification) |
-| `payment_confirmed` (NEW) | `05_pagamento` | automatic | true | `["activo", "transaccional", "kill_switch_off"]` |
-| `welcome_beta` | `99_legado` | automatic | false | `["legado"]` |
-| `report_summary` | `99_legado` | automatic | false | `["legado"]` |
-| `personal_area_saved` | `99_legado` | automatic | false | `["sem_trigger", "planeado"]` |
+Muted variant:
+- Background uses `rgb(var(--admin-surface-muted))` regardless of `tokenBg`.
+- Border uses neutral `rgb(var(--admin-text-tertiary) / 0.2)`.
+- Title and number rendered in `text-admin-text-tertiary`.
+- After the description line, append an explanatory note:
+  > "Mantido para histórico, compatibilidade e auditoria. Não dispara em produção."
 
-`report_saved` declaration:
-```ts
-{
-  key: "report_saved",
-  title: "Relatório guardado",
-  description: "Confirma o save e mostra saldo de créditos.",
-  trigger: { kind: "event", label: "report unlock" },
-  action: { kind: "email", label: "Email \"relatório guardado\"" },
-  kind: "automatic",
-  fromStatus: null,
-  toStatus: null,
-  stage: "02_entrega",
-  visualKind: "email",
-  extraTag: "primary_delivery",
-  timing: {
-    kind: "immediate",
-    eventName: "report_unlocked",
-    contextHint: "lead-magnet sequence",
-  },
-  templateKey: "report_saved",
-  lifecycleBadges: ["activo", "transaccional"],
-  counts: () => ({ eligibleCount: 0, inFlightCount: 0, completedLeads: null }),
-  failures: 0,
-  wired: FLOW_EVENTS.report_saved.instrumented,
-}
+Inside the muted stage, `AutomationNode` already shows the `Legado` badge via `lifecycleBadges`. Add visual quieting at the node level when its flow's stage is `99_legado`: wrap node article in `opacity-80` and remove primary shadow. Implementation: thread an optional `muted?: boolean` prop down from `FlowStages` → `AutomationNode` based on `stage.key === "99_legado"`.
+
+### B.4 `payment_confirmed` card — pure metadata (`automation-flow.ts` decls)
+
+Already carries `["activo", "transaccional", "kill_switch_off"]`. Add an explanatory note below the card body. Two changes:
+- In `automation-flow-types.ts` add optional `note?: string | null` to `AutomationFlow`.
+- In the `payment_confirmed` decl, set:
+  ```
+  note: "Activar apenas em validação controlada antes de produção."
+  ```
+- In `AutomationNode`, render `flow.note` as a small italic line under the timing strip (only if present) using `text-admin-text-tertiary`.
+
+The displayed metadata then surfaces clearly: status badges already say `Activo · Transaccional · Kill-switch OFF`; trigger pill already shows `EuPago webhook · paid`; new note pinpoints why kill-switch is OFF.
+
+### B.5 `commercial_followup` card — metadata note
+
+Same `note` field, populated for `follow_up_comercial` decl:
 ```
-
-`payment_confirmed` declaration (no schema change — counts stay null/0):
-```ts
-{
-  key: "payment_confirmed",
-  title: "Pagamento confirmado",
-  description: "Recibo + confirmação de acesso pago.",
-  trigger: { kind: "event", label: "EuPago webhook · paid" },
-  action: { kind: "email", label: "Email \"pagamento confirmado\"" },
-  kind: "automatic",
-  fromStatus: null,
-  toStatus: null,
-  stage: "05_pagamento",
-  visualKind: "email",
-  extraTag: null,
-  timing: {
-    kind: "immediate",
-    eventName: "payment_succeeded",
-    contextHint: "branch paid, fire-and-forget",
-  },
-  templateKey: "payment_confirmed",
-  lifecycleBadges: ["activo", "transaccional", "kill_switch_off"],
-  counts: () => ({ eligibleCount: 0, inFlightCount: 0, completedLeads: null }),
-  failures: 0,
-  wired: FLOW_EVENTS.payment_confirmed.instrumented,
-}
+note: "Auto-trigger não activo nesta fase."
 ```
+Badges already correct (`Activo · Manual`). No trigger wiring change.
 
-The existing `flows.map(...)` already derives `status` from `visualKind`/`wired`/`timing`. We extend that mapper to copy `lifecycleBadges` straight through (defensive default: derive from `status` if a decl omits it). No new SQL queries.
+### B.6 `feedback_request` (flow key `feedback_pedido`) card — metadata note
 
-## 3) Page — `automation-flow-page.tsx`
-
-- Rename KPI labels to **Sistema operacional · Enviados 30d · A aguardar · Falhas 30d** (current already uses three of them — only "Enviados" → "Enviados 30d" and "Falhas" → "Falhas 30d").
-- Add `<LifecycleLegend />` directly above `FlowStages`: a compact chip row mapping each `LifecycleBadge` to its colour (Activo · Manual · Transaccional · Kill-switch OFF · Planeado · Bloqueado · Legado · Sem trigger). Wraps to multiple rows on mobile.
-- `computeStageMeta` extended:
-  - `02_entrega`: prefer `report_saved.sentEvents` for the headline (`N envios de relatório guardado`), keep the open-rate string when present.
-  - `03_retencao`: `${eligible} elegíveis · ${sent} pedidos enviados` using `feedback_pedido`.
-  - `04_conversao`: same shape, driven by `follow_up_comercial`.
-  - `05_pagamento`: `${sent} confirmações · kill-switch OFF` when default OFF; otherwise just the count.
-  - `99_legado`: `${count} flows mantidos para auditoria`.
-
-## 4) `stage-group.tsx`
-
-Add an optional `description?: string` prop rendered as a 12px secondary line under the `<h2>`. For `99_legado`, the description also serves as the explicit "non-firing" note so legacy flows stay visible but are clearly marked.
-
-## 5) `automation-node.tsx`
-
-Insert a `LifecycleBadgeRow` (after the existing `StatusPill` / `ExtraPill` block) when `flow.lifecycleBadges?.length`:
-
-```tsx
-{flow.lifecycleBadges?.length ? (
-  <LifecycleBadgeRow badges={flow.lifecycleBadges} />
-) : null}
+Same `note` field, populated:
 ```
-
-The badge palette reuses existing admin tokens (no new colours):
-- `activo` → `admin-pill-active-*` (green)
-- `manual` → `admin-pill-info-*` (blue)
-- `transaccional` → `admin-button-dark` / inverted (navy on light)
-- `kill_switch_off`, `planeado`, `sem_trigger` → `admin-pill-warn-*` (amber)
-- `bloqueado` → `admin-pill-blocked-*` (grey)
-- `legado` → `admin-text-tertiary` on `admin-surface-muted` (grey)
-
-The existing `StatusPill` and "Configurar trigger / Bloqueado / Editar" buttons stay — additive only, no behaviour change.
-
-## 6) Tokens — `admin-tokens.css`
-
-Append:
-```css
---admin-stage-retencao: 186 117 23;      /* alias warning-500 amber */
---admin-stage-retencao-bg: 253 246 232;
---admin-stage-pagamento: 29 158 117;     /* alias revenue-500 */
---admin-stage-pagamento-bg: 234 247 241;
---admin-stage-legado: 130 138 152;       /* neutral grey */
---admin-stage-legado-bg: 244 246 249;
+note: "Sem auto-trigger nesta fase. Opcional futuro: automático D+1."
 ```
+Badges already `Activo · Manual`. No trigger change.
 
-## Safety
+### B.7 Stage 02 description tweak (optional polish)
 
-- No email sends, no automation activations from this page.
-- All "Edit" / "Ver logs" / "Configurar trigger" buttons remain disabled-with-tooltip or link to existing template editor — wiring is unchanged.
-- No edits to senders, webhooks, EuPago, pricing, credit, report generation, or any migration.
-- API still reads only `leads`, `report_requests`, `product_events`; no writes.
+In `STAGE_DEFS["02_entrega"]` update `description`:
+> "Entrega do relatório ao lead. `report_saved` é o email principal; `report_ready` é a variante manual / signed URL."
 
-## Validation checklist
+---
 
-1. Open `/admin/automacoes`. KPIs read **Sistema operacional · Enviados 30d · A aguardar · Falhas 30d** with the same numbers as before.
-2. Legend chip row shows 8 labels; colours match the badges on the cards.
-3. Stages render in order 00 → 01 → 02 → 03 → 04 → 05 → 99 (empty stages collapse). 00_onboarding is empty (welcome_beta moved to legacy) and is hidden by the existing `if (stageFlows.length === 0) return null` guard.
-4. `report_saved` card appears under **02 Entrega** with badges **Activo · Transaccional**, subject from the registry, trigger "report unlock", source lead-magnet sequence.
-5. `feedback_pedido` is now under **03 Retenção** with **Activo · Manual**.
-6. `follow_up_comercial` is under **04 Conversão** with **Activo · Manual**; old "Sem trigger" warning is gone because Step 5 wired the manual sender.
-7. `payment_confirmed` card appears under **05 Pagamento** with **Activo · Transaccional · Kill-switch OFF**; trigger "EuPago webhook · paid".
-8. **Legado / desactivado** group lists `welcome_beta`, `report_summary`, `personal_area_saved` with the explanatory description "Mantidos para auditoria — não disparam em produção". Cards are visible (never hidden) but visually de-emphasised.
-9. Edit / logs buttons behave exactly as before — none of them sends anything.
-10. Mobile width (375px): cards stack, legend wraps to 2–3 rows, KPI grid stays 2-col.
-11. `bunx tsc --noEmit` clean; `bunx vitest run` still green (no test changes needed).
+## Files touched (estimate)
 
-## Output after implementation
+- `src/lib/admin/email-template-registry.ts` — titles, shortDescriptions, `lifecycleRole`, `LIFECYCLE_ROLE_LABELS`.
+- `src/components/admin/v2/email-lab/email-lab-page.tsx` — grouped badge rendering, lifecycle role row, quieter legacy cards.
+- `src/lib/admin/automation-flow-types.ts` — extend `AutomationKpis.systemActive`, add `AutomationFlow.note`.
+- `src/routes/api/admin/automation-flow.ts` — fill new KPI breakdown, set `note` on the three target decls. **No event types, no queries, no DB writes changed.**
+- `src/components/admin/v2/automacoes/automation-flow-page.tsx` — new KPI tile layout, stage-02 reordering, pass `muted`/`variant` props.
+- `src/components/admin/v2/automacoes/automation-node.tsx` — `variant` + `muted` props, render `flow.note`.
+- `src/components/admin/v2/automacoes/stage-group.tsx` — `muted` variant + legado footer note.
 
-1. **Files changed**: the 6 files listed above.
-2. **Lifecycle stages coherent**: 00..05 + Legado mapped 1:1 to the consolidated email model.
-3. **No real emails sent**: zero touches to sender modules / send routes / webhook handler.
-4. **No triggers / prices / payments / credits changed**: only API metadata + UI; no edits to `lead-magnet-sequence.server.ts`, `eupago-webhook.ts`, pricing, credit ledger, RPCs, or migrations.
-5. **Validation checklist**: the 11 items above.
+## Safety guarantees
 
-## Risks / follow-ups
+- No edits under `src/routes/api/admin/send-*`, `src/lib/email/send-*`, `src/routes/api/public/eupago-webhook.ts`, `src/lib/email/lead-magnet-sequence.server.ts`, `src/lib/email/templates/**`, or any pricing / checkout / credits / entitlement / report-generation file.
+- No DB migrations.
+- No env / kill-switch flips.
+- No new triggers, no new product_events written.
+- No emails sent.
 
-- Sent/failures counts for `payment_confirmed` will show 0 until the kill-switch is turned ON and the first webhook fires; that is the correct read of `product_events.payment_confirmation_email_sent`. No fake counts.
-- `feedback_recebido` stays marked **Bloqueado** because it's a classification step, not an email — matches its `visualKind: "report"`.
-- Per-template sent counts in Email Lab (deferred from Step 6A) remain a separate follow-up; this step does not duplicate them here.
+## Closing report will include
+
+1. Exact files changed.
+2. Diff summary of every label/description.
+3. Explicit confirmation that no trigger wiring, no email send path, no price, no payment, no credit, no entitlement, no report-generation, no schema was modified.
+4. Before/after note explaining what's now clearer (KPI no longer over-counts; legacy stage visually demoted; lifecycle role explicit; `report_saved` clearly primary in Entrega).
+5. Any preview defects spotted during the §A.4 visual walk-through (reported only — fix would need a separate approval).

@@ -168,10 +168,10 @@ function KpiRow({ kpis }: { kpis: NonNullable<AutomationFlowResponse["kpis"]> })
 
   const tiles = [
     {
-      label: "Sistema operacional",
-      value: `${kpis.systemActive.activeCount} automações activas`,
-      headline: null as string | null,
-      hint: `de ${kpis.systemActive.totalCount} blocos`,
+      label: "Fluxos operacionais",
+      value: kpis.systemActive.activeCount,
+      headline: "automáticos",
+      hint: `${kpis.systemActive.manualCount} manuais · ${kpis.systemActive.killSwitchOffCount} kill-switch OFF · ${kpis.systemActive.legacyCount} legado`,
       tokenColor: "admin-pill-active-fg",
       tokenBg: "admin-pill-active-bg",
       icon: <CheckCircle2 size={18} className="text-[rgb(var(--admin-pill-active-fg))]" />,
@@ -284,12 +284,31 @@ function FlowStages({
   flows: AutomationFlow[];
   stages: readonly StageDef[];
 }) {
+  // Explicit intra-stage ordering — keep the primary lifecycle email first
+  // in Entrega so report_saved leads, report_ready becomes secondary.
+  const STAGE_FLOW_ORDER: Partial<Record<string, string[]>> = {
+    "02_entrega": ["report_saved", "link_enviado", "relatorio_visto"],
+  };
+  const sortStageFlows = (stageKey: string, list: AutomationFlow[]) => {
+    const order = STAGE_FLOW_ORDER[stageKey];
+    if (!order) return list;
+    const rank = (k: string) => {
+      const i = order.indexOf(k);
+      return i === -1 ? order.length : i;
+    };
+    return [...list].sort((a, b) => rank(a.key) - rank(b.key));
+  };
+
   return (
     <div className="mx-auto flex max-w-[820px] flex-col gap-4">
       {stages.map((stage) => {
-        const stageFlows = flows.filter((f) => f.stage === stage.key);
+        const stageFlows = sortStageFlows(
+          stage.key,
+          flows.filter((f) => f.stage === stage.key),
+        );
         if (stageFlows.length === 0) return null;
         const meta = computeStageMeta(stage.key, stageFlows);
+        const isLegacy = stage.key === "99_legado";
 
         return (
           <StageGroup
@@ -301,10 +320,20 @@ function FlowStages({
             meta={meta}
             tokenColor={stage.tokenColor}
             tokenBg={stage.tokenBg}
+            variant={isLegacy ? "muted" : "default"}
           >
             {stageFlows.map((f, i) => (
               <Fragment key={f.key}>
-                <AutomationNode flow={f} stageTokenColor={stage.tokenColor} />
+                <AutomationNode
+                  flow={f}
+                  stageTokenColor={stage.tokenColor}
+                  muted={isLegacy}
+                  variant={
+                    stage.key === "02_entrega" && f.key === "link_enviado"
+                      ? "secondary"
+                      : "primary"
+                  }
+                />
                 {i < stageFlows.length - 1 && <AutomationEdge />}
               </Fragment>
             ))}
