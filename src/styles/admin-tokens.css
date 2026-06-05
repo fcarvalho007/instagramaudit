@@ -88,6 +88,12 @@
   --admin-stage-entrega-bg: 234 247 241;        /* #EAF7F1 */
   --admin-stage-conversao: 216 90 48;           /* alias de signal-500 */
   --admin-stage-conversao-bg: 253 239 234;      /* #FDEFEA */
+  --admin-stage-retencao: 186 117 23;           /* alias warning amber */
+  --admin-stage-retencao-bg: 253 246 232;       /* light amber */
+  --admin-stage-pagamento: 29 158 117;          /* alias revenue-500 */
+  --admin-stage-pagamento-bg: 234 247 241;      /* light green */
+  --admin-stage-legado: 130 138 152;            /* neutral grey */
+  --admin-stage-legado-bg: 244 246 249;         /* light grey */
 
   /* === Pílulas de estado (bg + fg) ====================================== */
   --admin-pill-active-bg: 225 244 232;
