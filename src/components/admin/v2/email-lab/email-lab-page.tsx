@@ -896,16 +896,139 @@ function ReadOnlyBanner() {
   );
 }
 
-function categoryAccent(c: EmailTemplateCategory): string {
-  switch (c) {
-    case "operacional":
+function lifecycleAccent(stage: EmailLifecycleStage): string {
+  switch (stage) {
+    case "captacao":
       return "rgb(var(--admin-leads-500))";
-    case "conta":
+    case "entrega":
       return "rgb(var(--admin-info-500))";
-    case "comercial":
+    case "retencao":
       return "rgb(var(--admin-warning-500))";
+    case "conversao":
+      return "rgb(var(--admin-leads-500))";
     case "pagamento":
       return "rgb(var(--admin-success-500))";
+    case "legado":
+      return "rgb(var(--admin-text-tertiary))";
   }
+}
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* Filter chips                                                               */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+function FilterChips({
+  value,
+  onChange,
+}: {
+  value: FilterChip;
+  onChange: (c: FilterChip) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {FILTER_CHIPS.map((c) => {
+        const active = c.key === value;
+        return (
+          <button
+            key={c.key}
+            type="button"
+            onClick={() => onChange(c.key)}
+            className="rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors"
+            style={{
+              border: `1px solid ${
+                active
+                  ? "rgb(var(--admin-text-primary))"
+                  : "rgb(var(--admin-border-default))"
+              }`,
+              background: active
+                ? "rgb(var(--admin-text-primary))"
+                : "rgb(var(--admin-surface-base))",
+              color: active
+                ? "#ffffff"
+                : "rgb(var(--admin-text-secondary))",
+            }}
+          >
+            {c.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* Status badges                                                              */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+function badgeStyle(badge: EmailStatusBadge): {
+  bg: string;
+  fg: string;
+} {
+  switch (badge) {
+    case "ligado":
+      return {
+        bg: "rgb(var(--admin-success-500) / 0.12)",
+        fg: "rgb(var(--admin-success-500))",
+      };
+    case "manual":
+      return {
+        bg: "rgb(var(--admin-leads-500) / 0.12)",
+        fg: "rgb(var(--admin-leads-500))",
+      };
+    case "transaccional":
+      return {
+        bg: "rgb(var(--admin-text-primary) / 0.08)",
+        fg: "rgb(var(--admin-text-primary))",
+      };
+    case "kill_switch_off":
+    case "planeado":
+    case "sem_trigger":
+      return {
+        bg: "rgb(var(--admin-warning-500) / 0.12)",
+        fg: "rgb(var(--admin-warning-500))",
+      };
+    case "legado":
+    case "desactivado":
+      return {
+        bg: "rgb(var(--admin-text-tertiary) / 0.12)",
+        fg: "rgb(var(--admin-text-tertiary))",
+      };
+  }
+}
+
+function StatusBadge({ badge }: { badge: EmailStatusBadge }) {
+  const s = badgeStyle(badge);
+  return (
+    <span
+      className="rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em]"
+      style={{ background: s.bg, color: s.fg }}
+    >
+      {STATUS_BADGE_LABELS[badge]}
+    </span>
+  );
+}
+
+function StatusBadgeRow({
+  badges,
+  max,
+}: {
+  badges: EmailStatusBadge[];
+  max?: number;
+}) {
+  const limit = max ?? badges.length;
+  const visible = badges.slice(0, limit);
+  const overflow = badges.length - visible.length;
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {visible.map((b) => (
+        <StatusBadge key={b} badge={b} />
+      ))}
+      {overflow > 0 ? (
+        <span className="text-[9px] font-semibold text-admin-text-tertiary">
+          +{overflow}
+        </span>
+      ) : null}
+    </div>
+  );
 }
 
