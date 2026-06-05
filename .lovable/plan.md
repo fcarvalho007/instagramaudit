@@ -1,121 +1,111 @@
-# Payments visibility block for /admin/receita
+## Current Issue Summary
 
-Add a single new "Pagamentos" section to the existing admin Receita page, backed by a new admin-gated endpoint. No checkout/webhook/pricing changes.
+The `/precos` secondary services section contains an "Auditoria de Autoridade Digital" card anchored at **"A partir de 300€"**. The `/servicos` page repeats the same 300€ price. This creates three strategic problems:
 
-## 1. New endpoint — `src/routes/api/admin/payments-overview.ts`
+1. **Competing anchor**: a public 300€ price undermines the official 499€+ Auditoria Digital plans.
+2. **Confusing ladder**: 0€ → 9€ → 97€ → 300€ → 499€+ → 1.850€ → 3.490€ is too many tiers for a solo operator.
+3. **Cannibalization risk**: users who need a full audit may self-select into the cheaper 300€ tier instead of the 499€+ official service.
 
-Admin-gated (`requireAdminSession`), follows the same pattern as `pre-revenue-signals.ts`. Single GET that returns:
+## Final Recommended `/precos` Structure
 
-```ts
-export interface PaymentsOverview {
-  by_product_status: Array<{
-    product: "report_full_9" | "authority_diagnosis_97" | string;
-    status: "pending" | "paid" | "failed" | "expired" | string;
-    count: number;
-    amount_eur: number; // sum of amount_cents/100 (intent value, not just paid)
-  }>;
-  totals: {
-    checkouts_started: number;       // all rows
-    pending: number;
-    paid: number;
-    failed: number;
-    paid_amount_eur: number;         // sum where status=paid
-  };
-  pending_stale: Array<{             // pending older than 1h
-    id: string; created_at: string; product: string;
-    amount_cents: number; lead_email: string | null;
-    provider_checkout_url: string | null;
-  }>;
-  recent_failed: PaymentRow[];       // limit 20
-  recent_paid: PaymentRow[];         // limit 20
-  recent_all: PaymentRow[];          // limit 20 — table source
-  upsell: {
-    report_full_9_checkouts: number;      // payments where source_product = report_full_9
-    upsell_presented: number;
-    upsell_accepted: number;              // metadata.upsell_accepted = true
-    upsell_declined: number;              // presented & not accepted
-    conversion_pct: number | null;        // accepted / presented * 100
-  };
-  entitlements_by_product: Record<string, number>;
-}
+Top cards remain exactly as they are:
 
-interface PaymentRow {
-  id: string;
-  created_at: string;
-  lead_id: string;
-  lead_email: string | null;
-  product: string;
-  amount_cents: number;
-  currency: string;
-  status: string;
-  source_component: string | null;       // metadata.source_component
-  report_priority: string | null;        // metadata.report_priority
-  upsell_accepted: boolean | null;       // metadata.upsell_accepted
-  provider_checkout_url: string | null;
-  failure_reason: string | null;         // metadata.failure_reason ?? metadata.error
-}
-```
+1. **Visão inicial — 0€**
+2. **Relatório completo — 9€**
+3. **Diagnóstico de Autoridade Digital — 97€** (launch price, later 149€)
 
-Implementation notes:
-- Use `supabaseAdmin` (server-only client). Restrict to the two active products via `.in("product", ["report_full_9","authority_diagnosis_97"])` so legacy `report_single` / `pack_5` rows are excluded.
-- For the rolled-up by_product_status, fetch `product, status, amount_cents` for active products and reduce in JS (no SQL grouping needed; volume is low).
-- Lead email: one `leads` select keyed by the union of `lead_id`s from all returned rows, build a `Map<lead_id, email>`.
-- Upsell metrics: count over the same fetched superset where `metadata->>'source_product' = 'report_full_9'` (or product=`report_full_9` as fallback for older rows), `metadata->>'upsell_presented' = 'true'`, `metadata->>'upsell_accepted'`.
-- Entitlement counts: `lead_entitlements` grouped by `product_code` in JS, filtered to active products.
-- `cache-control: private, max-age=15`.
+Secondary dark section ("Quando o diagnóstico precisa de ir mais longe.") becomes **lead capture only**, with two cards:
 
-## 2. New UI section — `src/components/admin/v2/receita/payments-section.tsx`
+### Card 1 — Auditoria Digital completa
+- **Title**: "Auditoria Digital completa"
+- **Price line**: "Planos desde 499€ + IVA"
+- **Description**: "Para marcas que querem analisar website, Google, concorrência, conteúdo, reputação, email e redes sociais."
+- **CTA**: "Pedir proposta de auditoria"
+- **Microcopy**: "Serviço alinhado com os planos oficiais de Auditoria Digital."
+- **Destination**: `/servicos?topico=auditoria`
 
-Same shape as `PreRevenueSignalsSection` (uses `AdminSectionHeader`, `AdminCard`, `KPICard`, `SectionSkeleton/Error`, `adminFetch`, `useQuery` with 60s refetch).
+### Card 2 — Workshop para equipa
+- **Title**: "Workshop para equipa"
+- **Price line**: "Sob proposta"
+- **Description**: "Sessão prática para transformar dados em decisões, calendário editorial e processos de marketing."
+- **CTA**: "Falar sobre formação"
+- **Microcopy**: "Formato ajustado à equipa, objectivos e duração."
+- **Destination**: `/servicos?topico=formacao`
 
-KPI cards row:
-- **Checkouts iniciados** — totals.checkouts_started
-- **Pendentes** — totals.pending  (sub: "X com mais de 1h" if `pending_stale.length>0`)
-- **Pagos** — totals.paid
-- **Falhados** — totals.failed
-- **Receita paga** — totals.paid_amount_eur formatted EUR
-- **Upsell 9€ → 97€** — `upsell.upsell_accepted / upsell.upsell_presented` with `conversion_pct` as sub
+## Exact PT/EN Copy
 
-Secondary grid: small "Por produto" table showing rows of (product label, status, count, EUR amount) — uses `PRODUCT_LABELS`.
+### Portuguese (primary)
 
-Main table — "Últimos 20 pagamentos" from `recent_all`:
-| created_at | lead email | produto | valor | status | source | prioridade | upsell | checkout | falha |
+| Element | Text |
+|---------|------|
+| Section eyebrow | Servicos · sob consulta |
+| Section heading | Quando o diagnóstico precisa de ir mais longe. |
+| Section body | Para marcas e equipas que querem transformar a analise em estrategia e execucao. |
+| Card 1 title | Auditoria Digital completa |
+| Card 1 body | Para marcas que querem analisar website, Google, concorrencia, conteudo, reputacao, email e redes sociais. |
+| Card 1 price | Planos desde 499€ + IVA |
+| Card 1 CTA | Pedir proposta de auditoria |
+| Card 1 microcopy | Servico alinhado com os planos oficiais de Auditoria Digital. |
+| Card 2 title | Workshop para equipa |
+| Card 2 body | Sessao pratica para transformar dados em decisoes, calendario editorial e processos de marketing. |
+| Card 2 price | Sob proposta |
+| Card 2 CTA | Falar sobre formacao |
+| Card 2 microcopy | Formato ajustado a equipa, objectivos e duracao. |
 
-- Date: `pt-PT` short.
-- Produto: `PRODUCT_LABELS[row.product] ?? row.product`.
-- Valor: EUR from `amount_cents/100`.
-- Status: existing `StatusBadge` style (or inline pill — pending=amber, paid=success, failed=error).
-- Upsell: ✓ / — / (presented but declined: ·).
-- Checkout: external-link icon → `provider_checkout_url` (target=_blank, rel=noreferrer), only when present.
-- Falha: `failure_reason` truncated with `title`.
+### English
 
-## 3. Labels
+| Element | Text |
+|---------|------|
+| Section eyebrow | Services · on request |
+| Section heading | When the diagnosis needs to go further. |
+| Section body | For brands and teams that want to turn analysis into strategy and execution. |
+| Card 1 title | Complete Digital Audit |
+| Card 1 body | For brands that want to analyse website, Google, competition, content, reputation, email and social media. |
+| Card 1 price | Plans from 499€ + VAT |
+| Card 1 CTA | Request audit proposal |
+| Card 1 microcopy | Service aligned with official Digital Audit plans. |
+| Card 2 title | Team Workshop |
+| Card 2 body | Practical session to turn data into decisions, editorial calendar and marketing processes. |
+| Card 2 price | On proposal |
+| Card 2 CTA | Talk about training |
+| Card 2 microcopy | Format adjusted to team, objectives and duration. |
 
-Add to the new section file (module-level const, not exported globally):
-```ts
-const PRODUCT_LABELS: Record<string, string> = {
-  report_full_9: "Relatório completo 9€",
-  authority_diagnosis_97: "Diagnóstico 97€",
-};
-```
-Legacy `report_single` / `pack_5` are filtered out in the endpoint, so they never reach the UI.
+## Files Likely to Change
 
-## 4. Wire into the page
+1. **`src/components/pricing/pricing-page.tsx`**
+   - Update `ServiceCard` props for both cards (title, body, priceAnchor, ctaLabel).
+   - Add microcopy line below each card or inside the card layout.
+   - No changes to `PricingCard` or top three cards.
 
-`src/routes/admin.receita.tsx` — add `<PaymentsSection />` to the column, placed **between** `<PreRevenueSignalsSection />` and `<FutureRecurringRevenueCard />`. No other changes to the page.
+2. **`src/components/services/services-page.tsx`**
+   - Update the two dark cards to match new copy and pricing.
+   - Remove the 300€ anchor.
 
-## 5. Validation
+3. **`src/i18n/locales/pt/pricing.json`**
+   - Add new keys under a `services` object for the secondary section copy.
 
-- `bunx tsc --noEmit`
-- Hit the endpoint via `stack_modern--invoke-server-function GET /api/admin/payments-overview` while logged in as admin (preview) and show the JSON in the output.
-- Visual: load `/admin/receita`, screenshot the new block.
+4. **`src/i18n/locales/en/pricing.json`**
+   - Add corresponding English keys.
 
-## Files touched
+5. **`src/routes/servicos.tsx`** (possible)
+   - Update meta description if it currently references 300€.
 
-- `src/routes/api/admin/payments-overview.ts` (new)
-- `src/components/admin/v2/receita/payments-section.tsx` (new)
-- `src/routes/admin.receita.tsx` (1 import + 1 JSX line)
+## CTA Destination Recommendation
 
-## Out of scope (explicit)
+Both service cards on `/precos` should link to **`/servicos?topico=<topic>`** exactly as they do today. This is correct because:
+- `/servicos` contains the inquiry form (`ServicesInquiryForm`).
+- No payment is created; it is pure lead capture.
+- The `topico` query param pre-selects the correct option in the form.
+- No new routes, no new checkout, no new products needed.
 
-No edits to checkout routes, EuPago server/functions, webhook, pricing tables, report generation, onboarding, credits, or any provider integrations. Read-only against `lead_payments`, `lead_entitlements`, `leads`.
+The existing tracking event `service_audit` / `service_training` should also be preserved.
+
+## Risks
+
+| Risk | Mitigation |
+|------|------------|
+| Existing `/servicos` page still shows 300€ in its own cards | Update `services-page.tsx` in the same batch. |
+| Hardcoded PT strings in `pricing-page.tsx` and `services-page.tsx` cause drift | Add i18n keys for the services section in both JSON files and wire them into the components. |
+| 300€ may appear in other marketing pages or landing copy | Search the codebase for "300" after implementation to confirm no stray references remain. |
+| The `agencia` link below the pricing cards references `/servicos?topico=agencia` | Keep it; agency is a separate inquiry path with no public price anchor. |
+| Users may still confuse 97€ diagnosis with 499€+ audit | The card copy explicitly says "Auditoria Digital completa" and mentions the full scope (website, Google, competition, etc.) to differentiate from the Instagram-only diagnosis. |

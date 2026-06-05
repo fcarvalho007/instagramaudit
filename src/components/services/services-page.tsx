@@ -31,14 +31,17 @@ export function ServicesPage() {
                 aria-hidden="true"
               />
               <h2 className="mt-3 text-base font-semibold">
-                Auditoria de Autoridade Digital
+                Auditoria Digital completa
               </h2>
               <p className="mt-2 text-sm text-[rgb(var(--hero-text-secondary))] leading-relaxed">
-                Vai além do Instagram: website, LinkedIn, SEO, presença de marca
-                e funil de contacto. Plano de melhoria prioritário.
+                Para marcas que querem analisar website, Google, concorrência,
+                conteúdo, reputação, email e redes sociais.
               </p>
               <p className="mt-4 text-eyebrow-sm text-[rgb(var(--hero-text-tertiary))]">
-                A partir de 300€
+                Planos desde 499€ + IVA
+              </p>
+              <p className="mt-2 text-xs text-[rgb(var(--hero-text-tertiary))] leading-relaxed">
+                Serviço alinhado com os planos oficiais de Auditoria Digital.
               </p>
             </article>
             <article className="dark-card p-6">
@@ -47,14 +50,17 @@ export function ServicesPage() {
                 aria-hidden="true"
               />
               <h2 className="mt-3 text-base font-semibold">
-                Formação: Redes Sociais e IA
+                Workshop para equipa
               </h2>
               <p className="mt-2 text-sm text-[rgb(var(--hero-text-secondary))] leading-relaxed">
-                Workshop para equipas, com benchmarks reais dos perfis da marca.
-                Dados transformados em plano editorial.
+                Sessão prática para transformar dados em decisões, calendário
+                editorial e processos de marketing.
               </p>
               <p className="mt-4 text-eyebrow-sm text-[rgb(var(--hero-text-tertiary))]">
-                A partir de 1.500€
+                Sob proposta
+              </p>
+              <p className="mt-2 text-xs text-[rgb(var(--hero-text-tertiary))] leading-relaxed">
+                Formato ajustado à equipa, objectivos e duração.
               </p>
             </article>
           </div>

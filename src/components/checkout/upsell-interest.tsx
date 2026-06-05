@@ -21,17 +21,17 @@ export function UpsellInterest({ value, onChange }: Props) {
       </p>
       <InterestCard
         icon={<Briefcase className="size-5" aria-hidden="true" />}
-        title="Auditoria de Autoridade Digital"
-        priceHint="a partir de 300€"
-        description="Website, LinkedIn, SEO, presença de marca e funil de contacto. Plano de melhoria prioritário."
+        title="Auditoria Digital completa"
+        priceHint="desde 499€ + IVA"
+        description="Website, Google, concorrência, conteúdo, reputação, email e redes sociais."
         checked={value.audit}
         onToggle={(v) => onChange({ ...value, audit: v })}
       />
       <InterestCard
         icon={<GraduationCap className="size-5" aria-hidden="true" />}
         title="Workshop para equipa"
-        priceHint="a partir de 1.500€"
-        description="Formação prática com benchmarks reais dos perfis da marca."
+        priceHint="sob proposta"
+        description="Sessão prática para transformar dados em decisões, calendário editorial e processos de marketing."
         checked={value.workshop}
         onToggle={(v) => onChange({ ...value, workshop: v })}
       />

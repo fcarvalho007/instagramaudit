@@ -176,19 +176,21 @@ export function PricingPage() {
           <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
             <ServiceCard
               icon={<Briefcase className="size-5" aria-hidden="true" />}
-              title="Auditoria de Autoridade Digital"
-              body="Vai além do Instagram: website, LinkedIn, SEO, presença de marca e funil de contacto. Plano de melhoria prioritário."
-              priceAnchor="A partir de 300€"
-              ctaLabel="Pedir auditoria"
+              title="Auditoria Digital completa"
+              body="Para marcas que querem analisar website, Google, concorrência, conteúdo, reputação, email e redes sociais."
+              priceAnchor="Planos desde 499€ + IVA"
+              ctaLabel="Pedir proposta de auditoria"
+              microcopy="Serviço alinhado com os planos oficiais de Auditoria Digital."
               topic="auditoria"
               onClick={() => track("service_audit")}
             />
             <ServiceCard
               icon={<GraduationCap className="size-5" aria-hidden="true" />}
-              title="Formação: Redes Sociais e IA"
-              body="Workshop para equipas, com benchmarks reais dos perfis da marca. Dados transformados em plano editorial."
-              priceAnchor="A partir de 1.500€"
+              title="Workshop para equipa"
+              body="Sessão prática para transformar dados em decisões, calendário editorial e processos de marketing."
+              priceAnchor="Sob proposta"
               ctaLabel="Falar sobre formação"
+              microcopy="Formato ajustado à equipa, objectivos e duração."
               topic="formacao"
               onClick={() => track("service_training")}
             />
@@ -312,6 +314,7 @@ interface ServiceCardProps {
   ctaLabel: string;
   topic: "auditoria" | "formacao";
   onClick: () => void;
+  microcopy?: string;
 }
 
 function ServiceCard({
@@ -322,6 +325,7 @@ function ServiceCard({
   ctaLabel,
   topic,
   onClick,
+  microcopy,
 }: ServiceCardProps) {
   return (
     <article className="dark-card p-6 flex flex-col">
@@ -344,6 +348,11 @@ function ServiceCard({
           <ArrowRight className="size-4" aria-hidden="true" />
         </Link>
       </div>
+      {microcopy ? (
+        <p className="mt-3 text-xs text-[rgb(var(--hero-text-tertiary))] leading-relaxed">
+          {microcopy}
+        </p>
+      ) : null}
     </article>
   );
 }
