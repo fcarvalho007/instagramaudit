@@ -32,14 +32,14 @@ export function StatsBand() {
   return (
     <section
       aria-labelledby="dark-stats-title"
-      className="dark-hairline border-b px-6 py-12 sm:px-10 sm:py-14"
+      className="dark-hairline border-b px-6 py-10 sm:px-10 sm:py-12"
     >
       <Reveal className="flex flex-col gap-10 md:flex-row md:items-start md:gap-12">
         <div className="flex-1">
           <p className="dark-eyebrow mb-3">{t("dark.stats.eyebrow")}</p>
           <h2
             id="dark-stats-title"
-            className="font-display text-2xl sm:text-[27px] font-medium leading-[1.25] max-w-md"
+            className="font-display text-xl sm:text-2xl font-medium leading-[1.25] max-w-md"
             style={{ color: "rgb(var(--hero-text-primary))" }}
           >
             {t("dark.stats.headline")}
