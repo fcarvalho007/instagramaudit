@@ -13,7 +13,9 @@ import type {
   FlowVisualKind,
   FlowExtraTag,
   FlowTiming,
+  LifecycleBadge,
 } from "@/lib/admin/automation-flow-types";
+import { LIFECYCLE_BADGE_LABELS } from "@/lib/admin/automation-flow-types";
 
 interface AutomationNodeProps {
   flow: AutomationFlow;
@@ -94,6 +96,9 @@ export function AutomationNode({ flow, stageTokenColor }: AutomationNodeProps) {
             <TypePill kind={visual} stageColor={stageColor} />
             <StatusPill meta={status} />
             {flow.extraTag && <ExtraPill tag={flow.extraTag} />}
+            {flow.lifecycleBadges && flow.lifecycleBadges.length > 0 && (
+              <LifecycleBadgeRow badges={flow.lifecycleBadges} />
+            )}
           </div>
           <h3 className="m-0 text-[16px] font-semibold leading-tight text-admin-text-primary">
             {flow.title}
