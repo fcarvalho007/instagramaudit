@@ -1,120 +1,204 @@
-# Step 5 — Rewrite `commercial_followup` copy
+# Step 6A — `/admin/email-lab` operational redesign
 
-Goal: replace the generic "Próximos passos" sales copy with a narrative continuation of the free report. Keep all wiring, prices, checkout URLs, payment logic, schema and the manual admin send route untouched.
+Goal: reshape Email Lab into a lifecycle control room that mirrors the consolidated email map (Steps 1–5). Pure admin UI + metadata work — no email sending, no trigger code, no schema, no pricing/checkout/credits/report-generation changes.
 
 ## Files changed
 
-1. **`src/lib/email/templates/commercial-followup.ts`** — rewrite copy + structure. Backward-compatible input shape.
-2. **`src/lib/admin/email-template-registry.ts`** — update `shortDescription`, `wiredNote`, `preheader`, and the `variables` preview list for `commercial_followup`.
+1. **`src/lib/admin/email-template-registry.ts`** — extend `EmailTemplateEntry` with operational metadata. Backward compatible (current `category`, `wired`, `wiredAt`, `wiredNote` kept).
+2. **`src/components/admin/v2/email-lab/email-lab-page.tsx`** — re-group by lifecycle, add status-badge system, filter chips, richer Detail panel and Wiring tab, refined preview frame.
 
-No changes to:
-- `src/routes/api/admin/send-commercial-followup.ts` (the admin manual sender keeps working as-is — same prop names).
-- Any pricing, checkout, EuPago, credit, report-generation, or schema file.
-- `template-overrides.server.ts` (variable map unchanged at runtime; we only add an optional `insights` field that the sender does not pass yet).
+Not changed:
+- `src/routes/api/admin/email-templates*` — preview endpoint is fine as-is; we work entirely off the in-process registry render.
+- `src/routes/api/admin/send-*` — manual send routes untouched.
+- `src/lib/email/templates/*` — template renderers untouched.
+- Pricing, checkout, EuPago, credit ledger, report generation, migrations, schema.
 
-## Template rewrite — `commercial-followup.ts`
+## 1) Registry extension — `email-template-registry.ts`
 
-**New subject (dynamic per handle):**
-`O que o relatório gratuito ainda não mostra sobre @{handle}`
-If handle is missing, falls back to `O que o relatório gratuito ainda não mostra sobre o teu perfil`.
-
-**Preheader:**
-`A comparação com concorrentes e a evolução temporal ficam no relatório completo.`
-
-**Headline (dark navy header in `wrapHtml`):**
-`O relatório completo responde à pergunta seguinte`
-
-**Input shape — fully backward compatible:**
+Add new types and per-entry fields. None replace existing fields; the page reads the new ones, the old API stays valid for any other consumer.
 
 ```ts
-export interface CommercialFollowupInsights {
-  engagementVerdict?: string | null; // ex.: "está acima da média no engagement"
-  gapArea?: string | null;           // ex.: "há margem nos comentários e na consistência dos formatos"
+export type EmailLifecycleStage =
+  | "captacao"   // CAPTAÇÃO
+  | "entrega"    // ENTREGA
+  | "retencao"   // RETENÇÃO
+  | "conversao"  // CONVERSÃO
+  | "pagamento"  // PAGAMENTO
+  | "legado";    // LEGADO / DESACTIVADO
+
+export type EmailStatusBadge =
+  | "ligado"            // green
+  | "manual"            // blue
+  | "transaccional"    // navy
+  | "kill_switch_off"   // amber
+  | "planeado"          // amber
+  | "legado"            // grey
+  | "sem_trigger"       // amber
+  | "desactivado";      // grey
+
+export interface EmailWiringMeta {
+  triggerEvent?: string | null;        // e.g. "EuPago webhook · branch paid"
+  delay?: string | null;                // e.g. "imediato", "após unlock"
+  sourceFile?: string | null;           // mirrors wiredAt, but stable name
+  provider?: "Resend" | "Brevo" | null;
+  automatic?: boolean;                  // true=automático, false=manual
+  killSwitchEnv?: string | null;        // e.g. "PAYMENT_CONFIRMATION_EMAIL_ENABLED"
+  killSwitchDefault?: "on" | "off" | null;
+  idempotencyEvent?: string | null;     // e.g. "report_saved_email_sent"
+  knownRisks?: string | null;
 }
 
-export interface CommercialFollowupInput {
-  firstName?: string | null;
-  instagramHandle?: string | null;
-  reportUrl?: string | null;
-  replyToEmail?: string | null;
-  checkoutUrl?: string | null;
-  unsubscribeUrl?: string | null;
-  insights?: CommercialFollowupInsights | null; // NEW, optional
+export interface EmailTemplateEntry {
+  // …existing fields…
+  lifecycleStage: EmailLifecycleStage;
+  statusBadges: EmailStatusBadge[];
+  requiredVariables?: string[];
+  optionalVariables?: string[];
+  fallbackBehaviour?: string | null;
+  wiring?: EmailWiringMeta;
 }
 ```
 
-The admin sender does not pass `insights`, so today every send uses the **generic narrative fallback** — no broken placeholders.
+**Stage assignments (per spec):**
 
-**Body sections, in order:**
+| Lifecycle | Templates |
+| --- | --- |
+| `captacao` | `request_received` |
+| `entrega` | `report_saved`, `report_ready` |
+| `retencao` | `feedback_request` |
+| `conversao` | `commercial_followup` |
+| `pagamento` | `payment_confirmed` |
+| `legado` | `welcome_beta`, `report_summary`, `personal_area_saved` |
 
-1. Greeting (`Olá {firstName},` or `Olá,`).
-2. Lead-in paragraph: `A análise gratuita de @{handle} já mostrou uma primeira leitura:`
-3. Subtle insight card (light surface, 3 px navy-blue left border, "PRIMEIRA LEITURA" eyebrow). Content:
-   - With insights: `o perfil {engagementVerdict}, mas ainda {gapArea}.`
-   - Without insights (default for current admin flow): `o que está a funcionar bem e onde ainda há margem para crescer.`
-4. Question paragraph: `**A pergunta seguinte é mais importante:** isto é um bom resultado isolado, ou está realmente acima dos concorrentes directos?`
-5. Bridge sentence: `É essa leitura que fica no relatório completo.`
-6. `O relatório completo desbloqueia:` followed by a `<ul>` with the 5 bullets:
-   - comparação com perfis semelhantes;
-   - leitura temporal para perceber se o engagement está a subir ou a descer;
-   - análise dos formatos que estão a puxar melhor desempenho;
-   - identificação de oportunidades editoriais;
-   - leitura completa das secções disponíveis.
-7. Reassurance block (muted card, 3 lines):
-   - `Não é uma subscrição.`
-   - `Não há renovação automática.`
-   - `É um pagamento único para desbloquear este relatório.`
-8. Primary CTA — preserves existing logic (no price/URL changes):
-   - `checkoutUrl` present → button `Desbloquear relatório completo` → `checkoutUrl`.
-   - else if `replyToEmail` present → button `Responder para desbloquear` → `mailto:replyToEmail`.
-   - else muted line `Para desbloquear, basta responderes a este email.` (current safe reply fallback).
-9. Secondary note (muted): `Se a análise for para uso académico, equipa ou clientes, responde a este email{ ou escreve para {replyTo}}. Há formas melhores de usar isto em escala.`
-10. Optional `Rever o relatório gratuito: …` link when `reportUrl` is present.
-11. Signature + optional unsubscribe footer (unchanged helpers).
+**Badge rules per template:**
 
-**Important guarantees:**
-- No hardcoded prices, plan names ("7€", "Pack 5 relatórios", "28€") — all removed from the new copy. Pricing is owned by the checkout page, not the email.
-- No new env vars, no schema changes, no new RPC calls.
-- All dynamic content goes through `escapeHtml`.
-- `renderCommercialFollowup.subject` static export is removed (subject is now per-handle); the registry already calls `render()` and reads `RenderedEmail.subject` directly, so EmailLab is unaffected. I'll grep to confirm no other consumer reads the static `.subject` before deleting.
+- `request_received`: `["ligado","transaccional"]`, wiring.automatic=true, idempotencyEvent="beta_request_received_email_sent".
+- `report_ready`: `["ligado","manual","transaccional"]`, automatic=false (admin action).
+- `report_saved`: `["ligado","transaccional"]`, automatic=true, killSwitchEnv="LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED", killSwitchDefault="on", idempotencyEvent="report_saved_email_sent". knownRisks="Concurrent unlocks could race past dedup before SENT event is recorded (no DB unique constraint)."
+- `feedback_request`: `["ligado","manual"]`, automatic=false.
+- `commercial_followup`: `["ligado","manual"]`, automatic=false. knownRisks="Auto-trigger intencionalmente não activo nesta fase."
+- `payment_confirmed`: `["ligado","transaccional","kill_switch_off"]` (badge surfaces when `PAYMENT_CONFIRMATION_EMAIL_ENABLED` default is OFF), automatic=true, killSwitchEnv="PAYMENT_CONFIRMATION_EMAIL_ENABLED", killSwitchDefault="off", idempotencyEvent="payment_confirmation_email_sent".
+- `welcome_beta`: `["legado","desactivado"]`. fallbackBehaviour="Substituído por report_saved."
+- `report_summary`: `["legado","desactivado"]`.
+- `personal_area_saved`: `["sem_trigger","planeado"]` (planeado para fluxo de criação de conta).
 
-**Design fidelity:**
-- Keeps the existing `wrapHtml` shell (dark navy header / white body / muted footer).
-- Insight card and reassurance block reuse the same neutral surfaces and accent (`#3772E5`) already used in `report_saved`.
-- Mobile-first: tables with `width="100%"`, padding 14–20 px, font-size ≥14 px.
+`requiredVariables`/`optionalVariables` split per template (e.g. `payment_confirmed` required: firstName, instagramHandle, amountLabel, paymentMethod; optional: paymentReference, reportUrl).
 
-## Registry update — `email-template-registry.ts`
+`fallbackBehaviour` populated for templates with graceful degradation (`report_saved`: "credit card e insights são omitidos quando dados ausentes"; `commercial_followup`: "narrativa genérica quando insights ausentes; CTA degrada para mailto/reply"; `payment_confirmed`: "campos opcionais omitidos sem placeholders partidos").
 
-For the `commercial_followup` entry only:
+**Preview sample data** — update `SAMPLE` so EmailLab matches the spec values; tests use literal handles, not SAMPLE, so impact is preview-only:
 
-- `shortDescription`: `"Continuação narrativa do relatório gratuito — manual, sem auto-trigger."`
-- `wiredNote`:
-  > `Lifecycle: CONVERSÃO · Status: Manual · Trigger: admin action only (src/routes/api/admin/send-commercial-followup.ts). Continua a narrativa do relatório gratuito sem alterar preços nem URLs de checkout. Auto-trigger intencionalmente não activo nesta fase.`
-- `preheader`: `"A comparação com concorrentes e a evolução temporal ficam no relatório completo."`
-- `variables` preview list: keep `firstName`, `instagramHandle`, `reportUrl`, `checkoutUrl (opcional)`; add `engagementVerdict (opcional)` and `gapArea (opcional)` using new `SAMPLE.engagementVerdictSample` / `SAMPLE.gapAreaSample` (e.g. `"está acima da média no engagement"` / `"há margem nos comentários e na consistência dos formatos"`).
-- `render()`: call `renderCommercialFollowup` with the existing sample fields plus `insights: { engagementVerdict: SAMPLE.engagementVerdictSample, gapArea: SAMPLE.gapAreaSample }` so EmailLab shows the richest variant by default. The "no insights" variant can still be inspected by clearing the override.
+- `instagramHandle: "webhspt"`
+- `reportUrl: "https://example.com/analyze/webhspt"`
+- `analyzeAnotherUrl: "https://example.com/"`
+- `followersLabel: "10,2 mil"`, `dominantFormat: "carrosséis"`, `engagementRate: "4,2%"`, `benchmarkDelta: "+1,1 pp acima da média"`, `topPostFormat: "carrossel"`, `topPostEngagement: "0,15%"` (already present, kept).
+- `totalFreeCredits: 2`, `usedCredits: 1`, `remainingCredits: 1` (already present, kept).
+- `paymentMethod: "MB WAY"`, `paymentReference: "AP-2026-0142"` (already present, kept).
 
-`TEMPLATE_VARIABLES.commercial_followup` (used by `template-overrides`) stays as the existing 4 keys to avoid changing the override editor contract.
+Also update the hardcoded `payment_confirmed.preheader` string (`"… @frederico.m.carvalho …"`) to use `SAMPLE.instagramHandle` so it stays in sync.
 
-## Validation (manual)
+**Helper exports** added next to `CATEGORY_*`:
 
-1. `/admin/email-lab` → `commercial_followup` preview renders new copy with insight card visible (uses sample insights).
-2. Toggle the SAMPLE insights off (temporarily set them to `null` in dev) → email renders the neutral "o que está a funcionar bem…" line, no broken `{{...}}` tokens, no empty card.
-3. Toggle `checkoutUrl` off → primary CTA becomes `Responder para desbloquear` (mailto) when `replyToEmail` is set, or the muted reply-only line otherwise. No 404 link.
-4. From `/admin` lead detail, click `Enviar follow-up comercial` against a test lead with a verified inbox → email arrives with new subject `O que o relatório gratuito ainda não mostra sobre @{handle}`, body matches preview, CTA opens the existing checkout URL untouched.
-5. Verify `product_events` still receives `commercial_followup_sent` row with the same metadata shape.
-6. Verify the lead's `contacted_at` / `commercial_status` transition still happens exactly as before (logic in send route is untouched).
-7. Repeat send against the same lead — resend still works (idempotency is intentionally not enforced by the admin route).
+```ts
+export const LIFECYCLE_ORDER: EmailLifecycleStage[] = [
+  "captacao","entrega","retencao","conversao","pagamento","legado",
+];
+export const LIFECYCLE_LABELS: Record<EmailLifecycleStage,string> = {
+  captacao:"Captação", entrega:"Entrega", retencao:"Retenção",
+  conversao:"Conversão", pagamento:"Pagamento", legado:"Legado / desactivado",
+};
+export const STATUS_BADGE_LABELS: Record<EmailStatusBadge,string> = {
+  ligado:"Ligado", manual:"Manual", transaccional:"Transaccional",
+  kill_switch_off:"Kill-switch OFF", planeado:"Planeado",
+  legado:"Legado", sem_trigger:"Sem trigger", desactivado:"Desactivado",
+};
+```
+
+## 2) Page redesign — `email-lab-page.tsx`
+
+**Grouping**: replace category grouping with `LIFECYCLE_ORDER`. Legacy group rendered last with a muted accent and a sectional caption "Mantidos em disco para auditoria — não disparam".
+
+**Filter chips** (above the search box):
+`Todos · Ligados · Manuais · Transaccionais · Kill-switch · Legado · Sem trigger`
+
+Filter is a single-select state; AND-combines with the search text. Predicates read `statusBadges`:
+- `ligados`: `badges.includes("ligado")`
+- `manuais`: `badges.includes("manual")`
+- `transaccionais`: `badges.includes("transaccional")`
+- `kill-switch`: `badges.includes("kill_switch_off")`
+- `legado`: `lifecycleStage === "legado" || badges.includes("legado")`
+- `sem trigger`: `badges.includes("sem_trigger")`
+
+**Template card**: replace single `StatusPill` with a compact row of up to 3 badge chips using the colour map below. Long lists collapse to "+N".
+
+**Badge palette** (Tailwind tokens already present):
+- ligado → success-500/12 bg + success-500 text
+- manual → leads-500/12 + leads-500 (calm blue)
+- transaccional → text-primary/12 + text-primary (navy)
+- kill_switch_off, planeado, sem_trigger → warning-500/12 + warning-500 (amber)
+- legado, desactivado → text-tertiary/12 + text-tertiary (grey)
+- Reserved: danger-500 only used for real failure surfaces (not used here).
+
+**Detail header**: add a "Lifecycle stage" chip next to the title and a badge stack underneath instead of the single pill. Internal key stays mono and small.
+
+**Tabs**: keep the three tabs (Pré-visualização / Variáveis / Wiring). Inside Preview, keep existing HTML/Text toggle and email-client frame — only adjust the inbox label to "Inbox · AuditProfiles" so it stops saying "Mira".
+
+**Variables tab**: split into two tables — `Obrigatórias` and `Opcionais` — using `requiredVariables` / `optionalVariables` when present; fall back to the current flat `variables` list. Append a "Comportamento de fallback" block beneath when `fallbackBehaviour` is set.
+
+**Wiring tab**: expanded layout. Rows shown in this order, each via existing `MetaRow`:
+- Estado (badges row)
+- Lifecycle stage
+- Trigger / evento (`wiring.triggerEvent` or "—")
+- Delay (`wiring.delay` or "imediato")
+- Automático / Manual
+- Provider (`Resend`/`Brevo` or "—")
+- Origem / source file (mono, from `wiring.sourceFile` ?? `wiredAt`)
+- Kill-switch (env name + default; amber callout when default is "off")
+- Idempotência (event name, mono)
+- Notas (current `wiredNote` muted block)
+- Riscos conhecidos (`wiring.knownRisks` amber callout when set)
+- Existing "Sem trigger" callout kept for `!wired`.
+
+**KPI tiles** at the top keep the current 4 cards. Add **no new endpoint** — per-template sent/failed counts are not available from `/api/admin/automation-flow` today, only the aggregate. The aggregate `sentLast30d` continues to show in the global KPI strip; per-template counts are intentionally out of scope for 6A (Step 6B candidate). Detail header gets a small placeholder line "Envios 30d: —" with a tooltip "Disponível quando o automation-flow expor totais por template." — explicit, never silently zero.
+
+**Safety preserved**:
+- `SendTestButton` stays disabled with the "Disponível em breve" tooltip — no new send path.
+- `ReadOnlyBanner` stays. Copy updated to "Esta página é só leitura — nada é enviado a partir daqui."
+- Legacy templates are visible, never silently hidden; they live in the `legado` group with muted styling.
+- HTML preview iframe keeps `sandbox=""` (no scripts, no network).
+
+## Validation checklist
+
+1. Open `/admin/email-lab`. Confirm groups appear in order: **Captação → Entrega → Retenção → Conversão → Pagamento → Legado / desactivado**.
+2. Each card shows the right badges:
+   - `request_received` → Ligado · Transaccional
+   - `report_saved` → Ligado · Transaccional
+   - `report_ready` → Ligado · Manual · Transaccional
+   - `feedback_request` → Ligado · Manual
+   - `commercial_followup` → Ligado · Manual
+   - `payment_confirmed` → Ligado · Transaccional · Kill-switch OFF (amber)
+   - `welcome_beta`, `report_summary` → Legado · Desactivado (grey)
+   - `personal_area_saved` → Sem trigger · Planeado (amber)
+3. Filter chip "Legado" shows only the legacy group. "Kill-switch" shows only `payment_confirmed`. "Manuais" shows `report_ready`, `feedback_request`, `commercial_followup`.
+4. Search keeps working and AND-combines with the chip.
+5. Select `report_saved`. Preview renders with handle `@webhspt`, credit card showing `Começaste com 2 análises · 1 usada em @webhspt · 1 disponível`, three insights using the spec values.
+6. Variables tab shows Obrigatórias (firstName, instagramHandle, reportUrl, analyzeAnotherUrl) and Opcionais (credits + insights). Fallback box: "credit card e insights são omitidos quando dados ausentes".
+7. Wiring tab shows: Trigger = "Lead-magnet sequence · após unlock", Delay = "imediato", Provider = "Resend", Source = `src/lib/email/lead-magnet-sequence.server.ts`, Kill-switch = `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED` (default ON), Idempotência = `report_saved_email_sent`, Riscos = race-condition note.
+8. Select `payment_confirmed` — Wiring shows kill-switch amber callout `PAYMENT_CONFIRMATION_EMAIL_ENABLED` (default OFF).
+9. Select `welcome_beta` — appears under Legado, badges Legado · Desactivado, Wiring note explains substitution by `report_saved`.
+10. "Enviar teste" button stays disabled with tooltip; HTML preview iframe is sandboxed; no network call leaves the page beyond the existing `/api/admin/automation-flow` aggregate fetch.
+11. Run `bunx vitest run src/lib/email` — `registry-parity` and template tests still pass (no template content changes).
 
 ## Output after implementation
 
-1. **Files changed:** `src/lib/email/templates/commercial-followup.ts`, `src/lib/admin/email-template-registry.ts`.
-2. **Commercial follow-up remains manual:** only `src/routes/api/admin/send-commercial-followup.ts` invokes it; no cron, no webhook, no lifecycle hook added.
-3. **Prices and checkout logic unchanged:** no edits under `src/lib/pricing*`, checkout routes, EuPago files, or product catalog; `checkoutUrl` continues to flow from admin payload → template prop → `<a>` href verbatim.
-4. **Preview variables updated:** `commercial_followup` registry entry shows `firstName`, `instagramHandle`, `reportUrl`, `checkoutUrl`, plus the new optional `engagementVerdict` / `gapArea` insight fields.
-5. **Manual validation checklist:** above (7 items).
+1. **Files changed**: `src/lib/admin/email-template-registry.ts`, `src/components/admin/v2/email-lab/email-lab-page.tsx`.
+2. **No real emails sent**: SendTestButton remains disabled; no fetch added to a sender; preview iframe is sandboxed.
+3. **Triggers not changed**: zero edits under `src/routes/api/admin/send-*`, webhook routes, `lead-magnet-sequence.server.ts`, or any sender module. Wiring metadata is descriptive only.
+4. **Prices / payment / credits / report generation untouched**: no edits to `pricing*`, EuPago files, credit ledger, snapshots, RPCs, migrations.
+5. **Validation checklist**: the 11 items above.
 
 ## Risks / follow-ups
 
-- Override editor (`template-overrides.server.ts`) does not surface the new `insights` field — intentional, since today no sender supplies it. Future Step could add an admin form to type the two insight strings before sending; out of scope here.
-- Removing `renderCommercialFollowup.subject` static is safe per grep, but I'll re-confirm in build mode before deleting.
+- Per-template sent/failed counters require extending `/api/admin/automation-flow` to bucket by `event_type` or `template_name` — defer to Step 6B.
+- Updating `SAMPLE.instagramHandle` from `frederico.m.carvalho` → `webhspt` changes preview only; tests use literal handles and are unaffected. The hardcoded preheader on `payment_confirmed` will be re-pointed to `SAMPLE.instagramHandle` to avoid drift.
+- Kill-switch state shown is the **declared default**, not the live env value. Surfacing live env would require a server fn; out of scope for 6A.
