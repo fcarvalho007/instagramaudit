@@ -20,6 +20,10 @@ import { LIFECYCLE_BADGE_LABELS } from "@/lib/admin/automation-flow-types";
 interface AutomationNodeProps {
   flow: AutomationFlow;
   stageTokenColor: string;
+  /** "secondary" demotes visual weight (e.g. manual/legacy variant in a stage). */
+  variant?: "primary" | "secondary";
+  /** When true, the whole card is dimmed (legacy stage). */
+  muted?: boolean;
 }
 
 const VISUAL_LABEL: Record<FlowVisualKind, string> = {
@@ -60,16 +64,26 @@ const EXTRA_META: Record<Exclude<FlowExtraTag, null>, Omit<PillMeta, "showDot">>
   blocked:          { label: "Bloqueado",         bgToken: "admin-pill-blocked-bg", fgToken: "admin-pill-blocked-fg" },
 };
 
-export function AutomationNode({ flow, stageTokenColor }: AutomationNodeProps) {
+export function AutomationNode({
+  flow,
+  stageTokenColor,
+  variant = "primary",
+  muted = false,
+}: AutomationNodeProps) {
   const visual = flow.visualKind;
   const Icon = VISUAL_ICON[visual];
   const status = STATUS_META[flow.status];
   const isBlocked = flow.status === "blocked";
   const stageColor = `rgb(var(--${stageTokenColor}))`;
+  const secondary = variant === "secondary";
+  const iconMix = secondary ? 8 : 13;
+  const iconBorderMix = secondary ? 14 : 22;
 
   return (
     <article
-      className="group relative rounded-2xl border border-admin-border bg-white shadow-admin-card transition-all"
+      className={`group relative rounded-2xl border border-admin-border bg-white transition-all ${
+        secondary ? "" : "shadow-admin-card"
+      } ${muted ? "opacity-80" : ""}`}
     >
       {/* Zone 1 — identification */}
       <div className="flex items-start gap-4 px-5 pt-5">
@@ -77,8 +91,8 @@ export function AutomationNode({ flow, stageTokenColor }: AutomationNodeProps) {
           <div
             className="flex h-[50px] w-[50px] items-center justify-center rounded-xl"
             style={{
-              background: `color-mix(in oklab, ${stageColor} 13%, transparent)`,
-              border: `1px solid color-mix(in oklab, ${stageColor} 22%, transparent)`,
+              background: `color-mix(in oklab, ${stageColor} ${iconMix}%, transparent)`,
+              border: `1px solid color-mix(in oklab, ${stageColor} ${iconBorderMix}%, transparent)`,
             }}
           >
             <Icon size={22} style={{ color: stageColor }} strokeWidth={1.75} />
@@ -100,9 +114,20 @@ export function AutomationNode({ flow, stageTokenColor }: AutomationNodeProps) {
               <LifecycleBadgeRow badges={flow.lifecycleBadges} />
             )}
           </div>
-          <h3 className="m-0 text-[16px] font-semibold leading-tight text-admin-text-primary">
+          <h3
+            className={`m-0 leading-tight text-admin-text-primary ${
+              secondary
+                ? "text-[14px] font-medium"
+                : "text-[16px] font-semibold"
+            }`}
+          >
             {flow.title}
           </h3>
+          {secondary && (
+            <p className="m-0 text-[11px] italic text-admin-text-tertiary">
+              Variante manual / signed URL — não é o email principal de entrega.
+            </p>
+          )}
           {flow.subject && (
             <p className="m-0 flex items-baseline gap-1.5 text-[12px] text-admin-text-tertiary">
               <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-admin-text-tertiary/70">
@@ -124,6 +149,13 @@ export function AutomationNode({ flow, stageTokenColor }: AutomationNodeProps) {
 
       {/* Zone 2 — timing strip */}
       <TimingStrip timing={flow.timing} instrumented={flow.instrumented} />
+
+      {/* Optional operational note */}
+      {flow.note && (
+        <p className="m-0 mx-5 mt-2 text-[11px] italic text-admin-text-tertiary">
+          {flow.note}
+        </p>
+      )}
 
       {/* Zone 3 — stats */}
       <div className="grid grid-cols-3 gap-2 px-5 pb-5 pt-3">
