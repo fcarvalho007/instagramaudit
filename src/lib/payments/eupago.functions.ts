@@ -14,6 +14,10 @@ import {
   PRODUCT_CODES,
   type ProductCode,
 } from "./products";
+import {
+  SAFE_CHECKOUT_PREPARE_ERROR,
+  safeCheckoutPrepareError,
+} from "./checkout-errors";
 
 const inputSchema = z
   .object({
@@ -81,6 +85,9 @@ const inputSchema = z
         invoice_email: z.string().trim().email().max(200),
       })
       .optional(),
+    // Compatibility-only: ignored server-side. Lead id is always resolved
+    // from the signed `lead_session` cookie, never from the client.
+    lead_id: z.string().trim().max(64).optional(),
   })
   .strict();
 
@@ -111,10 +118,37 @@ export const createEupagoCheckout = createServerFn({ method: "POST" })
       "./coupons.server"
     );
 
-    const leadId = getLeadFromCookie();
-    if (!leadId) {
-      throw new Error("Unauthorized: no lead session");
+    const leadIdFromCookie = getLeadFromCookie();
+    if (!leadIdFromCookie) {
+      // No / invalid lead_session — stop before any insert or provider call.
+      // eslint-disable-next-line no-console
+      console.warn("[checkout] missing lead_session cookie");
+      throw safeCheckoutPrepareError();
     }
+
+    // Verify the lead row still exists. Stale cookies (lead deleted) used
+    // to crash with `lead_payments_lead_id_fkey` and leak the raw error.
+    const { data: leadRow, error: leadErr } = await supabaseAdmin
+      .from("leads")
+      .select("id, email")
+      .eq("id", leadIdFromCookie)
+      .maybeSingle();
+
+    if (leadErr) {
+      // eslint-disable-next-line no-console
+      console.error("[checkout] lead lookup failed", leadErr);
+      throw safeCheckoutPrepareError();
+    }
+    if (!leadRow) {
+      // eslint-disable-next-line no-console
+      console.warn("[checkout] lead_session points to missing lead", {
+        leadId: leadIdFromCookie,
+      });
+      throw safeCheckoutPrepareError();
+    }
+
+    const leadId = leadRow.id;
+    const customerEmailFromLead: string | null = leadRow.email ?? null;
 
     const product = getServerProduct(data.product_code);
 
@@ -162,7 +196,14 @@ export const createEupagoCheckout = createServerFn({ method: "POST" })
       .single();
 
     if (insertErr || !paymentRow) {
-      throw new Error(`Failed to create payment row: ${insertErr?.message}`);
+      // eslint-disable-next-line no-console
+      console.error("[checkout] lead_payments insert failed", {
+        leadId,
+        product: product.code,
+        message: insertErr?.message,
+        code: (insertErr as { code?: string } | null)?.code,
+      });
+      throw safeCheckoutPrepareError();
     }
 
     const baseUrl = (process.env.APP_BASE_URL ?? "").replace(/\/+$/, "");
@@ -170,18 +211,7 @@ export const createEupagoCheckout = createServerFn({ method: "POST" })
       throw new Error("APP_BASE_URL not configured");
     }
 
-    // Look up the lead email for the EuPago customer field (optional).
-    let customerEmail: string | null = null;
-    try {
-      const { data: lead } = await supabaseAdmin
-        .from("leads")
-        .select("email")
-        .eq("id", leadId)
-        .maybeSingle();
-      customerEmail = lead?.email ?? null;
-    } catch {
-      /* non-fatal */
-    }
+    const customerEmail = customerEmailFromLead;
 
     try {
       const result = await providerCreate({
@@ -255,8 +285,6 @@ export const createEupagoCheckout = createServerFn({ method: "POST" })
         },
       });
 
-      throw new Error(
-        "Não foi possível iniciar o pagamento. Tenta novamente em instantes.",
-      );
+      throw new Error(SAFE_CHECKOUT_PREPARE_ERROR);
     }
   });
