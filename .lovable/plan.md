@@ -1,129 +1,47 @@
-## Goal
-Validate one real EuPago Pay By Link payment for product `authority_diagnosis_97`, end-to-end, with no code or DB changes. The agent only collects evidence; the user performs the human steps (creating the lead session, clicking the checkout, paying at EuPago).
+# Fix duplicate footer + hydration mismatch on landing
 
-## Pre-flight findings (already gathered, read-only)
+## Diagnóstico
 
-**Product configuration (code, not DB)**
-- `src/lib/payments/products.ts` → `authority_diagnosis_97` exposed, label "97€", strike "149€".
-- `src/lib/payments/products.server.ts` → 9700 cents EUR, description "Diagnóstico de Autoridade Digital — relatório completo + sessão humana de 30 min + 3 prioridades."
-- `pricing_plans` table has no row for this key — pricing is sourced from `products.server.ts`, which is the documented source of truth, so this is expected, not a defect.
+Confirmei dois problemas reais na home (`/`), que explicam o que vês:
 
-**Historical `lead_payments` (product = `authority_diagnosis_97`)**
-- 4 rows total. 1 `pending` (2026-06-03 20:23, provider `eupago`, provider_payment_id `713447afafe74a089e8619c3a5986b0b`), 3 `failed` (no provider_payment_id).
-- 0 rows ever reached `paid`. 0 entitlements granted. 0 `payment_ln_paid` events.
+### 1. Footer duplicado
 
-**Webhook surface**
-- Handler: `src/routes/api/public/eupago-webhook.ts`.
-- Live route: `/api/public/eupago-ln`. Legacy alias `/api/public/ln-webhook` also exported.
-- On success it emits product event `payment_ln_paid` (NOT `payment_webhook_paid` as the brief states — the brief's event name is wrong; the actual name to look for is `payment_ln_paid`).
-- On failure: `payment_ln_failed`.
+`AppShell` (em `src/components/layout/app-shell.tsx`) renderiza `<DarkFooter />` quando a rota é `/`.
 
-## Validation procedure
+Ao mesmo tempo, `LandingDarkIsland` (em `src/components/landing/dark/landing-dark-island.tsx`) inclui no fim o `<MiniFooterStrip />` (logo + tagline + Preços / Privacidade / Termos / Contacto).
 
-### Step A — User-side: create a controlled checkout
-User performs these in the browser, signed in or with a fresh lead session:
-1. Visit `/checkout/authority-diagnosis` (optionally with `?username=<handle>`).
-2. Use a real, unique email so we can isolate the new row.
-3. Complete steps 1→4 in the flow until EuPago Pay By Link opens in a new tab.
-4. **Tell the agent the exact email used** so we can locate the lead + payment row precisely.
+Resultado: aparecem dois "rodapés" um a seguir ao outro:
+- MiniFooterStrip (dentro da ilha dark, com cantos arredondados)
+- DarkFooter global (links institucionais + language switcher + copyright)
 
-### Step B — Agent verification: payment created, status `pending`
-Agent will run:
-```sql
-SELECT lp.id, lp.lead_id, l.email_normalized, lp.status, lp.amount_cents,
-       lp.provider, lp.provider_payment_id, lp.provider_checkout_url,
-       lp.checkout_started_at, lp.paid_at, lp.created_at
-FROM lead_payments lp
-JOIN leads l ON l.id = lp.lead_id
-WHERE lp.product = 'authority_diagnosis_97'
-  AND l.email_normalized = lower('<email-from-user>')
-ORDER BY lp.created_at DESC LIMIT 5;
-```
-Pass criteria: 1 fresh row, `status='pending'`, `amount_cents=9700`, `provider='eupago'`, `provider_payment_id` non-null, `provider_checkout_url` non-null.
+### 2. Hydration mismatch ("dark.transparency.audience")
 
-Also confirm tracking:
-```sql
-SELECT event_type, created_at, metadata
-FROM product_events
-WHERE lead_id = '<lead_id>' AND event_type IN
-  ('payment_cta_clicked','payment_checkout_created','checkout_payment_started','payment_checkout_failed')
-ORDER BY created_at DESC LIMIT 20;
-```
-Pass: `payment_checkout_created` present, no `payment_checkout_failed` for this attempt.
+O runtime error mostra o servidor a renderizar a string crua `dark.transparency.audience` e o cliente a renderizar `"Feito para consultores, social media managers, marcas e criadores."`. As chaves PT/EN existem — o problema é que o i18next não está inicializado/pronto durante SSR para esse namespace, então o servidor devolve a key e o cliente devolve a tradução. Isto é o que dispara o erro #418 em produção e o reset da árvore React. Acontece em qualquer band que use `useTranslation("landing")` — a `TransparencyBand` é só a primeira a falhar.
 
-If any of these fail → STOP, report failure point, do not pay.
+## Plano (apenas presentation/i18n, sem tocar em hero / checkout / EuPago / onboarding / backend / admin)
 
-### Step C — User-side: pay at EuPago
-User completes the real card payment in the EuPago Pay By Link tab. After confirmation, user pings the agent to continue.
+### A. Remover footer duplicado
+- Em `src/components/landing/dark/landing-dark-island.tsx`: remover o `<MiniFooterStrip />` e o respectivo import. O `DarkFooter` global já cobre brand + links + language switcher.
+- Manter `MiniFooterStrip.tsx` no repo (não apagar) caso seja preciso reintroduzir noutro contexto, mas deixar de o renderizar.
 
-### Step D — Agent verification: webhook received, payment transitioned
-Agent polls (≤ a few minutes after payment):
-```sql
-SELECT id, status, paid_at, provider_reference, updated_at, metadata
-FROM lead_payments
-WHERE id = '<payment_id_from_step_B>';
-```
-Pass: `status='paid'`, `paid_at` not null, `updated_at` > `created_at`. (Recording `metadata` and `provider_reference` for evidence.)
+### B. Estancar o flash de chaves cruas (`dark.transparency.audience`)
+Causa: SSR renderiza antes do bundle `landing` estar resolvido. Duas opções, escolho a menos invasiva:
 
-Webhook evidence (raw delivery + edge log):
-```sql
--- HTTP-level evidence of EuPago hitting the public route
-select id, timestamp, event_message, response.status_code, request.method, request.url
-from function_edge_logs
-  cross join unnest(metadata) as m
-  cross join unnest(m.response) as response
-  cross join unnest(m.request) as request
-where request.url like '%eupago-ln%' or request.url like '%ln-webhook%'
-order by timestamp desc limit 20;
-```
-Plus `stack_modern--server-function-logs` filtered by `eupago-ln` to capture any handler-side log lines (signature accepted, payment matched).
+1. Garantir que `landing` está em `ns` / `defaultNS` pré-carregado no `src/i18n/index.ts` (inspeccionar e, se em falta, juntar `"landing"` à lista de namespaces pré-carregados — não inventar config nova).
+2. Se `react-i18next` estiver com `useSuspense: true` mas sem `<Suspense fallback>` à volta da ilha, mudar para `useSuspense: false` no init (já é a config segura para SSR + hidratação).
 
-Pass: at least one POST 200 to `/api/public/eupago-ln` within the payment window; no error lines for that request.
+Aplicar a mínima das duas que resolva (provavelmente só (1)).
 
-### Step E — Agent verification: entitlement + tracking
-```sql
-SELECT id, lead_id, product_code, payment_id, granted_at, metadata
-FROM lead_entitlements
-WHERE lead_id = '<lead_id>' AND product_code = 'authority_diagnosis_97'
-ORDER BY granted_at DESC;
-```
-Pass: exactly 1 row, `payment_id` = the payment row from Step B, granted_at within the webhook window.
+### C. Validação
+- `bunx tsc --noEmit`
+- Abrir `/` no preview em desktop 1440 e mobile 390:
+  - confirmar 1 único footer (DarkFooter global)
+  - confirmar que não aparece nenhuma string `dark.*` crua em nenhum band
+  - confirmar consola sem erros de hydration / React #418
 
-```sql
-SELECT event_type, created_at, metadata
-FROM product_events
-WHERE lead_id = '<lead_id>'
-  AND event_type IN ('payment_ln_paid','payment_ln_failed')
-ORDER BY created_at DESC;
-```
-Pass: exactly 1 `payment_ln_paid`, 0 `payment_ln_failed` for this attempt.
+## Fora de scope (não tocar)
 
-### Step F — Idempotency check
-Agent re-runs the entitlement query 60s later. Pass: still exactly 1 row (no duplicate from a retry).
-If EuPago re-delivered the webhook, also re-check `lead_payments` did not regress or duplicate.
-
-### Step G — User-facing state
-User refreshes the return/success page (the `return` param sent in step 1, or `/checkout/authority-diagnosis` with the same lead session) and reports what they see. Agent verifies it matches the entitlement state (success/unlocked, not "pending").
-
-## Evidence the agent will report
-1. **Product configuration summary** — from `products.ts` / `products.server.ts` (already captured above).
-2. **Payment row before payment** — full row from Step B.
-3. **Payment row after webhook** — full row from Step D.
-4. **Webhook evidence** — edge log line(s) + server-function-logs lines for that request id / timestamp.
-5. **Entitlement row evidence** — row from Step E.
-6. **Tracking event evidence** — `payment_ln_paid` row.
-7. **Idempotency** — second snapshot from Step F.
-8. **User-facing state** — what the UI showed.
-
-## Final verdict rubric
-- All Step D/E/F/G pass cleanly → **READY TO SELL**.
-- Webhook delivered but mapping fails (e.g. payment not transitioned, no entitlement, duplicate entitlement, wrong event name, or UI still shows pending) → **NEEDS FIX**, with the exact failing step.
-- Webhook never arrives within ~10 minutes, signature rejected, or EuPago Pay By Link never opens → **BLOCKED** (EuPago config / network), with the exact failing step.
-
-## Discrepancy to flag in the final report
-The brief asks to confirm event `payment_webhook_paid`. The handler actually emits `payment_ln_paid`. The validation will look for `payment_ln_paid`; if the user insists the name should be `payment_webhook_paid` that is a code-side decision (and out of scope for this read-only run).
-
-## What I need from the user to proceed
-1. Confirmation to start.
-2. The exact email used when going through `/checkout/authority-diagnosis`.
-3. A ping immediately after paying at EuPago (so I poll at the right time).
+- Hero / primeira fold
+- Copy, hierarquia ou padding das bands já refinados
+- Checkout, EuPago, onboarding, geração de relatórios, backend, admin
+- Sem novas dependências
