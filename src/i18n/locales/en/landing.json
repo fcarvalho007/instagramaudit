@@ -195,8 +195,8 @@
       "lead": "Start with the free initial overview.",
       "urgency": "Launch price — rises to €149 after the beta.",
       "free": { "label": "Initial overview", "price": "€0", "unit": "no card · no subscription", "cta": "Start free" },
-      "single": { "label": "Full report", "unit": "one-off payment · no subscription", "cta": "Unlock" },
-      "diagnosis": { "label": "Authority Diagnosis", "unit": "human reading + 3 priorities", "cta": "Book", "badge": "Most useful" }
+      "single": { "label": "Full report", "unit": "one-off payment · no subscription", "cta": "Get full report" },
+      "diagnosis": { "label": "Authority Diagnosis", "unit": "human reading + 3 priorities", "cta": "Reserve diagnosis", "badge": "Most useful" }
     },
     "finalCta": {
       "headline": "Analyze your first profile now.",
