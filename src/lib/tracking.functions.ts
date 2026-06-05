@@ -66,6 +66,9 @@ const ALLOWED_EVENTS = [
   "checkout_step_view",
   "checkout_step_complete",
   "checkout_upsell_interest",
+  "checkout_upsell_seen",
+  "checkout_upsell_accepted",
+  "checkout_upsell_declined",
   "checkout_payment_started",
   "checkout_payment_failed",
   // Pricing page coupon flow
