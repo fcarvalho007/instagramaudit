@@ -77,6 +77,13 @@ const inputSchema = z
         "recommendations",
       ])
       .optional(),
+    upsell: z
+      .object({
+        presented: z.boolean(),
+        accepted: z.boolean(),
+        source_product: z.enum(PRODUCT_CODES),
+      })
+      .optional(),
     billing: z
       .object({
         name: z.string().trim().min(1).max(200),
