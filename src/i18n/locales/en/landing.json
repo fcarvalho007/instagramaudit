@@ -185,6 +185,7 @@
       "eyebrow": "Transparency",
       "headline": "No login. Public data only.",
       "body": "We never ask for your Instagram access. We analyze only what's already public, with benchmarks built from industry reference studies.",
+      "audience": "Built for consultants, social media managers, brands and creators.",
       "chips": {
         "noLogin": "No Instagram login",
         "publicOnly": "Public data only",

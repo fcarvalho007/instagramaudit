@@ -1,11 +1,9 @@
 import { Container } from "@/components/layout/container";
 
-import { BentoMetricsBand } from "./bento-metrics-band";
 import { FinalCtaBand } from "./final-cta-band";
 import { HowItWorksBand } from "./how-it-works-band";
 import { ManualVsToolBand } from "./manual-vs-tool-band";
 import { MiniFooterStrip } from "./mini-footer-strip";
-import { PersonasBand } from "./personas-band";
 import { PricingTeaserBand } from "./pricing-teaser-band";
 import { ReportPreviewBand } from "./report-preview-band";
 import { StatsBand } from "./stats-band";
@@ -31,8 +29,6 @@ export function LandingDarkIsland() {
           <ManualVsToolBand />
           <ReportPreviewBand />
           <HowItWorksBand />
-          <BentoMetricsBand />
-          <PersonasBand />
           <TransparencyBand />
           <PricingTeaserBand />
           <FinalCtaBand />
