@@ -1,119 +1,157 @@
 
-# Plan — `lead_session` diagnostic endpoint
+# Controlled live payment test — `report_full_9` (9€)
 
-Goal: ship a single, safe, admin-gated HTTP endpoint that tells us, for any browser session, **why** `lead_session` is or isn't being honored on `auditprofiles.com` — without leaking secrets or PII. No changes to onboarding, checkout, payments, EuPago, schema, pricing, or report code.
+Read-only orchestration. No code, no secrets, no DB writes, no webhook forging.
 
-## Recommended approach: Option A only
+## Preconditions (already met)
+- `/api/debug/lead-session-status` in the live browser returned: `has_lead_session_cookie=true`, `decoded_cookie_valid=true`, `lead_exists=true`, `request_host=auditprofiles.com`.
+- Same browser session will be reused for checkout.
+- We have the `lead_id` (from cookie diagnostic, prefix `021a9e49…` per earlier probe; will reconfirm via `lookup-lead` / DB by prefix).
 
-A single server route. No admin UI yet — once the endpoint exists, manual QA from the user's real browser is enough to discriminate every failure mode. An `/admin/sistema` card can come later if we end up using it repeatedly.
+## Step 1 — Capture baseline (DB, read-only)
+For the active `lead_id`:
 
-## Endpoint
+```sql
+-- A. Existing payments for this lead + product (should be empty or only old non-paid)
+SELECT id, product, amount_cents, currency, status, provider,
+       provider_payment_id, provider_checkout_url IS NOT NULL AS has_url,
+       paid_at, expired_at, created_at
+FROM   lead_payments
+WHERE  lead_id = :lead_id
+ORDER  BY created_at DESC
+LIMIT  20;
 
-- **Path:** `GET /api/debug/lead-session-status`
-- **Why not `/api/public/...`:** `/api/public/*` bypasses Lovable's published-site auth; we want the opposite. Keeping it outside `public/` plus an explicit admin check keeps it locked.
-- **Auth:** Requires admin. Reuse `requireAdminSession()` from `src/lib/admin/session.ts`, which validates the `X-Admin-Email` header against `ADMIN_ALLOWED_EMAILS`. Returns `401` / `403` otherwise.
-  - Trade-off: the user's onboarding browser tab won't have the `X-Admin-Email` header set. For diagnosis we call the endpoint from a separate admin-authenticated context, OR temporarily allow a query token (see below).
-- **Optional second gate (for the real test):** to diagnose the actual onboarding browser session we need the endpoint to read *that browser's* cookie. Two clean options, pick one — I recommend the first:
-  1. **`X-Admin-Email` + run from the same browser after logging into `/admin`.** Same browser session, same cookie jar — the `lead_session` cookie is sent on the request because it's same-origin on `auditprofiles.com`. Zero new auth surface.
-  2. **Short-lived `?token=` query gate** using a new `DEBUG_LEAD_SESSION_TOKEN` env secret. Useful only if we can't easily log into `/admin` in the test browser. Higher risk — skip unless needed.
+-- B. Existing entitlements (must NOT contain report_full_9)
+SELECT id, product_code, payment_id, granted_at
+FROM   lead_entitlements
+WHERE  lead_id = :lead_id;
 
-## Response shape (safe-only)
+-- C. Recent product_events for this lead
+SELECT event_type, created_at, metadata
+FROM   product_events
+WHERE  lead_id = :lead_id
+ORDER  BY created_at DESC
+LIMIT  20;
 
-```json
-{
-  "timestamp": "2026-06-05T12:34:56.789Z",
-  "request_host": "auditprofiles.com",
-  "request_protocol": "https",
-  "has_cookie_header": true,
-  "cookie_names_present": ["lead_session", "..."],
-  "has_lead_session_cookie": true,
-  "cookie_value_shape": "looks_valid_shape",
-  "cookie_segment_count": 3,
-  "decoded_cookie_valid": true,
-  "lead_id_present": true,
-  "lead_id_prefix": "021a9e49",
-  "lead_exists": true,
-  "issued_at_sec": 1733400000,
-  "session_secret_configured": true,
-  "cookie_attrs_expected": "Max-Age=31536000; Path=/; HttpOnly; Secure; SameSite=None; Partitioned"
-}
+-- D. Credit balance snapshot
+SELECT public.credit_balance(:lead_id);
 ```
 
-Field rules:
+Record results as **BEFORE** snapshot.
 
-- `cookie_value_shape`: `"missing" | "malformed" | "looks_valid_shape"` — derived purely from segment count + UUID regex on segment 0. Never the actual value.
-- `cookie_names_present`: names only, never values. Helps spot rogue cookies / domain mismatch.
-- `lead_id_prefix`: first 8 chars of the UUID only, and only when `decoded_cookie_valid` is true. Lets us correlate with DB rows without exposing the full id.
-- `request_host` / `request_protocol`: from `getRequestHost()` + request URL. Critical to detect host mismatch (apex vs www vs preview vs lovable.app).
-- `session_secret_configured`: boolean from `Boolean(process.env.SESSION_SECRET && process.env.SESSION_SECRET.length >= 32)`. Never echo the secret.
-- `cookie_attrs_expected`: static string describing what `setLeadCookie` writes — for human comparison against DevTools.
+## Step 2 — User action in the live browser
+The user:
+1. Navigates to `https://auditprofiles.com/checkout/report-full` (same tab).
+2. Completes the checkout form, declines the upsell.
+3. Clicks "Reservar / Comprar" → `createEupagoCheckout` server fn runs.
+4. Stops on the EuPago hosted page (does NOT pay yet).
 
-Never returned: raw cookie value, signature, full lead id, email, name, phone, IP, user-agent, `SESSION_SECRET`.
+## Step 3 — Pre-payment verification (DB, read-only)
+Immediately after the redirect to EuPago, before paying:
 
-## Diagnostic decision table
+```sql
+SELECT id, product, amount_cents, currency, status, provider,
+       provider_payment_id, provider_checkout_url,
+       paid_at, created_at, metadata
+FROM   lead_payments
+WHERE  lead_id = :lead_id
+  AND  product = 'report_full_9'
+ORDER  BY created_at DESC
+LIMIT  1;
+```
 
-| Symptom from endpoint                                                              | Conclusion             |
-| ---------------------------------------------------------------------------------- | ---------------------- |
-| `has_cookie_header: false`                                                         | Browser sent no cookies at all → likely third-party context / privacy mode |
-| `has_cookie_header: true`, `has_lead_session_cookie: false`                        | COOKIE_NOT_SENT (host mismatch or CHIPS partition) |
-| `has_lead_session_cookie: true`, `cookie_value_shape: "malformed"`                 | COOKIE_INVALID (truncation / wrong cookie reused) |
-| `has_lead_session_cookie: true`, `decoded_cookie_valid: false`                     | SECRET_MISMATCH or tamper |
-| `decoded_cookie_valid: true`, `lead_exists: false`                                 | Lead row missing (DB wipe / wrong env) |
-| All true                                                                           | Cookie path is healthy — bug is elsewhere |
+Expected:
+- `product = 'report_full_9'`
+- `amount_cents = 900`
+- `currency = 'EUR'`
+- `status = 'pending'`
+- `provider = 'eupago'`
+- `provider_checkout_url` present (non-null)
+- `paid_at IS NULL`
+- and: still NO `lead_entitlements` row for `report_full_9`.
 
-Combined with the `request_host` value, we can directly attribute COOKIE_NOT_SET vs HOST_MISMATCH.
+If any of the above fails → **abort, do not pay**, report `NEEDS FIX` with the offending field.
 
-## Security precautions
+Also confirm no side-effect provider calls during checkout creation:
 
-- Admin auth required on every request (`requireAdminSession()` throws 401/403).
-- No PII, no secrets, no raw cookie, no signature in response.
-- Truncate lead id to first 8 chars.
-- No write operations; pure read.
-- No logging of full cookie or headers server-side.
-- Not under `/api/public/*` — so Lovable's published-site auth still applies on top.
-- `cache-control: no-store` on the response.
+```sql
+SELECT provider, actor, source_context, status, created_at
+FROM   provider_call_logs
+WHERE  created_at >= :baseline_time
+  AND  source_context = 'public_analysis';
+-- expect: 0 rows for this window
+```
 
-## Files to change
+## Step 4 — User completes real 9€ payment on EuPago
+User pays with their own card on the EuPago hosted page. No automation, no forging. They return to whatever success URL EuPago redirects to.
 
-- **New:** `src/routes/api/debug/lead-session-status.ts` — the server route.
-- **No edits to:**
-  - `src/lib/leads/lead-cookie.server.ts` (reuse `LEAD_COOKIE_NAME`, `decodeLeadCookie`, `readLeadIdFromRequest`)
-  - `src/lib/admin/session.ts` (reuse `requireAdminSession`)
-  - `src/integrations/supabase/client.server.ts` (reuse `supabaseAdmin` for `leads` lookup)
-  - any onboarding / checkout / payment / EuPago / report / pricing file
-- **No DB migration, no schema change, no new secret** (Option 1 above). Only if we accept Option 2 would we add `DEBUG_LEAD_SESSION_TOKEN`.
+## Step 5 — Poll for webhook (DB, read-only)
+Poll the same payment row every ~5s for up to ~2 min:
 
-## Admin auth: yes, required
+```sql
+SELECT id, status, paid_at, provider_payment_id, updated_at
+FROM   lead_payments
+WHERE  id = :payment_id;
+```
 
-Hard requirement. Endpoint must be unusable by anonymous traffic even if URL leaks. `requireAdminSession()` is the existing, audited gate.
+Stop polling when `status = 'paid'` AND `paid_at IS NOT NULL`.
 
-## Test plan
+Then verify the rest:
 
-End-to-end manual QA on production, from the actual failing browser:
+```sql
+-- Entitlement: exactly one row for report_full_9
+SELECT id, product_code, payment_id, granted_at
+FROM   lead_entitlements
+WHERE  lead_id = :lead_id
+  AND  product_code = 'report_full_9';
+-- expect: exactly 1 row, payment_id = :payment_id
 
-1. In Browser A (admin), open `https://auditprofiles.com/admin`, log in with allow-listed email. Confirms `X-Admin-Email` plumbing is alive (the `adminFetch` helper sets it from localStorage; we'll call the debug endpoint via `adminFetch` from DevTools console, e.g. `await (await fetch('/api/debug/lead-session-status', { headers: { 'X-Admin-Email': localStorage.getItem('admin-email') }})).json()`).
-2. **Baseline (no onboarding yet):**
-   - Open a fresh incognito Browser B on `https://auditprofiles.com`.
-   - From DevTools, hit the endpoint with the admin email header. Expect: `has_lead_session_cookie: false`, `request_host: "auditprofiles.com"`.
-3. **After onboarding:**
-   - In Browser B, complete onboarding to the point where `/api/onboarding/start` succeeds.
-   - In DevTools → Application → Cookies, screenshot the `lead_session` row (Domain, Path, SameSite, Partitioned, Secure).
-   - Hit endpoint again. Expect: `has_lead_session_cookie: true`, `decoded_cookie_valid: true`, `lead_exists: true`, `lead_id_prefix` matches DB.
-4. **Navigate to checkout:**
-   - In Browser B, navigate to `/checkout/report-full?username=...`.
-   - If `MissingLeadSession` shows, immediately open DevTools console on that same page and hit the endpoint. Compare `request_host` with onboarding host. Compare `has_lead_session_cookie` true vs false. This single comparison nails COOKIE_NOT_SENT vs HOST_MISMATCH vs CHIPS-partition.
-5. **Cross-host check:**
-   - Repeat from `https://www.auditprofiles.com/` and from `https://instagramaudit.lovable.app/` to see whether the cookie is created on a different host than the one used for checkout.
+-- Webhook event recorded
+SELECT event_type, metadata, created_at
+FROM   product_events
+WHERE  lead_id = :lead_id
+  AND  event_type = 'payment_webhook_paid'
+ORDER  BY created_at DESC
+LIMIT  5;
+-- expect: at least 1 row with metadata.payment_id = :payment_id
 
-Unit test (optional, low cost): one Vitest file under `src/routes/api/debug/__tests__/lead-session-status.test.ts` asserting that without `X-Admin-Email` the route returns 401, and with a valid admin + crafted cookie header returns the expected shape (no raw value present).
+-- No duplicate entitlement
+SELECT product_code, COUNT(*) AS n
+FROM   lead_entitlements
+WHERE  lead_id = :lead_id
+GROUP  BY product_code
+HAVING COUNT(*) > 1;
+-- expect: 0 rows
 
-## Out of scope (explicit non-goals)
+-- No provider spend triggered by webhook
+SELECT provider, actor, source_context, status, created_at
+FROM   provider_call_logs
+WHERE  created_at >= :baseline_time
+  AND  source_context IN ('public_analysis','enrich_comments');
+-- expect: 0 rows
+```
 
-- Changing cookie attributes (Domain, SameSite, Partitioned).
-- Adding a redirect from `www` → apex or from preview hosts.
-- Any change to `setLeadCookie`, onboarding, checkout, payments, EuPago, pricing, snapshots, schema.
-- An admin UI card — defer until we know the endpoint is what we actually need long-term.
+If admin session is available, also open `/admin/receita` to confirm the 9€ row appears.
 
-## No code changes yet
+## Step 6 — Verdict
+Emit one of:
+- **READY TO SELL 9€** — all pre-checks and post-checks passed; entitlement granted exactly once; webhook event present; no provider spend.
+- **NEEDS FIX** — payment row reached `paid` but one of: missing entitlement, duplicate entitlement, missing `payment_webhook_paid`, wrong amount/product, unexpected provider spend. Report which.
+- **BLOCKED** — payment row never flipped to `paid` within the poll window, OR pre-payment row failed validation and we aborted before paying.
 
-This is a plan only. On approval I will create exactly one new file (`src/routes/api/debug/lead-session-status.ts`) plus optionally one test file, and nothing else.
+## Idempotency safety
+If the webhook is re-delivered (EuPago retries), the route handler in `src/routes/api/public/eupago-webhook.ts` already:
+- short-circuits when `row.status === 'paid' && row.paid_at` is set,
+- relies on `lead_entitlements (lead_id, product_code)` unique constraint via `grantEntitlement` to silently no-op on 23505.
+
+We rely on this; we do not need to re-test re-delivery in this run.
+
+## What I will NOT do
+- Will not edit any source file.
+- Will not insert/update any DB row.
+- Will not call EuPago / webhook endpoints directly.
+- Will not change secrets, RLS, or migrations.
+
+## Inputs I still need from you before executing
+1. The exact `lead_id` (full UUID) of the production session that just passed the cookie diagnostic — so I can scope all queries safely. If you'd rather, give me the cookie's `lead_id_prefix` plus the lead's email and I'll resolve it via `leads` read-only.
+2. Confirmation that you (the human) are ready to pay 9€ with a real card on the EuPago page when I tell you "pre-checks passed, proceed to pay".
