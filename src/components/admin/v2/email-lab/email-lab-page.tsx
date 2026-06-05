@@ -455,17 +455,21 @@ function TemplateCard({
     : orphan
       ? `1px dashed rgb(var(--admin-warning-500) / 0.6)`
       : legacy
-        ? `1px dashed rgb(var(--admin-text-tertiary) / 0.4)`
+        ? `1px solid rgb(var(--admin-text-tertiary) / 0.25)`
         : `1px solid rgb(var(--admin-border-default))`;
   const background = active
     ? "rgb(var(--admin-leads-500) / 0.06)"
-    : "rgb(var(--admin-surface-base))";
+    : legacy
+      ? "rgb(var(--admin-surface-muted))"
+      : "rgb(var(--admin-surface-base))";
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="rounded-xl px-3 py-3 text-left transition-colors"
+      className={`rounded-xl px-3 py-3 text-left transition-colors ${
+        legacy && !active ? "opacity-70" : ""
+      }`}
       style={{ border: borderStyle, background }}
     >
       <div className="flex items-start gap-2.5">
