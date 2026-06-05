@@ -45,13 +45,13 @@ function statusLabel(s: string): string {
 function statusPillClass(status: string): string {
   switch (status) {
     case "paid":
-      return "bg-admin-revenue-50 text-admin-revenue-700 ring-admin-revenue-200";
+      return "bg-admin-revenue-50 text-admin-revenue-700";
     case "pending":
-      return "bg-admin-amber-50 text-admin-amber-700 ring-admin-amber-200";
+      return "bg-admin-expense-50 text-admin-expense-700";
     case "failed":
-      return "bg-admin-error-50 text-admin-error-700 ring-admin-error-200";
+      return "bg-admin-danger-50 text-admin-danger-700";
     default:
-      return "bg-admin-border/30 text-admin-text-secondary ring-admin-border";
+      return "bg-admin-border/30 text-admin-text-secondary";
   }
 }
 
@@ -197,7 +197,7 @@ function PaymentsBody({ data }: { data: PaymentsOverview }) {
                       <td className="py-2 pr-4">{productLabel(row.product)}</td>
                       <td className="py-2 pr-4">
                         <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ring-1 ${statusPillClass(row.status)}`}
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${statusPillClass(row.status)}`}
                         >
                           {statusLabel(row.status)}
                         </span>
@@ -306,7 +306,7 @@ function PaymentRowView({ row }: { row: PaymentRow }) {
       </td>
       <td className="py-2 pr-4">
         <span
-          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ring-1 ${statusPillClass(row.status)}`}
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${statusPillClass(row.status)}`}
         >
           {statusLabel(row.status)}
         </span>
