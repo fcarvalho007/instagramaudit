@@ -18,13 +18,18 @@ export type FlowStage =
   | "00_onboarding"
   | "01_captacao"
   | "02_entrega"
-  | "03_conversao";
+  | "03_retencao"
+  | "04_conversao"
+  | "05_pagamento"
+  | "99_legado";
 
 export interface StageDef {
   key: FlowStage;
   number: string;
   eyebrow: string;
   title: string;
+  /** Texto curto exibido por baixo do título da stage. */
+  description?: string;
   /** Token CSS (sem `--`) para a cor principal da stage. */
   tokenColor: string;
   /** Token CSS (sem `--`) para o background da stage. */
@@ -36,7 +41,8 @@ export const STAGE_DEFS: readonly StageDef[] = [
     key: "00_onboarding",
     number: "00",
     eyebrow: "Onboarding · Beta",
-    title: "Boas-vindas e acesso à plataforma",
+    title: "Entrada na plataforma",
+    description: "Boas-vindas e acesso. Mostrado só se existirem fluxos activos.",
     tokenColor: "admin-stage-onboarding",
     tokenBg: "admin-stage-onboarding-bg",
   },
@@ -44,7 +50,8 @@ export const STAGE_DEFS: readonly StageDef[] = [
     key: "01_captacao",
     number: "01",
     eyebrow: "Captação",
-    title: "Pedido recebido até relatório pronto",
+    title: "Pedido recebido até relatório gerado",
+    description: "Antes do relatório ficar disponível para o lead.",
     tokenColor: "admin-stage-captacao",
     tokenBg: "admin-stage-captacao-bg",
   },
@@ -52,17 +59,46 @@ export const STAGE_DEFS: readonly StageDef[] = [
     key: "02_entrega",
     number: "02",
     eyebrow: "Entrega",
-    title: "Notificação, consumo e arquivo",
+    title: "Relatório guardado e consumido",
+    description: "O relatório torna-se útil — save, link e abertura.",
     tokenColor: "admin-stage-entrega",
     tokenBg: "admin-stage-entrega-bg",
   },
   {
-    key: "03_conversao",
+    key: "03_retencao",
     number: "03",
+    eyebrow: "Retenção",
+    title: "Pedido de feedback",
+    description: "Após valor entregue, validar utilidade.",
+    tokenColor: "admin-stage-retencao",
+    tokenBg: "admin-stage-retencao-bg",
+  },
+  {
+    key: "04_conversao",
+    number: "04",
     eyebrow: "Conversão",
-    title: "Validação de utilidade e oportunidade comercial",
+    title: "Follow-up comercial manual",
+    description: "Conversão para o relatório completo — manual nesta fase.",
     tokenColor: "admin-stage-conversao",
     tokenBg: "admin-stage-conversao-bg",
+  },
+  {
+    key: "05_pagamento",
+    number: "05",
+    eyebrow: "Pagamento",
+    title: "Confirmação de pagamento",
+    description: "Branch paid do EuPago — transaccional.",
+    tokenColor: "admin-stage-pagamento",
+    tokenBg: "admin-stage-pagamento-bg",
+  },
+  {
+    key: "99_legado",
+    number: "99",
+    eyebrow: "Legado · desactivado",
+    title: "Mantidos para auditoria",
+    description: "Não disparam em produção — substituídos por fluxos activos.",
+    tokenColor: "admin-stage-legado",
+    tokenBg: "admin-stage-legado-bg",
   },
 ] as const;
 
@@ -75,12 +111,14 @@ export type FlowKey =
   | "pedido_recebido"
   | "relatorio_gerado"
   | "link_enviado"
+  | "report_saved"
   | "personal_area_saved"
   | "relatorio_visto"
   | "feedback_pedido"
   | "report_summary"
   | "feedback_recebido"
-  | "follow_up_comercial";
+  | "follow_up_comercial"
+  | "payment_confirmed";
 
 /**
  * Estado operacional do fluxo. Independente do número de envios — depende
@@ -95,6 +133,32 @@ export type FlowExtraTag =
   | "no_email"
   | "blocked"
   | null;
+
+/**
+ * Etiquetas operacionais adicionais mostradas em cima do cartão.
+ * Aditivo a `FlowStatus` — descrevem como o fluxo opera, não substituem o
+ * estado principal.
+ */
+export type LifecycleBadge =
+  | "activo"
+  | "manual"
+  | "transaccional"
+  | "kill_switch_off"
+  | "planeado"
+  | "bloqueado"
+  | "legado"
+  | "sem_trigger";
+
+export const LIFECYCLE_BADGE_LABELS: Record<LifecycleBadge, string> = {
+  activo: "Activo",
+  manual: "Manual",
+  transaccional: "Transaccional",
+  kill_switch_off: "Kill-switch OFF",
+  planeado: "Planeado",
+  bloqueado: "Bloqueado",
+  legado: "Legado",
+  sem_trigger: "Sem trigger",
+};
 
 export type FlowTiming =
   | { kind: "immediate"; eventName: string; contextHint?: string }
@@ -155,6 +219,12 @@ export interface AutomationFlow {
 
   /** Falhas atribuídas a este fluxo nas últimas 30d. */
   failuresTotal: number;
+
+  /**
+   * Conjunto de etiquetas operacionais mostradas no cartão. Aditivo —
+   * cartões sem este campo continuam a mostrar só o `StatusPill` clássico.
+   */
+  lifecycleBadges?: LifecycleBadge[];
 }
 
 export interface AutomationKpis {
@@ -228,6 +298,7 @@ export const FLOW_EVENTS: Record<FlowKey, FlowEventDef> = {
   pedido_recebido: { types: ["beta_request_created"], instrumented: true },
   relatorio_gerado: { types: ["report_generated"], instrumented: true },
   link_enviado: { types: ["report_link_sent"], instrumented: true },
+  report_saved: { types: ["report_saved_email_sent"], instrumented: true },
   personal_area_saved: {
     // Sem evento dedicado em product_events. O envio é registado pelo
     // template `personal_area_saved` mas não dispara um *_sent agregável.
@@ -240,6 +311,10 @@ export const FLOW_EVENTS: Record<FlowKey, FlowEventDef> = {
   feedback_recebido: { types: ["feedback_submitted"], instrumented: true },
   follow_up_comercial: {
     types: ["commercial_followup_sent"],
+    instrumented: true,
+  },
+  payment_confirmed: {
+    types: ["payment_confirmation_email_sent"],
     instrumented: true,
   },
 };

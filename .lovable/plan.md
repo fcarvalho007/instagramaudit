@@ -1,204 +1,255 @@
-# Step 6A — `/admin/email-lab` operational redesign
+# Step 6B — `/admin/automacoes` lifecycle map redesign
 
-Goal: reshape Email Lab into a lifecycle control room that mirrors the consolidated email map (Steps 1–5). Pure admin UI + metadata work — no email sending, no trigger code, no schema, no pricing/checkout/credits/report-generation changes.
+Goal: reshape the automations cockpit so every block maps cleanly onto the consolidated email lifecycle (00 Onboarding → 01 Captação → 02 Entrega → 03 Retenção → 04 Conversão → 05 Pagamento → Legado). Pure metadata/UI work — no triggers, prices, payments, credits, schema or sends are touched.
 
 ## Files changed
 
-1. **`src/lib/admin/email-template-registry.ts`** — extend `EmailTemplateEntry` with operational metadata. Backward compatible (current `category`, `wired`, `wiredAt`, `wiredNote` kept).
-2. **`src/components/admin/v2/email-lab/email-lab-page.tsx`** — re-group by lifecycle, add status-badge system, filter chips, richer Detail panel and Wiring tab, refined preview frame.
+1. **`src/lib/admin/automation-flow-types.ts`** — extend `FlowStage`, `FlowKey`, `STAGE_DEFS`, `FLOW_EVENTS`; add `LifecycleBadge` + `lifecycleBadges?: LifecycleBadge[]` on `AutomationFlow`; add optional `description?` on `StageDef`.
+2. **`src/routes/api/admin/automation-flow.ts`** — declare two new flows (`report_saved`, `payment_confirmed`), re-stage existing flows, populate `lifecycleBadges`, point legacy flows at the new `99_legado` stage. No DB writes, no new tables, no schema.
+3. **`src/components/admin/v2/automacoes/automation-flow-page.tsx`** — KPI label wording (Sistema operacional / Enviados 30d / A aguardar / Falhas 30d); add a compact legend; thread stage `description` into `StageGroup`; update `computeStageMeta` for the new stages.
+4. **`src/components/admin/v2/automacoes/stage-group.tsx`** — optional `description` line under the title.
+5. **`src/components/admin/v2/automacoes/automation-node.tsx`** — render the optional `lifecycleBadges` row next to the existing status pill (additive, non-breaking).
+6. **`src/styles/admin-tokens.css`** — add `--admin-stage-retencao`, `--admin-stage-pagamento`, `--admin-stage-legado` (and `*-bg` pairs) to keep cores tokenised.
 
 Not changed:
-- `src/routes/api/admin/email-templates*` — preview endpoint is fine as-is; we work entirely off the in-process registry render.
-- `src/routes/api/admin/send-*` — manual send routes untouched.
-- `src/lib/email/templates/*` — template renderers untouched.
-- Pricing, checkout, EuPago, credit ledger, report generation, migrations, schema.
+- `src/lib/admin/email-template-registry.ts` (already carries the metadata after Step 6A).
+- Any sender, webhook, EuPago module, pricing, credit ledger, report generation, RPC, migration.
+- `template-editor.tsx`, `metrics-tab.tsx`, `people-tab.tsx` — out of scope.
 
-## 1) Registry extension — `email-template-registry.ts`
-
-Add new types and per-entry fields. None replace existing fields; the page reads the new ones, the old API stays valid for any other consumer.
+## 1) Types — `automation-flow-types.ts`
 
 ```ts
-export type EmailLifecycleStage =
-  | "captacao"   // CAPTAÇÃO
-  | "entrega"    // ENTREGA
-  | "retencao"   // RETENÇÃO
-  | "conversao"  // CONVERSÃO
-  | "pagamento"  // PAGAMENTO
-  | "legado";    // LEGADO / DESACTIVADO
+export type FlowStage =
+  | "00_onboarding"
+  | "01_captacao"
+  | "02_entrega"
+  | "03_retencao"
+  | "04_conversao"
+  | "05_pagamento"
+  | "99_legado";
 
-export type EmailStatusBadge =
-  | "ligado"            // green
-  | "manual"            // blue
-  | "transaccional"    // navy
-  | "kill_switch_off"   // amber
-  | "planeado"          // amber
-  | "legado"            // grey
-  | "sem_trigger"       // amber
-  | "desactivado";      // grey
+export type FlowKey =
+  | "welcome_beta"
+  | "pedido_recebido"
+  | "relatorio_gerado"
+  | "link_enviado"
+  | "report_saved"          // NEW
+  | "personal_area_saved"
+  | "relatorio_visto"
+  | "feedback_pedido"
+  | "report_summary"
+  | "feedback_recebido"
+  | "follow_up_comercial"
+  | "payment_confirmed";    // NEW
 
-export interface EmailWiringMeta {
-  triggerEvent?: string | null;        // e.g. "EuPago webhook · branch paid"
-  delay?: string | null;                // e.g. "imediato", "após unlock"
-  sourceFile?: string | null;           // mirrors wiredAt, but stable name
-  provider?: "Resend" | "Brevo" | null;
-  automatic?: boolean;                  // true=automático, false=manual
-  killSwitchEnv?: string | null;        // e.g. "PAYMENT_CONFIRMATION_EMAIL_ENABLED"
-  killSwitchDefault?: "on" | "off" | null;
-  idempotencyEvent?: string | null;     // e.g. "report_saved_email_sent"
-  knownRisks?: string | null;
+export type LifecycleBadge =
+  | "activo"
+  | "manual"
+  | "transaccional"
+  | "kill_switch_off"
+  | "planeado"
+  | "bloqueado"
+  | "legado"
+  | "sem_trigger";
+
+export const LIFECYCLE_BADGE_LABELS: Record<LifecycleBadge, string> = {
+  activo: "Activo",
+  manual: "Manual",
+  transaccional: "Transaccional",
+  kill_switch_off: "Kill-switch OFF",
+  planeado: "Planeado",
+  bloqueado: "Bloqueado",
+  legado: "Legado",
+  sem_trigger: "Sem trigger",
+};
+
+export interface StageDef {
+  key: FlowStage;
+  number: string;
+  eyebrow: string;
+  title: string;
+  description?: string;        // NEW — short text per stage
+  tokenColor: string;
+  tokenBg: string;
 }
 
-export interface EmailTemplateEntry {
+export interface AutomationFlow {
   // …existing fields…
-  lifecycleStage: EmailLifecycleStage;
-  statusBadges: EmailStatusBadge[];
-  requiredVariables?: string[];
-  optionalVariables?: string[];
-  fallbackBehaviour?: string | null;
-  wiring?: EmailWiringMeta;
+  lifecycleBadges?: LifecycleBadge[];  // NEW (optional, additive)
 }
 ```
 
-**Stage assignments (per spec):**
+`STAGE_DEFS` rewritten:
 
-| Lifecycle | Templates |
-| --- | --- |
-| `captacao` | `request_received` |
-| `entrega` | `report_saved`, `report_ready` |
-| `retencao` | `feedback_request` |
-| `conversao` | `commercial_followup` |
-| `pagamento` | `payment_confirmed` |
-| `legado` | `welcome_beta`, `report_summary`, `personal_area_saved` |
+| number | key | eyebrow | title | description |
+| --- | --- | --- | --- | --- |
+| 00 | `00_onboarding` | Onboarding · Beta | Entrada na plataforma | Boas-vindas e acesso. (Mostrado só se houver fluxos activos.) |
+| 01 | `01_captacao` | Captação | Pedido recebido até relatório gerado | Antes do relatório ficar disponível. |
+| 02 | `02_entrega` | Entrega | Relatório guardado e consumido | O relatório torna-se útil para o lead. |
+| 03 | `03_retencao` | Retenção | Pedido de feedback | Após valor entregue. |
+| 04 | `04_conversao` | Conversão | Follow-up comercial manual | Conversão para o relatório completo — manual nesta fase. |
+| 05 | `05_pagamento` | Pagamento | Confirmação de pagamento | Branch paid do EuPago — transaccional. |
+| 99 | `99_legado` | Legado / desactivado | Mantidos para auditoria | Não disparam em produção. |
 
-**Badge rules per template:**
+`FLOW_EVENTS` adds:
+- `report_saved: { types: ["report_saved_email_sent"], instrumented: true }`
+- `payment_confirmed: { types: ["payment_confirmation_email_sent"], instrumented: true }`
 
-- `request_received`: `["ligado","transaccional"]`, wiring.automatic=true, idempotencyEvent="beta_request_received_email_sent".
-- `report_ready`: `["ligado","manual","transaccional"]`, automatic=false (admin action).
-- `report_saved`: `["ligado","transaccional"]`, automatic=true, killSwitchEnv="LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED", killSwitchDefault="on", idempotencyEvent="report_saved_email_sent". knownRisks="Concurrent unlocks could race past dedup before SENT event is recorded (no DB unique constraint)."
-- `feedback_request`: `["ligado","manual"]`, automatic=false.
-- `commercial_followup`: `["ligado","manual"]`, automatic=false. knownRisks="Auto-trigger intencionalmente não activo nesta fase."
-- `payment_confirmed`: `["ligado","transaccional","kill_switch_off"]` (badge surfaces when `PAYMENT_CONFIRMATION_EMAIL_ENABLED` default is OFF), automatic=true, killSwitchEnv="PAYMENT_CONFIRMATION_EMAIL_ENABLED", killSwitchDefault="off", idempotencyEvent="payment_confirmation_email_sent".
-- `welcome_beta`: `["legado","desactivado"]`. fallbackBehaviour="Substituído por report_saved."
-- `report_summary`: `["legado","desactivado"]`.
-- `personal_area_saved`: `["sem_trigger","planeado"]` (planeado para fluxo de criação de conta).
+The legacy entries (`welcome_beta`, `report_summary`, `personal_area_saved`) stay so existing event counts still work — only their `stage` is reassigned.
 
-`requiredVariables`/`optionalVariables` split per template (e.g. `payment_confirmed` required: firstName, instagramHandle, amountLabel, paymentMethod; optional: paymentReference, reportUrl).
+## 2) API — `automation-flow.ts`
 
-`fallbackBehaviour` populated for templates with graceful degradation (`report_saved`: "credit card e insights são omitidos quando dados ausentes"; `commercial_followup`: "narrativa genérica quando insights ausentes; CTA degrada para mailto/reply"; `payment_confirmed`: "campos opcionais omitidos sem placeholders partidos").
+Re-stage and add declarations. **No DB writes**; only the in-memory declarations and the existing aggregation queries change.
 
-**Preview sample data** — update `SAMPLE` so EmailLab matches the spec values; tests use literal handles, not SAMPLE, so impact is preview-only:
+| FlowKey | Stage | `kind` | `wired` | `lifecycleBadges` |
+| --- | --- | --- | --- | --- |
+| `pedido_recebido` | `01_captacao` | automatic | true | `["activo", "transaccional"]` |
+| `relatorio_gerado` | `01_captacao` | manual | false (system) | `["bloqueado"]` |
+| `report_saved` (NEW) | `02_entrega` | automatic | true | `["activo", "transaccional"]` |
+| `link_enviado` (= report_ready) | `02_entrega` | manual | true | `["activo", "manual", "transaccional"]` |
+| `relatorio_visto` | `02_entrega` | automatic | true | `["bloqueado"]` (system event, no email) |
+| `feedback_pedido` | `03_retencao` | manual | true | `["activo", "manual"]` |
+| `follow_up_comercial` | `04_conversao` | manual | true | `["activo", "manual"]` (was `wired:false` and `timing.undefined`; switch to `kind:"immediate"` event `commercial_followup_sent` since Step 5 wired it to the admin route) |
+| `feedback_recebido` | `04_conversao` | automatic | true | `["bloqueado"]` (classification) |
+| `payment_confirmed` (NEW) | `05_pagamento` | automatic | true | `["activo", "transaccional", "kill_switch_off"]` |
+| `welcome_beta` | `99_legado` | automatic | false | `["legado"]` |
+| `report_summary` | `99_legado` | automatic | false | `["legado"]` |
+| `personal_area_saved` | `99_legado` | automatic | false | `["sem_trigger", "planeado"]` |
 
-- `instagramHandle: "webhspt"`
-- `reportUrl: "https://example.com/analyze/webhspt"`
-- `analyzeAnotherUrl: "https://example.com/"`
-- `followersLabel: "10,2 mil"`, `dominantFormat: "carrosséis"`, `engagementRate: "4,2%"`, `benchmarkDelta: "+1,1 pp acima da média"`, `topPostFormat: "carrossel"`, `topPostEngagement: "0,15%"` (already present, kept).
-- `totalFreeCredits: 2`, `usedCredits: 1`, `remainingCredits: 1` (already present, kept).
-- `paymentMethod: "MB WAY"`, `paymentReference: "AP-2026-0142"` (already present, kept).
-
-Also update the hardcoded `payment_confirmed.preheader` string (`"… @frederico.m.carvalho …"`) to use `SAMPLE.instagramHandle` so it stays in sync.
-
-**Helper exports** added next to `CATEGORY_*`:
-
+`report_saved` declaration:
 ```ts
-export const LIFECYCLE_ORDER: EmailLifecycleStage[] = [
-  "captacao","entrega","retencao","conversao","pagamento","legado",
-];
-export const LIFECYCLE_LABELS: Record<EmailLifecycleStage,string> = {
-  captacao:"Captação", entrega:"Entrega", retencao:"Retenção",
-  conversao:"Conversão", pagamento:"Pagamento", legado:"Legado / desactivado",
-};
-export const STATUS_BADGE_LABELS: Record<EmailStatusBadge,string> = {
-  ligado:"Ligado", manual:"Manual", transaccional:"Transaccional",
-  kill_switch_off:"Kill-switch OFF", planeado:"Planeado",
-  legado:"Legado", sem_trigger:"Sem trigger", desactivado:"Desactivado",
-};
+{
+  key: "report_saved",
+  title: "Relatório guardado",
+  description: "Confirma o save e mostra saldo de créditos.",
+  trigger: { kind: "event", label: "report unlock" },
+  action: { kind: "email", label: "Email \"relatório guardado\"" },
+  kind: "automatic",
+  fromStatus: null,
+  toStatus: null,
+  stage: "02_entrega",
+  visualKind: "email",
+  extraTag: "primary_delivery",
+  timing: {
+    kind: "immediate",
+    eventName: "report_unlocked",
+    contextHint: "lead-magnet sequence",
+  },
+  templateKey: "report_saved",
+  lifecycleBadges: ["activo", "transaccional"],
+  counts: () => ({ eligibleCount: 0, inFlightCount: 0, completedLeads: null }),
+  failures: 0,
+  wired: FLOW_EVENTS.report_saved.instrumented,
+}
 ```
 
-## 2) Page redesign — `email-lab-page.tsx`
+`payment_confirmed` declaration (no schema change — counts stay null/0):
+```ts
+{
+  key: "payment_confirmed",
+  title: "Pagamento confirmado",
+  description: "Recibo + confirmação de acesso pago.",
+  trigger: { kind: "event", label: "EuPago webhook · paid" },
+  action: { kind: "email", label: "Email \"pagamento confirmado\"" },
+  kind: "automatic",
+  fromStatus: null,
+  toStatus: null,
+  stage: "05_pagamento",
+  visualKind: "email",
+  extraTag: null,
+  timing: {
+    kind: "immediate",
+    eventName: "payment_succeeded",
+    contextHint: "branch paid, fire-and-forget",
+  },
+  templateKey: "payment_confirmed",
+  lifecycleBadges: ["activo", "transaccional", "kill_switch_off"],
+  counts: () => ({ eligibleCount: 0, inFlightCount: 0, completedLeads: null }),
+  failures: 0,
+  wired: FLOW_EVENTS.payment_confirmed.instrumented,
+}
+```
 
-**Grouping**: replace category grouping with `LIFECYCLE_ORDER`. Legacy group rendered last with a muted accent and a sectional caption "Mantidos em disco para auditoria — não disparam".
+The existing `flows.map(...)` already derives `status` from `visualKind`/`wired`/`timing`. We extend that mapper to copy `lifecycleBadges` straight through (defensive default: derive from `status` if a decl omits it). No new SQL queries.
 
-**Filter chips** (above the search box):
-`Todos · Ligados · Manuais · Transaccionais · Kill-switch · Legado · Sem trigger`
+## 3) Page — `automation-flow-page.tsx`
 
-Filter is a single-select state; AND-combines with the search text. Predicates read `statusBadges`:
-- `ligados`: `badges.includes("ligado")`
-- `manuais`: `badges.includes("manual")`
-- `transaccionais`: `badges.includes("transaccional")`
-- `kill-switch`: `badges.includes("kill_switch_off")`
-- `legado`: `lifecycleStage === "legado" || badges.includes("legado")`
-- `sem trigger`: `badges.includes("sem_trigger")`
+- Rename KPI labels to **Sistema operacional · Enviados 30d · A aguardar · Falhas 30d** (current already uses three of them — only "Enviados" → "Enviados 30d" and "Falhas" → "Falhas 30d").
+- Add `<LifecycleLegend />` directly above `FlowStages`: a compact chip row mapping each `LifecycleBadge` to its colour (Activo · Manual · Transaccional · Kill-switch OFF · Planeado · Bloqueado · Legado · Sem trigger). Wraps to multiple rows on mobile.
+- `computeStageMeta` extended:
+  - `02_entrega`: prefer `report_saved.sentEvents` for the headline (`N envios de relatório guardado`), keep the open-rate string when present.
+  - `03_retencao`: `${eligible} elegíveis · ${sent} pedidos enviados` using `feedback_pedido`.
+  - `04_conversao`: same shape, driven by `follow_up_comercial`.
+  - `05_pagamento`: `${sent} confirmações · kill-switch OFF` when default OFF; otherwise just the count.
+  - `99_legado`: `${count} flows mantidos para auditoria`.
 
-**Template card**: replace single `StatusPill` with a compact row of up to 3 badge chips using the colour map below. Long lists collapse to "+N".
+## 4) `stage-group.tsx`
 
-**Badge palette** (Tailwind tokens already present):
-- ligado → success-500/12 bg + success-500 text
-- manual → leads-500/12 + leads-500 (calm blue)
-- transaccional → text-primary/12 + text-primary (navy)
-- kill_switch_off, planeado, sem_trigger → warning-500/12 + warning-500 (amber)
-- legado, desactivado → text-tertiary/12 + text-tertiary (grey)
-- Reserved: danger-500 only used for real failure surfaces (not used here).
+Add an optional `description?: string` prop rendered as a 12px secondary line under the `<h2>`. For `99_legado`, the description also serves as the explicit "non-firing" note so legacy flows stay visible but are clearly marked.
 
-**Detail header**: add a "Lifecycle stage" chip next to the title and a badge stack underneath instead of the single pill. Internal key stays mono and small.
+## 5) `automation-node.tsx`
 
-**Tabs**: keep the three tabs (Pré-visualização / Variáveis / Wiring). Inside Preview, keep existing HTML/Text toggle and email-client frame — only adjust the inbox label to "Inbox · AuditProfiles" so it stops saying "Mira".
+Insert a `LifecycleBadgeRow` (after the existing `StatusPill` / `ExtraPill` block) when `flow.lifecycleBadges?.length`:
 
-**Variables tab**: split into two tables — `Obrigatórias` and `Opcionais` — using `requiredVariables` / `optionalVariables` when present; fall back to the current flat `variables` list. Append a "Comportamento de fallback" block beneath when `fallbackBehaviour` is set.
+```tsx
+{flow.lifecycleBadges?.length ? (
+  <LifecycleBadgeRow badges={flow.lifecycleBadges} />
+) : null}
+```
 
-**Wiring tab**: expanded layout. Rows shown in this order, each via existing `MetaRow`:
-- Estado (badges row)
-- Lifecycle stage
-- Trigger / evento (`wiring.triggerEvent` or "—")
-- Delay (`wiring.delay` or "imediato")
-- Automático / Manual
-- Provider (`Resend`/`Brevo` or "—")
-- Origem / source file (mono, from `wiring.sourceFile` ?? `wiredAt`)
-- Kill-switch (env name + default; amber callout when default is "off")
-- Idempotência (event name, mono)
-- Notas (current `wiredNote` muted block)
-- Riscos conhecidos (`wiring.knownRisks` amber callout when set)
-- Existing "Sem trigger" callout kept for `!wired`.
+The badge palette reuses existing admin tokens (no new colours):
+- `activo` → `admin-pill-active-*` (green)
+- `manual` → `admin-pill-info-*` (blue)
+- `transaccional` → `admin-button-dark` / inverted (navy on light)
+- `kill_switch_off`, `planeado`, `sem_trigger` → `admin-pill-warn-*` (amber)
+- `bloqueado` → `admin-pill-blocked-*` (grey)
+- `legado` → `admin-text-tertiary` on `admin-surface-muted` (grey)
 
-**KPI tiles** at the top keep the current 4 cards. Add **no new endpoint** — per-template sent/failed counts are not available from `/api/admin/automation-flow` today, only the aggregate. The aggregate `sentLast30d` continues to show in the global KPI strip; per-template counts are intentionally out of scope for 6A (Step 6B candidate). Detail header gets a small placeholder line "Envios 30d: —" with a tooltip "Disponível quando o automation-flow expor totais por template." — explicit, never silently zero.
+The existing `StatusPill` and "Configurar trigger / Bloqueado / Editar" buttons stay — additive only, no behaviour change.
 
-**Safety preserved**:
-- `SendTestButton` stays disabled with the "Disponível em breve" tooltip — no new send path.
-- `ReadOnlyBanner` stays. Copy updated to "Esta página é só leitura — nada é enviado a partir daqui."
-- Legacy templates are visible, never silently hidden; they live in the `legado` group with muted styling.
-- HTML preview iframe keeps `sandbox=""` (no scripts, no network).
+## 6) Tokens — `admin-tokens.css`
+
+Append:
+```css
+--admin-stage-retencao: 186 117 23;      /* alias warning-500 amber */
+--admin-stage-retencao-bg: 253 246 232;
+--admin-stage-pagamento: 29 158 117;     /* alias revenue-500 */
+--admin-stage-pagamento-bg: 234 247 241;
+--admin-stage-legado: 130 138 152;       /* neutral grey */
+--admin-stage-legado-bg: 244 246 249;
+```
+
+## Safety
+
+- No email sends, no automation activations from this page.
+- All "Edit" / "Ver logs" / "Configurar trigger" buttons remain disabled-with-tooltip or link to existing template editor — wiring is unchanged.
+- No edits to senders, webhooks, EuPago, pricing, credit, report generation, or any migration.
+- API still reads only `leads`, `report_requests`, `product_events`; no writes.
 
 ## Validation checklist
 
-1. Open `/admin/email-lab`. Confirm groups appear in order: **Captação → Entrega → Retenção → Conversão → Pagamento → Legado / desactivado**.
-2. Each card shows the right badges:
-   - `request_received` → Ligado · Transaccional
-   - `report_saved` → Ligado · Transaccional
-   - `report_ready` → Ligado · Manual · Transaccional
-   - `feedback_request` → Ligado · Manual
-   - `commercial_followup` → Ligado · Manual
-   - `payment_confirmed` → Ligado · Transaccional · Kill-switch OFF (amber)
-   - `welcome_beta`, `report_summary` → Legado · Desactivado (grey)
-   - `personal_area_saved` → Sem trigger · Planeado (amber)
-3. Filter chip "Legado" shows only the legacy group. "Kill-switch" shows only `payment_confirmed`. "Manuais" shows `report_ready`, `feedback_request`, `commercial_followup`.
-4. Search keeps working and AND-combines with the chip.
-5. Select `report_saved`. Preview renders with handle `@webhspt`, credit card showing `Começaste com 2 análises · 1 usada em @webhspt · 1 disponível`, three insights using the spec values.
-6. Variables tab shows Obrigatórias (firstName, instagramHandle, reportUrl, analyzeAnotherUrl) and Opcionais (credits + insights). Fallback box: "credit card e insights são omitidos quando dados ausentes".
-7. Wiring tab shows: Trigger = "Lead-magnet sequence · após unlock", Delay = "imediato", Provider = "Resend", Source = `src/lib/email/lead-magnet-sequence.server.ts`, Kill-switch = `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED` (default ON), Idempotência = `report_saved_email_sent`, Riscos = race-condition note.
-8. Select `payment_confirmed` — Wiring shows kill-switch amber callout `PAYMENT_CONFIRMATION_EMAIL_ENABLED` (default OFF).
-9. Select `welcome_beta` — appears under Legado, badges Legado · Desactivado, Wiring note explains substitution by `report_saved`.
-10. "Enviar teste" button stays disabled with tooltip; HTML preview iframe is sandboxed; no network call leaves the page beyond the existing `/api/admin/automation-flow` aggregate fetch.
-11. Run `bunx vitest run src/lib/email` — `registry-parity` and template tests still pass (no template content changes).
+1. Open `/admin/automacoes`. KPIs read **Sistema operacional · Enviados 30d · A aguardar · Falhas 30d** with the same numbers as before.
+2. Legend chip row shows 8 labels; colours match the badges on the cards.
+3. Stages render in order 00 → 01 → 02 → 03 → 04 → 05 → 99 (empty stages collapse). 00_onboarding is empty (welcome_beta moved to legacy) and is hidden by the existing `if (stageFlows.length === 0) return null` guard.
+4. `report_saved` card appears under **02 Entrega** with badges **Activo · Transaccional**, subject from the registry, trigger "report unlock", source lead-magnet sequence.
+5. `feedback_pedido` is now under **03 Retenção** with **Activo · Manual**.
+6. `follow_up_comercial` is under **04 Conversão** with **Activo · Manual**; old "Sem trigger" warning is gone because Step 5 wired the manual sender.
+7. `payment_confirmed` card appears under **05 Pagamento** with **Activo · Transaccional · Kill-switch OFF**; trigger "EuPago webhook · paid".
+8. **Legado / desactivado** group lists `welcome_beta`, `report_summary`, `personal_area_saved` with the explanatory description "Mantidos para auditoria — não disparam em produção". Cards are visible (never hidden) but visually de-emphasised.
+9. Edit / logs buttons behave exactly as before — none of them sends anything.
+10. Mobile width (375px): cards stack, legend wraps to 2–3 rows, KPI grid stays 2-col.
+11. `bunx tsc --noEmit` clean; `bunx vitest run` still green (no test changes needed).
 
 ## Output after implementation
 
-1. **Files changed**: `src/lib/admin/email-template-registry.ts`, `src/components/admin/v2/email-lab/email-lab-page.tsx`.
-2. **No real emails sent**: SendTestButton remains disabled; no fetch added to a sender; preview iframe is sandboxed.
-3. **Triggers not changed**: zero edits under `src/routes/api/admin/send-*`, webhook routes, `lead-magnet-sequence.server.ts`, or any sender module. Wiring metadata is descriptive only.
-4. **Prices / payment / credits / report generation untouched**: no edits to `pricing*`, EuPago files, credit ledger, snapshots, RPCs, migrations.
+1. **Files changed**: the 6 files listed above.
+2. **Lifecycle stages coherent**: 00..05 + Legado mapped 1:1 to the consolidated email model.
+3. **No real emails sent**: zero touches to sender modules / send routes / webhook handler.
+4. **No triggers / prices / payments / credits changed**: only API metadata + UI; no edits to `lead-magnet-sequence.server.ts`, `eupago-webhook.ts`, pricing, credit ledger, RPCs, or migrations.
 5. **Validation checklist**: the 11 items above.
 
 ## Risks / follow-ups
 
-- Per-template sent/failed counters require extending `/api/admin/automation-flow` to bucket by `event_type` or `template_name` — defer to Step 6B.
-- Updating `SAMPLE.instagramHandle` from `frederico.m.carvalho` → `webhspt` changes preview only; tests use literal handles and are unaffected. The hardcoded preheader on `payment_confirmed` will be re-pointed to `SAMPLE.instagramHandle` to avoid drift.
-- Kill-switch state shown is the **declared default**, not the live env value. Surfacing live env would require a server fn; out of scope for 6A.
+- Sent/failures counts for `payment_confirmed` will show 0 until the kill-switch is turned ON and the first webhook fires; that is the correct read of `product_events.payment_confirmation_email_sent`. No fake counts.
+- `feedback_recebido` stays marked **Bloqueado** because it's a classification step, not an email — matches its `visualKind: "report"`.
+- Per-template sent counts in Email Lab (deferred from Step 6A) remain a separate follow-up; this step does not duplicate them here.

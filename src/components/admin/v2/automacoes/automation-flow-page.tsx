@@ -22,7 +22,9 @@ import type {
   AutomationFlow,
   AutomationFlowResponse,
   StageDef,
+  LifecycleBadge,
 } from "@/lib/admin/automation-flow-types";
+import { LifecycleBadgeRow } from "./automation-node";
 
 async function fetchAutomationFlow(): Promise<AutomationFlowResponse> {
   const res = await adminFetch("/api/admin/automation-flow");
@@ -99,6 +101,7 @@ export function AutomationFlowPage() {
           </div>
 
           <TabsContent value="fluxo" className="mt-0">
+            <LifecycleLegend />
             <FlowStages flows={data.flows} stages={data.stages} />
           </TabsContent>
 
@@ -174,9 +177,9 @@ function KpiRow({ kpis }: { kpis: NonNullable<AutomationFlowResponse["kpis"]> })
       icon: <CheckCircle2 size={18} className="text-[rgb(var(--admin-pill-active-fg))]" />,
     },
     {
-      label: "Enviados",
+      label: "Enviados 30d",
       value: kpis.sent.last30d,
-      headline: "últimos 30 dias",
+      headline: "30d",
       hint:
         kpis.sent.deltaVsYesterday >= 0
           ? `↑ ${kpis.sent.deltaVsYesterday} desde ontem`
@@ -198,9 +201,9 @@ function KpiRow({ kpis }: { kpis: NonNullable<AutomationFlowResponse["kpis"]> })
       icon: null,
     },
     {
-      label: "Falhas",
+      label: "Falhas 30d",
       value: kpis.failures.last30d,
-      headline: "últimos 30 dias",
+      headline: "30d",
       hint:
         kpis.failures.deliverabilityPct != null
           ? `taxa de entrega ${kpis.failures.deliverabilityPct}%`
@@ -253,6 +256,27 @@ function KpiRow({ kpis }: { kpis: NonNullable<AutomationFlowResponse["kpis"]> })
   );
 }
 
+function LifecycleLegend() {
+  const badges: LifecycleBadge[] = [
+    "activo",
+    "manual",
+    "transaccional",
+    "kill_switch_off",
+    "planeado",
+    "bloqueado",
+    "legado",
+    "sem_trigger",
+  ];
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-1.5 rounded-xl border border-admin-border bg-white px-3 py-2">
+      <span className="mr-1 text-[10px] font-bold uppercase tracking-[0.12em] text-admin-text-tertiary">
+        Legenda
+      </span>
+      <LifecycleBadgeRow badges={badges} />
+    </div>
+  );
+}
+
 function FlowStages({
   flows,
   stages,
@@ -273,6 +297,7 @@ function FlowStages({
             number={stage.number}
             eyebrow={stage.eyebrow}
             title={stage.title}
+            description={stage.description}
             meta={meta}
             tokenColor={stage.tokenColor}
             tokenBg={stage.tokenBg}
@@ -308,8 +333,9 @@ function computeStageMeta(stageKey: string, stageFlows: AutomationFlow[]): strin
       : `${cycles} ciclos`;
   }
   if (stageKey === "02_entrega") {
+    const saved = stageFlows.find((f) => f.key === "report_saved");
     const link = stageFlows.find((f) => f.key === "link_enviado");
-    const sent = link?.sentEvents ?? 0;
+    const sent = (saved?.sentEvents ?? 0) + (link?.sentEvents ?? 0);
     const seen =
       stageFlows.find((f) => f.key === "relatorio_visto")?.completedLeads ?? 0;
     if (sent > 0) {
@@ -318,11 +344,25 @@ function computeStageMeta(stageKey: string, stageFlows: AutomationFlow[]): strin
     }
     return `${stageFlows.length} blocos`;
   }
-  if (stageKey === "03_conversao") {
+  if (stageKey === "03_retencao") {
+    const fb = stageFlows.find((f) => f.key === "feedback_pedido");
+    const eligible = fb?.eligibleCount ?? 0;
+    const sent = fb?.sentEvents ?? 0;
+    return `${eligible} elegíveis · ${sent} pedidos enviados`;
+  }
+  if (stageKey === "04_conversao") {
     const followUp = stageFlows.find((f) => f.key === "follow_up_comercial");
     const eligible = followUp?.eligibleCount ?? 0;
     const converted = followUp?.completedLeads ?? 0;
     return `${eligible} elegíveis · ${converted} convertido${converted === 1 ? "" : "s"}`;
+  }
+  if (stageKey === "05_pagamento") {
+    const pay = stageFlows.find((f) => f.key === "payment_confirmed");
+    const sent = pay?.sentEvents ?? 0;
+    return `${sent} confirmações · kill-switch OFF`;
+  }
+  if (stageKey === "99_legado") {
+    return `${stageFlows.length} flow${stageFlows.length === 1 ? "" : "s"} mantidos para auditoria`;
   }
   return `${stageFlows.length} bloco${stageFlows.length === 1 ? "" : "s"}`;
 }

@@ -13,7 +13,9 @@ import type {
   FlowVisualKind,
   FlowExtraTag,
   FlowTiming,
+  LifecycleBadge,
 } from "@/lib/admin/automation-flow-types";
+import { LIFECYCLE_BADGE_LABELS } from "@/lib/admin/automation-flow-types";
 
 interface AutomationNodeProps {
   flow: AutomationFlow;
@@ -94,6 +96,9 @@ export function AutomationNode({ flow, stageTokenColor }: AutomationNodeProps) {
             <TypePill kind={visual} stageColor={stageColor} />
             <StatusPill meta={status} />
             {flow.extraTag && <ExtraPill tag={flow.extraTag} />}
+            {flow.lifecycleBadges && flow.lifecycleBadges.length > 0 && (
+              <LifecycleBadgeRow badges={flow.lifecycleBadges} />
+            )}
           </div>
           <h3 className="m-0 text-[16px] font-semibold leading-tight text-admin-text-primary">
             {flow.title}
@@ -207,6 +212,68 @@ function ExtraPill({ tag }: { tag: Exclude<FlowExtraTag, null> }) {
     >
       {meta.label}
     </span>
+  );
+}
+
+const LIFECYCLE_BADGE_STYLE: Record<
+  LifecycleBadge,
+  { bg: string; fg: string; border?: string }
+> = {
+  activo: {
+    bg: "rgb(var(--admin-pill-active-bg))",
+    fg: "rgb(var(--admin-pill-active-fg))",
+  },
+  manual: {
+    bg: "rgb(var(--admin-pill-info-bg))",
+    fg: "rgb(var(--admin-pill-info-fg))",
+  },
+  transaccional: {
+    bg: "rgb(var(--admin-button-dark))",
+    fg: "#FFFFFF",
+  },
+  kill_switch_off: {
+    bg: "rgb(var(--admin-pill-warn-bg))",
+    fg: "rgb(var(--admin-pill-warn-fg))",
+  },
+  planeado: {
+    bg: "rgb(var(--admin-pill-warn-bg))",
+    fg: "rgb(var(--admin-pill-warn-fg))",
+  },
+  sem_trigger: {
+    bg: "rgb(var(--admin-pill-warn-bg))",
+    fg: "rgb(var(--admin-pill-warn-fg))",
+  },
+  bloqueado: {
+    bg: "rgb(var(--admin-pill-blocked-bg))",
+    fg: "rgb(var(--admin-pill-blocked-fg))",
+  },
+  legado: {
+    bg: "rgb(var(--admin-stage-legado-bg))",
+    fg: "rgb(var(--admin-stage-legado))",
+    border: "rgb(var(--admin-stage-legado) / 0.25)",
+  },
+};
+
+export function LifecycleBadgeRow({ badges }: { badges: LifecycleBadge[] }) {
+  return (
+    <>
+      {badges.map((b) => {
+        const s = LIFECYCLE_BADGE_STYLE[b];
+        return (
+          <span
+            key={b}
+            className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]"
+            style={{
+              background: s.bg,
+              color: s.fg,
+              border: s.border ? `1px solid ${s.border}` : undefined,
+            }}
+          >
+            {LIFECYCLE_BADGE_LABELS[b]}
+          </span>
+        );
+      })}
+    </>
   );
 }
 
