@@ -207,8 +207,8 @@
       "lead": "Começa pela visão inicial grátis.",
       "urgency": "Preço de lançamento — sobe para 149€ após a beta.",
       "free": { "label": "Visão inicial", "price": "0€", "unit": "sem cartão · sem subscrição", "cta": "Começar grátis" },
-      "single": { "label": "Relatório completo", "unit": "pagamento único · sem subscrição", "cta": "Desbloquear" },
-      "diagnosis": { "label": "Diagnóstico de Autoridade", "unit": "leitura humana + 3 prioridades", "cta": "Reservar", "badge": "Mais útil" }
+      "single": { "label": "Relatório completo", "unit": "pagamento único · sem subscrição", "cta": "Obter relatório completo" },
+      "diagnosis": { "label": "Diagnóstico de Autoridade", "unit": "leitura humana + 3 prioridades", "cta": "Reservar diagnóstico", "badge": "Mais útil" }
     },
     "finalCta": {
       "headline": "Analisa o primeiro perfil agora.",

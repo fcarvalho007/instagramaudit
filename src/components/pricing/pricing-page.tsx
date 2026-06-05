@@ -59,10 +59,10 @@ export function PricingPage() {
               className="w-full"
               onClick={() => {
                 track("free");
-                navigate({ to: "/" }).catch(() => {});
+                navigate({ to: "/", hash: "hero" }).catch(() => {});
               }}
             >
-              Continuar grátis
+              Começar grátis
             </Button>
           </PricingCard>
 
@@ -97,7 +97,7 @@ export function PricingPage() {
                 }).catch(() => {});
               }}
             >
-              Desbloquear relatório
+              Obter relatório completo
               <ArrowRight className="size-4" aria-hidden="true" />
             </Button>
           </PricingCard>

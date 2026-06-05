@@ -754,7 +754,7 @@
           "Recent sample",
           "Account to save reports"
         ],
-        "cta": "Keep it free"
+        "cta": "Start free"
       },
       "single": {
         "label": "Automatic",
@@ -766,7 +766,7 @@
           "Editorial reading + competitors",
           "Practical recommendations"
         ],
-        "cta": "Unlock report"
+        "cta": "Get full report"
       },
       "hero": {
         "label": "Report + human",
