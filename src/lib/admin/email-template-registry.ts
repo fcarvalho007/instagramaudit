@@ -42,6 +42,8 @@ export const SAMPLE = {
   totalFreeCredits: 2,
   usedCredits: 1,
   remainingCredits: 1,
+  engagementVerdictSample: "está acima da média no engagement",
+  gapAreaSample: "há margem nos comentários e na consistência dos formatos",
 } as const;
 
 export type EmailTemplateKey =
@@ -279,16 +281,19 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     title: "Follow-up comercial",
     internalName: "commercial_followup",
     category: "comercial",
-    shortDescription: "Continuação narrativa do relatório gratuito.",
+    shortDescription:
+      "Continuação narrativa do relatório gratuito — manual, sem auto-trigger.",
     wired: true,
     wiredAt: "src/routes/api/admin/send-commercial-followup.ts",
     wiredNote:
-      "Hoje só dispara via acção manual no admin (detalhe da lead). AUDITORIA: copy actual é genérica — planeada reescrita para continuar a narrativa do relatório, sem alterar preços nem CTAs. Auto-trigger fica para fase futura.",
+      "Lifecycle: CONVERSÃO · Status: Manual · Trigger: admin action only (src/routes/api/admin/send-commercial-followup.ts). Continua a narrativa do relatório gratuito sem alterar preços nem URLs de checkout. Auto-trigger intencionalmente não activo nesta fase.",
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
       { key: "reportUrl", value: SAMPLE.reportUrl },
       { key: "checkoutUrl (opcional)", value: SAMPLE.checkoutUrl },
+      { key: "engagementVerdict (opcional)", value: SAMPLE.engagementVerdictSample },
+      { key: "gapArea (opcional)", value: SAMPLE.gapAreaSample },
     ],
     render: () =>
       renderCommercialFollowup({
@@ -296,8 +301,13 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
         instagramHandle: SAMPLE.instagramHandle,
         reportUrl: SAMPLE.reportUrl,
         checkoutUrl: SAMPLE.checkoutUrl,
+        insights: {
+          engagementVerdict: SAMPLE.engagementVerdictSample,
+          gapArea: SAMPLE.gapAreaSample,
+        },
       }),
-    preheader: "Sem pressão. Respondemos quando fizer sentido para ti.",
+    preheader:
+      "A comparação com concorrentes e a evolução temporal ficam no relatório completo.",
   },
   {
     key: "payment_confirmed",
