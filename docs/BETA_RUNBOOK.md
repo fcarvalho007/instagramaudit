@@ -11,6 +11,7 @@ Documento operacional. Para uso interno do operador durante a fase de beta priva
 - **Email primário**: Brevo. Fallback: Resend. Kill-switches disponíveis (`BREVO_TRANSACTIONAL_ENABLED`, `RESEND_FALLBACK_ENABLED`, `BREVO_CONTACT_SYNC_ENABLED`, `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED`).
 - **Apify**: `APIFY_ENABLED` + `APIFY_ALLOWLIST` controlam custo e perfis permitidos.
 - **Sequência lead-magnet**: deve estar **OFF** durante a beta externa enquanto não houver link de unsubscribe.
+- **Checkout pago (EuPago)**: fluxo validado até ao redirect EuPago (lead session, linha `lead_payments` pending, split upsell, metadata, sem chamadas de provider, sem duplicados). Validação real de pagamento + webhook + entitlement + receita admin **ainda não executada** — ver checklist "ANTES de abrir CTAs de pagamento ao público".
 
 ---
 
@@ -160,6 +161,19 @@ Adicionar nota interna no sheet sempre que se mover de coluna.
 - Sem export PDF (só link online).
 - Insights gerados por IA podem ter pequenas imprecisões — pedir feedback.
 - Sem unsubscribe nos emails de marketing → por isso a sequência lead-magnet está OFF.
+
+---
+
+## Checklist ANTES de abrir CTAs de pagamento ao público
+
+> **Estado atual**: Checkout pronto até ao redirect EuPago. Validação de pagamento real / webhook / entitlement / receita admin **adiada**. Antes de ativar CTAs pagas em superfícies públicas, completar **um pagamento real de 9€** (`report_full_9`) e validar a cadeia completa pending → paid → entitlement → admin.
+
+- [ ] Realizar 1 pagamento real de 9€ (`report_full_9`) via EuPago em produção
+- [ ] `lead_payments` transita de `status='pending'` para `status='paid'` com `paid_at` preenchido
+- [ ] Webhook cria exatamente 1 linha em `lead_entitlements` para `product_code='report_full_9'` (sem duplicados)
+- [ ] Evento `payment_webhook_paid` registado em `product_events` para o lead
+- [ ] Sem chamadas a Apify / OpenAI / DataForSEO disparadas pelo webhook (`provider_call_logs` limpo na janela)
+- [ ] Receita de 9€ aparece em `/admin/receita`
 
 ---
 
