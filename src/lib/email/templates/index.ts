@@ -46,6 +46,11 @@ export {
   type ReportSummaryKpis,
   type ReportSummaryTopPost,
 } from "./report-summary";
+export {
+  renderPaymentConfirmed,
+  getPaymentConfirmedParts,
+  type PaymentConfirmedInput,
+} from "./payment-confirmed";
 
 export {
   getTemplateDefaultParts,

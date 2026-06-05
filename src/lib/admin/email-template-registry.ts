@@ -13,6 +13,7 @@ import {
   renderPersonalAreaSaved,
   renderWelcomeBeta,
   renderReportSummary,
+  renderPaymentConfirmed,
   type RenderedEmail,
   type EmailTemplateParts,
 } from "@/lib/email/templates";
@@ -26,6 +27,10 @@ export const SAMPLE = {
   feedbackUrl: "https://example.com/feedback/example",
   appUrl: "https://example.com/app/reports",
   checkoutUrl: "https://example.com/checkout/abc123",
+  productName: "Relatório completo",
+  amountLabel: "9,00\u00A0\u20AC",
+  paymentMethod: "MB WAY",
+  paymentReference: "AP-2026-0142",
 } as const;
 
 export type EmailTemplateKey =
@@ -35,20 +40,27 @@ export type EmailTemplateKey =
   | "personal_area_saved"
   | "welcome_beta"
   | "report_summary"
-  | "commercial_followup";
+  | "commercial_followup"
+  | "payment_confirmed";
 
-export type EmailTemplateCategory = "operacional" | "conta" | "comercial";
+export type EmailTemplateCategory =
+  | "operacional"
+  | "conta"
+  | "comercial"
+  | "pagamento";
 
 export const CATEGORY_LABELS: Record<EmailTemplateCategory, string> = {
   operacional: "Operacionais",
   conta: "Conta e área pessoal",
   comercial: "Comercial",
+  pagamento: "Pagamento",
 };
 
 export const CATEGORY_ORDER: EmailTemplateCategory[] = [
   "operacional",
   "conta",
   "comercial",
+  "pagamento",
 ];
 
 export interface EmailTemplateEntry {
@@ -82,6 +94,15 @@ export const TEMPLATE_VARIABLES: Record<EmailTemplateKey, string[]> = {
     "instagramHandle",
     "reportUrl",
     "checkoutUrl",
+  ],
+  payment_confirmed: [
+    "firstName",
+    "instagramHandle",
+    "productName",
+    "amountLabel",
+    "paymentMethod",
+    "paymentReference",
+    "reportUrl",
   ],
 };
 
@@ -259,6 +280,39 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
         checkoutUrl: SAMPLE.checkoutUrl,
       }),
     preheader: "Sem pressão. Respondemos quando fizer sentido para ti.",
+  },
+  {
+    key: "payment_confirmed",
+    title: "Pagamento confirmado",
+    internalName: "payment_confirmed",
+    category: "pagamento",
+    shortDescription:
+      "Confirma o pagamento e recapitula o relatório desbloqueado.",
+    wired: true,
+    wiredAt: "src/routes/api/public/eupago-webhook.ts (branch paid)",
+    wiredNote:
+      "Disparado fire-and-forget pelo webhook EuPago após o pagamento ser marcado como pago e o entitlement granted. Atrás do kill-switch PAYMENT_CONFIRMATION_EMAIL_ENABLED (default OFF). Idempotente por payment_id via product_events.payment_confirmation_email_sent.",
+    variables: [
+      { key: "firstName", value: SAMPLE.firstName },
+      { key: "instagramHandle", value: SAMPLE.instagramHandle },
+      { key: "productName", value: SAMPLE.productName },
+      { key: "amountLabel", value: SAMPLE.amountLabel },
+      { key: "paymentMethod (opcional)", value: SAMPLE.paymentMethod },
+      { key: "paymentReference (opcional)", value: SAMPLE.paymentReference },
+      { key: "reportUrl", value: SAMPLE.reportUrl },
+    ],
+    render: () =>
+      renderPaymentConfirmed({
+        firstName: SAMPLE.firstName,
+        instagramHandle: SAMPLE.instagramHandle,
+        productName: SAMPLE.productName,
+        amountLabel: SAMPLE.amountLabel,
+        paymentMethod: SAMPLE.paymentMethod,
+        paymentReference: SAMPLE.paymentReference,
+        reportUrl: SAMPLE.reportUrl,
+      }),
+    preheader:
+      "O relatório completo de @frederico.m.carvalho já está disponível na tua conta.",
   },
 ];
 

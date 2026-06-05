@@ -14,6 +14,7 @@ import { getPersonalAreaSavedParts } from "./personal-area-saved";
 import { getWelcomeBetaParts } from "./welcome-beta";
 import { getReportSummaryParts } from "./report-summary";
 import { getCommercialFollowupParts } from "./commercial-followup";
+import { getPaymentConfirmedParts } from "./payment-confirmed";
 
 export type EmailTemplateKey =
   | "request_received"
@@ -22,7 +23,8 @@ export type EmailTemplateKey =
   | "personal_area_saved"
   | "welcome_beta"
   | "report_summary"
-  | "commercial_followup";
+  | "commercial_followup"
+  | "payment_confirmed";
 
 /**
  * Placeholder values used to render the editor "starting point" when no
@@ -37,6 +39,10 @@ export const PLACEHOLDER_VARS = {
   feedbackUrl: "{{feedbackUrl}}",
   appUrl: "{{appUrl}}",
   checkoutUrl: "{{checkoutUrl}}",
+  productName: "{{productName}}",
+  amountLabel: "{{amountLabel}}",
+  paymentMethod: "{{paymentMethod}}",
+  paymentReference: "{{paymentReference}}",
 } as const;
 
 /**
@@ -110,6 +116,16 @@ export function getTemplateDefaultParts(
         instagramHandle: v.instagramHandle,
         reportUrl: v.reportUrl,
         checkoutUrl: v.checkoutUrl,
+      });
+    case "payment_confirmed":
+      return getPaymentConfirmedParts({
+        firstName: v.firstName,
+        instagramHandle: v.instagramHandle,
+        productName: v.productName,
+        amountLabel: v.amountLabel,
+        paymentMethod: v.paymentMethod,
+        paymentReference: v.paymentReference,
+        reportUrl: v.reportUrl,
       });
   }
 }
