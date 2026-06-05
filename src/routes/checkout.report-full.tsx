@@ -22,15 +22,19 @@ import {
   ReportPriorityForm,
   type ReportPriority,
 } from "@/components/checkout/report-priority-form";
+import { HumanDiagnosisUpsell } from "@/components/checkout/human-diagnosis-upsell";
 import { createEupagoCheckout } from "@/lib/payments/eupago.functions";
 import { getLeadSessionStatus } from "@/lib/leads/lead-session.functions";
 import { trackEvent } from "@/lib/tracking.functions";
+import type { ProductCode } from "@/lib/payments/products";
 
-const PRODUCT_CODE = "report_full_9" as const;
+const SOURCE_PRODUCT: ProductCode = "report_full_9";
+const UPSELL_TARGET: ProductCode = "authority_diagnosis_97";
 
 const STEP_LABELS = [
   "Confirmar desbloqueio",
   "Prioridade",
+  "Leitura humana?",
   "Faturação e pagamento",
 ];
 
@@ -93,6 +97,10 @@ function CheckoutSteps() {
   const [step, setStep] = useState(1);
   const [reportPriority, setReportPriority] =
     useState<ReportPriority | null>(null);
+  const [selectedProduct, setSelectedProduct] =
+    useState<ProductCode>(SOURCE_PRODUCT);
+  const [upsellPresented, setUpsellPresented] = useState(false);
+  const [upsellAccepted, setUpsellAccepted] = useState(false);
   const [billing, setBilling] = useState<BillingValue>(EMPTY_BILLING);
   const [billingErrors, setBillingErrors] = useState<BillingErrors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -103,7 +111,7 @@ function CheckoutSteps() {
       data: {
         eventType: "checkout_started",
         metadata: {
-          product_code: PRODUCT_CODE,
+          product_code: SOURCE_PRODUCT,
           source_component: search.source ?? null,
           instagram_username: search.username ?? null,
         },
@@ -121,11 +129,30 @@ function CheckoutSteps() {
     }).catch(() => {});
   }, [step]);
 
+  // Fire upsell_seen exactly once when the user lands on step 3.
+  useEffect(() => {
+    if (step === 3 && !upsellPresented) {
+      setUpsellPresented(true);
+      trackEvent({
+        data: {
+          eventType: "checkout_upsell_seen",
+          metadata: {
+            source_product: SOURCE_PRODUCT,
+            target_product: UPSELL_TARGET,
+            source_component: search.source ?? null,
+            instagram_username: search.username ?? null,
+            report_cache_key: search.report_cache_key ?? null,
+          },
+        },
+      }).catch(() => {});
+    }
+  }, [step, upsellPresented, search.source, search.username, search.report_cache_key]);
+
   const trackStepComplete = (extra: Record<string, unknown> = {}) => {
     trackEvent({
       data: {
         eventType: "checkout_step_complete",
-        metadata: { step, product_code: PRODUCT_CODE, ...extra },
+        metadata: { step, product_code: SOURCE_PRODUCT, ...extra },
       },
     }).catch(() => {});
   };
@@ -147,6 +174,45 @@ function CheckoutSteps() {
     if (typeof window !== "undefined") window.scrollTo({ top: 0 });
   };
 
+  const handleUpsellAccept = () => {
+    setSelectedProduct(UPSELL_TARGET);
+    setUpsellAccepted(true);
+    trackEvent({
+      data: {
+        eventType: "checkout_upsell_accepted",
+        metadata: {
+          source_product: SOURCE_PRODUCT,
+          target_product: UPSELL_TARGET,
+          final_product: UPSELL_TARGET,
+          source_component: search.source ?? null,
+          instagram_username: search.username ?? null,
+          report_cache_key: search.report_cache_key ?? null,
+        },
+      },
+    }).catch(() => {});
+    trackStepComplete({ upsell_accepted: true, final_product: UPSELL_TARGET });
+    goNext();
+  };
+
+  const handleUpsellDecline = () => {
+    setSelectedProduct(SOURCE_PRODUCT);
+    setUpsellAccepted(false);
+    trackEvent({
+      data: {
+        eventType: "checkout_upsell_declined",
+        metadata: {
+          source_product: SOURCE_PRODUCT,
+          final_product: SOURCE_PRODUCT,
+          source_component: search.source ?? null,
+          instagram_username: search.username ?? null,
+          report_cache_key: search.report_cache_key ?? null,
+        },
+      },
+    }).catch(() => {});
+    trackStepComplete({ upsell_accepted: false, final_product: SOURCE_PRODUCT });
+    goNext();
+  };
+
   const submitPayment = async () => {
     const errors = validateBilling(billing);
     setBillingErrors(errors);
@@ -158,20 +224,33 @@ function CheckoutSteps() {
     trackEvent({
       data: {
         eventType: "checkout_payment_started",
-        metadata: { product_code: PRODUCT_CODE },
+        metadata: {
+          product_code: selectedProduct,
+          source_product: SOURCE_PRODUCT,
+          final_product: selectedProduct,
+          upsell_accepted: upsellAccepted,
+        },
       },
     }).catch(() => {});
 
     try {
       const res = await createCheckout({
         data: {
-          product_code: PRODUCT_CODE,
+          product_code: selectedProduct,
           instagram_username: search.username,
           report_cache_key: search.report_cache_key,
-          return_path: "/checkout/report-full?status=success",
+          return_path:
+            selectedProduct === UPSELL_TARGET
+              ? "/checkout/authority-diagnosis?status=success"
+              : "/checkout/report-full?status=success",
           source_component: search.source ?? "checkout_report_full",
           coupon_code: search.coupon,
           report_priority: reportPriority ?? undefined,
+          upsell: {
+            presented: upsellPresented,
+            accepted: upsellAccepted,
+            source_product: SOURCE_PRODUCT,
+          },
           billing: {
             name: billing.name.trim(),
             tax_id: billing.tax_id.trim() || undefined,
@@ -197,7 +276,13 @@ function CheckoutSteps() {
       trackEvent({
         data: {
           eventType: "checkout_payment_failed",
-          metadata: { product_code: PRODUCT_CODE, error: message },
+          metadata: {
+            product_code: selectedProduct,
+            source_product: SOURCE_PRODUCT,
+            final_product: selectedProduct,
+            upsell_accepted: upsellAccepted,
+            error: message,
+          },
         },
       }).catch(() => {});
       toast.error(message);
@@ -207,7 +292,7 @@ function CheckoutSteps() {
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
       <div className="min-w-0">
-        <StepProgress step={step} total={3} labels={STEP_LABELS} />
+        <StepProgress step={step} total={4} labels={STEP_LABELS} />
 
         {step === 1 ? (
           <section className="space-y-5">
@@ -264,6 +349,38 @@ function CheckoutSteps() {
         {step === 3 ? (
           <section className="space-y-5">
             <header>
+              <span className="text-eyebrow-sm text-content-tertiary">
+                Opcional
+              </span>
+              <h1 className="mt-1 font-fraunces text-2xl font-medium text-content-primary">
+                Queres uma leitura humana dos dados?
+              </h1>
+              <p className="mt-2 text-sm text-content-secondary leading-relaxed">
+                O relatório mostra os sinais. O diagnóstico humano ajuda a
+                transformar esses sinais em 3 prioridades concretas.
+              </p>
+            </header>
+            <HumanDiagnosisUpsell
+              onAccept={handleUpsellAccept}
+              onDecline={handleUpsellDecline}
+            />
+            <div className="pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={goBack}
+                className="gap-1.5"
+              >
+                <ArrowLeft className="size-4" aria-hidden="true" />
+                Voltar
+              </Button>
+            </div>
+          </section>
+        ) : null}
+
+        {step === 4 ? (
+          <section className="space-y-5">
+            <header>
               <h1 className="font-fraunces text-2xl font-medium text-content-primary">
                 Dados de facturação
               </h1>
@@ -281,7 +398,7 @@ function CheckoutSteps() {
             </div>
 
             <div className="lg:hidden">
-              <OrderSummary productCode={PRODUCT_CODE} />
+              <OrderSummary productCode={selectedProduct} />
             </div>
 
             {submitError ? (
@@ -332,7 +449,7 @@ function CheckoutSteps() {
       </div>
 
       <aside className="hidden lg:block">
-        <OrderSummary productCode={PRODUCT_CODE} sticky />
+        <OrderSummary productCode={selectedProduct} sticky />
       </aside>
     </div>
   );
