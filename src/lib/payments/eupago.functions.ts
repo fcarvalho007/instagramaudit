@@ -185,6 +185,16 @@ export const createEupagoCheckout = createServerFn({ method: "POST" })
       }
     }
 
+    const upsellSource =
+      data.upsell?.source_product ?? null;
+    const upsellPresented = data.upsell?.presented ?? false;
+    const upsellAccepted = data.upsell?.accepted ?? false;
+    const upsellFrom =
+      upsellAccepted && upsellSource && upsellSource !== product.code
+        ? upsellSource
+        : null;
+    const upsellTo = upsellFrom ? product.code : null;
+
     // Insert pending payment row first so we have a stable internal id.
     const { data: paymentRow, error: insertErr } = await supabaseAdmin
       .from("lead_payments")
@@ -207,6 +217,15 @@ export const createEupagoCheckout = createServerFn({ method: "POST" })
           upsell_interest: data.upsell_interest ?? null,
           report_priority: data.report_priority ?? null,
           billing: data.billing ?? null,
+          source_product: upsellSource ?? product.code,
+          target_product: upsellPresented
+            ? "authority_diagnosis_97"
+            : null,
+          final_product: product.code,
+          upsell_presented: upsellPresented,
+          upsell_accepted: upsellAccepted,
+          upsell_from: upsellFrom,
+          upsell_to: upsellTo,
         } as never,
       })
       .select("id")
@@ -262,6 +281,10 @@ export const createEupagoCheckout = createServerFn({ method: "POST" })
           coupon_code: appliedCoupon,
           discount_percent: appliedDiscountPercent,
           source_component: data.source_component ?? null,
+          source_product: upsellSource ?? product.code,
+          final_product: product.code,
+          upsell_presented: upsellPresented,
+          upsell_accepted: upsellAccepted,
         },
       });
 
