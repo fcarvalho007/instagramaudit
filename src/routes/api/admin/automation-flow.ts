@@ -475,6 +475,7 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
             failures: 0,
             wired: FLOW_EVENTS.feedback_pedido.instrumented,
             lifecycleBadges: ["activo", "manual"],
+            note: "Sem auto-trigger nesta fase. Opcional futuro: automático D+1.",
           },
           {
             key: "report_summary",
@@ -560,6 +561,7 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
             failures: 0,
             wired: FLOW_EVENTS.follow_up_comercial.instrumented,
             lifecycleBadges: ["activo", "manual"],
+            note: "Auto-trigger não activo nesta fase.",
           },
           {
             key: "payment_confirmed",
@@ -587,6 +589,7 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
             failures: 0,
             wired: FLOW_EVENTS.payment_confirmed.instrumented,
             lifecycleBadges: ["activo", "transaccional", "kill_switch_off"],
+            note: "Activar apenas em validação controlada antes de produção.",
           },
         ];
 
