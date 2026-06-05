@@ -117,23 +117,21 @@
       "headline": "What takes an afternoon, in seconds.",
       "manual": {
         "label": "By hand",
-        "item1": "Open the profile and count likes one by one",
-        "item2": "Calculate rates in spreadsheets",
-        "item3": "No tier reference",
-        "item4": "Subjective interpretation"
+        "item1": "Open profiles one by one",
+        "item2": "Count formats and posts",
+        "item3": "Draw conclusions by hand"
       },
       "tool": {
         "label": "AuditProfiles",
-        "item1": "One username, report in seconds",
+        "item1": "Report in seconds",
         "item2": "Metrics calculated automatically",
-        "item3": "Benchmark against the right tier",
-        "item4": "Professional editorial reading"
+        "item3": "Clear priorities"
       }
     },
     "preview": {
       "eyebrow": "Product preview",
       "headline": "The report you get.",
-      "lead": "Clear metrics, visual benchmark and competitor comparison — ready to share.",
+      "lead": "Metrics, benchmark and competitors — all in one report.",
       "cta": "View full report · +7 sections",
       "card": {
         "meta": "30 posts · last 30 days",
@@ -145,7 +143,7 @@
         "formatHint": "62% of mix",
         "competitorsLabel": "Competitor comparison"
       },
-      "disclaimer": "Illustrative mockup. Real numbers come from your profile.",
+      "disclaimer": "Example. Real numbers come from your profile.",
       "sub": {
         "data": { "title": "Actionable metrics", "hint": "what matters, nothing that distracts" },
         "benchmark": { "title": "Instant comparison", "hint": "against tier and competitors" },
@@ -156,9 +154,9 @@
       "eyebrow": "How it works",
       "headline": "Report in 3 steps.",
       "stepLabel": "STEP {{number}}",
-      "step1": { "title": "Enter the username", "desc": "Any public profile. Optionally, up to two competitors to compare." },
-      "step2": { "title": "Automatic analysis", "desc": "Recent posts are processed against up-to-date tier benchmarks." },
-      "step3": { "title": "Report ready", "desc": "Metrics, competitor ranking and strategic insights, saved to your account." }
+      "step1": { "title": "Enter the username", "desc": "Enter the profile's @." },
+      "step2": { "title": "Automatic analysis", "desc": "We analyze public data." },
+      "step3": { "title": "Report ready", "desc": "We show what to improve." }
     },
     "bento": {
       "eyebrow": "What you'll see",
@@ -184,7 +182,6 @@
     "transparency": {
       "eyebrow": "Transparency",
       "headline": "No login. Public data only.",
-      "body": "We never ask for your Instagram access. We analyze only what's already public, with benchmarks built from industry reference studies.",
       "audience": "Built for consultants, social media managers, brands and creators.",
       "chips": {
         "noLogin": "No Instagram login",
@@ -203,7 +200,7 @@
     },
     "finalCta": {
       "headline": "Analyze your first profile now.",
-      "lead": "2 free reports. No card, no Instagram login."
+      "lead": "Free. No card. In seconds."
     },
     "miniFooter": {
       "tagline": "Instagram benchmarking, clear and auditable.",
