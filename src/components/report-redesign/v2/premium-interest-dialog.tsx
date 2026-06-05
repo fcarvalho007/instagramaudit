@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { ArrowRight, Building2, Check, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -12,15 +11,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { trackEvent } from "@/lib/tracking.functions";
 import { cn } from "@/lib/utils";
-import {
-  PricingInterestModal,
-  type PricingInterestOption,
-} from "@/components/pricing/pricing-interest-modal";
 import { CouponInput } from "@/components/pricing/coupon-input";
+import { useState } from "react";
 
-// The 9€ flow is not yet wired to a real checkout — it still opens
-// `PricingInterestModal` (interest capture). Only the 97€ hero card goes
-// directly to the EuPago checkout via `ReserveDiagnosisButton`.
+// Both 9€ and 97€ cards now route to focused checkouts.
 export type PricingOption = "free" | "single_report";
 
 interface Props {
