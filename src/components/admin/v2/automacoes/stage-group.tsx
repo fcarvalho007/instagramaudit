@@ -9,13 +9,14 @@ interface Props {
   number: string;
   eyebrow: string;
   title: string;
+  description?: string;
   meta?: string;
   tokenColor: string;
   tokenBg: string;
   children: ReactNode;
 }
 
-export function StageGroup({ number, eyebrow, title, meta, tokenColor, tokenBg, children }: Props) {
+export function StageGroup({ number, eyebrow, title, description, meta, tokenColor, tokenBg, children }: Props) {
   return (
     <section
       className="relative rounded-2xl border px-4 py-4 sm:px-5 sm:py-5"
@@ -41,6 +42,11 @@ export function StageGroup({ number, eyebrow, title, meta, tokenColor, tokenBg, 
           <h2 className="m-0 font-serif text-[18px] font-medium leading-tight text-admin-text-primary">
             {title}
           </h2>
+          {description && (
+            <p className="m-0 mt-0.5 text-[12px] text-admin-text-secondary">
+              {description}
+            </p>
+          )}
         </div>
         {meta && (
           <span className="text-[11px] font-medium text-admin-text-tertiary">{meta}</span>
