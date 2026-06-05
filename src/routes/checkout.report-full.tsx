@@ -18,6 +18,10 @@ import {
 } from "@/components/checkout/billing-form";
 import { OrderSummary } from "@/components/checkout/order-summary";
 import { MissingLeadSession } from "@/components/checkout/missing-lead-session";
+import {
+  ReportPriorityForm,
+  type ReportPriority,
+} from "@/components/checkout/report-priority-form";
 import { createEupagoCheckout } from "@/lib/payments/eupago.functions";
 import { getLeadSessionStatus } from "@/lib/leads/lead-session.functions";
 import { trackEvent } from "@/lib/tracking.functions";
@@ -26,8 +30,8 @@ const PRODUCT_CODE = "report_full_9" as const;
 
 const STEP_LABELS = [
   "Confirmar desbloqueio",
-  "Faturação",
-  "Confirmar e pagar",
+  "Prioridade",
+  "Faturação e pagamento",
 ];
 
 const searchSchema = z.object({
@@ -87,6 +91,8 @@ function CheckoutSteps() {
   const createCheckout = useServerFn(createEupagoCheckout);
 
   const [step, setStep] = useState(1);
+  const [reportPriority, setReportPriority] =
+    useState<ReportPriority | null>(null);
   const [billing, setBilling] = useState<BillingValue>(EMPTY_BILLING);
   const [billingErrors, setBillingErrors] = useState<BillingErrors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -165,6 +171,7 @@ function CheckoutSteps() {
           return_path: "/checkout/report-full?status=success",
           source_component: search.source ?? "checkout_report_full",
           coupon_code: search.coupon,
+          report_priority: reportPriority ?? undefined,
           billing: {
             name: billing.name.trim(),
             tax_id: billing.tax_id.trim() || undefined,
@@ -198,113 +205,135 @@ function CheckoutSteps() {
   };
 
   return (
-    <div>
-      <StepProgress step={step} total={3} labels={STEP_LABELS} />
+    <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
+      <div className="min-w-0">
+        <StepProgress step={step} total={3} labels={STEP_LABELS} />
 
-      {step === 1 ? (
-        <section className="space-y-5">
-          <header>
-            <h1 className="font-fraunces text-2xl sm:text-3xl font-medium text-content-primary leading-tight">
-              Obter relatório completo
-            </h1>
-            <p className="mt-2 text-sm text-content-secondary leading-relaxed">
-              Desbloqueia o diagnóstico editorial, desempenho, conteúdo,
-              procura, comparação e recomendações.
-            </p>
-          </header>
-          <ConfirmUnlockCard />
-          <StepActions
-            backLabel={search.return ? "Voltar" : "Cancelar"}
-            onBack={goBack}
-            nextLabel="Continuar"
-            onNext={() => {
-              trackStepComplete();
-              goNext();
-            }}
-          />
-        </section>
-      ) : null}
+        {step === 1 ? (
+          <section className="space-y-5">
+            <header>
+              <h1 className="font-fraunces text-2xl sm:text-3xl font-medium text-content-primary leading-tight">
+                Obter relatório completo
+              </h1>
+              <p className="mt-2 text-sm text-content-secondary leading-relaxed">
+                Desbloqueia as secções premium e transforma a visão inicial
+                num diagnóstico completo.
+              </p>
+            </header>
+            <ConfirmUnlockCard />
+            <StepActions
+              backLabel={search.return ? "Voltar" : "Cancelar"}
+              onBack={goBack}
+              nextLabel="Continuar"
+              onNext={() => {
+                trackStepComplete();
+                goNext();
+              }}
+            />
+          </section>
+        ) : null}
 
-      {step === 2 ? (
-        <section className="space-y-5">
-          <header>
-            <h1 className="font-fraunces text-2xl font-medium text-content-primary">
-              Dados de facturação
-            </h1>
-            <p className="mt-2 text-sm text-content-secondary">
-              Usamos estes dados apenas para emitir o recibo do relatório.
-            </p>
-          </header>
-          <BillingForm
-            value={billing}
-            onChange={setBilling}
-            errors={billingErrors}
-          />
-          <StepActions
-            backLabel="Voltar"
-            onBack={goBack}
-            nextLabel="Continuar"
-            onNext={() => {
-              const errors = validateBilling(billing);
-              setBillingErrors(errors);
-              if (Object.keys(errors).length > 0) return;
-              trackStepComplete();
-              goNext();
-            }}
-          />
-        </section>
-      ) : null}
+        {step === 2 ? (
+          <section className="space-y-5">
+            <header>
+              <h1 className="font-fraunces text-2xl font-medium text-content-primary">
+                Por onde queres começar?
+              </h1>
+              <p className="mt-2 text-sm text-content-secondary">
+                Uma escolha rápida para destacarmos a secção certa primeiro.
+              </p>
+            </header>
+            <ReportPriorityForm
+              value={reportPriority}
+              onChange={setReportPriority}
+            />
+            <StepActions
+              backLabel="Voltar"
+              onBack={goBack}
+              nextLabel="Continuar"
+              nextDisabled={!reportPriority}
+              onNext={() => {
+                if (!reportPriority) return;
+                trackStepComplete({ report_priority: reportPriority });
+                goNext();
+              }}
+            />
+          </section>
+        ) : null}
 
-      {step === 3 ? (
-        <section className="space-y-5">
-          <header>
-            <h1 className="font-fraunces text-2xl font-medium text-content-primary">
-              Confirmar e pagar
-            </h1>
-            <p className="mt-2 text-sm text-content-secondary">
-              Verifica o resumo. Em seguida abrimos o pagamento seguro.
-            </p>
-          </header>
-          <OrderSummary productCode={PRODUCT_CODE} />
-          {submitError ? (
-            <p className="text-sm text-signal-error">{submitError}</p>
-          ) : null}
-          <div className="flex items-center justify-between gap-3 pt-2">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={goBack}
-              disabled={submitting}
-              className="gap-1.5"
-            >
-              <ArrowLeft className="size-4" aria-hidden="true" />
-              Voltar
-            </Button>
-            <Button
-              type="button"
-              variant="primary"
-              onClick={submitPayment}
-              disabled={submitting}
-              className="gap-2"
-            >
-              {submitting ? (
-                <>
-                  <Loader2
-                    className="size-4 animate-spin"
-                    aria-hidden="true"
-                  />
-                  A preparar pagamento…
-                </>
-              ) : (
-                <>
-                  Confirmar e pagar
-                  <ArrowRight className="size-4" aria-hidden="true" />
-                </>
-              )}
-            </Button>
-          </div>
-        </section>
-      ) : null}
+        {step === 3 ? (
+          <section className="space-y-5">
+            <header>
+              <h1 className="font-fraunces text-2xl font-medium text-content-primary">
+                Dados de facturação
+              </h1>
+              <p className="mt-2 text-sm text-content-secondary">
+                Usamos apenas para emitir o recibo. Depois abrimos o
+                pagamento seguro.
+              </p>
+            </header>
+            <div className="rounded-xl border border-border-default bg-white p-5 max-w-xl">
+              <BillingForm
+                value={billing}
+                onChange={setBilling}
+                errors={billingErrors}
+              />
+            </div>
+
+            <div className="lg:hidden">
+              <OrderSummary productCode={PRODUCT_CODE} />
+            </div>
+
+            {submitError ? (
+              <div
+                role="alert"
+                className="rounded-lg border border-signal-error/30 bg-signal-error/5 px-3 py-2 text-sm text-signal-error"
+              >
+                {submitError}
+              </div>
+            ) : null}
+
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={goBack}
+                disabled={submitting}
+                className="gap-1.5"
+              >
+                <ArrowLeft className="size-4" aria-hidden="true" />
+                Voltar
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={submitPayment}
+                disabled={submitting}
+                className="gap-2 w-full sm:w-auto"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2
+                      className="size-4 animate-spin"
+                      aria-hidden="true"
+                    />
+                    A preparar pagamento…
+                  </>
+                ) : (
+                  <>
+                    Confirmar e pagar
+                    <ArrowRight className="size-4" aria-hidden="true" />
+                  </>
+                )}
+              </Button>
+            </div>
+          </section>
+        ) : null}
+      </div>
+
+      <aside className="hidden lg:block">
+        <OrderSummary productCode={PRODUCT_CODE} sticky />
+      </aside>
     </div>
   );
 }
