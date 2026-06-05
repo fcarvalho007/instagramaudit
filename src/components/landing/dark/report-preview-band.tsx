@@ -33,7 +33,7 @@ export function ReportPreviewBand() {
           <p className="dark-eyebrow mb-2.5">{t("dark.preview.eyebrow")}</p>
           <h2
             id="dark-preview-title"
-            className="font-display text-2xl sm:text-3xl font-medium leading-[1.15] mb-3"
+            className="font-display text-3xl sm:text-4xl font-medium leading-[1.15] mb-3"
             style={{ color: "rgb(var(--hero-text-primary))" }}
           >
             {t("dark.preview.headline")}
