@@ -55,9 +55,9 @@ vi.mock("../send-report-summary.server", () => ({
   sendReportSummaryEmail: (...a: any[]) => sendReportSummaryEmail(...a),
 }));
 
-const upsertBrevoContact = vi.fn(async () => ({ ok: true }) as any);
+const upsertBrevoContact = vi.fn(async (..._a: any[]) => ({ ok: true }) as any);
 vi.mock("@/lib/brevo/contacts.server", () => ({
-  upsertBrevoContact: (...a: any[]) => upsertBrevoContact(...(a as [any])),
+  upsertBrevoContact: (...a: any[]) => upsertBrevoContact(...a),
 }));
 
 import { sendLeadMagnetSequence } from "../lead-magnet-sequence.server";
