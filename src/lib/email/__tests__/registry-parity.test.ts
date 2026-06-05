@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { EMAIL_TEMPLATES } from "@/lib/admin/email-template-registry";
+import { EMAIL_TEMPLATES, SAMPLE } from "@/lib/admin/email-template-registry";
 import {
   getTemplateDefaultParts,
   type EmailTemplateKey,
 } from "@/lib/email/templates/default-parts";
+import { applyVariables } from "@/lib/email/template-overrides.server";
 
 /**
  * Paridade entre o que o editor mostra (defaults derivados de
@@ -19,7 +20,14 @@ describe("email template registry parity", () => {
     it(`${entry.key}: default subject matches renderXxx().subject`, () => {
       const rendered = entry.render();
       const defaults = getTemplateDefaultParts(entry.key as EmailTemplateKey);
-      expect(defaults.subject).toBe(rendered.subject);
+      // Defaults usam placeholders `{{var}}`; o render do registry usa
+      // SAMPLE real. Substituir os placeholders garante que comparamos
+      // a mesma frase, mesmo para templates com `subject` dinâmico.
+      const substituted = applyVariables(
+        defaults.subject,
+        SAMPLE as unknown as Record<string, string | number>,
+      );
+      expect(substituted).toBe(rendered.subject);
     });
   }
 });
