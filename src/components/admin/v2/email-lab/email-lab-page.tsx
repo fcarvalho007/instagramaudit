@@ -56,6 +56,7 @@ const TEMPLATE_ICON: Record<TemplateKey, LucideIcon> = {
   report_summary: Send,
   commercial_followup: DollarSign,
   payment_confirmed: CreditCard,
+  report_saved: Bookmark,
 };
 
 type DetailTab = "preview" | "variables" | "wiring";
