@@ -11,6 +11,7 @@ export function HeroSection() {
   const { t } = useTranslation("landing");
   return (
     <section
+      id="hero"
       className="hero-dark relative w-full overflow-hidden flex items-center lg:min-h-[calc(100dvh-4rem)]"
       aria-label={t("hero.headline")}
     >

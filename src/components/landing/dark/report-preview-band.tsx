@@ -1,5 +1,4 @@
-import { ArrowDown, User } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { ArrowUp, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Reveal } from "./reveal";
@@ -204,8 +203,14 @@ export function ReportPreviewBand() {
 
           {/* Floating CTA over the fade */}
           <div className="relative -mt-16 flex justify-center pb-2">
-            <Link
-              to="/report/example"
+            <a
+              href="#hero"
+              onClick={(e) => {
+                e.preventDefault();
+                document
+                  .getElementById("hero")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
               className="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold shadow-lg transition-transform hover:-translate-y-0.5"
               style={{
                 backgroundColor: "rgb(var(--hero-cyan))",
@@ -213,8 +218,8 @@ export function ReportPreviewBand() {
               }}
             >
               {t("dark.preview.cta")}
-              <ArrowDown className="size-4" aria-hidden="true" />
-            </Link>
+              <ArrowUp className="size-4" aria-hidden="true" />
+            </a>
           </div>
           <p
             className="text-center text-xs pt-3 px-4"
