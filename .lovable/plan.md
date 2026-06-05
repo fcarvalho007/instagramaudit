@@ -1,100 +1,121 @@
-# Smoke test plan — /checkout/report-full upsell
+# Payments visibility block for /admin/receita
 
-I'm in plan mode, so I can't drive the browser or create `lead_payments` rows yet. This plan describes exactly what I'll run once you switch to build/smoke mode. Nothing here completes payment, forges webhooks, or writes to the DB by hand.
+Add a single new "Pagamentos" section to the existing admin Receita page, backed by a new admin-gated endpoint. No checkout/webhook/pricing changes.
 
-## Preconditions to verify first (read-only)
+## 1. New endpoint — `src/routes/api/admin/payments-overview.ts`
 
-1. `supabase--read_query` — confirm schema is ready:
-   - `lead_payments` columns: `lead_id`, `product_code`, `amount_cents`, `currency`, `provider`, `status`, `provider_checkout_url`, `metadata`, `created_at`
-   - `lead_entitlements` exists, current row count for the test lead = 0
-2. `code--view src/lib/payments/eupago.functions.ts` — re-confirm the metadata keys (`source_product`, `target_product`, `final_product`, `upsell_presented`, `upsell_accepted`, `upsell_from`, `upsell_to`) are written exactly as the spec expects.
-3. Baseline counts before each test:
-   ```sql
-   select count(*) from lead_payments where lead_id = :lead;
-   select count(*) from lead_entitlements where lead_id = :lead;
-   select count(*) from provider_call_logs where created_at > now() - interval '5 min';
-   ```
+Admin-gated (`requireAdminSession`), follows the same pattern as `pre-revenue-signals.ts`. Single GET that returns:
 
-## Test A — Decline upsell (final = report_full_9)
+```ts
+export interface PaymentsOverview {
+  by_product_status: Array<{
+    product: "report_full_9" | "authority_diagnosis_97" | string;
+    status: "pending" | "paid" | "failed" | "expired" | string;
+    count: number;
+    amount_eur: number; // sum of amount_cents/100 (intent value, not just paid)
+  }>;
+  totals: {
+    checkouts_started: number;       // all rows
+    pending: number;
+    paid: number;
+    failed: number;
+    paid_amount_eur: number;         // sum where status=paid
+  };
+  pending_stale: Array<{             // pending older than 1h
+    id: string; created_at: string; product: string;
+    amount_cents: number; lead_email: string | null;
+    provider_checkout_url: string | null;
+  }>;
+  recent_failed: PaymentRow[];       // limit 20
+  recent_paid: PaymentRow[];         // limit 20
+  recent_all: PaymentRow[];          // limit 20 — table source
+  upsell: {
+    report_full_9_checkouts: number;      // payments where source_product = report_full_9
+    upsell_presented: number;
+    upsell_accepted: number;              // metadata.upsell_accepted = true
+    upsell_declined: number;              // presented & not accepted
+    conversion_pct: number | null;        // accepted / presented * 100
+  };
+  entitlements_by_product: Record<string, number>;
+}
 
-Browser sequence (`browser--view_preview` + `browser--act`):
-
-1. `view_preview path=/checkout/report-full?source=smoke_test_a` (1440×900) — assumes an active lead session from the current preview cookie. If `MissingLeadSession` renders, stop and report BLOCKED.
-2. Step 1: click **Continuar**.
-3. Step 2: select a `report_priority` option, click **Continuar**.
-4. Step 3: click **Continuar só com o relatório de 9€** (the underlined decline link).
-5. Step 4: fill `BillingForm` (name, address, postal_code, city, invoice_email; tax_id optional).
-6. `browser--list_network_requests` + `browser--read_console_logs` armed.
-7. Click **Confirmar e pagar** exactly once. Observe that the button enters the `A preparar pagamento…` disabled state (prevents double-submit).
-8. Capture the redirect URL — assert host = `clientes.eupago.pt`.
-9. Immediately navigate away (do NOT complete payment).
-
-Read-only DB assertions:
-
-```sql
-select id, product_code, amount_cents, currency, provider, status,
-       provider_checkout_url is not null as has_url,
-       lead_id, metadata, created_at
-from lead_payments
-where lead_id = :lead
-order by created_at desc
-limit 1;
+interface PaymentRow {
+  id: string;
+  created_at: string;
+  lead_id: string;
+  lead_email: string | null;
+  product: string;
+  amount_cents: number;
+  currency: string;
+  status: string;
+  source_component: string | null;       // metadata.source_component
+  report_priority: string | null;        // metadata.report_priority
+  upsell_accepted: boolean | null;       // metadata.upsell_accepted
+  provider_checkout_url: string | null;
+  failure_reason: string | null;         // metadata.failure_reason ?? metadata.error
+}
 ```
 
-Expected: `report_full_9`, `900`, `EUR`, `eupago`, `pending`, `has_url=true`, `lead_id` joins to `leads.id`, and metadata contains:
-- `report_priority` = chosen value
-- `upsell_presented` = true
-- `upsell_accepted` = false
-- `source_product` = `report_full_9`
-- `final_product` = `report_full_9`
+Implementation notes:
+- Use `supabaseAdmin` (server-only client). Restrict to the two active products via `.in("product", ["report_full_9","authority_diagnosis_97"])` so legacy `report_single` / `pack_5` rows are excluded.
+- For the rolled-up by_product_status, fetch `product, status, amount_cents` for active products and reduce in JS (no SQL grouping needed; volume is low).
+- Lead email: one `leads` select keyed by the union of `lead_id`s from all returned rows, build a `Map<lead_id, email>`.
+- Upsell metrics: count over the same fetched superset where `metadata->>'source_product' = 'report_full_9'` (or product=`report_full_9` as fallback for older rows), `metadata->>'upsell_presented' = 'true'`, `metadata->>'upsell_accepted'`.
+- Entitlement counts: `lead_entitlements` grouped by `product_code` in JS, filtered to active products.
+- `cache-control: private, max-age=15`.
 
-Plus:
-```sql
-select count(*) from lead_entitlements where lead_id = :lead;  -- expect 0
-select count(*) from provider_call_logs where created_at > :t0; -- expect 0
-select event_type, metadata->>'final_product' from product_events
-where lead_id = :lead and created_at > :t0 order by created_at;
+## 2. New UI section — `src/components/admin/v2/receita/payments-section.tsx`
+
+Same shape as `PreRevenueSignalsSection` (uses `AdminSectionHeader`, `AdminCard`, `KPICard`, `SectionSkeleton/Error`, `adminFetch`, `useQuery` with 60s refetch).
+
+KPI cards row:
+- **Checkouts iniciados** — totals.checkouts_started
+- **Pendentes** — totals.pending  (sub: "X com mais de 1h" if `pending_stale.length>0`)
+- **Pagos** — totals.paid
+- **Falhados** — totals.failed
+- **Receita paga** — totals.paid_amount_eur formatted EUR
+- **Upsell 9€ → 97€** — `upsell.upsell_accepted / upsell.upsell_presented` with `conversion_pct` as sub
+
+Secondary grid: small "Por produto" table showing rows of (product label, status, count, EUR amount) — uses `PRODUCT_LABELS`.
+
+Main table — "Últimos 20 pagamentos" from `recent_all`:
+| created_at | lead email | produto | valor | status | source | prioridade | upsell | checkout | falha |
+
+- Date: `pt-PT` short.
+- Produto: `PRODUCT_LABELS[row.product] ?? row.product`.
+- Valor: EUR from `amount_cents/100`.
+- Status: existing `StatusBadge` style (or inline pill — pending=amber, paid=success, failed=error).
+- Upsell: ✓ / — / (presented but declined: ·).
+- Checkout: external-link icon → `provider_checkout_url` (target=_blank, rel=noreferrer), only when present.
+- Falha: `failure_reason` truncated with `title`.
+
+## 3. Labels
+
+Add to the new section file (module-level const, not exported globally):
+```ts
+const PRODUCT_LABELS: Record<string, string> = {
+  report_full_9: "Relatório completo 9€",
+  authority_diagnosis_97: "Diagnóstico 97€",
+};
 ```
-Expected events: `checkout_started`, `checkout_step_view`×4, `checkout_upsell_seen`, `checkout_upsell_declined`, `checkout_payment_started`, `payment_checkout_created`.
+Legacy `report_single` / `pack_5` are filtered out in the endpoint, so they never reach the UI.
 
-## Test B — Accept upsell (final = authority_diagnosis_97)
+## 4. Wire into the page
 
-Same as Test A with two changes:
-- Use a fresh preview session (incognito or different lead) to avoid mixing with Test A's row.
-- Step 3: click **Sim, quero diagnóstico humano** instead of the decline link.
+`src/routes/admin.receita.tsx` — add `<PaymentsSection />` to the column, placed **between** `<PreRevenueSignalsSection />` and `<FutureRecurringRevenueCard />`. No other changes to the page.
 
-Expected newest `lead_payments`: `authority_diagnosis_97`, `9700`, `EUR`, `pending`, metadata with:
-- `upsell_presented` = true, `upsell_accepted` = true
-- `source_product` = `report_full_9`
-- `target_product` = `authority_diagnosis_97`
-- `final_product` = `authority_diagnosis_97`
-- `upsell_from` = `report_full_9`
-- `upsell_to` = `authority_diagnosis_97`
-- `report_priority` present
+## 5. Validation
 
-Expected events include `checkout_upsell_accepted` instead of `_declined`.
+- `bunx tsc --noEmit`
+- Hit the endpoint via `stack_modern--invoke-server-function GET /api/admin/payments-overview` while logged in as admin (preview) and show the JSON in the output.
+- Visual: load `/admin/receita`, screenshot the new block.
 
-## Cross-cutting checks (both tests)
+## Files touched
 
-- `browser--read_console_logs` filtered for `error`, `FK`, `lead_id` → expect empty.
-- No duplicate `lead_payments` row created within 5s of click (re-run the `limit 1` query and compare `id`).
-- `provider_call_logs` count delta = 0 (proves Apify/OpenAI/DataForSEO are not touched by checkout).
-- `stack_modern--server-function-logs search=createEupagoCheckout` to confirm a single server invocation per test and no thrown errors.
+- `src/routes/api/admin/payments-overview.ts` (new)
+- `src/components/admin/v2/receita/payments-section.tsx` (new)
+- `src/routes/admin.receita.tsx` (1 import + 1 JSX line)
 
-## Output I'll deliver after running
+## Out of scope (explicit)
 
-1. Request sequence per test (browser steps + server fn calls).
-2. The newest `lead_payments` row (id, product, amount, status, metadata JSON).
-3. `lead_entitlements` count before/after (must stay 0).
-4. Provider isolation result (provider_call_logs delta).
-5. Tracking events emitted (ordered list).
-6. Verdict: **READY FOR LIVE PAYMENT** / **NEEDS FIX** (with specific assertion that failed) / **BLOCKED** (e.g. no lead session, EuPago 4xx).
-
-## What I will not do
-
-- Complete payment at `clientes.eupago.pt`.
-- POST to `/api/public/eupago-webhook` to fake a paid status.
-- Insert/update any rows by hand.
-- Touch product code, prices, webhook, or schema.
-
-Approve and switch to build mode and I'll execute Test A first, report, then Test B.
+No edits to checkout routes, EuPago server/functions, webhook, pricing tables, report generation, onboarding, credits, or any provider integrations. Read-only against `lead_payments`, `lead_entitlements`, `leads`.
