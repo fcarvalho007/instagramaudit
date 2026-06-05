@@ -32,7 +32,7 @@ export function StatsBand() {
   return (
     <section
       aria-labelledby="dark-stats-title"
-      className="dark-hairline border-b px-6 py-10 sm:px-10 sm:py-12"
+      className="dark-hairline border-b px-6 py-8 sm:px-10 sm:py-10"
     >
       <Reveal className="flex flex-col gap-10 md:flex-row md:items-start md:gap-12">
         <div className="flex-1">
