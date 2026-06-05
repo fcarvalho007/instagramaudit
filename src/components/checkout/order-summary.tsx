@@ -3,15 +3,20 @@ import { PUBLIC_PRODUCTS, type ProductCode } from "@/lib/payments/products";
 interface Props {
   productCode?: ProductCode;
   note?: string;
+  sticky?: boolean;
 }
 
 export function OrderSummary({
   productCode = "authority_diagnosis_97",
   note = "pagamento único · sem subscrição",
+  sticky = false,
 }: Props = {}) {
   const product = PUBLIC_PRODUCTS[productCode];
+  const wrapperClass = sticky
+    ? "rounded-xl border border-border-default bg-white p-4 lg:sticky lg:top-6"
+    : "rounded-xl border border-border-default bg-white p-4";
   return (
-    <div className="rounded-xl border border-border-default bg-white p-4">
+    <div className={wrapperClass}>
       <h3 className="text-xs font-semibold uppercase tracking-wide text-content-tertiary mb-3">
         Resumo da encomenda
       </h3>
@@ -23,6 +28,9 @@ export function OrderSummary({
           {product.priceLabel}
         </span>
       </div>
+      <p className="mt-1 text-xs text-content-tertiary">
+        Pagamento único · Sem subscrição
+      </p>
       <div className="mt-3 pt-3 border-t border-border-default flex items-baseline justify-between">
         <span className="text-sm font-semibold text-content-primary">
           Total
