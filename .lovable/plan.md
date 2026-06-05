@@ -1,47 +1,31 @@
-# Fix duplicate footer + hydration mismatch on landing
+# Landing QA — verdict & minimal fixes
 
-## Diagnóstico
+## Verdict: NEEDS MINOR FIXES
 
-Confirmei dois problemas reais na home (`/`), que explicam o que vês:
+## Issues found
 
-### 1. Footer duplicado
+1. **CTA copy wrong (check 3).** `ReportPreviewBand` reads `t("dark.preview.cta")` which in `src/i18n/locales/pt/landing.json` is `"Ver relatório completo · +7 secções"` — not "Analisar o meu perfil grátis".
+2. **CTA target wrong (checks 4 & 5).** `src/components/landing/dark/report-preview-band.tsx:208` still points to `<Link to="/report/example">`. It does not scroll to the hero input, and `/report/example` is still in the main landing CTA path.
+3. **No scroll anchor on the hero.** `HeroSection` / `HeroActionBar` have no `id`, so there is no target to scroll to.
 
-`AppShell` (em `src/components/layout/app-shell.tsx`) renderiza `<DarkFooter />` quando a rota é `/`.
+## Passing
 
-Ao mesmo tempo, `LandingDarkIsland` (em `src/components/landing/dark/landing-dark-island.tsx`) inclui no fim o `<MiniFooterStrip />` (logo + tagline + Preços / Privacidade / Termos / Contacto).
+- Hero / first fold unchanged.
+- Footer appears once (`DarkFooter` via `AppShell`; `MiniFooterStrip` already removed from the island).
+- Section order in `LandingDarkIsland`: Stats → ManualVsTool → ReportPreview → HowItWorks → Transparency → Pricing → FinalCta ✓.
+- No horizontal overflow at 360/390 from recent changes.
+- Desktop 1440 rhythm consistent (`py-8/py-10`, `pt-16` on preview band).
+- Copy is PT, simple, sentence case.
 
-Resultado: aparecem dois "rodapés" um a seguir ao outro:
-- MiniFooterStrip (dentro da ilha dark, com cantos arredondados)
-- DarkFooter global (links institucionais + language switcher + copyright)
+## Recommended minimal fixes (build mode)
 
-### 2. Hydration mismatch ("dark.transparency.audience")
+1. **Hero anchor** — `src/components/landing/hero-section.tsx`: add `id="hero"` to the root `<section>`.
+2. **CTA copy** — update `dark.preview.cta`:
+   - `src/i18n/locales/pt/landing.json` → `"Analisar o meu perfil grátis"`
+   - `src/i18n/locales/en/landing.json` → `"Analyze my profile for free"`
+3. **CTA behavior** — `src/components/landing/dark/report-preview-band.tsx`:
+   - Replace `<Link to="/report/example">` with `<a href="#hero">` (smooth scroll via CSS `scroll-behavior: smooth` already global, otherwise add an `onClick` that calls `scrollIntoView({ behavior: "smooth" })`).
+   - Swap the `ArrowDown` icon for `ArrowUp` (the CTA now scrolls upward).
+   - Remove the now-unused `Link` import.
 
-O runtime error mostra o servidor a renderizar a string crua `dark.transparency.audience` e o cliente a renderizar `"Feito para consultores, social media managers, marcas e criadores."`. As chaves PT/EN existem — o problema é que o i18next não está inicializado/pronto durante SSR para esse namespace, então o servidor devolve a key e o cliente devolve a tradução. Isto é o que dispara o erro #418 em produção e o reset da árvore React. Acontece em qualquer band que use `useTranslation("landing")` — a `TransparencyBand` é só a primeira a falhar.
-
-## Plano (apenas presentation/i18n, sem tocar em hero / checkout / EuPago / onboarding / backend / admin)
-
-### A. Remover footer duplicado
-- Em `src/components/landing/dark/landing-dark-island.tsx`: remover o `<MiniFooterStrip />` e o respectivo import. O `DarkFooter` global já cobre brand + links + language switcher.
-- Manter `MiniFooterStrip.tsx` no repo (não apagar) caso seja preciso reintroduzir noutro contexto, mas deixar de o renderizar.
-
-### B. Estancar o flash de chaves cruas (`dark.transparency.audience`)
-Causa: SSR renderiza antes do bundle `landing` estar resolvido. Duas opções, escolho a menos invasiva:
-
-1. Garantir que `landing` está em `ns` / `defaultNS` pré-carregado no `src/i18n/index.ts` (inspeccionar e, se em falta, juntar `"landing"` à lista de namespaces pré-carregados — não inventar config nova).
-2. Se `react-i18next` estiver com `useSuspense: true` mas sem `<Suspense fallback>` à volta da ilha, mudar para `useSuspense: false` no init (já é a config segura para SSR + hidratação).
-
-Aplicar a mínima das duas que resolva (provavelmente só (1)).
-
-### C. Validação
-- `bunx tsc --noEmit`
-- Abrir `/` no preview em desktop 1440 e mobile 390:
-  - confirmar 1 único footer (DarkFooter global)
-  - confirmar que não aparece nenhuma string `dark.*` crua em nenhum band
-  - confirmar consola sem erros de hydration / React #418
-
-## Fora de scope (não tocar)
-
-- Hero / primeira fold
-- Copy, hierarquia ou padding das bands já refinados
-- Checkout, EuPago, onboarding, geração de relatórios, backend, admin
-- Sem novas dependências
+No other files touched. No copy, pricing, checkout, EuPago, onboarding, report, or backend changes.
