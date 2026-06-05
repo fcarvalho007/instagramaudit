@@ -169,8 +169,8 @@ export function PricingPage() {
             Quando o diagnóstico precisa de ir mais longe.
           </h2>
           <p className="mt-3 max-w-2xl text-sm sm:text-base text-[rgb(var(--hero-text-secondary))] leading-relaxed">
-            Para marcas e equipas que querem transformar a análise em estratégia
-            e execução.
+            Para marcas e equipas que querem transformar a análise em
+            estratégia, plano e execução.
           </p>
 
           <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
