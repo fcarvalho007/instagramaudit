@@ -1,13 +1,22 @@
 /**
  * Lead-magnet email sequence orchestrator.
  *
- * Sends, in order:
- *   1. welcome-beta  (only when `sendWelcome === true`, i.e. brand-new lead)
- *   2. report-summary (always; skipped when snapshot lacks the 4 KPIs)
+ * Step 3 da consolidação: substitui o par `welcome-beta` + `report-summary`
+ * por um único envio `report-saved` (template `report_saved`).
  *
- * Both steps dedup against `product_events` by
- * `(lead_id, event_type, metadata.report_request_id)`. A failure on one step
- * never blocks the other. Never throws — caller can fire-and-forget.
+ * Idempotência: dedupa contra `product_events` por
+ * `(lead_id, metadata.report_request_id)` para QUALQUER um dos eventos
+ * abaixo, garantindo que leads processados pelo orquestrador antigo não
+ * recebem o novo email duplicado:
+ *   - `report_saved_email_sent` (novo)
+ *   - `beta_welcome_email_sent` (legacy)
+ *   - `report_summary_email_sent` (legacy)
+ *
+ * Retorna o shape `{ welcome, summary }` por compatibilidade com o caller
+ * (unlock.server.ts e logs). Ambos os campos recebem o mesmo outcome
+ * derivado do envio único.
+ *
+ * Nunca lança — caller pode `await` sem try/catch defensivo.
  */
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -47,25 +56,33 @@ export interface LeadMagnetSequenceResult {
   summary: SummaryOutcome;
 }
 
-async function eventAlreadyEmitted(
+/**
+ * Dedup: retorna true se já existe QUALQUER um dos eventos de entrega
+ * (novo `report_saved_email_sent` OU legacy
+ * `beta_welcome_email_sent`/`report_summary_email_sent`) para
+ * (lead_id, report_request_id). Fail-open em caso de erro de leitura.
+ */
+async function deliveryAlreadyEmitted(
   leadId: string,
   reportRequestId: string,
-  eventType: string,
 ): Promise<boolean> {
+  const eventTypes = [
+    "report_saved_email_sent",
+    "beta_welcome_email_sent",
+    "report_summary_email_sent",
+  ];
   try {
     const { data } = await (supabaseAdmin as any)
       .from("product_events")
       .select("id")
       .eq("lead_id", leadId)
-      .eq("event_type", eventType)
+      .in("event_type", eventTypes)
       .contains("metadata", { report_request_id: reportRequestId })
       .limit(1)
       .maybeSingle();
     return Boolean(data);
   } catch (err) {
-    console.error("[lead-magnet] dedup lookup failed:", eventType, err);
-    // Fail-open: if the lookup itself errors, allow the send. The sender's own
-    // idempotency key (flow + report_request_id) is the last line of defence.
+    console.error("[lead-magnet] dedup lookup failed:", err);
     return false;
   }
 }
@@ -73,11 +90,8 @@ async function eventAlreadyEmitted(
 export async function sendLeadMagnetSequence(
   args: LeadMagnetSequenceArgs,
 ): Promise<LeadMagnetSequenceResult> {
-  let welcome: WelcomeOutcome = "skipped_disabled";
-  let summary: SummaryOutcome = "skipped_no_data";
-
   // Kill switch: LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED. Default ON; set to
-  // literal "false" to disable the entire sequence (welcome + summary).
+  // literal "false" to disable the sequence.
   if (
     (process.env.LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED ?? "true")
       .trim()
@@ -100,16 +114,7 @@ export async function sendLeadMagnetSequence(
     return { welcome: "skipped_disabled", summary: "skipped_no_data" };
   }
 
-  // Marketing-consent lookup (NÃO bloqueia entrega).
-  //
-  // A sequência lead-magnet é transacional: o utilizador pediu o relatório
-  // ao desbloquear, deu consentimento GDPR e espera receber o email com o
-  // resumo. Só o kill-switch acima pode bloquear.
-  //
-  // O valor de `marketing_consent` é apenas usado para enriquecer metadata
-  // dos eventos product_events (`transactional_delivery: true,
-  // marketing_consent: <bool>`), permitindo segmentação/auditoria
-  // posterior sem partir a entrega.
+  // Marketing-consent lookup (NÃO bloqueia entrega — só enriquece metadata).
   let marketingConsent = false;
   try {
     const { data: leadRow } = await (supabaseAdmin as any)
@@ -119,174 +124,97 @@ export async function sendLeadMagnetSequence(
       .maybeSingle();
     marketingConsent = leadRow?.marketing_consent === true;
   } catch (err) {
-    // Fail-open: se não conseguimos confirmar consent, assumimos false
-    // (entrega transacional continua).
     console.error("[lead-magnet] consent lookup failed (continuing transactional):", err);
     marketingConsent = false;
   }
 
-  // ---------- 1. welcome-beta ----------
-  if (args.sendWelcome) {
-    const dup = await eventAlreadyEmitted(
-      args.leadId,
-      args.reportRequestId,
-      "beta_welcome_email_sent",
-    );
-    if (dup) {
-      welcome = "skipped_duplicate";
-    } else {
-      try {
-        const { sendWelcomeBetaEmail } = await import(
-          "./send-welcome-beta.server"
-        );
-        const res = await sendWelcomeBetaEmail({
-          toEmail: args.toEmail,
-          firstName: args.firstName,
-          instagramHandle: args.instagramHandle,
-          leadId: args.leadId,
-          reportRequestId: args.reportRequestId,
-          snapshotId: args.snapshotId,
-          reportSnapshotId: args.reportSnapshotId ?? null,
-        });
-        if (res.ok) {
-          welcome = "sent";
-          await recordProductEvent({
-            eventType: "beta_welcome_email_sent",
-            leadId: args.leadId,
-            snapshotId: args.snapshotId,
-            handle: args.instagramHandle,
-            metadata: {
-              message_id: res.messageId,
-              provider: res.provider,
-              report_request_id: args.reportRequestId,
-              transactional_delivery: true,
-              marketing_consent: marketingConsent,
-            },
-          });
-
-          // Brevo BETA_WELCOMED_AT stamp — fire-and-forget.
-          void (async () => {
-            try {
-              const { upsertBrevoContact } = await import(
-                "@/lib/brevo/contacts.server"
-              );
-              const stamp = await upsertBrevoContact({
-                email: args.toEmail,
-                attributes: { BETA_WELCOMED_AT: new Date().toISOString() },
-              });
-              if (!stamp.ok) {
-                console.error(
-                  "[lead-magnet] brevo BETA_WELCOMED_AT stamp failed:",
-                  stamp.reason,
-                );
-              }
-            } catch (err) {
-              console.error("[lead-magnet] brevo welcomed-at stamp error:", err);
-            }
-          })();
-        } else {
-          welcome = "failed";
-          await recordProductEvent({
-            eventType: "beta_welcome_email_failed",
-            leadId: args.leadId,
-            snapshotId: args.snapshotId,
-            handle: args.instagramHandle,
-            metadata: {
-              reason: res.reason,
-              report_request_id: args.reportRequestId,
-            },
-          });
-        }
-      } catch (err) {
-        welcome = "failed";
-        console.error("[lead-magnet] welcome-beta unexpected error:", err);
-        await recordProductEvent({
-          eventType: "beta_welcome_email_failed",
-          leadId: args.leadId,
-          snapshotId: args.snapshotId,
-          handle: args.instagramHandle,
-          metadata: {
-            reason: `UNEXPECTED:${err instanceof Error ? err.message : "unknown"}`,
-            report_request_id: args.reportRequestId,
-          },
-        });
-      }
-    }
+  // Dedup unificado: cobre novo + legacy.
+  const dup = await deliveryAlreadyEmitted(args.leadId, args.reportRequestId);
+  if (dup) {
+    return { welcome: "skipped_duplicate", summary: "skipped_duplicate" };
   }
 
-  // ---------- 2. report-summary ----------
-  const dupSummary = await eventAlreadyEmitted(
-    args.leadId,
-    args.reportRequestId,
-    "report_summary_email_sent",
-  );
-  if (dupSummary) {
-    summary = "skipped_duplicate";
-  } else {
-    try {
-      const { sendReportSummaryEmail } = await import(
-        "./send-report-summary.server"
-      );
-      const res = await sendReportSummaryEmail({
-        toEmail: args.toEmail,
-        firstName: args.firstName,
-        leadId: args.leadId,
-        reportRequestId: args.reportRequestId,
-        snapshotId: args.snapshotId,
-        reportSnapshotId: args.reportSnapshotId ?? null,
-      });
-      if (res.ok) {
-        summary = "sent";
-        await recordProductEvent({
-          eventType: "report_summary_email_sent",
-          leadId: args.leadId,
-          snapshotId: args.snapshotId,
-          handle: args.instagramHandle,
-          metadata: {
-            message_id: res.messageId,
-            provider: res.provider,
-            report_request_id: args.reportRequestId,
-            transactional_delivery: true,
-            marketing_consent: marketingConsent,
-          },
-        });
-      } else if (res.reason === "NO_DATA" || res.reason === "NO_SNAPSHOT_ID") {
-        summary = "skipped_no_data";
-        await recordProductEvent({
-          eventType: "report_summary_skipped_no_data",
-          leadId: args.leadId,
-          snapshotId: args.snapshotId,
-          handle: args.instagramHandle,
-          metadata: { report_request_id: args.reportRequestId },
-        });
-      } else {
-        summary = "failed";
-        await recordProductEvent({
-          eventType: "report_summary_email_failed",
-          leadId: args.leadId,
-          snapshotId: args.snapshotId,
-          handle: args.instagramHandle,
-          metadata: {
-            reason: res.reason,
-            report_request_id: args.reportRequestId,
-          },
-        });
-      }
-    } catch (err) {
-      summary = "failed";
-      console.error("[lead-magnet] report-summary unexpected error:", err);
+  const isWelcome = args.sendWelcome === true;
+
+  try {
+    const { sendReportSavedEmail } = await import("./send-report-saved.server");
+    const res = await sendReportSavedEmail({
+      toEmail: args.toEmail,
+      firstName: args.firstName,
+      instagramHandle: args.instagramHandle,
+      leadId: args.leadId,
+      reportRequestId: args.reportRequestId,
+      snapshotId: args.snapshotId,
+      reportSnapshotId: args.reportSnapshotId ?? null,
+      isWelcome,
+    });
+
+    if (res.ok) {
       await recordProductEvent({
-        eventType: "report_summary_email_failed",
+        eventType: "report_saved_email_sent" as any,
         leadId: args.leadId,
         snapshotId: args.snapshotId,
         handle: args.instagramHandle,
         metadata: {
-          reason: `UNEXPECTED:${err instanceof Error ? err.message : "unknown"}`,
+          message_id: res.messageId,
+          provider: res.provider,
           report_request_id: args.reportRequestId,
+          variant: isWelcome ? "welcome" : "returning",
+          transactional_delivery: true,
+          marketing_consent: marketingConsent,
         },
       });
-    }
-  }
 
-  return { welcome, summary };
+      // Brevo BETA_WELCOMED_AT stamp — preserved no primeiro unlock.
+      if (isWelcome) {
+        void (async () => {
+          try {
+            const { upsertBrevoContact } = await import(
+              "@/lib/brevo/contacts.server"
+            );
+            const stamp = await upsertBrevoContact({
+              email: args.toEmail,
+              attributes: { BETA_WELCOMED_AT: new Date().toISOString() },
+            });
+            if (!stamp.ok) {
+              console.error(
+                "[lead-magnet] brevo BETA_WELCOMED_AT stamp failed:",
+                stamp.reason,
+              );
+            }
+          } catch (err) {
+            console.error("[lead-magnet] brevo welcomed-at stamp error:", err);
+          }
+        })();
+      }
+
+      return { welcome: "sent", summary: "sent" };
+    }
+
+    await recordProductEvent({
+      eventType: "report_saved_email_failed" as any,
+      leadId: args.leadId,
+      snapshotId: args.snapshotId,
+      handle: args.instagramHandle,
+      metadata: {
+        reason: res.reason,
+        report_request_id: args.reportRequestId,
+        variant: isWelcome ? "welcome" : "returning",
+      },
+    });
+    return { welcome: "failed", summary: "failed" };
+  } catch (err) {
+    console.error("[lead-magnet] report-saved unexpected error:", err);
+    await recordProductEvent({
+      eventType: "report_saved_email_failed" as any,
+      leadId: args.leadId,
+      snapshotId: args.snapshotId,
+      handle: args.instagramHandle,
+      metadata: {
+        reason: `UNEXPECTED:${err instanceof Error ? err.message : "unknown"}`,
+        report_request_id: args.reportRequestId,
+      },
+    });
+    return { welcome: "failed", summary: "failed" };
+  }
 }
