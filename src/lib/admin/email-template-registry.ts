@@ -23,8 +23,8 @@ export type { EmailTemplateParts };
 
 export const SAMPLE = {
   firstName: "Frederico",
-  instagramHandle: "frederico.m.carvalho",
-  reportUrl: "https://example.com/analyze/frederico.m.carvalho",
+  instagramHandle: "webhspt",
+  reportUrl: "https://example.com/analyze/webhspt",
   analyzeAnotherUrl: "https://example.com/",
   feedbackUrl: "https://example.com/feedback/example",
   appUrl: "https://example.com/app/reports",
@@ -77,6 +77,69 @@ export const CATEGORY_ORDER: EmailTemplateCategory[] = [
   "pagamento",
 ];
 
+/* ------------------------------------------------------------------ */
+/* Lifecycle stages — Step 6A grouping for /admin/email-lab.          */
+/* ------------------------------------------------------------------ */
+
+export type EmailLifecycleStage =
+  | "captacao"
+  | "entrega"
+  | "retencao"
+  | "conversao"
+  | "pagamento"
+  | "legado";
+
+export const LIFECYCLE_ORDER: EmailLifecycleStage[] = [
+  "captacao",
+  "entrega",
+  "retencao",
+  "conversao",
+  "pagamento",
+  "legado",
+];
+
+export const LIFECYCLE_LABELS: Record<EmailLifecycleStage, string> = {
+  captacao: "Captação",
+  entrega: "Entrega",
+  retencao: "Retenção",
+  conversao: "Conversão",
+  pagamento: "Pagamento",
+  legado: "Legado / desactivado",
+};
+
+export type EmailStatusBadge =
+  | "ligado"
+  | "manual"
+  | "transaccional"
+  | "kill_switch_off"
+  | "planeado"
+  | "legado"
+  | "sem_trigger"
+  | "desactivado";
+
+export const STATUS_BADGE_LABELS: Record<EmailStatusBadge, string> = {
+  ligado: "Ligado",
+  manual: "Manual",
+  transaccional: "Transaccional",
+  kill_switch_off: "Kill-switch OFF",
+  planeado: "Planeado",
+  legado: "Legado",
+  sem_trigger: "Sem trigger",
+  desactivado: "Desactivado",
+};
+
+export interface EmailWiringMeta {
+  triggerEvent?: string | null;
+  delay?: string | null;
+  sourceFile?: string | null;
+  provider?: "Resend" | "Brevo" | null;
+  automatic?: boolean;
+  killSwitchEnv?: string | null;
+  killSwitchDefault?: "on" | "off" | null;
+  idempotencyEvent?: string | null;
+  knownRisks?: string | null;
+}
+
 export interface EmailTemplateEntry {
   key: EmailTemplateKey;
   title: string;
@@ -89,6 +152,17 @@ export interface EmailTemplateEntry {
   variables: Array<{ key: string; value: string }>;
   render: () => RenderedEmail;
   preheader?: string;
+  /** Step 6A: lifecycle bucket used by /admin/email-lab. */
+  lifecycleStage?: EmailLifecycleStage;
+  /** Status badges shown on the card + detail header. */
+  statusBadges?: EmailStatusBadge[];
+  /** Split of variables into required / optional (preview metadata only). */
+  requiredVariables?: string[];
+  optionalVariables?: string[];
+  /** Plain-text description of fallback behaviour when optional data is missing. */
+  fallbackBehaviour?: string | null;
+  /** Operational wiring metadata surfaced in the Wiring tab. */
+  wiring?: EmailWiringMeta;
 }
 
 export const TEMPLATE_VARIABLES: Record<EmailTemplateKey, string[]> = {
