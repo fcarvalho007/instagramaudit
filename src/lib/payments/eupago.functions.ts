@@ -66,6 +66,16 @@ const inputSchema = z
       .object({
         audit: z.boolean(),
         workshop: z.boolean(),
+        audit_interest: z.boolean().optional(),
+        workshop_interest: z.boolean().optional(),
+        audit_interest_context: z
+          .enum(["full_digital_audit"])
+          .nullable()
+          .optional(),
+        workshop_interest_context: z
+          .enum(["team_workshop"])
+          .nullable()
+          .optional(),
       })
       .optional(),
     report_priority: z

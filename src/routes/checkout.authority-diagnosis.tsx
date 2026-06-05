@@ -193,7 +193,14 @@ function CheckoutSteps() {
             objective_other: qualification.objective_other.trim() || undefined,
             profile_ownership: qualification.profile_ownership ?? "mine",
           },
-          upsell_interest: upsell,
+          upsell_interest: {
+            audit: upsell.audit,
+            workshop: upsell.workshop,
+            audit_interest: upsell.audit,
+            workshop_interest: upsell.workshop,
+            audit_interest_context: upsell.audit ? "full_digital_audit" : null,
+            workshop_interest_context: upsell.workshop ? "team_workshop" : null,
+          },
           billing: {
             name: billing.name.trim(),
             tax_id: billing.tax_id.trim() || undefined,
