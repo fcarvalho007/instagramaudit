@@ -25,6 +25,7 @@ import {
   type BillingValue,
 } from "@/components/checkout/billing-form";
 import { OrderSummary } from "@/components/checkout/order-summary";
+import { MissingLeadSession } from "@/components/checkout/missing-lead-session";
 import { createEupagoCheckout } from "@/lib/payments/eupago.functions";
 import { getLeadSessionStatus } from "@/lib/leads/lead-session.functions";
 import { trackEvent } from "@/lib/tracking.functions";
