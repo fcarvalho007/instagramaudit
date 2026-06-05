@@ -42,6 +42,7 @@ import {
   LIFECYCLE_ORDER,
   LIFECYCLE_LABELS,
   STATUS_BADGE_LABELS,
+  LIFECYCLE_ROLE_LABELS,
   type EmailTemplateKey as TemplateKey,
   type EmailLifecycleStage,
   type EmailStatusBadge,
