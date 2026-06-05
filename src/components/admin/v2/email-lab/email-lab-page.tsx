@@ -19,6 +19,7 @@ import {
   Sparkles,
   Send,
   DollarSign,
+  CreditCard,
   Copy,
   ExternalLink,
   RefreshCw,
@@ -54,6 +55,7 @@ const TEMPLATE_ICON: Record<TemplateKey, LucideIcon> = {
   welcome_beta: Sparkles,
   report_summary: Send,
   commercial_followup: DollarSign,
+  payment_confirmed: CreditCard,
 };
 
 type DetailTab = "preview" | "variables" | "wiring";
@@ -839,6 +841,8 @@ function categoryAccent(c: EmailTemplateCategory): string {
       return "rgb(var(--admin-info-500))";
     case "comercial":
       return "rgb(var(--admin-warning-500))";
+    case "pagamento":
+      return "rgb(var(--admin-success-500))";
   }
 }
 
