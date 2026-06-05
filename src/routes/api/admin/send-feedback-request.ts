@@ -38,6 +38,32 @@ const ELIGIBLE_STATUSES = new Set([
   "feedback_pedido",
 ]);
 
+const SENT_EVENT = "feedback_request_email_sent";
+const FAILED_EVENT = "feedback_request_email_failed";
+
+async function alreadySentForRequest(
+  leadId: string,
+  reportRequestId: string,
+): Promise<boolean> {
+  try {
+    const { data } = await (supabaseAdmin as any)
+      .from("product_events")
+      .select("id")
+      .eq("event_type", SENT_EVENT)
+      .contains("metadata", {
+        lead_id: leadId,
+        report_request_id: reportRequestId,
+      })
+      .limit(1)
+      .maybeSingle();
+    return Boolean(data);
+  } catch (err) {
+    console.error("[send-feedback-request] dedup lookup failed:", err);
+    // Fail-open: do not block legitimate sends on a transient query error.
+    return false;
+  }
+}
+
 type ErrorCode =
   | "INVALID_PAYLOAD"
   | "UNAUTHORIZED"
@@ -165,6 +191,21 @@ export const Route = createFileRoute("/api/admin/send-feedback-request")({
           );
         }
 
+        // Idempotency: avoid duplicate manual feedback emails for the same
+        // (lead_id, report_request_id) pair — e.g. accidental double-click.
+        if (await alreadySentForRequest(lead.id, rr.id)) {
+          return jsonResponse(
+            {
+              success: true,
+              skipped_duplicate: true,
+              reason: "ALREADY_SENT",
+              message:
+                "Já foi enviado um pedido de feedback para este relatório.",
+            },
+            200,
+          );
+        }
+
         // Build URLs
         const baseUrl = resolvePublicBaseUrl(request);
         if (!baseUrl) {
@@ -235,6 +276,23 @@ export const Route = createFileRoute("/api/admin/send-feedback-request")({
           const bodyText = await resendResponse.text().catch(() => "");
           const isSandboxBlock =
             /you can only send testing emails to your own email/i.test(bodyText);
+          try {
+            await recordLeadEvent({
+              leadId: lead.id,
+              eventType: FAILED_EVENT,
+              snapshotId: rr.analysis_snapshot_id ?? null,
+              handle: rr.instagram_username,
+              metadata: {
+                lead_id: lead.id,
+                report_request_id: rr.id,
+                channel: "admin_manual",
+                provider_status: resendResponse.status,
+                sandbox_block: isSandboxBlock,
+              },
+            });
+          } catch {
+            /* non-critical */
+          }
           if (isSandboxBlock) {
             return errorResponse(
               "RESEND_SANDBOX_RECIPIENT_BLOCKED",
@@ -271,6 +329,27 @@ export const Route = createFileRoute("/api/admin/send-feedback-request")({
           });
         } catch {
           /* non-critical */
+        }
+
+        // Idempotency marker — guards future duplicate sends.
+        try {
+          await recordLeadEvent({
+            leadId: lead.id,
+            eventType: SENT_EVENT,
+            snapshotId: rr.analysis_snapshot_id ?? null,
+            handle: rr.instagram_username,
+            metadata: {
+              lead_id: lead.id,
+              report_request_id: rr.id,
+              message_id: messageId,
+              channel: "admin_manual",
+            },
+          });
+        } catch (err) {
+          console.error(
+            "[send-feedback-request] failed to record sent event:",
+            err,
+          );
         }
 
         const statusResult = await updateLeadCommercialStatus({
