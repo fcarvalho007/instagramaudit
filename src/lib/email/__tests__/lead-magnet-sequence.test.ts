@@ -46,11 +46,11 @@ vi.mock("../send-report-saved.server", () => ({
 }));
 
 // Legacy sender modules should NOT be called by the new orchestrator.
-const sendWelcomeBetaEmail = vi.fn();
+const sendWelcomeBetaEmail = vi.fn((..._a: any[]) => undefined as any);
 vi.mock("../send-welcome-beta.server", () => ({
   sendWelcomeBetaEmail: (...a: any[]) => sendWelcomeBetaEmail(...a),
 }));
-const sendReportSummaryEmail = vi.fn();
+const sendReportSummaryEmail = vi.fn((..._a: any[]) => undefined as any);
 vi.mock("../send-report-summary.server", () => ({
   sendReportSummaryEmail: (...a: any[]) => sendReportSummaryEmail(...a),
 }));
