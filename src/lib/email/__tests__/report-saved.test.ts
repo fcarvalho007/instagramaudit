@@ -38,6 +38,9 @@ describe("renderReportSaved", () => {
     expect(r.html).toContain("Analisar outro perfil");
     expect(r.html).toContain("Abrir relatório de");
     expect(r.html).toContain("Bem-vindo à beta");
+    expect(r.html).toContain(">1.</strong>");
+    expect(r.html).toContain(">2.</strong>");
+    expect(r.html).toContain(">3.</strong>");
     expect(r.text).toContain("1. ");
     expect(r.text).toContain("2. ");
     expect(r.text).toContain("3. ");
@@ -57,7 +60,8 @@ describe("renderReportSaved", () => {
     expect(r.html).not.toContain("As tuas análises grátis");
     expect(r.html).not.toContain("Bem-vindo à beta");
     expect(r.html).toContain("Analisar outro perfil");
-    expect(r.html).toContain("1. ");
+    expect(r.html).toContain(">1.</strong>");
+    expect(r.text).toContain("1. ");
     assertNoBrokenPlaceholders(r.html, r.text);
   });
 
