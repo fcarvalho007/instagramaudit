@@ -210,6 +210,21 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     wired: true,
     wiredAt: "src/lib/beta.functions.ts (submissão de pedido beta)",
     wiredNote: "Disparado quando o lead submete um pedido beta no site público.",
+    lifecycleStage: "captacao",
+    statusBadges: ["ligado", "transaccional"],
+    requiredVariables: ["firstName", "instagramHandle"],
+    optionalVariables: [],
+    wiring: {
+      triggerEvent: "Pedido beta submetido no site público",
+      delay: "imediato",
+      sourceFile: "src/lib/beta.functions.ts",
+      provider: "Resend",
+      automatic: true,
+      killSwitchEnv: null,
+      killSwitchDefault: null,
+      idempotencyEvent: "beta_request_received_email_sent",
+      knownRisks: null,
+    },
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
@@ -230,6 +245,22 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     wired: true,
     wiredAt: "src/routes/api/admin/send-report-link.ts",
     wiredNote: "Enviado pelo admin a partir do detalhe da lead (acção \"Enviar relatório\").",
+    lifecycleStage: "entrega",
+    statusBadges: ["ligado", "manual", "transaccional"],
+    requiredVariables: ["firstName", "instagramHandle", "reportUrl"],
+    optionalVariables: [],
+    wiring: {
+      triggerEvent: "Admin action · Enviar relatório (signed URL)",
+      delay: "manual",
+      sourceFile: "src/routes/api/admin/send-report-link.ts",
+      provider: "Resend",
+      automatic: false,
+      killSwitchEnv: null,
+      killSwitchDefault: null,
+      idempotencyEvent: null,
+      knownRisks:
+        "Variante manual/legacy mantida para envio de signed URL fora do fluxo lead-magnet.",
+    },
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
@@ -252,6 +283,21 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     wired: true,
     wiredAt: "src/routes/api/admin/send-feedback-request.ts",
     wiredNote: "Disparado pelo admin após o lead consultar o relatório.",
+    lifecycleStage: "retencao",
+    statusBadges: ["ligado", "manual"],
+    requiredVariables: ["firstName", "instagramHandle", "reportUrl", "feedbackUrl"],
+    optionalVariables: ["reportViewed"],
+    wiring: {
+      triggerEvent: "Admin action · Pedir feedback",
+      delay: "manual",
+      sourceFile: "src/routes/api/admin/send-feedback-request.ts",
+      provider: "Resend",
+      automatic: false,
+      killSwitchEnv: null,
+      killSwitchDefault: null,
+      idempotencyEvent: null,
+      knownRisks: null,
+    },
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
@@ -279,6 +325,23 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     wiredAt: null,
     wiredNote:
       "Função `sendPersonalAreaSavedEmail` existe mas sem trigger automático. Reservado para o fluxo de criação de conta (a ligar em handle_new_user / link_user_to_existing_reports).",
+    lifecycleStage: "legado",
+    statusBadges: ["sem_trigger", "planeado"],
+    requiredVariables: ["firstName", "instagramHandle", "appUrl"],
+    optionalVariables: [],
+    fallbackBehaviour: "Sem trigger automático — reservado para o fluxo futuro de criação de conta.",
+    wiring: {
+      triggerEvent: null,
+      delay: null,
+      sourceFile: "src/lib/email/send-personal-area-saved.server.ts",
+      provider: "Resend",
+      automatic: false,
+      killSwitchEnv: null,
+      killSwitchDefault: null,
+      idempotencyEvent: null,
+      knownRisks:
+        "Renderer e sender existem mas nenhum endpoint os chama. A ligar em handle_new_user / link_user_to_existing_reports.",
+    },
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
@@ -302,6 +365,23 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     wiredAt: null,
     wiredNote:
       "LEGACY — substituído por `report_saved` no lead-magnet-sequence (Step 3). Renderer e sender mantidos em disco para histórico de overrides e auditoria.",
+    lifecycleStage: "legado",
+    statusBadges: ["legado", "desactivado"],
+    requiredVariables: ["firstName", "instagramHandle", "reportUrl"],
+    optionalVariables: [],
+    fallbackBehaviour: "Substituído por report_saved. Não dispara em produção.",
+    wiring: {
+      triggerEvent: null,
+      delay: null,
+      sourceFile: "src/lib/email/templates/welcome-beta.ts",
+      provider: null,
+      automatic: false,
+      killSwitchEnv: null,
+      killSwitchDefault: null,
+      idempotencyEvent: "beta_welcome_email_sent (legacy — só honrado pela dedup)",
+      knownRisks:
+        "Mantido em disco apenas para auditoria de overrides; nenhum endpoint o chama.",
+    },
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
@@ -325,6 +405,22 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     wiredAt: null,
     wiredNote:
       "LEGACY — substituído por `report_saved` no lead-magnet-sequence (Step 3). Renderer mantido para histórico de overrides e auditoria; sender deixou de ser chamado.",
+    lifecycleStage: "legado",
+    statusBadges: ["legado", "desactivado"],
+    requiredVariables: ["firstName", "instagramHandle", "reportUrl"],
+    optionalVariables: ["kpis", "topPost"],
+    fallbackBehaviour: "Substituído por report_saved. Não dispara em produção.",
+    wiring: {
+      triggerEvent: null,
+      delay: null,
+      sourceFile: "src/lib/email/templates/report-summary.ts",
+      provider: null,
+      automatic: false,
+      killSwitchEnv: null,
+      killSwitchDefault: null,
+      idempotencyEvent: "report_summary_email_sent (legacy — só honrado pela dedup)",
+      knownRisks: "Renderer mantido para auditoria; sender já não é chamado.",
+    },
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
@@ -361,6 +457,24 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     wiredAt: "src/routes/api/admin/send-commercial-followup.ts",
     wiredNote:
       "Lifecycle: CONVERSÃO · Status: Manual · Trigger: admin action only (src/routes/api/admin/send-commercial-followup.ts). Continua a narrativa do relatório gratuito sem alterar preços nem URLs de checkout. Auto-trigger intencionalmente não activo nesta fase.",
+    lifecycleStage: "conversao",
+    statusBadges: ["ligado", "manual"],
+    requiredVariables: ["firstName", "instagramHandle", "reportUrl"],
+    optionalVariables: ["checkoutUrl", "engagementVerdict", "gapArea"],
+    fallbackBehaviour:
+      "Quando insights ausentes: cai numa narrativa neutra de 'primeira leitura'. checkoutUrl ausente: CTA degrada para reply/mailto.",
+    wiring: {
+      triggerEvent: "Admin action · Enviar follow-up",
+      delay: "manual",
+      sourceFile: "src/routes/api/admin/send-commercial-followup.ts",
+      provider: "Resend",
+      automatic: false,
+      killSwitchEnv: null,
+      killSwitchDefault: null,
+      idempotencyEvent: null,
+      knownRisks:
+        "Auto-trigger intencionalmente não activo nesta fase. Preços/checkout não são alterados a partir daqui.",
+    },
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
@@ -394,6 +508,30 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     wiredAt: "src/routes/api/public/eupago-webhook.ts (branch paid)",
     wiredNote:
       "Disparado fire-and-forget pelo webhook EuPago após o pagamento ser marcado como pago e o entitlement granted. Atrás do kill-switch PAYMENT_CONFIRMATION_EMAIL_ENABLED (default OFF). Idempotente por payment_id via product_events.payment_confirmation_email_sent.",
+    lifecycleStage: "pagamento",
+    statusBadges: ["ligado", "transaccional", "kill_switch_off"],
+    requiredVariables: [
+      "firstName",
+      "instagramHandle",
+      "productName",
+      "amountLabel",
+      "reportUrl",
+    ],
+    optionalVariables: ["paymentMethod", "paymentReference"],
+    fallbackBehaviour:
+      "Campos opcionais (paymentMethod, paymentReference) omitidos sem placeholders partidos.",
+    wiring: {
+      triggerEvent: "EuPago webhook · branch paid (fire-and-forget)",
+      delay: "imediato após entitlement granted",
+      sourceFile: "src/routes/api/public/eupago-webhook.ts",
+      provider: "Resend",
+      automatic: true,
+      killSwitchEnv: "PAYMENT_CONFIRMATION_EMAIL_ENABLED",
+      killSwitchDefault: "off",
+      idempotencyEvent: "payment_confirmation_email_sent",
+      knownRisks:
+        "Falha de envio não pode quebrar a resposta do webhook — protegido por try/catch fire-and-forget.",
+    },
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
@@ -414,7 +552,7 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
         reportUrl: SAMPLE.reportUrl,
       }),
     preheader:
-      "O relatório completo de @frederico.m.carvalho já está disponível na tua conta.",
+      `O relatório completo de @${SAMPLE.instagramHandle} já está disponível na tua conta.`,
   },
   {
     key: "report_saved",
@@ -427,6 +565,39 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     wiredAt: "src/lib/email/lead-magnet-sequence.server.ts (após unlock)",
     wiredNote:
       "Disparado uma vez por unlock via `lead-magnet-sequence`. SUBSTITUI o par anterior `welcome_beta` + `report_summary`. Idempotente por (lead_id, report_request_id) — dedup honra também os eventos legacy. Kill-switch: LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED.",
+    lifecycleStage: "entrega",
+    statusBadges: ["ligado", "transaccional"],
+    requiredVariables: [
+      "firstName",
+      "instagramHandle",
+      "reportUrl",
+      "analyzeAnotherUrl",
+    ],
+    optionalVariables: [
+      "totalFreeCredits",
+      "usedCredits",
+      "remainingCredits",
+      "followersLabel",
+      "dominantFormat",
+      "engagementRate",
+      "benchmarkDelta",
+      "topPostFormat",
+      "topPostEngagement",
+    ],
+    fallbackBehaviour:
+      "Credit card e bloco de insights são omitidos quando dados ausentes; nunca aparecem placeholders partidos.",
+    wiring: {
+      triggerEvent: "Lead-magnet sequence · após unlock",
+      delay: "imediato",
+      sourceFile: "src/lib/email/lead-magnet-sequence.server.ts",
+      provider: "Resend",
+      automatic: true,
+      killSwitchEnv: "LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED",
+      killSwitchDefault: "on",
+      idempotencyEvent: "report_saved_email_sent",
+      knownRisks:
+        "Unlocks concorrentes para o mesmo report_request_id podem passar a dedup antes do evento SENT ser inserido (sem unique index em product_events).",
+    },
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
