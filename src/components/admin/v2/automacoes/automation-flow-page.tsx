@@ -298,6 +298,7 @@ function FlowStages({
             number={stage.number}
             eyebrow={stage.eyebrow}
             title={stage.title}
+            description={stage.description}
             meta={meta}
             tokenColor={stage.tokenColor}
             tokenBg={stage.tokenBg}
