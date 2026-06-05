@@ -8,15 +8,7 @@ import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { StepProgress } from "@/components/checkout/step-progress";
-import { OfferCard } from "@/components/checkout/offer-card";
-import {
-  QualificationForm,
-  type QualificationValue,
-} from "@/components/checkout/qualification-form";
-import {
-  UpsellInterest,
-  type UpsellValue,
-} from "@/components/checkout/upsell-interest";
+import { ConfirmUnlockCard } from "@/components/checkout/confirm-unlock-card";
 import {
   BillingForm,
   EMPTY_BILLING,
@@ -30,11 +22,12 @@ import { createEupagoCheckout } from "@/lib/payments/eupago.functions";
 import { getLeadSessionStatus } from "@/lib/leads/lead-session.functions";
 import { trackEvent } from "@/lib/tracking.functions";
 
+const PRODUCT_CODE = "report_full_9" as const;
+
 const STEP_LABELS = [
-  "Confirmar oferta",
-  "Qualificação",
-  "Interesse opcional",
-  "Faturação e pagamento",
+  "Confirmar desbloqueio",
+  "Faturação",
+  "Confirmar e pagar",
 ];
 
 const searchSchema = z.object({
@@ -62,13 +55,13 @@ const leadSessionQueryOptions = queryOptions({
   staleTime: 0,
 });
 
-export const Route = createFileRoute("/checkout/authority-diagnosis")({
+export const Route = createFileRoute("/checkout/report-full")({
   validateSearch: (search) => searchSchema.parse(search),
   loader: ({ context }) =>
     context.queryClient.ensureQueryData(leadSessionQueryOptions),
   head: () => ({
     meta: [
-      { title: "Diagnóstico de Autoridade Digital — Checkout" },
+      { title: "Relatório completo — Checkout" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -80,8 +73,8 @@ function CheckoutFlow() {
   if (!leadStatus.hasLead) {
     return (
       <MissingLeadSession
-        title="Para reservar o diagnóstico, começa por criar a tua conta gratuita."
-        description="Precisamos de uma sessão ativa para associar o diagnóstico ao teu perfil. Demora menos de um minuto."
+        title="Para desbloquear o relatório, começa por criar a tua conta gratuita."
+        description="Precisamos de uma sessão ativa para associar o relatório ao teu perfil. Demora menos de um minuto."
       />
     );
   }
@@ -94,27 +87,17 @@ function CheckoutSteps() {
   const createCheckout = useServerFn(createEupagoCheckout);
 
   const [step, setStep] = useState(1);
-  const [qualification, setQualification] = useState<QualificationValue>({
-    objective: null,
-    objective_other: "",
-    profile_ownership: null,
-  });
-  const [upsell, setUpsell] = useState<UpsellValue>({
-    audit: false,
-    workshop: false,
-  });
   const [billing, setBilling] = useState<BillingValue>(EMPTY_BILLING);
   const [billingErrors, setBillingErrors] = useState<BillingErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // checkout_started + step_view tracking
   useEffect(() => {
     trackEvent({
       data: {
         eventType: "checkout_started",
         metadata: {
-          product_code: "authority_diagnosis_97",
+          product_code: PRODUCT_CODE,
           source_component: search.source ?? null,
           instagram_username: search.username ?? null,
         },
@@ -136,7 +119,7 @@ function CheckoutSteps() {
     trackEvent({
       data: {
         eventType: "checkout_step_complete",
-        metadata: { step, ...extra },
+        metadata: { step, product_code: PRODUCT_CODE, ...extra },
       },
     }).catch(() => {});
   };
@@ -158,12 +141,6 @@ function CheckoutSteps() {
     if (typeof window !== "undefined") window.scrollTo({ top: 0 });
   };
 
-  const qualValid =
-    qualification.objective !== null &&
-    qualification.profile_ownership !== null &&
-    (qualification.objective !== "other" ||
-      qualification.objective_other.trim().length > 0);
-
   const submitPayment = async () => {
     const errors = validateBilling(billing);
     setBillingErrors(errors);
@@ -175,25 +152,19 @@ function CheckoutSteps() {
     trackEvent({
       data: {
         eventType: "checkout_payment_started",
-        metadata: { product_code: "authority_diagnosis_97" },
+        metadata: { product_code: PRODUCT_CODE },
       },
     }).catch(() => {});
 
     try {
       const res = await createCheckout({
         data: {
-          product_code: "authority_diagnosis_97",
+          product_code: PRODUCT_CODE,
           instagram_username: search.username,
           report_cache_key: search.report_cache_key,
-          return_path: "/checkout/authority-diagnosis?status=success",
-          source_component: search.source ?? "checkout_flow",
+          return_path: "/checkout/report-full?status=success",
+          source_component: search.source ?? "checkout_report_full",
           coupon_code: search.coupon,
-          qualification: {
-            objective: qualification.objective ?? "other",
-            objective_other: qualification.objective_other.trim() || undefined,
-            profile_ownership: qualification.profile_ownership ?? "mine",
-          },
-          upsell_interest: upsell,
           billing: {
             name: billing.name.trim(),
             tax_id: billing.tax_id.trim() || undefined,
@@ -219,7 +190,7 @@ function CheckoutSteps() {
       trackEvent({
         data: {
           eventType: "checkout_payment_failed",
-          metadata: { error: message },
+          metadata: { product_code: PRODUCT_CODE, error: message },
         },
       }).catch(() => {});
       toast.error(message);
@@ -228,22 +199,22 @@ function CheckoutSteps() {
 
   return (
     <div>
-      <StepProgress step={step} total={4} labels={STEP_LABELS} />
+      <StepProgress step={step} total={3} labels={STEP_LABELS} />
 
       {step === 1 ? (
         <section className="space-y-5">
           <header>
             <h1 className="font-fraunces text-2xl sm:text-3xl font-medium text-content-primary leading-tight">
-              Vamos preparar o teu Diagnóstico de Autoridade Digital
+              Obter relatório completo
             </h1>
             <p className="mt-2 text-sm text-content-secondary leading-relaxed">
-              O relatório mostra os dados. A sessão humana ajuda a transformar
-              esses dados em prioridades claras.
+              Desbloqueia o diagnóstico editorial, desempenho, conteúdo,
+              procura, comparação e recomendações.
             </p>
           </header>
-          <OfferCard />
+          <ConfirmUnlockCard />
           <StepActions
-            backLabel={search.return ? "Voltar ao relatório" : "Cancelar"}
+            backLabel={search.return ? "Voltar" : "Cancelar"}
             onBack={goBack}
             nextLabel="Continuar"
             onNext={() => {
@@ -258,23 +229,26 @@ function CheckoutSteps() {
         <section className="space-y-5">
           <header>
             <h1 className="font-fraunces text-2xl font-medium text-content-primary">
-              Conta-nos um pouco mais
+              Dados de facturação
             </h1>
             <p className="mt-2 text-sm text-content-secondary">
-              Ajuda-nos a preparar a sessão antes de falarmos.
+              Usamos estes dados apenas para emitir o recibo do relatório.
             </p>
           </header>
-          <QualificationForm value={qualification} onChange={setQualification} />
+          <BillingForm
+            value={billing}
+            onChange={setBilling}
+            errors={billingErrors}
+          />
           <StepActions
             backLabel="Voltar"
             onBack={goBack}
             nextLabel="Continuar"
-            nextDisabled={!qualValid}
             onNext={() => {
-              trackStepComplete({
-                objective: qualification.objective,
-                profile_ownership: qualification.profile_ownership,
-              });
+              const errors = validateBilling(billing);
+              setBillingErrors(errors);
+              if (Object.keys(errors).length > 0) return;
+              trackStepComplete();
               goNext();
             }}
           />
@@ -285,50 +259,13 @@ function CheckoutSteps() {
         <section className="space-y-5">
           <header>
             <h1 className="font-fraunces text-2xl font-medium text-content-primary">
-              Queres ir além do Instagram?
+              Confirmar e pagar
             </h1>
             <p className="mt-2 text-sm text-content-secondary">
-              Marca os temas que te interessam — falamos depois, sem
-              compromisso.
+              Verifica o resumo. Em seguida abrimos o pagamento seguro.
             </p>
           </header>
-          <UpsellInterest value={upsell} onChange={setUpsell} />
-          <StepActions
-            backLabel="Voltar"
-            onBack={goBack}
-            nextLabel="Continuar"
-            onNext={() => {
-              trackStepComplete({ ...upsell });
-              if (upsell.audit || upsell.workshop) {
-                trackEvent({
-                  data: {
-                    eventType: "checkout_upsell_interest",
-                    metadata: { ...upsell },
-                  },
-                }).catch(() => {});
-              }
-              goNext();
-            }}
-          />
-        </section>
-      ) : null}
-
-      {step === 4 ? (
-        <section className="space-y-5">
-          <header>
-            <h1 className="font-fraunces text-2xl font-medium text-content-primary">
-              Dados de facturação
-            </h1>
-            <p className="mt-2 text-sm text-content-secondary">
-              Usamos estes dados apenas para emitir o recibo da reserva.
-            </p>
-          </header>
-          <BillingForm
-            value={billing}
-            onChange={setBilling}
-            errors={billingErrors}
-          />
-          <OrderSummary />
+          <OrderSummary productCode={PRODUCT_CODE} />
           {submitError ? (
             <p className="text-sm text-signal-error">{submitError}</p>
           ) : null}

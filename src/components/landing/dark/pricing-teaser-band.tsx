@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
@@ -12,6 +11,8 @@ function Tier({
   cta,
   featured,
   badge,
+  href,
+  onClick,
 }: {
   label: string;
   price: string;
@@ -20,6 +21,8 @@ function Tier({
   cta: string;
   featured?: boolean;
   badge?: string;
+  href: string;
+  onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
 }) {
   return (
     <div
@@ -76,8 +79,9 @@ function Tier({
       >
         {unit}
       </div>
-      <Link
-        to="/precos"
+      <a
+        href={href}
+        onClick={onClick}
         className={cn(
           "block w-full text-center text-sm font-semibold py-2.5 rounded-lg transition-colors",
           featured ? "" : "border",
@@ -92,7 +96,7 @@ function Tier({
         }
       >
         {cta}
-      </Link>
+      </a>
     </div>
   );
 }
@@ -132,12 +136,20 @@ export function PricingTeaserBand() {
             price={t("dark.pricing.free.price")}
             unit={t("dark.pricing.free.unit")}
             cta={t("dark.pricing.free.cta")}
+            href="#hero"
+            onClick={(e) => {
+              e.preventDefault();
+              document
+                .getElementById("hero")
+                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
           />
           <Tier
             label={t("dark.pricing.single.label")}
             price="9€"
             unit={t("dark.pricing.single.unit")}
             cta={t("dark.pricing.single.cta")}
+            href="/checkout/report-full?source=landing_pricing_teaser"
           />
           <Tier
             label={t("dark.pricing.diagnosis.label")}
@@ -147,6 +159,7 @@ export function PricingTeaserBand() {
             cta={t("dark.pricing.diagnosis.cta")}
             featured
             badge={t("dark.pricing.diagnosis.badge")}
+            href="/checkout/authority-diagnosis?source=landing_pricing_teaser"
           />
         </div>
       </Reveal>

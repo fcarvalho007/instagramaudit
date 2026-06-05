@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { ArrowRight, Building2, Check, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -12,15 +11,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { trackEvent } from "@/lib/tracking.functions";
 import { cn } from "@/lib/utils";
-import {
-  PricingInterestModal,
-  type PricingInterestOption,
-} from "@/components/pricing/pricing-interest-modal";
 import { CouponInput } from "@/components/pricing/coupon-input";
+import { useState } from "react";
 
-// The 9€ flow is not yet wired to a real checkout — it still opens
-// `PricingInterestModal` (interest capture). Only the 97€ hero card goes
-// directly to the EuPago checkout via `ReserveDiagnosisButton`.
+// Both 9€ and 97€ cards now route to focused checkouts.
 export type PricingOption = "free" | "single_report";
 
 interface Props {
@@ -42,9 +36,6 @@ export function PremiumInterestDialog({
 }: Props) {
   const { t } = useTranslation("report");
   const navigate = useNavigate();
-  const [interestOption, setInterestOption] =
-    useState<PricingInterestOption | null>(null);
-  const [interestOpen, setInterestOpen] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
 
   const handleSelect = (option: PricingOption) => {
@@ -64,17 +55,31 @@ export function PremiumInterestDialog({
       onOpenChange(false);
       return;
     }
-    // Checkout do 9€ ainda não está ligado; recolhemos interesse.
-    setInterestOption("single_report");
+    trackEvent({
+      data: {
+        eventType: "payment_cta_clicked",
+        snapshotId: snapshotId ?? undefined,
+        handle: handle ?? undefined,
+        metadata: {
+          product_code: "report_full_9",
+          source_component: sourceComponent,
+          variant,
+        },
+      },
+    }).catch(() => {});
     onOpenChange(false);
-    setTimeout(() => setInterestOpen(true), 200);
+    navigate({
+      to: "/checkout/report-full",
+      search: {
+        source: sourceComponent,
+        username: handle ?? undefined,
+        return: "/",
+        coupon: appliedCoupon ?? undefined,
+      },
+    }).catch(() => {});
   };
 
-  const singleLabel = t("premium.dialog.single.title");
-  const singlePrice = t("premium.dialog.single.price");
-
   return (
-    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[860px]">
         <DialogHeader className="text-left">
@@ -202,14 +207,6 @@ export function PremiumInterestDialog({
         </div>
       </DialogContent>
     </Dialog>
-    <PricingInterestModal
-      open={interestOpen}
-      onOpenChange={setInterestOpen}
-      option={interestOption}
-      planLabel={singleLabel}
-      planPrice={singlePrice}
-    />
-    </>
   );
 }
 

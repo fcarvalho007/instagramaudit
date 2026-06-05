@@ -5,7 +5,6 @@ import { ArrowRight, Briefcase, Check, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/tracking.functions";
-import { ReserveDiagnosisButton } from "@/components/payments/reserve-diagnosis-button";
 import { CouponInput } from "./coupon-input";
 import { PricingFAQ } from "./pricing-faq";
 
@@ -82,14 +81,25 @@ export function PricingPage() {
               "Recomendações práticas",
             ]}
           >
-            <ReserveDiagnosisButton
-              productCode="report_full_9"
-              sourceComponent={SOURCE}
-              returnPath="/precos"
-              label="Desbloquear relatório"
-              couponCode={coupon}
-              className="w-full"
-            />
+            <Button
+              type="button"
+              variant="primary"
+              className="w-full gap-2"
+              onClick={() => {
+                track("report_full_9");
+                navigate({
+                  to: "/checkout/report-full",
+                  search: {
+                    source: SOURCE,
+                    return: "/precos",
+                    coupon: coupon ?? undefined,
+                  },
+                }).catch(() => {});
+              }}
+            >
+              Desbloquear relatório
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </Button>
           </PricingCard>
 
           {/* Diagnóstico — herói */}
