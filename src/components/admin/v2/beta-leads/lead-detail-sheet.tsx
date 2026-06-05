@@ -1125,6 +1125,13 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
           const body = await res.json().catch(() => ({}));
           if (!res.ok || !body.success) {
             toast.error(mapFeedbackError(body?.error_code));
+          } else if (body.skipped_duplicate) {
+            toast.info(
+              body.message ??
+                "Já foi enviado um pedido de feedback para este relatório.",
+            );
+            setFeedbackOpen(false);
+            onRefresh?.();
           } else {
             toast.success("Pedido de feedback enviado");
             setFeedbackOpen(false);
