@@ -36,9 +36,6 @@ export function PremiumInterestDialog({
 }: Props) {
   const { t } = useTranslation("report");
   const navigate = useNavigate();
-  const [interestOption, setInterestOption] =
-    useState<PricingInterestOption | null>(null);
-  const [interestOpen, setInterestOpen] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
 
   const handleSelect = (option: PricingOption) => {
@@ -58,10 +55,28 @@ export function PremiumInterestDialog({
       onOpenChange(false);
       return;
     }
-    // Checkout do 9€ ainda não está ligado; recolhemos interesse.
-    setInterestOption("single_report");
+    trackEvent({
+      data: {
+        eventType: "payment_cta_clicked",
+        snapshotId: snapshotId ?? undefined,
+        handle: handle ?? undefined,
+        metadata: {
+          product_code: "report_full_9",
+          source_component: sourceComponent,
+          variant,
+        },
+      },
+    }).catch(() => {});
     onOpenChange(false);
-    setTimeout(() => setInterestOpen(true), 200);
+    navigate({
+      to: "/checkout/report-full",
+      search: {
+        source: sourceComponent,
+        username: handle ?? undefined,
+        return: "/",
+        coupon: appliedCoupon ?? undefined,
+      },
+    }).catch(() => {});
   };
 
   const singleLabel = t("premium.dialog.single.title");
