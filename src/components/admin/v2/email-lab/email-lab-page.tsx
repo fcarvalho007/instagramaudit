@@ -983,7 +983,7 @@ function EmailClientFrame({ children }: { children: React.ReactNode }) {
           <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#28C840" }} />
         </span>
         <span className="ml-2 text-[10px] font-medium uppercase tracking-[0.08em] text-admin-text-tertiary">
-          Inbox · Mira
+          Inbox · AuditProfiles
         </span>
       </div>
       {children}
@@ -1041,12 +1041,11 @@ function ReadOnlyBanner() {
       </span>
       <span>
         <strong className="font-semibold text-admin-text-primary">
-          Modo visualização.
+          Esta página é só leitura.
         </strong>{" "}
         <span className="text-admin-text-secondary">
-          Nenhum email é enviado a partir desta página. Os envios reais
-          continuam a acontecer em <em>Leads</em> e nas automações
-          operacionais.
+          Nada é enviado a partir daqui. Os envios reais continuam a
+          acontecer em <em>Leads</em> e nas automações operacionais.
         </span>
       </span>
     </div>
