@@ -37,6 +37,12 @@ export function TransparencyBand() {
             >
               {t("dark.transparency.body")}
             </p>
+            <p
+              className="text-xs mt-3"
+              style={{ color: "rgb(var(--hero-text-tertiary))" }}
+            >
+              {t("dark.transparency.audience")}
+            </p>
           </div>
           <ul className="flex flex-col gap-2.5">
             {chips.map(({ key, Icon }) => (
