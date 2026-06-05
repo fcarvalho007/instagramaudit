@@ -14,19 +14,17 @@ export function ManualVsToolBand() {
     t("dark.manualVsTool.manual.item1"),
     t("dark.manualVsTool.manual.item2"),
     t("dark.manualVsTool.manual.item3"),
-    t("dark.manualVsTool.manual.item4"),
   ];
   const toolItems = [
     t("dark.manualVsTool.tool.item1"),
     t("dark.manualVsTool.tool.item2"),
     t("dark.manualVsTool.tool.item3"),
-    t("dark.manualVsTool.tool.item4"),
   ];
 
   return (
     <section
       aria-labelledby="dark-manual-title"
-      className="dark-hairline border-b px-6 py-14 sm:px-10 sm:py-16"
+      className="dark-hairline border-b px-6 py-10 sm:px-10 sm:py-12"
     >
       <Reveal>
         <p className="dark-eyebrow mb-2.5">
@@ -34,7 +32,7 @@ export function ManualVsToolBand() {
         </p>
         <h2
           id="dark-manual-title"
-          className="font-display text-2xl sm:text-3xl font-medium leading-[1.15] max-w-xl mb-8"
+          className="font-display text-xl sm:text-2xl font-medium leading-[1.15] max-w-xl mb-8"
           style={{ color: "rgb(var(--hero-text-primary))" }}
         >
           {t("dark.manualVsTool.headline")}
