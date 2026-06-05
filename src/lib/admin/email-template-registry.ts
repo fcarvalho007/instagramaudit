@@ -128,6 +128,25 @@ export const STATUS_BADGE_LABELS: Record<EmailStatusBadge, string> = {
   desactivado: "Desactivado",
 };
 
+/* ------------------------------------------------------------------ */
+/* Lifecycle role — explicit "what is this template for?" line.       */
+/* ------------------------------------------------------------------ */
+
+export type EmailLifecycleRole =
+  | "main_lifecycle"
+  | "manual_fallback"
+  | "transactional"
+  | "legacy"
+  | "planned";
+
+export const LIFECYCLE_ROLE_LABELS: Record<EmailLifecycleRole, string> = {
+  main_lifecycle: "Email principal do lifecycle",
+  manual_fallback: "Variante manual / fallback",
+  transactional: "Email transaccional",
+  legacy: "Template legado",
+  planned: "Template futuro · planeado",
+};
+
 export interface EmailWiringMeta {
   triggerEvent?: string | null;
   delay?: string | null;
@@ -163,6 +182,8 @@ export interface EmailTemplateEntry {
   fallbackBehaviour?: string | null;
   /** Operational wiring metadata surfaced in the Wiring tab. */
   wiring?: EmailWiringMeta;
+  /** Lifecycle role surfaced in the detail header. */
+  lifecycleRole?: EmailLifecycleRole;
 }
 
 export const TEMPLATE_VARIABLES: Record<EmailTemplateKey, string[]> = {
