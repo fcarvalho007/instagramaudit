@@ -178,7 +178,7 @@ function KpiRow({ kpis }: { kpis: NonNullable<AutomationFlowResponse["kpis"]> })
       icon: <CheckCircle2 size={18} className="text-[rgb(var(--admin-pill-active-fg))]" />,
     },
     {
-      label: "Enviados",
+      label: "Enviados 30d",
       value: kpis.sent.last30d,
       headline: "30d",
       hint:
@@ -202,7 +202,7 @@ function KpiRow({ kpis }: { kpis: NonNullable<AutomationFlowResponse["kpis"]> })
       icon: null,
     },
     {
-      label: "Falhas",
+      label: "Falhas 30d",
       value: kpis.failures.last30d,
       headline: "30d",
       hint:
