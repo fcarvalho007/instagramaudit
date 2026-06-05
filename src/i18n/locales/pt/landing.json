@@ -120,23 +120,21 @@
       "headline": "O que demora uma tarde, em segundos.",
       "manual": {
         "label": "À mão",
-        "item1": "Abrir o perfil e contar gostos um a um",
-        "item2": "Calcular taxas em folhas de cálculo",
-        "item3": "Sem referência do escalão",
-        "item4": "Interpretação subjetiva"
+        "item1": "Abrir perfis um a um",
+        "item2": "Contar formatos e publicações",
+        "item3": "Tirar conclusões à mão"
       },
       "tool": {
         "label": "AuditProfiles",
-        "item1": "Um username, relatório em segundos",
+        "item1": "Relatório em segundos",
         "item2": "Métricas calculadas automaticamente",
-        "item3": "Benchmark face ao escalão certo",
-        "item4": "Leitura editorial profissional"
+        "item3": "Prioridades claras"
       }
     },
     "preview": {
       "eyebrow": "Preview do produto",
       "headline": "O relatório que recebes.",
-      "lead": "Métricas claras, benchmark visual e comparação com concorrentes — pronto a partilhar.",
+      "lead": "Métricas, benchmark e concorrentes — num só relatório.",
       "cta": "Ver relatório completo · +7 secções",
       "card": {
         "meta": "30 publicações · últimos 30 dias",
@@ -148,7 +146,7 @@
         "formatHint": "62% do mix",
         "competitorsLabel": "Comparação com concorrentes"
       },
-      "disclaimer": "Mockup ilustrativo. Os números reais vêm do teu perfil.",
+      "disclaimer": "Exemplo. Os números reais vêm do teu perfil.",
       "sub": {
         "data": { "title": "Métricas acionáveis", "hint": "o que importa, nada que distrai" },
         "benchmark": { "title": "Comparação imediata", "hint": "face ao escalão e concorrentes" },
@@ -161,15 +159,15 @@
       "stepLabel": "PASSO {{number}}",
       "step1": {
         "title": "Inserir o username",
-        "desc": "Qualquer perfil público. Opcionalmente, até dois concorrentes para comparar."
+        "desc": "Coloca o @ do perfil."
       },
       "step2": {
         "title": "Análise automática",
-        "desc": "Os posts recentes são processados contra benchmarks atualizados do escalão."
+        "desc": "Analisamos dados públicos."
       },
       "step3": {
         "title": "Relatório pronto",
-        "desc": "Métricas, ranking de concorrentes e insights estratégicos, guardado na tua conta."
+        "desc": "Mostramos o que melhorar."
       }
     },
     "bento": {
@@ -196,7 +194,6 @@
     "transparency": {
       "eyebrow": "Transparência",
       "headline": "Sem login. Só dados públicos.",
-      "body": "Nunca pedimos o teu acesso ao Instagram. Analisamos apenas o que já é público, com benchmarks construídos a partir de estudos de referência da indústria.",
       "audience": "Feito para consultores, social media managers, marcas e criadores.",
       "chips": {
         "noLogin": "Sem login do Instagram",
@@ -215,7 +212,7 @@
     },
     "finalCta": {
       "headline": "Analisa o primeiro perfil agora.",
-      "lead": "2 relatórios grátis. Sem cartão, sem login do Instagram."
+      "lead": "Grátis. Sem cartão. Em segundos."
     },
     "miniFooter": {
       "tagline": "Benchmarking de Instagram, claro e auditável.",
