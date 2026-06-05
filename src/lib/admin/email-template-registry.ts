@@ -185,7 +185,8 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     shortDescription: "Bem-vindo à beta — o que vais encontrar.",
     wired: true,
     wiredAt: "src/lib/email/send-welcome-beta.server.ts (primeiro unlock)",
-    wiredNote: "Enviado uma única vez no primeiro unlock do lead, com consentimento explícito.",
+    wiredNote:
+      "Enviado uma única vez no primeiro unlock do lead via `lead-magnet-sequence`. AUDITORIA: sobrepõe-se ao `report_summary` no mesmo evento — planeado para ser fundido no novo `report_saved` (ver docs/BETA_RUNBOOK.md §0.1).",
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
@@ -207,7 +208,8 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     shortDescription: "As 3 conclusões principais em 60 segundos.",
     wired: true,
     wiredAt: "src/lib/email/send-report-summary.server.ts (após unlock)",
-    wiredNote: "Disparado em sequência após unlock, com consentimento de marketing.",
+    wiredNote:
+      "Disparado em sequência após cada unlock via `lead-magnet-sequence`. AUDITORIA: não mostra saldo de créditos nem insights reais — planeado para ser fundido no novo `report_saved` (ver docs/BETA_RUNBOOK.md §0.1).",
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
@@ -238,10 +240,11 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     title: "Follow-up comercial",
     internalName: "commercial_followup",
     category: "comercial",
-    shortDescription: "Falta ligar trigger ao stripe webhook.",
-    wired: false,
-    wiredAt: null,
-    wiredNote: "Sem trigger automático. Reserva-se para conversão paga (futuro).",
+    shortDescription: "Continuação narrativa do relatório gratuito.",
+    wired: true,
+    wiredAt: "src/routes/api/admin/send-commercial-followup.ts",
+    wiredNote:
+      "Hoje só dispara via acção manual no admin (detalhe da lead). AUDITORIA: copy actual é genérica — planeada reescrita para continuar a narrativa do relatório, sem alterar preços nem CTAs. Auto-trigger fica para fase futura.",
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
