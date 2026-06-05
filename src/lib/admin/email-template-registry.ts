@@ -14,6 +14,7 @@ import {
   renderWelcomeBeta,
   renderReportSummary,
   renderPaymentConfirmed,
+  renderReportSaved,
   type RenderedEmail,
   type EmailTemplateParts,
 } from "@/lib/email/templates";
@@ -24,6 +25,7 @@ export const SAMPLE = {
   firstName: "Frederico",
   instagramHandle: "frederico.m.carvalho",
   reportUrl: "https://example.com/analyze/frederico.m.carvalho",
+  analyzeAnotherUrl: "https://example.com/",
   feedbackUrl: "https://example.com/feedback/example",
   appUrl: "https://example.com/app/reports",
   checkoutUrl: "https://example.com/checkout/abc123",
@@ -31,6 +33,15 @@ export const SAMPLE = {
   amountLabel: "9,00\u00A0\u20AC",
   paymentMethod: "MB WAY",
   paymentReference: "AP-2026-0142",
+  followersLabel: "10,2 mil",
+  dominantFormat: "carrosséis",
+  engagementRate: "4,2%",
+  benchmarkDelta: "+1,1 pp acima da média",
+  topPostFormat: "carrossel",
+  topPostEngagement: "0,15%",
+  totalFreeCredits: 2,
+  usedCredits: 1,
+  remainingCredits: 1,
 } as const;
 
 export type EmailTemplateKey =
@@ -41,7 +52,8 @@ export type EmailTemplateKey =
   | "welcome_beta"
   | "report_summary"
   | "commercial_followup"
-  | "payment_confirmed";
+  | "payment_confirmed"
+  | "report_saved";
 
 export type EmailTemplateCategory =
   | "operacional"
@@ -103,6 +115,12 @@ export const TEMPLATE_VARIABLES: Record<EmailTemplateKey, string[]> = {
     "paymentMethod",
     "paymentReference",
     "reportUrl",
+  ],
+  report_saved: [
+    "firstName",
+    "instagramHandle",
+    "reportUrl",
+    "analyzeAnotherUrl",
   ],
 };
 
