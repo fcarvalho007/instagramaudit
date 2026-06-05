@@ -15,6 +15,44 @@ Documento operacional. Para uso interno do operador durante a fase de beta priva
 
 ---
 
+## 0.1 Email lifecycle — auditoria e plano de consolidação
+
+> Snapshot do estado actual dos templates operacionais. Plano completo em
+> `.lovable/plan.md` (secção "Auditoria do lifecycle de email"). Esta secção
+> é apenas a fonte de verdade para o operador durante a transição.
+
+**Estado actual (auditado)**
+
+| Template (key)        | Trigger actual                                        | Wired | Notas |
+|-----------------------|-------------------------------------------------------|-------|-------|
+| `request_received`    | `beta.functions.ts` (submit do beta form)             | auto  | Apenas no fluxo beta; não dispara no unlock público. |
+| `report_ready`        | `/api/admin/send-report-link` (admin manual)          | manual| Existe um 2.º path (`/api/send-report-email` com signed URL) fora do registry. |
+| `welcome_beta`        | `lead-magnet-sequence` no 1.º unlock                  | auto  | Sobrepõe-se ao `report_summary` no mesmo evento. Será fundido em `report_saved`. |
+| `report_summary`      | `lead-magnet-sequence` em cada unlock                 | auto  | Sem saldo de créditos nem insights reais. Será fundido em `report_saved`. |
+| `personal_area_saved` | —                                                     | não   | Reservado para futuro signup de conta. |
+| `feedback_request`    | `/api/admin/send-feedback-request` (admin manual)     | manual| Sem auto-trigger D+1 / após view. |
+| `commercial_followup` | `/api/admin/send-commercial-followup` (admin manual)  | manual| Copy genérica; será reescrito sem alterar preços nem CTAs. |
+| `payment_confirmed`   | —                                                     | **não existe** | EuPago webhook hoje só emite product events; nenhum email. |
+
+**Lifecycle alvo (5 estados)**
+
+1. **Request received** — pedido/análise iniciada antes do relatório estar pronto.
+2. **Report saved / créditos / 3 insights** — substitui `welcome_beta` + `report_summary` no 1.º unlock. Mostra: 2 créditos iniciais · 1 usado · 1 restante · 3 insights personalizados · CTA "Analisar outro perfil" / "Abrir relatório".
+3. **Feedback request** — auto D+1 de `report_summary_email_sent` **ou** após `report_viewed` (o que vier primeiro). Inclui 1 insight real.
+4. **Commercial follow-up** — continuação narrativa do relatório gratuito; preserva preços e CTAs actuais.
+5. **Payment confirmed** — disparado por `eupago-webhook` no branch `paid`, idempotente por `payment_id`. Confirma produto desbloqueado, valor (lido sem alterar), método/referência se disponíveis, CTA para abrir o relatório.
+
+**Garantias de não-regressão (válidas para todos os passos do plano)**
+
+- Preços de produto: intocáveis (`src/lib/payments/products.ts`, pricing, `lead_payments.amount_cents`, payload EuPago).
+- Lógica de checkout e webhook EuPago: intocável. O passo "payment_confirmed" adiciona apenas um `void send...` no fim do branch `paid`, com try/catch interno.
+- Créditos: apenas leitura para apresentar saldo no email.
+- Geração de relatórios e snapshots: intocável.
+- Schema: nenhum `ALTER`/`CREATE` planeado. Se algum dado necessário não existir no snapshot actual, parar e pedir aprovação antes de qualquer DDL.
+- Todos os novos envios atrás de kill-switch (`*_EMAIL_ENABLED`) e idempotentes por `(lead_id|payment_id, template_key)`.
+
+---
+
 ## QA URLs and Environments
 
 > **QA URLs:**
