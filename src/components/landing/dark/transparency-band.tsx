@@ -16,7 +16,7 @@ export function TransparencyBand() {
   return (
     <section
       aria-labelledby="dark-transparency-title"
-      className="dark-hairline border-b px-6 py-14 sm:px-10 sm:py-16"
+      className="dark-hairline border-b px-6 py-10 sm:px-10 sm:py-12"
     >
       <Reveal>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-start">
@@ -26,19 +26,13 @@ export function TransparencyBand() {
             </p>
             <h2
               id="dark-transparency-title"
-              className="font-display text-2xl sm:text-[26px] font-medium leading-[1.2] mb-3"
+              className="font-display text-xl sm:text-2xl font-medium leading-[1.2] mb-3"
               style={{ color: "rgb(var(--hero-text-primary))" }}
             >
               {t("dark.transparency.headline")}
             </h2>
             <p
-              className="text-sm leading-relaxed max-w-md"
-              style={{ color: "rgb(var(--hero-text-secondary))" }}
-            >
-              {t("dark.transparency.body")}
-            </p>
-            <p
-              className="text-xs mt-3"
+              className="text-xs"
               style={{ color: "rgb(var(--hero-text-tertiary))" }}
             >
               {t("dark.transparency.audience")}
