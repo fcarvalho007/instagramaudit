@@ -221,11 +221,11 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     title: "Boas-vindas à beta",
     internalName: "welcome_beta",
     category: "conta",
-    shortDescription: "Bem-vindo à beta — o que vais encontrar.",
-    wired: true,
-    wiredAt: "src/lib/email/send-welcome-beta.server.ts (primeiro unlock)",
+    shortDescription: "LEGACY — substituído por report_saved.",
+    wired: false,
+    wiredAt: null,
     wiredNote:
-      "Enviado uma única vez no primeiro unlock do lead via `lead-magnet-sequence`. AUDITORIA: sobrepõe-se ao `report_summary` no mesmo evento — planeado para ser fundido no novo `report_saved` (ver docs/BETA_RUNBOOK.md §0.1).",
+      "LEGACY — substituído por `report_saved` no lead-magnet-sequence (Step 3). Renderer e sender mantidos em disco para histórico de overrides e auditoria.",
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
@@ -244,11 +244,11 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     title: "Resumo do relatório",
     internalName: "report_summary",
     category: "comercial",
-    shortDescription: "As 3 conclusões principais em 60 segundos.",
-    wired: true,
-    wiredAt: "src/lib/email/send-report-summary.server.ts (após unlock)",
+    shortDescription: "LEGACY — substituído por report_saved.",
+    wired: false,
+    wiredAt: null,
     wiredNote:
-      "Disparado em sequência após cada unlock via `lead-magnet-sequence`. AUDITORIA: não mostra saldo de créditos nem insights reais — planeado para ser fundido no novo `report_saved` (ver docs/BETA_RUNBOOK.md §0.1).",
+      "LEGACY — substituído por `report_saved` no lead-magnet-sequence (Step 3). Renderer mantido para histórico de overrides e auditoria; sender deixou de ser chamado.",
     variables: [
       { key: "firstName", value: SAMPLE.firstName },
       { key: "instagramHandle", value: SAMPLE.instagramHandle },
