@@ -60,7 +60,8 @@ export const STAGE_DEFS: readonly StageDef[] = [
     number: "02",
     eyebrow: "Entrega",
     title: "Relatório guardado e consumido",
-    description: "O relatório torna-se útil — save, link e abertura.",
+    description:
+      "Entrega do relatório ao lead. `report_saved` é o email principal; `report_ready` é a variante manual / signed URL.",
     tokenColor: "admin-stage-entrega",
     tokenBg: "admin-stage-entrega-bg",
   },
@@ -225,10 +226,25 @@ export interface AutomationFlow {
    * cartões sem este campo continuam a mostrar só o `StatusPill` clássico.
    */
   lifecycleBadges?: LifecycleBadge[];
+
+  /**
+   * Nota operacional curta, mostrada por baixo do timing-strip do cartão.
+   * Usada para clarificar estado (ex.: kill-switch, sem auto-trigger).
+   */
+  note?: string | null;
 }
 
 export interface AutomationKpis {
-  systemActive: { activeCount: number; totalCount: number };
+  systemActive: {
+    activeCount: number;
+    /** Wired flows whose lifecycleBadges include "manual". */
+    manualCount: number;
+    /** Flows whose lifecycleBadges include "kill_switch_off". */
+    killSwitchOffCount: number;
+    /** Flows in the legacy stage (`99_legado`). */
+    legacyCount: number;
+    totalCount: number;
+  };
   sent: { last30d: number; deltaVsYesterday: number };
   waiting: { eligibleTotal: number; nextEtaMinutes: number | null };
   failures: { last30d: number; deliverabilityPct: number | null };
