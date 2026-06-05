@@ -3,7 +3,6 @@ import { Container } from "@/components/layout/container";
 import { FinalCtaBand } from "./final-cta-band";
 import { HowItWorksBand } from "./how-it-works-band";
 import { ManualVsToolBand } from "./manual-vs-tool-band";
-import { MiniFooterStrip } from "./mini-footer-strip";
 import { PricingTeaserBand } from "./pricing-teaser-band";
 import { ReportPreviewBand } from "./report-preview-band";
 import { StatsBand } from "./stats-band";
@@ -32,7 +31,6 @@ export function LandingDarkIsland() {
           <TransparencyBand />
           <PricingTeaserBand />
           <FinalCtaBand />
-          <MiniFooterStrip />
         </div>
       </Container>
     </div>
