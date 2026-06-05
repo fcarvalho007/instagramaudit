@@ -39,9 +39,12 @@ import type { RenderedEmail } from "@/lib/email/templates";
 import {
   EMAIL_TEMPLATES as TEMPLATES,
   CATEGORY_LABELS,
-  CATEGORY_ORDER,
+  LIFECYCLE_ORDER,
+  LIFECYCLE_LABELS,
+  STATUS_BADGE_LABELS,
   type EmailTemplateKey as TemplateKey,
-  type EmailTemplateCategory,
+  type EmailLifecycleStage,
+  type EmailStatusBadge,
   type EmailTemplateEntry,
 } from "@/lib/admin/email-template-registry";
 import { adminFetch } from "@/lib/admin/fetch";
@@ -61,6 +64,56 @@ const TEMPLATE_ICON: Record<TemplateKey, LucideIcon> = {
 
 type DetailTab = "preview" | "variables" | "wiring";
 
+type FilterChip =
+  | "todos"
+  | "ligados"
+  | "manuais"
+  | "transaccionais"
+  | "kill_switch"
+  | "legado"
+  | "sem_trigger";
+
+const FILTER_CHIPS: Array<{ key: FilterChip; label: string }> = [
+  { key: "todos", label: "Todos" },
+  { key: "ligados", label: "Ligados" },
+  { key: "manuais", label: "Manuais" },
+  { key: "transaccionais", label: "Transaccionais" },
+  { key: "kill_switch", label: "Kill-switch" },
+  { key: "legado", label: "Legado" },
+  { key: "sem_trigger", label: "Sem trigger" },
+];
+
+function lifecycleOf(t: EmailTemplateEntry): EmailLifecycleStage {
+  if (t.lifecycleStage) return t.lifecycleStage;
+  // Defensive fallback — should never happen with current registry.
+  return "legado";
+}
+
+function badgesOf(t: EmailTemplateEntry): EmailStatusBadge[] {
+  if (t.statusBadges && t.statusBadges.length > 0) return t.statusBadges;
+  return t.wired ? ["ligado"] : ["sem_trigger"];
+}
+
+function matchesChip(t: EmailTemplateEntry, chip: FilterChip): boolean {
+  const badges = badgesOf(t);
+  switch (chip) {
+    case "todos":
+      return true;
+    case "ligados":
+      return badges.includes("ligado");
+    case "manuais":
+      return badges.includes("manual");
+    case "transaccionais":
+      return badges.includes("transaccional");
+    case "kill_switch":
+      return badges.includes("kill_switch_off");
+    case "legado":
+      return lifecycleOf(t) === "legado" || badges.includes("legado");
+    case "sem_trigger":
+      return badges.includes("sem_trigger");
+  }
+}
+
 export function EmailLabPage() {
   const [selectedKey, setSelectedKey] = useState<TemplateKey>(() => {
     if (typeof window === "undefined") return "request_received";
@@ -70,6 +123,7 @@ export function EmailLabPage() {
     return "request_received";
   });
   const [search, setSearch] = useState("");
+  const [chip, setChip] = useState<FilterChip>("todos");
   const [tab, setTab] = useState<DetailTab>("preview");
   const [previewMode, setPreviewMode] = useState<"html" | "text">("html");
   const [reloadTick, setReloadTick] = useState(0);
@@ -107,18 +161,20 @@ export function EmailLabPage() {
 
   const grouped = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const filter = (t: EmailTemplateEntry) =>
+    const filterText = (t: EmailTemplateEntry) =>
       !q ||
       t.title.toLowerCase().includes(q) ||
       t.internalName.toLowerCase().includes(q) ||
       t.shortDescription.toLowerCase().includes(q);
 
-    return CATEGORY_ORDER.map((category) => ({
-      category,
-      label: CATEGORY_LABELS[category],
-      items: TEMPLATES.filter((t) => t.category === category).filter(filter),
+    return LIFECYCLE_ORDER.map((stage) => ({
+      stage,
+      label: LIFECYCLE_LABELS[stage],
+      items: TEMPLATES.filter((t) => lifecycleOf(t) === stage)
+        .filter((t) => matchesChip(t, chip))
+        .filter(filterText),
     })).filter((g) => g.items.length > 0);
-  }, [search]);
+  }, [search, chip]);
 
   const handleCopy = async () => {
     if (!safeRendered) return;
@@ -185,17 +241,18 @@ export function EmailLabPage() {
           {/* Lista */}
           <div className="flex flex-col gap-3">
             <SearchBox value={search} onChange={setSearch} />
+            <FilterChips value={chip} onChange={setChip} />
             {grouped.length === 0 ? (
               <p className="text-[12px] text-admin-text-tertiary">
-                Sem templates a corresponder à pesquisa.
+                Sem templates a corresponder ao filtro.
               </p>
             ) : (
               grouped.map((group) => (
-                <div key={group.category} className="flex flex-col gap-2">
+                <div key={group.stage} className="flex flex-col gap-2">
                   <div className="flex items-baseline justify-between px-1">
                     <span
                       className="text-[10px] font-semibold uppercase tracking-[0.08em]"
-                      style={{ color: categoryAccent(group.category) }}
+                      style={{ color: lifecycleAccent(group.stage) }}
                     >
                       • {group.label}
                     </span>
@@ -203,6 +260,11 @@ export function EmailLabPage() {
                       {group.items.length}
                     </span>
                   </div>
+                  {group.stage === "legado" ? (
+                    <p className="px-1 text-[10px] italic text-admin-text-tertiary">
+                      Mantidos em disco para auditoria — não disparam.
+                    </p>
+                  ) : null}
                   {group.items.map((t) => (
                     <TemplateCard
                       key={t.key}
