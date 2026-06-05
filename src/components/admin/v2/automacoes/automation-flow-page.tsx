@@ -22,7 +22,10 @@ import type {
   AutomationFlow,
   AutomationFlowResponse,
   StageDef,
+  LifecycleBadge,
 } from "@/lib/admin/automation-flow-types";
+import { LIFECYCLE_BADGE_LABELS } from "@/lib/admin/automation-flow-types";
+import { LifecycleBadgeRow } from "./automation-node";
 
 async function fetchAutomationFlow(): Promise<AutomationFlowResponse> {
   const res = await adminFetch("/api/admin/automation-flow");
@@ -99,6 +102,7 @@ export function AutomationFlowPage() {
           </div>
 
           <TabsContent value="fluxo" className="mt-0">
+            <LifecycleLegend />
             <FlowStages flows={data.flows} stages={data.stages} />
           </TabsContent>
 
