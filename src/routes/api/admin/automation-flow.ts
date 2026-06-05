@@ -641,9 +641,6 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
           (a, n) => a + n,
           0,
         );
-        const activeFlows = flows.filter(
-          (f) => f.status === "active" || f.status === "blocked",
-        ).length;
         // Breakdown that explicitly excludes legacy and kill-switch-off
         // from the "operational" headline, so the KPI doesn't lie.
         const legacyCount = flows.filter((f) => f.stage === "99_legado").length;
