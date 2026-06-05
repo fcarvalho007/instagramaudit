@@ -445,13 +445,17 @@ function TemplateCard({
   onClick: () => void;
 }) {
   const Icon = TEMPLATE_ICON[template.key];
-  const orphan = !template.wired;
+  const badges = badgesOf(template);
+  const orphan = badges.includes("sem_trigger");
+  const legacy = lifecycleOf(template) === "legado";
 
   const borderStyle = active
     ? `1.5px solid rgb(var(--admin-leads-500))`
     : orphan
       ? `1px dashed rgb(var(--admin-warning-500) / 0.6)`
-      : `1px solid rgb(var(--admin-border-default))`;
+      : legacy
+        ? `1px dashed rgb(var(--admin-text-tertiary) / 0.4)`
+        : `1px solid rgb(var(--admin-border-default))`;
   const background = active
     ? "rgb(var(--admin-leads-500) / 0.06)"
     : "rgb(var(--admin-surface-base))";
@@ -478,20 +482,17 @@ function TemplateCard({
           <Icon size={14} />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-1.5">
-              {active ? (
-                <span
-                  className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full"
-                  style={{ background: "rgb(var(--admin-leads-500))" }}
-                  aria-hidden="true"
-                />
-              ) : null}
-              <span className="truncate text-[13px] font-medium text-admin-text-primary">
-                {template.title}
-              </span>
-            </div>
-            <StatusPill wired={template.wired} />
+          <div className="flex min-w-0 items-center gap-1.5">
+            {active ? (
+              <span
+                className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full"
+                style={{ background: "rgb(var(--admin-leads-500))" }}
+                aria-hidden="true"
+              />
+            ) : null}
+            <span className="truncate text-[13px] font-medium text-admin-text-primary">
+              {template.title}
+            </span>
           </div>
           <p className="mt-0.5 truncate font-mono text-[11px] text-admin-text-tertiary">
             {template.internalName}
@@ -499,35 +500,15 @@ function TemplateCard({
           <p className="mt-1 line-clamp-2 text-[12px] text-admin-text-secondary">
             {template.shortDescription}
           </p>
+          <div className="mt-2">
+            <StatusBadgeRow badges={badges} max={3} />
+          </div>
         </div>
       </div>
     </button>
   );
 }
 
-function StatusPill({ wired }: { wired: boolean }) {
-  return wired ? (
-    <span
-      className="rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em]"
-      style={{
-        background: "rgb(var(--admin-success-500) / 0.12)",
-        color: "rgb(var(--admin-success-500))",
-      }}
-    >
-      Ligado
-    </span>
-  ) : (
-    <span
-      className="rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em]"
-      style={{
-        background: "rgb(var(--admin-warning-500) / 0.12)",
-        color: "rgb(var(--admin-warning-500))",
-      }}
-    >
-      Sem trigger
-    </span>
-  );
-}
 
 /* ────────────────────────────────────────────────────────────────────────── */
 /* Detail header & tabs                                                       */
@@ -546,23 +527,42 @@ function DetailHeader({
   copyState: "idle" | "ok";
   hasContent: boolean;
 }) {
+  const stage = lifecycleOf(template);
+  const badges = badgesOf(template);
   return (
     <div
       className="flex flex-wrap items-start justify-between gap-3 px-5 pt-5 pb-3"
       style={{ borderBottom: "1px solid rgb(var(--admin-border-default))" }}
     >
       <div className="min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <h2 className="m-0 text-[18px] font-semibold text-admin-text-primary">
             {template.title}
           </h2>
-          <StatusPill wired={template.wired} />
+          <span
+            className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]"
+            style={{
+              background: `${lifecycleAccent(stage)}1f`,
+              color: lifecycleAccent(stage),
+            }}
+          >
+            {LIFECYCLE_LABELS[stage]}
+          </span>
         </div>
         <p className="mt-1 font-mono text-[11px] text-admin-text-tertiary">
           {template.internalName} ·{" "}
           <span className="lowercase">
             {CATEGORY_LABELS[template.category]}
           </span>
+        </p>
+        <div className="mt-2">
+          <StatusBadgeRow badges={badges} />
+        </div>
+        <p
+          className="mt-2 text-[10px] text-admin-text-tertiary"
+          title="Disponível quando o automation-flow expor totais por template."
+        >
+          Envios 30d: —
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -722,57 +722,201 @@ function PreviewTab({
 }
 
 function VariablesTab({ template }: { template: EmailTemplateEntry }) {
+  const sample = new Map(template.variables.map((v) => [v.key, v.value]));
+  // Tolerate registry keys formatted as "name (opcional)" — strip suffix to match.
+  const lookup = (key: string): string => {
+    if (sample.has(key)) return sample.get(key)!;
+    for (const [k, v] of sample) {
+      if (k.replace(/\s*\(opcional\)\s*$/i, "") === key) return v;
+    }
+    return "—";
+  };
+
+  const required = template.requiredVariables;
+  const optional = template.optionalVariables;
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-[12px]">
-        <thead>
-          <tr
-            style={{
-              borderBottom: "1px solid rgb(var(--admin-border-default))",
-            }}
-          >
-            <th className="py-2 pr-4 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-admin-text-tertiary">
-              Variável
-            </th>
-            <th className="py-2 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-admin-text-tertiary">
-              Valor de exemplo
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {template.variables.map((v) => (
+    <div className="flex flex-col gap-4">
+      {required && required.length > 0 ? (
+        <VariablesTable
+          title="Obrigatórias"
+          rows={required.map((k) => ({ key: k, value: lookup(k) }))}
+        />
+      ) : null}
+      {optional && optional.length > 0 ? (
+        <VariablesTable
+          title="Opcionais"
+          rows={optional.map((k) => ({ key: k, value: lookup(k) }))}
+          muted
+        />
+      ) : null}
+      {(!required || required.length === 0) &&
+      (!optional || optional.length === 0) ? (
+        <VariablesTable
+          title="Variáveis"
+          rows={template.variables}
+        />
+      ) : null}
+      {template.fallbackBehaviour ? (
+        <div
+          className="rounded-lg border p-3 text-[12px] text-admin-text-secondary"
+          style={{
+            borderColor: "rgb(var(--admin-border-default))",
+            background: "rgb(var(--admin-surface-muted))",
+          }}
+        >
+          <span className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-admin-text-tertiary">
+            Comportamento de fallback
+          </span>
+          <span className="mt-1 block">{template.fallbackBehaviour}</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function VariablesTable({
+  title,
+  rows,
+  muted = false,
+}: {
+  title: string;
+  rows: Array<{ key: string; value: string }>;
+  muted?: boolean;
+}) {
+  return (
+    <div>
+      <p className="mb-1 px-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-admin-text-tertiary">
+        {title}
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-[12px]">
+          <thead>
             <tr
-              key={v.key}
               style={{
                 borderBottom: "1px solid rgb(var(--admin-border-default))",
               }}
             >
-              <td className="py-2 pr-4 font-mono text-admin-text-secondary whitespace-nowrap">
-                {v.key}
-              </td>
-              <td className="py-2 font-mono text-admin-text-primary break-all">
-                {v.value}
-              </td>
+              <th className="py-2 pr-4 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-admin-text-tertiary">
+                Variável
+              </th>
+              <th className="py-2 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-admin-text-tertiary">
+                Valor de exemplo
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((v) => (
+              <tr
+                key={v.key}
+                style={{
+                  borderBottom: "1px solid rgb(var(--admin-border-default))",
+                }}
+              >
+                <td
+                  className="py-2 pr-4 font-mono whitespace-nowrap"
+                  style={{
+                    color: muted
+                      ? "rgb(var(--admin-text-tertiary))"
+                      : "rgb(var(--admin-text-secondary))",
+                  }}
+                >
+                  {v.key}
+                </td>
+                <td className="py-2 font-mono text-admin-text-primary break-all">
+                  {v.value}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
 function WiringTab({ template }: { template: EmailTemplateEntry }) {
+  const w = template.wiring;
+  const stage = lifecycleOf(template);
+  const badges = badgesOf(template);
+  const sourceFile = w?.sourceFile ?? template.wiredAt;
+  const killSwitchOff = w?.killSwitchDefault === "off";
+
   return (
     <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-admin-text-tertiary">
+          Estado
+        </span>
+        <StatusBadgeRow badges={badges} />
+      </div>
       <MetaRow
-        label="Estado"
-        value={template.wired ? "Ligado a um trigger" : "Sem trigger"}
+        label="Lifecycle"
+        value={LIFECYCLE_LABELS[stage]}
+      />
+      <MetaRow
+        label="Trigger"
+        value={w?.triggerEvent ?? "—"}
+      />
+      <MetaRow
+        label="Delay"
+        value={w?.delay ?? (template.wired ? "imediato" : "—")}
+      />
+      <MetaRow
+        label="Modo"
+        value={
+          w?.automatic === undefined
+            ? "—"
+            : w.automatic
+              ? "Automático"
+              : "Manual"
+        }
+      />
+      <MetaRow
+        label="Provider"
+        value={w?.provider ?? "—"}
       />
       <MetaRow
         label="Origem"
-        value={template.wiredAt ?? "Não está ligado a nenhum endpoint"}
-        mono={Boolean(template.wiredAt)}
+        value={sourceFile ?? "Não está ligado a nenhum endpoint"}
+        mono={Boolean(sourceFile)}
       />
+      {w?.killSwitchEnv ? (
+        <div
+          className="rounded-lg border p-3 text-[12px]"
+          style={{
+            borderColor: killSwitchOff
+              ? "rgb(var(--admin-warning-500) / 0.4)"
+              : "rgb(var(--admin-border-default))",
+            background: killSwitchOff
+              ? "rgb(var(--admin-warning-500) / 0.06)"
+              : "rgb(var(--admin-surface-muted))",
+            color: killSwitchOff
+              ? "rgb(var(--admin-warning-500))"
+              : "rgb(var(--admin-text-secondary))",
+          }}
+        >
+          <span className="block text-[10px] font-semibold uppercase tracking-[0.08em]">
+            Kill-switch
+          </span>
+          <span className="mt-1 block font-mono text-[12px]">
+            {w.killSwitchEnv}
+          </span>
+          <span className="mt-0.5 block text-[11px]">
+            Default:{" "}
+            <strong className="font-semibold">
+              {w.killSwitchDefault === "off" ? "OFF" : "ON"}
+            </strong>
+          </span>
+        </div>
+      ) : null}
+      {w?.idempotencyEvent ? (
+        <MetaRow
+          label="Idempotência"
+          value={w.idempotencyEvent}
+          mono
+        />
+      ) : null}
       {template.wiredNote ? (
         <p className="rounded-lg border p-3 text-[12px] text-admin-text-secondary"
           style={{
@@ -780,6 +924,19 @@ function WiringTab({ template }: { template: EmailTemplateEntry }) {
             background: "rgb(var(--admin-surface-muted))",
           }}>
           {template.wiredNote}
+        </p>
+      ) : null}
+      {w?.knownRisks ? (
+        <p
+          className="rounded-lg border p-3 text-[12px]"
+          style={{
+            borderColor: "rgb(var(--admin-warning-500) / 0.4)",
+            background: "rgb(var(--admin-warning-500) / 0.06)",
+            color: "rgb(var(--admin-warning-500))",
+          }}
+        >
+          <strong className="font-semibold">Riscos conhecidos. </strong>
+          {w.knownRisks}
         </p>
       ) : null}
       {!template.wired ? (
