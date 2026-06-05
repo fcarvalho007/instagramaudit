@@ -1182,13 +1182,45 @@ function StatusBadgeRow({
   badges: EmailStatusBadge[];
   max?: number;
 }) {
+  // Group badges into three logical clusters for clearer hierarchy:
+  //   Status (operational) · Mode (manual/transaccional) · Risco (kill-switch/legado/sem trigger)
+  const STATUS_SET: EmailStatusBadge[] = ["ligado", "desactivado", "planeado"];
+  const MODE_SET: EmailStatusBadge[] = ["manual", "transaccional"];
+  const RISK_SET: EmailStatusBadge[] = ["kill_switch_off", "legado", "sem_trigger"];
+  const pick = (set: EmailStatusBadge[]) =>
+    badges.filter((b) => set.includes(b));
+  const groups = [pick(STATUS_SET), pick(MODE_SET), pick(RISK_SET)].filter(
+    (g) => g.length > 0,
+  );
+
   const limit = max ?? badges.length;
-  const visible = badges.slice(0, limit);
-  const overflow = badges.length - visible.length;
+  let remaining = limit;
+  const renderedGroups: EmailStatusBadge[][] = [];
+  for (const g of groups) {
+    if (remaining <= 0) break;
+    const slice = g.slice(0, remaining);
+    renderedGroups.push(slice);
+    remaining -= slice.length;
+  }
+  const renderedCount = renderedGroups.reduce((a, g) => a + g.length, 0);
+  const overflow = badges.length - renderedCount;
+
   return (
     <div className="flex flex-wrap items-center gap-1">
-      {visible.map((b) => (
-        <StatusBadge key={b} badge={b} />
+      {renderedGroups.map((g, i) => (
+        <span key={i} className="flex flex-wrap items-center gap-1">
+          {i > 0 ? (
+            <span
+              aria-hidden="true"
+              className="mx-0.5 text-[10px] text-admin-text-tertiary/70"
+            >
+              ·
+            </span>
+          ) : null}
+          {g.map((b) => (
+            <StatusBadge key={b} badge={b} />
+          ))}
+        </span>
       ))}
       {overflow > 0 ? (
         <span className="text-[9px] font-semibold text-admin-text-tertiary">
