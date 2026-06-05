@@ -1,185 +1,62 @@
-## Root cause
+## Scope
 
-`createEupagoCheckout` already resolves `lead_id` server-side from the signed `lead_session` cookie, not from the frontend. The failure happens because the cookie is only HMAC-validated; the code does not verify that the decoded lead still exists in `leads` before inserting into `lead_payments`.
+Refine only `/checkout/report-full` and its components. EuPago provider, webhook, pricing, products, lead-session resolution, report generation, onboarding, providers, and admin remain untouched. The 97€ flow at `/checkout/authority-diagnosis` is not modified.
 
-So a stale/deleted lead session can pass the checkout UI gate, then `lead_payments.lead_id` hits the database foreign key and the raw error is thrown to the user.
+## Files changed
 
-## Current payment path findings
+1. `src/routes/checkout.report-full.tsx` — rebuild composition, add qualification step, wire `report_priority` into payment metadata.
+2. `src/components/checkout/checkout-shell.tsx` — switch to a wider 2-column shell (`max-w-5xl`) so report-full can render a sticky summary on the right; authority-diagnosis still fits within its own inner `max-w-2xl` wrapper, so no visual regression there.
+3. `src/components/checkout/confirm-unlock-card.tsx` — tighten visuals (eyebrow, price hierarchy, trust line "Pagamento seguro. Acesso associado à tua conta.").
+4. `src/components/checkout/order-summary.tsx` — add a `sticky` desktop variant via prop (`sticky?: boolean`) showing "Relatório completo · 9€ · Pagamento único · Sem subscrição · Total 9€"; default behavior unchanged for the 97€ route.
+5. `src/components/checkout/report-priority-form.tsx` — **new** lightweight single-question component (5 chip-style radio options).
+6. `src/lib/payments/eupago.functions.ts` — extend `inputSchema` with optional `report_priority` enum, persist into `metadata.report_priority`. No pricing/provider/webhook logic touched.
 
-- `/checkout/report-full` and `/checkout/authority-diagnosis` both call the same `createEupagoCheckout` server function.
-- `lead_id` is currently sourced in `src/lib/payments/eupago.functions.ts` via `getLeadFromCookie()`.
-- The frontend does not currently send `lead_id` from either checkout route.
-- `getLeadSessionStatus` only checks whether the cookie signature is valid; it does not check the `leads` row exists.
-- `lead_payments` insert currently happens before the lead email lookup, so missing lead rows surface as FK errors.
-- Raw insert errors are currently thrown as `Failed to create payment row: ...`, which can expose table/constraint names.
+## UX changes
 
-## Implementation plan
-
-### 1. Extract the payment orchestration into a testable server helper
-
-Create a server-only helper for the internal checkout creation flow, then keep `createEupagoCheckout` as the TanStack server function wrapper.
-
-Proposed shape:
-
-```text
-src/lib/payments/eupago.functions.ts
-  - validates RPC input
-  - dynamically imports server-only helper
-  - calls helper
-
-src/lib/payments/eupago-checkout.server.ts
-  - reads lead_session server-side
-  - validates lead exists
-  - resolves server-side product amount
-  - inserts lead_payments
-  - calls EuPago provider client
-  - updates provider checkout fields
-  - records product events
-```
-
-This keeps the client-importable `.functions.ts` safe and makes the critical logic unit-testable without fighting TanStack RPC internals.
-
-### 2. Resolve and validate lead server-side before insert
-
-Payment creation will:
-
-1. Read `lead_session` from the current server request using the existing cookie helper.
-2. If missing/invalid: stop before any insert/provider call.
-3. Query `leads` by the decoded lead id.
-4. If no row exists: stop before any insert/provider call.
-5. Use the verified `lead.id` for `lead_payments.lead_id`.
-6. Use `lead.email` only as optional EuPago customer email.
-
-Expected outcomes:
-
-- Valid cookie + existing lead: `lead_payments` insert succeeds with that lead id.
-- Missing cookie: safe checkout error, no insert.
-- Invalid/stale cookie: safe checkout error, no insert.
-- FK violation is no longer the normal control path and is never shown raw.
-
-### 3. Ignore frontend-supplied `lead_id`
-
-Add a compatibility-only optional `lead_id` field to the payment input schema, but never use it. The server will always use the cookie-resolved lead.
-
-This supports a focused test proving that even if a malicious/old frontend sends `lead_id`, the inserted payment row uses the server-resolved cookie lead.
-
-### 4. Replace raw DB errors with safe user-facing copy
-
-Any lead-resolution or payment-row preparation failure will throw the safe message:
-
-PT:
+- **Layout**: shell becomes a centered `max-w-5xl` grid. Desktop: 2 columns (`lg:grid-cols-[1fr_320px]`) with sticky `OrderSummary` on the right from step 1 onward. Mobile: single column, summary collapses to a compact card above the CTA on step 3 only.
+- **Compact header** (already minimal): keep AuditProfiles wordmark + "Pagamento seguro" lock chip, no nav/footer changes beyond width.
+- **Step progress**: same component, but shown above the left column only.
+- **Step 1 — Confirmar desbloqueio**: H1 "Obter relatório completo" (Fraunces, `text-2xl sm:text-3xl`, never bigger). Subtitle as specced. Refined `ConfirmUnlockCard` (price right-aligned, eyebrow "Relatório completo", 6 bullets in 2-col grid, trust microcopy line at the bottom).
+- **Step 2 — Prioridade**: new screen with question "O que queres perceber primeiro no relatório completo?" and 5 chip options (Conteúdo, Frequência, Formatos, Comparação, Recomendações). Selection required to advance; stored in component state as `reportPriority`. Tracked via `checkout_step_complete` with `{ report_priority }`.
+- **Step 3 — Dados de facturação**: billing fields rendered inside a card titled "Dados de facturação". Desktop widths capped (form column `max-w-xl`); NIF stays optional (current legal/payment posture allows it). Email for invoice clearly labeled.
+- **Confirm/pay**: bottom CTA "Confirmar e pagar" (full width on mobile, right-aligned on desktop) with the order summary already visible in the sticky column; on mobile, an inline mini-summary appears above the CTA.
+- **Errors**: keep current `safeCheckoutPrepareError` flow — display friendly `submitError` inline, no SQL/FK strings leak, user stays on the same step, retry enabled.
 
 ```text
-Não foi possível preparar o pagamento. Volta ao relatório e tenta novamente.
+Desktop (≥lg)                            Mobile
+┌──────────── max-w-5xl ────────────┐    ┌────────────┐
+│ Steps progress                    │    │ Steps      │
+│ ┌──────────┐  ┌──────────────┐    │    │ Step body  │
+│ │ Step body│  │ Sticky order │    │    │ Summary    │
+│ │          │  │ summary (9€) │    │    │ CTA        │
+│ └──────────┘  └──────────────┘    │    └────────────┘
+└───────────────────────────────────┘
 ```
 
-EN copy will be kept alongside it for future locale-aware UI use:
+## Steps count
 
-```text
-We could not prepare the payment. Please return to the report and try again.
-```
+Three steps as specced: `Confirmar desbloqueio` → `Prioridade` → `Faturação e pagamento` (billing card + summary + CTA combined to keep the flow faster than the 97€ checkout, which has more steps). `STEP_LABELS` updated accordingly.
 
-Internal errors can still be logged server-side, but client-visible errors must not include:
+## Qualification field
 
-- `lead_payments_lead_id_fkey`
-- table names
-- SQL/Postgres messages
-- internal lead/payment ids
+Add `report_priority` of type `"content" | "frequency" | "formats" | "comparison" | "recommendations"` to:
+- the route component state,
+- the `createEupagoCheckout` input schema (optional enum),
+- the metadata persisted in `lead_payments.metadata.report_priority`.
 
-### 5. Tighten the checkout session gate
+The existing `qualification` shape for the 97€ flow is left untouched.
 
-Update `getLeadSessionStatus` so it checks both:
+## Tracking events
 
-- cookie is valid
-- decoded lead id exists in `leads`
+Reuse existing events: `checkout_started`, `checkout_step_view`, `checkout_step_complete` (with `{ report_priority }` on step 2), `checkout_payment_started`, `checkout_payment_failed`. Server already emits `payment_checkout_created`.
 
-This means stale cookies should show the existing missing-session checkout fallback before the user reaches the final payment step. The payment server function will still repeat the check as the source of truth.
+## Validation
 
-### 6. Preserve both checkout routes and product config
-
-No visual checkout changes.
-
-- `/checkout/report-full` keeps sending `product_code: report_full_9`.
-- `/checkout/authority-diagnosis` keeps sending `product_code: authority_diagnosis_97`.
-- Product prices remain server-side in `products.server.ts`:
-  - `report_full_9` = `900` cents EUR
-  - `authority_diagnosis_97` = `9700` cents EUR
-- EuPago endpoint/path and webhook logic remain unchanged.
-
-### 7. Admin linkage confirmation
-
-The fixed insert will continue to include:
-
-- `lead_id`
-- `product`
-- `amount_cents`
-- `currency`
-- `provider = eupago`
-- `status`
-- `provider_checkout_url` after EuPago responds
-- `instagram_username`
-- `report_cache_key`
-- `metadata.source_component`
-- `metadata.billing`
-
-Current `/admin` already reads `lead_payments` by `lead_id` in these areas:
-
-- `/api/admin/leads-kanban` payment summary
-- `/api/admin/leads-funnel` checkout and paid conversion
-- `/api/admin/pre-revenue-signals` revenue signals
-- `/api/admin/overview-kpis` revenue metrics
-
-Admin gaps to report, not build in this task:
-
-- No dedicated payment-attempts table/list in the UI showing every pending/failed payment row.
-- Existing admin payment product labels still include legacy `report_single` / `pack_5` assumptions; the new rows are stored and aggregated, but exact product-label UI may need a follow-up pass.
-
-### 8. Tests to add/update
-
-Add focused tests around the new server helper:
-
-- Valid `lead_session` inserts a pending `lead_payments` row.
-- Missing `lead_session` does not insert and does not call EuPago.
-- Stale/invalid `lead_session` where lead does not exist does not insert.
-- Frontend-supplied `lead_id` is ignored; cookie lead id is inserted.
-- DB FK/raw insert error is not exposed to the returned error message.
-- `report_full_9` uses `amount_cents = 900` server-side.
-- `authority_diagnosis_97` still uses `9700` and remains unaffected.
-
-Keep existing provider-client tests for EuPago endpoint behavior unchanged.
-
-## Files likely to change
-
-- `src/lib/payments/eupago.functions.ts`
-- `src/lib/payments/eupago-checkout.server.ts` new server-only helper
-- `src/lib/leads/lead-session.functions.ts`
-- `src/lib/payments/__tests__/eupago-checkout-flow.test.ts` new focused tests
-
-Possibly changed only if useful for shared copy/constants:
-
-- `src/lib/payments/checkout-errors.ts`
-
-## Validation after implementation
-
-Run:
-
-```text
-bunx tsc --noEmit
-bunx vitest run src/lib/payments/__tests__/eupago-checkout-flow.test.ts src/lib/payments/__tests__/products.test.ts src/lib/payments/__tests__/eupago-checkout.test.ts
-```
+- `bunx tsc --noEmit`
+- Manual viewport check at 360/390/768/1440: no horizontal overflow, sticky summary collapses below `lg`, CTA always reachable, no oversized headings.
+- Confirm 97€ checkout still renders unchanged (same `CheckoutShell`).
 
 ## Risks
 
-- If old cookies point to deleted leads, users will need to return to the report/free flow to create a fresh lead session.
-- The current checkout UI is Portuguese-only, so the immediate visible error will be PT; EN copy can be wired when/if checkout localization is introduced.
-- Admin can aggregate linked payment rows today, but a dedicated payment-attempts view is still a follow-up if full operational visibility is required.
-
-## Ready for smoke test criteria
-
-After implementation, `/checkout/report-full` is ready for smoke test when:
-
-- final step creates exactly one pending `lead_payments` row for an existing lead
-- no FK error reaches the user
-- provider checkout URL is stored when EuPago succeeds
-- invalid/missing/stale sessions create no payment rows
-- no provider enrichment calls are triggered
+- Wider shell could subtly shift the 97€ route layout; mitigation: it already wraps its own content in `max-w-2xl`, so visually it remains identical.
+- Adding `report_priority` to the server schema is metadata-only (no pricing or webhook change).
