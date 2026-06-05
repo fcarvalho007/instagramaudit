@@ -79,11 +79,7 @@ export function PremiumInterestDialog({
     }).catch(() => {});
   };
 
-  const singleLabel = t("premium.dialog.single.title");
-  const singlePrice = t("premium.dialog.single.price");
-
   return (
-    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[860px]">
         <DialogHeader className="text-left">
@@ -211,14 +207,6 @@ export function PremiumInterestDialog({
         </div>
       </DialogContent>
     </Dialog>
-    <PricingInterestModal
-      open={interestOpen}
-      onOpenChange={setInterestOpen}
-      option={interestOption}
-      planLabel={singleLabel}
-      planPrice={singlePrice}
-    />
-    </>
   );
 }
 
