@@ -9,7 +9,7 @@ export function FinalCtaBand() {
   return (
     <section
       aria-labelledby="dark-final-title"
-      className="dark-spotlight relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20"
+      className="dark-spotlight relative overflow-hidden px-6 py-20 sm:px-10 sm:py-24"
     >
       <Reveal className="relative text-center">
         <h2

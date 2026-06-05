@@ -26,7 +26,7 @@ export function ReportPreviewBand() {
   return (
     <section
       aria-labelledby="dark-preview-title"
-      className="dark-hairline border-b px-6 pt-14 pb-0 sm:px-10 sm:pt-16"
+      className="dark-hairline border-b px-6 pt-16 pb-0 sm:px-10 sm:pt-20"
     >
       <Reveal>
         <div className="mx-auto max-w-xl text-center mb-8">
@@ -47,9 +47,9 @@ export function ReportPreviewBand() {
         </div>
 
         {/* Card + fade */}
-        <div className="relative mx-auto max-w-xl">
+        <div className="relative mx-auto max-w-xl group">
           <div
-            className="dark-preview-mask rounded-t-2xl border border-b-0 p-5 max-h-[360px] overflow-hidden"
+            className="dark-preview-mask rounded-t-2xl border border-b-0 p-5 max-h-[360px] overflow-hidden transition-all duration-300 ease-out group-hover:-translate-y-0.5 group-hover:border-[rgba(125,211,252,0.32)]"
             style={{
               backgroundColor: "rgb(var(--hero-bg-elevated))",
               borderColor: "rgba(var(--hero-cyan), 0.18)",
@@ -225,7 +225,7 @@ export function ReportPreviewBand() {
         </div>
 
         {/* Subhighlights */}
-        <div className="flex flex-wrap justify-center gap-x-10 gap-y-3 pt-6 pb-10">
+        <div className="flex flex-wrap justify-center gap-x-10 gap-y-3 pt-8 pb-12 sm:pb-14">
           {[
             { key: "data", title: t("dark.preview.sub.data.title"), hint: t("dark.preview.sub.data.hint") },
             { key: "benchmark", title: t("dark.preview.sub.benchmark.title"), hint: t("dark.preview.sub.benchmark.hint") },

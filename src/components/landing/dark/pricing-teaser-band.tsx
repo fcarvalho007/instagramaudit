@@ -103,7 +103,7 @@ export function PricingTeaserBand() {
   return (
     <section
       aria-labelledby="dark-pricing-title"
-      className="dark-hairline border-b px-6 py-14 sm:px-10 sm:py-16"
+      className="dark-hairline border-b px-6 py-16 sm:px-10 sm:py-20"
     >
       <Reveal>
         <div className="text-center mb-9">
