@@ -233,6 +233,7 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     wiredNote: "Disparado quando o lead submete um pedido beta no site público.",
     lifecycleStage: "captacao",
     statusBadges: ["ligado", "transaccional"],
+    lifecycleRole: "transactional",
     requiredVariables: ["firstName", "instagramHandle"],
     optionalVariables: [],
     wiring: {
@@ -259,15 +260,17 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
   },
   {
     key: "report_ready",
-    title: "Relatório pronto",
+    title: "Relatório pronto — envio manual / signed URL",
     internalName: "report_ready",
     category: "operacional",
-    shortDescription: "A análise do perfil já está disponível para consultares.",
+    shortDescription:
+      "Variante manual ou legacy-compatible. Não é o email principal do novo lifecycle.",
     wired: true,
     wiredAt: "src/routes/api/admin/send-report-link.ts",
     wiredNote: "Enviado pelo admin a partir do detalhe da lead (acção \"Enviar relatório\").",
     lifecycleStage: "entrega",
     statusBadges: ["ligado", "manual", "transaccional"],
+    lifecycleRole: "manual_fallback",
     requiredVariables: ["firstName", "instagramHandle", "reportUrl"],
     optionalVariables: [],
     wiring: {
@@ -306,6 +309,7 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     wiredNote: "Disparado pelo admin após o lead consultar o relatório.",
     lifecycleStage: "retencao",
     statusBadges: ["ligado", "manual"],
+    lifecycleRole: "manual_fallback",
     requiredVariables: ["firstName", "instagramHandle", "reportUrl", "feedbackUrl"],
     optionalVariables: ["reportViewed"],
     wiring: {
@@ -338,7 +342,7 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
   },
   {
     key: "personal_area_saved",
-    title: "Área pessoal guardada",
+    title: "Área pessoal guardada — planeado",
     internalName: "personal_area_saved",
     category: "conta",
     shortDescription: "Guardámos a análise na tua área pessoal.",
@@ -347,7 +351,8 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     wiredNote:
       "Função `sendPersonalAreaSavedEmail` existe mas sem trigger automático. Reservado para o fluxo de criação de conta (a ligar em handle_new_user / link_user_to_existing_reports).",
     lifecycleStage: "legado",
-    statusBadges: ["sem_trigger", "planeado"],
+    statusBadges: ["planeado", "sem_trigger"],
+    lifecycleRole: "planned",
     requiredVariables: ["firstName", "instagramHandle", "appUrl"],
     optionalVariables: [],
     fallbackBehaviour: "Sem trigger automático — reservado para o fluxo futuro de criação de conta.",
@@ -378,7 +383,7 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
   },
   {
     key: "welcome_beta",
-    title: "Boas-vindas à beta",
+    title: "Boas-vindas à beta — legado",
     internalName: "welcome_beta",
     category: "conta",
     shortDescription: "LEGACY — substituído por report_saved.",
@@ -388,6 +393,7 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
       "LEGACY — substituído por `report_saved` no lead-magnet-sequence (Step 3). Renderer e sender mantidos em disco para histórico de overrides e auditoria.",
     lifecycleStage: "legado",
     statusBadges: ["legado", "desactivado"],
+    lifecycleRole: "legacy",
     requiredVariables: ["firstName", "instagramHandle", "reportUrl"],
     optionalVariables: [],
     fallbackBehaviour: "Substituído por report_saved. Não dispara em produção.",
@@ -418,7 +424,7 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
   },
   {
     key: "report_summary",
-    title: "Resumo do relatório",
+    title: "Resumo do relatório — legado",
     internalName: "report_summary",
     category: "comercial",
     shortDescription: "LEGACY — substituído por report_saved.",
@@ -428,6 +434,7 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
       "LEGACY — substituído por `report_saved` no lead-magnet-sequence (Step 3). Renderer mantido para histórico de overrides e auditoria; sender deixou de ser chamado.",
     lifecycleStage: "legado",
     statusBadges: ["legado", "desactivado"],
+    lifecycleRole: "legacy",
     requiredVariables: ["firstName", "instagramHandle", "reportUrl"],
     optionalVariables: ["kpis", "topPost"],
     fallbackBehaviour: "Substituído por report_saved. Não dispara em produção.",
@@ -480,6 +487,7 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
       "Lifecycle: CONVERSÃO · Status: Manual · Trigger: admin action only (src/routes/api/admin/send-commercial-followup.ts). Continua a narrativa do relatório gratuito sem alterar preços nem URLs de checkout. Auto-trigger intencionalmente não activo nesta fase.",
     lifecycleStage: "conversao",
     statusBadges: ["ligado", "manual"],
+    lifecycleRole: "manual_fallback",
     requiredVariables: ["firstName", "instagramHandle", "reportUrl"],
     optionalVariables: ["checkoutUrl", "engagementVerdict", "gapArea"],
     fallbackBehaviour:
@@ -531,6 +539,7 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
       "Disparado fire-and-forget pelo webhook EuPago após o pagamento ser marcado como pago e o entitlement granted. Atrás do kill-switch PAYMENT_CONFIRMATION_EMAIL_ENABLED (default OFF). Idempotente por payment_id via product_events.payment_confirmation_email_sent.",
     lifecycleStage: "pagamento",
     statusBadges: ["ligado", "transaccional", "kill_switch_off"],
+    lifecycleRole: "transactional",
     requiredVariables: [
       "firstName",
       "instagramHandle",
@@ -581,13 +590,14 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     internalName: "report_saved",
     category: "conta",
     shortDescription:
-      "Confirma que o relatório foi guardado, mostra saldo de créditos e 3 insights.",
+      "Email principal automático após unlock. Substitui boas-vindas + resumo.",
     wired: true,
     wiredAt: "src/lib/email/lead-magnet-sequence.server.ts (após unlock)",
     wiredNote:
       "Disparado uma vez por unlock via `lead-magnet-sequence`. SUBSTITUI o par anterior `welcome_beta` + `report_summary`. Idempotente por (lead_id, report_request_id) — dedup honra também os eventos legacy. Kill-switch: LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED.",
     lifecycleStage: "entrega",
     statusBadges: ["ligado", "transaccional"],
+    lifecycleRole: "main_lifecycle",
     requiredVariables: [
       "firstName",
       "instagramHandle",
