@@ -277,7 +277,9 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
               completedLeads: null,
             }),
             failures: 0,
-            wired: FLOW_EVENTS.welcome_beta.instrumented,
+            wired: false,
+            stage: "99_legado",
+            lifecycleBadges: ["legado"],
           },
           {
             key: "pedido_recebido",
