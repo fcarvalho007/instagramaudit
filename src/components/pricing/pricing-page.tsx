@@ -5,7 +5,6 @@ import { ArrowRight, Briefcase, Check, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/tracking.functions";
-import { ReserveDiagnosisButton } from "@/components/payments/reserve-diagnosis-button";
 import { CouponInput } from "./coupon-input";
 import { PricingFAQ } from "./pricing-faq";
 
