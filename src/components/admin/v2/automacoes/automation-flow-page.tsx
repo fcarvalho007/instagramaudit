@@ -180,7 +180,7 @@ function KpiRow({ kpis }: { kpis: NonNullable<AutomationFlowResponse["kpis"]> })
     {
       label: "Enviados",
       value: kpis.sent.last30d,
-      headline: "últimos 30 dias",
+      headline: "30d",
       hint:
         kpis.sent.deltaVsYesterday >= 0
           ? `↑ ${kpis.sent.deltaVsYesterday} desde ontem`
@@ -204,7 +204,7 @@ function KpiRow({ kpis }: { kpis: NonNullable<AutomationFlowResponse["kpis"]> })
     {
       label: "Falhas",
       value: kpis.failures.last30d,
-      headline: "últimos 30 dias",
+      headline: "30d",
       hint:
         kpis.failures.deliverabilityPct != null
           ? `taxa de entrega ${kpis.failures.deliverabilityPct}%`
