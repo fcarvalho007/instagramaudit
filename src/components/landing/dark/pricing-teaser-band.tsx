@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
@@ -12,6 +11,8 @@ function Tier({
   cta,
   featured,
   badge,
+  href,
+  onClick,
 }: {
   label: string;
   price: string;
@@ -20,6 +21,8 @@ function Tier({
   cta: string;
   featured?: boolean;
   badge?: string;
+  href: string;
+  onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
 }) {
   return (
     <div
@@ -76,8 +79,9 @@ function Tier({
       >
         {unit}
       </div>
-      <Link
-        to="/precos"
+      <a
+        href={href}
+        onClick={onClick}
         className={cn(
           "block w-full text-center text-sm font-semibold py-2.5 rounded-lg transition-colors",
           featured ? "" : "border",
@@ -92,7 +96,7 @@ function Tier({
         }
       >
         {cta}
-      </Link>
+      </a>
     </div>
   );
 }
