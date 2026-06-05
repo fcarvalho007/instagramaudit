@@ -68,6 +68,15 @@ const inputSchema = z
         workshop: z.boolean(),
       })
       .optional(),
+    report_priority: z
+      .enum([
+        "content",
+        "frequency",
+        "formats",
+        "comparison",
+        "recommendations",
+      ])
+      .optional(),
     billing: z
       .object({
         name: z.string().trim().min(1).max(200),
@@ -189,6 +198,7 @@ export const createEupagoCheckout = createServerFn({ method: "POST" })
           original_amount_cents: appliedCoupon ? product.amountCents : null,
           qualification: data.qualification ?? null,
           upsell_interest: data.upsell_interest ?? null,
+          report_priority: data.report_priority ?? null,
           billing: data.billing ?? null,
         } as never,
       })
