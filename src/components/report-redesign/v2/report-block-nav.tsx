@@ -1004,7 +1004,7 @@ function SidebarList({
   sampleSize = 0,
   observedDays = 0,
   competitorCount = 0,
-  competitorMax = 3,
+  competitorMax = 2,
   compact = false,
   primaryHandle,
   existingCompetitors = [],
