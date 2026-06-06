@@ -77,3 +77,48 @@ export const ALL_ENRICHMENT_TYPES: EnrichmentType[] = [
   "visual_cover",
   "caption_semantic",
 ];
+
+/**
+ * Enrichments needed for the **Free / Public** report path.
+ *
+ * The current Free shell (`report-shell-v2.tsx` with
+ * `mode="free_with_engagement"`) renders only:
+ *   - Hero (Apify-derived)
+ *   - Engagement card (deterministic)
+ *   - 5 static `PremiumTeaserCard`s
+ *
+ * Nothing in that path reads `ai_insights_v1`, `ai_insights_v2`,
+ * DataForSEO, visual covers or caption semantics. We therefore skip
+ * every AI/DFS enrichment until the user upgrades to Pro.
+ */
+export const FREE_ENRICHMENT_TYPES: EnrichmentType[] = [];
+
+/**
+ * Enrichments needed once a lead unlocks Pro (post-purchase).
+ * These are enqueued against the existing snapshot when an entitlement
+ * is granted (see `enqueuePaidEnrichments`). The runner itself is
+ * idempotent: it short-circuits when the relevant payload key is
+ * already present.
+ */
+export const PAID_ENRICHMENT_TYPES: EnrichmentType[] = [
+  "dataforseo",
+  "insights_v1",
+  "insights_v2",
+  "visual_cover",
+  "caption_semantic",
+];
+
+/**
+ * Build the initial `enrichment_status` map for a Free snapshot:
+ * Paid enrichments are pre-marked as `skipped` so admin diagnostics
+ * (analysis-cost-breakdown, execution-mode) reflect reality. Comments
+ * stay `pending` because they are gated separately by
+ * `COMMENT_SCRAPER_ENABLED`.
+ */
+export function buildFreeEnrichmentStatus(): EnrichmentStatusMap {
+  const status = buildInitialEnrichmentStatus();
+  for (const t of PAID_ENRICHMENT_TYPES) {
+    status[t] = "skipped";
+  }
+  return status;
+}
