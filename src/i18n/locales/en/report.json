@@ -580,6 +580,9 @@
       "badge_free": "Free",
       "badge_premium": "Premium",
       "available_now": "Available now",
+      "section_free": "Free reading",
+      "section_premium": "Full report",
+      "section_paid": "Sections",
       "progress": "{{accessible}} of {{total}} sections accessible",
       "premium_count": "{{count}} locked",
       "cta": "Unlock full report",
@@ -605,6 +608,7 @@
       "title": "Explore",
       "period_label": "Analysis period",
       "period_observed": "{{days}} days observed",
+      "period_sample": "{{count}} posts",
       "competitors_label": "Competitors",
       "add_competitor": "Add competitor",
       "add_competitor_aria": "Add competitor for comparison",
@@ -614,13 +618,15 @@
     },
     "status": {
       "unlocked_title": "Full report",
-      "unlocked_subtitle": "{{count}} sections unlocked"
+      "unlocked_subtitle": "{{count}} sections unlocked",
+      "header_paid": "Full report · {{count}} sections"
     },
     "unlock": {
       "eyebrow": "Unlock",
       "title": "Unlock the full report",
       "cta_full": "Unlock · {{price}}",
       "cta_compact": "Unlock · {{price}}",
+      "subcopy": "Unlock the {{count}} premium sections, time filters and competitor comparison.",
       "benefits": {
         "sections": "{{count}} premium sections",
         "periods": "Period filters",

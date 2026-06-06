@@ -23,7 +23,6 @@ import { scrollToBlock, useActiveBlock } from "./use-active-block";
 import { useReportTracking } from "./report-tracking-context";
 import { usePremiumCta } from "./premium-cta-context";
 import { trackEvent } from "@/lib/tracking.functions";
-import { PUBLIC_PRODUCTS } from "@/lib/payments/products";
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -211,7 +210,13 @@ function ProfileAvatar({
   );
 }
 
-function ProfileHeader({ profiles }: { profiles: SidebarProfile[] }) {
+function ProfileHeader({
+  profiles,
+  paidStatus,
+}: {
+  profiles: SidebarProfile[];
+  paidStatus?: { totalSections: number } | null;
+}) {
   const { t } = useTranslation("report");
   if (profiles.length === 0) return null;
   const isMulti = profiles.length > 1;
@@ -221,29 +226,37 @@ function ProfileHeader({ profiles }: { profiles: SidebarProfile[] }) {
   const primary = profiles[0];
   const primaryHandle = formatHandle(primary.handle);
   return (
-    <div className="flex items-center gap-3 px-1 pb-3 mb-3 border-b border-border-default/60">
-      {!isMulti && <ProfileAvatar profile={primary} />}
-      <div className="min-w-0 flex-1">
-        <p className="text-eyebrow-sm text-content-tertiary mb-1">{eyebrow}</p>
-        {isMulti ? (
-          <div className="flex items-center">
-            {profiles.map((p) => (
-              <span
-                key={p.handle}
-                title={formatHandle(p.handle)}
-                aria-label={formatHandle(p.handle)}
-                className="-ml-2 first:ml-0 inline-flex"
-              >
-                <ProfileAvatar profile={p} size="sm" ringOffset={false} />
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="truncate text-base font-semibold text-content-primary">
-            {primaryHandle}
-          </p>
-        )}
+    <div className="px-1 pb-3 mb-3 border-b border-border-default/60">
+      <div className="flex items-center gap-3">
+        {!isMulti && <ProfileAvatar profile={primary} />}
+        <div className="min-w-0 flex-1">
+          <p className="text-eyebrow-sm text-content-tertiary mb-1">{eyebrow}</p>
+          {isMulti ? (
+            <div className="flex items-center">
+              {profiles.map((p) => (
+                <span
+                  key={p.handle}
+                  title={formatHandle(p.handle)}
+                  aria-label={formatHandle(p.handle)}
+                  className="-ml-2 first:ml-0 inline-flex"
+                >
+                  <ProfileAvatar profile={p} size="sm" ringOffset={false} />
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="truncate text-base font-semibold text-content-primary">
+              {primaryHandle}
+            </p>
+          )}
+        </div>
       </div>
+      {paidStatus ? (
+        <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+          <CheckCircle2 className="size-3.5" aria-hidden="true" />
+          {t("nav.status.header_paid", { count: paidStatus.totalSections })}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -278,10 +291,12 @@ function ItemRow({
   item,
   isActive,
   onClick,
+  showBadge = true,
 }: {
   item: SidebarItem;
   isActive: boolean;
   onClick: () => void;
+  showBadge?: boolean;
 }) {
   const { t } = useTranslation("report");
   const isFree = item.accessBadge === "free";
@@ -331,14 +346,16 @@ function ItemRow({
       >
         {item.block.shortLabel}
       </span>
-      <span
-        className={cn(
-          "ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.06em] ring-1",
-          badgeClass,
-        )}
-      >
-        {badgeLabel}
-      </span>
+      {showBadge ? (
+        <span
+          className={cn(
+            "ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.06em] ring-1",
+            badgeClass,
+          )}
+        >
+          {badgeLabel}
+        </span>
+      ) : null}
     </button>
   );
 }
@@ -378,7 +395,7 @@ function LockedItemRow({
   );
 }
 
-const PREMIUM_WINDOWS = [30, 60, 90, 365] as const;
+const PREMIUM_WINDOWS = [30, 90] as const;
 
 function ExploreSection({
   premiumUnlocked,
@@ -423,7 +440,9 @@ function ExploreSection({
           <span className="text-xs font-semibold text-content-secondary">
             {t("nav.explore.period_label")}
           </span>
-          {observedDays > 0 ? (
+          {!premiumUnlocked ? (
+            <Lock className="size-3 text-content-tertiary" aria-hidden="true" />
+          ) : observedDays > 0 ? (
             <span className="text-[11px] text-content-tertiary tabular-nums">
               {t("nav.explore.period_observed", { days: observedDays })}
             </span>
@@ -438,7 +457,9 @@ function ExploreSection({
             aria-current="true"
           >
             <Check className="size-3" strokeWidth={3} aria-hidden="true" />
-            {sampleSize > 0 ? sampleSize : "—"}
+            {sampleSize > 0
+              ? t("nav.explore.period_sample", { count: sampleSize })
+              : "—"}
           </span>
           {PREMIUM_WINDOWS.map((days) => (
             <button
@@ -451,7 +472,7 @@ function ExploreSection({
                 "border border-border-default text-[11px] font-medium",
                 "transition-colors duration-150",
                 premiumUnlocked
-                  ? "bg-white text-content-secondary hover:border-border-strong hover:text-content-primary cursor-default"
+                  ? "bg-white text-content-secondary hover:border-border-strong hover:text-content-primary cursor-pointer"
                   : "bg-surface-muted text-content-tertiary hover:bg-surface-base hover:border-border-strong hover:text-content-secondary",
               )}
               title={!premiumUnlocked ? t("nav.explore.period_locked_hint") : undefined}
@@ -459,7 +480,7 @@ function ExploreSection({
               {!premiumUnlocked && (
                 <Lock className="size-2.5" aria-hidden="true" />
               )}
-              {days === 365 ? "12m" : `${days}d`}
+              {`${days}d`}
             </button>
           ))}
         </div>
@@ -467,19 +488,6 @@ function ExploreSection({
 
       {/* Competitors */}
       <div className="px-2 space-y-1.5">
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="text-xs font-semibold text-content-secondary">
-            {t("nav.explore.competitors_label")}
-          </span>
-          {premiumUnlocked ? (
-            <span className="text-[11px] text-content-tertiary tabular-nums">
-              {t("nav.explore.competitors_count", {
-                count: competitorCount,
-                max: competitorMax,
-              })}
-            </span>
-          ) : null}
-        </div>
         <button
           type="button"
           onClick={onAddCompetitor}
@@ -501,6 +509,14 @@ function ExploreSection({
           )}
           <span>{t("nav.explore.add_competitor")}</span>
         </button>
+        {premiumUnlocked ? (
+          <p className="text-[11px] text-content-tertiary tabular-nums">
+            {t("nav.explore.competitors_count", {
+              count: competitorCount,
+              max: competitorMax,
+            })}
+          </p>
+        ) : null}
       </div>
     </section>
   );
@@ -514,31 +530,8 @@ function UnlockPromoCard({
   onOpenDialog: () => void;
 }) {
   const { t } = useTranslation("report");
-  const priceLabel = PUBLIC_PRODUCTS.report_full_9.priceLabel;
   return (
-    <div className="rounded-lg border border-border-default bg-surface-muted/40 p-3 space-y-3">
-      <div>
-        <p className="text-eyebrow-sm text-content-tertiary">
-          {t("nav.unlock.eyebrow")}
-        </p>
-        <p className="mt-0.5 text-sm font-semibold text-content-primary">
-          {t("nav.unlock.title")}
-        </p>
-      </div>
-      <ul className="space-y-1.5 text-xs text-content-secondary">
-        <li className="flex items-center gap-2">
-          <Check className="size-3.5 text-[rgb(var(--accent-primary))] shrink-0" aria-hidden="true" />
-          <span>{t("nav.unlock.benefits.sections", { count: premiumCount })}</span>
-        </li>
-        <li className="flex items-center gap-2">
-          <Check className="size-3.5 text-[rgb(var(--accent-primary))] shrink-0" aria-hidden="true" />
-          <span>{t("nav.unlock.benefits.periods")}</span>
-        </li>
-        <li className="flex items-center gap-2">
-          <Check className="size-3.5 text-[rgb(var(--accent-primary))] shrink-0" aria-hidden="true" />
-          <span>{t("nav.unlock.benefits.competitors")}</span>
-        </li>
-      </ul>
+    <div className="rounded-lg border border-border-default bg-surface-muted/40 p-3 space-y-2.5">
       <button
         type="button"
         onClick={onOpenDialog}
@@ -550,34 +543,12 @@ function UnlockPromoCard({
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-primary))] focus-visible:ring-offset-1",
         )}
       >
-        {t("nav.unlock.cta_full", { price: priceLabel })}
+        {t("nav.access.cta")}
         <ArrowRight className="size-3.5" aria-hidden="true" />
       </button>
       <p className="text-center text-[11px] leading-relaxed text-content-tertiary">
-        {t("nav.unlock.trust")}
+        {t("nav.unlock.subcopy", { count: premiumCount })}
       </p>
-    </div>
-  );
-}
-
-function UnlockedStatusCard({ totalSections }: { totalSections: number }) {
-  const { t } = useTranslation("report");
-  return (
-    <div className="rounded-lg border border-border-default bg-white p-3 flex items-center gap-3">
-      <span
-        aria-hidden="true"
-        className="inline-flex size-9 items-center justify-center rounded-full bg-emerald-50 text-emerald-600"
-      >
-        <CheckCircle2 className="size-5" />
-      </span>
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-content-primary">
-          {t("nav.status.unlocked_title")}
-        </p>
-        <p className="text-xs text-content-secondary mt-0.5">
-          {t("nav.status.unlocked_subtitle", { count: totalSections })}
-        </p>
-      </div>
     </div>
   );
 }
@@ -661,47 +632,67 @@ function SidebarList({
 
   return (
     <div className="space-y-4">
-      <ProgressSummary items={items} />
+      {!premiumUnlocked && <ProgressSummary items={items} />}
 
-      <section className="space-y-1">
-        <p className="px-2 text-eyebrow-sm text-content-tertiary">
-          {premiumUnlocked
-            ? t("nav.access.available_now")
-            : t("nav.access.available_now")}
-        </p>
-        <ul className="space-y-0.5">
-          {incluidos.map((item) => (
-            <li key={item.block.id}>
-              <ItemRow
-                item={item}
-                isActive={item.block.id === active}
-                onClick={() => onAccessibleClick(item.block.id)}
-              />
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {premium.length > 0 && (
+      {premiumUnlocked ? (
         <section className="space-y-1">
           <p className="px-2 text-eyebrow-sm text-content-tertiary">
-            {t("nav.premium")}
+            {t("nav.access.section_paid")}
           </p>
           <ul className="space-y-0.5">
-            {premium.map((item) => (
+            {items.map((item) => (
               <li key={item.block.id}>
-                <LockedItemRow
+                <ItemRow
                   item={item}
-                  onClick={() =>
-                    handlePremiumAccessClick("sidebar_section", {
-                      section: item.block.id,
-                    })
-                  }
+                  isActive={item.block.id === active}
+                  onClick={() => onAccessibleClick(item.block.id)}
+                  showBadge={false}
                 />
               </li>
             ))}
           </ul>
         </section>
+      ) : (
+        <>
+          <section className="space-y-1">
+            <p className="px-2 text-eyebrow-sm text-content-tertiary">
+              {t("nav.access.section_free")}
+            </p>
+            <ul className="space-y-0.5">
+              {incluidos.map((item) => (
+                <li key={item.block.id}>
+                  <ItemRow
+                    item={item}
+                    isActive={item.block.id === active}
+                    onClick={() => onAccessibleClick(item.block.id)}
+                  />
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          {premium.length > 0 && (
+            <section className="space-y-1">
+              <p className="px-2 text-eyebrow-sm text-content-tertiary">
+                {t("nav.access.section_premium")}
+              </p>
+              <ul className="space-y-0.5">
+                {premium.map((item) => (
+                  <li key={item.block.id}>
+                    <LockedItemRow
+                      item={item}
+                      onClick={() =>
+                        handlePremiumAccessClick("sidebar_section", {
+                          section: item.block.id,
+                        })
+                      }
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </>
       )}
 
       <ExploreSection
@@ -712,12 +703,12 @@ function SidebarList({
         competitorMax={competitorMax}
       />
 
-      {premiumUnlocked ? (
-        <UnlockedStatusCard totalSections={items.length} />
-      ) : unlocked ? (
-        <UnlockPromoCard premiumCount={premium.length} onOpenDialog={openDialog} />
-      ) : (
-        <UnlockPromoCard premiumCount={premium.length} onOpenDialog={focusLeadMagnet} />
+      {!premiumUnlocked && (
+        unlocked ? (
+          <UnlockPromoCard premiumCount={premium.length} onOpenDialog={openDialog} />
+        ) : (
+          <UnlockPromoCard premiumCount={premium.length} onOpenDialog={focusLeadMagnet} />
+        )
       )}
     </div>
   );
@@ -753,6 +744,10 @@ export function ReportBlockSidebar({
   );
   const accessibleIds = items.filter((i) => i.access !== "locked").map((i) => i.block.id);
   const active = useActiveBlock(accessibleIds);
+  const isCommercial = variant !== "internal_lab";
+  const paidStatus = isCommercial && premiumUnlocked
+    ? { totalSections: items.length }
+    : null;
 
   return (
     <nav
@@ -768,7 +763,7 @@ export function ReportBlockSidebar({
         "p-4 xl:p-5",
       )}
     >
-      <ProfileHeader profiles={profileList} />
+      <ProfileHeader profiles={profileList} paidStatus={paidStatus} />
       <div className="mb-2 flex justify-end">
         <VariantBadge variant={variant} />
       </div>
@@ -821,6 +816,10 @@ export function ReportBlockTopTabs({
   const accessibleIds = accessible.map((i) => i.block.id);
   const active = useActiveBlock(accessibleIds);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const isCommercial = variant !== "internal_lab";
+  const paidStatus = isCommercial && premiumUnlocked
+    ? { totalSections: items.length }
+    : null;
 
   const activeIndex = useMemo(
     () => Math.max(0, accessible.findIndex((i) => i.block.id === active)),
@@ -931,7 +930,7 @@ export function ReportBlockTopTabs({
               </SheetTitle>
             </SheetHeader>
             <div className="mt-3">
-              <ProfileHeader profiles={profileList} />
+              <ProfileHeader profiles={profileList} paidStatus={paidStatus} />
               <div className="mb-2 flex justify-end">
                 <VariantBadge variant={variant} />
               </div>
