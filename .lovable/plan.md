@@ -1,61 +1,94 @@
-## Plan: Fix Add Competitor UX Limit in Paid/Pro Sidebar
+## Plan: "Preparing analysis" placeholders for pending paid AI enrichments
 
-### Problem
-The paid sidebar shows "X de 2" competitors but the **Add Competitor button is never disabled** when the limit is reached. If a user enters a 3rd valid handle, the client silently truncates the list via `.slice(0, 2)`, may show a success toast, and updates the URL with the unchanged list — creating confusing UX.
+Show calm, editorial placeholders for the Pro report cards that depend on AI enrichments while the corresponding job is still `pending`/`running`. Read state from `normalized_payload.enrichment_status` already persisted by the backend — no provider, scheduling, billing, credit or schema changes.
 
-### Changes
+### Status read
 
-#### 1. `src/components/report-redesign/v2/report-block-nav.tsx`
+Add a tiny helper module:
 
-**ExploreSection component:**
+- `src/components/report-redesign/v2/enrichment-pending.ts`
+  - `getEnrichmentState(payload, type) → 'ready' | 'pending' | 'error' | 'skipped_free'`
+  - Treats `pending` and `running` as `pending`.
+  - Treats `skipped` / `disabled` as `ready` (degrade silently — current behaviour).
 
-- Introduce a local constant `COMPETITOR_MAX = 2` at component scope (with a TODO comment for later centralisation).
-- Replace all hard-coded `2` references in competitor logic with `COMPETITOR_MAX`.
-- In `onAddCompetitor`: when `premiumUnlocked`, guard with `if (competitorCount >= COMPETITOR_MAX) return;` — do **not** open the `ConsumeCreditDialog` when at max.
-- In `onConfirmConsume` (competitor branch): add an early guard `if (existingCompetitors.length >= COMPETITOR_MAX)` that sets an error message and returns — no fetch, no credit consumed.
-- Remove/replace the silent truncation `const competitorList = [...existingCompetitors, newHandle].slice(0, 2);` with explicit `const competitorList = [...existingCompetitors, newHandle];` since the guard above prevents overflow.
-- In the **expanded** competitor button (line ~886): pass `disabled={competitorCount >= COMPETITOR_MAX}` to the `<button>`, change styling to reflect disabled state (muted border, no hover, cursor-not-allowed), and render a subtle hint below the button when at max:  
-  _"Limite de 2 concorrentes atingido. Remove um concorrente para adicionar outro."_
-- In the **compact** competitor button (line ~789): apply the same disabled state + styling when at max.
+### New placeholder component
 
-#### 2. `src/components/report-redesign/v2/consume-credit-dialog.tsx`
+- `src/components/report-redesign/v2/enrichment-placeholder-card.tsx`
+  - Editorial card: hairline border, `bg-surface-secondary`, small `Sparkles` icon in a soft circle, eyebrow, title, body. No spinner.
+  - Variants:
+    - `pending` → Sparkles + neutral eyebrow `"Análise em curso"`.
+    - `error` → AlertTriangle + muted body with the calm fallback copy.
+  - Accepts `eyebrow`, `title`, `body`, optional `className` for `md:col-span-2` parity with the real cards.
 
-**Defensive dialog-level guard:**
+### Diagnostic block wiring
 
-- Accept a new optional prop: `competitorMax?: number`.
-- When `isCompetitor && existingCompetitors.length >= (competitorMax ?? 2)`, render a non-dismissible alert at the top of the dialog body:  
-  _"Limite de 2 concorrentes atingido."_  
-  Disable the confirm button, hide the input, and swap the CTA for a "Fechar" / "Close" ghost button.
+`src/components/report-redesign/v2/report-diagnostic-block.tsx`:
 
-This is a safety net in case the dialog is ever opened programmatically despite the sidebar guard.
+For the Pro / commercial branch (the `if (!isLab)` block) and the Lab branch:
 
-#### 3. i18n strings
+- Compute `coverState = getEnrichmentState(payload, 'visual_cover')` and `captionState = getEnrichmentState(payload, 'caption_semantic')`.
+- Replace `<VisualCoverAnalysisCard …/>` with:
+  - `coverState === 'pending'` → placeholder (`title: "A preparar análise das capas…"`, body: `"Estamos a avaliar clareza visual, consistência e leitura em 1 segundo."`).
+  - `coverState === 'error'` and `parseVisualCoverAnalysis(payload) === null` → error fallback placeholder.
+  - else → existing card.
+- Replace `<CaptionDiagnosticsCard …/>` with:
+  - `captionState === 'pending'` and `parseCaptionSemanticAnalysis(payload) === null` → placeholder (`"A preparar leitura das legendas…"`, `"Estamos a analisar padrões de linguagem, temas e chamadas à acção."`).
+  - `captionState === 'error'` and no semantic data → error fallback placeholder (still keep deterministic caption intel card visible? → No, replace whole card to avoid mixed signals).
+  - else → existing card (which already falls back to deterministic data on its own).
 
-Add to both `src/i18n/locales/pt/report.json` and `src/i18n/locales/en/report.json` under `nav.explore`:
+`insights_v2`:
+- Compute `insightsState = getEnrichmentState(payload, 'insights_v2')`.
+- When `insightsState === 'pending'` AND `result.enriched.aiInsightsV2 == null`: render a single placeholder ABOVE `<ReportDiagnosticPriorities …/>` (`"A preparar síntese editorial…"`, `"As recomendações finais ficam disponíveis assim que a análise terminar."`).
+- When `insightsState === 'error'` AND `aiInsightsV2 == null`: render the calm error placeholder instead.
+- Deterministic priorities (`derivePriorities`) still render below — they were already the fallback and stay valuable.
 
-**PT:**
-- `"competitor_limit_reached": "Limite de 2 concorrentes atingido."`
-- `"competitor_limit_hint": "Remove um concorrente para adicionar outro."`
-- `"competitor_limit_dialog_body": "Já atingiste o máximo de 2 concorrentes."`
+### Variant scoping
 
-**EN:**
-- `"competitor_limit_reached": "2 competitor limit reached."`
-- `"competitor_limit_hint": "Remove one competitor to add another."`
-- `"competitor_limit_dialog_body": "You have already reached the maximum of 2 competitors."`
+All placeholders gated by `variant !== 'public_mvp'` (i.e. `pro_preview` and `internal_lab`). Free teasers stay 100% untouched. Implementation note: the Free render path never hits this code (the Free shell renders `PremiumTeaserCard`s, not `ReportDiagnosticBlock`), but we add an explicit `variant === 'public_mvp' ? null : ...` guard for safety.
 
-### What does NOT change
-- Pricing, checkout, EuPago
-- Entitlement / credit grant logic
-- Backend credit reserve/confirm/release (`credits.server.ts`, `analyze-public-v1.ts`)
-- Report generation, calculations, schema
-- Apify scraping logic
-- Free-user flow (still opens pricing modal)
+### Auto-refresh on success
 
-### Validation checklist
-1. Paid user with 0 competitors → button enabled, dialog opens, credit consumed on success.
-2. Paid user with 1 competitor → same as above.
-3. Paid user with 2 competitors → button disabled, no dialog opens, no credit consumed, no success toast.
-4. Compact sidebar at 2/2 → same disabled state.
-5. Free user → button still opens pricing/unlock modal.
-6. Dialog defensive guard: if opened at max, shows limit message and blocks submission.
-7. No `.slice(0, 2)` silent truncation remains in any success path.
+No new polling. When the user refreshes the page (or the existing snapshot refresh path runs), the loader re-reads `normalized_payload` — placeholders disappear automatically once `enrichment_status[type] === 'success'` and the corresponding payload key is present. No state changes needed in this PR.
+
+### i18n
+
+Add under `report.json` (PT + EN) namespace `pending`:
+
+PT:
+- `cover.title`: "A preparar análise das capas…"
+- `cover.body`: "Estamos a avaliar clareza visual, consistência e leitura em 1 segundo."
+- `caption.title`: "A preparar leitura das legendas…"
+- `caption.body`: "Estamos a analisar padrões de linguagem, temas e chamadas à acção."
+- `insights.title`: "A preparar síntese editorial…"
+- `insights.body`: "As recomendações finais ficam disponíveis assim que a análise terminar."
+- `error.body`: "Não foi possível concluir esta leitura automática. O restante relatório continua disponível."
+- `eyebrow_pending`: "Análise em curso"
+- `eyebrow_error`: "Leitura indisponível"
+
+EN equivalents.
+
+### Out of scope (explicitly NOT changed)
+
+- Provider calls (Apify, OpenAI, DataForSEO)
+- Enrichment scheduling / enqueue / runner
+- Pricing, checkout, EuPago, entitlements, credit reserve/confirm/release
+- Report calculations and snapshot schema
+
+### Files changed (planned)
+
+- ADD `src/components/report-redesign/v2/enrichment-pending.ts`
+- ADD `src/components/report-redesign/v2/enrichment-placeholder-card.tsx`
+- EDIT `src/components/report-redesign/v2/report-diagnostic-block.tsx`
+- EDIT `src/i18n/locales/pt/report.json`
+- EDIT `src/i18n/locales/en/report.json`
+
+### Manual validation checklist
+
+1. Pro snapshot with `enrichment_status.visual_cover = 'pending'` and no `visual_cover_analysis` → Capas card shows pending placeholder.
+2. Pro snapshot with `caption_semantic = 'pending'` and no `caption_semantic_analysis` → Legendas card shows pending placeholder.
+3. Pro snapshot with `insights_v2 = 'pending'` and no `ai_insights_v2` → pending placeholder appears before deterministic priorities.
+4. Pro snapshot with all three `success` and payloads present → real cards render, no placeholders.
+5. Pro snapshot with any of the three `error` and no payload → calm error placeholder shown.
+6. Free report (`public_mvp` variant) → no placeholders, teasers unchanged.
+7. Internal Lab snapshot with pending states → placeholders also shown (verifies parity).
+8. After a refresh that completes enrichment → placeholders disappear automatically.
