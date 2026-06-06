@@ -480,12 +480,14 @@ function ExploreSection({
   observedDays,
   competitorCount,
   competitorMax,
+  compact = false,
 }: {
   premiumUnlocked: boolean;
   sampleSize: number;
   observedDays: number;
   competitorCount: number;
   competitorMax: number;
+  compact?: boolean;
 }) {
   const { t } = useTranslation("report");
   const { handlePremiumAccessClick } = usePremiumCta();
@@ -504,6 +506,51 @@ function ExploreSection({
     }
     handlePremiumAccessClick("sidebar_add_competitor");
   };
+
+  // Compact layout: render "Período" and "Concorrente" as two small
+  // buttons side-by-side. Period button opens the modal (free) or is a
+  // UI-only placeholder (paid, same behaviour as the expanded chips).
+  if (compact) {
+    const onPeriodCompact = () => {
+      if (!premiumUnlocked) handlePremiumAccessClick("sidebar_period");
+    };
+    return (
+      <section className="grid grid-cols-2 gap-1.5 px-1">
+        <button
+          type="button"
+          onClick={onPeriodCompact}
+          aria-label={t("nav.explore.period_label")}
+          className={cn(
+            "inline-flex items-center justify-center gap-1.5 h-8 rounded-md border text-[11px] font-medium transition-colors",
+            "border-border-default bg-white text-content-secondary",
+            "hover:border-border-strong hover:text-content-primary",
+          )}
+        >
+          <Calendar className="size-3" aria-hidden="true" />
+          <span>{t("nav.explore.period_label")}</span>
+          {!premiumUnlocked && (
+            <Lock className="size-2.5 text-content-tertiary" aria-hidden="true" />
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={onAddCompetitor}
+          aria-label={t("nav.explore.add_competitor_aria")}
+          className={cn(
+            "inline-flex items-center justify-center gap-1.5 h-8 rounded-md border text-[11px] font-medium transition-colors",
+            "border-border-default bg-white text-content-secondary",
+            "hover:border-border-strong hover:text-content-primary",
+          )}
+        >
+          <UserPlus className="size-3" aria-hidden="true" />
+          <span>{t("nav.explore.add_competitor_short", { defaultValue: "Concorrente" })}</span>
+          {!premiumUnlocked && (
+            <Lock className="size-2.5 text-content-tertiary" aria-hidden="true" />
+          )}
+        </button>
+      </section>
+    );
+  }
 
   return (
     <section className="space-y-3">
