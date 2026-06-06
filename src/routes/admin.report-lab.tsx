@@ -441,6 +441,8 @@ function ReportLabPage() {
               payload={load.payload}
               analyzedAtIso={load.createdAt}
               variant={variant}
+              premiumUnlocked={variant !== "public_mvp"}
+              unlocked={variant !== "public_mvp"}
               actions={{}}
             />
           </ReportThemeWrapper>
