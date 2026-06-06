@@ -1,90 +1,67 @@
+# Free/Public OpenAI Dependency Audit
 
-# Free/Public Report — Real Dependency Audit
+## TL;DR
 
-## 1. Current Free visible section map
+Free/Public (mode `free_with_engagement`, used when `lockBoundary === "engagement" && !premiumUnlocked`) renders **MethodologyLine + EngagementCardRefined + 5 PremiumTeaserCard**. It does **NOT** render `EditorialIdentityCard`. The earlier QA note conflated the `free` mode (used elsewhere) with the live `free_with_engagement` mode (used in production for public reports).
 
-In `report-shell-v2.tsx` with `lockBoundary === "engagement" && !premiumUnlocked` (the public/lead-captured flow), the body that actually renders is:
+**Free needs Apify only. No OpenAI, no DataForSEO, no visual_cover, no caption_semantic.**
 
-```text
-Hero v2 (ReportHeroV2)                              ← always
-└─ ReportBlockTopTabs / ReportBlockSidebar          ← always (nav UI)
-01 · Visão geral (ReportBlockSection)
-   └─ ReportOverviewBlock mode="free_with_engagement"
-        ├─ MethodologyLine                          ← deterministic
-        ├─ EngagementCardRefined  (id="engagement") ← deterministic
-        └─ 5 × PremiumTeaserCard                    ← static teaser UI
-              03 Frequência / 04 Formatos / 05 Publicações-chave /
-              06 Diagnóstico (com 7 sub-itens) / 07 Prioridades
-02 · Diagnóstico  → gated by `premiumUnlocked` → NOT rendered
-03..06             → gated by `premiumUnlocked` → NOT rendered
-ReportEndOfFreeBlock + EndFeedbackStrip             ← CTA, static
-ReportMethodology                                   ← static informational
-StickyUnlockBar                                     ← static CTA
-```
+## 1. Current Free Visible Component Map
 
-Note: `EditorialIdentityCard` (which would use `aiInsightsV2.editorialVerdict`) is **only** rendered when `mode === "all" | "free"` — it is **not** rendered in `free_with_engagement` (the live Free path). All five teaser sections render via `PremiumTeaserCard`, which has zero data dependencies.
+Source: `src/components/report-redesign/v2/report-shell-v2.tsx` (lines 233–253) → `ReportOverviewBlock mode="free_with_engagement"` (src/components/report-redesign/v2/report-overview-block.tsx lines 252–280).
 
-## 2. Free component dependency table
+Rendered for Free public:
+- `MethodologyLine` (transparency line: sample size, days, exclusions)
+- `EngagementCardRefined` (id="engagement")
+- 5 × `PremiumTeaserCard` (static locked teasers for blocks 03–07)
+- `ReportHeroV2` (hero, from shell)
+- Sidebar / TopTabs nav
 
-| Component (Free path)        | Apify | DataForSEO | OpenAI v1 | OpenAI v2 | Visual cover | Caption semantic |
-| ---------------------------- | :---: | :--------: | :-------: | :-------: | :----------: | :--------------: |
-| ReportHeroV2                 |  yes  |     no     |    no     |    no     |      no      |       no         |
-| EngagementCardRefined        |  yes  |     no     |    no     |    no     |      no      |       no         |
-| MethodologyLine              |  yes  |     no     |    no     |    no     |      no      |       no         |
-| PremiumTeaserCard × 5 (03–07)|  no   |     no     |    no     |    no     |      no      |       no         |
-| ReportEndOfFreeBlock / Sticky|  no   |     no     |    no     |    no     |      no      |       no         |
-| ReportMethodology            |  no   |     no     |    no     |    no     |      no      |       no         |
+**Not rendered in Free public:**
+- `EditorialIdentityCard` (only in modes `"all"` / `"free"`, which the live path does not use)
+- Blocks 02–06 main bodies (guarded by `premiumUnlocked`)
+- `ReportDiagnosticBlock`, `ReportTemporalChart`, `ReportThemesFeature`, `ReportCommentIntelligence`, `VisualCoverAnalysisCard`, `CaptionDiagnosticsCard`, `ReportDiagnosticPriorities` — all premium-only
 
-The only `renderInsight(...)` call sites (`evolutionChart`, `heatmap`, `daysOfWeek`, `formats`, `language`, `marketSignals`, `benchmark`, `topPosts`) live inside premium-only blocks (02–06). In `free_with_engagement` the overview block never calls `renderInsight`.
+## 2. Dependency Table by Visible Free Component
 
-## 3. Is `insights_v1` still required for Free?
+| Component | Apify | insights_v1 | insights_v2 | DataForSEO | visual_cover | caption_semantic |
+|---|---|---|---|---|---|---|
+| `ReportHeroV2` | yes (profile + posts) | no | no | no | no | no |
+| `MethodologyLine` | yes (count/days/exclusions) | no | no | no | no | no |
+| `EngagementCardRefined` | yes (engagement, benchmark) | no | no | no | no | no |
+| `PremiumTeaserCard` (×5) | no (static copy) | no | no | no | no | no |
+| Sidebar / TopTabs | no | no | no | no | no | no |
 
-**No.** Nothing rendered in the Free flow reads `ai_insights_v1`. References to `ai_insights_v1` remain in:
+`renderInsight(...)` is passed down but every Free component path ignores it (no `renderInsight` call inside the `free_with_engagement` branch).
 
-- `src/lib/pdf/render.ts` and `src/lib/pdf/report-document.tsx` — PDF (premium artifact)
-- `src/lib/report/snapshot-to-report-data.ts` (maps `ai_insights_v1` → `ReportData.aiInsights`) — consumed only by premium diagnostic block + PDF
-- `report-pending-ai-notice.tsx` / `report-shell.tsx` (legacy v1 shell, not the active v2 shell)
-- `enrichment` runner + admin diagnostics
+## 3. Answers to Audit Questions
 
-`insights_v2.editorialVerdict` is used by `EditorialIdentityCard`, but that card is **skipped** in `free_with_engagement` mode and has a deterministic fallback even when rendered.
+1. **Does `free_with_engagement` render `EditorialIdentityCard`?** — **No.** The Identity Card lives in the `(mode === "all" || mode === "free")` branch (report-overview-block.tsx line 193). The `free_with_engagement` branch (line 252) renders only MethodologyLine + Engagement + Teasers.
+2. **Does `EditorialIdentityCard` require `ai_insights_v1`/`v2`?** — It consumes `enriched.aiInsightsV2?.editorialVerdict ?? null` (optional). It has a deterministic fallback (`src/lib/report/editorial-verdict-fallback.ts`). But it is moot — the card is not rendered in Free public.
+3. **Deterministic fallback without OpenAI?** — Yes, via `editorial-verdict-fallback.ts`. (Again, not exercised in Free.)
+4. **Does Engagement need OpenAI/DFS/visual/caption?** — **No.** `EngagementCardRefined` consumes only `result` (Apify-derived metrics).
+5. **Do locked PremiumTeaserCard items need enrichment?** — **No.** Static i18n copy + CTA only.
+6. **Strictly necessary enrichments for Free:** **Apify only.**
+7. **Safely skippable for Free:** `dataforseo`, `insights_v1`, `insights_v2`, `visual_cover`, `caption_semantic`, `comments` — none are read in the Free render path.
 
-## 4. Enrichment jobs that can be skipped for Free without regression
+## 4. Verdicts
 
-Today `analyze-public-v1.ts` enqueues **all** `ALL_ENRICHMENT_TYPES` jobs unconditionally for every snapshot (no plan/variant gate). For a snapshot that will only be shown in the Free flow until purchase, all of the following are safe to skip:
+- **`insights_v1` required in Free?** No.
+- **`insights_v2` required in Free?** No.
+- **Can Free be Apify-only?** **Yes.**
+- **QA note status:** Incorrect for the live path. EditorialIdentityCard is only reachable if the report ever runs in `mode="free"` (legacy/lab) — not the production public flow.
 
-| Job                | Needed for Free? | Needed if user upgrades to Pro? | Recommendation                     |
-| ------------------ | :--------------: | :-----------------------------: | ---------------------------------- |
-| `dataforseo`       |        no        | yes (market signals 05, benchmark 06) | Skip on Free, run on unlock |
-| `insights_v1`      |        no        | yes (02 Diagnóstico cards, PDF) | Skip on Free, run on unlock |
-| `insights_v2`      |        no\*      | yes (Identity verdict, hero copy) | Skip on Free, run on unlock |
-| `visual_cover`     |        no        | yes (cover diagnostics)         | Skip on Free, run on unlock |
-| `caption_semantic` |        no        | yes (caption diagnostics)       | Skip on Free, run on unlock |
-| `comments`         |        no        | gated by separate flag (off)    | Already conditional — leave as is  |
+## 5. Recommended Enrichment Policy (no implementation in this turn)
 
-\* `insights_v2` is currently consumed only by the Identity Card, which the live Free flow does not render. If product decides later to also show the Identity Card to Free, `insights_v2` becomes "nice-to-have" (still has deterministic fallback).
+| Tier | Apify | insights_v1 | insights_v2 | DataForSEO | visual_cover | caption_semantic | comments |
+|---|---|---|---|---|---|---|---|
+| **Free / Public** | run | skip | skip | skip | skip | skip | skip |
+| **Pro (unlocked)** | run (cached) | run | run | run | run | run | gated by post count |
+| **Internal Lab** | run | run | run | run | run | run | run |
 
-Net effect for an Apify-only Free snapshot: **eliminates 1× DataForSEO call, 2× OpenAI calls (v1+v2), and 2× thumbnail/caption analysis passes per Free analysis** — i.e. every AI enrichment cost goes to zero until conversion.
+This matches the current `FREE_ENRICHMENT_TYPES` (empty) / `PAID_ENRICHMENT_TYPES` split already wired in `src/lib/enrichment/types.ts` and the webhook top-up in `src/lib/enrichment/enqueue-paid.server.ts`. **No code change is needed to remove an OpenAI dependency from Free — there is none.**
 
-## 5. Recommended cost gate policy
+## 6. Follow-up (not part of this audit)
 
-| Plan / context           | Enrichments to run                                                                      |
-| ------------------------ | --------------------------------------------------------------------------------------- |
-| **Free / Public**        | Apify only. Skip `dataforseo`, `insights_v1`, `insights_v2`, `visual_cover`, `caption_semantic`. Comments stay off. |
-| **Pro (post-purchase)**  | Run all enrichments on the existing snapshot (top-up enrichment on entitlement grant). |
-| **Internal Lab**         | Run all enrichments unconditionally (current behaviour for admin previews).             |
-
-Trigger model: at lead capture / public render, enqueue only the Free set; on entitlement upgrade (EuPago webhook → `lead_entitlements`), enqueue the missing enrichment jobs against the same `snapshot_id` (the runner already short-circuits when a payload key is already present, e.g. `if (ctx.previousPayload.ai_insights_v1) skip`).
-
-## 6. Files likely to edit in the implementation step
-
-Read-only audit — no edits in this turn. When approved, the implementation will touch:
-
-- `src/lib/enrichment/types.ts` — add `FREE_ENRICHMENT_TYPES` / `PAID_ENRICHMENT_TYPES` subsets next to `ALL_ENRICHMENT_TYPES`.
-- `src/routes/api/analyze-public-v1.ts` (~line 1178) — replace `ALL_ENRICHMENT_TYPES.map(...)` with the Free subset; pre-mark the skipped types as `"skipped"` in `enrichment_status` so admin diagnostics stay accurate.
-- New helper or extend `src/lib/payments/entitlements.functions.ts` / EuPago webhook handler — on entitlement grant, enqueue the missing `PAID_ENRICHMENT_TYPES` jobs for the snapshot and re-trigger `/api/public/enrich-snapshot`.
-- `src/lib/admin/execution-mode.functions.ts` + `src/components/admin/v2/sistema/analysis-cost-breakdown.tsx` — surface "skipped (free)" vs "skipped (budget)" so admin cost view distinguishes the two.
-- No changes to: report UI, snapshot schema, payments, entitlements logic, credits, providers.
-
-## 7. Open question for next prompt (not executed)
-
-> Implement a Free vs Paid enrichment gate: in `analyze-public-v1.ts` enqueue only Apify-derived jobs for the public/Free path (mark `dataforseo`, `insights_v1`, `insights_v2`, `visual_cover`, `caption_semantic` as `skipped` in `enrichment_status`); on entitlement grant (post-purchase), enqueue the missing Paid set against the same `snapshot_id` and re-trigger `/api/public/enrich-snapshot`. Do not touch UI, schema, payments, or credits.
+- Consider deleting or renaming the unused `mode="free"` branch in `ReportOverviewBlock` to remove the ambiguity that caused the QA confusion.
+- Add a unit test asserting `free_with_engagement` does not render `EditorialIdentityCard` to prevent regression.
