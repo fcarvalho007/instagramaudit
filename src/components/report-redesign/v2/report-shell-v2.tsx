@@ -229,6 +229,8 @@ export function ReportShellV2({
           unlocked={unlocked}
           premiumUnlocked={premiumUnlocked}
           onUnlockClick={handleUnlockClick}
+          sampleSize={result.data.profile.postsAnalyzed ?? 0}
+          observedDays={result.coverage.windowDays ?? 0}
         />
 
         {/* Layout 2-col a partir do bloco 01 */}
@@ -241,6 +243,8 @@ export function ReportShellV2({
               unlocked={unlocked}
               premiumUnlocked={premiumUnlocked}
               onUnlockClick={handleUnlockClick}
+              sampleSize={result.data.profile.postsAnalyzed ?? 0}
+              observedDays={result.coverage.windowDays ?? 0}
             />
             <main className="min-w-0 flex-1 overflow-x-clip">
               {/* 01 · Overview (redesigned) */}
