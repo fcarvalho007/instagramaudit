@@ -64,10 +64,11 @@ const FORMAT_STYLE: Record<string, { dot: string; iconColor: string; icon: typeo
 };
 
 const FORMAT_HEX: Record<FormatKey, string> = {
-  Carousels: "#6EE7B7", // emerald-300
-  Reels: "#7DD3FC",     // sky-300
-  Imagens: "#FCD34D",   // amber-300
-  Video: "#7DD3FC",     // sky-300
+  // Unified blue family — aligned with the rest of the report accents.
+  Carousels: "#3772E5",
+  Reels: "color-mix(in oklab, #3772E5 45%, #FFFFFF)",
+  Imagens: "color-mix(in oklab, #3772E5 22%, #FFFFFF)",
+  Video: "color-mix(in oklab, #3772E5 32%, #FFFFFF)",
 };
 
 const BREAKDOWN_ORDER: FormatKey[] = ["Carousels", "Reels", "Imagens"];
@@ -388,8 +389,10 @@ function PostThumb({
 }
 
 /**
- * Premium horizontal proportion bar — the section's hero visual.
- * Zero-count formats appear only in the legend below, not as bar segments.
+ * Cinematic split hero — large editorial percentage on the left, fully
+ * filled vertical proportion bar on the right. Zero-count formats appear
+ * only in the legend below, never as bar segments. Pure presentational
+ * change — math/rounding is unchanged from the previous implementation.
  */
 function FormatProportionBar({
   formats,
@@ -435,55 +438,89 @@ function FormatProportionBar({
     .filter((s) => s.count > 0)
     .sort((a, b) => b.pct - a.pct);
 
-  const accent = "var(--accent-primary, #3772E5)";
-  const segmentBg = (idx: number) =>
-    idx === 0
-      ? accent
-      : `color-mix(in oklab, ${accent} ${Math.max(14, 26 - idx * 6)}%, var(--surface-base, #FAFBFD))`;
+  const ACCENT = "#3772E5";
+  const segmentBg = (idx: number) => {
+    if (idx === 0) return ACCENT;
+    // Solid tints over white (never depend on --surface-base) so segments
+    // always read clearly against the card background.
+    const mix = Math.max(18, 42 - idx * 12);
+    return `color-mix(in oklab, ${ACCENT} ${mix}%, #FFFFFF)`;
+  };
   const segmentFg = (idx: number) =>
     idx === 0 ? "#FFFFFF" : "var(--content-primary, #0F172A)";
 
+  const dominant = segments[0];
+  const dominantLabel = tFormatPlural(t, dominant.key);
+  const dominantCapital =
+    dominantLabel.charAt(0).toUpperCase() + dominantLabel.slice(1);
+
   return (
-    <div className="px-5 md:px-6 mt-5">
-      {/* Hero bar */}
+    <div className="px-5 md:px-6 mt-6">
       <div
         role="img"
         aria-label={ariaLabel}
-        className="flex w-full overflow-hidden rounded-xl border border-border-subtle/50 h-[68px] md:h-[76px]"
+        className="grid grid-cols-[1fr_auto] gap-5 md:gap-8 items-stretch rounded-2xl border border-border-subtle/60 bg-surface-base/50 px-5 md:px-7 py-5 md:py-6"
       >
-        {segments.map((seg, idx) => {
-          const label = tFormatPlural(t, seg.key);
-          const showInlineLabel = seg.pct >= 12;
-          return (
-            <div
-              key={seg.key}
-              className="flex flex-col justify-center px-4 md:px-5 min-w-0"
-              style={{
-                width: `${seg.pct}%`,
-                backgroundColor: segmentBg(idx),
-                color: segmentFg(idx),
-              }}
-              title={`${seg.pct}% · ${label} · ${seg.count}`}
-            >
-              <span className="text-[1.5rem] md:text-[1.75rem] leading-none font-semibold tabular-nums">
-                {seg.pct}%
-              </span>
-              {showInlineLabel ? (
-                <span
-                  className="mt-1 text-[11px] md:text-xs leading-tight tabular-nums truncate"
-                  style={{
-                    color:
-                      idx === 0
-                        ? "color-mix(in oklab, #FFFFFF 78%, transparent)"
-                        : "var(--content-secondary, #475569)",
-                  }}
-                >
-                  {label} · {seg.count}
-                </span>
-              ) : null}
-            </div>
-          );
-        })}
+        {/* Left — editorial percentage */}
+        <div className="flex flex-col justify-center min-w-0">
+          <span
+            className="font-display font-semibold tabular-nums leading-[0.95] tracking-[-0.02em] text-[3.5rem] sm:text-[4.5rem] md:text-[5.25rem]"
+            style={{ color: ACCENT }}
+          >
+            {dominant.pct}%
+          </span>
+          <span className="mt-2 text-[13px] md:text-sm text-content-secondary leading-snug">
+            <span className="font-semibold text-content-primary">
+              {dominantCapital}
+            </span>{" "}
+            · <span className="tabular-nums">{dominant.count}/{total}</span>
+          </span>
+        </div>
+
+        {/* Right — cinematic vertical proportion column */}
+        <div className="flex flex-col w-[88px] sm:w-[104px] md:w-[128px] h-[156px] md:h-[180px] rounded-xl overflow-hidden border border-border-subtle/60 shadow-sm">
+          {segments.map((seg, idx) => {
+            const label = tFormatPlural(t, seg.key);
+            const showInline = seg.pct >= 14;
+            return (
+              <div
+                key={seg.key}
+                className="flex flex-col items-center justify-center px-2 text-center min-h-0"
+                style={{
+                  flexBasis: `${seg.pct}%`,
+                  flexGrow: 0,
+                  flexShrink: 0,
+                  backgroundColor: segmentBg(idx),
+                  color: segmentFg(idx),
+                }}
+                title={`${seg.pct}% · ${label} · ${seg.count}`}
+              >
+                {showInline ? (
+                  <>
+                    <span className="text-[13px] md:text-sm font-semibold tabular-nums leading-none">
+                      {seg.pct}%
+                    </span>
+                    <span
+                      className="mt-1 text-[10px] md:text-[11px] uppercase tracking-[0.12em] leading-none truncate max-w-full"
+                      style={{
+                        color:
+                          idx === 0
+                            ? "color-mix(in oklab, #FFFFFF 80%, transparent)"
+                            : "var(--content-secondary, #475569)",
+                      }}
+                    >
+                      {label}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-[10px] font-semibold tabular-nums leading-none">
+                    {seg.pct}%
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Subtle legend */}
