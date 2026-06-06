@@ -635,6 +635,17 @@
         "competitors": "Competitor comparison"
       },
       "trust": "One-time payment. No subscription."
+    },
+    "diagnostic_subitems": {
+      "note": "7 strategic questions",
+      "conteudo": "Content",
+      "funil": "Funnel",
+      "hashtags": "Hashtags",
+      "legendas": "Captions",
+      "capas": "Covers",
+      "audiencia": "Audience",
+      "integracao": "Integration",
+      "toggle_aria": "Toggle diagnostic sub-items"
     }
   },
   "shell": {
