@@ -618,7 +618,20 @@
       "add_competitor_short": "Concorrente",
       "beta_credits_available": "{{count}} crédito beta disponível",
       "beta_credits_available_plural": "{{count}} créditos beta disponíveis",
-      "beta_credits_empty": "Sem créditos beta disponíveis"
+      "beta_credits_empty": "Sem créditos beta disponíveis",
+      "consume_dialog": {
+        "title": "Usar 1 crédito beta",
+        "description_period": "Vamos recolher e processar dados públicos novos para a janela de {{days}} dias. Esta ação consome 1 crédito.",
+        "description_competitor": "Vamos recolher e processar dados públicos novos para adicionar um concorrente ao relatório. Esta ação consome 1 crédito.",
+        "balance_label": "Saldo atual",
+        "balance_after": "Saldo após esta ação",
+        "cta_use": "Usar 1 crédito",
+        "cta_cancel": "Cancelar",
+        "empty_title": "Sem créditos disponíveis",
+        "empty_body": "Já não tens créditos beta. Estamos a recolher feedback sobre como expandir esta funcionalidade.",
+        "empty_cta": "Enviar feedback",
+        "soon_note": "Esta funcionalidade está em fase beta — vais ser notificado quando a nova análise estiver pronta."
+      }
     },
     "status": {
       "unlocked_title": "Relatório completo",
