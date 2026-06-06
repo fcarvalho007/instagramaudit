@@ -318,9 +318,9 @@ function WeeklyRhythm({ days, t, embedded = false }: { days: DayEntry[]; t: TFun
           className="text-[14px] text-content-secondary leading-relaxed mt-4 pt-3 border-t border-border-default/60 [&_b]:font-semibold [&_b]:text-content-primary"
           dangerouslySetInnerHTML={{ __html: interpretation }}
         />
-      </div>
     </div>
   );
+  return embedded ? inner : <div className="px-5 md:px-6 mt-4">{inner}</div>;
 }
 
 // ─── KPI strip (Cadência · Consistência · Pico semanal) ─────────────
