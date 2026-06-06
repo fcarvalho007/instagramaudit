@@ -582,6 +582,9 @@
       "badge_free": "Grátis",
       "badge_premium": "Premium",
       "available_now": "Disponível agora",
+      "section_free": "Leitura gratuita",
+      "section_premium": "Relatório completo",
+      "section_paid": "Secções",
       "progress": "{{accessible}} de {{total}} secções acessíveis",
       "premium_count": "{{count}} por desbloquear",
       "cta": "Desbloquear relatório completo",
@@ -605,6 +608,7 @@
       "title": "Explorar",
       "period_label": "Período de análise",
       "period_observed": "{{days}} dias observados",
+      "period_sample": "{{count}} pub.",
       "competitors_label": "Concorrentes",
       "add_competitor": "Adicionar concorrente",
       "add_competitor_aria": "Adicionar concorrente para comparação",
@@ -614,13 +618,15 @@
     },
     "status": {
       "unlocked_title": "Relatório completo",
-      "unlocked_subtitle": "{{count}} secções desbloqueadas"
+      "unlocked_subtitle": "{{count}} secções desbloqueadas",
+      "header_paid": "Relatório completo · {{count}} secções"
     },
     "unlock": {
       "eyebrow": "Desbloquear",
       "title": "Desbloquear relatório completo",
       "cta_full": "Desbloquear · {{price}}",
       "cta_compact": "Desbloquear · {{price}}",
+      "subcopy": "Desbloqueia as {{count}} secções premium, os filtros de tempo e a comparação com concorrentes.",
       "benefits": {
         "sections": "{{count}} secções premium",
         "periods": "Filtros de período",
