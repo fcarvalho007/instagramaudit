@@ -1,7 +1,7 @@
 import { Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PUBLIC_PRODUCTS } from "@/lib/payments/products";
-import { usePremiumCta, type CtaSource } from "./premium-cta-context";
+import { usePremiumCta, type PremiumCtaSource } from "./premium-cta-context";
 
 export interface PremiumTeaserCardProps {
   /** Section number rendered in the left chip (e.g. "03"). */
@@ -15,7 +15,7 @@ export interface PremiumTeaserCardProps {
   /** Anchor id so the sidebar TOC can scroll to this card. */
   anchorId: string;
   /** Tracking source forwarded to PremiumCtaProvider. */
-  source: CtaSource;
+  source: PremiumCtaSource;
   className?: string;
 }
 
