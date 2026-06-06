@@ -1,76 +1,85 @@
 ## Goal
 
-Ensure the public/free report at `/analyze/$username` shows the 5 premium teaser cards after Engagement, the sticky unlock bar appears while scrolling through them, and the locked sidebar items scroll to the matching teaser. UI-only — no payment, entitlement, pricing, scraping, or generation logic touched.
+Replace the hard-coded `premiumUnlocked={false}` in `src/routes/analyze.$username.tsx` with a real check against `lead_entitlements` for product `report_full_9`, using the existing `lead_session` cookie. No schema, payment, checkout, pricing, EuPago or report-generation changes.
 
-## What the code already has (verified)
+## Audit findings
 
-- `src/components/report-redesign/v2/premium-teaser-card.tsx` — locked card with number, eyebrow, title, description, optional sub-items chip list, blurred preview, and "Desbloquear por {priceLabel}" CTA reading from `PUBLIC_PRODUCTS.report_full_9.priceLabel` and routing through `usePremiumCta()`.
-- `src/components/report-redesign/v2/report-overview-block.tsx` — `mode="free_with_engagement"` renders Identity → Methodology → Engagement (`id="engagement"`) → eyebrow "Relatório completo · 5 secções premium" → 5 `<PremiumTeaserCard>` (anchors `frequencia`, `formatos`, `publicacoes-chave`, `diagnostico-editorial`, `prioridades`). Copy matches the spec; Diagnóstico has the 7-item sub-list.
-- `src/components/report-redesign/v2/report-shell-v2.tsx` — picks `mode="free_with_engagement"` when `lockBoundary === "engagement" && unlocked && !premiumUnlocked`. Renders `<StickyUnlockBar />` only when `lockBoundary === "engagement" && !premiumUnlocked` (so it never shows in PRO; in `internal_lab` the route never passes `lockBoundary`).
-- `src/components/report-redesign/v2/sticky-unlock-bar.tsx` — copy matches the spec exactly; price from `PUBLIC_PRODUCTS.report_full_9.priceLabel`.
-- `src/routes/analyze.$username.tsx` — passes `lockBoundary="engagement"`, `unlocked=true` (initial), `premiumUnlocked={false}`, `variant="public_mvp"`.
-- Sidebar uses `COMMERCIAL_SECTIONS` (`block-config.ts`) whose ids match the teaser anchors 1:1.
-
-## Why the teasers may not be visible
-
-The teaser branch is correctly wired. The most common explanations for "not visible" are:
-1. **Stale cached HTML** in the preview (the `analyze` route is SSR-disabled, so a hard reload should clear it).
-2. **A render-state mismatch** (e.g. `unlocked` momentarily flipping to `false`, sending overview into `mode="free"`, which replaces Engagement with `LockGatePremium` and renders no teasers).
-3. The user is comparing against `/report/example` or `internal_lab`, both of which intentionally don't show teasers.
-
-The plan repairs the only render-state risk (point 2) defensively, and fills the two real gaps in the spec (sidebar scroll + sticky bar trigger).
+- **Hard-coded flag**: `src/routes/analyze.$username.tsx:429` passes `premiumUnlocked={false}` with a TODO. The other variants are correct:
+  - `admin.report-lab.tsx:462` and `admin_.report-preview.$username.tsx:205`: `premiumUnlocked={variant !== "public_mvp"}` (lab/pro_preview force-on).
+  - `admin_.report-preview.snapshot.$snapshotId.tsx:191`: `premiumUnlocked` (admin preview forces on).
+- **Entitlement source of truth**: `src/lib/payments/entitlements.server.ts` already exposes `hasEntitlement(leadId, productCode)` reading `public.lead_entitlements`. This is the single source the EuPago webhook writes to via `grantEntitlement`.
+- **Lead session**: `src/lib/leads/lead-cookie.server.ts#getLeadFromCookie` (HMAC-signed `lead_session` cookie), already used by `getMyCreditBalance` and `getLeadSessionStatus`.
+- **Credit balance**: `getMyCreditBalance` already returns `{ hasLead, balance }` and is consumed by `report-block-nav.tsx` — it only fetches when `premiumUnlocked === true`. Once the flag is real, the sidebar will start showing the beta balance automatically. No change needed here.
+- **No existing entitlement server fn**: nothing today exposes `hasEntitlement` to the client; this is the missing piece.
 
 ## Changes
 
-### 1. `src/components/report-redesign/v2/report-shell-v2.tsx` — defensive teaser fallback
+### 1) New server fn — `src/lib/payments/entitlements.functions.ts`
 
-In the overview branch, broaden the second condition so the 5 teasers also render when `unlocked` is briefly false during the onboarding-first flow:
+Client-safe wrapper that reads the lead cookie and asks `hasEntitlement(leadId, "report_full_9")`. Fail-closed on any error:
 
-- Keep `mode="free"` only for `lockBoundary === "engagement" && !unlocked && !leadHasOnboarded` cases — but since the route always passes `unlocked=true`, simplify the conditional to: `lockBoundary === "engagement" && !premiumUnlocked → mode="free_with_engagement"`, else default `"all"`. This guarantees the 5 teasers always render in the public free report, even if `unlocked` momentarily races.
-- Remove the now-unreachable `LockGatePremium` mount that depends on `lockBoundary === "engagement" && !unlocked` (it was the legacy lead-magnet card; the flow is onboarding-first now, so this is dead code in the public path).
+```ts
+import { createServerFn } from "@tanstack/react-start";
 
-### 2. `src/components/report-redesign/v2/report-block-nav.tsx` — locked sidebar items scroll to teaser, then open modal
+export const getMyReportEntitlement = createServerFn({ method: "GET" }).handler(
+  async () => {
+    try {
+      const { getLeadFromCookie } = await import("@/lib/leads/lead-cookie.server");
+      const leadId = getLeadFromCookie();
+      if (!leadId) return { hasLead: false as const, premiumUnlocked: false };
 
-In the `premium`-items loop (around line 1043), replace the current `onClick={() => handlePremiumAccessClick("sidebar_section", ...)}` with a helper that:
+      const { hasEntitlement } = await import("./entitlements.server");
+      const premium = await hasEntitlement(leadId, "report_full_9");
+      return { hasLead: true as const, premiumUnlocked: premium };
+    } catch {
+      // Fail-closed: never crash the report, never grant premium on error.
+      return { hasLead: false as const, premiumUnlocked: false };
+    }
+  },
+);
+```
 
-1. Calls `scrollToBlock(item.block.id)` (the id is exactly the anchor: `frequencia`, `formatos`, `publicacoes-chave`, `diagnostico-editorial`, `prioridades`) to scroll the user to the matching `<PremiumTeaserCard>`.
-2. Still fires `handlePremiumAccessClick("sidebar_section", { block_id })` so tracking and the modal continue to work — but with a small `setTimeout(..., 350)` so the scroll lands first and the user sees the locked teaser before the dialog opens. This satisfies "Clicking locked sidebar items should scroll to the corresponding locked teaser card, not silently do nothing" without weakening the conversion path.
+This mirrors `getMyCreditBalance` exactly — same cookie source, same swallow-and-fallback shape, same `await import` pattern to keep `client.server` out of client bundles.
 
-### 3. `src/components/report-redesign/v2/sticky-unlock-bar.tsx` — more robust trigger
+### 2) Wire it in `src/routes/analyze.$username.tsx`
 
-Replace the scroll-listener that watches `#engagement.bottom < 80` with an `IntersectionObserver` on the first teaser anchor `#frequencia`:
+In `AnalyzeContent` (already a client component): add a `useState<boolean>(false)` for `premiumUnlocked` plus a `useEffect` that calls `useServerFn(getMyReportEntitlement)` once on mount, and updates state. Pass to `<ReportShellV2 premiumUnlocked={premiumUnlocked} />` and delete the TODO comment.
 
-- `setPassedFree(true)` once `#frequencia` enters the viewport (rootMargin `0px 0px -10% 0px`).
-- Keep the existing `#lead-magnet-card` observer to hide the bar when the final paywall CTA is visible.
-- Fallback: if `#frequencia` is not in the DOM (PRO / internal lab), the bar stays hidden — which matches "must not appear in PRO" and "must not appear in internal lab" (the shell additionally gates the mount on `lockBoundary === "engagement" && !premiumUnlocked`).
-- No copy or price change (already correct).
+Remains `false` on initial render (correct fail-closed default) and flips to `true` only after the server confirms the entitlement.
 
-### 4. Anchors — keep existing ids, no duplicates
+### Untouched (explicitly)
 
-No new anchors. Confirm the existing ids stay: `#engagement`, `#frequencia`, `#formatos` (spec accepted "or the existing approved ID"), `#publicacoes-chave`, `#diagnostico-editorial`, `#prioridades`.
+- `lead_entitlements` schema, RLS, grants.
+- `grantEntitlement`, EuPago webhook, `lead_payments`, checkout routes, prices in `products.server.ts` / `products.ts`.
+- `getMyCreditBalance`, `credits.server.ts`, beta credit ledger.
+- `UnlockModal`, `PremiumCtaProvider`, `PremiumInterestDialog`, sticky bar, teaser cards.
+- `report-shell-v2.tsx`, `report-block-nav.tsx` (already consume `premiumUnlocked` correctly).
+- Admin variants `pro_preview` / `internal_lab` (their `variant !== "public_mvp"` override is preserved — they never call the new server fn).
+- Report generation / snapshot adapter / calculations.
 
-## Out of scope (explicitly unchanged)
+## Behaviour matrix
 
-- `PUBLIC_PRODUCTS.report_full_9` price — read dynamically; no hardcode.
-- `PremiumCtaProvider`, `UnlockModal`, EuPago, webhooks, entitlements, credits, `report_requests`, `analysis_snapshots`, server functions, scraping, enrichment, snapshot adapter.
-- `pro_preview` and `internal_lab` variants and the lab preview route.
-- `/report/example`.
-- Sidebar copy "2 de 7 secções accessíveis" already comes from `t("nav.access.progress", { accessible: 2, total: 7 })` for free — unchanged.
+| Situation | premiumUnlocked |
+|---|---|
+| No `lead_session` cookie | `false` (free) |
+| Cookie valid, no entitlement row | `false` (free) |
+| Cookie valid, entitlement row exists for `report_full_9` | `true` (pro) |
+| Entitlement lookup throws / SESSION_SECRET missing | `false` (fail-closed) |
+| `variant = "pro_preview"` (admin route) | `true` (unchanged — variant override) |
+| `variant = "internal_lab"` (admin route) | `true` (unchanged — variant override) |
 
-## Files to change
+## Manual validation
 
-1. `src/components/report-redesign/v2/report-shell-v2.tsx`
-2. `src/components/report-redesign/v2/report-block-nav.tsx`
-3. `src/components/report-redesign/v2/sticky-unlock-bar.tsx`
+1. **Free**: open `/analyze/<handle>` without paying → sidebar shows "2 de 7 secções acessíveis", teasers 03–07 locked, sticky unlock bar appears, no credit balance.
+2. **Paid**: simulate by inserting a `lead_entitlements` row for the current `lead_id` + `report_full_9` (admin SQL), reload → sidebar shows premium active, all 7 sections accessible, balance pill rendered when `getMyCreditBalance` returns `hasLead: true`, no purchase CTA, period/competitor actions open `ConsumeCreditDialog`.
+3. **No cookie**: clear cookies, reload `/analyze/...` → onboarding modal flow as today (server already forces `ONBOARDING_REQUIRED`); after onboarding, premium stays `false`.
+4. **Admin `pro_preview`**: `/admin_/report-preview/<username>?variant=pro_preview` still shows premium (variant override path untouched).
+5. **Admin `internal_lab`**: `/admin/report-lab` still shows lab-only sections, still admin-gated.
+6. **Fail-closed**: temporarily break `SESSION_SECRET` → report still renders in free mode, no crash.
 
-## Validation checklist
+## Output (after build)
 
-1. `/analyze/<handle>` (free): Visão geral + Engagement render fully; below Engagement the eyebrow "Relatório completo · 5 secções premium" appears followed by 5 `<PremiumTeaserCard>` (03–07) with correct titles, descriptions, the 7-item chip list under 06, and the "Desbloquear por 9€" CTA reading the dynamic price.
-2. Scrolling past Engagement: the sticky bar slides in (desktop: "Faltam-te 5 secções premium" + "Desbloquear"; mobile: "5 secções por desbloquear" + "Ver tudo"). The bar hides when `#lead-magnet-card` is in view at the bottom.
-3. PRO state (premium unlocked): no sticky bar, no teaser cards (full sections render instead).
-4. Internal lab route (`/admin_/report-preview/$username`): no sticky bar, no teaser cards.
-5. Clicking a locked sidebar item (03–07): the page scrolls smoothly to the matching teaser card, then the `PremiumInterestDialog` opens (existing flow, unchanged).
-6. Sidebar still reads "2 de 7 secções acessíveis" with 01/02 marked Free and 03–07 marked Premium.
-7. Mobile (≤390 px): no horizontal overflow on any teaser card; CTA stays inside the card; sticky bar sits above the bottom tabs bar with `safe-area-inset-bottom`.
-8. Price displayed everywhere remains `PUBLIC_PRODUCTS.report_full_9.priceLabel` (no hardcoded "9€" string introduced).
-9. No payment/entitlement/checkout/EuPago/scraping/generation/calculation code touched (grep for changes restricted to the 3 files above).
+- Files changed: `src/lib/payments/entitlements.functions.ts` (new), `src/routes/analyze.$username.tsx`.
+- `premiumUnlocked` is now derived from `getMyReportEntitlement()` → `hasEntitlement(leadId, "report_full_9")` in `public.lead_entitlements`.
+- Missing/failed lookup → `false` (fail-closed); never crashes.
+- No payment, pricing, schema, EuPago, checkout or report-generation logic changed.
