@@ -52,11 +52,11 @@ const PREMIUM_TEASERS = [
   },
   {
     number: "06",
-    eyebrow: "CONTEXTO ESTRATÉGICO",
-    title: "O que estes sinais dizem sobre o perfil?",
+    eyebrow: "DIAGNÓSTICO EDITORIAL",
+    title: "O que explica o que estás a ver?",
     description:
-      "Recebe uma leitura editorial sobre posicionamento, conteúdo e oportunidades.",
-    anchorId: "contexto-estrategico",
+      "Sete cards diagnósticos — natureza do conteúdo, funil, hashtags, legendas, capas, resposta da audiência e integração entre canais.",
+    anchorId: "diagnostico-editorial",
   },
   {
     number: "07",
