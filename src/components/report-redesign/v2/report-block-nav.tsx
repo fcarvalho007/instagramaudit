@@ -392,7 +392,7 @@ function LockedItemRow({
   );
 }
 
-const PREMIUM_WINDOWS = [30, 60, 90, 365] as const;
+const PREMIUM_WINDOWS = [30, 90] as const;
 
 function ExploreSection({
   premiumUnlocked,
@@ -437,7 +437,9 @@ function ExploreSection({
           <span className="text-xs font-semibold text-content-secondary">
             {t("nav.explore.period_label")}
           </span>
-          {observedDays > 0 ? (
+          {!premiumUnlocked ? (
+            <Lock className="size-3 text-content-tertiary" aria-hidden="true" />
+          ) : observedDays > 0 ? (
             <span className="text-[11px] text-content-tertiary tabular-nums">
               {t("nav.explore.period_observed", { days: observedDays })}
             </span>
@@ -452,7 +454,9 @@ function ExploreSection({
             aria-current="true"
           >
             <Check className="size-3" strokeWidth={3} aria-hidden="true" />
-            {sampleSize > 0 ? sampleSize : "—"}
+            {sampleSize > 0
+              ? t("nav.explore.period_sample", { count: sampleSize })
+              : "—"}
           </span>
           {PREMIUM_WINDOWS.map((days) => (
             <button
@@ -465,7 +469,7 @@ function ExploreSection({
                 "border border-border-default text-[11px] font-medium",
                 "transition-colors duration-150",
                 premiumUnlocked
-                  ? "bg-white text-content-secondary hover:border-border-strong hover:text-content-primary cursor-default"
+                  ? "bg-white text-content-secondary hover:border-border-strong hover:text-content-primary cursor-pointer"
                   : "bg-surface-muted text-content-tertiary hover:bg-surface-base hover:border-border-strong hover:text-content-secondary",
               )}
               title={!premiumUnlocked ? t("nav.explore.period_locked_hint") : undefined}
@@ -473,7 +477,7 @@ function ExploreSection({
               {!premiumUnlocked && (
                 <Lock className="size-2.5" aria-hidden="true" />
               )}
-              {days === 365 ? "12m" : `${days}d`}
+              {`${days}d`}
             </button>
           ))}
         </div>
@@ -481,19 +485,6 @@ function ExploreSection({
 
       {/* Competitors */}
       <div className="px-2 space-y-1.5">
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="text-xs font-semibold text-content-secondary">
-            {t("nav.explore.competitors_label")}
-          </span>
-          {premiumUnlocked ? (
-            <span className="text-[11px] text-content-tertiary tabular-nums">
-              {t("nav.explore.competitors_count", {
-                count: competitorCount,
-                max: competitorMax,
-              })}
-            </span>
-          ) : null}
-        </div>
         <button
           type="button"
           onClick={onAddCompetitor}
@@ -515,6 +506,14 @@ function ExploreSection({
           )}
           <span>{t("nav.explore.add_competitor")}</span>
         </button>
+        {premiumUnlocked ? (
+          <p className="text-[11px] text-content-tertiary tabular-nums">
+            {t("nav.explore.competitors_count", {
+              count: competitorCount,
+              max: competitorMax,
+            })}
+          </p>
+        ) : null}
       </div>
     </section>
   );
