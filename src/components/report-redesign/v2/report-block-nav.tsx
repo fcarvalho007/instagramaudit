@@ -243,9 +243,11 @@ function ProfileAvatar({
 function ProfileHeader({
   profiles,
   paidStatus,
+  compact = false,
 }: {
   profiles: SidebarProfile[];
   paidStatus?: { totalSections: number } | null;
+  compact?: boolean;
 }) {
   const { t } = useTranslation("report");
   if (profiles.length === 0) return null;
@@ -256,11 +258,20 @@ function ProfileHeader({
   const primary = profiles[0];
   const primaryHandle = formatHandle(primary.handle);
   return (
-    <div className="px-1 pb-3 mb-3 border-b border-border-default/60">
-      <div className="flex items-center gap-3">
-        {!isMulti && <ProfileAvatar profile={primary} />}
+    <div
+      className={cn(
+        "px-1 transition-all duration-200",
+        compact ? "pb-2 mb-2" : "pb-3 mb-3 border-b border-border-default/60",
+      )}
+    >
+      <div className={cn("flex items-center", compact ? "gap-2" : "gap-3")}>
+        {!isMulti && (
+          <ProfileAvatar profile={primary} size={compact ? "sm" : "md"} />
+        )}
         <div className="min-w-0 flex-1">
-          <p className="text-eyebrow-sm text-content-tertiary mb-1">{eyebrow}</p>
+          {!compact && (
+            <p className="text-eyebrow-sm text-content-tertiary mb-1">{eyebrow}</p>
+          )}
           {isMulti ? (
             <div className="flex items-center">
               {profiles.map((p) => (
@@ -275,16 +286,28 @@ function ProfileHeader({
               ))}
             </div>
           ) : (
-            <p className="truncate text-base font-semibold text-content-primary">
+            <p
+              className={cn(
+                "truncate font-semibold text-content-primary",
+                compact ? "text-sm" : "text-base",
+              )}
+            >
               {primaryHandle}
             </p>
           )}
         </div>
       </div>
       {paidStatus ? (
-        <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+        <p
+          className={cn(
+            "inline-flex items-center gap-1.5 font-medium text-emerald-700",
+            compact ? "mt-1 text-[11px]" : "mt-2 text-xs",
+          )}
+        >
           <CheckCircle2 className="size-3.5" aria-hidden="true" />
-          {t("nav.status.header_paid", { count: paidStatus.totalSections })}
+          {compact
+            ? t("nav.status.header_paid_compact")
+            : t("nav.status.header_paid", { count: paidStatus.totalSections })}
         </p>
       ) : null}
     </div>
