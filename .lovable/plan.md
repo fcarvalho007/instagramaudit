@@ -1,69 +1,106 @@
-# Refine premium teaser cards with section-specific blurred skeletons
+# QA audit — paid Add Competitor beta credit flow
 
-## Goal
+## 1. Exact `premiumUnlocked` condition (production)
 
-Replace the generic 4-bar blurred preview inside `PremiumTeaserCard` with a section-specific skeleton that resembles the corresponding Pro section. No premium data, no AI, no provider calls.
+Source: `src/lib/payments/entitlements.functions.ts` → `getMyReportEntitlement`.
 
-## Files changed
+```text
+premiumUnlocked = hasEntitlement(leadId, "report_full_9")
+where leadId = getLeadFromCookie()  // cookie name: lead_session
+```
 
-1. **Edit** `src/components/report-redesign/v2/premium-teaser-card.tsx`
-   - Add prop `previewVariant?: "frequency" | "format" | "publications" | "diagnostic" | "priorities"`. Default keeps current generic bars (back-compat).
-   - Replace the inner blurred block (lines 116-137 region) with `<TeaserPreview variant={previewVariant} />` while keeping the absolutely-positioned CTA overlay unchanged.
-   - Add five small, pure-presentational skeleton sub-components in the same file:
-     - `FrequencyPreview` — three KPI tiles in a row, a 7-cell weekly rhythm strip (varying heights), a muted single-line "insight" bar. Mobile: KPIs stack to 3 small columns, strip stays full-width.
-     - `FormatPreview` — horizontal proportion bar (3 segments), 4-thumb mini filmstrip with rounded rects, muted legend row.
-     - `PublicationsPreview` — small SVG scatterplot (axes + ~8 dots) on the left; two compact best/worst card placeholders on the right (stack on mobile).
-     - `DiagnosticPreview` — 2x2 grid of mini diagnostic-card skeletons (icon dot + 2 lines each). The visible 7-item list is already rendered above by `subItems`.
-     - `PrioritiesPreview` — 3 stacked horizontal "priority" rows labelled visually as opportunity / risk / action (color-coded dot + 2 muted lines).
-   - All skeletons use semantic tokens (`bg-surface-muted`, `bg-accent-primary/20`, `border-default`), `blur-[5px]`/`opacity-70`, are `aria-hidden`, and use only `<div>` / `<svg>` with no text. No invented numbers or labels appear.
-   - Each preview is height-bounded (`h-[160px] md:h-[200px]`) and uses `overflow-hidden` so nothing escapes horizontally on mobile.
-   - The white→muted fade overlay stays, ensuring the CTA pill remains readable on top.
+- If there is no `lead_session` cookie → `{ hasLead: false, premiumUnlocked: false }`.
+- If `lead_entitlements` has no row with `lead_id = <session lead>` AND `product_code = 'report_full_9'` → `premiumUnlocked: false`.
+- Any thrown error → `premiumUnlocked: false` (fail-closed).
+- The route `src/routes/analyze.$username.tsx` reads only this function for the Pro gate (line 400-407). Credit balance is NOT consulted.
 
-2. **Edit** `src/components/report-redesign/v2/report-overview-block.tsx`
-   - Extend `PREMIUM_TEASERS` entries with a `previewVariant` field and pass it through to `<PremiumTeaserCard />`. Mapping:
-     - `03` → `"frequency"`
-     - `04` → `"format"`
-     - `05` → `"publications"`
-     - `06` → `"diagnostic"` (the 7-item `subItems` list is already wired and stays)
-     - `07` → `"priorities"`
+## 2. Does Pro require `lead_entitlements.product_code = 'report_full_9'`?
 
-No other files touched.
+Yes. Confirmed in `entitlements.functions.ts` line 20 and `entitlements.server.ts` (`SELECT … FROM lead_entitlements WHERE product_code = $1`). Credit ledger balance is irrelevant to the gate. The Add Competitor button in `report-block-nav.tsx` (line 756-762) only opens the consume-credit dialog when `premiumUnlocked === true`; otherwise it routes through `handlePremiumAccessClick("sidebar_add_competitor")` (upsell, not consumption).
 
-## Before / after teaser structure
+## 3. Is credit balance alone sufficient?
 
-Before — all five teasers share the same generic 4-bar blurred preview (`premium-teaser-card.tsx` lines 116-137).
+No. A lead with `credit_balance > 0` but no `lead_entitlements` row sees the same locked sidebar as a free user. Credits are only debited after Pro is unlocked, inside the competitor confirm handler.
 
-After — each teaser keeps the same header (number chip, eyebrow, title, value prop, optional sub-items, Premium badge) and same CTA pill (`Desbloquear por {priceLabel}`), but the blurred area below the description becomes:
+## 4. Current DB state (production = preview, single Supabase project)
 
-| # | Section | New skeleton structure (all blurred, aria-hidden) |
-|---|---|---|
-| 03 | Frequência editorial | 3 KPI tiles · weekly rhythm strip (7 cells) · muted insight line |
-| 04 | Mix de formatos | proportion bar (3 segments) · 4-thumb filmstrip · 3-chip muted legend |
-| 05 | Publicações-chave | scatterplot SVG · 2 best/worst card placeholders |
-| 06 | Diagnóstico editorial | 7 visible question chips (unchanged) + 2×2 mini diagnostic-card grid below |
-| 07 | Prioridades de acção | 3 stacked rows (opportunity / risk / action) with color-coded dots |
+```text
+lead_entitlements where product_code='report_full_9' → 0 rows
+Test leads with credits but no entitlement:
+  - validator+freegate@auditprofiles.test   1 credit, no entitlement
+  - frederico.carvalho@digitalfc.pt          1 credit, no entitlement
+  - fredericodigital@gmail.com               1 credit, no entitlement
+```
 
-## Premium data confirmation
+No lead in the database currently satisfies the gate. Any QA path that walks the real `analyze.$username.tsx` Pro flow must either (a) complete a real EuPago payment, or (b) have a `lead_entitlements` row inserted manually.
 
-The new skeletons render only static decorative shapes from semantic tokens — no text labels other than the existing visible heading/description/sub-items, which the current teaser already shows. They do NOT read:
-- `aiInsightsV2`, `commentIntelligence`
-- `visual_cover_analysis`, `caption_semantic_analysis`
-- `enriched.formatBreakdown` numbers, `topPosts`, `worstPosts`
-- pricing / entitlement / credit state
+## 5. Admin / preview bypasses
 
-The CTA pill keeps the dynamic price via `PUBLIC_PRODUCTS.report_full_9.priceLabel` and continues to call `usePremiumCta().handlePremiumAccessClick(source)`.
+- `/admin/report-preview/<username>?variant=pro_preview` and `?variant=internal_lab` hardcode `premiumUnlocked={variant !== "public_mvp"}` on `<ReportShellV2 />` (line 205). The sidebar's Add Competitor renders unlocked there, but the route does **not** exercise the live entitlement check, the lead-session cookie path, or the credit debit. It is UI-only QA.
+- The admin preview route is admin-gated (cookie + `ADMIN_ALLOWED_EMAILS`), independent from the user `lead_session`.
+- There is no "impersonate lead" or "test login" mechanism. Public auth is Google OAuth only.
+- The preview deployment (`*-dev.lovable.app`) and production (`auditprofiles.com`) share the same Lovable Cloud / Supabase project; entitlement/credit state is identical between them. Only the bundled frontend differs.
 
-## Not changed
+## 6. Can a temporary test entitlement be created in preview only?
 
-Pricing, checkout, EuPago, entitlements, credits, provider calls, snapshot generation, schema, Pro report content, Internal Lab, sticky unlock bar, free overview reading card.
+No — preview and production share the same `lead_entitlements` table. A test entitlement inserted "in preview" is also visible in production. It can, however, be scoped to a clearly synthetic lead (e.g. `validator+freegate@auditprofiles.test`) and revoked immediately after QA.
 
-## Desktop / mobile validation checklist
+## 7. Where the QA should run
 
-1. `/analyze/<free handle>` shows 5 teasers with five distinct skeletons matching the table above.
-2. Each blurred preview is unreadable (no specific numbers, names, or text).
-3. CTA "Desbloquear por 9€" still opens the existing unlock modal via `usePremiumCta`.
-4. Price string is read from `PUBLIC_PRODUCTS.report_full_9.priceLabel` (verified by temporarily editing the product price — not part of this change).
-5. `/analyze/<pro handle>` (premiumUnlocked) renders no teasers — Pro report unchanged.
-6. `/admin/report-preview/<h>?variant=internal_lab` unchanged.
-7. Mobile (≤375px): each teaser fits viewport, no horizontal scroll; skeleton sub-elements stack as designed.
-8. No new network requests trigger when scrolling through teasers (no AI/DataForSEO).
+- **Functional / UI QA of the locked-vs-unlocked sidebar, dialog copy, layout, "1 crédito" label, button states, competitor cap, mobile rendering** → `/admin/report-preview/<handle>?variant=pro_preview` on the preview deployment. No DB writes, no credit burn, no Apify call.
+- **True end-to-end paid path (entitlement → balance fetch → consume_credit → competitor scrape → snapshot rebuild)** → `/analyze/<handle>` on the preview deployment, logged in via Google as the QA lead, with one of:
+  - Path A (clean): complete a real €9 EuPago purchase with a dedicated QA Google account.
+  - Path B (cheap, recommended for beta): operator inserts a single `lead_entitlements` row for the QA lead just before QA, and deletes it after — explicitly out of scope for this audit task.
+
+## 8. Avoiding unnecessary credit / Apify spend
+
+- One Add Competitor confirm = 1 credit debited in `credit_ledger` AND 1 Apify primary scrape against the competitor handle. There is no dry-run flag in the consume-credit path.
+- Pick a competitor handle already in `APIFY_ALLOWLIST` and small (low post count) to keep the Apify cost minimal.
+- Pre-load the QA lead with exactly the credits needed (current `validator+freegate` lead has 1 — enough for one competitor; no top-up required).
+- Do NOT exercise the flow on the production domain with a real customer's Google session.
+
+## Recommendations
+
+| Item | Recommendation |
+|---|---|
+| **Environment** | Preview deployment `*-dev.lovable.app` (same DB, isolates from real users on the custom domain). |
+| **Account** | Dedicated QA Google account (not a personal one). Linked to lead `validator+freegate@auditprofiles.test` via `link_user_to_existing_reports` after first login, OR a freshly-created QA lead. |
+| **Entitlement state** | Exactly one row in `lead_entitlements (lead_id, product_code='report_full_9')`. Currently absent — must be created before QA. |
+| **Credit balance** | ≥ 1 (current QA lead already has 1). |
+| **DB setup needed?** | Yes — one `lead_entitlements` insert for the QA lead, granted out-of-band. Not part of this audit; requires an explicit follow-up prompt. |
+| **Expected spend** | 1 credit + 1 Apify scrape (no €). |
+
+## Safest execution prompt for the real QA (to paste later, after entitlement is in place)
+
+```text
+Run a runtime validation of the paid Add Competitor flow on the preview
+deployment only. Do not touch production traffic.
+
+Pre-check:
+1. Lead `validator+freegate@auditprofiles.test` has credit_balance >= 1 and
+   one row in lead_entitlements with product_code = 'report_full_9'. Abort
+   otherwise; do not insert the row in this run.
+2. Confirm APIFY_ENABLED=true and the chosen competitor handle is in
+   APIFY_ALLOWLIST.
+3. Sign in on `*-dev.lovable.app` via Google with the dedicated QA account.
+
+Execute:
+4. Open /analyze/<primary handle>. Confirm premiumUnlocked=true (sidebar
+   shows credit chip and Add Competitor enabled).
+5. Click Add Competitor. Type the allowlisted competitor handle. Confirm.
+
+Verify after T0:
+- credit_ledger: 1 new row, delta = -1, reason competitor.
+- enrichment_jobs / provider_call_logs: exactly 1 new apify row for the
+  competitor handle, status success.
+- No OpenAI calls. No DataForSEO calls. No new EuPago payment.
+- analysis_snapshots: the primary snapshot's competitor_usernames now
+  includes the added handle; new normalized_payload renders the competitor
+  side-by-side in the report.
+- No regression in pre-existing snapshots.
+
+Output:
+- Lead id, snapshot id, competitor handle.
+- credit_ledger row, provider_call_logs row, enrichment_jobs row.
+- PASS / FAIL.
+```
