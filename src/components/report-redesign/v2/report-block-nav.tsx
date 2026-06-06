@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Menu, Lock, ArrowRight, Check, UserPlus, CheckCircle2, Calendar } from "lucide-react";
+import { Menu, Lock, ArrowRight, Check, UserPlus, CheckCircle2, Calendar, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
@@ -474,6 +474,53 @@ function LockedItemRow({
 
 const PREMIUM_WINDOWS = [30, 90] as const;
 
+const DIAGNOSTIC_SECTION_ID = "diagnostico-editorial";
+
+const DIAGNOSTIC_SUBITEMS = [
+  { id: "diag-conteudo", key: "conteudo" },
+  { id: "diag-funil", key: "funil" },
+  { id: "diag-hashtags", key: "hashtags" },
+  { id: "diag-legendas", key: "legendas" },
+  { id: "diag-capas", key: "capas" },
+  { id: "diag-audiencia", key: "audiencia" },
+  { id: "diag-integracao", key: "integracao" },
+] as const;
+
+function DiagnosticSubList({
+  activeSub,
+  compact = false,
+}: {
+  activeSub: string | null;
+  compact?: boolean;
+}) {
+  const { t } = useTranslation("report");
+  if (compact) return null;
+  return (
+    <ul className="ml-7 mt-0.5 mb-1 space-y-0 border-l border-border-default/60 pl-3">
+      {DIAGNOSTIC_SUBITEMS.map((s) => {
+        const isActive = activeSub === s.id;
+        return (
+          <li key={s.id}>
+            <button
+              type="button"
+              onClick={() => scrollToBlock(s.id)}
+              aria-current={isActive ? "true" : undefined}
+              className={cn(
+                "w-full text-left py-1 text-[12px] transition-colors rounded-md px-1.5",
+                isActive
+                  ? "text-content-primary font-semibold"
+                  : "text-content-tertiary hover:text-content-secondary",
+              )}
+            >
+              {t(`nav.diagnostic_subitems.${s.key}`)}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function ExploreSection({
   premiumUnlocked,
   sampleSize,
@@ -734,6 +781,15 @@ function SidebarList({
   // Only the internal lab variant gets the flat 6-block lab list.
   const isCommercial = variant !== "internal_lab";
 
+  // Diagnostic sub-items scroll-spy (paid state only — runs harmless in free).
+  const activeSub = useActiveBlock(
+    DIAGNOSTIC_SUBITEMS.map((s) => s.id) as unknown as string[],
+  );
+  const [diagExpanded, setDiagExpanded] = useState(false);
+  useEffect(() => {
+    if (active === DIAGNOSTIC_SECTION_ID) setDiagExpanded(true);
+  }, [active]);
+
   const openDialog = () => {
     handlePremiumAccessClick("sidebar");
   };
@@ -790,17 +846,49 @@ function SidebarList({
             </p>
           )}
           <ul className="space-y-0.5">
-            {items.map((item) => (
-              <li key={item.block.id}>
-                <ItemRow
-                  item={item}
-                  isActive={item.block.id === active}
-                  onClick={() => onAccessibleClick(item.block.id)}
-                  showBadge={false}
-                  compact={compact}
-                />
-              </li>
-            ))}
+            {items.map((item) => {
+              const isDiag = item.block.id === DIAGNOSTIC_SECTION_ID;
+              const showSubs = !compact && isDiag && diagExpanded;
+              return (
+                <li key={item.block.id}>
+                  <div className="relative">
+                    <ItemRow
+                      item={item}
+                      isActive={item.block.id === active}
+                      onClick={() => onAccessibleClick(item.block.id)}
+                      showBadge={false}
+                      compact={compact}
+                    />
+                    {isDiag && !compact && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDiagExpanded((v) => !v);
+                        }}
+                        aria-label={t("nav.diagnostic_subitems.toggle_aria")}
+                        aria-expanded={diagExpanded}
+                        className={cn(
+                          "absolute right-1 top-1/2 -translate-y-1/2",
+                          "inline-flex size-6 items-center justify-center rounded-md",
+                          "text-content-tertiary hover:bg-surface-muted hover:text-content-secondary",
+                          "transition-colors",
+                        )}
+                      >
+                        <ChevronDown
+                          className={cn(
+                            "size-3.5 transition-transform",
+                            diagExpanded ? "rotate-180" : "rotate-0",
+                          )}
+                          aria-hidden="true"
+                        />
+                      </button>
+                    )}
+                  </div>
+                  {showSubs && <DiagnosticSubList activeSub={activeSub} />}
+                </li>
+              );
+            })}
           </ul>
         </section>
       ) : (
@@ -833,16 +921,24 @@ function SidebarList({
                 </p>
               )}
               <ul className="space-y-0.5">
-                {premium.map((item) => (
-                  <li key={item.block.id}>
-                    <LockedItemRow
-                      item={item}
-                      isActive={item.block.id === active}
-                      onClick={() => onAccessibleClick(item.block.id)}
-                      compact={compact}
-                    />
-                  </li>
-                ))}
+                {premium.map((item) => {
+                  const isDiag = item.block.id === DIAGNOSTIC_SECTION_ID;
+                  return (
+                    <li key={item.block.id}>
+                      <LockedItemRow
+                        item={item}
+                        isActive={item.block.id === active}
+                        onClick={() => onAccessibleClick(item.block.id)}
+                        compact={compact}
+                      />
+                      {isDiag && !compact && (
+                        <p className="pl-9 pr-3 pb-1 -mt-0.5 text-[11px] text-content-tertiary">
+                          {t("nav.diagnostic_subitems.note")}
+                        </p>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </section>
           )}
