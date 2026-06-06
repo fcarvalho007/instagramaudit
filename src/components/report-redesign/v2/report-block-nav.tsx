@@ -474,6 +474,53 @@ function LockedItemRow({
 
 const PREMIUM_WINDOWS = [30, 90] as const;
 
+const DIAGNOSTIC_SECTION_ID = "diagnostico-editorial";
+
+const DIAGNOSTIC_SUBITEMS = [
+  { id: "diag-conteudo", key: "conteudo" },
+  { id: "diag-funil", key: "funil" },
+  { id: "diag-hashtags", key: "hashtags" },
+  { id: "diag-legendas", key: "legendas" },
+  { id: "diag-capas", key: "capas" },
+  { id: "diag-audiencia", key: "audiencia" },
+  { id: "diag-integracao", key: "integracao" },
+] as const;
+
+function DiagnosticSubList({
+  activeSub,
+  compact = false,
+}: {
+  activeSub: string | null;
+  compact?: boolean;
+}) {
+  const { t } = useTranslation("report");
+  if (compact) return null;
+  return (
+    <ul className="ml-7 mt-0.5 mb-1 space-y-0 border-l border-border-default/60 pl-3">
+      {DIAGNOSTIC_SUBITEMS.map((s) => {
+        const isActive = activeSub === s.id;
+        return (
+          <li key={s.id}>
+            <button
+              type="button"
+              onClick={() => scrollToBlock(s.id)}
+              aria-current={isActive ? "true" : undefined}
+              className={cn(
+                "w-full text-left py-1 text-[12px] transition-colors rounded-md px-1.5",
+                isActive
+                  ? "text-content-primary font-semibold"
+                  : "text-content-tertiary hover:text-content-secondary",
+              )}
+            >
+              {t(`nav.diagnostic_subitems.${s.key}`)}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function ExploreSection({
   premiumUnlocked,
   sampleSize,
