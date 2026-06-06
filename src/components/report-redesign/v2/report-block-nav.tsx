@@ -1211,6 +1211,8 @@ function SidebarList({
         competitorCount={competitorCount}
         competitorMax={competitorMax}
         compact={compact}
+        primaryHandle={primaryHandle}
+        existingCompetitors={existingCompetitors}
       />
 
       {!premiumUnlocked && (
