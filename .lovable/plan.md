@@ -1,81 +1,61 @@
-# Free/Pro/Lab Enrichment Gate — Finalization
+## Plan: Fix Add Competitor UX Limit in Paid/Pro Sidebar
 
-## Status before this turn
+### Problem
+The paid sidebar shows "X de 2" competitors but the **Add Competitor button is never disabled** when the limit is reached. If a user enters a 3rd valid handle, the client silently truncates the list via `.slice(0, 2)`, may show a success toast, and updates the URL with the unchanged list — creating confusing UX.
 
-The bulk of the gate already shipped in the prior session:
+### Changes
 
-- `FREE_ENRICHMENT_TYPES` (`[]`) and `PAID_ENRICHMENT_TYPES` exist in `src/lib/enrichment/types.ts`.
-- `buildFreeEnrichmentStatus()` pre-marks paid jobs as `skipped` in the snapshot.
-- `src/routes/api/analyze-public-v1.ts` enqueues only `FREE_ENRICHMENT_TYPES` and seeds `enrichment_status` via the Free builder.
-- `src/lib/enrichment/enqueue-paid.server.ts` top-ups missing paid jobs idempotently on entitlement.
-- `src/routes/api/public/eupago-webhook.ts` calls the top-up after successful payment.
-- Internal Lab path (admin lab scrape) is unaffected and continues to run any/all enrichments today.
+#### 1. `src/components/report-redesign/v2/report-block-nav.tsx`
 
-The dependency audit (previous turn) confirmed Free renders MethodologyLine + EngagementCardRefined + 5 PremiumTeaserCard only — no OpenAI/DFS/visual/caption needed.
+**ExploreSection component:**
 
-This turn finishes the spec by adding: (1) an explicit `LAB_ENRICHMENT_TYPES` alias and (2) a clearer "skipped_free" status label so admin diagnostics distinguish "skipped for cost (Free tier)" from "skipped for budget".
+- Introduce a local constant `COMPETITOR_MAX = 2` at component scope (with a TODO comment for later centralisation).
+- Replace all hard-coded `2` references in competitor logic with `COMPETITOR_MAX`.
+- In `onAddCompetitor`: when `premiumUnlocked`, guard with `if (competitorCount >= COMPETITOR_MAX) return;` — do **not** open the `ConsumeCreditDialog` when at max.
+- In `onConfirmConsume` (competitor branch): add an early guard `if (existingCompetitors.length >= COMPETITOR_MAX)` that sets an error message and returns — no fetch, no credit consumed.
+- Remove/replace the silent truncation `const competitorList = [...existingCompetitors, newHandle].slice(0, 2);` with explicit `const competitorList = [...existingCompetitors, newHandle];` since the guard above prevents overflow.
+- In the **expanded** competitor button (line ~886): pass `disabled={competitorCount >= COMPETITOR_MAX}` to the `<button>`, change styling to reflect disabled state (muted border, no hover, cursor-not-allowed), and render a subtle hint below the button when at max:  
+  _"Limite de 2 concorrentes atingido. Remove um concorrente para adicionar outro."_
+- In the **compact** competitor button (line ~789): apply the same disabled state + styling when at max.
 
-## Changes
+#### 2. `src/components/report-redesign/v2/consume-credit-dialog.tsx`
 
-### 1. `src/lib/enrichment/types.ts`
-- Extend `EnrichmentStatus` union to add `"skipped_free"` (kept distinct from `"skipped"`, which we will reserve for budget/runtime skips).
-- Add `LAB_ENRICHMENT_TYPES = ALL_ENRICHMENT_TYPES` as a named alias used by lab callers (documentation + future-proofing).
-- Update `buildFreeEnrichmentStatus()` to mark paid jobs as `"skipped_free"` instead of `"skipped"`.
+**Defensive dialog-level guard:**
 
-### 2. `src/lib/enrichment/enqueue-paid.server.ts`
-- Update the top-up filter (`enqueuePaidEnrichmentsForSnapshot`, line 54) to treat **both** `"skipped"` and `"skipped_free"` as "ready to be re-enqueued on Pro unlock". Otherwise Pro unlock would silently never enqueue jobs marked `skipped_free`.
+- Accept a new optional prop: `competitorMax?: number`.
+- When `isCompetitor && existingCompetitors.length >= (competitorMax ?? 2)`, render a non-dismissible alert at the top of the dialog body:  
+  _"Limite de 2 concorrentes atingido."_  
+  Disable the confirm button, hide the input, and swap the CTA for a "Fechar" / "Close" ghost button.
 
-### 3. `src/lib/admin/execution-mode.functions.ts` (line 91)
-- Update the "completed" predicate to count `"skipped"`, `"skipped_free"`, and `"success"` as terminal so admin "execution mode" badge remains correct for Free snapshots.
+This is a safety net in case the dialog is ever opened programmatically despite the sidebar guard.
 
-### 4. `src/routes/api/admin/analysis-cost-breakdown.ts` (line 144)
-- Same change: treat `"skipped_free"` as a terminal state alongside `"skipped"` / `"success"` so the cost-breakdown completion check still passes for Free.
+#### 3. i18n strings
 
-### 5. `src/routes/api/__tests__/analyze-public-v1-credit-gate.test.ts`
-- Re-export `LAB_ENRICHMENT_TYPES: []` in the mock so the import-protection doesn't trip.
+Add to both `src/i18n/locales/pt/report.json` and `src/i18n/locales/en/report.json` under `nav.explore`:
 
-### Not changed
-- No DB schema change (enrichment_status is a free-form JSON map; adding a new string value is non-breaking).
-- No prompts, prices, EuPago flow, credits, entitlements, payments, or report calculations.
-- No UI change. The new status string is admin-only.
-- `run-enrichment.server.ts` does not branch on `"skipped"`, so it is untouched.
+**PT:**
+- `"competitor_limit_reached": "Limite de 2 concorrentes atingido."`
+- `"competitor_limit_hint": "Remove um concorrente para adicionar outro."`
+- `"competitor_limit_dialog_body": "Já atingiste o máximo de 2 concorrentes."`
 
-## Final policy table
+**EN:**
+- `"competitor_limit_reached": "2 competitor limit reached."`
+- `"competitor_limit_hint": "Remove one competitor to add another."`
+- `"competitor_limit_dialog_body": "You have already reached the maximum of 2 competitors."`
 
-| Tier | Apify | dataforseo | insights_v1 | insights_v2 | visual_cover | caption_semantic | comments |
-|---|---|---|---|---|---|---|---|
-| **Free / Public** | run | skipped_free | skipped_free | skipped_free | skipped_free | skipped_free | gated by `COMMENT_SCRAPER_ENABLED` |
-| **Pro (after entitlement)** | reuse snapshot | enqueue | enqueue | enqueue | enqueue | enqueue | gated |
-| **Internal Lab** | run | run | run | run | run | run | run |
+### What does NOT change
+- Pricing, checkout, EuPago
+- Entitlement / credit grant logic
+- Backend credit reserve/confirm/release (`credits.server.ts`, `analyze-public-v1.ts`)
+- Report generation, calculations, schema
+- Apify scraping logic
+- Free-user flow (still opens pricing modal)
 
-**Skipped in Free:** dataforseo, insights_v1, insights_v2, visual_cover, caption_semantic.
-**Deferred to Pro:** the same five, enqueued idempotently by the EuPago webhook.
-**Kept in Lab:** all of the above (`LAB_ENRICHMENT_TYPES`).
-
-## Estimated saving per Free analysis
-
-Order-of-magnitude (using current provider unit costs in `provider_call_logs`):
-
-| Job | Typical cost per analysis |
-|---|---|
-| dataforseo (SERP + keywords) | ~$0.005–$0.020 |
-| insights_v1 (OpenAI) | ~$0.005–$0.015 |
-| insights_v2 (OpenAI) | ~$0.010–$0.030 |
-| visual_cover (OpenAI vision, per cover) | ~$0.020–$0.080 |
-| caption_semantic (OpenAI) | ~$0.005–$0.015 |
-| **Total skipped on Free** | **~$0.045–$0.160** per analysis |
-
-Apify base scrape (~$0.01–$0.04) remains. Effective Free cost drops by roughly **70–85%**.
-
-## Manual validation checklist
-
-1. Trigger a fresh public analysis for a new handle (clear cache). Expect:
-   - `analysis_snapshots.normalized_payload.enrichment_status` shows the 5 paid jobs as `"skipped_free"`.
-   - `enrichment_jobs` table has **no rows** for `dataforseo / insights_v1 / insights_v2 / visual_cover / caption_semantic` for that snapshot.
-   - `/analyze/$username` renders MethodologyLine + Engagement + 5 teasers; no console errors.
-2. Trigger a paid checkout for that snapshot and confirm EuPago webhook delivery.
-   - Webhook logs `enqueuePaidEnrichmentsForPayment: enqueued [...]`.
-   - `enrichment_jobs` now has the 5 paid rows pending → running → success.
-   - Reload `/analyze/$username` after grants: full Pro report renders.
-3. Internal Lab scrape (admin lab) is unchanged — verify cost breakdown still shows the lab analysis with all jobs.
-4. No new errors in admin → Execution Mode and Cost Breakdown for Free snapshots (they correctly report "completed (Free tier)").
+### Validation checklist
+1. Paid user with 0 competitors → button enabled, dialog opens, credit consumed on success.
+2. Paid user with 1 competitor → same as above.
+3. Paid user with 2 competitors → button disabled, no dialog opens, no credit consumed, no success toast.
+4. Compact sidebar at 2/2 → same disabled state.
+5. Free user → button still opens pricing/unlock modal.
+6. Dialog defensive guard: if opened at max, shows limit message and blocks submission.
+7. No `.slice(0, 2)` silent truncation remains in any success path.

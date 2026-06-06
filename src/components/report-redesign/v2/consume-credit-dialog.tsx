@@ -39,6 +39,8 @@ interface Props {
   primaryHandle?: string;
   /** Handles dos concorrentes já presentes (para validar duplicados). */
   existingCompetitors?: string[];
+  /** Máximo de concorrentes permitido (defensivo; default 2). */
+  competitorMax?: number;
 }
 
 /**
@@ -58,6 +60,7 @@ export function ConsumeCreditDialog({
   errorMessage = null,
   primaryHandle,
   existingCompetitors = [],
+  competitorMax = 2,
 }: Props) {
   const { t } = useTranslation("report");
 
@@ -78,6 +81,8 @@ export function ConsumeCreditDialog({
   const hasCredit = balance >= 1;
   const isPeriod = intent.kind === "period";
   const isCompetitor = intent.kind === "competitor";
+  const atCompetitorLimit =
+    isCompetitor && existingCompetitors.length >= competitorMax;
   const description =
     isPeriod
       ? t("nav.explore.consume_dialog.period_coming_soon_body")
@@ -109,6 +114,7 @@ export function ConsumeCreditDialog({
   const handleConfirmClick = () => {
     if (submitting) return;
     if (isCompetitor) {
+      if (atCompetitorLimit) return;
       if (!competitorReady) return;
       onConfirm({ kind: "competitor", handle: normalized });
       return;
@@ -128,18 +134,28 @@ export function ConsumeCreditDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {hasCredit
+            {atCompetitorLimit
+              ? t("nav.explore.competitor_limit_reached")
+              : hasCredit
               ? title
               : t("nav.explore.consume_dialog.empty_title")}
           </DialogTitle>
           <DialogDescription>
-            {hasCredit
+            {atCompetitorLimit
+              ? t("nav.explore.competitor_limit_dialog_body")
+              : hasCredit
               ? description
               : t("nav.explore.consume_dialog.empty_body")}
           </DialogDescription>
         </DialogHeader>
 
-        {hasCredit && isCompetitor ? (
+        {atCompetitorLimit ? (
+          <p className="text-xs text-content-secondary">
+            {t("nav.explore.competitor_limit_hint")}
+          </p>
+        ) : null}
+
+        {hasCredit && isCompetitor && !atCompetitorLimit ? (
           <>
             <div className="space-y-1.5">
               <label
@@ -222,7 +238,7 @@ export function ConsumeCreditDialog({
           >
             {t("nav.explore.consume_dialog.cta_cancel")}
           </Button>
-          {hasCredit ? (
+          {atCompetitorLimit ? null : hasCredit ? (
             isPeriod ? null : (
               <Button
                 onClick={handleConfirmClick}

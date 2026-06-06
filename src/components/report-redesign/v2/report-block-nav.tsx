@@ -486,6 +486,10 @@ function LockedItemRow({
 
 const PREMIUM_WINDOWS = [30, 90] as const;
 
+// TODO: centralisar este limite num módulo partilhado (ex.: lib/config) quando
+// existir um sítio óbvio. Por agora vive aqui colado ao único consumidor.
+const COMPETITOR_MAX = 2;
+
 const DIAGNOSTIC_SECTION_ID = "diagnostico-editorial";
 
 const DIAGNOSTIC_SUBITEMS = [
@@ -648,7 +652,13 @@ function ExploreSection({
         },
       }).catch(() => {});
 
-      const competitorList = [...existingCompetitors, newHandle].slice(0, 2);
+      // Guard defensivo: o botão já deveria estar desactivado em 2/2.
+      if (existingCompetitors.length >= COMPETITOR_MAX) {
+        setErrorMessage(t("nav.explore.competitor_limit_reached"));
+        setSubmitting(false);
+        return;
+      }
+      const competitorList = [...existingCompetitors, newHandle];
 
       try {
         const result = await fetchPublicAnalysis(primaryHandle, competitorList);
@@ -745,6 +755,7 @@ function ExploreSection({
 
   const onAddCompetitor = () => {
     if (premiumUnlocked) {
+      if (competitorCount >= COMPETITOR_MAX) return;
       openConsumeDialog({ kind: "competitor" });
       return;
     }
@@ -759,6 +770,7 @@ function ExploreSection({
   // buttons side-by-side. Period button opens the modal (free) or is a
   // UI-only placeholder (paid, same behaviour as the expanded chips).
   if (compact) {
+    const atMax = premiumUnlocked && competitorCount >= COMPETITOR_MAX;
     const onPeriodCompact = () => {
       if (premiumUnlocked) {
         // Sem dia específico no compact — abre o dialog genérico
@@ -789,11 +801,15 @@ function ExploreSection({
         <button
           type="button"
           onClick={onAddCompetitor}
+          disabled={atMax}
           aria-label={t("nav.explore.add_competitor_aria")}
+          title={atMax ? t("nav.explore.competitor_limit_reached") : undefined}
           className={cn(
             "inline-flex items-center justify-center gap-1.5 h-8 rounded-md border text-[11px] font-medium transition-colors",
             "border-border-default bg-white text-content-secondary",
-            "hover:border-border-strong hover:text-content-primary",
+            atMax
+              ? "opacity-50 cursor-not-allowed"
+              : "hover:border-border-strong hover:text-content-primary",
           )}
         >
           <UserPlus className="size-3" aria-hidden="true" />
@@ -813,6 +829,7 @@ function ExploreSection({
             errorMessage={errorMessage}
             primaryHandle={primaryHandle}
             existingCompetitors={existingCompetitors}
+            competitorMax={COMPETITOR_MAX}
           />
         ) : null}
       </section>
@@ -886,16 +903,25 @@ function ExploreSection({
         <button
           type="button"
           onClick={onAddCompetitor}
+          disabled={premiumUnlocked && competitorCount >= COMPETITOR_MAX}
           aria-label={t("nav.explore.add_competitor_aria")}
           className={cn(
             "inline-flex w-full items-center justify-center gap-1.5",
             "rounded-lg border border-dashed h-9 px-3",
             "text-xs font-medium transition-colors duration-150",
             premiumUnlocked
-              ? "border-border-default bg-white text-content-secondary hover:border-border-strong hover:text-content-primary"
+              ? competitorCount >= COMPETITOR_MAX
+                ? "border-border-default bg-surface-muted text-content-tertiary opacity-60 cursor-not-allowed"
+                : "border-border-default bg-white text-content-secondary hover:border-border-strong hover:text-content-primary"
               : "border-border-default bg-surface-muted text-content-tertiary hover:border-border-strong hover:text-content-secondary",
           )}
-          title={!premiumUnlocked ? t("nav.explore.competitors_locked_hint") : undefined}
+          title={
+            !premiumUnlocked
+              ? t("nav.explore.competitors_locked_hint")
+              : competitorCount >= COMPETITOR_MAX
+                ? t("nav.explore.competitor_limit_reached")
+                : undefined
+          }
         >
           {premiumUnlocked ? (
             <UserPlus className="size-3.5" aria-hidden="true" />
@@ -905,12 +931,21 @@ function ExploreSection({
           <span>{t("nav.explore.add_competitor")}</span>
         </button>
         {premiumUnlocked ? (
-          <p className="text-[11px] text-content-tertiary tabular-nums">
-            {t("nav.explore.competitors_count", {
-              count: competitorCount,
-              max: competitorMax,
-            })}
-          </p>
+          competitorCount >= COMPETITOR_MAX ? (
+            <p className="text-[11px] text-content-tertiary leading-snug">
+              <span className="font-medium text-content-secondary">
+                {t("nav.explore.competitor_limit_reached")}
+              </span>{" "}
+              {t("nav.explore.competitor_limit_hint")}
+            </p>
+          ) : (
+            <p className="text-[11px] text-content-tertiary tabular-nums">
+              {t("nav.explore.competitors_count", {
+                count: competitorCount,
+                max: competitorMax,
+              })}
+            </p>
+          )
         ) : null}
       </div>
 
@@ -935,6 +970,7 @@ function ExploreSection({
           errorMessage={errorMessage}
           primaryHandle={primaryHandle}
           existingCompetitors={existingCompetitors}
+          competitorMax={COMPETITOR_MAX}
         />
       ) : null}
     </section>
