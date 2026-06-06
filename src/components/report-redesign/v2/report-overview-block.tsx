@@ -32,10 +32,13 @@ export interface Props {
    * Split rendering for the public lock gate:
    * - "all" (default): renders everything.
    * - "free": renders only the Editorial Identity Card (above the gate).
+   * - "free_with_engagement": renders Identity Card + Methodology Line +
+   *   Engagement card. Frequency, Format and Best-vs-Worst become PRO
+   *   teaser placeholders. Used by the post-lead-capture FREE flow.
    * - "locked": renders content from the Engagement card onward
    *   (Engagement, Frequency+Format grid, Best vs Worst posts).
    */
-  mode?: "all" | "free" | "locked";
+  mode?: "all" | "free" | "free_with_engagement" | "locked";
 }
 
 function normaliseFormatKey(raw: string | null | undefined): "Reels" | "Carousels" | "Imagens" | null {
