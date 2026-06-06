@@ -298,7 +298,7 @@ export function ReportsPanel() {
       header: "Relatório",
       render: (r) => (
         <Link
-          to="/admin/report-preview/snapshot/$snapshotId"
+          to="/admin_/report-preview/snapshot/$snapshotId"
           params={{ snapshotId: r.id }}
           className="inline-flex items-center gap-1.5 text-xs font-medium text-accent-primary transition-colors hover:text-accent-primary/80"
         >

@@ -557,7 +557,7 @@ function ProfileRow({ p }: { p: TestProfileStatus }) {
           )}
           {p.latestSnapshotId && !isExpired ? (
             <Link
-              to="/admin/report-preview/snapshot/$snapshotId"
+              to="/admin_/report-preview/snapshot/$snapshotId"
               params={{ snapshotId: p.latestSnapshotId }}
               className="inline-flex items-center justify-center gap-1.5 rounded-lg border px-3.5 py-2 text-[12px] font-medium text-admin-text-secondary hover:bg-admin-surface-muted hover:text-admin-text-primary transition-colors w-full sm:w-auto whitespace-nowrap"
               style={{ borderColor: "#E5E3D9" }}
