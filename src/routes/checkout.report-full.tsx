@@ -498,8 +498,6 @@ function StepActions({
 }
 
 function PostPurchaseSuccessPanel({ returnPath }: { returnPath: string }) {
-  const navigate = useNavigate();
-
   useEffect(() => {
     trackEvent({
       data: {
@@ -549,13 +547,10 @@ function PostPurchaseSuccessPanel({ returnPath }: { returnPath: string }) {
           type="button"
           variant="primary"
           onClick={() => {
-            if (returnPath.startsWith("/")) {
-              navigate({ to: returnPath }).catch(() => {
-                window.location.assign(returnPath);
-              });
-            } else {
-              navigate({ to: "/app/reports" }).catch(() => {});
-            }
+            const target = returnPath.startsWith("/")
+              ? returnPath
+              : "/app/reports";
+            window.location.assign(target);
           }}
           className="gap-2 w-full sm:w-auto"
         >
