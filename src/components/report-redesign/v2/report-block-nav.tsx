@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { Menu, Lock, ArrowRight, Check, UserPlus, CheckCircle2, Calendar, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   Sheet,
@@ -26,6 +28,7 @@ import { trackEvent } from "@/lib/tracking.functions";
 import { PUBLIC_PRODUCTS } from "@/lib/payments/products";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyCreditBalance } from "@/lib/credits/credits.functions";
+import { fetchPublicAnalysis } from "@/lib/analysis/client";
 import {
   ConsumeCreditDialog,
   type ConsumeCreditIntent,
