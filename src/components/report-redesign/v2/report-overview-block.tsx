@@ -53,17 +53,26 @@ const PREMIUM_TEASERS = [
   {
     number: "06",
     eyebrow: "DIAGNÓSTICO EDITORIAL",
-    title: "O que explica o que estás a ver?",
+    title: "O que explica estes resultados?",
     description:
-      "Sete cards diagnósticos — natureza do conteúdo, funil, hashtags, legendas, capas, resposta da audiência e integração entre canais.",
+      "Desbloqueia 7 perguntas estratégicas sobre conteúdo, funil, hashtags, legendas, capas, audiência e integração.",
     anchorId: "diagnostico-editorial",
+    subItems: [
+      "Natureza do conteúdo",
+      "Funil",
+      "Hashtags",
+      "Legendas",
+      "Capas",
+      "Audiência",
+      "Integração",
+    ],
   },
   {
     number: "07",
     eyebrow: "PRIORIDADES DE ACÇÃO",
     title: "O que testar, corrigir ou repetir?",
     description:
-      "Fica com recomendações práticas para transformar dados em decisões.",
+      "Recebe recomendações práticas para transformar dados em decisões.",
     anchorId: "prioridades",
   },
 ] as const;
@@ -265,6 +274,7 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
                 description={teaser.description}
                 anchorId={teaser.anchorId}
                 source="overview_pro_teaser"
+                subItems={"subItems" in teaser ? teaser.subItems : undefined}
               />
             ))}
           </div>

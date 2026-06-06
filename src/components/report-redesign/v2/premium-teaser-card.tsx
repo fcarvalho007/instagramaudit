@@ -16,6 +16,9 @@ export interface PremiumTeaserCardProps {
   anchorId: string;
   /** Tracking source forwarded to PremiumCtaProvider. */
   source: PremiumCtaSource;
+  /** Optional compact list of locked sub-items (e.g. 7 diagnostic questions
+   *  for section 06). Rendered as chip labels above the blurred preview. */
+  subItems?: readonly string[];
   className?: string;
 }
 
@@ -35,6 +38,7 @@ export function PremiumTeaserCard({
   description,
   anchorId,
   source,
+  subItems,
   className,
 }: PremiumTeaserCardProps) {
   const { handlePremiumAccessClick } = usePremiumCta();
@@ -85,6 +89,28 @@ export function PremiumTeaserCard({
       <p className="mt-3 md:mt-4 text-sm md:text-[15px] leading-relaxed text-content-secondary md:pl-[68px]">
         {description}
       </p>
+
+      {subItems && subItems.length > 0 && (
+        <ul
+          role="list"
+          className="mt-4 md:pl-[68px] grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5"
+        >
+          {subItems.map((label) => (
+            <li
+              key={label}
+              role="listitem"
+              className={cn(
+                "inline-flex items-center gap-1.5",
+                "rounded-md border border-border-default/60 bg-surface-muted/40",
+                "px-2 py-1 text-[12px] text-content-secondary",
+              )}
+            >
+              <Lock className="size-3 text-content-tertiary shrink-0" aria-hidden="true" />
+              <span className="truncate">{label}</span>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {/* Blurred decorative preview + CTA */}
       <div className="relative mt-5 md:mt-6 md:pl-[68px]">
