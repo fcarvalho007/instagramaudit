@@ -618,6 +618,7 @@ function renderIntegrationCard(r: IntegrationResult, t: TR): ReactNode | null {
       question={t("diagnostic_questions.integration.question")}
       answer={integrationLabel}
       tone={tone}
+      span="full"
       body={body}
       sourceDetail={t("diagnostic_questions.integration.source_detail")}
     >
