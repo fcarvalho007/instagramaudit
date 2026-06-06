@@ -253,11 +253,21 @@ export function ReportShellV2({
               {features.blockOverview !== "hidden" && (
               <ReportBlockSection block={overview} tone="canvas" first>
                 {lockBoundary === "engagement" && !unlocked ? (
+                  // Estado A · Anónimo — só Identity Card; LockGate logo abaixo.
                   <ReportOverviewBlock
                     result={result}
                     renderInsight={renderInsight}
                     payload={payload}
                     mode="free"
+                  />
+                ) : lockBoundary === "engagement" && unlocked && !premiumUnlocked ? (
+                  // Estado B · Lead capturado, sem PRO — Identity + Engagement +
+                  // teaser PRO para Frequência/Formatos/Publicações-chave.
+                  <ReportOverviewBlock
+                    result={result}
+                    renderInsight={renderInsight}
+                    payload={payload}
+                    mode="free_with_engagement"
                   />
                 ) : (
                   <ReportOverviewBlock
