@@ -343,6 +343,7 @@ function AnalyzePage() {
             payload={state.payload}
             analyzedAtIso={state.analyzedAtIso}
             expiresAtIso={state.expiresAtIso}
+            competitors={competitors}
           />
         )}
       </div>
