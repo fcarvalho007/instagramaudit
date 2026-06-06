@@ -1,76 +1,102 @@
-## Status: most of this is already shipped
+## Goal
 
-The audit-approved server side of the post-purchase beta bonus is already in production. Confirmed in code:
+Refine the existing paid/pro sidebar confirmation dialog to match the new spec (titles, copy, CTAs, balance line, empty state) and rename tracking events to the `beta_credit_used_*` family. Backend consumption is **not** wired here — UI confirmation only, because the period/competitor data-fetch orchestrators don't yet accept a credit reservation. This is reported as remaining work.
 
-- `src/lib/credits/credits.server.ts` exports `grantPostPurchaseBetaCredits({ leadId, paymentId })`. Idempotent by `payment_id` via a pre-insert `select` filtered on `reason='admin_adjust'` + `metadata->>kind='post_purchase_beta_bonus'` + `metadata->>payment_id=<id>`. Constants `POST_PURCHASE_BETA_BONUS = 2`, `POST_PURCHASE_BETA_KIND = "post_purchase_beta_bonus"`.
-- `src/routes/api/public/eupago-webhook.ts` (paid branch, after `grantEntitlement`) calls `grantPostPurchaseBetaCredits` inside its own try/catch so a failure never breaks the webhook, and on `granted=true` records a `credits_post_purchase_granted` product event with `{ payment_id, product_code, delta: 2, kind: "post_purchase_beta_bonus" }`.
-- `src/lib/credits/credits.functions.ts` exposes `getMyCreditBalance` (lead-cookie scoped) so the report can read the balance.
-- `src/components/report-redesign/v2/report-block-nav.tsx` `ExploreSection` already loads and renders the balance line (`beta_credits_available` / `beta_credits_empty`) but ONLY when `premiumUnlocked` is true, so it stays invisible to free users.
+## What's already in place (no changes needed)
 
-What is NOT yet done (and is the actual delta this plan implements):
+- `ConsumeCreditDialog` component (`src/components/report-redesign/v2/consume-credit-dialog.tsx`)
+- Sidebar paid/free branching in `report-block-nav.tsx`: free → `PremiumInterestDialog`, paid → `ConsumeCreditDialog`
+- Balance loading via `getMyCreditBalance` server fn (lead-cookie scoped, only fetched when `premiumUnlocked`)
+- Subtle balance line under the explore section ("{n} créditos beta disponíveis" / "0 créditos disponíveis")
+- Free-user pricing modal flow stays untouched
 
-1. **No post-purchase surprise UX surface.** The checkout return URL is `/checkout/report-full?status=success` (and `/checkout/authority-diagnosis?status=success`), but neither route renders anything for `status=success` — the user lands back on step 1. The "Oferta beta desbloqueada" message has nowhere to appear.
-2. **Empty-state copy mismatch.** Spec asks for "0 créditos disponíveis"; current key `nav.explore.beta_credits_empty` reads "Sem créditos beta disponíveis".
-3. **No unit tests** for `grantPostPurchaseBetaCredits` idempotency.
-4. **Naming nit.** Spec suggests the event be called `beta_credits_granted`; we already emit `credits_post_purchase_granted`. Keep the existing name to avoid breaking analytics dashboards; document the mapping in the migration plan only.
-5. **`premiumUnlocked` is hard-coded `false`** in `src/routes/analyze.$username.tsx:429`. That means even paid users currently see the free sidebar — the balance line never shows in practice. This is the wider "expose paid state to the report" work and is OUT OF SCOPE for this prompt (the prompt explicitly says "if data is available"). We will leave a TODO comment and call it out below as a known gap, no entitlement-reading code changes.
+## What changes
 
-## Changes
+### 1. Dialog copy + i18n (`src/i18n/locales/{pt,en}/report.json`)
 
-### 1. `src/routes/checkout.report-full.tsx` — surface the surprise after EuPago return
+Update keys under `nav.explore.consume_dialog`:
 
-- Extend `searchSchema` with `status: z.enum(["success"]).optional()`.
-- At the top of `CheckoutSteps`, when `search.status === "success"`, render a new `<PostPurchaseSuccessPanel />` instead of the step UI. The panel shows:
-  - Confirmation headline: "Pagamento confirmado — relatório desbloqueado".
-  - Subtle "surprise" card (not styled as a discount):
-    - Eyebrow: "Oferta beta desbloqueada"
-    - Body: "Como estamos em beta, oferecemos 2 créditos adicionais para explorares mais o relatório."
-    - Helper: "Podes usar estes créditos para gerar outro período ou adicionar concorrentes."
-  - Primary CTA: "Ver o meu relatório" → `navigate` to `search.return ?? "/app/reports"` (fallback `/app/reports`, which is the existing post-purchase entry point).
-- The panel fires `trackEvent({ eventType: "post_purchase_view", metadata: { product_code: "report_full_9" } })` exactly once, and `trackEvent({ eventType: "post_purchase_bonus_seen", metadata: { kind: "post_purchase_beta_bonus" } })` once on mount.
-- No EuPago payload changes, no checkout/billing/upsell logic changes — only the early-return rendering branch when `status=success`.
-- Authority-diagnosis equivalent (`/checkout/authority-diagnosis?status=success`) is intentionally left untouched in this prompt because the bonus is scoped to the 9€ full report (the audit grants the bonus on every `paid` webhook regardless of product, but the surprise copy is product-specific; gating the panel here keeps the message on-brand). We add a TODO to revisit if authority-diagnosis should show its own confirmation panel.
+| Key | New PT value |
+|---|---|
+| `title_period` (new) | "Gerar nova análise?" |
+| `title_competitor` (new) | "Adicionar concorrente à comparação?" |
+| `description_period` | "Para analisar este perfil noutro período, o AuditProfiles precisa de recolher e processar novos dados públicos do Instagram." |
+| `description_competitor` | "Vamos recolher e processar os dados públicos deste perfil para comparar com a análise actual." |
+| `credit_line` (new) | "Esta operação usa 1 crédito." |
+| `balance_hint` (new) | "Tens {{count}} créditos beta disponíveis." (singular/plural) |
+| `cta_use_period` (new) | "Usar 1 crédito e gerar análise" |
+| `cta_use_competitor` (new) | "Usar 1 crédito e adicionar concorrente" |
+| `empty_body` | "Neste momento não tens créditos disponíveis." |
+| `empty_cta` | "Pedir mais créditos" |
 
-### 2. `src/i18n/locales/{pt,en}/report.json` — empty-state copy
+Keep `cta_cancel`, `balance_label`, `balance_after`, `soon_note`. EN mirrors PT.
 
-- Change `nav.explore.beta_credits_empty`:
-  - PT: "Sem créditos beta disponíveis" → "0 créditos disponíveis"
-  - EN: existing equivalent → "0 credits available"
-- Keep `beta_credits_available` (singular/plural) untouched.
+### 2. `ConsumeCreditDialog` component
 
-### 3. `src/i18n/locales/pt/checkout.json` (or the closest existing checkout namespace, fallback to inline strings in `checkout.report-full.tsx`)
+- Title resolves by `intent.kind` (`title_period` vs `title_competitor`).
+- Body renders: description → `credit_line` → `balance_hint` (only when `balance >= 1`).
+- Confirm CTA label resolves by intent kind.
+- Empty state: replace body with `empty_body`, primary CTA `empty_cta` ("Pedir mais créditos") — keeps current `onEmptyFeedback` callback (mailto / feedback handler stays as is; no new purchase flow).
+- Keep the existing `balance_label` / `balance_after` mini-panel (educational, premium feel).
 
-- Add the post-purchase panel strings under a new `checkout.post_purchase.*` namespace. If no `checkout` i18n file exists, keep strings inline in PT (the file is already PT-only in tone) and add EN later — the rest of `checkout.report-full.tsx` already uses inline PT strings.
+### 3. Tracking events (`report-block-nav.tsx` `ExploreSection`)
 
-### 4. `src/lib/credits/__tests__/credits.server.test.ts` — new file
+- `credit_consume_dialog_opened` → keep on open (no behavior change).
+- On confirm, rename `credit_consume_confirmed` → emit one of:
+  - `beta_credit_used_period` (metadata: `{ days }`)
+  - `beta_credit_used_competitor`
+  - plus generic `beta_credit_used` with `{ action_type: "period" | "competitor", days? }` for downstream aggregation.
 
-- Use the existing vitest harness (project uses `bunx vitest run`). Mock `@/integrations/supabase/client.server` with an in-memory store keyed on `(lead_id, reason, metadata.kind, metadata.payment_id)`.
-- Cases:
-  1. `grantPostPurchaseBetaCredits` on a fresh `(leadId, paymentId)` inserts one row with `delta=2`, `reason='admin_adjust'`, `metadata.kind='post_purchase_beta_bonus'`, returns `{ granted: true }`.
-  2. A second call with the same `(leadId, paymentId)` finds the existing row and returns `{ granted: false }` without inserting.
-  3. A call with the same `leadId` but a different `paymentId` inserts a new row and returns `{ granted: true }` (covers re-purchases).
-  4. A select error from Supabase propagates as a thrown `Error` (caller is responsible for swallowing).
+No real credit is consumed (see §4).
 
-If `@/integrations/supabase/client.server` is not mockable in the existing test setup, fall back to a smaller test that imports the helper with a hand-rolled fake `supabaseAdmin` injected via module mock; do NOT touch the real client.
+### 4. Backend consumption — explicitly NOT wired
 
-### 5. Webhook-level idempotency test (optional, only if a webhook test harness already exists)
+Existing `reserveCredit` / `confirmReservation` / `releaseReservation` exist but are tied to the initial-analysis orchestrator (`uniq_credit_ledger_reserve_per_report` per `cache_key`). There is no server fn today that:
 
-- Skip new infra. If `src/routes/api/public/__tests__/eupago-webhook.test.ts` (or similar) already exists, add a case that runs the webhook handler twice for the same payload and asserts `grantPostPurchaseBetaCredits` was called twice but `recordProductEvent` only fired the `credits_post_purchase_granted` event once (because the second `grantPostPurchaseBetaCredits` returns `{ granted: false }` and the event emission is gated on `result.granted`). If no harness exists, skip — the unit test above already covers the idempotency primitive.
+- runs a new period analysis for an unlocked report, or
+- queues a competitor fetch tied to an existing report.
 
-## What is explicitly NOT changed
+Faking consumption would desynchronise the ledger. So this step:
 
-- Product prices, `PUBLIC_PRODUCTS`, `lead_payments` rows, EuPago payload, checkout fields, billing form, upsell, `grantEntitlement`, coupon redemption, `recordProductEvent`'s signature, report generation, scraping, metric calculations, RLS, DB schema, `analyze.$username.tsx` (the `premiumUnlocked={false}` hard-code stays — see Known Gap below).
+- Opens the modal.
+- On confirm, fires the tracking event and closes the dialog.
+- Does **not** call `reserveCredit`.
+- Does **not** trigger any data fetch.
 
-## Known gap (call out, do not implement here)
+Remaining backend work (separate prompt, requires approval):
 
-`src/routes/analyze.$username.tsx` hard-codes `premiumUnlocked={false}`. Until that route reads the user's entitlement and flips the flag, the sidebar's "X créditos beta disponíveis" line never renders in practice and `ConsumeCreditDialog` never opens. The bonus is correctly granted server-side; only the report-page visibility is blocked. Fixing it requires an entitlements read (and probably the `_authenticated/` auth gate), which is a separate prompt's worth of work. We leave the existing `getMyCreditBalance` call untouched so it activates automatically once the flag flips.
+1. Server fn `requestPeriodAnalysis({ days })` that `reserveCredit` + enqueues fetch + on success `confirmReservation`, on failure `releaseReservation`.
+2. Server fn `requestCompetitorAdd({ handle })` with same lifecycle.
+3. Wire success → invalidate `getMyCreditBalance` query in sidebar.
+4. Surface in-progress / failure states in the sidebar.
+
+## Files likely edited
+
+- `src/components/report-redesign/v2/consume-credit-dialog.tsx` (copy/title/CTA per intent, balance hint line)
+- `src/components/report-redesign/v2/report-block-nav.tsx` (event names only)
+- `src/i18n/locales/pt/report.json`
+- `src/i18n/locales/en/report.json`
+
+## Untouched
+
+Product price, checkout, EuPago, entitlement logic, report calculations, scraping, DB schema, free unlock modal, `PremiumInterestDialog`, `credits.server.ts`, `credits.functions.ts`.
+
+## Risks & safeguards
+
+- **Risk**: a future reader assumes the confirm button actually spends a credit. **Mitigation**: keep the existing code comment ("consumo real fica como follow-up") and surface remaining backend work in the response.
+- **Risk**: empty-state CTA "Pedir mais créditos" implies a purchase flow. **Mitigation**: reuse existing `onEmptyFeedback` (mailto/feedback) and label it explicitly; no new store created.
+- **Risk**: i18n key renames break unrelated callers. **Mitigation**: add new keys side-by-side; remove old `title` / `cta_use` only after grepping for orphan refs.
 
 ## Manual validation checklist
 
-1. With a fresh lead, complete a 9€ report-full checkout against the EuPago sandbox. After redirect to `/checkout/report-full?status=success`, the success panel appears with the "Oferta beta desbloqueada" copy and the "Ver o meu relatório" CTA.
-2. In Supabase, `credit_ledger` has exactly one row for this lead with `delta=2`, `reason='admin_adjust'`, `metadata->>kind='post_purchase_beta_bonus'`, `metadata->>payment_id=<lead_payments.id>`.
-3. `product_events` has exactly one `credits_post_purchase_granted` event for that lead with the same `payment_id`.
-4. Manually re-POST the same EuPago webhook payload. The credit_ledger row count and product_events row count for this `payment_id` stay at 1 each. The webhook returns 200 either way.
-5. Before payment, no UI surface mentions the bonus (search the report page, pricing page, premium-interest dialog: no "beta", no "2 créditos", no "bónus").
-6. Once `premiumUnlocked` flips to `true` for a paid user (separate work), the sidebar shows "2 créditos beta disponíveis", then "1 crédito beta disponível", then "0 créditos disponíveis" as they are consumed.
-7. `bunx vitest run src/lib/credits/__tests__/credits.server.test.ts` passes locally.
+1. Paid user clicks 30d → dialog title "Gerar nova análise?", body shows period copy + "Esta operação usa 1 crédito." + "Tens N créditos beta disponíveis." (when N≥1), CTA "Usar 1 crédito e gerar análise".
+2. Paid user clicks 90d → same dialog, days substituted in any dynamic copy.
+3. Paid user clicks Add competitor → title "Adicionar concorrente à comparação?", competitor copy, CTA "Usar 1 crédito e adicionar concorrente".
+4. Paid user with 0 credits → empty title, body "Neste momento não tens créditos disponíveis.", CTA "Pedir mais créditos".
+5. Confirm fires `beta_credit_used_period|competitor` + generic event, closes dialog, does NOT trigger fetch (verified: balance unchanged).
+6. Cancel closes dialog with no event side-effects beyond `dialog_opened`.
+7. Free user clicks 30d / 90d / Add competitor → still opens `PremiumInterestDialog` (pricing), not the credit dialog.
+8. Sidebar balance line still reads "{n} créditos beta disponíveis" or "0 créditos disponíveis".
+9. EN locale renders parallel copy.
+
+Approve to implement, or ask for changes (e.g. wire real consumption now, different empty-state CTA, etc.).
