@@ -103,6 +103,9 @@ interface SidebarProps {
   competitorCount?: number;
   /** Max competitors allowed in Pro. Defaults to 3. */
   competitorMax?: number;
+  /** Lista actual de concorrentes para alimentar o "Adicionar concorrente"
+   *  (passada do shell a partir do `?vs=`). */
+  competitorHandles?: string[];
 }
 
 // ── Item builder ─────────────────────────────────────────────────────
