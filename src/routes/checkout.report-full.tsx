@@ -496,3 +496,73 @@ function StepActions({
     </div>
   );
 }
+
+function PostPurchaseSuccessPanel({ returnPath }: { returnPath: string }) {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    trackEvent({
+      data: {
+        eventType: "post_purchase_view",
+        metadata: { product_code: SOURCE_PRODUCT },
+      },
+    }).catch(() => {});
+    trackEvent({
+      data: {
+        eventType: "post_purchase_bonus_seen",
+        metadata: { kind: "post_purchase_beta_bonus" },
+      },
+    }).catch(() => {});
+  }, []);
+
+  return (
+    <div className="mx-auto max-w-xl space-y-6">
+      <header className="space-y-2">
+        <span className="text-eyebrow-sm text-content-tertiary">
+          Pagamento confirmado
+        </span>
+        <h1 className="font-fraunces text-2xl sm:text-3xl font-medium text-content-primary leading-tight">
+          Relatório desbloqueado
+        </h1>
+        <p className="text-sm text-content-secondary leading-relaxed">
+          Obrigado pela tua compra. Já tens acesso a todas as secções do
+          relatório completo.
+        </p>
+      </header>
+
+      <div className="rounded-xl border border-border-default bg-surface-muted p-5 space-y-2">
+        <span className="text-eyebrow-sm text-content-tertiary">
+          Oferta beta desbloqueada
+        </span>
+        <p className="text-sm text-content-primary leading-relaxed">
+          Como estamos em beta, oferecemos 2 créditos adicionais para
+          explorares mais o relatório.
+        </p>
+        <p className="text-sm text-content-secondary leading-relaxed">
+          Podes usar estes créditos para gerar outro período ou adicionar
+          concorrentes.
+        </p>
+      </div>
+
+      <div className="pt-2">
+        <Button
+          type="button"
+          variant="primary"
+          onClick={() => {
+            if (returnPath.startsWith("/")) {
+              navigate({ to: returnPath }).catch(() => {
+                window.location.assign(returnPath);
+              });
+            } else {
+              navigate({ to: "/app/reports" }).catch(() => {});
+            }
+          }}
+          className="gap-2 w-full sm:w-auto"
+        >
+          Ver o meu relatório
+          <ArrowRight className="size-4" aria-hidden="true" />
+        </Button>
+      </div>
+    </div>
+  );
+}
