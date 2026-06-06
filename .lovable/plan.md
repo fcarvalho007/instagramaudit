@@ -1,126 +1,65 @@
-# Free/Public Enrichment Gate — Production Runtime Validation
+# Visual QA — Free/Public vs Pro report (read-only)
 
 ## Goal
-Confirm in production that an `analyze-public-v1` call produces a Free snapshot whose enrichment is fully skipped (no OpenAI, no DataForSEO, no paid enrichers), Apify primary scrape runs once, and the public report renders the expected Free structure (overview + initial reading + engagement + 5 locked teasers + sticky unlock bar).
+Confirm the Free/Public report is an honest, commercially strong preview of Pro, and that Pro is fully unlocked, using the existing `mariiana.ai` snapshot (`63c045bd-5608-412e-9cbf-68d70f56d079`). No provider calls, no payments, no DB writes.
 
-This plan spends **one** real Apify primary scrape. Nothing else.
+## Why admin/report-lab and not /analyze/<handle>
+`/analyze/<handle>` on production is hard-gated by the onboarding modal (lead capture), so the public route cannot be rendered without creating a real lead. `admin.report-lab` lets us render any snapshot under any `ReportVariant` (`public_mvp`, `pro_preview`, `internal_lab`) without onboarding, without provider calls, and without DB writes — same components, same `getVariantFeatures()` switch.
 
-## Open questions before execution
+## Method
+For each variant, render in admin/report-lab with `profile=mariiana.ai`, take desktop (1366×768) + mobile (390×844) screenshots of the full page, then crop the relevant blocks.
 
-1. **Handle to use.** Confirm which `APIFY_ALLOWLIST` handle to consume. Default candidate: `frederico.m.carvalho` (current test profile). Approve or replace.
-2. **Pre-check on 24h freshness.** If the chosen handle already has a fresh snapshot (<24h), the gate will return cached and Apify will NOT run — the test does not validate the fresh path. Options:
-   - (a) Pick a different allowlisted handle with no fresh snapshot.
-   - (b) Skip the test until the existing snapshot ages out.
-   We do NOT delete snapshots.
-3. **Build freshness.** Confirm the latest preview was published to `auditprofiles.com` before we trigger. If not, run validation against the published version that IS live and note the version, or pause until publish.
+### URLs to render (browser only — read-only)
+- Free: `/admin/report-lab?profile=mariiana.ai&variant=public_mvp`
+- Pro:  `/admin/report-lab?profile=mariiana.ai&variant=pro_preview`
+- (Reference) Internal: current `&variant=internal_lab`
 
-I will not POST anything until these three are confirmed.
+## Free/Public checks
+Block 01 — methodology line, deterministic "Leitura inicial do perfil" card, Engagement card.
 
-## Pre-checks (read-only, no cost)
+Deterministic card audit:
+- reads only deterministic fields (profile, posts, cadence, hashtags) — confirm via `report-overview-block.tsx` source path already wired to non-AI data.
+- copy: no overclaim, no AI-derived adjectives.
+- mobile: card fits 390-wide without horizontal scroll, no clipped numbers.
 
-1. `supabase--read_query` — confirm handle is in `APIFY_ALLOWLIST` secret (read from config or hardcoded allowlist source, whichever the codebase uses).
-2. `supabase--read_query` — `SELECT id, created_at, expires_at FROM analysis_snapshots WHERE instagram_username = '<handle>' ORDER BY created_at DESC LIMIT 3;` to confirm no valid (<24h, not expired) snapshot exists.
-3. Record `T0 = now()` (UTC) immediately before the POST.
-4. Confirm production URL responds: `GET https://auditprofiles.com/` returns 200 and serves the latest build (check build hash / footer version if available).
+After Engagement — 5 teaser cards in this order with locked styling:
+1. 03 Frequência editorial
+2. 04 Mix de formatos
+3. 05 Publicações-chave
+4. 06 Diagnóstico editorial
+5. 07 Prioridades de acção
 
-## Action (one real call, one Apify scrape)
+Each teaser:
+- visually mirrors corresponding Pro section header.
+- shows no premium values (no real frequência number, no real diagnostic verdict).
+- has eyebrow, title, value-prop, Premium badge, CTA.
+- CTA price = dynamic from `pricing_plans` (not hardcoded).
+- CTA opens existing unlock modal (do NOT click checkout; just confirm modal opens).
 
-```
-POST https://auditprofiles.com/api/analyze-public-v1
-Content-Type: application/json
+Sticky bar:
+- appears once the first teaser intersects, hides at lead-magnet card (confirmed in code).
+- copy mentions the 5 premium themes.
+- opens the same unlock modal as teaser CTA.
+- not present on Pro render.
 
-{
-  "instagram_username": "<handle>",
-  "competitor_usernames": []
-}
-```
+## Pro checks
+- All 7 sections render unlocked.
+- No locked teaser cards visible.
+- No sticky unlock bar.
+- Section 06 includes diagnostic cards (Diagnóstico editorial).
+- Section 07 includes Prioridades de acção.
+- Pending enrichment placeholders appear where insights_v1/v2/visual_cover/caption_semantic are `skipped_free` (this snapshot is a Free snapshot — pro_preview against it should show the pending/placeholder state, which is itself a finding to report).
 
-Capture HTTP status, response body, and the returned snapshot id / cache key.
+## Safety guard (verify after the pass)
+- `SELECT count(*) FROM provider_call_logs WHERE created_at >= '<T_qa_start>'` = 0.
+- No new rows in `lead_payments`, `lead_entitlements`, `credit_ledger`, `enrichment_jobs`, `analysis_snapshots`.
 
-## Validation queries (all read-only)
+## Deliverable
+PASS/FAIL checklist with the user's exact bullet structure, plus:
+- Visual issues found (with cropped screenshot refs)
+- Copy issues found
+- Mobile issues found
+- Final verdict: READY / NEEDS SMALL UI FIX / NEEDS TECHNICAL REVIEW
+- Note on Free-snapshot vs pro_preview pending-enrichment caveat.
 
-### A. Snapshot enrichment_status
-```sql
-SELECT id, created_at,
-       normalized_payload->'enrichment_status' AS enrichment_status
-FROM analysis_snapshots
-WHERE instagram_username = '<handle>'
-  AND created_at >= '<T0>'
-ORDER BY created_at DESC
-LIMIT 1;
-```
-**Expect** all 5 keys = `skipped_free`:
-- `dataforseo`
-- `insights_v1`
-- `insights_v2`
-- `visual_cover`
-- `caption_semantic`
-
-### B. enrichment_jobs for this snapshot
-```sql
-SELECT enrichment_type, status, created_at
-FROM enrichment_jobs
-WHERE snapshot_id = '<snapshot_id>';
-```
-**Expect** 0 rows for `dataforseo`, `insights_v1`, `insights_v2`, `visual_cover`, `caption_semantic`. Any row of those types = FAIL.
-
-### C. provider_call_logs after T0
-```sql
-SELECT provider, actor, status, created_at, estimated_cost_usd, source_context
-FROM provider_call_logs
-WHERE created_at >= '<T0>'
-  AND handle = '<handle>'
-ORDER BY created_at DESC;
-```
-**Expect**:
-- Exactly one Apify primary scrape row (status success).
-- Zero `openai` rows.
-- Zero `dataforseo` rows.
-
-### D. Non-regression on existing snapshots
-```sql
-SELECT id, updated_at FROM analysis_snapshots
-WHERE instagram_username = '<handle>' AND id <> '<new_snapshot_id>'
-ORDER BY updated_at DESC LIMIT 5;
-```
-**Expect** no `updated_at` after T0.
-
-## UI render check
-Open `https://auditprofiles.com/analyze/<handle>` (incognito, no login). Confirm:
-- "Visão geral" block present.
-- "Leitura inicial do perfil" present.
-- Engagement block present.
-- 5 locked premium teaser cards present (frequencia, formatos, publicacoes-chave, diagnostico-editorial, prioridades).
-- Sticky unlock bar appears when scrolling into the teaser area, disappears at the lead magnet card.
-
-Capture one screenshot of the teaser area + sticky bar.
-
-## Output template (filled after run)
-
-- **Handle used:** …
-- **T0:** … (UTC)
-- **Snapshot ID:** …
-- **Enrichment status table:** key → value
-- **Enrichment jobs table:** rows or `(none)`
-- **Provider calls table:** rows
-- **Apify estimated cost (USD):** …
-- **UI observations:** bullet list + screenshot ref
-- **Old snapshots changed:** yes/no
-- **Verdict:** PASS / FAIL with reason
-
-## Hard constraints (do not violate)
-
-- Do NOT call `/api/checkout`, EuPago, or grant `lead_entitlements`.
-- Do NOT trigger Pro/Lab regeneration.
-- Do NOT enqueue or run OpenAI, DataForSEO, visual_cover, caption_semantic, insights_v1/v2 enrichers — even manually.
-- Do NOT modify DB rows. All SQL above is `SELECT`.
-- Do NOT delete or update existing snapshots, payments, entitlements, credits, or user_roles.
-- Spend cap for this validation: **1 Apify primary scrape**. If the response indicates cache hit, do NOT retry with cache busting.
-
-## What I need from you to proceed
-
-1. Approved handle.
-2. Confirmation that no fresh snapshot exists for it (or approval to pick another).
-3. Confirmation the latest build is published to `auditprofiles.com`.
-
-Once approved and we're in build mode, I will execute pre-checks → POST → validation queries → UI check → fill the output template.
+No code, no DB, no provider calls. Browser + read-only SQL only.
