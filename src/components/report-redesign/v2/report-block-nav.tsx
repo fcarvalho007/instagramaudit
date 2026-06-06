@@ -466,7 +466,9 @@ function SidebarList({
   const { handlePremiumAccessClick } = usePremiumCta();
   const incluidos = items.filter((i) => i.group === "incluido");
   const premium = items.filter((i) => i.group === "premium");
-  const isPublic = variant === "public_mvp";
+  // The grouped Free / Premium layout is the commercial sidebar shape.
+  // Only the internal lab variant gets the flat 6-block lab list.
+  const isCommercial = variant !== "internal_lab";
 
   const openDialog = () => {
     handlePremiumAccessClick("sidebar");
@@ -495,7 +497,7 @@ function SidebarList({
     }
   };
 
-  if (!isPublic) {
+  if (!isCommercial) {
     return (
       <ul className="space-y-0.5">
         {items.map((item) => (
