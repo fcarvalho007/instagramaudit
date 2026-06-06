@@ -79,6 +79,14 @@ export const Route = createFileRoute("/checkout/report-full")({
 
 function CheckoutFlow() {
   const { data: leadStatus } = useSuspenseQuery(leadSessionQueryOptions);
+  const search = Route.useSearch();
+  if (search.status === "success") {
+    return (
+      <PostPurchaseSuccessPanel
+        returnPath={search.return ?? "/app/reports"}
+      />
+    );
+  }
   if (!leadStatus.hasLead) {
     return (
       <MissingLeadSession
@@ -94,14 +102,6 @@ function CheckoutSteps() {
   const search = Route.useSearch();
   const navigate = useNavigate();
   const createCheckout = useServerFn(createEupagoCheckout);
-
-  if (search.status === "success") {
-    return (
-      <PostPurchaseSuccessPanel
-        returnPath={search.return ?? "/app/reports"}
-      />
-    );
-  }
 
   const [step, setStep] = useState(1);
   const [reportPriority, setReportPriority] =
