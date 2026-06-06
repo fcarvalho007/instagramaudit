@@ -52,7 +52,6 @@ import { StickyUnlockBar } from "./sticky-unlock-bar";
 import { ReportShortcutDialog } from "./report-shortcut-dialog";
 import { useReportKeyboardShortcuts } from "./use-report-keyboard-shortcuts";
 import { scrollToBlock } from "./use-active-block";
-import { usePremiumCta } from "./premium-cta-context";
 
 interface ReportShellV2Props {
   result: AdapterResult;
