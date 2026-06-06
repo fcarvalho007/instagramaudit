@@ -1,108 +1,119 @@
-# Runtime validation — Free/Public enrichment gate
+# QA Plan — Paid Add Competitor + Beta Credit Flow
 
-Objective: prove that a fresh Free/Public analysis on one allowlisted handle runs **Apify only**, marks all paid enrichments as `skipped_free`, and enqueues zero paid `enrichment_jobs`.
+**Target:** `https://auditprofiles.com` (production)
+**Paid user:** project owner / `frederico.m.carvalho`
+**Competitor handle to add:** `martimsilvai` (must be in `APIFY_ALLOWLIST`)
+**Read-only intent + 1 real paid action** (1 beta credit + 1 Apify scrape).
+**No code, schema, pricing, EuPago, entitlement, or report-generation changes.**
 
-## Scope guard
+> ⚠️ Heads-up: last validation found production is on an older build than preview. If Add Competitor button/flow is missing on production, I will stop, report it, and not switch environments without your go-ahead.
 
-- Allowed: 1 Apify primary scrape, real DB rows in `analysis_snapshots`, `provider_call_logs`, `analysis_events`.
-- Forbidden: payments, Pro unlock, paid enrichment enqueue, OpenAI calls, DataForSEO calls.
-- No code changes. Read-only validation + one HTTP call to the public analyze endpoint.
+---
 
-## Step 1 — Pre-checks (read-only)
+## Step 0 — Pre-flight (read-only)
 
-1. Confirm `APIFY_ALLOWLIST` contains the target handle (read secret).
-2. Pick handle (default candidate: `frederico.m.carvalho` from project knowledge — confirm it's allowlisted; if not, ask which allowlisted handle to use).
-3. Confirm no fresh snapshot in last 24h:
-   ```sql
-   SELECT id, created_at, expires_at, analysis_status
-   FROM analysis_snapshots
-   WHERE instagram_username = '<handle>' AND created_at > now() - interval '24 hours'
-   ORDER BY created_at DESC;
-   ```
-   If a fresh row exists → STOP and ask user to pick another handle (we must not skip the gate via cache).
-4. Record `T0 = now()` (UTC) before triggering.
+- `APIFY_ALLOWLIST` includes `martimsilvai` (confirm via env/config check).
+- Lookup `frederico.m.carvalho`'s `lead_id` + active `lead_entitlements` (Pro/`report_full_9` or equivalent).
+- Read current `beta_credits` balance and current competitor list on the active report snapshot.
+- Record `T0 = now()` and snapshot id for the diff window.
+- Confirm preconditions: paid entitlement present, ≥1 beta credit, competitor count = 0 or 1.
 
-## Step 2 — Trigger Free/Public analysis
+If preconditions fail → STOP and report.
 
-One call to the public analyze endpoint with the chosen handle, no competitors, no auth. Exact path/method discovered from `src/routes/api/analyze-public-v1.ts` (POST `/api/analyze-public-v1`). Use `stack_modern--invoke-server-function` against the preview build.
+---
 
-## Step 3 — Validate snapshot
+## Step 1 — Paid sidebar state (visual + DOM)
 
-```sql
-SELECT id, instagram_username, created_at,
-       normalized_payload->'enrichment_status' AS enrichment_status
-FROM analysis_snapshots
-WHERE instagram_username = '<handle>' AND created_at >= T0
-ORDER BY created_at DESC LIMIT 1;
-```
+Open report for `frederico.m.carvalho` in browser. Verify:
+- Sidebar shows "Premium ativo" (or equivalent badge).
+- Sidebar shows real beta-credit balance matching DB.
+- Competitor counter shows `X de 2` matching DB.
 
-Expected `enrichment_status`:
+PASS/FAIL per item + screenshot.
 
-| key             | expected      |
-|-----------------|---------------|
-| dataforseo      | skipped_free  |
-| insights_v1     | skipped_free  |
-| insights_v2     | skipped_free  |
-| visual_cover    | skipped_free  |
-| caption_semantic| skipped_free  |
+---
 
-Any other value → FAIL.
+## Step 2 — Add competitor dialog (UI gating, no spend yet)
 
-## Step 4 — Validate no paid jobs enqueued
+Click "Adicionar concorrente". Verify dialog opens. Probe input states (no submit):
+- Invalid handle (`@@@`, empty, spaces) → CTA disabled / error.
+- Primary handle (`frederico.m.carvalho`) → rejected with copy.
+- Existing competitor (if any) → rejected with copy.
+- Valid new handle (`martimsilvai`) → CTA enabled.
 
-```sql
-SELECT enrichment_type, status, created_at
-FROM enrichment_jobs
-WHERE snapshot_id = '<new_snapshot_id>';
-```
+PASS/FAIL per state. No fetches expected at this point — verify via network panel.
 
-Expected: **0 rows** for `dataforseo`, `insights_v1`, `insights_v2`, `visual_cover`, `caption_semantic`. Ideally 0 rows total (since `FREE_ENRICHMENT_TYPES = []`). Any paid row → FAIL.
+---
 
-## Step 5 — Validate provider calls
+## Step 3 — Submit the paid add (the only real spend)
 
-```sql
-SELECT provider, actor, status, created_at, source_context
-FROM provider_call_logs
-WHERE handle = '<handle>' AND created_at >= T0
-ORDER BY created_at;
-```
+Confirm with `martimsilvai`. Capture:
+- Exactly one POST to `/api/analyze-public-v1`.
+- Submitting state visible on CTA.
+- DB: a `credit_ledger` row with reservation → confirmation (delta -1) tied to the snapshot.
+- DB: `beta_credits` balance decremented by exactly 1.
+- URL updates to include `?vs=martimsilvai` (or merges into existing `vs`).
+- Report reloads with competitor context (new competitor visible in UI).
+- Success toast.
+- `provider_call_logs` shows 1 new `apify` row for `martimsilvai` after T0, no unexpected OpenAI/DataForSEO.
 
-Expected:
-- ≥1 row with `provider = 'apify'`.
-- **0 rows** with `provider IN ('openai','dataforseo')`.
+PASS/FAIL per item + before/after balance + URL diff.
 
-Also confirm no comment scraper rows (`comment_enrichment_jobs` for new snapshot_id should be empty unless explicitly free-scope).
+---
 
-## Step 6 — Validate UI render (optional, browser)
+## Step 4 — Limit enforcement at 2/2
 
-Open `/analyze/<handle>` in preview and confirm:
-- Visão geral renders
-- Engagement renders
-- 5 locked premium teaser cards visible
-- No Pro AI cards rendered (insights v2, visual cover, caption semantic, comment intelligence, market signals)
+After step 3, if counter is now `2 de 2`:
+- "Adicionar concorrente" button is disabled.
+- Clicking does not open dialog (verify via DOM event + network).
+- No fetch to `/api/analyze-public-v1` starts.
+- No new `credit_ledger` row.
+- Limit hint copy visible.
 
-## Step 7 — Regression check
+If we ended step 3 at `1 de 2`, I will note that 2/2 was not reached in this run and report it as "not exercised" rather than fabricate a second paid add.
 
-```sql
-SELECT count(*) AS modified_pre_gate
-FROM analysis_snapshots
-WHERE updated_at >= T0 AND created_at < T0;
-```
+---
 
-Expected: 0. Any non-zero → investigate which pre-gate snapshot was touched.
+## Step 5 — Failure-path probe (no real spend)
 
-## Step 8 — Report
+Inspect the client code path for failure handling without triggering a real failure:
+- Verify the reserve → confirm/release pattern exists in the add-competitor handler.
+- Verify error toast + balance refetch on `/api/analyze-public-v1` non-2xx.
 
-Produce final output table:
-- Handle used
-- Snapshot ID + created_at
-- Enrichment status table (5 keys)
-- Enrichment jobs found (count + types)
-- Provider calls found (provider, count, status)
-- PASS/FAIL per validation step
-- Overall verdict + any regression
+If we cannot validate without a real failure, mark as "code-path verified, runtime not exercised". I will NOT force a backend failure on production.
 
-## Open questions before running
+---
 
-1. Confirm target handle. Default: `frederico.m.carvalho` (project test profile). Override if you want a different allowlisted handle.
-2. Confirm we may invoke against the **preview** deployment (`id-preview--…lovable.app`) rather than production (`instagramaudit.lovable.app`). Preview is safer for test scrapes; production is what real users hit. Default: preview.
+## Step 6 — Period chips (30d / 90d)
+
+Click 30d and 90d chips. Verify:
+- Each shows "em preparação" (or equivalent) state.
+- No `credit_ledger` change.
+- No new fetch to analyze endpoint.
+
+PASS/FAIL per chip.
+
+---
+
+## Step 7 — Free-user path (no spend)
+
+In a separate incognito session (no auth / no entitlement), open the same report and click Adicionar concorrente:
+- Pricing/unlock modal opens.
+- No fetch to `/api/analyze-public-v1`.
+- No `credit_ledger` row.
+
+PASS/FAIL.
+
+---
+
+## Output
+
+I will return:
+1. PASS/FAIL checklist for every numbered item in Steps 1–7.
+2. Beta credit balance before vs after (with `credit_ledger` row ids).
+3. New snapshot/competitor state and `?vs=` value after add.
+4. Network events observed (method, URL, status) for the add.
+5. Any regression vs the documented contract (e.g. duplicate POSTs, missing balance refresh, mismatched counter, copy issues).
+6. Any "not exercised" items with the reason.
+
+No files will be edited. No payments, entitlements, pricing, schema, or report calculations will be touched.
