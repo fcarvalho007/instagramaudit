@@ -25,6 +25,50 @@ import { computePostAverages } from "@/lib/report/post-aggregates";
 import { buildBlock01Sample } from "@/lib/report/block01-sample";
 import { Lock, Sparkles } from "lucide-react";
 import { usePremiumCta } from "./premium-cta-context";
+import { PremiumTeaserCard } from "./premium-teaser-card";
+
+const PREMIUM_TEASERS = [
+  {
+    number: "03",
+    eyebrow: "FREQUÊNCIA EDITORIAL",
+    title: "Com que ritmo publica este perfil?",
+    description:
+      "Percebe se o perfil publica com consistência suficiente e onde existem quebras de ritmo.",
+    anchorId: "frequencia",
+  },
+  {
+    number: "04",
+    eyebrow: "MIX DE FORMATOS",
+    title: "Que formatos dominam a estratégia?",
+    description:
+      "Vê se o perfil depende demasiado de um formato ou se há espaço para variar.",
+    anchorId: "formatos",
+  },
+  {
+    number: "05",
+    eyebrow: "PUBLICAÇÕES-CHAVE",
+    title: "Que posts puxam o perfil para cima?",
+    description:
+      "Identifica os melhores e piores conteúdos e percebe onde estão os padrões.",
+    anchorId: "publicacoes-chave",
+  },
+  {
+    number: "06",
+    eyebrow: "CONTEXTO ESTRATÉGICO",
+    title: "O que estes sinais dizem sobre o perfil?",
+    description:
+      "Recebe uma leitura editorial sobre posicionamento, conteúdo e oportunidades.",
+    anchorId: "contexto-estrategico",
+  },
+  {
+    number: "07",
+    eyebrow: "PRIORIDADES DE ACÇÃO",
+    title: "O que testar, corrigir ou repetir?",
+    description:
+      "Fica com recomendações práticas para transformar dados em decisões.",
+    anchorId: "prioridades",
+  },
+] as const;
 
 export interface Props {
   result: AdapterResult;
@@ -210,7 +254,22 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
           <div id="engagement" className="scroll-mt-24">
             <EngagementCardRefined result={result} />
           </div>
-          <OverviewProTeaser />
+          <div className="space-y-5 md:space-y-6">
+            <p className="text-eyebrow-sm text-content-tertiary">
+              Relatório completo · 5 secções premium
+            </p>
+            {PREMIUM_TEASERS.map((teaser) => (
+              <PremiumTeaserCard
+                key={teaser.anchorId}
+                number={teaser.number}
+                eyebrow={teaser.eyebrow}
+                title={teaser.title}
+                description={teaser.description}
+                anchorId={teaser.anchorId}
+                source="overview_pro_teaser"
+              />
+            ))}
+          </div>
         </>
       )}
 
