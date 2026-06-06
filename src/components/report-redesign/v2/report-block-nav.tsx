@@ -527,7 +527,6 @@ function UnlockPromoCard({
   onOpenDialog: () => void;
 }) {
   const { t } = useTranslation("report");
-  const priceLabel = PUBLIC_PRODUCTS.report_full_9.priceLabel;
   return (
     <div className="rounded-lg border border-border-default bg-surface-muted/40 p-3 space-y-2.5">
       <button
