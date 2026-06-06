@@ -544,6 +544,60 @@ function ExploreSection({
 }) {
   const { t } = useTranslation("report");
   const { handlePremiumAccessClick } = usePremiumCta();
+  const fetchBalance = useServerFn(getMyCreditBalance);
+  const [balance, setBalance] = useState(0);
+  const [intent, setIntent] = useState<ConsumeCreditIntent | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Carrega o saldo de créditos beta apenas no estado paid — nunca antes
+  // da compra, para nunca revelar o bónus ao utilizador free.
+  useEffect(() => {
+    if (!premiumUnlocked) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetchBalance();
+        if (!cancelled && r.hasLead) setBalance(r.balance);
+      } catch {
+        /* sem créditos visíveis em caso de falha */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [premiumUnlocked, fetchBalance]);
+
+  const openConsumeDialog = useCallback((nextIntent: ConsumeCreditIntent) => {
+    setIntent(nextIntent);
+    setDialogOpen(true);
+    trackEvent({
+      data: {
+        eventType: "credit_consume_dialog_opened",
+        metadata: {
+          intent_kind: nextIntent.kind,
+          intent_days:
+            nextIntent.kind === "period" ? nextIntent.days : undefined,
+          balance,
+        },
+      },
+    }).catch(() => {});
+  }, [balance]);
+
+  const onConfirmConsume = useCallback((nextIntent: ConsumeCreditIntent) => {
+    // O consumo real (reserveCredit + nova análise) fica como follow-up.
+    // Por agora só fechamos o dialog e registamos a intenção.
+    trackEvent({
+      data: {
+        eventType: "credit_consume_confirmed",
+        metadata: {
+          intent_kind: nextIntent.kind,
+          intent_days:
+            nextIntent.kind === "period" ? nextIntent.days : undefined,
+        },
+      },
+    }).catch(() => {});
+    setDialogOpen(false);
+  }, []);
 
   const onPeriodLockedClick = (days: number) => {
     handlePremiumAccessClick("sidebar_period", {
@@ -553,11 +607,14 @@ function ExploreSection({
 
   const onAddCompetitor = () => {
     if (premiumUnlocked) {
-      // TODO: wire to real competitor manager once available.
-      scrollToBlock("benchmark");
+      openConsumeDialog({ kind: "competitor" });
       return;
     }
     handlePremiumAccessClick("sidebar_add_competitor");
+  };
+
+  const onPeriodPaidClick = (days: number) => {
+    openConsumeDialog({ kind: "period", days });
   };
 
   // Compact layout: render "Período" and "Concorrente" as two small
@@ -565,7 +622,13 @@ function ExploreSection({
   // UI-only placeholder (paid, same behaviour as the expanded chips).
   if (compact) {
     const onPeriodCompact = () => {
-      if (!premiumUnlocked) handlePremiumAccessClick("sidebar_period");
+      if (premiumUnlocked) {
+        // Sem dia específico no compact — abre o dialog genérico
+        // (paid users escolhem a janela no relatório completo).
+        openConsumeDialog({ kind: "period", days: 30 });
+        return;
+      }
+      handlePremiumAccessClick("sidebar_period");
     };
     return (
       <section className="grid grid-cols-2 gap-1.5 px-1">
