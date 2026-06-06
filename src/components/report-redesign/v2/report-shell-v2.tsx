@@ -35,8 +35,6 @@ import { ReportFramedBlock } from "../report-framed-block";
 import { Lock, Sparkles } from "lucide-react";
 import { ReportMethodology } from "../report-methodology";
 import { REDESIGN_TOKENS } from "../report-tokens";
-import { ReportLockGate } from "@/components/product/report-lock-gate";
-
 import { useBlocks } from "./block-config";
 import { ReportBlockSidebar, ReportBlockTopTabs } from "./report-block-nav";
 import { ReportBlockSection } from "./report-block-section";
@@ -55,31 +53,6 @@ import { ReportShortcutDialog } from "./report-shortcut-dialog";
 import { useReportKeyboardShortcuts } from "./use-report-keyboard-shortcuts";
 import { scrollToBlock } from "./use-active-block";
 import { usePremiumCta } from "./premium-cta-context";
-
-/**
- * Body lock-gate CTA rendered between the free overview and the rest of
- * the report. In the onboarding-first flow this is no longer a
- * lead-capture entry point — every visitor who reaches the shell has
- * already onboarded. The CTA therefore routes through the unified
- * `PremiumCtaProvider` (same modal as the sidebar, period selector and
- * sticky bar) and emits `premium_cta_clicked` with
- * `source_component: "lock_gate"`. Does not open onboarding, call
- * Apify/OpenAI, mutate report data, or consume credits.
- */
-function LockGatePremium({ handle }: { handle: string }) {
-  const { handlePremiumAccessClick } = usePremiumCta();
-  return (
-    <ReportLockGate
-      unlocked={false}
-      onUnlockClick={() =>
-        handlePremiumAccessClick("lock_gate", { cta: "body_unlock" })
-      }
-      handle={handle}
-    >
-      {null}
-    </ReportLockGate>
-  );
-}
 
 interface ReportShellV2Props {
   result: AdapterResult;
