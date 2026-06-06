@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Menu, Lock, ArrowRight, Check, UserPlus, CalendarClock, Users, CheckCircle2 } from "lucide-react";
+import { Menu, Lock, ArrowRight, Check, UserPlus, CheckCircle2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
