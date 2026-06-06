@@ -163,6 +163,22 @@ export const Route = createFileRoute("/api/public/eupago-webhook")({
             console.error("[eupago-webhook] grantEntitlement failed", err);
           }
 
+          // Top-up paid enrichments on the snapshot the user just unlocked.
+          // Best-effort: never throws. Runs Apify-derived snapshot through
+          // the DataForSEO + OpenAI + visual_cover + caption_semantic
+          // pipeline so the Pro view has full data on next render.
+          try {
+            await enqueuePaidEnrichmentsForPayment({
+              reportCacheKey: row.report_cache_key ?? null,
+              origin: new URL(request.url).origin,
+            });
+          } catch (err) {
+            console.error(
+              "[eupago-webhook] enqueuePaidEnrichmentsForPayment failed",
+              err,
+            );
+          }
+
           // Post-purchase beta bonus: +2 créditos, idempotente por payment_id.
           // Isolado num try/catch para nunca derrubar o webhook.
           try {
