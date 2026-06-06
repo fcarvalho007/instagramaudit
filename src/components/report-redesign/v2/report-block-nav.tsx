@@ -23,7 +23,6 @@ import { scrollToBlock, useActiveBlock } from "./use-active-block";
 import { useReportTracking } from "./report-tracking-context";
 import { usePremiumCta } from "./premium-cta-context";
 import { trackEvent } from "@/lib/tracking.functions";
-import { PUBLIC_PRODUCTS } from "@/lib/payments/products";
 
 // ── Types ────────────────────────────────────────────────────────────
 
