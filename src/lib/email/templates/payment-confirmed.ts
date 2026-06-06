@@ -107,6 +107,20 @@ export function getPaymentConfirmedParts(
   </tr>
 </table>`;
 
+  // Surpresa pós-compra: bónus de 2 créditos beta. Hoje
+  // `grantPostPurchaseBetaCredits` corre no webhook para qualquer pagamento
+  // antes do envio deste email, por isso o card é incondicional. Se mais
+  // tarde o bónus passar a ser product-scoped, introduzir um
+  // `showBetaBonus?: boolean` em `PaymentConfirmedInput` e gatekeepar.
+  const betaBonusCardHtml = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#fafaf9;border:1px solid #e7e5e4;border-radius:10px;margin:0 0 20px 0;">
+  <tr>
+    <td style="padding:18px 20px;">
+      <p style="margin:0 0 8px 0;font-size:11px;line-height:1.4;letter-spacing:0.14em;color:#78716c;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-weight:600;">Oferta beta desbloqueada</p>
+      <p style="margin:0;font-size:14px;line-height:1.55;color:#0a0e1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Como estamos em beta, oferecemos 2 créditos adicionais para explorares mais o relatório. Podes usá-los para gerar outro período ou adicionar concorrentes.</p>
+    </td>
+  </tr>
+</table>`;
+
   const signatureBlockHtml = `<p style="margin:24px 0 0 0;font-size:14px;line-height:1.6;color:#57534e;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Obrigado pela confiança,<br/>Frederico · AuditProfiles</p>`;
 
   const bodyHtml = [
@@ -118,6 +132,7 @@ export function getPaymentConfirmedParts(
     renderUrlFallbackHtml(reportUrl),
     `<div style="height:20px;"></div>`,
     reassuranceCardHtml,
+    betaBonusCardHtml,
     signatureBlockHtml,
   ].join("\n");
 
@@ -145,6 +160,10 @@ export function getPaymentConfirmedParts(
     reportUrl,
     "",
     "Pagamento único, sem subscrição nem renovação automática. O relatório fica guardado na tua conta.",
+    "",
+    "— Oferta beta desbloqueada —",
+    "Como estamos em beta, oferecemos 2 créditos adicionais para explorares mais o relatório.",
+    "Podes usá-los para gerar outro período ou adicionar concorrentes.",
     "",
     "Obrigado pela confiança,",
     "Frederico · AuditProfiles",

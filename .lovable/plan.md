@@ -1,102 +1,68 @@
-## Goal
+## Scope
 
-Refine the existing paid/pro sidebar confirmation dialog to match the new spec (titles, copy, CTAs, balance line, empty state) and rename tracking events to the `beta_credit_used_*` family. Backend consumption is **not** wired here — UI confirmation only, because the period/competitor data-fetch orchestrators don't yet accept a credit reservation. This is reported as remaining work.
+Most post-purchase surfaces already render the surprise beta-bonus copy:
 
-## What's already in place (no changes needed)
+- `PostPurchaseSuccessPanel` in `src/routes/checkout.report-full.tsx` already shows the "Oferta beta desbloqueada" card with the exact spec copy.
+- Sidebar paid-state credit balance is already rendered subtly via `getMyCreditBalance`.
 
-- `ConsumeCreditDialog` component (`src/components/report-redesign/v2/consume-credit-dialog.tsx`)
-- Sidebar paid/free branching in `report-block-nav.tsx`: free → `PremiumInterestDialog`, paid → `ConsumeCreditDialog`
-- Balance loading via `getMyCreditBalance` server fn (lead-cookie scoped, only fetched when `premiumUnlocked`)
-- Subtle balance line under the explore section ("{n} créditos beta disponíveis" / "0 créditos disponíveis")
-- Free-user pricing modal flow stays untouched
+The one remaining gap is the **payment-confirmed email**, which currently ends after the "pagamento único" reassurance card without mentioning the bonus.
 
-## What changes
+## Change
 
-### 1. Dialog copy + i18n (`src/i18n/locales/{pt,en}/report.json`)
+Update `src/lib/email/templates/payment-confirmed.ts` to append a subtle "Oferta beta" info card after the reassurance card, in both HTML and plain-text bodies. Keep it calm and non-promotional.
 
-Update keys under `nav.explore.consume_dialog`:
+### HTML (after `reassuranceCardHtml`)
 
-| Key | New PT value |
-|---|---|
-| `title_period` (new) | "Gerar nova análise?" |
-| `title_competitor` (new) | "Adicionar concorrente à comparação?" |
-| `description_period` | "Para analisar este perfil noutro período, o AuditProfiles precisa de recolher e processar novos dados públicos do Instagram." |
-| `description_competitor` | "Vamos recolher e processar os dados públicos deste perfil para comparar com a análise actual." |
-| `credit_line` (new) | "Esta operação usa 1 crédito." |
-| `balance_hint` (new) | "Tens {{count}} créditos beta disponíveis." (singular/plural) |
-| `cta_use_period` (new) | "Usar 1 crédito e gerar análise" |
-| `cta_use_competitor` (new) | "Usar 1 crédito e adicionar concorrente" |
-| `empty_body` | "Neste momento não tens créditos disponíveis." |
-| `empty_cta` | "Pedir mais créditos" |
+A muted neutral card (similar style to receipt card, not the blue reassurance one) so it reads as a thoughtful footnote, not an upsell:
 
-Keep `cta_cancel`, `balance_label`, `balance_after`, `soon_note`. EN mirrors PT.
+```
+Title  (eyebrow): "Oferta beta desbloqueada"
+Body:  "Como estamos em beta, oferecemos 2 créditos adicionais para explorares
+        mais o relatório. Podes usá-los para gerar outro período ou adicionar
+        concorrentes."
+```
 
-### 2. `ConsumeCreditDialog` component
+Background `#fafaf9`, border `#e7e5e4`, same radius/padding as the receipt card. No CTA button (the existing "Abrir relatório completo" already drives action).
 
-- Title resolves by `intent.kind` (`title_period` vs `title_competitor`).
-- Body renders: description → `credit_line` → `balance_hint` (only when `balance >= 1`).
-- Confirm CTA label resolves by intent kind.
-- Empty state: replace body with `empty_body`, primary CTA `empty_cta` ("Pedir mais créditos") — keeps current `onEmptyFeedback` callback (mailto / feedback handler stays as is; no new purchase flow).
-- Keep the existing `balance_label` / `balance_after` mini-panel (educational, premium feel).
+### Plain text
 
-### 3. Tracking events (`report-block-nav.tsx` `ExploreSection`)
+Insert after the "Pagamento único…" line and before the signature:
 
-- `credit_consume_dialog_opened` → keep on open (no behavior change).
-- On confirm, rename `credit_consume_confirmed` → emit one of:
-  - `beta_credit_used_period` (metadata: `{ days }`)
-  - `beta_credit_used_competitor`
-  - plus generic `beta_credit_used` with `{ action_type: "period" | "competitor", days? }` for downstream aggregation.
+```
+— Oferta beta desbloqueada —
+Como estamos em beta, oferecemos 2 créditos adicionais para explorares mais o relatório.
+Podes usá-los para gerar outro período ou adicionar concorrentes.
+```
 
-No real credit is consumed (see §4).
+### Why unconditional
 
-### 4. Backend consumption — explicitly NOT wired
+`grantPostPurchaseBetaCredits` is called in `eupago-webhook` for every successful payment (no product gating), and the bonus is granted **before** `sendPaymentConfirmedEmail` runs, so every payment-confirmed email today corresponds to a payment whose lead just received +2 credits. Including the card unconditionally matches reality and avoids touching the sender/webhook.
 
-Existing `reserveCredit` / `confirmReservation` / `releaseReservation` exist but are tied to the initial-analysis orchestrator (`uniq_credit_ledger_reserve_per_report` per `cache_key`). There is no server fn today that:
+If later the grant becomes product-scoped, we can add an optional `showBetaBonus?: boolean` input — but not now (don't change sender today).
 
-- runs a new period analysis for an unlocked report, or
-- queues a competitor fetch tied to an existing report.
+## Files to edit
 
-Faking consumption would desynchronise the ledger. So this step:
+- `src/lib/email/templates/payment-confirmed.ts` — append HTML card + text block.
+- `src/lib/email/__tests__/payment-confirmed.test.ts` — extend existing snapshot/assertions to cover the new lines.
 
-- Opens the modal.
-- On confirm, fires the tracking event and closes the dialog.
-- Does **not** call `reserveCredit`.
-- Does **not** trigger any data fetch.
+## Not changed
 
-Remaining backend work (separate prompt, requires approval):
-
-1. Server fn `requestPeriodAnalysis({ days })` that `reserveCredit` + enqueues fetch + on success `confirmReservation`, on failure `releaseReservation`.
-2. Server fn `requestCompetitorAdd({ handle })` with same lifecycle.
-3. Wire success → invalidate `getMyCreditBalance` query in sidebar.
-4. Surface in-progress / failure states in the sidebar.
-
-## Files likely edited
-
-- `src/components/report-redesign/v2/consume-credit-dialog.tsx` (copy/title/CTA per intent, balance hint line)
-- `src/components/report-redesign/v2/report-block-nav.tsx` (event names only)
-- `src/i18n/locales/pt/report.json`
-- `src/i18n/locales/en/report.json`
-
-## Untouched
-
-Product price, checkout, EuPago, entitlement logic, report calculations, scraping, DB schema, free unlock modal, `PremiumInterestDialog`, `credits.server.ts`, `credits.functions.ts`.
+Product price, payment amount, EuPago payloads, webhook logic, idempotency, kill-switch, sender (`send-payment-confirmed.server.ts`), entitlement, `grantPostPurchaseBetaCredits`, report generation, DB schema, pre-purchase pricing modal, `PostPurchaseSuccessPanel`, sidebar paid-state, `PremiumInterestDialog`.
 
 ## Risks & safeguards
 
-- **Risk**: a future reader assumes the confirm button actually spends a credit. **Mitigation**: keep the existing code comment ("consumo real fica como follow-up") and surface remaining backend work in the response.
-- **Risk**: empty-state CTA "Pedir mais créditos" implies a purchase flow. **Mitigation**: reuse existing `onEmptyFeedback` (mailto/feedback) and label it explicitly; no new store created.
-- **Risk**: i18n key renames break unrelated callers. **Mitigation**: add new keys side-by-side; remove old `title` / `cta_use` only after grepping for orphan refs.
+- **Risk**: email might be sent for a future product that doesn't grant credits. **Mitigation**: today there's no such case; if introduced later, add an optional `showBetaBonus` prop and gate the section. Document in code comment.
+- **Risk**: card reads as marketing. **Mitigation**: muted neutral palette, no CTA, no exclamation, sentence-case body.
+- **Risk**: snapshot tests break. **Mitigation**: update them in the same patch.
 
 ## Manual validation checklist
 
-1. Paid user clicks 30d → dialog title "Gerar nova análise?", body shows period copy + "Esta operação usa 1 crédito." + "Tens N créditos beta disponíveis." (when N≥1), CTA "Usar 1 crédito e gerar análise".
-2. Paid user clicks 90d → same dialog, days substituted in any dynamic copy.
-3. Paid user clicks Add competitor → title "Adicionar concorrente à comparação?", competitor copy, CTA "Usar 1 crédito e adicionar concorrente".
-4. Paid user with 0 credits → empty title, body "Neste momento não tens créditos disponíveis.", CTA "Pedir mais créditos".
-5. Confirm fires `beta_credit_used_period|competitor` + generic event, closes dialog, does NOT trigger fetch (verified: balance unchanged).
-6. Cancel closes dialog with no event side-effects beyond `dialog_opened`.
-7. Free user clicks 30d / 90d / Add competitor → still opens `PremiumInterestDialog` (pricing), not the credit dialog.
-8. Sidebar balance line still reads "{n} créditos beta disponíveis" or "0 créditos disponíveis".
-9. EN locale renders parallel copy.
+1. Pre-purchase pricing modal (`PremiumInterestDialog`) shows no mention of beta credits.
+2. Post-purchase `?status=success` view shows the "Oferta beta desbloqueada" card (already in place).
+3. Payment-confirmed email renders: greeting → lead sentence → receipt card → CTA → reassurance card → **Oferta beta card** → signature.
+4. Plain-text version contains "Oferta beta desbloqueada" section.
+5. Dynamic fields (`productName`, `amountLabel`, `paymentMethod`, `paymentReference`, `reportUrl`, `firstName`, `instagramHandle`) still render correctly.
+6. No changes in EuPago webhook, payment sender, entitlement grant, or DB.
+7. `bun test src/lib/email/__tests__/payment-confirmed.test.ts` passes.
 
-Approve to implement, or ask for changes (e.g. wire real consumption now, different empty-state CTA, etc.).
+Approve to implement.
