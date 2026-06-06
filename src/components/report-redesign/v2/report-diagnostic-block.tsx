@@ -150,7 +150,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
       audience,
       integration,
       aiSections: result.enriched.aiInsightsV2?.sections,
-      editorialVerdict: result.enriched.aiInsightsV2?.editorial_verdict ?? null,
+      editorialVerdict: result.enriched.aiInsightsV2?.editorialVerdict ?? null,
     });
     return (
       <div className="space-y-12 md:space-y-14">
