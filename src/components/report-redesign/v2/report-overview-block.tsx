@@ -23,8 +23,6 @@ import {
 } from "@/lib/report/cadence-label";
 import { computePostAverages } from "@/lib/report/post-aggregates";
 import { buildBlock01Sample } from "@/lib/report/block01-sample";
-import { Lock, Sparkles } from "lucide-react";
-import { usePremiumCta } from "./premium-cta-context";
 import { PremiumTeaserCard } from "./premium-teaser-card";
 
 const PREMIUM_TEASERS = [
