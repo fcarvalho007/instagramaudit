@@ -592,7 +592,7 @@ export function FrequencyCard({
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="px-5 md:px-6 pt-5 md:pt-6 space-y-2">
+      <div className="px-5 md:px-6 pt-5 md:pt-6 pb-1 space-y-2">
         <ReportCardSectionHeader
           title={t("frequency.title")}
           qualifier={!isInsufficient ? frequencyStatus : undefined}
@@ -621,120 +621,127 @@ export function FrequencyCard({
       )}
 
       {/* Ritmo por dia da semana — hidden when cadence is insufficient */}
-      {!isInsufficient && <WeeklyRhythm days={windowedDays} t={t} />}
-
-      {/* Calendar grid — always visible */}
-      {weeks.length > 0 && (
-        <div className="px-5 md:px-6 mt-5">
-          <div className="flex flex-col gap-0.5 min-w-0 max-w-[360px]">
-            <span className="text-eyebrow-sm text-content-tertiary">
-              {t("frequency.calendar.eyebrow", { days: effectiveWindowDays })}
-            </span>
-            <span className="text-xs text-content-tertiary leading-snug">
-              {t(
-                publishedCount === 1
-                  ? "frequency.calendar.published_one"
-                  : "frequency.calendar.published_other",
-                { count: publishedCount },
-              )}
-            </span>
-          </div>
-
-          <div className="mt-2.5 max-w-[360px]">
-          {/* Weekday headers */}
-          <div className="grid grid-cols-7 gap-[3px] mb-1">
-            {weekdayShort.map((wd, i) => (
-              <span
-                key={i}
-                className="text-[11px] font-medium text-content-tertiary text-center leading-none select-none"
-              >
-                {wd}
-              </span>
-            ))}
-          </div>
-
-          {/* Week rows */}
-          <div
-            role="img"
-            aria-label={t("frequency.calendar.aria", { published: publishedCount, paused: pausedCount })}
-            className="grid gap-[3px]"
-            style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
-          >
-            {weeks.flatMap((week, wi) =>
-              Array.from({ length: 7 }).map((_, di) => {
-                const day = week[di] ?? null;
-                if (!day) {
-                  return (
-                    <span
-                      key={`pad-${wi}-${di}`}
-                      className="aspect-square rounded-[5px]"
-                    />
-                  );
-                }
-                const dateLabel = fmtLocaleDate(day.date, i18n.language);
-                const tooltipPosts = day.postCount > 0
-                  ? t(
-                      day.postCount === 1
-                        ? "frequency.weekly_summary.posts_one"
-                        : "frequency.weekly_summary.posts_other",
-                      { count: day.postCount },
-                    )
-                  : t("frequency.calendar.tooltip_no_post");
-                return (
-                  <span
-                    key={day.date}
-                    title={`${dateLabel} · ${tooltipPosts}`}
-                    className="relative aspect-square rounded-[5px] flex items-center justify-center transition-colors"
-                    style={{ background: cellStyle(day.postCount).bg, border: cellStyle(day.postCount).border }}
-                  >
-                    {day.postCount > 1 && (
+      {(!isInsufficient || weeks.length > 0) && (
+        <div className="px-5 md:px-6 mt-6 grid gap-4 md:gap-5 md:grid-cols-5">
+          {!isInsufficient && (
+            <div className="md:col-span-2">
+              <WeeklyRhythm days={windowedDays} t={t} embedded />
+            </div>
+          )}
+          {weeks.length > 0 && (
+            <div className={!isInsufficient ? "md:col-span-3" : "md:col-span-5"}>
+              <div className="rounded-xl border border-border-default bg-surface-muted/60 px-4 py-4 md:px-5 md:py-5 h-full flex flex-col">
+                {/* Header row: eyebrow + legend */}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex flex-col gap-0.5 min-w-0">
+                    <span className="text-eyebrow-sm text-content-tertiary">
+                      {t("frequency.calendar.eyebrow", { days: effectiveWindowDays })}
+                    </span>
+                    <span className="text-xs text-content-tertiary leading-snug">
+                      {t(
+                        publishedCount === 1
+                          ? "frequency.calendar.published_one"
+                          : "frequency.calendar.published_other",
+                        { count: publishedCount },
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 sm:justify-end">
+                    <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
                       <span
-                        className="text-[9px] font-semibold leading-none text-white select-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]"
+                        className="size-[10px] rounded-[3px] shrink-0"
                         aria-hidden="true"
-                      >
-                        {day.postCount}
-                      </span>
-                    )}
-                  </span>
-                );
-              }),
-            )}
-          </div>
+                        style={{ background: legendBg(0), border: "1px solid rgba(148,163,184,0.35)" }}
+                      />
+                      {t("frequency.calendar.legend_none")}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
+                      <span
+                        className="size-[10px] rounded-[3px] shrink-0"
+                        aria-hidden="true"
+                        style={{ background: legendBg(1) }}
+                      />
+                      {t("frequency.calendar.legend_one")}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
+                      <span
+                        className="size-[10px] rounded-[3px] shrink-0"
+                        aria-hidden="true"
+                        style={{ background: legendBg(2) }}
+                      />
+                      {t("frequency.calendar.legend_two")}
+                    </span>
+                  </div>
+                </div>
 
-          {/* Legend — fixed 3 states: sem post / 1 post / 2 posts */}
-          <div className="flex items-center gap-3 md:gap-4 mt-2.5">
-            <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
-              <span
-                className="size-[9px] rounded-[2px] shrink-0"
-                aria-hidden="true"
-                style={{ background: legendBg(0), border: "1px solid rgba(148,163,184,0.35)" }}
-              />
-              {t("frequency.calendar.legend_none")}
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
-              <span
-                className="size-[9px] rounded-[2px] shrink-0"
-                aria-hidden="true"
-                style={{ background: legendBg(1) }}
-              />
-              {t("frequency.calendar.legend_one")}
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
-              <span
-                className="size-[9px] rounded-[2px] shrink-0"
-                aria-hidden="true"
-                style={{ background: legendBg(2) }}
-              />
-              {t("frequency.calendar.legend_two")}
-            </span>
-          </div>
-          </div>
+                {/* Weekday headers */}
+                <div className="grid grid-cols-7 gap-1.5 mt-4 mb-1.5">
+                  {weekdayShort.map((wd, i) => (
+                    <span
+                      key={i}
+                      className="text-eyebrow-sm text-content-tertiary text-center leading-none select-none"
+                    >
+                      {wd}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Week rows */}
+                <div
+                  role="img"
+                  aria-label={t("frequency.calendar.aria", { published: publishedCount, paused: pausedCount })}
+                  className="grid gap-1.5"
+                  style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
+                >
+                  {weeks.flatMap((week, wi) =>
+                    Array.from({ length: 7 }).map((_, di) => {
+                      const day = week[di] ?? null;
+                      if (!day) {
+                        return (
+                          <span
+                            key={`pad-${wi}-${di}`}
+                            className="aspect-square rounded-md"
+                          />
+                        );
+                      }
+                      const dateLabel = fmtLocaleDate(day.date, i18n.language);
+                      const tooltipPosts = day.postCount > 0
+                        ? t(
+                            day.postCount === 1
+                              ? "frequency.weekly_summary.posts_one"
+                              : "frequency.weekly_summary.posts_other",
+                            { count: day.postCount },
+                          )
+                        : t("frequency.calendar.tooltip_no_post");
+                      return (
+                        <span
+                          key={day.date}
+                          title={`${dateLabel} · ${tooltipPosts}`}
+                          className="relative aspect-square rounded-md flex items-center justify-center transition-colors"
+                          style={{ background: cellStyle(day.postCount).bg, border: cellStyle(day.postCount).border }}
+                        >
+                          {day.postCount > 1 && (
+                            <span
+                              className="text-[11px] font-semibold leading-none text-white select-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]"
+                              aria-hidden="true"
+                            >
+                              {day.postCount}
+                            </span>
+                          )}
+                        </span>
+                      );
+                    }),
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* Verdict — suppressed when cadence is insufficient (no strong claims). */}
       {!isInsufficient && (
-      <InsightCallout tone={verdictTone} label={verdictLabel} className="mt-5 mx-5 md:mx-6 mb-5 sm:mb-6">
+      <InsightCallout tone={verdictTone} label={verdictLabel} className="mt-6 mx-5 md:mx-6 mb-5 sm:mb-6">
         <p>
           <span className="font-semibold">{verdict.strong}</span>{" "}
           {verdict.rest}

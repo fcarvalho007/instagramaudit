@@ -1,80 +1,78 @@
-# Standardize Report Section Headers
+# Frequência de publicação — section redesign
 
-## Problem
+## Why the section looks cramped today
 
-Section titles in the report are inconsistent. Each "card-as-section" (Engagement, Frequência, Formato, Melhores e piores publicações, …) hard-codes its own `<h3 className="font-display text-[1.25rem] sm:text-[1.5rem] md:text-[1.75rem|2rem] font-semibold tracking-tight …">` with slightly different sizes, line-heights, wrapping rules, and no shared eyebrow/spacing logic. The block-level header (`REDESIGN_TOKENS.h2Section`) is already consistent — the gap is one level below, at the card/section title.
+`src/components/report-redesign/v2/overview/frequency-card.tsx` is one card with five vertical stripes: header → KPI strip → weekly rhythm → 30-day calendar → insight callout. Two layout decisions cause the "cut" feeling on desktop:
 
-## Files involved (audit)
+- The calendar block hard-caps itself at `max-w-[360px]` (lines 629 + 643), so on a full-width card the 30 cells crowd into the left third while the right two thirds sit empty.
+- Weekly Rhythm already has its own framed sub-card; the calendar has none, so it visually orphans below the rhythm block instead of feeling part of the same composition.
 
-Headers we will standardize (all use a near-duplicate `h3` today):
+Eyebrow ("CALENDÁRIO · 30 DIAS"), published-days line, and legend are also stacked into a thin column that wastes the horizontal room.
 
-- `src/components/report-redesign/v2/overview/frequency-card.tsx` (l. 596) — "Frequência de publicação …"
-- `src/components/report-redesign/v2/overview/format-card.tsx` (l. 293) — "Formato …"
-- `src/components/report-redesign/v2/report-overview-engagement.tsx` (l. 122) — "Taxa de Engagement …"
-- `src/components/report-redesign/v2/report-post-comparison.tsx` (l. 182) — "Melhores e piores publicações"
-- `src/components/report-redesign/v2/report-themes-feature.tsx` (l. 126) — themes section title
-- `src/components/report-redesign/v2/report-overview-cards.tsx` (l. 137/154) — overview mini-cards (treated as sub-tier, see below)
+## Files involved
 
-Already consistent, left alone:
-- Block-level question headers via `REDESIGN_TOKENS.h2Section` (`report-block-section.tsx`).
-- `ReportSectionFrame` editorial header (full eyebrow + h2 + subtitle), used elsewhere.
+Only this section's component:
+
+- `src/components/report-redesign/v2/overview/frequency-card.tsx`
+
+No changes to data, scoring, copy strings, or other report code.
 
 ## Plan
 
-### 1. Add 3 tokens in `src/components/report-redesign/report-tokens.ts`
+### 1. Two-column "rhythm + calendar" composition on desktop
 
-A single editorial scale for section titles inside cards:
+Wrap the existing `WeeklyRhythm` sub-component and the new framed calendar in a single `md:grid md:grid-cols-5 md:gap-5` row inside the card:
+
+- Left column (`md:col-span-2`) — `WeeklyRhythm` (already framed). No internal change.
+- Right column (`md:col-span-3`) — new `MonthCalendar` sub-block, also framed (`rounded-xl border border-border-default bg-surface-muted/60 p-4 md:p-5`), so the two halves read as siblings.
+
+Mobile (`< md`): stays stacked, calendar full width — no `max-w-[360px]` cap.
+
+### 2. Calendar header refactor
+
+Replace the current vertical stack (eyebrow, count, grid, legend stacked) with a 2-row header inside the framed sub-card:
 
 ```
-h3SectionTitle      // font-display, 1.5rem → 1.75rem → 2rem, font-semibold,
-                    // tracking-[-0.015em], leading-[1.15], text-content-primary,
-                    // break-words [hyphens:none]
-h3SectionEyebrow    // text-eyebrow-sm, text-content-tertiary, mb-2
-h3SectionQualifier  // inline qualifier ("Baixa", "Alta", "Pouco variado")
-                    // font-display, font-normal, text-content-secondary,
-                    // same size as title, ml-2
+CALENDÁRIO · 30 DIAS                       [ legend chips → ]
+22 dias com publicação · 8 em pausa
 ```
 
-Rationale: editorial = Fraunces display, size jumps to ~32px on desktop (matches the cinematic feel the user asked for), qualifier becomes a lighter inline modifier instead of being baked into the title string — fixes the awkward "Title Adjective" wrapping.
+- Row 1: `text-eyebrow-sm` on the left, legend chips (`sem post · 1 post · 2 posts`) on the right.
+- Row 2: published / paused summary on a single line (combines the existing `frequency.calendar.published_*` line with the already-computed `pausedCount`; if combining is risky, keep two stacked lines but inline-flex them, no copy change).
 
-### 2. Add reusable component `src/components/report-redesign/v2/report-card-section-header.tsx`
+### 3. Calendar grid — full width and larger cells
 
-```tsx
-interface Props {
-  eyebrow?: string;       // e.g. "ENGAGEMENT"
-  title: string;          // e.g. "Taxa de Engagement"
-  qualifier?: string;     // e.g. "Baixa" — rendered lighter, inline
-  icon?: ReactNode;       // optional leading icon, kept small
-  action?: ReactNode;     // optional right-side control
-  align?: "start" | "center";
-}
-```
+- Remove both `max-w-[360px]` wrappers.
+- Keep `grid-cols-7` + `aspect-square`; cells become naturally larger (~36–44px desktop) because the column is now wider.
+- Bump the cell radius from `rounded-[5px]` → `rounded-md` and the gap from `gap-[3px]` → `gap-1.5` (≈6px) to breathe.
+- Weekday header row: same gap, font kept at `text-[11px]` but uppercase tracking added for editorial feel — `text-eyebrow-sm` token aligned with the rest of the report.
+- Multi-post number stays in white at `text-[11px]` (one notch up from `text-[9px]` now that cells are bigger).
 
-Renders: eyebrow (optional) → row with `<h3>` title + qualifier + optional action. One consistent bottom margin (`mb-4 md:mb-5`). One consistent wrapping rule.
+### 4. Legend treatment
 
-### 3. Apply the component to the 5 hard-coded headers
+- Use the same legend chips already rendered, but reposition into the calendar's header row on desktop and below the grid on mobile. Keep the existing 3-state set, copy unchanged.
 
-Replace each existing `<h3 …>{title} {qualifier}</h3>` with `<ReportCardSectionHeader eyebrow={…} title={…} qualifier={…} />`. Split current strings like "Taxa de Engagement Baixa" into `title="Taxa de Engagement"` + `qualifier="Baixa"` (no copy change, just structural split — already how the data is computed in `score-utils`/scoring helpers; no logic changes).
+### 5. Spacing rhythm of the whole card
 
-Eyebrows where they already exist (e.g. `REDESIGN_TOKENS.eyebrow` in `report-overview-attention-row.tsx`) get migrated to the same token so size/letter-spacing/color match.
+- Header zone (title + subtitle): unchanged.
+- `mt-5` → `mt-6` between KPI strip and the new rhythm/calendar row.
+- `mt-5` → `mt-6` before the insight callout, with `mx-5 md:mx-6 mb-6` so it feels deliberately framed at the card foot.
 
-### 4. Leave untouched
+### 6. Title + qualifier polish
 
-- `report-overview-cards.tsx` mini-cards (Tier-3 KPI-card titles, intentionally smaller). They keep current size but switch to the same `font-display` + tracking tokens so weight/family stay consistent.
-- `ReportSectionFrame` (block-level), `report-block-section.tsx`, `report-section.tsx` legacy — none of the four examples flow through these.
-- Data, scoring, copy strings, business logic — unchanged.
+`Frequência de publicação Alta` already routes through the shared `ReportCardSectionHeader` (just standardized). Two tiny tweaks scoped to this card:
 
-### 5. Locked-files note
-
-Add the new component + tokens to `LOCKED_FILES.md` under a "Report section header system" entry so future edits stay centralized.
-
-## Deliverables
-
-1. New token block in `report-tokens.ts`.
-2. New `ReportCardSectionHeader` component.
-3. 5 card files updated to use it.
-4. Summary listing every changed file and the before/after spec (size, weight, leading, spacing).
+- Add `pb-1` to the header wrapper so the subtitle has more air before the KPI strip.
+- Keep the green underline on "Alta" — already correct after the previous standardization pass.
 
 ## Out of scope
 
-No changes to data, metric computation, scoring, copy strings, block-level (`h2Section`) headers, KPI mini-cards' content, or unrelated sections.
+- No data-logic changes (cell color logic, `cellStyle`, `buildWeekGrid`, scoring, week aggregation).
+- No copy edits beyond rearranging the existing translated strings into new layout slots.
+- No changes to the KPI strip internals.
+- No changes to other report sections.
+
+## Deliverables
+
+1. One edited file (`frequency-card.tsx`) with the rhythm + calendar two-column layout, removed width cap, new framed calendar block, repositioned legend, and tightened spacing rhythm.
+2. Summary of the layout improvements applied, plus a desktop+mobile visual check in `/analyze/$username` via the preview tools.
