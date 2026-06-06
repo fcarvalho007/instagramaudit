@@ -30,6 +30,9 @@ export interface BlockConfig {
   eyebrowOverride?: string;
   /** Key in VariantFeatures that controls this block's visibility. */
   featureKey: keyof VariantFeatures;
+  /** Commercial tier this block belongs to. `lab` = experimental,
+   *  hidden from public and pro reports; only visible in internal_lab. */
+  tier: "free" | "pro" | "lab";
 }
 
 export const BLOCKS: readonly BlockConfig[] = [
@@ -43,6 +46,7 @@ export const BLOCKS: readonly BlockConfig[] = [
       "Identidade do perfil, indicadores principais e enquadramento do que este relatório mostra.",
     icon: Eye,
     featureKey: "blockOverview",
+    tier: "free",
   },
   {
     id: "diagnostico",
@@ -54,6 +58,7 @@ export const BLOCKS: readonly BlockConfig[] = [
       "Perguntas essenciais que qualquer marketer faz ao olhar para um perfil — respondidas pelo cruzamento dos dados recolhidos.",
     icon: Stethoscope,
     featureKey: "blockDiagnosis",
+    tier: "pro",
   },
   {
     id: "performance",
@@ -65,6 +70,7 @@ export const BLOCKS: readonly BlockConfig[] = [
       "Evolução ao longo do tempo, ritmo de publicação e melhores momentos para chegar à audiência.",
     icon: TrendingUp,
     featureKey: "blockPerformance",
+    tier: "lab",
   },
   {
     id: "conteudo",
@@ -75,6 +81,7 @@ export const BLOCKS: readonly BlockConfig[] = [
       "Publicações com mais retorno, mistura de formatos e padrões de linguagem editorial.",
     icon: FileText,
     featureKey: "blockContent",
+    tier: "lab",
   },
   {
     id: "procura",
@@ -85,6 +92,7 @@ export const BLOCKS: readonly BlockConfig[] = [
       "Sinais de procura externa que ajudam a perceber se os mesmos temas têm interesse em pesquisa.",
     icon: Search,
     featureKey: "blockSearch",
+    tier: "lab",
   },
   {
     id: "benchmark",
@@ -96,6 +104,7 @@ export const BLOCKS: readonly BlockConfig[] = [
       "Posição face a referências de mercado e a perfis pares quando disponíveis.",
     icon: BarChart3,
     featureKey: "blockBenchmark",
+    tier: "lab",
   },
 ] as const;
 
@@ -117,3 +126,40 @@ export function useBlocks(): readonly BlockConfig[] {
     }));
   }, [t]);
 }
+
+// ── Commercial sidebar TOC (Free + Pro reports) ────────────────────
+//
+// These 7 entries are the user-facing structure of the commercial
+// report. They are not "blocks" in the rendering sense — they are
+// anchors pointing to cards already rendered inside the existing
+// `overview` and `diagnostico` blocks. The lab-only blocks
+// (performance, conteudo, procura, benchmark) NEVER appear here.
+
+export type SectionTier = "free" | "pro";
+
+export interface CommercialSection {
+  id: string;
+  number: string;
+  shortLabel: string;
+  tier: SectionTier;
+  icon: LucideIcon;
+}
+
+import {
+  Activity,
+  CalendarClock,
+  LayoutGrid,
+  Star,
+  Compass,
+  ListChecks,
+} from "lucide-react";
+
+export const COMMERCIAL_SECTIONS: readonly CommercialSection[] = [
+  { id: "overview",              number: "01", shortLabel: "Visão geral",         tier: "free", icon: Eye },
+  { id: "engagement",            number: "02", shortLabel: "Engagement",          tier: "free", icon: Activity },
+  { id: "frequencia",            number: "03", shortLabel: "Frequência editorial", tier: "pro",  icon: CalendarClock },
+  { id: "formatos",              number: "04", shortLabel: "Mix de formatos",     tier: "pro",  icon: LayoutGrid },
+  { id: "publicacoes-chave",     number: "05", shortLabel: "Publicações-chave",   tier: "pro",  icon: Star },
+  { id: "contexto-estrategico",  number: "06", shortLabel: "Contexto estratégico", tier: "pro",  icon: Compass },
+  { id: "prioridades",           number: "07", shortLabel: "Prioridades de acção", tier: "pro",  icon: ListChecks },
+] as const;
