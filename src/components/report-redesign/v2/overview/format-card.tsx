@@ -18,6 +18,7 @@ import type {
   SocialinsiderInstagramContext,
 } from "@/lib/knowledge/socialinsider-context";
 import { ExternalSourceNote, formatDateRange } from "./external-source-note";
+import { ReportCardSectionHeader } from "../report-card-section-header";
 
 // ─── Types ──────────────────────────────────────────────────────────
 

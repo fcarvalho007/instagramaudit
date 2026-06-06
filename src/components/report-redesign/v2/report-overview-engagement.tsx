@@ -117,24 +117,20 @@ export function EngagementCardRefined({ result }: Props) {
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
       {/* Header */}
       <div className="px-4 sm:px-5 md:px-6 pt-6 sm:pt-8 md:pt-10 pb-4 sm:pb-5 space-y-3">
-        <p className="text-eyebrow-sm text-content-secondary">{t("engagement.eyebrow")}</p>
-        <div className="flex items-start gap-3">
-          <h3 className="font-display text-[1.25rem] sm:text-[1.5rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight break-words">
-            {t("engagement.title")}{" "}
-            <span
-              className="font-semibold"
-              style={{
-                borderBottom: `2px solid ${statusUnderline}`,
-                paddingBottom: "1px",
-              }}
-            >
-              {engagementStatus}
-            </span>
-          </h3>
-        </div>
-        <p className="text-[15px] text-content-secondary leading-relaxed">
-          {t("engagement.subtitle")}
-        </p>
+        <ReportCardSectionHeader
+          eyebrow={t("engagement.eyebrow")}
+          title={t("engagement.title")}
+          qualifier={engagementStatus}
+          qualifierTone={
+            engagementStatus === t("engagement.status.high")
+              ? "positive"
+              : engagementStatus === t("engagement.status.medium")
+                ? "warning"
+                : "negative"
+          }
+          subtitle={t("engagement.subtitle")}
+          bottomMargin={false}
+        />
       </div>
 
       {/* Hero row — 3 KPI cards */}
