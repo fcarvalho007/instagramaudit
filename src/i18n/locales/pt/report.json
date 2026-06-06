@@ -828,7 +828,7 @@
           "Leitura editorial + concorrentes",
           "Recomendações práticas"
         ],
-        "cta": "Obter relatório completo"
+        "cta": "Desbloquear por 9€"
       },
       "hero": {
         "label": "Relatório + humano",
@@ -847,6 +847,11 @@
         "trust": "Sem subscrição · sem renovação automática",
         "services_question": "Precisas de analisar vários ativos digitais ou preparar formação para a tua equipa?",
         "services_cta": "Falar sobre auditoria ou formação"
+      },
+      "contextual": {
+        "sidebar_section": "Esta secção faz parte do relatório completo.",
+        "sidebar_period": "Para analisar períodos maiores, desbloqueia o relatório completo.",
+        "sidebar_add_competitor": "A comparação com concorrentes faz parte do relatório completo."
       }
     }
   },
