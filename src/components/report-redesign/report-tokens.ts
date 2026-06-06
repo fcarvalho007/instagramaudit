@@ -110,3 +110,49 @@ export const REDESIGN_TOKENS = {
   kpiValueV2Categorical:
     "font-display text-[1.375rem] md:text-[1.5rem] font-semibold tracking-tight text-slate-900 leading-tight break-words [word-break:normal] [hyphens:none]",
 } as const;
+
+/**
+ * Tokens partilhados para títulos de secção dentro de cartões editoriais
+ * do relatório (ex.: Engagement, Frequência, Formato, Melhores e piores
+ * publicações, Temas). Garantem família, tamanho, peso, leading,
+ * spacing e tratamento de eyebrow/qualifier consistentes em toda a UI.
+ *
+ * Aplicar via `ReportCardSectionHeader` em vez de duplicar inline.
+ */
+export const REPORT_SECTION_HEADER_TOKENS = {
+  /** Eyebrow uppercase Inter — mesmo tamanho, letter-spacing e cor em todos os cartões. */
+  eyebrow:
+    "text-eyebrow-sm text-content-tertiary inline-flex items-center gap-1.5",
+  /** Espaço entre eyebrow e título. */
+  eyebrowGap: "mb-2",
+  /**
+   * Título editorial — Fraunces, escala cinematográfica
+   * 24px → 28px → 32px, leading apertado, wrapping seguro.
+   */
+  title:
+    "font-display text-[1.5rem] sm:text-[1.75rem] md:text-[2rem] font-semibold tracking-[-0.015em] text-content-primary leading-[1.15] break-words [hyphens:none]",
+  /**
+   * Qualificador inline (ex.: "Baixa", "Alta", "Pouco variado") —
+   * mesma família e tamanho do título, peso normal, cor secundária.
+   * Render com underline tonal quando aplicável.
+   */
+  qualifier:
+    "font-display font-medium text-content-secondary",
+  /** Subtítulo opcional logo abaixo do título. */
+  subtitle:
+    "mt-2 text-[14px] sm:text-[15px] text-content-secondary leading-relaxed",
+  /** Margem inferior do bloco de header dentro do cartão. */
+  blockMargin: "mb-4 md:mb-5",
+} as const;
+
+/** Mapa de tons → cor de underline subtil para o qualifier. */
+export const REPORT_SECTION_QUALIFIER_UNDERLINE: Record<
+  "positive" | "warning" | "negative" | "info" | "neutral",
+  string
+> = {
+  positive: "rgba(29,158,117,0.50)",
+  warning: "rgba(217,119,6,0.50)",
+  negative: "rgba(163,45,45,0.50)",
+  info: "rgba(37,99,217,0.40)",
+  neutral: "transparent",
+};

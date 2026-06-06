@@ -9,6 +9,7 @@ import { InsightCallout } from "./insight-callout";
 import type { SocialinsiderInstagramContext } from "@/lib/knowledge/socialinsider-context";
 import { ExternalSourceNote, formatDateRange } from "./external-source-note";
 import { formatNumber } from "@/lib/i18n/format";
+import { ReportCardSectionHeader, type ReportSectionQualifierTone } from "../report-card-section-header";
 
 function getFrequencyStatusKey(score: number): "high" | "medium" | "low" {
   if (score >= 70) return "high";
@@ -592,37 +593,19 @@ export function FrequencyCard({
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden flex flex-col">
       {/* Header */}
       <div className="px-5 md:px-6 pt-5 md:pt-6 space-y-2">
-        <div className="flex items-start gap-3">
-          <h3 className="font-display text-[1.25rem] sm:text-[1.5rem] md:text-[1.75rem] font-semibold tracking-tight text-content-primary leading-[1.15] break-words">
-            {t("frequency.title")}{" "}
-            {!isInsufficient ? (
-            <span
-              className="font-semibold"
-              style={{
-                borderBottom: `2px solid ${
-                  statusKey === "high"
-                    ? "rgba(29,158,117,0.50)"
-                    : statusKey === "medium"
-                      ? "rgba(217,119,6,0.50)"
-                      : "rgba(163,45,45,0.50)"
-                }`,
-                paddingBottom: "1px",
-              }}
-            >
-              {frequencyStatus}
-            </span>
-            ) : null}
-          </h3>
-        </div>
-        {subtitleLine ? (
-          <p className="text-[14px] text-content-secondary leading-relaxed">
-            {subtitleLine}
-          </p>
-        ) : isInsufficient ? (
-          <p className="text-[14px] text-content-secondary leading-relaxed">
-            {headline}
-          </p>
-        ) : null}
+        <ReportCardSectionHeader
+          title={t("frequency.title")}
+          qualifier={!isInsufficient ? frequencyStatus : undefined}
+          qualifierTone={
+            (statusKey === "high"
+              ? "positive"
+              : statusKey === "medium"
+                ? "warning"
+                : "negative") as ReportSectionQualifierTone
+          }
+          subtitle={subtitleLine ?? (isInsufficient ? headline : undefined)}
+          bottomMargin={false}
+        />
       </div>
 
       {/* KPI strip (Cadência · Consistência · Pico semanal) — gated on usable data */}

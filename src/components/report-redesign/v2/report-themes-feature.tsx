@@ -1,6 +1,7 @@
 import { Hash, Quote, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ReportSourceLabel } from "./report-source-label";
+import { ReportCardSectionHeader } from "./report-card-section-header";
 
 import { cn } from "@/lib/utils";
 import type { ThemesResult } from "@/lib/report/block02-diagnostic";
@@ -119,13 +120,16 @@ function ThemesShell({
     >
       <header className="flex items-start justify-between gap-3 flex-wrap">
         <div className="space-y-2 min-w-0">
-          <p className="text-eyebrow-sm text-slate-500 inline-flex items-center gap-1.5">
-            <Sparkles aria-hidden className="size-3 text-slate-400" />
-            {t("themes.eyebrow")}
-          </p>
-          <h3 className="font-display text-[1.25rem] md:text-[1.5rem] font-semibold tracking-tight text-slate-900 leading-snug">
-            {t("themes.title")}
-          </h3>
+          <ReportCardSectionHeader
+            eyebrow={
+              <>
+                <Sparkles aria-hidden className="size-3 text-content-tertiary" />
+                {t("themes.eyebrow")}
+              </>
+            }
+            title={t("themes.title")}
+            bottomMargin={false}
+          />
         </div>
         <span
           className={cn(
