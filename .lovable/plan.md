@@ -1,70 +1,110 @@
-# QA Plan — Pro Pending-Enrichment Placeholders
+## 1. Executive summary
 
-**Target:** `https://auditprofiles.com` (production).
-**No code, schema, pricing, EuPago, credit, entitlement, or report-calc changes.**
-**Provider calls:** none triggered — only existing cached snapshots are read.
-**DB writes:** scoped to `analysis_snapshots.normalized_payload.enrichment_status` via the existing `set_enrichment_status(uuid, text, text)` RPC, with strict revert at end. No new rows, no schema change.
+I reviewed the public/free report, Pro report, app sidebar, sticky unlock bar, pricing/unlock modal, credit-confirmation modal, pricing-interest modal, checkout shells and the design tokens. Overall posture is **decent**: shadcn primitives carry most ARIA, focus order is sensible, a global `:focus-visible` ring exists in `src/styles/tokens.css`, and PT copy is generally clear. The main weaknesses are predictable for a fast-moving SaaS:
 
-> Heads-up: a prior audit found production runs an older build than preview. If `report-diagnostic-block.tsx`'s `EnrichmentPlaceholderCard` paths are not deployed there, all pending/error checks will visually fall back to whatever the older build renders. I will report this distinctly per state.
+- Several **muted text colours** (slate-400, content-tertiary, `text-[11px]`) sit below WCAG AA 4.5:1 on white surfaces.
+- The **app sidebar / topbar** still uses raw `slate-*` classes (violates project core rule) and omits `aria-current`, `aria-label="Principal"` and an explicit `<header>`/`role="navigation"`.
+- The **sticky unlock bar** uses `aria-hidden` for visual hide while leaving focusable buttons inside — buttons become unreachable yet still in tab order on some browsers; also the mobile "Ver tudo" label is vague (the user even flagged this pattern in the brief).
+- Several dialogs use `text-[11px]` and `text-xs` for error / status text, which is borderline on mobile and screen magnification.
+- Charts (engagement chart, KPI grid, heatmap) have **no text alternative / summary** for screen readers.
+- The competitor input field has label + error association ✓, but the error message uses `text-[11px]` (~11 px) and only colour to indicate state.
+- Locked premium cards rely on **blur + lock icon + colour** — content is visually obscured but the underlying DOM is still read by AT, which both leaks info and confuses screen readers (no `aria-hidden` or "Conteúdo bloqueado" label).
+- Global `:focus-visible` ring exists, but several custom buttons override `focus:outline-none` and only add `focus-visible:ring-2 …/40` (40 % alpha) — visible on white, weak on muted backgrounds.
 
----
+Nothing is catastrophic; all top items are 1–2 line fixes.
 
-## 0 — Pre-flight (read-only)
+## 2. Top 10 accessibility issues (ranked)
 
-- Confirm `report-diagnostic-block.tsx` is the only renderer using `getEnrichmentState` + `EnrichmentPlaceholderCard` (already verified — covers visual_cover, caption_semantic, insights_v2).
-- Confirm i18n keys present in PT report bundle: `pending.cover.title/body`, `pending.caption.title/body`, `pending.insights.title/body`, `pending.error.body`.
-- Snapshot inventory (already collected):
-  - `100xengineers` `f9fb5f2b…` — all enrichments `success` → success-state baseline.
-  - `lfmnz` `cbe8fb5d…` — `visual_cover=error`, `insights_v2=error`, `insights_v1=pending` → covers error states + does NOT require a write.
-  - Pending flips needed for: `visual_cover=pending`, `caption_semantic=pending`, `insights_v2=pending`.
-
----
-
-## 1 — Snapshot flips (write, revert at end)
-
-For each pending state I flip ONE snapshot via the existing security-definer RPC `set_enrichment_status(snapshot_id, key, value)`, screenshot, then revert to the original value in the SAME pass.
-
-| State to test | Snapshot | Field | Set to | Revert to |
-|---|---|---|---|---|
-| visual_cover pending | `webhspt` `28702b3d…` | `visual_cover` | `pending` | `success` |
-| caption_semantic pending | `robs.cortez` `3cd9340c…` | `caption_semantic` | `pending` | `success` |
-| insights_v2 pending | `pedrocaramez` `5e23f34f…` | `insights_v2` | `pending` | `error` (original) |
-
-I record original values before each flip and confirm the revert with a SELECT before moving on. If any revert fails, I STOP and report which snapshot is in a flipped state so you can manually reset.
-
-A safety net: at the end of the whole pass, one final SELECT prints `enrichment_status` for all three snapshots so you can independently confirm they were restored.
-
-> **Important caveat:** the placeholder card only renders when the corresponding parsed payload is `null`. For snapshots where `visual_cover` / `caption_semantic` payloads already exist (`success` originally), flipping the status to `pending` will NOT show the placeholder because `coverAnalysis !== null` (see `report-diagnostic-block.tsx:154,183`). I will note this and, if needed, additionally probe a snapshot whose payload is truly absent (or document it as a known guard so the user knows the placeholder is only shown when there is genuinely no data to display).
-
----
-
-## 2 — Visual checks on production
-
-For each scenario I open `https://auditprofiles.com/analyze/<handle>` in the browser and screenshot the Pro `#diagnostico` section. No login is required because these are cached snapshots and the analyze route is public.
-
-| # | Scenario | Handle | Expected copy / behaviour |
+| # | Severity | Area | Finding |
 |---|---|---|---|
-| 1 | visual_cover pending | webhspt (flipped) | Card titled "A preparar análise das capas…" with calm body, no empty layout. (subject to caveat above) |
-| 2 | caption_semantic pending | robs.cortez (flipped) | "A preparar leitura das legendas…", calm body. |
-| 3 | insights_v2 pending | pedrocaramez (flipped) | "A preparar síntese editorial…"; if deterministic priorities exist they still render below. |
-| 4a | visual_cover error | lfmnz (live) | Calm error placeholder copy, no broken layout. |
-| 4b | caption_semantic error | n/a live | Static-only verdict (no live error snapshot for this key). |
-| 4c | insights_v2 error | any (live) | Calm error placeholder copy, no broken layout. |
-| 5 | All success | 100xengineers | Real Capas / Legendas / Insights cards render; no placeholder visible. |
-| 6 | Free render | 100xengineers, no `?pro=` | Teasers visible, NO "A preparar…" copy (helper short-circuits via `isFree`). |
-| 7 | Lab | `/admin` lab path or whichever lab route shows the diagnostic block | Same placeholders render (helper does not gate on `isLab`). |
+| 1 | **High** | `src/components/app/app-sidebar.tsx`, `app-topbar.tsx` | Nav items are plain `<Link>` without `aria-current="page"`; sidebar is `<aside>` not `<nav aria-label="Principal">`. Active state is colour-only (`bg-slate-100`). Screen reader users can't tell which section is active. Also `text-slate-400` for email/logout (~3.0:1) fails AA. |
+| 2 | **High** | `src/components/report-redesign/v2/sticky-unlock-bar.tsx` | Bar wrapper uses `aria-hidden={!visible}` plus `pointer-events-none` for hide, but the inner buttons are still in the DOM. When `visible=false`, focus can still land on "Desbloquear"/"Fechar" via Tab in some browsers while AT is told to ignore them — focus appears to "vanish". Should toggle mount or `inert`. Also missing `role="region" aria-label="Acesso premium"`. |
+| 3 | **High** | Sticky bar mobile | CTA label "Ver tudo" is non-descriptive (user flagged this in the brief). Should read "Desbloquear relatório completo · €9" or similar. Same button on desktop reads "Desbloquear" ✓ — inconsistent. |
+| 4 | **High** | All locked premium cards (`premium-teaser-card.tsx`, blur overlays in report v2) | Blurred content is still in the accessibility tree. Result: screen readers read teaser data the user hasn't paid for, and the lock state is conveyed only by an icon + colour. Need `aria-hidden="true"` on the blurred payload + a sibling `<p>` "Conteúdo premium — desbloquear por €9". |
+| 5 | **High** | Charts in `src/components/report/*` and `report-redesign/v2/report-engagement-benchmark-chart.tsx` | Recharts surfaces have no `role="img" aria-label` and no text summary (e.g. "Engagement médio: 3,2 %, benchmark do nicho: 2,1 %"). Fails WCAG 1.1.1 / 1.4.5. |
+| 6 | **Medium** | `consume-credit-dialog.tsx` | Competitor handle error uses `text-[11px]` (~11 px) — below readable minimum on small viewports and against project core rule "minimum readable size text-xs (12px)". Also `aria-invalid` is set but the error `<p>` has no `role="alert"` (only the network errorMessage does), so the inline validation isn't announced live. |
+| 7 | **Medium** | `sticky-unlock-bar.tsx`, multiple buttons in v2 | Custom buttons use `focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40` (alpha 40 %). On white surfaces the ring is ~1.6:1 against `surface-base`, well below the 3:1 non-text contrast requirement (WCAG 1.4.11). Drop the `/40` or raise to `/70`. |
+| 8 | **Medium** | App layout (`src/components/app/app-layout.tsx`, header) | No skip link ("Saltar para conteúdo"), no landmark `<header role="banner">` wrapper on the topbar, and the mobile topbar's hamburger button has only an icon (no `aria-label="Abrir menu"`, no `aria-expanded`). |
+| 9 | **Medium** | Contrast — repeated across report v2 and pricing | `text-content-tertiary` and `text-slate-400` are used for prices' "único" suffix, balance hints, "soon_note", chart axis labels. Several measured at ~3.5–4.0:1 on `surface-base`. Promote to `content-secondary` for any non-decorative text. |
+| 10 | **Medium** | Pricing interest modal (`pricing-interest-modal.tsx`) and Add competitor input | RadioGroup options are wrapped via shadcn (good), but the modal title is a generic translation and the price text is rendered separately from the title — screen readers hear "Quanto pagarias?" without context of which plan. Need the dialog title to include `planLabel` + `planPrice`, or set `aria-describedby` to a sentence that includes both. |
 
-Each row gets a PASS / FAIL / CODE-OK-NOT-EXERCISED / DEPLOYMENT-MISMATCH verdict. If production is on an older build, I will retry the same scenario on preview to distinguish a code bug from a deploy lag, and report both.
+## 3. Quick wins (also improve visual clarity)
 
----
+These are 1–2 line, low-risk changes that pay off both visually and for AT:
 
-## 3 — Output
+1. **Sidebar active state**: add `aria-current="page"` + a 2 px left border or pill (already half-done with `bg-slate-100`). Replace `slate-*` with `content-*` / `surface-*` tokens at the same time. Removes a core-rule violation.
+2. **Sticky bar CTA label**: change mobile "Ver tudo" → "Desbloquear · €9" (or the price token already in scope). Consistency + clarity.
+3. **Sticky bar lifecycle**: when `!visible`, return `null` (or add the `inert` attribute) instead of `aria-hidden` + `pointer-events-none`. Removes phantom-focus bug and shrinks DOM.
+4. **Locked teaser cards**: add `aria-hidden="true"` on the blurred payload and a visible "Conteúdo premium" badge that doubles as the AT label. Solves both the leak and the lock-icon-noise issue.
+5. **Focus ring alpha**: in the custom button classes, replace `ring-accent-primary/40` with the bare token. The site-wide `:focus-visible` already provides a strong default — let it through.
+6. **Mobile topbar hamburger**: add `aria-label="Abrir menu"`, `aria-expanded={open}`, `aria-controls="app-mobile-nav"`. Two attributes, three users helped (keyboard, screen reader, voice control).
+7. **Skip link** in `app-layout.tsx` and `report-shell-v2.tsx`: a single visually-hidden `<a href="#conteudo">Saltar para o conteúdo</a>` that becomes visible on focus.
+8. **Promote muted prices/suffixes** ("único", "pagamento único", balance hints) from `content-tertiary` → `content-secondary`. Improves both contrast and visual hierarchy.
+9. **Dialog titles include plan + price** in the pricing-interest modal (DialogTitle template). Better headlines for everyone.
+10. **Reduced motion**: the sticky bar uses `transition-[opacity,transform] duration-200`. Wrap in `motion-safe:` or honour `prefers-reduced-motion` (the global file already shows the pattern). One Tailwind variant.
 
-1. PASS/FAIL table for all 7 scenarios with screenshots.
-2. Exact copy observed vs expected (PT).
-3. Any visual issue (overflow, broken grid, missing eyebrow, contrast).
-4. Production vs preview parity note where it matters.
-5. Final `enrichment_status` snapshot for the 3 flipped rows confirming full revert, plus the `credit_ledger` row count before/after as a sanity check (no credit should move).
-6. Explicit "not exercised" list with reasons.
+## 4. Defer to a later accessibility sprint
 
-No file edits. No new rows in any table. No payment / entitlement / pricing / credit / schema mutation.
+- Full chart accessibility (data tables for each visualisation, sonification, etc.) — needs design.
+- Comprehensive heading-order pass across all marketing routes (precos, servicos, landing variants).
+- A11y test harness (axe-core / playwright a11y assertions) in CI.
+- Full PT-PT copy review of error strings across forms (signup, reset password, beta request).
+- Heatmap (`report-posting-heatmap.tsx`) keyboard interaction and AT description — requires a small redesign.
+- Admin/backoffice accessibility — out of public scope, low priority while it stays internal.
+
+## 5. Files likely affected (quick wins first)
+
+```text
+src/components/app/app-sidebar.tsx
+src/components/app/app-topbar.tsx
+src/components/app/app-layout.tsx
+src/components/report-redesign/v2/sticky-unlock-bar.tsx
+src/components/report-redesign/v2/premium-teaser-card.tsx
+src/components/report-redesign/v2/report-shell-v2.tsx
+src/components/report-redesign/v2/consume-credit-dialog.tsx
+src/components/pricing/pricing-interest-modal.tsx
+src/components/report/report-engagement-history.tsx (charts)
+src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx
+src/components/layout/header.tsx
+src/styles/tokens.css  (only if we re-tune focus ring or muted tokens)
+```
+
+No schema, no pricing, no EuPago, no credits, no checkout logic touched by any of the above.
+
+## 6. Recommended implementation prompts (one small fix per prompt)
+
+Each is intentionally narrow so it can be run independently in build mode.
+
+1. **Sidebar a11y + de-slate**
+   > In `src/components/app/app-sidebar.tsx` and `app-topbar.tsx`, replace all `slate-*` classes with semantic tokens (`content-primary`, `content-secondary`, `surface-base`, `surface-muted`, `border-default`). Wrap the desktop nav in `<nav aria-label="Principal">` and add `aria-current="page"` to the active link. No behaviour changes.
+
+2. **Mobile topbar hamburger**
+   > In `src/components/app/app-topbar.tsx`, add `aria-label="Abrir menu"`, `aria-expanded`, and `aria-controls` to the menu button; give the collapsible nav an `id` and `role="navigation"`.
+
+3. **Sticky unlock bar — mount + label**
+   > In `src/components/report-redesign/v2/sticky-unlock-bar.tsx`: return `null` when `!visible`. Rename the mobile CTA from "Ver tudo" to "Desbloquear · {priceLabel}". Drop `aria-hidden` hack. Honour `prefers-reduced-motion`.
+
+4. **Custom button focus rings**
+   > Across `sticky-unlock-bar.tsx` and any v2 button that overrides `focus:outline-none`, remove the `/40` alpha on `focus-visible:ring-accent-primary` so the ring meets 3:1 contrast, or remove the override entirely and rely on the global `:focus-visible` rule in `src/styles/tokens.css`.
+
+5. **Locked premium card AT-safety**
+   > In `src/components/report-redesign/v2/premium-teaser-card.tsx`, wrap the blurred content in a `<div aria-hidden="true">` and add a sibling visible badge "Conteúdo premium — desbloquear por {priceLabel}" that screen readers announce. No payload changes.
+
+6. **Skip link + landmarks**
+   > In `src/components/app/app-layout.tsx` and `src/components/report-redesign/v2/report-shell-v2.tsx`, add a visually-hidden "Saltar para o conteúdo" link as the first focusable element targeting the existing `<main>`. Give `<main>` an `id="conteudo"`.
+
+7. **Consume-credit dialog — error live + min size**
+   > In `src/components/report-redesign/v2/consume-credit-dialog.tsx`, raise `text-[11px]` → `text-xs`, and add `role="alert"` to the inline `competitor-handle-error` paragraph. No validation logic changes.
+
+8. **Pricing-interest modal — title carries plan**
+   > In `src/components/pricing/pricing-interest-modal.tsx`, render the plan label + price inside `DialogTitle` (or `aria-describedby` pointing at a sentence containing both). Keeps visual layout, fixes the "out of context" announcement.
+
+9. **Muted text contrast pass**
+   > For non-decorative copy (price suffixes "único", balance hints, soon notes, chart axes), promote `content-tertiary` → `content-secondary`. Scope: report v2 sidebar/topbar, sticky bar, consume-credit dialog. No layout changes.
+
+10. **Chart text alternative (minimum)**
+    > For the engagement benchmark chart and KPI grid charts in v2, add `role="img"` plus a derived `aria-label` (e.g. "Engagement médio do perfil: 3,2 %; benchmark do nicho: 2,1 %"). Full data-table alternative deferred.
+
+## 7. Implementation status
+
+Nothing implemented. This is a planning artefact only — every prompt above is meant to be triggered explicitly by the user, one at a time, in build mode.
