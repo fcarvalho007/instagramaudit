@@ -176,6 +176,7 @@ function AdminReportPreviewPage() {
     <ReportThemeWrapper>
       <div className="min-h-screen bg-surface-base">
         <ExitPreviewPill username={username} variant={variant} />
+        {variant === "internal_lab" ? <LabFullPreviewBanner /> : null}
         {load.kind === "loading" || load.kind === "idle" ? (
           <CenteredMessage
             title="A carregar relatório…"
