@@ -1413,5 +1413,24 @@
     "tag": "beta · help us refine it",
     "thanks": "Thanks for the signal.",
     "error": "Could not record. Try again later."
+  },
+  "pending": {
+    "eyebrow_pending": "Analysis in progress",
+    "eyebrow_error": "Reading unavailable",
+    "cover": {
+      "title": "Preparing cover analysis…",
+      "body": "We're assessing visual clarity, consistency and readability in just a moment."
+    },
+    "caption": {
+      "title": "Preparing caption reading…",
+      "body": "We're analysing language patterns, themes and calls to action."
+    },
+    "insights": {
+      "title": "Preparing editorial synthesis…",
+      "body": "Final recommendations will appear as soon as the analysis completes."
+    },
+    "error": {
+      "body": "We couldn't complete this automated reading. The rest of the report is still available."
+    }
   }
 }
