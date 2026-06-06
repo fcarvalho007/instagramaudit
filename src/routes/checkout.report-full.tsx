@@ -55,6 +55,7 @@ const searchSchema = z.object({
     .max(40)
     .regex(/^[A-Za-z0-9_-]+$/)
     .optional(),
+  status: z.enum(["success"]).optional(),
 });
 
 const leadSessionQueryOptions = queryOptions({
@@ -78,6 +79,14 @@ export const Route = createFileRoute("/checkout/report-full")({
 
 function CheckoutFlow() {
   const { data: leadStatus } = useSuspenseQuery(leadSessionQueryOptions);
+  const search = Route.useSearch();
+  if (search.status === "success") {
+    return (
+      <PostPurchaseSuccessPanel
+        returnPath={search.return ?? "/app/reports"}
+      />
+    );
+  }
   if (!leadStatus.hasLead) {
     return (
       <MissingLeadSession
@@ -484,6 +493,71 @@ function StepActions({
         {nextLabel}
         <ArrowRight className="size-4" aria-hidden="true" />
       </Button>
+    </div>
+  );
+}
+
+function PostPurchaseSuccessPanel({ returnPath }: { returnPath: string }) {
+  useEffect(() => {
+    trackEvent({
+      data: {
+        eventType: "post_purchase_view",
+        metadata: { product_code: SOURCE_PRODUCT },
+      },
+    }).catch(() => {});
+    trackEvent({
+      data: {
+        eventType: "post_purchase_bonus_seen",
+        metadata: { kind: "post_purchase_beta_bonus" },
+      },
+    }).catch(() => {});
+  }, []);
+
+  return (
+    <div className="mx-auto max-w-xl space-y-6">
+      <header className="space-y-2">
+        <span className="text-eyebrow-sm text-content-tertiary">
+          Pagamento confirmado
+        </span>
+        <h1 className="font-fraunces text-2xl sm:text-3xl font-medium text-content-primary leading-tight">
+          Relatório desbloqueado
+        </h1>
+        <p className="text-sm text-content-secondary leading-relaxed">
+          Obrigado pela tua compra. Já tens acesso a todas as secções do
+          relatório completo.
+        </p>
+      </header>
+
+      <div className="rounded-xl border border-border-default bg-surface-muted p-5 space-y-2">
+        <span className="text-eyebrow-sm text-content-tertiary">
+          Oferta beta desbloqueada
+        </span>
+        <p className="text-sm text-content-primary leading-relaxed">
+          Como estamos em beta, oferecemos 2 créditos adicionais para
+          explorares mais o relatório.
+        </p>
+        <p className="text-sm text-content-secondary leading-relaxed">
+          Podes usar estes créditos para gerar outro período ou adicionar
+          concorrentes.
+        </p>
+      </div>
+
+      <div className="pt-2">
+        <Button
+          type="button"
+          variant="primary"
+          onClick={() => {
+            const target = returnPath.startsWith("/")
+              ? returnPath
+              : "/app/reports";
+            window.location.assign(target);
+          }}
+          className="gap-2 w-full sm:w-auto"
+        >
+          Ver o meu relatório
+          <ArrowRight className="size-4" aria-hidden="true" />
+        </Button>
+      </div>
     </div>
   );
 }

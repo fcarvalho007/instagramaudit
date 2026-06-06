@@ -618,7 +618,7 @@
       "add_competitor_short": "Concorrente",
       "beta_credits_available": "{{count}} crédito beta disponível",
       "beta_credits_available_plural": "{{count}} créditos beta disponíveis",
-      "beta_credits_empty": "Sem créditos beta disponíveis",
+      "beta_credits_empty": "0 créditos disponíveis",
       "consume_dialog": {
         "title": "Usar 1 crédito beta",
         "description_period": "Vamos recolher e processar dados públicos novos para a janela de {{days}} dias. Esta ação consome 1 crédito.",
