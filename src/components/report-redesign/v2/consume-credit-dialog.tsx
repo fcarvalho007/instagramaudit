@@ -54,8 +54,18 @@ export function ConsumeCreditDialog({
   balance,
   onConfirm,
   onEmptyFeedback,
+  submitting = false,
+  errorMessage = null,
+  primaryHandle,
+  existingCompetitors = [],
 }: Props) {
   const { t } = useTranslation("report");
+
+  const [competitorInput, setCompetitorInput] = useState("");
+  useEffect(() => {
+    // Reset input whenever the dialog opens or the intent changes.
+    if (open) setCompetitorInput("");
+  }, [open, intent?.kind]);
 
   if (!intent) {
     return (
@@ -66,21 +76,55 @@ export function ConsumeCreditDialog({
   }
 
   const hasCredit = balance >= 1;
+  const isPeriod = intent.kind === "period";
+  const isCompetitor = intent.kind === "competitor";
   const description =
-    intent.kind === "period"
-      ? t("nav.explore.consume_dialog.description_period", { days: intent.days })
+    isPeriod
+      ? t("nav.explore.consume_dialog.period_coming_soon_body")
       : t("nav.explore.consume_dialog.description_competitor");
   const title =
-    intent.kind === "period"
-      ? t("nav.explore.consume_dialog.title_period")
+    isPeriod
+      ? t("nav.explore.consume_dialog.period_coming_soon_title")
       : t("nav.explore.consume_dialog.title_competitor");
   const confirmCta =
-    intent.kind === "period"
-      ? t("nav.explore.consume_dialog.cta_use_period")
-      : t("nav.explore.consume_dialog.cta_use_competitor");
+    t("nav.explore.consume_dialog.cta_use_competitor");
+
+  // Competitor handle validation (only used when isCompetitor + hasCredit).
+  const normalized = normalizeInstagramHandle(competitorInput);
+  const handleValid = /^[a-z0-9._]{1,30}$/.test(normalized);
+  const existingLower = [
+    ...(primaryHandle ? [primaryHandle.toLowerCase()] : []),
+    ...existingCompetitors.map((h) => h.toLowerCase()),
+  ];
+  const isDuplicate = handleValid && existingLower.includes(normalized);
+  const competitorReady = handleValid && !isDuplicate;
+  const handleInvalidMsg = competitorInput.length === 0
+    ? null
+    : !handleValid
+      ? t("nav.explore.consume_dialog.competitor_handle_invalid")
+      : isDuplicate
+        ? t("nav.explore.consume_dialog.competitor_handle_duplicate")
+        : null;
+
+  const handleConfirmClick = () => {
+    if (submitting) return;
+    if (isCompetitor) {
+      if (!competitorReady) return;
+      onConfirm({ kind: "competitor", handle: normalized });
+      return;
+    }
+    onConfirm(intent);
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        // Block close while submitting to avoid double-clicks / lost state.
+        if (submitting && !next) return;
+        onOpenChange(next);
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
@@ -95,8 +139,37 @@ export function ConsumeCreditDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {hasCredit ? (
+        {hasCredit && isCompetitor ? (
           <>
+            <div className="space-y-1.5">
+              <label
+                htmlFor="competitor-handle-input"
+                className="text-xs font-semibold text-content-secondary"
+              >
+                {t("nav.explore.consume_dialog.competitor_handle_label")}
+              </label>
+              <Input
+                id="competitor-handle-input"
+                value={competitorInput}
+                onChange={(e) => setCompetitorInput(e.target.value)}
+                placeholder={t("nav.explore.consume_dialog.competitor_handle_placeholder")}
+                disabled={submitting}
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                maxLength={31}
+                aria-invalid={handleInvalidMsg ? "true" : undefined}
+                aria-describedby={handleInvalidMsg ? "competitor-handle-error" : undefined}
+              />
+              {handleInvalidMsg ? (
+                <p
+                  id="competitor-handle-error"
+                  className="text-[11px] text-signal-error"
+                >
+                  {handleInvalidMsg}
+                </p>
+              ) : null}
+            </div>
             <p className="text-xs text-content-secondary">
               {t("nav.explore.consume_dialog.credit_line")}
             </p>
@@ -118,7 +191,24 @@ export function ConsumeCreditDialog({
           </>
         ) : null}
 
-        {hasCredit ? (
+        {hasCredit && isPeriod ? (
+          <div className="rounded-md border border-border-default bg-surface-muted px-3 py-2 text-xs text-content-secondary">
+            <p>
+              {t("nav.explore.consume_dialog.balance_label")}:{" "}
+              <span className="font-semibold text-content-primary tabular-nums">
+                {balance}
+              </span>
+            </p>
+          </div>
+        ) : null}
+
+        {errorMessage ? (
+          <p className="text-xs text-signal-error" role="alert">
+            {errorMessage}
+          </p>
+        ) : null}
+
+        {hasCredit && isCompetitor ? (
           <p className="text-[11px] text-content-tertiary">
             {t("nav.explore.consume_dialog.soon_note")}
           </p>
@@ -128,13 +218,26 @@ export function ConsumeCreditDialog({
           <Button
             variant="ghost"
             onClick={() => onOpenChange(false)}
+            disabled={submitting}
           >
             {t("nav.explore.consume_dialog.cta_cancel")}
           </Button>
           {hasCredit ? (
-            <Button onClick={() => onConfirm(intent)}>
-              {confirmCta}
-            </Button>
+            isPeriod ? null : (
+              <Button
+                onClick={handleConfirmClick}
+                disabled={submitting || !competitorReady}
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                    {t("nav.explore.consume_dialog.submitting")}
+                  </>
+                ) : (
+                  confirmCta
+                )}
+              </Button>
+            )
           ) : (
             <Button
               onClick={() => {
