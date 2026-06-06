@@ -23,9 +23,8 @@ export function getEnrichmentState(
   payload: SnapshotPayload | undefined,
   type: EnrichmentType,
 ): EnrichmentDisplayState {
-  const map = payload?.enrichment_status as
-    | Record<string, EnrichmentStatus>
-    | undefined;
+  const map = (payload as unknown as { enrichment_status?: Record<string, EnrichmentStatus> })
+    ?.enrichment_status;
   const status = map?.[type];
   if (status === "pending" || status === "running") return "pending";
   if (status === "error") return "error";
