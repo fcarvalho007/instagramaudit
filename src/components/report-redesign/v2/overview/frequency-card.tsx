@@ -260,24 +260,35 @@ function WeeklyRhythmChart({
   const weekdayShort =
     (t("frequency.weekday_short", { returnObjects: true }) as string[]) ?? [];
 
-  const BAR_MAX = 96;
-  const BAR_MIN = 18;
-  const ZERO_LINE = 4;
+  // ── SVG geometry (viewBox-based, scales 100% width) ──
+  const VB_W = 700;
+  const VB_H = 220;
+  const PAD_X = 16;
+  const TOP_VALUES = 26;        // space reserved for numeric values above bars
+  const PLOT_H = 140;            // bar plotting area height
+  const LABELS_H = 30;           // bottom labels area
+  const BAR_W = 34;              // bar width (viewBox units)
+  const LANE_W = 44;             // soft column lane behind each bar
+  const BAR_MIN_ACTIVE = 22;     // ensure active bars are always visible
+  const ZERO_HAIRLINE = 3;
+
+  const plotTop = TOP_VALUES;
+  const baselineY = plotTop + PLOT_H;
+  const labelY = baselineY + LABELS_H - 10;
+
+  const colStep = (VB_W - PAD_X * 2) / 7;
+  const colCenter = (i: number) => PAD_X + colStep * i + colStep / 2;
+
+  // Calibrated palette — stable, no color-mix layering
   const ACCENT = "var(--accent-primary, #3772E5)";
-  // Stronger, more cinematic palette — bars must be unmistakably visible
-  // on the light surface. Peak uses full accent; other days use a deeper
-  // tonal blue (not a near-white wash); zero days collapse to a clear
-  // hairline.
-  const ACCENT_SOFT =
-    "color-mix(in oklab, var(--accent-primary, #3772E5) 55%, #FFFFFF)";
-  const TRACK_TINT =
-    "color-mix(in oklab, var(--accent-primary, #3772E5) 5%, #FFFFFF)";
-  const ZERO_TINT =
-    "color-mix(in oklab, var(--accent-primary, #3772E5) 20%, #FFFFFF)";
+  const ACCENT_SOFT = "#A6BEF1";   // calm blue, clearly visible on white surface
+  const ZERO_TINT = "#D6DEEC";     // muted grey-blue hairline
+  const LANE_FILL = "var(--surface-muted, #F1F4F9)";
+  const BASELINE = "rgba(3, 4, 94, 0.18)";
 
   return (
     <div className="mt-8 rounded-xl border border-border-default bg-surface-base/60 px-4 md:px-6 pt-5 pb-5">
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-3">
         <span className="text-eyebrow text-content-primary font-semibold">
           {t("frequency.weekly_rhythm.title")}
         </span>
@@ -296,97 +307,110 @@ function WeeklyRhythmChart({
           {t("frequency.weekly_rhythm.peak_chip")}
         </span>
       </div>
-      <div
-        className="relative grid gap-2 sm:gap-3"
-        style={{
-          gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
-          height: `${BAR_MAX + 32}px`,
-        }}
+      <svg
+        viewBox={`0 0 ${VB_W} ${VB_H}`}
+        width="100%"
+        height="auto"
+        preserveAspectRatio="xMidYMid meet"
         role="img"
         aria-label={t("frequency.weekly_rhythm.aria_distribution")}
+        className="block"
+        style={{ maxHeight: 220 }}
       >
-        {/* baseline hairline */}
-        <div
-          aria-hidden="true"
-          className="absolute left-0 right-0 bottom-0 h-px"
-          style={{
-            background:
-              "color-mix(in oklab, var(--accent-primary, #3772E5) 25%, #FFFFFF)",
-          }}
+        {/* Soft column lanes */}
+        {buckets.map((_, i) => (
+          <rect
+            key={`lane-${i}`}
+            x={colCenter(i) - LANE_W / 2}
+            y={plotTop}
+            width={LANE_W}
+            height={PLOT_H}
+            rx={6}
+            ry={6}
+            fill={LANE_FILL}
+            opacity={0.55}
+          />
+        ))}
+
+        {/* Baseline */}
+        <line
+          x1={PAD_X}
+          x2={VB_W - PAD_X}
+          y1={baselineY}
+          y2={baselineY}
+          stroke={BASELINE}
+          strokeWidth={1}
         />
-        {buckets.map((b) => {
+
+        {/* Bars + values */}
+        {buckets.map((b, i) => {
           const isPeak = b.weekday === top.weekday && b.posts > 0;
           const isZero = b.posts === 0;
           const ratio = b.posts / maxPosts;
-          const height = isZero
-            ? ZERO_LINE
-            : Math.max(BAR_MIN, Math.round(ratio * BAR_MAX));
-          const background = isPeak
-            ? ACCENT
-            : isZero
-              ? ZERO_TINT
-              : ACCENT_SOFT;
+          const rawH = Math.round(ratio * (PLOT_H - 8));
+          const h = isZero
+            ? ZERO_HAIRLINE
+            : Math.max(BAR_MIN_ACTIVE, rawH);
+          const y = baselineY - h;
+          const fill = isPeak ? ACCENT : isZero ? ZERO_TINT : ACCENT_SOFT;
+          const valueY = isZero ? baselineY - 10 : y - 8;
+          const cx = colCenter(i);
           return (
-            <div
-              key={b.weekday}
-              className="relative flex flex-col items-center justify-end h-full"
-            >
-              {/* subtle column track for readability */}
-              <div
-                aria-hidden="true"
-                className="absolute left-1/2 -translate-x-1/2 bottom-0 w-full max-w-[42px] rounded-t-[4px]"
-                style={{
-                  height: `${BAR_MAX}px`,
-                  background: TRACK_TINT,
-                }}
+            <g key={`bar-${i}`}>
+              <rect
+                x={cx - BAR_W / 2}
+                y={y}
+                width={BAR_W}
+                height={h}
+                rx={isZero ? 1.5 : 5}
+                ry={isZero ? 1.5 : 5}
+                fill={fill}
               />
-              <span
-                className={`relative z-[1] mb-2 leading-none tabular-nums ${
+              <text
+                x={cx}
+                y={valueY}
+                textAnchor="middle"
+                fontFamily="Inter, system-ui, sans-serif"
+                fontSize={isPeak ? 15 : isZero ? 11 : 13}
+                fontWeight={isPeak ? 700 : isZero ? 500 : 600}
+                fill={
                   isPeak
-                    ? "text-[14px] font-bold"
+                    ? ACCENT
                     : isZero
-                      ? "text-[11px] text-content-tertiary"
-                      : "text-[12px] font-semibold text-content-primary"
-                }`}
-                style={isPeak ? { color: ACCENT } : undefined}
+                      ? "var(--content-tertiary, #64748B)"
+                      : "var(--content-primary, #0F172A)"
+                }
+                style={{ fontVariantNumeric: "tabular-nums" }}
               >
                 {b.posts}
-              </span>
-              <div
-                className="relative z-[1] block w-full max-w-[42px] rounded-t-[5px]"
-                style={{
-                  height: `${height}px`,
-                  background,
-                  boxShadow: isPeak
-                    ? "0 6px 14px -6px color-mix(in oklab, var(--accent-primary, #3772E5) 65%, transparent)"
-                    : undefined,
-                }}
-              />
-            </div>
+              </text>
+            </g>
           );
         })}
-      </div>
-      <div
-        className="grid gap-2 sm:gap-3 mt-3 pt-2.5 border-t border-border-default/50"
-        style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}
-      >
+
+        {/* Weekday labels */}
         {weekdayShort.map((wd, i) => {
           const isPeak = i === top.weekday && buckets[i].posts > 0;
           return (
-            <span
-              key={i}
-              className={`text-xs text-center leading-none select-none uppercase tracking-[0.08em] ${
-                isPeak
-                  ? "font-bold"
-                  : "text-content-tertiary"
-              }`}
-              style={isPeak ? { color: ACCENT } : undefined}
+            <text
+              key={`lbl-${i}`}
+              x={colCenter(i)}
+              y={labelY}
+              textAnchor="middle"
+              fontFamily="Inter, system-ui, sans-serif"
+              fontSize={12}
+              fontWeight={isPeak ? 700 : 500}
+              letterSpacing="0.08em"
+              fill={
+                isPeak ? ACCENT : "var(--content-tertiary, #64748B)"
+              }
+              style={{ textTransform: "uppercase" }}
             >
               {wd}
-            </span>
+            </text>
           );
         })}
-      </div>
+      </svg>
     </div>
   );
 }

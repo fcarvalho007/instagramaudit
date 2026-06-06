@@ -1,98 +1,106 @@
-# Plano — Final estratégico do Pro report (06 + 07)
+# Plano — Redesenho SVG do gráfico "Ritmo por dia da semana"
 
-## Estado actual
+## Causa raiz
 
-`ReportDiagnosticBlock` (renderizado pelo shell quando `premiumUnlocked && features.blockDiagnosis !== "hidden"`) mostra hoje, na ordem:
-- Grupo A: Q01 contentType + Q02 funnel
-- Grupo B: Q03 hashtags + Q04 captions
-- Grupo E: análise visual de capas
-- Grupo C: Q05 audience (+ comment intelligence)
-- Grupo D: Q06 integração de canais → `id="contexto-estrategico"`
-- `ReportDiagnosticPriorities` → `id="prioridades"`
+O `WeeklyRhythmChart` actual usa um grid de `<div>` com:
+- track decorativo `position: absolute` `w-full` por coluna,
+- barra real `relative z-[1] w-full max-w-[42px]` empilhada por flex column,
+- altura por inline-style em px.
 
-Resposta às perguntas: **substituir tudo no Pro por 06 + 07** e **fonte híbrida** (AI quando há `aiInsightsV2`, regras determinísticas como fallback).
+Em algumas combinações de browser/viewport e com `color-mix(in oklab, …)` aplicado simultaneamente a track + barra + sombra, o resultado fica visualmente confuso ou quase invisível (a barra fica do mesmo tom do track, ou o conteúdo do flex empurra a barra para fora). É frágil e já levou a várias iterações sem resolver.
 
-## Mudanças
+Solução: substituir o render por um SVG `viewBox` único, robusto, com geometria explícita por barra (`<rect>` ou `<path>` com cantos arredondados em cima), guides verticais leves, baseline e labels alinhadas. Sem libraries externas.
 
-### 1. Detector de modo no diagnostic block
-Ficheiro: `src/components/report-redesign/v2/report-diagnostic-block.tsx`
+## Âmbito
 
-- Importar `useReportVariant()` de `@/lib/report/report-variant`.
-- Computar `isLab = variant === "internal_lab"`.
-- Quando `isLab === false` (público + pro_preview): renderizar apenas `<StrategicContextCard>` + `<ReportDiagnosticPriorities>`. Saltar grupos A/B/C/D/E completamente.
-- Quando `isLab === true`: render existente intacto (todos os grupos + capas + integração + prioridades).
-- Manter as âncoras `id="contexto-estrategico"` e `id="prioridades"` para a sidebar.
+Apenas `src/components/report-redesign/v2/overview/frequency-card.tsx`. Só a função `WeeklyRhythmChart` é reescrita. Tudo o resto fica intacto:
+- `aggregateByWeekday`, `pickMostActive`, `pickQuietest`, scoring, fetches, i18n keys
+- 3 KPIs (Cadência, Consistência, Pico semanal)
+- Conclusão editorial abaixo do gráfico
+- Subtítulo, título, qualifier "Alta"
+- Outros cards (format-card etc.) e qualquer outro ficheiro
 
-### 2. Novo componente `StrategicContextCard` (06)
-Ficheiro: `src/components/report-redesign/v2/strategic-context-card.tsx`
+## Nova implementação (resumo)
 
-Layout editorial premium (sem dashboard pesado):
-- Header:
-  - Eyebrow: `06 · CONTEXTO ESTRATÉGICO` (Inter uppercase via `.text-eyebrow-sm`).
-  - H2 Fraunces: "O que estes sinais dizem sobre o perfil?"
-- Síntese editorial (1 parágrafo, 2–4 frases): pt-PT, prosa calma. Hybrid:
-  - Se `result.enriched.aiInsightsV2?.editorial_verdict?.summary` existir, usar.
-  - Else `result.enriched.aiInsightsV2?.sections.hero?.text` se existir.
-  - Else fallback determinístico curto: `"Este perfil mostra um padrão {contentType.label} com {funnel.label}. {audience.status === "active" ? "A audiência responde activamente." : "A audiência ainda interage pouco."}"` — só usando campos que existem.
-- 3 pilares em grid `grid-cols-1 md:grid-cols-3 gap-4`. Cada pilar é um cartão minimalista (sem heavy chrome, `border border-border-default rounded-xl p-5`, eyebrow + título + 1 frase):
-  1. **Padrão forte** (eyebrow `signal-success`): derivar do sinal mais positivo disponível — maior share de formato dominante, funnel focado, audience activa, integração clara, ou AI `sections.topPosts.text` / `sections.formats.text` quando `emphasis === "positive"`.
-  2. **Risco editorial** (eyebrow `signal-warning`): derivar do sinal mais frágil — dominância excessiva (>70% de um formato), comunicação dispersa, audience silent, integração ausente, ou AI section com `emphasis === "negative"`.
-  3. **Sinal a acompanhar** (eyebrow `accent-primary`): tendência neutra a monitorizar — share secundária a crescer, hashtags moderadamente usadas, captions com pattern emergente, ou AI section neutra.
-- Fallback gracioso: se nenhum pilar tiver evidência mínima, render apenas a síntese com nota discreta `"Sinais insuficientes para conclusões mais detalhadas."` (sem placeholders quebrados).
+### Container e viewBox
+- Wrapper continua a ser `rounded-xl border border-border-default bg-surface-base/60 px-4 md:px-6 pt-5 pb-5` (mantém alinhamento com o resto do card).
+- Header mantém o eyebrow `"RITMO POR DIA DA SEMANA"` e o chip `PICO` à direita (já elegante).
+- Substituir o bloco de barras + labels por **um único SVG** com:
+  - `viewBox="0 0 700 220"` (proporção fixa, escala via `width="100%" height="auto"`).
+  - Áreas internas:
+    - topo (24px) para os valores numéricos por barra,
+    - corpo (140px) para guides + barras,
+    - baseline (1px),
+    - rodapé (30px) para os labels S T Q Q S S D.
+  - Padding lateral interno 16px.
 
-**Helper puro** `buildStrategicPillars({ contentType, funnel, audience, integration, hashtags, aiSections, editorialVerdict })` → `{ summary: string; pillars: Array<{ kind, title, body }> }` em `src/lib/report/strategic-context.ts`. Sem I/O. Testável.
+### Geometria das barras
+- 7 colunas equidistantes, largura de barra = 32px (desktop) — calculada a partir do `viewBox` (escala automática em mobile).
+- Cantos superiores arredondados (`rx=4` aplicado a `<rect>` + máscara, ou usar `<path>` com top-rounded).
+- Altura por barra:
+  - peak: `posts/maxPosts * 130`
+  - active não-peak: `max(20, posts/maxPosts * 130)` para garantir altura mínima visível
+  - zero: hairline de 3px (visível mas claramente "nada publicado")
+- Cores:
+  - peak: `var(--accent-primary, #3772E5)` (azul cheio)
+  - active: azul suave mas sólido (sem `color-mix` frágil — usar um tom calibrado, ex.: `#A6BEF1` derivado do accent)
+  - zero: cinza-azulado discreto (`#D6DEEC`)
 
-### 3. Refinamento mínimo de `ReportDiagnosticPriorities` (07)
-Ficheiro: `src/components/report-redesign/v2/report-diagnostic-priorities.tsx`
+### Guides e baseline
+- 7 lanes verticais muito subtis (`<rect fill="var(--surface-muted)" opacity=".55"`) atrás de cada barra, com 36px de largura e cantos arredondados no topo — estrutura sem chamar atenção.
+- 1 baseline horizontal em `y = 24+140` (`<line stroke="color-mix(in oklab, var(--accent-primary) 22%, transparent)" stroke-width="1"`).
 
-- Header passa de "PRIORIDADES" (eyebrow neutro) para um header editorial:
-  - Eyebrow: `07 · PRIORIDADES DE ACÇÃO`
-  - H3 Fraunces: "O que testar, corrigir ou repetir?"
-  - Manter chip de count + `<ReportSourceLabel type="ia" />` quando AI.
-- Manter os 3 cards (alta/media/oportunidade) — já encaixam no padrão pedido (título + body + "resolves" como why-it-matters).
-- Sem mexer em `derivePriorities`, `PriorityItem` ou lógica de fallback. Só copy/header.
+### Valores acima das barras
+- `<text>` SVG centrado na coluna da barra, `y = topo da barra - 6px`.
+- Peak: 14px, weight 700, cor accent.
+- Active: 12px, weight 600, cor `var(--content-primary)`.
+- Zero: 11px, cor `var(--content-tertiary)`.
+- `tabular-nums` via `font-variant-numeric="tabular-nums"`.
 
-### 4. i18n
-Adicionar chaves opcionais a `public/locales/pt/report.json` para o eyebrow/título de 06 e 07. Fallbacks inline garantem que nada quebra se estiverem ausentes.
+### Labels S T Q Q S S D
+- `<text>` SVG na zona inferior, centrado por coluna, uppercase, `letter-spacing="0.08em"`.
+- Peak: weight 700, cor accent.
+- Outros: cor `var(--content-tertiary)`.
 
-## Ficheiros a editar
+### Responsividade
+- SVG escala via `width="100%" height="auto"` + `preserveAspectRatio="xMidYMid meet"`.
+- Desktop renderiza ~210px de altura; mobile ~170px (proporcional ao container, sem media queries).
+- Sem overflow horizontal porque o SVG ocupa 100% do wrapper.
 
-- `src/components/report-redesign/v2/report-diagnostic-block.tsx` (gating por variant, render condicional)
-- `src/components/report-redesign/v2/strategic-context-card.tsx` (novo)
-- `src/lib/report/strategic-context.ts` (novo, helper puro híbrido)
-- `src/components/report-redesign/v2/report-diagnostic-priorities.tsx` (header editorial)
-- `public/locales/pt/report.json` (chaves de strategic_context.* — opcional, com fallbacks)
+### Acessibilidade
+- `role="img"` + `aria-label` reutiliza a string actual `t("frequency.weekly_rhythm.aria_distribution")`.
+- `<title>` interna no SVG opcional para tooltip nativo.
 
-## Fora do âmbito (não tocar)
+## O que NÃO muda
 
-- `block02-diagnostic.ts` (classifiers + `derivePriorities` intactos)
-- `aiInsightsV2` schema / generation pipeline
-- Preço, checkout, EuPago, entitlements, créditos
-- `report-variant.ts`, gating do shell
-- Lab full preview — continua a render tudo (Q01-Q05, capas, integração, priorities)
-- Cálculos, scraping, snapshot, DB
-- Componentes 01–05 (overview, engagement, frequência, formatos, publicações-chave)
+- `aggregateByWeekday(days)` e qualquer cálculo (continuamos a chamar dentro do componente).
+- `pickMostActive`, `pickQuietest`, scoring, fetches.
+- 3 KPIs (Cadência / Consistência / Pico semanal).
+- Conclusão editorial e divisor acima dela.
+- Título "Frequência de publicação", qualifier "Alta", subtítulo.
+- i18n keys (`frequency.weekly_rhythm.title`, `peak_chip`, `aria_distribution`, `weekday_short`, `weekday_long`).
+- Outros cards do report.
+- Lógica de payment, unlock, premium gating, schema, scraping.
 
-## Riscos e salvaguardas
+## Validação manual
 
-- **Risco:** lab perde diagnósticos. Mitigado: gating por `variant === "internal_lab"` mantém render completo no lab.
-- **Risco:** AI overclaim. Helper apenas mapeia secções AI existentes — sem prompts novos, sem inferências privadas. Quando AI ausente, fallback determinístico usa só `sample size`, `sharePct`, `label`, etc.
-- **Risco:** sinais insuficientes geram pilares vazios. Helper devolve apenas pilares com evidência; UI degrada para "síntese + nota" graciosamente.
-- **Risco:** sidebar 06/07 perde âncora. Mantemos `id="contexto-estrategico"` e `id="prioridades"`.
-- **Risco:** `aiInsightsV2` pode ser undefined em snapshots antigos. Helper trata `null/undefined` em todos os campos.
+Rota: `/admin/report-preview/frederico.m.carvalho?variant=pro_preview`
 
-## Checklist de validação manual
+1. As 7 barras visíveis e sólidas.
+2. Terça destacada em azul accent, mais alta.
+3. Quarta (zero) aparece como hairline curto e intencional, alinhado com a baseline.
+4. Valores ficam logo acima de cada barra (sem flutuar).
+5. Labels S T Q Q S S D alinhados na vertical com as colunas.
+6. Sem overflow horizontal em desktop nem mobile (375px / 768px / 1280px).
+7. Altura do gráfico ~210px desktop, ~170px mobile.
+8. KPIs e conclusão inalterados.
+9. Nenhuma alteração em dados/cálculos/i18n/outros componentes.
 
-1. Pro report (premium unlocked, variant comercial) termina com exactamente dois cards: 06 Contexto estratégico + 07 Prioridades.
-2. Não aparecem Q01–Q05, capas visuais, hashtags diagnostics, captions diagnostics nem integração no Pro.
-3. Lab (`/admin/report-preview/$handle?variant=internal_lab`) continua a mostrar todos os grupos como antes.
-4. 06 mostra síntese editorial + até 3 pilares (Padrão forte / Risco editorial / Sinal a acompanhar) ou fallback gracioso quando sinal insuficiente.
-5. 07 mostra header editorial novo e até 5 prioridades (AI quando disponível, determinísticas como fallback — sem mudar lógica).
-6. Sidebar 06/07 ainda scroll-link para os cartões.
-7. Mobile: layout legível, sem overflow, espaçamento generoso.
-8. Public/free (sem premium) continua a mostrar teasers 03–07 inalterado.
-9. Copy em pt-PT, sem afirmações de dados privados.
+## Output esperado
 
-## Aprovação
+- Ficheiros alterados: `src/components/report-redesign/v2/overview/frequency-card.tsx` (apenas `WeeklyRhythmChart`).
+- Causa raiz: layout div+flex+absolute-track frágil com `color-mix` empilhado a colidir com a barra.
+- Nova abordagem: SVG `viewBox` com `<rect>` por barra, guides e labels também em SVG → geometria estável, escala fiável, sem dependência de stacking ou color-mix em camadas.
+- Sem mudanças em dados, cálculos, geração, payment, schema ou outros cards.
 
 Posso avançar?
