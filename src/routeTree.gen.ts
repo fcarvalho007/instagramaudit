@@ -113,6 +113,7 @@ import { Route as ApiAdminApifyBackfillActualCostRouteImport } from './routes/ap
 import { Route as ApiAdminAnalysisCostBreakdownRouteImport } from './routes/api/admin/analysis-cost-breakdown'
 import { Route as AdminReportPreviewUsernameRouteImport } from './routes/admin_.report-preview.$username'
 import { Route as AdminSistemaCockpitLegadoRouteImport } from './routes/admin.sistema.cockpit-legado'
+import { Route as AdminReportLabFullPreviewHandleRouteImport } from './routes/admin-report-lab.full-preview.$handle'
 import { Route as ApiPublicHooksSyncOpenaiCostsRouteImport } from './routes/api/public/hooks/sync-openai-costs'
 import { Route as ApiPublicHooksSyncDataforseoCostsRouteImport } from './routes/api/public/hooks/sync-dataforseo-costs'
 import { Route as ApiPublicHooksSyncApifyCostsRouteImport } from './routes/api/public/hooks/sync-apify-costs'
@@ -703,6 +704,12 @@ const AdminSistemaCockpitLegadoRoute =
     path: '/cockpit-legado',
     getParentRoute: () => AdminSistemaRoute,
   } as any)
+const AdminReportLabFullPreviewHandleRoute =
+  AdminReportLabFullPreviewHandleRouteImport.update({
+    id: '/admin-report-lab/full-preview/$handle',
+    path: '/admin-report-lab/full-preview/$handle',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksSyncOpenaiCostsRoute =
   ApiPublicHooksSyncOpenaiCostsRouteImport.update({
     id: '/api/public/hooks/sync-openai-costs',
@@ -1029,6 +1036,7 @@ export interface FileRoutesByFullPath {
   '/report/example': typeof ReportExampleRoute
   '/reports/$snapshotId': typeof ReportsSnapshotIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/admin-report-lab/full-preview/$handle': typeof AdminReportLabFullPreviewHandleRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
@@ -1181,6 +1189,7 @@ export interface FileRoutesByTo {
   '/report/example': typeof ReportExampleRoute
   '/reports/$snapshotId': typeof ReportsSnapshotIdRoute
   '/admin': typeof AdminIndexRoute
+  '/admin-report-lab/full-preview/$handle': typeof AdminReportLabFullPreviewHandleRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
@@ -1336,6 +1345,7 @@ export interface FileRoutesById {
   '/report/example': typeof ReportExampleRoute
   '/reports/$snapshotId': typeof ReportsSnapshotIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/admin-report-lab/full-preview/$handle': typeof AdminReportLabFullPreviewHandleRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
   '/admin_/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
@@ -1492,6 +1502,7 @@ export interface FileRouteTypes {
     | '/report/example'
     | '/reports/$snapshotId'
     | '/admin/'
+    | '/admin-report-lab/full-preview/$handle'
     | '/admin/sistema/cockpit-legado'
     | '/admin/report-preview/$username'
     | '/api/admin/analysis-cost-breakdown'
@@ -1644,6 +1655,7 @@ export interface FileRouteTypes {
     | '/report/example'
     | '/reports/$snapshotId'
     | '/admin'
+    | '/admin-report-lab/full-preview/$handle'
     | '/admin/sistema/cockpit-legado'
     | '/admin/report-preview/$username'
     | '/api/admin/analysis-cost-breakdown'
@@ -1798,6 +1810,7 @@ export interface FileRouteTypes {
     | '/report/example'
     | '/reports/$snapshotId'
     | '/admin/'
+    | '/admin-report-lab/full-preview/$handle'
     | '/admin/sistema/cockpit-legado'
     | '/admin_/report-preview/$username'
     | '/api/admin/analysis-cost-breakdown'
@@ -1932,6 +1945,7 @@ export interface RootRouteChildren {
   FeedbackRequestIdRoute: typeof FeedbackRequestIdRoute
   ReportExampleRoute: typeof ReportExampleRoute
   ReportsSnapshotIdRoute: typeof ReportsSnapshotIdRoute
+  AdminReportLabFullPreviewHandleRoute: typeof AdminReportLabFullPreviewHandleRoute
   AdminReportPreviewUsernameRoute: typeof AdminReportPreviewUsernameRoute
   ApiAdminAnalysisCostBreakdownRoute: typeof ApiAdminAnalysisCostBreakdownRoute
   ApiAdminApifyBackfillActualCostRoute: typeof ApiAdminApifyBackfillActualCostRoute
@@ -2752,6 +2766,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSistemaCockpitLegadoRouteImport
       parentRoute: typeof AdminSistemaRoute
     }
+    '/admin-report-lab/full-preview/$handle': {
+      id: '/admin-report-lab/full-preview/$handle'
+      path: '/admin-report-lab/full-preview/$handle'
+      fullPath: '/admin-report-lab/full-preview/$handle'
+      preLoaderRoute: typeof AdminReportLabFullPreviewHandleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/sync-openai-costs': {
       id: '/api/public/hooks/sync-openai-costs'
       path: '/api/public/hooks/sync-openai-costs'
@@ -3352,6 +3373,7 @@ const rootRouteChildren: RootRouteChildren = {
   FeedbackRequestIdRoute: FeedbackRequestIdRoute,
   ReportExampleRoute: ReportExampleRoute,
   ReportsSnapshotIdRoute: ReportsSnapshotIdRoute,
+  AdminReportLabFullPreviewHandleRoute: AdminReportLabFullPreviewHandleRoute,
   AdminReportPreviewUsernameRoute: AdminReportPreviewUsernameRoute,
   ApiAdminAnalysisCostBreakdownRoute: ApiAdminAnalysisCostBreakdownRoute,
   ApiAdminApifyBackfillActualCostRoute: ApiAdminApifyBackfillActualCostRoute,

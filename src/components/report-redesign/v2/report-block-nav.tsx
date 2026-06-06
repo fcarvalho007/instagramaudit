@@ -13,7 +13,12 @@ import {
   type ReportVariant,
   type VariantFeatures,
 } from "@/lib/report/report-variant";
-import { useBlocks, type BlockConfig } from "./block-config";
+import {
+  useBlocks,
+  type BlockConfig,
+  COMMERCIAL_SECTIONS,
+  type CommercialSection,
+} from "./block-config";
 import { scrollToBlock, useActiveBlock } from "./use-active-block";
 import { useReportTracking } from "./report-tracking-context";
 import { usePremiumCta } from "./premium-cta-context";
@@ -46,6 +51,9 @@ interface SidebarProps {
   /** When false in public_mvp, sidebar shows a soft "continue free" CTA
    *  instead of the pricing/access card. */
   unlocked?: boolean;
+  /** True only when the user has paid Pro access. Commercial sidebar
+   *  uses this to unlock items 03–07. Defaults to false. */
+  premiumUnlocked?: boolean;
   /** Handler that opens the existing UnlockModal (lead-magnet flow). */
   onUnlockClick?: () => void;
 }
@@ -72,6 +80,43 @@ function buildSidebarItems(
     }
     return { block, group: "premium", access: "locked", accessBadge };
   });
+}
+
+/**
+ * Convert a CommercialSection into a SidebarItem reusing the existing
+ * sidebar UI. The synthesized BlockConfig only fills fields actually
+ * read by `ItemRow` (id, number, shortLabel, icon).
+ */
+function commercialToSidebarItem(
+  s: CommercialSection,
+  premiumUnlocked: boolean,
+): SidebarItem {
+  const accessBadge: AccessBadge = s.tier === "free" ? "free" : "premium";
+  const access: AccessState =
+    s.tier === "free" || premiumUnlocked ? "accessible" : "locked";
+  // When Pro is unlocked, every section sits in the "available now" list.
+  // Otherwise, premium-tier sections move into the locked Premium card.
+  const group: Group =
+    s.tier === "free" || premiumUnlocked ? "incluido" : "premium";
+  const pseudoBlock = {
+    id: s.id,
+    number: s.number,
+    shortLabel: s.shortLabel,
+    question: "",
+    subtitle: "",
+    icon: s.icon,
+    featureKey: "blockOverview",
+    tier: s.tier,
+  } as unknown as BlockConfig;
+  return { block: pseudoBlock, group, access, accessBadge };
+}
+
+function buildCommercialSidebarItems(
+  premiumUnlocked: boolean,
+): SidebarItem[] {
+  return COMMERCIAL_SECTIONS.map((s) =>
+    commercialToSidebarItem(s, premiumUnlocked),
+  );
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -424,7 +469,9 @@ function SidebarList({
   const { handlePremiumAccessClick } = usePremiumCta();
   const incluidos = items.filter((i) => i.group === "incluido");
   const premium = items.filter((i) => i.group === "premium");
-  const isPublic = variant === "public_mvp";
+  // The grouped Free / Premium layout is the commercial sidebar shape.
+  // Only the internal lab variant gets the flat 6-block lab list.
+  const isCommercial = variant !== "internal_lab";
 
   const openDialog = () => {
     handlePremiumAccessClick("sidebar");
@@ -453,7 +500,7 @@ function SidebarList({
     }
   };
 
-  if (!isPublic) {
+  if (!isCommercial) {
     return (
       <ul className="space-y-0.5">
         {items.map((item) => (
@@ -503,7 +550,7 @@ function SidebarList({
 
 // ── Desktop sidebar ──────────────────────────────────────────────────
 
-export function ReportBlockSidebar({ variant, features, profile, profiles, unlocked, onUnlockClick }: SidebarProps) {
+export function ReportBlockSidebar({ variant, features, profile, profiles, unlocked, premiumUnlocked = false, onUnlockClick }: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
   const profileList = useMemo(
@@ -511,8 +558,11 @@ export function ReportBlockSidebar({ variant, features, profile, profiles, unloc
     [profile, profiles],
   );
   const items = useMemo(
-    () => buildSidebarItems(blocks, variant, features),
-    [blocks, variant, features],
+    () =>
+      variant === "internal_lab"
+        ? buildSidebarItems(blocks, variant, features)
+        : buildCommercialSidebarItems(premiumUnlocked),
+    [blocks, variant, features, premiumUnlocked],
   );
   const accessibleIds = items.filter((i) => i.access !== "locked").map((i) => i.block.id);
   const active = useActiveBlock(accessibleIds);
@@ -549,7 +599,7 @@ export function ReportBlockSidebar({ variant, features, profile, profiles, unloc
 
 // ── Mobile bottom tabs + drawer ──────────────────────────────────────
 
-export function ReportBlockTopTabs({ variant, features, profile, profiles, unlocked, onUnlockClick }: SidebarProps) {
+export function ReportBlockTopTabs({ variant, features, profile, profiles, unlocked, premiumUnlocked = false, onUnlockClick }: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
   const profileList = useMemo(
@@ -557,8 +607,11 @@ export function ReportBlockTopTabs({ variant, features, profile, profiles, unloc
     [profile, profiles],
   );
   const items = useMemo(
-    () => buildSidebarItems(blocks, variant, features),
-    [blocks, variant, features],
+    () =>
+      variant === "internal_lab"
+        ? buildSidebarItems(blocks, variant, features)
+        : buildCommercialSidebarItems(premiumUnlocked),
+    [blocks, variant, features, premiumUnlocked],
   );
   const accessible = items.filter((i) => i.access !== "locked");
   const accessibleIds = accessible.map((i) => i.block.id);

@@ -176,6 +176,7 @@ function AdminReportPreviewPage() {
     <ReportThemeWrapper>
       <div className="min-h-screen bg-surface-base">
         <ExitPreviewPill username={username} variant={variant} />
+        {variant === "internal_lab" ? <LabFullPreviewBanner /> : null}
         {load.kind === "loading" || load.kind === "idle" ? (
           <CenteredMessage
             title="A carregar relatório…"
@@ -284,6 +285,21 @@ function CenteredMessage({
       <div className={`rounded-xl border p-8 shadow-card ${toneClasses}`}>
         <h1 className="font-display text-2xl text-content-primary">{title}</h1>
         <p className="mt-3 text-sm text-content-secondary">{body}</p>
+      </div>
+    </div>
+  );
+}
+
+function LabFullPreviewBanner() {
+  return (
+    <div className="border-b border-amber-200 bg-amber-50/70 px-5 py-3 print:hidden">
+      <div className="mx-auto max-w-[1520px] flex flex-col gap-1 md:flex-row md:items-center md:justify-between md:gap-4">
+        <p className="text-eyebrow-sm font-semibold text-amber-800">
+          LAB INTERNO · FULL PREVIEW
+        </p>
+        <p className="text-xs text-amber-800/80 leading-relaxed">
+          Este modo mostra blocos experimentais e não representa a versão comercial.
+        </p>
       </div>
     </div>
   );

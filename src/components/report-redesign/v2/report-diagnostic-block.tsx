@@ -220,21 +220,25 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
           ) : null}
 
           {groupD.length > 0 ? (
-            <ReportDiagnosticGroup
-              letter="D"
-              label={t("diagnostic_groups.D")}
-              questionsCount={groupD.length}
-            >
-              {groupD}
-            </ReportDiagnosticGroup>
+            <div id="contexto-estrategico" className="scroll-mt-24">
+              <ReportDiagnosticGroup
+                letter="D"
+                label={t("diagnostic_groups.D")}
+                questionsCount={groupD.length}
+              >
+                {groupD}
+              </ReportDiagnosticGroup>
+            </div>
           ) : null}
 
           {/* Prioridades de ação (AI ou determinísticas) */}
           {priorityItems.length > 0 && (
-            <ReportDiagnosticPriorities
-              items={priorityItems}
-              source={prioritySource}
-            />
+            <div id="prioridades" className="scroll-mt-24">
+              <ReportDiagnosticPriorities
+                items={priorityItems}
+                source={prioritySource}
+              />
+            </div>
           )}
         </>
       ) : (

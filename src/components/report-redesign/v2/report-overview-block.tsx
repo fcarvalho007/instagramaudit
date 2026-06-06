@@ -207,7 +207,9 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
             pinnedExcluded={sample?.pinnedPostsExcluded ?? 0}
             outliersExcluded={sample?.dateOutliersExcluded ?? 0}
           />
-          <EngagementCardRefined result={result} />
+          <div id="engagement" className="scroll-mt-24">
+            <EngagementCardRefined result={result} />
+          </div>
           <OverviewProTeaser />
         </>
       )}
@@ -215,10 +217,13 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
       {(mode === "all" || mode === "locked") && (
         <>
           {/* Zona C — Card de Taxa de Envolvimento (lock boundary) */}
-          <EngagementCardRefined result={result} />
+          <div id="engagement" className="scroll-mt-24">
+            <EngagementCardRefined result={result} />
+          </div>
 
           {/* Zona D — Frequência + Tipo de conteúdo (stack vertical) */}
           <div className="space-y-6 md:space-y-8">
+            <div id="frequencia" className="scroll-mt-24">
             <FrequencyCard
               postsAnalyzed={k.postsAnalyzed}
               windowDays={result.coverage.windowDays}
@@ -229,6 +234,8 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
               cadenceWindowDays={enriched.cadence.windowDays}
               socialinsiderRef={result.externalReferences}
             />
+            </div>
+            <div id="formatos" className="scroll-mt-24">
             <FormatCard
               postsAnalyzed={k.postsAnalyzed}
               dominantFormat={k.dominantFormat}
@@ -237,9 +244,11 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
               analysedPostFormats={enriched.analysedPostFormats}
               socialinsiderRef={result.externalReferences}
             />
+            </div>
           </div>
 
           {/* Best vs Worst Posts */}
+          <div id="publicacoes-chave" className="scroll-mt-24">
           <PostComparisonBlock
             topPosts={result.enriched.topPosts}
             bottomPosts={result.enriched.bottomPosts}
@@ -250,6 +259,7 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
             cadenceWindowDays={enriched.cadence.windowDays}
             sampleSize={sample?.performancePosts.length ?? 0}
           />
+          </div>
         </>
       )}
     </div>

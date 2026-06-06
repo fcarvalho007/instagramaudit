@@ -235,6 +235,7 @@ export function ReportShellV2({
           features={features}
           profile={sidebarProfile}
           unlocked={unlocked}
+          premiumUnlocked={premiumUnlocked}
           onUnlockClick={handleUnlockClick}
         />
 
@@ -246,6 +247,7 @@ export function ReportShellV2({
               features={features}
               profile={sidebarProfile}
               unlocked={unlocked}
+              premiumUnlocked={premiumUnlocked}
               onUnlockClick={handleUnlockClick}
             />
             <main className="min-w-0 flex-1 overflow-x-clip">
