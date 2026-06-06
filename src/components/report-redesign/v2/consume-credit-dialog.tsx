@@ -1,4 +1,6 @@
 import { useTranslation } from "react-i18next";
+import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -8,10 +10,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { normalizeInstagramHandle } from "@/lib/instagram/normalize-handle";
 
 export type ConsumeCreditIntent =
   | { kind: "period"; days: number }
-  | { kind: "competitor" };
+  | { kind: "competitor"; handle?: string };
 
 interface Props {
   open: boolean;
@@ -20,12 +24,21 @@ interface Props {
   balance: number;
   /**
    * Disparada quando o utilizador clica em "Usar 1 crédito" com saldo
-   * suficiente. O consumo real (reserveCredit + nova análise) é da
-   * responsabilidade do caller — este dialog apenas confirma intenção.
+   * suficiente. Para `competitor`, o `handle` é preenchido a partir do
+   * input deste dialog antes de chamar o caller. O caller é responsável
+   * por reservar/consumir o crédito e disparar a análise.
    */
   onConfirm: (intent: ConsumeCreditIntent) => void;
   /** Dispara quando o utilizador clica em "Enviar feedback" no estado vazio. */
   onEmptyFeedback?: () => void;
+  /** Quando true, mostra spinner e desativa CTAs (submissão em curso). */
+  submitting?: boolean;
+  /** Mensagem de erro inline (após falha). */
+  errorMessage?: string | null;
+  /** Handle do perfil primário (para validar duplicados). */
+  primaryHandle?: string;
+  /** Handles dos concorrentes já presentes (para validar duplicados). */
+  existingCompetitors?: string[];
 }
 
 /**
