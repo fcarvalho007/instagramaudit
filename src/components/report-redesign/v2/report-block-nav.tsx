@@ -710,6 +710,7 @@ function SidebarList({
   observedDays = 0,
   competitorCount = 0,
   competitorMax = 3,
+  compact = false,
 }: {
   items: SidebarItem[];
   active: string | null;
@@ -722,10 +723,10 @@ function SidebarList({
   observedDays?: number;
   competitorCount?: number;
   competitorMax?: number;
+  compact?: boolean;
 }) {
   const { t } = useTranslation("report");
   const { snapshotId, handle, variant: trackingVariant } = useReportTracking();
-  const { handlePremiumAccessClick } = usePremiumCta();
   const incluidos = items.filter((i) => i.group === "incluido");
   const premium = items.filter((i) => i.group === "premium");
   // The grouped Free / Premium layout is the commercial sidebar shape.
@@ -768,6 +769,7 @@ function SidebarList({
               item={item}
               isActive={item.block.id === active}
               onClick={() => onAccessibleClick(item.block.id)}
+              compact={compact}
             />
           </li>
         ))}
@@ -776,14 +778,16 @@ function SidebarList({
   }
 
   return (
-    <div className="space-y-4">
-      {!premiumUnlocked && <ProgressSummary items={items} />}
+    <div className={cn("transition-all duration-200", compact ? "space-y-2" : "space-y-4")}>
+      {!premiumUnlocked && !compact && <ProgressSummary items={items} />}
 
       {premiumUnlocked ? (
-        <section className="space-y-1">
-          <p className="px-2 text-eyebrow-sm text-content-tertiary">
-            {t("nav.access.section_paid")}
-          </p>
+        <section className={cn(compact ? "space-y-0.5" : "space-y-1")}>
+          {!compact && (
+            <p className="px-2 text-eyebrow-sm text-content-tertiary">
+              {t("nav.access.section_paid")}
+            </p>
+          )}
           <ul className="space-y-0.5">
             {items.map((item) => (
               <li key={item.block.id}>
@@ -792,6 +796,7 @@ function SidebarList({
                   isActive={item.block.id === active}
                   onClick={() => onAccessibleClick(item.block.id)}
                   showBadge={false}
+                  compact={compact}
                 />
               </li>
             ))}
@@ -799,10 +804,12 @@ function SidebarList({
         </section>
       ) : (
         <>
-          <section className="space-y-1">
-            <p className="px-2 text-eyebrow-sm text-content-tertiary">
-              {t("nav.access.section_free")}
-            </p>
+          <section className={cn(compact ? "space-y-0.5" : "space-y-1")}>
+            {!compact && (
+              <p className="px-2 text-eyebrow-sm text-content-tertiary">
+                {t("nav.access.section_free")}
+              </p>
+            )}
             <ul className="space-y-0.5">
               {incluidos.map((item) => (
                 <li key={item.block.id}>
@@ -810,6 +817,7 @@ function SidebarList({
                     item={item}
                     isActive={item.block.id === active}
                     onClick={() => onAccessibleClick(item.block.id)}
+                    compact={compact}
                   />
                 </li>
               ))}
@@ -817,20 +825,20 @@ function SidebarList({
           </section>
 
           {premium.length > 0 && (
-            <section className="space-y-1">
-              <p className="px-2 text-eyebrow-sm text-content-tertiary">
-                {t("nav.access.section_premium")}
-              </p>
+            <section className={cn(compact ? "space-y-0.5" : "space-y-1")}>
+              {!compact && (
+                <p className="px-2 text-eyebrow-sm text-content-tertiary">
+                  {t("nav.access.section_premium")}
+                </p>
+              )}
               <ul className="space-y-0.5">
                 {premium.map((item) => (
                   <li key={item.block.id}>
                     <LockedItemRow
                       item={item}
-                      onClick={() =>
-                        handlePremiumAccessClick("sidebar_section", {
-                          section: item.block.id,
-                        })
-                      }
+                      isActive={item.block.id === active}
+                      onClick={() => onAccessibleClick(item.block.id)}
+                      compact={compact}
                     />
                   </li>
                 ))}
@@ -846,13 +854,14 @@ function SidebarList({
         observedDays={observedDays}
         competitorCount={competitorCount}
         competitorMax={competitorMax}
+        compact={compact}
       />
 
       {!premiumUnlocked && (
         unlocked ? (
-          <UnlockPromoCard premiumCount={premium.length} onOpenDialog={openDialog} />
+          <UnlockPromoCard premiumCount={premium.length} onOpenDialog={openDialog} compact={compact} />
         ) : (
-          <UnlockPromoCard premiumCount={premium.length} onOpenDialog={focusLeadMagnet} />
+          <UnlockPromoCard premiumCount={premium.length} onOpenDialog={focusLeadMagnet} compact={compact} />
         )
       )}
     </div>
