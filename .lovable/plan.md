@@ -1,88 +1,69 @@
-# Free overview: deterministic "Leitura inicial do perfil" card
+# Refine premium teaser cards with section-specific blurred skeletons
 
 ## Goal
 
-Add a small, AI-free overview card right above `EngagementCardRefined` in the `free_with_engagement` branch of `ReportOverviewBlock`. Uses only deterministic data already available from `result.data.keyMetrics`, `result.enriched.cadence`, and `result.data.topHashtags`.
+Replace the generic 4-bar blurred preview inside `PremiumTeaserCard` with a section-specific skeleton that resembles the corresponding Pro section. No premium data, no AI, no provider calls.
 
 ## Files changed
 
-1. **New** `src/components/report-redesign/v2/overview/free-initial-reading-card.tsx`
-   - Pure presentational + deterministic logic component.
-   - Props: `engagementRate`, `engagementBenchmark`, `postingFrequencyWeekly`, `cadenceSufficient`, `dominantFormat`, `dominantFormatShare`, `hasRecurringHashtags`.
-   - Renders:
-     - Eyebrow `VISÃO GERAL` (`.text-eyebrow-sm`)
-     - H3 `Leitura inicial do perfil` (Inter SemiBold, no Fraunces — this is a supporting card, not a hero)
-     - Verdict line (one of the 5 strings below)
-     - Short explanatory paragraph (1–2 sentences, derived from the same booleans)
-     - 3-up compact metric row: cadência (posts/sem), taxa de envolvimento (%), formato dominante (label + share%)
-     - Two columns (stack on mobile, side-by-side from `md:`):
-       - "O que funciona" — bullet list of green-tick items from positives
-       - "O que limita" — bullet list of amber items from negatives
-   - All copy in pt-PT, sentence case, no uppercase tracking except eyebrow.
-   - Visual treatment: white card on `bg-surface-card`, `border-default`, subtle padding, lighter shadow than Engagement card. No gradients, no glow.
+1. **Edit** `src/components/report-redesign/v2/premium-teaser-card.tsx`
+   - Add prop `previewVariant?: "frequency" | "format" | "publications" | "diagnostic" | "priorities"`. Default keeps current generic bars (back-compat).
+   - Replace the inner blurred block (lines 116-137 region) with `<TeaserPreview variant={previewVariant} />` while keeping the absolutely-positioned CTA overlay unchanged.
+   - Add five small, pure-presentational skeleton sub-components in the same file:
+     - `FrequencyPreview` — three KPI tiles in a row, a 7-cell weekly rhythm strip (varying heights), a muted single-line "insight" bar. Mobile: KPIs stack to 3 small columns, strip stays full-width.
+     - `FormatPreview` — horizontal proportion bar (3 segments), 4-thumb mini filmstrip with rounded rects, muted legend row.
+     - `PublicationsPreview` — small SVG scatterplot (axes + ~8 dots) on the left; two compact best/worst card placeholders on the right (stack on mobile).
+     - `DiagnosticPreview` — 2x2 grid of mini diagnostic-card skeletons (icon dot + 2 lines each). The visible 7-item list is already rendered above by `subItems`.
+     - `PrioritiesPreview` — 3 stacked horizontal "priority" rows labelled visually as opportunity / risk / action (color-coded dot + 2 muted lines).
+   - All skeletons use semantic tokens (`bg-surface-muted`, `bg-accent-primary/20`, `border-default`), `blur-[5px]`/`opacity-70`, are `aria-hidden`, and use only `<div>` / `<svg>` with no text. No invented numbers or labels appear.
+   - Each preview is height-bounded (`h-[160px] md:h-[200px]`) and uses `overflow-hidden` so nothing escapes horizontally on mobile.
+   - The white→muted fade overlay stays, ensuring the CTA pill remains readable on top.
 
 2. **Edit** `src/components/report-redesign/v2/report-overview-block.tsx`
-   - Import the new card.
-   - Inside the `mode === "free_with_engagement"` branch, render `<FreeInitialReadingCard …/>` immediately before the `<div id="engagement">` wrapper, after `<MethodologyLine />`.
-   - All props derived from already-computed `k` (`keyMetrics`), `enriched.cadence`, `formatEntries`, and `topHashtags`. No new data fetches.
+   - Extend `PREMIUM_TEASERS` entries with a `previewVariant` field and pass it through to `<PremiumTeaserCard />`. Mapping:
+     - `03` → `"frequency"`
+     - `04` → `"format"`
+     - `05` → `"publications"`
+     - `06` → `"diagnostic"` (the 7-item `subItems` list is already wired and stays)
+     - `07` → `"priorities"`
 
 No other files touched.
 
-## Deterministic rules
+## Before / after teaser structure
 
-Inputs (already on `keyMetrics`/`enriched`):
+Before — all five teasers share the same generic 4-bar blurred preview (`premium-teaser-card.tsx` lines 116-137).
 
-- `engagementOk = engagementRate >= engagementBenchmark` (when both present)
-- `cadenceOk = cadenceSufficient && postingFrequencyWeekly >= 3`
-- `formatOverdependent = dominantFormatShare >= 70`
-- `formatDiversified = dominantFormatShare > 0 && dominantFormatShare < 60`
-- `hasRecurringHashtags = topHashtags.some(h => (h.uses ?? 0) >= 2)`
+After — each teaser keeps the same header (number chip, eyebrow, title, value prop, optional sub-items, Premium badge) and same CTA pill (`Desbloquear por {priceLabel}`), but the blurred area below the description becomes:
 
-Verdict matrix:
-
-| cadenceOk | engagementOk | Verdict |
+| # | Section | New skeleton structure (all blurred, aria-hidden) |
 |---|---|---|
-| true  | true  | "Perfil consistente, envolvimento alinhado" |
-| true  | false | "Cadência forte, sinal fraco" |
-| false | true  | "Boa resposta, ritmo irregular" |
-| false | false | "Perfil pouco activo, envolvimento baixo" |
-| unknown (missing benchmark or cadence) | — | "Leitura preliminar do perfil" |
+| 03 | Frequência editorial | 3 KPI tiles · weekly rhythm strip (7 cells) · muted insight line |
+| 04 | Mix de formatos | proportion bar (3 segments) · 4-thumb filmstrip · 3-chip muted legend |
+| 05 | Publicações-chave | scatterplot SVG · 2 best/worst card placeholders |
+| 06 | Diagnóstico editorial | 7 visible question chips (unchanged) + 2×2 mini diagnostic-card grid below |
+| 07 | Prioridades de acção | 3 stacked rows (opportunity / risk / action) with color-coded dots |
 
-Explanatory paragraph templated from the same booleans (no AI). Example:
-> "Este perfil publica X vezes por semana e tem uma taxa de envolvimento de Y%, [acima/abaixo] do benchmark de Z%. O formato dominante é {Reels|Carrosséis|Imagens} ({share}%)."
+## Premium data confirmation
 
-"O que funciona" candidates (deterministic):
-- cadenceOk → "Ritmo de publicação consistente"
-- engagementOk → "Envolvimento acima do benchmark"
-- formatDiversified → "Mistura equilibrada de formatos"
-- hasRecurringHashtags → "Uso recorrente de hashtags próprias"
+The new skeletons render only static decorative shapes from semantic tokens — no text labels other than the existing visible heading/description/sub-items, which the current teaser already shows. They do NOT read:
+- `aiInsightsV2`, `commentIntelligence`
+- `visual_cover_analysis`, `caption_semantic_analysis`
+- `enriched.formatBreakdown` numbers, `topPosts`, `worstPosts`
+- pricing / entitlement / credit state
 
-"O que limita" candidates:
-- !cadenceOk → "Ritmo irregular ou pouco frequente"
-- engagement defined && !engagementOk → "Envolvimento abaixo do benchmark"
-- formatOverdependent → "Dependência excessiva de um formato"
-- !hasRecurringHashtags → "Sem hashtags recorrentes identificáveis"
-
-Always render both columns; if a list is empty, show a single muted line ("Sem sinais positivos claros nesta amostra." / "Sem sinais negativos claros nesta amostra.").
-
-## Fallbacks (missing data)
-
-- `engagementBenchmark == null` → drop engagement-related bullets and use "Leitura preliminar".
-- `postingFrequencyWeekly == null` or `!cadenceSufficient` with `sampleSize < 3` → drop cadence metric, show "Amostra reduzida" microcopy under the metric row.
-- `dominantFormat == null` → drop format metric and format bullets.
+The CTA pill keeps the dynamic price via `PUBLIC_PRODUCTS.report_full_9.priceLabel` and continues to call `usePremiumCta().handlePremiumAccessClick(source)`.
 
 ## Not changed
 
-Provider calls, enrichment jobs (`visual_cover`, `caption_semantic`, `insights_v1/v2`), payment/checkout/EuPago, entitlements/credits, snapshot generation, schema, Pro report (`mode === "all"`), Internal Lab (separate variant path), `EngagementCardRefined`, the 5 premium teaser cards.
+Pricing, checkout, EuPago, entitlements, credits, provider calls, snapshot generation, schema, Pro report content, Internal Lab, sticky unlock bar, free overview reading card.
 
-No new imports from `enriched.aiInsightsV2`, `enriched.commentIntelligence`, `visual_cover_analysis`, or `caption_semantic_analysis`.
+## Desktop / mobile validation checklist
 
-## Manual validation
-
-1. `/analyze/<free handle>` shows, in order: Editorial Identity → Methodology Line → **Leitura inicial do perfil** → Engagement → 5 premium teasers.
-2. Verdict line changes when toggling test handles with high vs low engagement / cadence.
-3. With a handle missing benchmark, card falls back to "Leitura preliminar" and hides engagement bullets without crashing.
-4. Network tab during render shows no new OpenAI / DataForSEO / Apify calls.
-5. `/analyze/<pro handle>` (premiumUnlocked) renders the full Pro overview unchanged — new card is NOT inserted.
+1. `/analyze/<free handle>` shows 5 teasers with five distinct skeletons matching the table above.
+2. Each blurred preview is unreadable (no specific numbers, names, or text).
+3. CTA "Desbloquear por 9€" still opens the existing unlock modal via `usePremiumCta`.
+4. Price string is read from `PUBLIC_PRODUCTS.report_full_9.priceLabel` (verified by temporarily editing the product price — not part of this change).
+5. `/analyze/<pro handle>` (premiumUnlocked) renders no teasers — Pro report unchanged.
 6. `/admin/report-preview/<h>?variant=internal_lab` unchanged.
-7. Mobile (≤375px) shows the two columns stacked, metrics row wraps cleanly.
+7. Mobile (≤375px): each teaser fits viewport, no horizontal scroll; skeleton sub-elements stack as designed.
+8. No new network requests trigger when scrolling through teasers (no AI/DataForSEO).
