@@ -1030,7 +1030,11 @@ function SidebarList({
                       <LockedItemRow
                         item={item}
                         isActive={item.block.id === active}
-                        onClick={() => onAccessibleClick(item.block.id)}
+                        onClick={() =>
+                          handlePremiumAccessClick("sidebar_section", {
+                            block_id: item.block.id,
+                          })
+                        }
                         compact={compact}
                       />
                       {isDiag && !compact && (
