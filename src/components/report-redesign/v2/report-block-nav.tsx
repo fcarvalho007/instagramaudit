@@ -628,47 +628,67 @@ function SidebarList({
 
   return (
     <div className="space-y-4">
-      <ProgressSummary items={items} />
+      {!premiumUnlocked && <ProgressSummary items={items} />}
 
-      <section className="space-y-1">
-        <p className="px-2 text-eyebrow-sm text-content-tertiary">
-          {premiumUnlocked
-            ? t("nav.access.available_now")
-            : t("nav.access.available_now")}
-        </p>
-        <ul className="space-y-0.5">
-          {incluidos.map((item) => (
-            <li key={item.block.id}>
-              <ItemRow
-                item={item}
-                isActive={item.block.id === active}
-                onClick={() => onAccessibleClick(item.block.id)}
-              />
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {premium.length > 0 && (
+      {premiumUnlocked ? (
         <section className="space-y-1">
           <p className="px-2 text-eyebrow-sm text-content-tertiary">
-            {t("nav.premium")}
+            {t("nav.access.section_paid")}
           </p>
           <ul className="space-y-0.5">
-            {premium.map((item) => (
+            {items.map((item) => (
               <li key={item.block.id}>
-                <LockedItemRow
+                <ItemRow
                   item={item}
-                  onClick={() =>
-                    handlePremiumAccessClick("sidebar_section", {
-                      section: item.block.id,
-                    })
-                  }
+                  isActive={item.block.id === active}
+                  onClick={() => onAccessibleClick(item.block.id)}
+                  showBadge={false}
                 />
               </li>
             ))}
           </ul>
         </section>
+      ) : (
+        <>
+          <section className="space-y-1">
+            <p className="px-2 text-eyebrow-sm text-content-tertiary">
+              {t("nav.access.section_free")}
+            </p>
+            <ul className="space-y-0.5">
+              {incluidos.map((item) => (
+                <li key={item.block.id}>
+                  <ItemRow
+                    item={item}
+                    isActive={item.block.id === active}
+                    onClick={() => onAccessibleClick(item.block.id)}
+                  />
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          {premium.length > 0 && (
+            <section className="space-y-1">
+              <p className="px-2 text-eyebrow-sm text-content-tertiary">
+                {t("nav.access.section_premium")}
+              </p>
+              <ul className="space-y-0.5">
+                {premium.map((item) => (
+                  <li key={item.block.id}>
+                    <LockedItemRow
+                      item={item}
+                      onClick={() =>
+                        handlePremiumAccessClick("sidebar_section", {
+                          section: item.block.id,
+                        })
+                      }
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </>
       )}
 
       <ExploreSection
@@ -679,12 +699,12 @@ function SidebarList({
         competitorMax={competitorMax}
       />
 
-      {premiumUnlocked ? (
-        <UnlockedStatusCard totalSections={items.length} />
-      ) : unlocked ? (
-        <UnlockPromoCard premiumCount={premium.length} onOpenDialog={openDialog} />
-      ) : (
-        <UnlockPromoCard premiumCount={premium.length} onOpenDialog={focusLeadMagnet} />
+      {!premiumUnlocked && (
+        unlocked ? (
+          <UnlockPromoCard premiumCount={premium.length} onOpenDialog={openDialog} />
+        ) : (
+          <UnlockPromoCard premiumCount={premium.length} onOpenDialog={focusLeadMagnet} />
+        )
       )}
     </div>
   );
