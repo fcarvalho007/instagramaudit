@@ -838,7 +838,19 @@ function SidebarList({
 
 // ── Desktop sidebar ──────────────────────────────────────────────────
 
-export function ReportBlockSidebar({ variant, features, profile, profiles, unlocked, premiumUnlocked = false, onUnlockClick }: SidebarProps) {
+export function ReportBlockSidebar({
+  variant,
+  features,
+  profile,
+  profiles,
+  unlocked,
+  premiumUnlocked = false,
+  onUnlockClick,
+  sampleSize = 0,
+  observedDays = 0,
+  competitorCount = 0,
+  competitorMax = 3,
+}: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
   const profileList = useMemo(
@@ -880,6 +892,11 @@ export function ReportBlockSidebar({ variant, features, profile, profiles, unloc
         onAccessibleClick={scrollToBlock}
         unlocked={unlocked}
         onUnlockClick={onUnlockClick}
+        premiumUnlocked={premiumUnlocked}
+        sampleSize={sampleSize}
+        observedDays={observedDays}
+        competitorCount={competitorCount}
+        competitorMax={competitorMax}
       />
     </nav>
   );
@@ -887,7 +904,19 @@ export function ReportBlockSidebar({ variant, features, profile, profiles, unloc
 
 // ── Mobile bottom tabs + drawer ──────────────────────────────────────
 
-export function ReportBlockTopTabs({ variant, features, profile, profiles, unlocked, premiumUnlocked = false, onUnlockClick }: SidebarProps) {
+export function ReportBlockTopTabs({
+  variant,
+  features,
+  profile,
+  profiles,
+  unlocked,
+  premiumUnlocked = false,
+  onUnlockClick,
+  sampleSize = 0,
+  observedDays = 0,
+  competitorCount = 0,
+  competitorMax = 3,
+}: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
   const profileList = useMemo(
@@ -1032,6 +1061,11 @@ export function ReportBlockTopTabs({ variant, features, profile, profiles, unloc
                   setSheetOpen(false);
                   setTimeout(() => onUnlockClick?.(), 180);
                 }}
+                premiumUnlocked={premiumUnlocked}
+                sampleSize={sampleSize}
+                observedDays={observedDays}
+                competitorCount={competitorCount}
+                competitorMax={competitorMax}
               />
             </div>
           </SheetContent>
