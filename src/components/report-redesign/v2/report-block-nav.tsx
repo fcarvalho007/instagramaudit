@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Menu, Lock, ArrowRight, Check, UserPlus, CheckCircle2 } from "lucide-react";
+import { Menu, Lock, ArrowRight, Check, UserPlus, CheckCircle2, Calendar } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
@@ -23,6 +23,36 @@ import { scrollToBlock, useActiveBlock } from "./use-active-block";
 import { useReportTracking } from "./report-tracking-context";
 import { usePremiumCta } from "./premium-cta-context";
 import { trackEvent } from "@/lib/tracking.functions";
+import { PUBLIC_PRODUCTS } from "@/lib/payments/products";
+
+/**
+ * Hook: returns true once the user has scrolled past `threshold` px.
+ * Debounced via requestAnimationFrame to avoid re-render storms.
+ * No-op on SSR.
+ */
+function useSidebarCompact(threshold = 220): boolean {
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const next = window.scrollY > threshold;
+      setCompact((prev) => (prev === next ? prev : next));
+    };
+    const onScroll = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, [threshold]);
+  return compact;
+}
 
 // ── Types ────────────────────────────────────────────────────────────
 
