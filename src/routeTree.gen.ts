@@ -111,8 +111,8 @@ import { Route as ApiAdminAutomationFlowRouteImport } from './routes/api/admin/a
 import { Route as ApiAdminApifyLabRouteImport } from './routes/api/admin/apify-lab'
 import { Route as ApiAdminApifyBackfillActualCostRouteImport } from './routes/api/admin/apify-backfill-actual-cost'
 import { Route as ApiAdminAnalysisCostBreakdownRouteImport } from './routes/api/admin/analysis-cost-breakdown'
+import { Route as AdminReportPreviewUsernameRouteImport } from './routes/admin_.report-preview.$username'
 import { Route as AdminSistemaCockpitLegadoRouteImport } from './routes/admin.sistema.cockpit-legado'
-import { Route as AdminReportPreviewUsernameRouteImport } from './routes/admin.report-preview.$username'
 import { Route as ApiPublicHooksSyncOpenaiCostsRouteImport } from './routes/api/public/hooks/sync-openai-costs'
 import { Route as ApiPublicHooksSyncDataforseoCostsRouteImport } from './routes/api/public/hooks/sync-dataforseo-costs'
 import { Route as ApiPublicHooksSyncApifyCostsRouteImport } from './routes/api/public/hooks/sync-apify-costs'
@@ -151,7 +151,7 @@ import { Route as ApiAdminKnowledgeNotesRouteImport } from './routes/api/admin/k
 import { Route as ApiAdminKnowledgeExportRouteImport } from './routes/api/admin/knowledge.export'
 import { Route as ApiAdminKnowledgeBenchmarksRouteImport } from './routes/api/admin/knowledge.benchmarks'
 import { Route as ApiAdminEmailTemplatesKeyRouteImport } from './routes/api/admin/email-templates.$key'
-import { Route as AdminReportPreviewSnapshotSnapshotIdRouteImport } from './routes/admin.report-preview.snapshot.$snapshotId'
+import { Route as AdminReportPreviewSnapshotSnapshotIdRouteImport } from './routes/admin_.report-preview.snapshot.$snapshotId'
 import { Route as AdminAutomacoesTemplatesKeyRouteImport } from './routes/admin.automacoes.templates.$key'
 import { Route as ApiPublicReportSnapshotByIdSnapshotIdRouteImport } from './routes/api/public/report-snapshot.by-id.$snapshotId'
 import { Route as ApiPublicAnalysisSnapshotByIdSnapshotIdRouteImport } from './routes/api/public/analysis-snapshot.by-id.$snapshotId'
@@ -691,17 +691,17 @@ const ApiAdminAnalysisCostBreakdownRoute =
     path: '/api/admin/analysis-cost-breakdown',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AdminReportPreviewUsernameRoute =
+  AdminReportPreviewUsernameRouteImport.update({
+    id: '/admin_/report-preview/$username',
+    path: '/admin/report-preview/$username',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AdminSistemaCockpitLegadoRoute =
   AdminSistemaCockpitLegadoRouteImport.update({
     id: '/cockpit-legado',
     path: '/cockpit-legado',
     getParentRoute: () => AdminSistemaRoute,
-  } as any)
-const AdminReportPreviewUsernameRoute =
-  AdminReportPreviewUsernameRouteImport.update({
-    id: '/report-preview/$username',
-    path: '/report-preview/$username',
-    getParentRoute: () => AdminRoute,
   } as any)
 const ApiPublicHooksSyncOpenaiCostsRoute =
   ApiPublicHooksSyncOpenaiCostsRouteImport.update({
@@ -921,9 +921,9 @@ const ApiAdminEmailTemplatesKeyRoute =
   } as any)
 const AdminReportPreviewSnapshotSnapshotIdRoute =
   AdminReportPreviewSnapshotSnapshotIdRouteImport.update({
-    id: '/report-preview/snapshot/$snapshotId',
-    path: '/report-preview/snapshot/$snapshotId',
-    getParentRoute: () => AdminRoute,
+    id: '/admin_/report-preview/snapshot/$snapshotId',
+    path: '/admin/report-preview/snapshot/$snapshotId',
+    getParentRoute: () => rootRouteImport,
   } as any)
 const AdminAutomacoesTemplatesKeyRoute =
   AdminAutomacoesTemplatesKeyRouteImport.update({
@@ -1029,8 +1029,8 @@ export interface FileRoutesByFullPath {
   '/report/example': typeof ReportExampleRoute
   '/reports/$snapshotId': typeof ReportsSnapshotIdRoute
   '/admin/': typeof AdminIndexRoute
-  '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
+  '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
   '/api/admin/apify-backfill-actual-cost': typeof ApiAdminApifyBackfillActualCostRoute
   '/api/admin/apify-lab': typeof ApiAdminApifyLabRoute
@@ -1181,8 +1181,8 @@ export interface FileRoutesByTo {
   '/report/example': typeof ReportExampleRoute
   '/reports/$snapshotId': typeof ReportsSnapshotIdRoute
   '/admin': typeof AdminIndexRoute
-  '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
+  '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
   '/api/admin/apify-backfill-actual-cost': typeof ApiAdminApifyBackfillActualCostRoute
   '/api/admin/apify-lab': typeof ApiAdminApifyLabRoute
@@ -1336,8 +1336,8 @@ export interface FileRoutesById {
   '/report/example': typeof ReportExampleRoute
   '/reports/$snapshotId': typeof ReportsSnapshotIdRoute
   '/admin/': typeof AdminIndexRoute
-  '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
+  '/admin_/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
   '/api/admin/apify-backfill-actual-cost': typeof ApiAdminApifyBackfillActualCostRoute
   '/api/admin/apify-lab': typeof ApiAdminApifyLabRoute
@@ -1393,7 +1393,7 @@ export interface FileRoutesById {
   '/report/print/$snapshotId': typeof ReportPrintSnapshotIdRoute
   '/admin/automacoes/': typeof AdminAutomacoesIndexRoute
   '/admin/automacoes/templates/$key': typeof AdminAutomacoesTemplatesKeyRoute
-  '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
+  '/admin_/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
   '/api/admin/email-templates/$key': typeof ApiAdminEmailTemplatesKeyRouteWithChildren
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
   '/api/admin/knowledge/export': typeof ApiAdminKnowledgeExportRoute
@@ -1492,8 +1492,8 @@ export interface FileRouteTypes {
     | '/report/example'
     | '/reports/$snapshotId'
     | '/admin/'
-    | '/admin/report-preview/$username'
     | '/admin/sistema/cockpit-legado'
+    | '/admin/report-preview/$username'
     | '/api/admin/analysis-cost-breakdown'
     | '/api/admin/apify-backfill-actual-cost'
     | '/api/admin/apify-lab'
@@ -1644,8 +1644,8 @@ export interface FileRouteTypes {
     | '/report/example'
     | '/reports/$snapshotId'
     | '/admin'
-    | '/admin/report-preview/$username'
     | '/admin/sistema/cockpit-legado'
+    | '/admin/report-preview/$username'
     | '/api/admin/analysis-cost-breakdown'
     | '/api/admin/apify-backfill-actual-cost'
     | '/api/admin/apify-lab'
@@ -1798,8 +1798,8 @@ export interface FileRouteTypes {
     | '/report/example'
     | '/reports/$snapshotId'
     | '/admin/'
-    | '/admin/report-preview/$username'
     | '/admin/sistema/cockpit-legado'
+    | '/admin_/report-preview/$username'
     | '/api/admin/analysis-cost-breakdown'
     | '/api/admin/apify-backfill-actual-cost'
     | '/api/admin/apify-lab'
@@ -1855,7 +1855,7 @@ export interface FileRouteTypes {
     | '/report/print/$snapshotId'
     | '/admin/automacoes/'
     | '/admin/automacoes/templates/$key'
-    | '/admin/report-preview/snapshot/$snapshotId'
+    | '/admin_/report-preview/snapshot/$snapshotId'
     | '/api/admin/email-templates/$key'
     | '/api/admin/knowledge/benchmarks'
     | '/api/admin/knowledge/export'
@@ -1932,6 +1932,7 @@ export interface RootRouteChildren {
   FeedbackRequestIdRoute: typeof FeedbackRequestIdRoute
   ReportExampleRoute: typeof ReportExampleRoute
   ReportsSnapshotIdRoute: typeof ReportsSnapshotIdRoute
+  AdminReportPreviewUsernameRoute: typeof AdminReportPreviewUsernameRoute
   ApiAdminAnalysisCostBreakdownRoute: typeof ApiAdminAnalysisCostBreakdownRoute
   ApiAdminApifyBackfillActualCostRoute: typeof ApiAdminApifyBackfillActualCostRoute
   ApiAdminApifyLabRoute: typeof ApiAdminApifyLabRoute
@@ -1984,6 +1985,7 @@ export interface RootRouteChildren {
   ApiPublicUnlockCheckRoute: typeof ApiPublicUnlockCheckRoute
   BetaSubmittedRequestIdRoute: typeof BetaSubmittedRequestIdRoute
   ReportPrintSnapshotIdRoute: typeof ReportPrintSnapshotIdRoute
+  AdminReportPreviewSnapshotSnapshotIdRoute: typeof AdminReportPreviewSnapshotSnapshotIdRoute
   ApiAdminKnowledgeBenchmarksRoute: typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
   ApiAdminKnowledgeExportRoute: typeof ApiAdminKnowledgeExportRoute
   ApiAdminKnowledgeNotesRoute: typeof ApiAdminKnowledgeNotesRouteWithChildren
@@ -2736,19 +2738,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminAnalysisCostBreakdownRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin_/report-preview/$username': {
+      id: '/admin_/report-preview/$username'
+      path: '/admin/report-preview/$username'
+      fullPath: '/admin/report-preview/$username'
+      preLoaderRoute: typeof AdminReportPreviewUsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/sistema/cockpit-legado': {
       id: '/admin/sistema/cockpit-legado'
       path: '/cockpit-legado'
       fullPath: '/admin/sistema/cockpit-legado'
       preLoaderRoute: typeof AdminSistemaCockpitLegadoRouteImport
       parentRoute: typeof AdminSistemaRoute
-    }
-    '/admin/report-preview/$username': {
-      id: '/admin/report-preview/$username'
-      path: '/report-preview/$username'
-      fullPath: '/admin/report-preview/$username'
-      preLoaderRoute: typeof AdminReportPreviewUsernameRouteImport
-      parentRoute: typeof AdminRoute
     }
     '/api/public/hooks/sync-openai-costs': {
       id: '/api/public/hooks/sync-openai-costs'
@@ -3016,12 +3018,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminEmailTemplatesKeyRouteImport
       parentRoute: typeof ApiAdminEmailTemplatesRoute
     }
-    '/admin/report-preview/snapshot/$snapshotId': {
-      id: '/admin/report-preview/snapshot/$snapshotId'
-      path: '/report-preview/snapshot/$snapshotId'
+    '/admin_/report-preview/snapshot/$snapshotId': {
+      id: '/admin_/report-preview/snapshot/$snapshotId'
+      path: '/admin/report-preview/snapshot/$snapshotId'
       fullPath: '/admin/report-preview/snapshot/$snapshotId'
       preLoaderRoute: typeof AdminReportPreviewSnapshotSnapshotIdRouteImport
-      parentRoute: typeof AdminRoute
+      parentRoute: typeof rootRouteImport
     }
     '/admin/automacoes/templates/$key': {
       id: '/admin/automacoes/templates/$key'
@@ -3132,8 +3134,6 @@ interface AdminRouteChildren {
   AdminSistemaRoute: typeof AdminSistemaRouteWithChildren
   AdminVisaoGeralRoute: typeof AdminVisaoGeralRoute
   AdminIndexRoute: typeof AdminIndexRoute
-  AdminReportPreviewUsernameRoute: typeof AdminReportPreviewUsernameRoute
-  AdminReportPreviewSnapshotSnapshotIdRoute: typeof AdminReportPreviewSnapshotSnapshotIdRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
@@ -3153,9 +3153,6 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminSistemaRoute: AdminSistemaRouteWithChildren,
   AdminVisaoGeralRoute: AdminVisaoGeralRoute,
   AdminIndexRoute: AdminIndexRoute,
-  AdminReportPreviewUsernameRoute: AdminReportPreviewUsernameRoute,
-  AdminReportPreviewSnapshotSnapshotIdRoute:
-    AdminReportPreviewSnapshotSnapshotIdRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
@@ -3355,6 +3352,7 @@ const rootRouteChildren: RootRouteChildren = {
   FeedbackRequestIdRoute: FeedbackRequestIdRoute,
   ReportExampleRoute: ReportExampleRoute,
   ReportsSnapshotIdRoute: ReportsSnapshotIdRoute,
+  AdminReportPreviewUsernameRoute: AdminReportPreviewUsernameRoute,
   ApiAdminAnalysisCostBreakdownRoute: ApiAdminAnalysisCostBreakdownRoute,
   ApiAdminApifyBackfillActualCostRoute: ApiAdminApifyBackfillActualCostRoute,
   ApiAdminApifyLabRoute: ApiAdminApifyLabRoute,
@@ -3407,6 +3405,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicUnlockCheckRoute: ApiPublicUnlockCheckRoute,
   BetaSubmittedRequestIdRoute: BetaSubmittedRequestIdRoute,
   ReportPrintSnapshotIdRoute: ReportPrintSnapshotIdRoute,
+  AdminReportPreviewSnapshotSnapshotIdRoute:
+    AdminReportPreviewSnapshotSnapshotIdRoute,
   ApiAdminKnowledgeBenchmarksRoute:
     ApiAdminKnowledgeBenchmarksRouteWithChildren,
   ApiAdminKnowledgeExportRoute: ApiAdminKnowledgeExportRoute,
