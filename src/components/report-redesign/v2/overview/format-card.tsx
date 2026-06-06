@@ -12,7 +12,7 @@ import { Fragment, useState, type ComponentType } from "react";
 import { Play, Image, GalleryHorizontalEnd } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { InsightCallout, type InsightTone } from "./insight-callout";
+import type { InsightTone } from "./insight-callout";
 import type {
   SocialinsiderFormatRef,
   SocialinsiderInstagramContext,
@@ -283,8 +283,6 @@ export function FormatCard({
     count: postsAnalyzed,
     parts: ariaFormatParts.join(", "),
   });
-
-  const activeFormats = sortedFormats;
 
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden flex flex-col">
