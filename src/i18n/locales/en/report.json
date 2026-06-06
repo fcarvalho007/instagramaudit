@@ -600,7 +600,34 @@
       "cta_aria": "Save full overview"
     },
     "eyebrow_single": "Profile analysis",
-    "eyebrow_multi": "Comparing {{count}} profiles"
+    "eyebrow_multi": "Comparing {{count}} profiles",
+    "explore": {
+      "title": "Explore",
+      "period_label": "Analysis period",
+      "period_observed": "{{days}} days observed",
+      "competitors_label": "Competitors",
+      "add_competitor": "Add competitor",
+      "add_competitor_aria": "Add competitor for comparison",
+      "competitors_count": "{{count}} of {{max}} competitors added",
+      "period_locked_hint": "Period filters available in the full report.",
+      "competitors_locked_hint": "Competitor comparison available in the full report."
+    },
+    "status": {
+      "unlocked_title": "Full report",
+      "unlocked_subtitle": "{{count}} sections unlocked"
+    },
+    "unlock": {
+      "eyebrow": "Unlock",
+      "title": "Unlock the full report",
+      "cta_full": "Unlock · {{price}}",
+      "cta_compact": "Unlock · {{price}}",
+      "benefits": {
+        "sections": "{{count}} premium sections",
+        "periods": "Period filters",
+        "competitors": "Competitor comparison"
+      },
+      "trust": "One-time payment. No subscription."
+    }
   },
   "shell": {
     "search_intro": "Instagram shows how the current audience reacts. Off-platform demand helps assess whether the same topics also spark search interest. Current values are Google Trends relative indices, not absolute search volume.",
