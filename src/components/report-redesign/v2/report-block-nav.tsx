@@ -291,10 +291,12 @@ function ItemRow({
   item,
   isActive,
   onClick,
+  showBadge = true,
 }: {
   item: SidebarItem;
   isActive: boolean;
   onClick: () => void;
+  showBadge?: boolean;
 }) {
   const { t } = useTranslation("report");
   const isFree = item.accessBadge === "free";
@@ -344,14 +346,16 @@ function ItemRow({
       >
         {item.block.shortLabel}
       </span>
-      <span
-        className={cn(
-          "ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.06em] ring-1",
-          badgeClass,
-        )}
-      >
-        {badgeLabel}
-      </span>
+      {showBadge ? (
+        <span
+          className={cn(
+            "ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.06em] ring-1",
+            badgeClass,
+          )}
+        >
+          {badgeLabel}
+        </span>
+      ) : null}
     </button>
   );
 }
