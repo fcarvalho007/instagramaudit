@@ -649,11 +649,32 @@ function ExploreSection({
 function UnlockPromoCard({
   premiumCount,
   onOpenDialog,
+  compact = false,
 }: {
   premiumCount: number;
   onOpenDialog: () => void;
+  compact?: boolean;
 }) {
   const { t } = useTranslation("report");
+  const priceLabel = PUBLIC_PRODUCTS.report_full_9.priceLabel;
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={onOpenDialog}
+        aria-label={t("nav.access.cta_aria")}
+        className={cn(
+          "inline-flex w-full items-center justify-center gap-2 rounded-full",
+          "bg-content-primary px-3 py-2 text-xs font-semibold text-white",
+          "hover:bg-content-primary/90 transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-primary))] focus-visible:ring-offset-1",
+        )}
+      >
+        {t("nav.unlock.cta_compact", { price: priceLabel })}
+        <ArrowRight className="size-3" aria-hidden="true" />
+      </button>
+    );
+  }
   return (
     <div className="rounded-lg border border-border-default bg-surface-muted/40 p-3 space-y-2.5">
       <button
