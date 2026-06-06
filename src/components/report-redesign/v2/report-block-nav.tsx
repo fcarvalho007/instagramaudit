@@ -652,13 +652,13 @@ function ExploreSection({
         },
       }).catch(() => {});
 
-      const competitorList = [...existingCompetitors, newHandle].slice(0, 2);
       // Guard defensivo: o botão já deveria estar desactivado em 2/2.
       if (existingCompetitors.length >= COMPETITOR_MAX) {
         setErrorMessage(t("nav.explore.competitor_limit_reached"));
         setSubmitting(false);
         return;
       }
+      const competitorList = [...existingCompetitors, newHandle];
 
       try {
         const result = await fetchPublicAnalysis(primaryHandle, competitorList);
