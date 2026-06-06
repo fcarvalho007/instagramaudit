@@ -121,7 +121,7 @@ export function StickyUnlockBar() {
               Faltam-te 5 secções premium
             </p>
             <p className="text-xs text-content-secondary truncate">
-              frequência, formatos, publicações-chave e prioridades
+              frequência, formatos, publicações-chave, diagnóstico e prioridades
             </p>
           </div>
           <div className="shrink-0 flex items-baseline gap-1.5">
@@ -191,7 +191,7 @@ export function StickyUnlockBar() {
               "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40 focus-visible:ring-offset-2",
             )}
           >
-            Ver tudo
+            Desbloquear
           </button>
           <button
             type="button"
