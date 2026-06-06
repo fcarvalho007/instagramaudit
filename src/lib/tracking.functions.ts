@@ -76,6 +76,13 @@ const ALLOWED_EVENTS = [
   "pricing_coupon_applied",
   // Services inquiries
   "services_inquiry_submitted",
+  // Beta credits — post-purchase
+  "credit_consume_dialog_opened",
+  "beta_credit_used",
+  "beta_credit_used_period",
+  "beta_credit_used_competitor",
+  "post_purchase_view",
+  "post_purchase_bonus_seen",
 ] as const;
 
 const trackEventSchema = z.object({
