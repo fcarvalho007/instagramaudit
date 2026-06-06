@@ -141,7 +141,9 @@ export const Route = createFileRoute("/api/admin/analysis-cost-breakdown")({
               const statuses = Object.values(map);
               allEnrichmentsComplete =
                 statuses.length >= 5 &&
-                statuses.every((s) => s === "success" || s === "skipped");
+                statuses.every(
+                  (s) => s === "success" || s === "skipped" || s === "skipped_free",
+                );
               // Only keep types with past failures
               for (const k of Object.keys(histMap)) {
                 if (histMap[k].failed === 0) delete histMap[k];

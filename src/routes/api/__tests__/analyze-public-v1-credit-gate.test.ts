@@ -309,6 +309,7 @@ vi.mock("@/lib/enrichment/types", () => ({
   ALL_ENRICHMENT_TYPES: [],
   FREE_ENRICHMENT_TYPES: [],
   PAID_ENRICHMENT_TYPES: [],
+  LAB_ENRICHMENT_TYPES: [],
   ENRICHMENT_PRIORITY: {},
   buildInitialEnrichmentStatus: () => ({}),
   buildFreeEnrichmentStatus: () => ({}),

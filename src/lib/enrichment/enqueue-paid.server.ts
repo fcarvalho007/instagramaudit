@@ -51,7 +51,9 @@ export async function enqueuePaidEnrichmentsForSnapshot(
     // missing from the map entirely.
     const toEnqueue = PAID_ENRICHMENT_TYPES.filter((t) => {
       const s = status[t];
-      return s === "skipped" || s === undefined;
+      // Both "skipped_free" (Free default) and "skipped" (budget/runtime)
+      // are eligible to be re-enqueued once the lead unlocks Pro.
+      return s === "skipped" || s === "skipped_free" || s === undefined;
     });
 
     if (toEnqueue.length === 0) {
