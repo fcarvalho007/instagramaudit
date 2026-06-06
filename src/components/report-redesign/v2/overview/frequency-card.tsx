@@ -209,7 +209,9 @@ function WeeklyRhythmChart({
   const BAR_MAX = 64;
   const BAR_MIN = 14;
   const ZERO_LINE = 2;
-  const ACCENT = "#3772E5";
+  const ACCENT = "var(--accent-primary, #3772E5)";
+  const ACCENT_SOFT = "color-mix(in oklab, var(--accent-primary, #3772E5) 18%, #FFFFFF)";
+  const ZERO_TINT = "color-mix(in oklab, var(--accent-primary, #3772E5) 10%, #FFFFFF)";
 
   return (
     <div className="mt-8">
@@ -235,8 +237,8 @@ function WeeklyRhythmChart({
           const background = isPeak
             ? ACCENT
             : isZero
-              ? "rgba(148,163,184,0.45)"
-              : "rgba(55,114,229,0.18)";
+              ? ZERO_TINT
+              : ACCENT_SOFT;
           return (
             <div
               key={b.weekday}
@@ -462,9 +464,9 @@ export function FrequencyCard({
 
         {!isInsufficient && hasUsableData && (
           <>
-            {/* Inline metrics — no borders, no boxes */}
-            <div className="mt-7 flex flex-wrap gap-x-10 gap-y-5 sm:gap-x-14">
-              <div>
+            {/* KPI strip — contained in a hairline block, aligned with the rest of the report cards */}
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 rounded-xl border border-border-subtle/60 bg-surface-base/40 overflow-hidden">
+              <div className="px-5 md:px-6 py-4 md:py-5 sm:border-r border-border-subtle/60 border-b sm:border-b-0">
                 <div className="flex items-baseline gap-1.5">
                   <span className="font-sans text-[2rem] md:text-[2.25rem] font-semibold tabular-nums leading-none text-content-primary">
                     {cadenceValue}
@@ -474,7 +476,7 @@ export function FrequencyCard({
                   {t("frequency.kpi.cadence_label").toLowerCase()}
                 </span>
               </div>
-              <div>
+              <div className="px-5 md:px-6 py-4 md:py-5 sm:border-r border-border-subtle/60 border-b sm:border-b-0">
                 <div className="flex items-baseline gap-0.5">
                   <span className="font-sans text-[2rem] md:text-[2.25rem] font-semibold tabular-nums leading-none text-content-primary">
                     {consistencyPct}
@@ -487,7 +489,7 @@ export function FrequencyCard({
                   {t("frequency.kpi.consistency_label").toLowerCase()}
                 </span>
               </div>
-              <div>
+              <div className="px-5 md:px-6 py-4 md:py-5">
                 <span className="block font-sans text-[2rem] md:text-[2.25rem] font-semibold leading-none text-content-primary">
                   {peakLabel}
                 </span>
