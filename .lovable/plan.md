@@ -1,113 +1,98 @@
-# Plano — Barra sticky de conversão (free report)
+# Plano — Final estratégico do Pro report (06 + 07)
 
 ## Estado actual
 
-- `StickyUnlockBar` (`src/components/report-redesign/v2/sticky-unlock-bar.tsx`) já existe mas é **mobile-only**, **navy escuro** (`bg-content-primary`), pinned a `bottom-[64px]` (acima da bottom nav), e está gated por `!unlocked` — ou seja, hoje só aparece a visitantes sem lead capturado. No fluxo onboarding-first essa condição quase nunca é verdadeira.
-- Wiring em `report-shell-v2.tsx` (linha 449): `{lockBoundary === "engagement" && !premiumUnlocked && !unlocked && <StickyUnlockBar />}`.
-- CTA usa `usePremiumCta().handlePremiumAccessClick("sticky_unlock_bar")` — fluxo de checkout/unlock partilhado.
-- Preço dinâmico disponível em `PUBLIC_PRODUCTS.report_full_9.priceLabel` (já usado em `end-of-free-block.tsx` e no novo `PremiumTeaserCard`).
-- Existe um CTA final em `ReportEndOfFreeBlock` envolvido pela `<section id="lead-magnet-card">`.
+`ReportDiagnosticBlock` (renderizado pelo shell quando `premiumUnlocked && features.blockDiagnosis !== "hidden"`) mostra hoje, na ordem:
+- Grupo A: Q01 contentType + Q02 funnel
+- Grupo B: Q03 hashtags + Q04 captions
+- Grupo E: análise visual de capas
+- Grupo C: Q05 audience (+ comment intelligence)
+- Grupo D: Q06 integração de canais → `id="contexto-estrategico"`
+- `ReportDiagnosticPriorities` → `id="prioridades"`
+
+Resposta às perguntas: **substituir tudo no Pro por 06 + 07** e **fonte híbrida** (AI quando há `aiInsightsV2`, regras determinísticas como fallback).
 
 ## Mudanças
 
-### 1. Redesenhar `StickyUnlockBar`
-Ficheiro: `src/components/report-redesign/v2/sticky-unlock-bar.tsx` (reescrita)
+### 1. Detector de modo no diagnostic block
+Ficheiro: `src/components/report-redesign/v2/report-diagnostic-block.tsx`
 
-- **Variantes responsive:** desktop (`hidden md:flex`) e mobile (`md:hidden`).
-- **Superfície:** branca/off-white (`bg-surface-base`), borda topo subtil (`border-t border-border-default`), shadow suave para cima (`shadow-[0_-8px_24px_-12px_rgba(3,4,94,0.10)]`).
-- **Position:** `fixed inset-x-0 bottom-0 z-30`, com `pb-[env(safe-area-inset-bottom)]` para iOS. Mobile sobe acima da bottom nav (`bottom-[64px]`); desktop fica colado ao fundo.
+- Importar `useReportVariant()` de `@/lib/report/report-variant`.
+- Computar `isLab = variant === "internal_lab"`.
+- Quando `isLab === false` (público + pro_preview): renderizar apenas `<StrategicContextCard>` + `<ReportDiagnosticPriorities>`. Saltar grupos A/B/C/D/E completamente.
+- Quando `isLab === true`: render existente intacto (todos os grupos + capas + integração + prioridades).
+- Manter as âncoras `id="contexto-estrategico"` e `id="prioridades"` para a sidebar.
 
-**Desktop layout:**
-```
-[🔒]  Faltam-te 5 secções premium                 9€ único   [Desbloquear]
-      frequência, formatos, publicações-chave e prioridades
-```
-- Esquerda: ícone Lock em chip (`bg-surface-muted`), título Inter SemiBold + subcopy Inter Regular `text-content-secondary`.
-- Meio: `priceLabel` (Inter SemiBold, tabular-nums) + "único" em `text-content-tertiary`.
-- Direita: pill `bg-accent-primary text-white` "Desbloquear".
-- Botão close `×` (opcional, à direita extrema) — dismiss por sessão.
+### 2. Novo componente `StrategicContextCard` (06)
+Ficheiro: `src/components/report-redesign/v2/strategic-context-card.tsx`
 
-**Mobile layout (uma linha compacta):**
-```
-[🔒] 5 secções por desbloquear        [Ver tudo]
-     9€ · pagamento único
-```
-- Altura ~56px, sem bordas redondas pesadas, sem uppercase, sentence case.
+Layout editorial premium (sem dashboard pesado):
+- Header:
+  - Eyebrow: `06 · CONTEXTO ESTRATÉGICO` (Inter uppercase via `.text-eyebrow-sm`).
+  - H2 Fraunces: "O que estes sinais dizem sobre o perfil?"
+- Síntese editorial (1 parágrafo, 2–4 frases): pt-PT, prosa calma. Hybrid:
+  - Se `result.enriched.aiInsightsV2?.editorial_verdict?.summary` existir, usar.
+  - Else `result.enriched.aiInsightsV2?.sections.hero?.text` se existir.
+  - Else fallback determinístico curto: `"Este perfil mostra um padrão {contentType.label} com {funnel.label}. {audience.status === "active" ? "A audiência responde activamente." : "A audiência ainda interage pouco."}"` — só usando campos que existem.
+- 3 pilares em grid `grid-cols-1 md:grid-cols-3 gap-4`. Cada pilar é um cartão minimalista (sem heavy chrome, `border border-border-default rounded-xl p-5`, eyebrow + título + 1 frase):
+  1. **Padrão forte** (eyebrow `signal-success`): derivar do sinal mais positivo disponível — maior share de formato dominante, funnel focado, audience activa, integração clara, ou AI `sections.topPosts.text` / `sections.formats.text` quando `emphasis === "positive"`.
+  2. **Risco editorial** (eyebrow `signal-warning`): derivar do sinal mais frágil — dominância excessiva (>70% de um formato), comunicação dispersa, audience silent, integração ausente, ou AI section com `emphasis === "negative"`.
+  3. **Sinal a acompanhar** (eyebrow `accent-primary`): tendência neutra a monitorizar — share secundária a crescer, hashtags moderadamente usadas, captions com pattern emergente, ou AI section neutra.
+- Fallback gracioso: se nenhum pilar tiver evidência mínima, render apenas a síntese com nota discreta `"Sinais insuficientes para conclusões mais detalhadas."` (sem placeholders quebrados).
 
-### 2. Trigger de visibilidade
-Substituir o gating `!unlocked` por **observação de scroll**.
+**Helper puro** `buildStrategicPillars({ contentType, funnel, audience, integration, hashtags, aiSections, editorialVerdict })` → `{ summary: string; pillars: Array<{ kind, title, body }> }` em `src/lib/report/strategic-context.ts`. Sem I/O. Testável.
 
-- Hook interno usando `IntersectionObserver`:
-  - **Mostrar** quando o `#engagement` deixa de estar visível por cima (i.e. user já passou da última secção free).
-  - **Esconder** quando `#lead-magnet-card` (ReportEndOfFreeBlock) entra no viewport — o CTA principal está visível, sticky torna-se redundante.
-- Implementação: novo hook `useStickyUnlockTrigger()` em `sticky-unlock-bar.tsx`:
-  - Observa `#engagement` (rootMargin top negativo) → set `passedFree=true` quando `boundingClientRect.bottom < 0`.
-  - Observa `#lead-magnet-card` → set `finalCtaVisible=true` enquanto `isIntersecting`.
-  - `visible = passedFree && !finalCtaVisible && !dismissed`.
-- Animação: fade + translate-y 8px → 0 em 180ms. Sem bounce.
+### 3. Refinamento mínimo de `ReportDiagnosticPriorities` (07)
+Ficheiro: `src/components/report-redesign/v2/report-diagnostic-priorities.tsx`
 
-### 3. Dismissal
-- Botão `×` (aria-label "Fechar barra"). Set `dismissed` em React state (sessão actual, sem cookies/localStorage — alinha com "current session unless safe preference pattern existe", e não existe).
-- Após dismiss, não reaparece nesta sessão.
+- Header passa de "PRIORIDADES" (eyebrow neutro) para um header editorial:
+  - Eyebrow: `07 · PRIORIDADES DE ACÇÃO`
+  - H3 Fraunces: "O que testar, corrigir ou repetir?"
+  - Manter chip de count + `<ReportSourceLabel type="ia" />` quando AI.
+- Manter os 3 cards (alta/media/oportunidade) — já encaixam no padrão pedido (título + body + "resolves" como why-it-matters).
+- Sem mexer em `derivePriorities`, `PriorityItem` ou lógica de fallback. Só copy/header.
 
-### 4. Gating no shell
-Ficheiro: `src/components/report-redesign/v2/report-shell-v2.tsx`
-
-Alterar a condição (~linha 449):
-```diff
-- {lockBoundary === "engagement" && !premiumUnlocked && !unlocked && (
--   <StickyUnlockBar />
-- )}
-+ {lockBoundary === "engagement" && !premiumUnlocked && (
-+   <StickyUnlockBar />
-+ )}
-```
-- `lockBoundary === "engagement"` garante só fluxo público.
-- `!premiumUnlocked` garante esconder em PRO/internal_lab.
-- Variant `internal_lab` nunca define `lockBoundary="engagement"` (continua sem sticky).
-
-### 5. Preço dinâmico
-- Importar `PUBLIC_PRODUCTS` e ler `priceLabel` — texto "9€ único" / "9€ · pagamento único" é montado a partir do label, não hardcoded.
-
-### 6. Padding inferior
-Hoje o shell já tem `<div className="h-28 lg:hidden">` no fim. Adicionar variante desktop `lg:block lg:h-20` apenas quando a sticky bar estiver renderizada, para evitar tapar o footer.
+### 4. i18n
+Adicionar chaves opcionais a `public/locales/pt/report.json` para o eyebrow/título de 06 e 07. Fallbacks inline garantem que nada quebra se estiverem ausentes.
 
 ## Ficheiros a editar
 
-- `src/components/report-redesign/v2/sticky-unlock-bar.tsx` (reescrita: desktop+mobile, trigger scroll, dismiss, preço dinâmico)
-- `src/components/report-redesign/v2/report-shell-v2.tsx` (uma linha — remover `!unlocked` da condição; adicionar spacer desktop)
+- `src/components/report-redesign/v2/report-diagnostic-block.tsx` (gating por variant, render condicional)
+- `src/components/report-redesign/v2/strategic-context-card.tsx` (novo)
+- `src/lib/report/strategic-context.ts` (novo, helper puro híbrido)
+- `src/components/report-redesign/v2/report-diagnostic-priorities.tsx` (header editorial)
+- `public/locales/pt/report.json` (chaves de strategic_context.* — opcional, com fallbacks)
 
 ## Fora do âmbito (não tocar)
 
-- Pricing, checkout, EuPago, entitlements, créditos, unlock flow
-- Geração de relatório, cálculos, scraping
-- Schema / DB / migrations
-- `report-variant.ts`, `premium-cta-context.tsx` (já tem `sticky_unlock_bar` no union)
-- Lab/PRO views
+- `block02-diagnostic.ts` (classifiers + `derivePriorities` intactos)
+- `aiInsightsV2` schema / generation pipeline
+- Preço, checkout, EuPago, entitlements, créditos
+- `report-variant.ts`, gating do shell
+- Lab full preview — continua a render tudo (Q01-Q05, capas, integração, priorities)
+- Cálculos, scraping, snapshot, DB
+- Componentes 01–05 (overview, engagement, frequência, formatos, publicações-chave)
 
 ## Riscos e salvaguardas
 
-- **Risco:** sticky tapa o CTA final → mitigado por hide-when-`lead-magnet-card`-visible.
-- **Risco:** preço hardcoded → usar `PUBLIC_PRODUCTS.report_full_9.priceLabel`.
-- **Risco:** overflow horizontal mobile → `min-w-0`, `truncate` nas linhas de texto.
-- **Risco:** safe-area iOS → `pb-[env(safe-area-inset-bottom)]`.
-- **Risco:** aparecer em pro_preview/internal_lab → gating já o impede via `lockBoundary` + `!premiumUnlocked`.
-- **Risco:** quebrar teste existente `premium-cta-unification.test.ts` que verifica `lockBoundary === "engagement" && !premiumUnlocked && <StickyUnlockBar`. A nova condição mantém esses dois operandos (apenas remove `!unlocked`), então o regex `[\s\S]*?` continua a match. Validar com `bunx vitest run premium-cta-unification`.
+- **Risco:** lab perde diagnósticos. Mitigado: gating por `variant === "internal_lab"` mantém render completo no lab.
+- **Risco:** AI overclaim. Helper apenas mapeia secções AI existentes — sem prompts novos, sem inferências privadas. Quando AI ausente, fallback determinístico usa só `sample size`, `sharePct`, `label`, etc.
+- **Risco:** sinais insuficientes geram pilares vazios. Helper devolve apenas pilares com evidência; UI degrada para "síntese + nota" graciosamente.
+- **Risco:** sidebar 06/07 perde âncora. Mantemos `id="contexto-estrategico"` e `id="prioridades"`.
+- **Risco:** `aiInsightsV2` pode ser undefined em snapshots antigos. Helper trata `null/undefined` em todos os campos.
 
 ## Checklist de validação manual
 
-Desktop + mobile, `/analyze/$username` em estado free pós-lead:
-1. Sticky bar **não aparece** ao topo antes do Engagement.
-2. Aparece com fade após o user passar do Engagement / entrar nos teaser cards.
-3. Mantém-se visível enquanto faz scroll pelos 5 teasers.
-4. Desaparece (ou faz fade out) quando o CTA final `lead-magnet-card` entra em viewport.
-5. Botão "Desbloquear" / "Ver tudo" abre o mesmo `PremiumCtaProvider` (sem novo checkout).
-6. Botão `×` esconde durante a sessão; não reaparece até reload.
-7. Mobile: sem overflow horizontal, respeita safe-area, altura compacta (~56px).
-8. Preço mostrado vem de `PUBLIC_PRODUCTS.report_full_9.priceLabel`.
-9. Em `pro_preview` (premium unlocked) e `internal_lab`: sticky **não aparece**.
-10. Em variante anónima sem lead: continua a funcionar (já era esse o caso, e o teste de unificação continua verde).
+1. Pro report (premium unlocked, variant comercial) termina com exactamente dois cards: 06 Contexto estratégico + 07 Prioridades.
+2. Não aparecem Q01–Q05, capas visuais, hashtags diagnostics, captions diagnostics nem integração no Pro.
+3. Lab (`/admin/report-preview/$handle?variant=internal_lab`) continua a mostrar todos os grupos como antes.
+4. 06 mostra síntese editorial + até 3 pilares (Padrão forte / Risco editorial / Sinal a acompanhar) ou fallback gracioso quando sinal insuficiente.
+5. 07 mostra header editorial novo e até 5 prioridades (AI quando disponível, determinísticas como fallback — sem mudar lógica).
+6. Sidebar 06/07 ainda scroll-link para os cartões.
+7. Mobile: layout legível, sem overflow, espaçamento generoso.
+8. Public/free (sem premium) continua a mostrar teasers 03–07 inalterado.
+9. Copy em pt-PT, sem afirmações de dados privados.
 
 ## Aprovação
 
-Posso avançar com a implementação?
+Posso avançar?

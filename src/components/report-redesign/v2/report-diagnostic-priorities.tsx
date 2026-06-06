@@ -30,16 +30,21 @@ export function ReportDiagnosticPriorities({ items, source = "deterministic" }: 
   const { t } = useTranslation("report");
   if (items.length === 0) return null;
   return (
-    <section aria-label={t("diagnostic.priorities_aria")} className="space-y-4 md:space-y-5">
-      <div className="flex items-center gap-3 border-b border-border-subtle pb-2">
-        <p className="text-eyebrow-sm text-content-tertiary">
-          {t("diagnostic.priorities_title")}
-        </p>
-        {source === "ai" ? <ReportSourceLabel type="ia" /> : null}
-        <span className="text-eyebrow-sm ml-auto text-content-tertiary tabular-nums">
-          {t("diagnostic.priorities_count", { count: items.length })}
-        </span>
-      </div>
+    <section aria-label={t("diagnostic.priorities_aria")} className="space-y-6 md:space-y-8">
+      <header className="space-y-3">
+        <div className="flex items-center gap-3">
+          <p className="text-eyebrow-sm text-content-tertiary">
+            07 · Prioridades de acção
+          </p>
+          {source === "ai" ? <ReportSourceLabel type="ia" /> : null}
+          <span className="text-eyebrow-sm ml-auto text-content-tertiary tabular-nums">
+            {t("diagnostic.priorities_count", { count: items.length })}
+          </span>
+        </div>
+        <h3 className="font-display text-[1.5rem] md:text-[1.75rem] leading-tight tracking-tight text-content-primary">
+          O que testar, corrigir ou repetir?
+        </h3>
+      </header>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {items.map((it, i) => {
           const s = STYLE[it.level];
