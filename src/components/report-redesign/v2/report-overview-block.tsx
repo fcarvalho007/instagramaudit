@@ -34,6 +34,7 @@ const PREMIUM_TEASERS = [
     description:
       "Percebe se o perfil publica com consistência suficiente e onde existem quebras de ritmo.",
     anchorId: "frequencia",
+    previewVariant: "frequency",
   },
   {
     number: "04",
@@ -42,6 +43,7 @@ const PREMIUM_TEASERS = [
     description:
       "Vê se o perfil depende demasiado de um formato ou se há espaço para variar.",
     anchorId: "formatos",
+    previewVariant: "format",
   },
   {
     number: "05",
@@ -50,6 +52,7 @@ const PREMIUM_TEASERS = [
     description:
       "Identifica os melhores e piores conteúdos e percebe onde estão os padrões.",
     anchorId: "publicacoes-chave",
+    previewVariant: "publications",
   },
   {
     number: "06",
@@ -58,6 +61,7 @@ const PREMIUM_TEASERS = [
     description:
       "Desbloqueia 7 perguntas estratégicas sobre conteúdo, funil, hashtags, legendas, capas, audiência e integração.",
     anchorId: "diagnostico-editorial",
+    previewVariant: "diagnostic",
     subItems: [
       "Natureza do conteúdo",
       "Funil",
@@ -75,6 +79,7 @@ const PREMIUM_TEASERS = [
     description:
       "Recebe recomendações práticas para transformar dados em decisões.",
     anchorId: "prioridades",
+    previewVariant: "priorities",
   },
 ] as const;
 
@@ -287,6 +292,7 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
                 anchorId={teaser.anchorId}
                 source="overview_pro_teaser"
                 subItems={"subItems" in teaser ? teaser.subItems : undefined}
+                previewVariant={teaser.previewVariant}
               />
             ))}
           </div>
