@@ -816,6 +816,10 @@ export function ReportBlockTopTabs({
   const accessibleIds = accessible.map((i) => i.block.id);
   const active = useActiveBlock(accessibleIds);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const isCommercial = variant !== "internal_lab";
+  const paidStatus = isCommercial && premiumUnlocked
+    ? { totalSections: items.length }
+    : null;
 
   const activeIndex = useMemo(
     () => Math.max(0, accessible.findIndex((i) => i.block.id === active)),
@@ -926,7 +930,7 @@ export function ReportBlockTopTabs({
               </SheetTitle>
             </SheetHeader>
             <div className="mt-3">
-              <ProfileHeader profiles={profileList} />
+              <ProfileHeader profiles={profileList} paidStatus={paidStatus} />
               <div className="mb-2 flex justify-end">
                 <VariantBadge variant={variant} />
               </div>
