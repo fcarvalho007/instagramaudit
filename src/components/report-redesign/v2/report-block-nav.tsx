@@ -586,11 +586,24 @@ function ExploreSection({
   const onConfirmConsume = useCallback((nextIntent: ConsumeCreditIntent) => {
     // O consumo real (reserveCredit + nova análise) fica como follow-up.
     // Por agora só fechamos o dialog e registamos a intenção.
+    const specificEvent =
+      nextIntent.kind === "period"
+        ? "beta_credit_used_period"
+        : "beta_credit_used_competitor";
     trackEvent({
       data: {
-        eventType: "credit_consume_confirmed",
+        eventType: specificEvent,
         metadata: {
-          intent_kind: nextIntent.kind,
+          intent_days:
+            nextIntent.kind === "period" ? nextIntent.days : undefined,
+        },
+      },
+    }).catch(() => {});
+    trackEvent({
+      data: {
+        eventType: "beta_credit_used",
+        metadata: {
+          action_type: nextIntent.kind,
           intent_days:
             nextIntent.kind === "period" ? nextIntent.days : undefined,
         },
