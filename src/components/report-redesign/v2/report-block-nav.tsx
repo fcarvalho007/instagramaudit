@@ -705,7 +705,11 @@ function ExploreSection({
             <button
               key={days}
               type="button"
-              onClick={() => !premiumUnlocked && onPeriodLockedClick(days)}
+              onClick={() =>
+                premiumUnlocked
+                  ? onPeriodPaidClick(days)
+                  : onPeriodLockedClick(days)
+              }
               aria-disabled={premiumUnlocked ? undefined : "true"}
               className={cn(
                 "inline-flex items-center gap-1 rounded-full px-2 py-0.5",
@@ -758,6 +762,29 @@ function ExploreSection({
           </p>
         ) : null}
       </div>
+
+      {premiumUnlocked ? (
+        <div className="px-2">
+          <p className="text-[11px] text-content-tertiary tabular-nums">
+            {balance > 0
+              ? t("nav.explore.beta_credits_available", {
+                  count: balance,
+                  defaultValue_plural: "",
+                })
+              : t("nav.explore.beta_credits_empty")}
+          </p>
+        </div>
+      ) : null}
+
+      {premiumUnlocked ? (
+        <ConsumeCreditDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          intent={intent}
+          balance={balance}
+          onConfirm={onConfirmConsume}
+        />
+      ) : null}
     </section>
   );
 }
