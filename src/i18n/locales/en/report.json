@@ -618,7 +618,7 @@
       "add_competitor_short": "Competitor",
       "beta_credits_available": "{{count}} beta credit available",
       "beta_credits_available_plural": "{{count}} beta credits available",
-      "beta_credits_empty": "No beta credits available",
+      "beta_credits_empty": "0 credits available",
       "consume_dialog": {
         "title": "Use 1 beta credit",
         "description_period": "We'll fetch and process new public data for the {{days}}-day window. This uses 1 credit.",
