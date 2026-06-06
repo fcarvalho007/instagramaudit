@@ -4,7 +4,7 @@
  */
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, CalendarClock, Activity, TrendingUp } from "lucide-react";
 import { computeFrequencia } from "./score-utils";
 import type { SocialinsiderInstagramContext } from "@/lib/knowledge/socialinsider-context";
 import { ExternalSourceNote, formatDateRange } from "./external-source-note";
@@ -79,6 +79,60 @@ export interface FrequencyCardProps {
 }
 
 // ─── Weekly summary helpers ─────────────────────────────────────────
+
+// ─── KPI tile (icon + eyebrow on top, value below) ──────────────────
+
+function KpiTile({
+  icon,
+  label,
+  value,
+  unit,
+  valueSuffix,
+  isCategorical,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  unit?: string;
+  valueSuffix?: string;
+  isCategorical?: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-border-default bg-surface-base/60 px-4 md:px-5 py-4 md:py-5">
+      <div className="flex items-center gap-2 mb-3">
+        <span
+          className="inline-flex h-7 w-7 items-center justify-center rounded-full text-accent-primary"
+          style={{
+            background:
+              "color-mix(in oklab, var(--accent-primary, #3772E5) 10%, #FFFFFF)",
+          }}
+        >
+          {icon}
+        </span>
+        <span className="text-eyebrow-sm text-content-secondary">{label}</span>
+      </div>
+      <div className="flex items-baseline gap-1.5 flex-wrap">
+        <span
+          className={
+            isCategorical
+              ? "font-sans text-[1.5rem] md:text-[1.75rem] font-semibold leading-none text-content-primary"
+              : "font-sans text-[2rem] md:text-[2.25rem] font-semibold tabular-nums leading-none text-content-primary"
+          }
+        >
+          {value}
+        </span>
+        {valueSuffix ? (
+          <span className="font-sans text-[1.25rem] md:text-[1.5rem] font-semibold leading-none text-content-secondary/70">
+            {valueSuffix}
+          </span>
+        ) : null}
+        {unit ? (
+          <span className="text-xs text-content-tertiary pb-1">{unit}</span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 /** Aggregate posts/days by weekday (Mon=0..Sun=6). */
 function aggregateByWeekday(days: DayEntry[]): Array<{
@@ -206,27 +260,43 @@ function WeeklyRhythmChart({
   const weekdayShort =
     (t("frequency.weekday_short", { returnObjects: true }) as string[]) ?? [];
 
-  const BAR_MAX = 64;
-  const BAR_MIN = 14;
-  const ZERO_LINE = 2;
+  const BAR_MAX = 96;
+  const BAR_MIN = 18;
+  const ZERO_LINE = 4;
   const ACCENT = "var(--accent-primary, #3772E5)";
-  const ACCENT_SOFT = "color-mix(in oklab, var(--accent-primary, #3772E5) 18%, #FFFFFF)";
-  const ZERO_TINT = "color-mix(in oklab, var(--accent-primary, #3772E5) 10%, #FFFFFF)";
+  const ACCENT_SOFT =
+    "color-mix(in oklab, var(--accent-primary, #3772E5) 22%, #FFFFFF)";
+  const ZERO_TINT =
+    "color-mix(in oklab, var(--accent-primary, #3772E5) 8%, #FFFFFF)";
 
   return (
-    <div className="mt-8">
-      <span className="text-eyebrow-sm text-content-tertiary block mb-5">
-        {t("frequency.weekly_rhythm.title")}
-      </span>
+    <div className="mt-8 rounded-xl border border-border-subtle/60 bg-surface-base/40 px-4 md:px-5 pt-5 pb-4">
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-eyebrow-sm text-content-tertiary">
+          {t("frequency.weekly_rhythm.title")}
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-[11px] text-content-tertiary tabular-nums">
+          <span
+            className="inline-block h-2 w-2 rounded-sm"
+            style={{ background: ACCENT }}
+          />
+          {t("frequency.weekly_rhythm.peak_chip")}
+        </span>
+      </div>
       <div
-        className="grid gap-2 sm:gap-3 items-end"
+        className="relative grid gap-2 sm:gap-3"
         style={{
-          gridTemplateColumns: "repeat(7, 1fr)",
-          minHeight: `${BAR_MAX + 28}px`,
+          gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+          height: `${BAR_MAX + 32}px`,
         }}
         role="img"
         aria-label={t("frequency.weekly_rhythm.aria_distribution")}
       >
+        {/* baseline hairline */}
+        <div
+          aria-hidden="true"
+          className="absolute left-0 right-0 bottom-0 h-px bg-border-default/60"
+        />
         {buckets.map((b) => {
           const isPeak = b.weekday === top.weekday && b.posts > 0;
           const isZero = b.posts === 0;
@@ -242,10 +312,10 @@ function WeeklyRhythmChart({
           return (
             <div
               key={b.weekday}
-              className="flex flex-col items-center justify-end gap-2"
+              className="relative flex flex-col items-center justify-end h-full"
             >
               <span
-                className={`text-[11px] leading-none tabular-nums ${
+                className={`mb-1.5 text-[11px] leading-none tabular-nums ${
                   isPeak
                     ? "font-semibold text-content-primary"
                     : isZero
@@ -255,9 +325,15 @@ function WeeklyRhythmChart({
               >
                 {b.posts}
               </span>
-              <span
-                className="w-full rounded-[3px]"
-                style={{ height: `${height}px`, background }}
+              <div
+                className="block w-full max-w-[42px] rounded-t-[4px]"
+                style={{
+                  height: `${height}px`,
+                  background,
+                  boxShadow: isPeak
+                    ? "0 2px 6px -2px color-mix(in oklab, var(--accent-primary, #3772E5) 50%, transparent)"
+                    : undefined,
+                }}
               />
             </div>
           );
@@ -265,7 +341,7 @@ function WeeklyRhythmChart({
       </div>
       <div
         className="grid gap-2 sm:gap-3 mt-2.5"
-        style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
+        style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}
       >
         {weekdayShort.map((wd, i) => {
           const isPeak = i === top.weekday && buckets[i].posts > 0;
@@ -274,7 +350,7 @@ function WeeklyRhythmChart({
               key={i}
               className={`text-xs text-center leading-none select-none ${
                 isPeak
-                  ? "font-medium text-content-primary"
+                  ? "font-semibold text-content-primary"
                   : "text-content-tertiary"
               }`}
             >
@@ -464,39 +540,26 @@ export function FrequencyCard({
 
         {!isInsufficient && hasUsableData && (
           <>
-            {/* KPI strip — contained in a hairline block, aligned with the rest of the report cards */}
-            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 rounded-xl border border-border-subtle/60 bg-surface-base/40 overflow-hidden">
-              <div className="px-5 md:px-6 py-4 md:py-5 sm:border-r border-border-subtle/60 border-b sm:border-b-0">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="font-sans text-[2rem] md:text-[2.25rem] font-semibold tabular-nums leading-none text-content-primary">
-                    {cadenceValue}
-                  </span>
-                </div>
-                <span className="block mt-2 text-xs text-content-tertiary">
-                  {t("frequency.kpi.cadence_label").toLowerCase()}
-                </span>
-              </div>
-              <div className="px-5 md:px-6 py-4 md:py-5 sm:border-r border-border-subtle/60 border-b sm:border-b-0">
-                <div className="flex items-baseline gap-0.5">
-                  <span className="font-sans text-[2rem] md:text-[2.25rem] font-semibold tabular-nums leading-none text-content-primary">
-                    {consistencyPct}
-                  </span>
-                  <span className="font-sans text-[1.25rem] md:text-[1.5rem] font-semibold leading-none text-content-secondary/70">
-                    %
-                  </span>
-                </div>
-                <span className="block mt-2 text-xs text-content-tertiary">
-                  {t("frequency.kpi.consistency_label").toLowerCase()}
-                </span>
-              </div>
-              <div className="px-5 md:px-6 py-4 md:py-5">
-                <span className="block font-sans text-[2rem] md:text-[2.25rem] font-semibold leading-none text-content-primary">
-                  {peakLabel}
-                </span>
-                <span className="block mt-2 text-xs text-content-tertiary">
-                  {t("frequency.kpi.peak_label").toLowerCase()}
-                </span>
-              </div>
+            {/* KPI strip — icon + eyebrow on top, value below (aligned with "Índice do perfil" card pattern) */}
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+              <KpiTile
+                icon={<Activity className="h-3.5 w-3.5" aria-hidden="true" />}
+                label={t("frequency.kpi.cadence_label")}
+                unit={t("frequency.kpi.cadence_unit")}
+                value={cadenceValue}
+              />
+              <KpiTile
+                icon={<CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />}
+                label={t("frequency.kpi.consistency_label")}
+                value={String(consistencyPct)}
+                valueSuffix="%"
+              />
+              <KpiTile
+                icon={<TrendingUp className="h-3.5 w-3.5" aria-hidden="true" />}
+                label={t("frequency.kpi.peak_label")}
+                value={peakLabel}
+                isCategorical
+              />
             </div>
 
             <WeeklyRhythmChart days={windowedDays} t={t} />

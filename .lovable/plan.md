@@ -1,44 +1,49 @@
-## Objetivo
-Tornar `/admin/report-preview/:username?variant=pro_preview` (e `?variant=internal_lab`, `?variant=public_mvp`) **fullscreen, sem sidebar nem chrome admin** — exactamente como o cliente Pro veria. Refinar também `/admin/report-lab` para deixar claro como ir do laboratório para a vista fullscreen.
+Plano de correção para o card “Frequência de publicação”
 
-## Mudanças
+1. Corrigir o gráfico que não aparece
+- Alterar o gráfico `WeeklyRhythmChart` para que as barras tenham área visual real e previsível.
+- Causa provável encontrada: as barras são renderizadas como `<span>` inline com `height`/`width`; elementos inline podem ignorar dimensões visuais, fazendo o gráfico parecer vazio.
+- Tornar cada barra `block`, com largura/altura explícitas, base alinhada, fundo visível e escala estável.
+- Manter o gráfico sempre legível: zero posts aparece como linha mínima, dias com posts aparecem como barras, e o pico semanal ganha destaque visual.
 
-### 1. Sair do layout admin (mantendo URL)
-Renomear, usando a convenção de underscore final do TanStack Router que mantém o URL mas escapa ao layout pai:
-- `src/routes/admin.report-preview.$username.tsx` → `src/routes/admin_.report-preview.$username.tsx`
-- `src/routes/admin.report-preview.snapshot.$snapshotId.tsx` → `src/routes/admin_.report-preview.snapshot.$snapshotId.tsx`
+2. Tornar o gráfico visualmente mais apelativo
+- Reformatar a zona “Ritmo por dia da semana” como um bloco visual dentro do card: fundo subtil, border hairline, padding e grid estável.
+- Usar barras verticais com azul principal no pico e azul suave nos restantes dias.
+- Adicionar uma baseline discreta para dar leitura de gráfico, sem parecer decorativo vazio.
+- Garantir labels de dias e números alinhados e legíveis em mobile e desktop.
 
-Actualizar:
-- `createFileRoute("/admin/report-preview/...")` → `createFileRoute("/admin_/report-preview/...")` (o URL público continua `/admin/report-preview/...`).
-- Os `<Link to="/admin/report-preview/...">` tipados em `profiles-panel.tsx`, `reports-panel.tsx`, `lead-detail-sheet.tsx`, `test-profiles-card.tsx` passam a `to="/admin_/report-preview/..."`.
-- `admin.report-lab.tsx` continua a usar strings sem typed `to`, fica igual.
+3. Alinhar as caixas/KPIs de frequência com o visual do exemplo anexado
+- Reestruturar a faixa dos 3 KPIs (“cadência”, “consistência”, “pico semanal”) para seguir o padrão visual mostrado:
+  - ícone circular no topo;
+  - label/eyebrow em cima;
+  - valor principal por baixo;
+  - unidade/caption ao lado ou abaixo, conforme espaço;
+  - separadores verticais subtis em desktop;
+  - empilhamento limpo em mobile.
+- Remover a sensação de “valor em cima, título em baixo” que hoje quebra a clareza.
 
-### 2. Render fullscreen, sem chrome admin
-Em ambos os ficheiros renomeados:
-- Remover `AdminPreviewChrome`, `AdminBanner`, `CoverageStrip`, `CoverageNotice`, `AdminFooterNotice`.
-- Manter `AdminGate` (auth via `readAdminEmail`). Sem sessão → mostrar gate.
-- Com sessão → renderizar apenas `<ReportThemeWrapper><ReportShellV2 ... premiumUnlocked={variant !== "public_mvp"} unlocked={variant !== "public_mvp"} /></ReportThemeWrapper>` em `min-h-screen bg-surface-base`.
-- Adicionar **um único pill flutuante** `fixed top-3 right-3 z-50` ("← Sair da pré-visualização") que volta a `/admin/report-lab?profile={username}&variant={variant}`. Discreto, neutro, oculta-se em print/`@media print`. Sem isto o admin fica preso.
-- Estados loading/missing/error mantêm-se como mensagens limpas centradas no ecrã (sem o banner amarelo nem coverage strips).
+4. Harmonizar o header com “Índice do perfil”
+- Adicionar eyebrow acima do título do card, com o mesmo estilo editorial dos outros cartões.
+- Manter “Frequência de publicação Alta/Média/Baixa” como título principal, mas com hierarquia clara.
+- Usar ícone/identidade visual de ritmo/calendário onde fizer sentido, sem criar ruído.
 
-### 3. `/admin/report-lab` — refinar a moldura do preview embebido
-- Acima do `ReportShellV2` embebido, adicionar uma faixa fina com:
-  - Texto: "Pré-visualização condensada · `{variant}`. Para validar como o cliente Pro vê, abre em ecrã completo."
-  - Botão primário "Abrir em ecrã completo" → mesmo URL que os links rápidos já geram.
-- Manter intactos: selector de perfil, selector de variante, matriz de módulos, links rápidos, gestor de visibilidade.
+5. Ficheiros a alterar
+- `src/components/report-redesign/v2/overview/frequency-card.tsx`
+  - corrigir `WeeklyRhythmChart`;
+  - redesenhar KPI strip;
+  - ajustar header/eyebrow/ícones;
+  - manter os cálculos e copy existentes.
+- Se necessário, apenas pequenos ajustes de copy em:
+  - `src/i18n/locales/pt/report.json`
+  - `src/i18n/locales/en/report.json`
 
-## Resultado esperado
-- `/admin/report-preview/frederico.m.carvalho?variant=pro_preview` → idêntico a `/analyze/frederico.m.carvalho` para um cliente Pro: todos os 6 blocos desbloqueados, sem sidebar AuditProfiles, sem banner "ADMIN", sem coverage strip. Só um pill discreto no canto.
-- Mesma rota com `?variant=internal_lab` → também fullscreen, ainda com tudo desbloqueado, debugLabels visível (decidido pelo `features`).
-- Mesma rota com `?variant=public_mvp` → fullscreen com o gate de leads/CTA do cliente público.
-- `/admin/report-lab` continua a ser o cockpit do laboratório, agora com atalho directo para abrir cada variante em fullscreen.
+6. Validação
+- Verificar no preview `/admin/report-preview/frederico.m.carvalho?variant=pro_preview`.
+- Confirmar que:
+  - o gráfico aparece claramente;
+  - as 7 barras têm dimensão visível;
+  - o pico semanal está destacado;
+  - os KPIs seguem a hierarquia do exemplo anexado;
+  - não há regressão no `/admin/report-lab` nem no layout mobile.
 
-## Ficheiros afectados
-- Renomear: `src/routes/admin.report-preview.$username.tsx`, `src/routes/admin.report-preview.snapshot.$snapshotId.tsx`
-- Editar (após renomear): conteúdo dos dois ficheiros acima
-- Editar: `src/routes/admin.report-lab.tsx` (faixa de preview)
-- Editar (links tipados): `src/components/admin/cockpit/panels/profiles-panel.tsx`, `src/components/admin/cockpit/panels/reports-panel.tsx`, `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx`, `src/components/admin/v2/sistema/test-profiles-card.tsx`
-
-## Fora de escopo
-- Não toco em `/analyze/:username`, `/report.example`, nos cards do report em si, em dados, snapshots, RLS, auth Google, pagamentos.
-- Não removo o `AdminGate` — a página continua a exigir admin autenticado, só não mostra chrome admin.
+Fora de escopo nesta correção: alterar dados, cálculo de frequência, pagamentos, gates, novas fontes de dados ou outros cards do relatório.
