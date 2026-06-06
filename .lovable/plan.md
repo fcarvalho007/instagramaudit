@@ -1,76 +1,61 @@
-# Redesign: Formato (Format) section — premium proportion bar
+## Goal
 
-**Scope:** `src/components/report-redesign/v2/overview/format-card.tsx` only. No data, calculation, i18n key, or report-generation changes.
+Refinar duas secções do relatório:
 
-## What changes visually
+1. **Formato** — o gráfico de proporção aparece "vazio" no preview. Substituir por um visual cinematográfico, claramente preenchido, com hierarquia óbvia (Carrosséis 83% dominante vs Reels 17%).
+2. **Frequência de publicação** — alinhar a paleta com o resto do report e dar contenção aos números soltos (2,8 / 33% / Terça) através de um agrupamento subtil que se enquadra no estilo editorial.
 
-### 1. Header (refinement only)
-- Keep `ReportCardSectionHeader` with title `Formato` + qualifier `Pouco variado`.
-- Refine subtitle so the lead line reads cleanly: e.g. *"10 em cada 12 publicações são carrosséis"* (driven from existing `format.subtitle.leader` i18n — no new keys; relies on current values).
-- Keep tone/typography from the design system (Fraunces title, Inter body, tabular nums).
+Sem alterações de lógica, dados, i18n ou geração de PDF.
 
-### 2. Hero visual — new `FormatProportionBar` (replaces donut)
-Replace the current `FormatBreakdown` (donut + 3-row legend block) with a single full-width horizontal proportion bar:
+## Ficheiros a alterar
 
-```text
-┌──────────────────────────────────────────────────┬─────────────┐
-│ 83%                                              │ 17%         │
-│ Carrosséis · 10                                  │ Reels · 2   │
-└──────────────────────────────────────────────────┴─────────────┘
-```
+- `src/components/report-redesign/v2/overview/format-card.tsx`
+- `src/components/report-redesign/v2/overview/frequency-card.tsx`
 
-- Height ~64px, `rounded-xl`, no inner gap (cinematic single bar).
-- Dominant segment: deep `--accent-primary` (#3772E5) background, white foreground.
-- Secondary segment(s): lighter tint of the same accent (`color-mix(...)` on accent at ~22%) with `--content-primary` text — keeps to the global blue accent system.
-- Zero-count formats (Imagens 0) are **not rendered as a segment** — only appear in the legend below.
-- Inside each segment: large `text-[1.75rem]` semibold percentage on top line, small `text-xs` `Formato · count` label below. Inter SemiBold + tabular-nums.
-- Segments below ~10% width collapse the inline label to a tooltip and keep only the % (graceful overflow).
-- Segments are computed from the same normalized `rounded[]` percentages already used by `FormatBreakdown` (no math change).
-- Full `role="img"` + `aria-label` reused from the existing `format.aria_breakdown` i18n.
+## 1. Formato — gráfico cinematográfico
 
-### 3. Legend (subtle, beneath the bar)
-- Single row, inline, separated by `·`:
-  `■ Carrosséis 10   ■ Reels 2   ■ Imagens 0`
-- Inter `text-xs`, `text-content-tertiary`; dot uses the same color as its bar segment; zero-count item dimmed.
-- Wraps cleanly on mobile.
+Diagnóstico do "branco":
+O `FormatProportionBar` actual usa `color-mix(... var(--surface-base))` para segmentos secundários e depende de tokens que, em alguns contextos, devolvem um tom quase indistinguível do cartão. O segmento dominante (Carrosséis 83%) está a render-se sobre fundo do card e visualmente desaparece.
 
-### 4. Thumbnails — single elegant filmstrip
-Replace the current responsive grid with a horizontal filmstrip:
+Redesign (substitui `FormatProportionBar`):
 
-- One row, `flex gap-2`, `overflow-x-auto`, `snap-x snap-mandatory`, hidden scrollbar.
-- Thumbnail size: `h-16 w-16 md:h-20 md:w-20` (down from ~96px). `rounded-lg`, `border-border-default/60`.
-- Keep the existing small format-dot indicator (bottom-right) at reduced size.
-- Right-edge subtle fade mask (`mask-image: linear-gradient(...)`) to indicate overflow on desktop.
-- On very wide content, limit to first 12 items and append a `+N` chip tile when overflowing.
-- Wrapper loses the framed muted-card chrome — sits directly on the card surface with just an eyebrow line `text-eyebrow-sm` reading the existing `format.analyzed_count` label. No duplicated legend here (legend lives once, under the bar).
+- **Hero split de duas colunas** dentro do card:
+  - Coluna esquerda (~62%): número editorial gigante `83%` em Fraunces SemiBold (text-[4rem] md:text-[5rem]), com label `Carrosséis · 10 de 12` por baixo em Inter eyebrow. Cor: `--accent-primary`.
+  - Coluna direita (~38%): bloco vertical proporcional (uma barra vertical alta) dividido em dois segmentos preenchidos:
+    - Carrosséis: 83% da altura, fundo sólido `--accent-primary`.
+    - Reels: 17% da altura, fundo `color-mix(in oklab, var(--accent-primary) 28%, white)` (tint claro garantido, sem dependência de `--surface-base`).
+    - Cada segmento mostra `%` e label internamente (Inter SemiBold tabular-nums), branco sobre azul / `--content-primary` sobre tint.
+  - Borda hairline `border-border-subtle/60`, `rounded-xl`, altura ~140px md:160px — proporção cinematográfica.
+- **Legenda abaixo** mantém-se (Carrosséis · Reels · Imagens 0), apenas usa pontos com a mesma família azul (não emerald/sky/amber), unificando a paleta com o resto do report.
+- Mantém `role="img"` + `aria-label` reutilizando i18n existente. Sem alteração à matemática (mesmo rounding-to-100, mesmo `segments` source).
 
-### 5. Insight box (calmer)
-- Keep `InsightCallout` but drop visual weight: lighter padding, no background tint (use `tone="neutral"` styling or pass `className` to override), kept content unchanged (`verdict.strong` + `verdict.rest`).
-- Decision: keep `InsightCallout` component for tone semantics; reduce only margins/padding/background via existing className prop. (No component API change.)
+Comportamento:
+- Se houver 3+ formatos com count>0, a barra vertical empilha N segmentos pela mesma ordem desc, o número grande à esquerda continua a mostrar o dominante.
+- Sem dados: retorna `null` (igual ao actual).
 
-### 6. Untouched
-- `ExternalReferenceTable`, `ExternalSourceNote`, `socialinsiderRef` block — left intact below.
-- All exported helpers (`computeExternalReading`, `getFormatHeadline*`, `getFormatVariationStatus`, `getFormatVerdict`, `toDominantKey`) — unchanged (tests stay green).
-- All i18n keys reused; no new strings added.
-- `FormatCardProps`, types, data flow — unchanged.
+Filmstrip e bloco "A MELHORAR" mantêm-se exactamente como estão.
 
-## Technical notes
+## 2. Frequência — contenção dos números + paleta unificada
 
-- New internal component `FormatProportionBar({ formats, t })` defined in same file, replaces the `<FormatBreakdown />` call site on line 309.
-- `FormatBreakdown` function is **removed** (not exported, no external consumers — verified by ripgrep: only one call site in this file).
-- Bar segment widths use the existing rounded-to-100 percentages so the bar always sums to 100%.
-- Color tokens only (no slate-*, no hardcoded hex outside the existing `FORMAT_HEX` map kept for the legend dots, or `color-mix(in oklab, var(--accent-primary) ...)` for tints).
-- Mobile (< 480px): bar keeps full width; if the secondary segment label would clip, only the % is shown inside, label moves to legend.
+Mudanças visuais apenas:
 
-## Validation checklist
+- **Agrupar os três KPIs (cadência / consistência / pico semanal)** num bloco horizontal com hairlines verticais subtis em vez de soltos no fluxo:
+  - Container: `mt-6 rounded-xl border border-border-subtle/60 bg-surface-base/40 px-5 md:px-6 py-4 md:py-5`.
+  - 3 colunas com `divide-x divide-border-subtle/60`, cada coluna mantém o número grande Fraunces + label Inter já existentes.
+  - No mobile, mantém-se em flex-wrap mas dentro do container, sem divisores verticais visíveis (`sm:divide-x`).
+- **Alinhamento de cor:**
+  - Constante local `ACCENT = "#3772E5"` no `WeeklyRhythmChart` passa a `var(--accent-primary)` (com fallback) para igualar exactamente o azul do card Formato e o resto dos accents do report.
+  - Tints (barras secundárias com posts e barra zero) também passam a `color-mix` sobre `--accent-primary`, eliminando o `rgba(55,114,229,0.18)` hardcoded.
+  - O ✓ verde da conclusão "Cadência forte e consistente" mantém-se (sinal positivo é semântico, não decorativo).
+- O bloco do gráfico semanal e a conclusão editorial permanecem inalterados em estrutura — apenas tokens de cor unificados.
 
-- Desktop 1440/1920: bar dominant, thumbnails fit in one row with fade.
-- Tablet 820: bar legible, thumbnails scroll horizontally.
-- Mobile 375: bar legible, percentages readable, legend wraps to 2 lines if needed.
-- aria-label preserved on hero visual.
-- No data/calculation changes — same `formats[]`, same rounding, same totals.
+## Garantias
 
-## Deliverables
+- Zero alterações em: cálculos (`computeFrequencia`, `aggregateByWeekday`, rounding-to-100), props, i18n keys, ordem das secções, lógica de cadência insuficiente, PDF, mocks, testes.
+- Apenas markup + classes Tailwind + estilos inline de cor.
+- Mobile/desktop validados visualmente em 375 / 820 / 1440.
 
-- 1 file changed: `src/components/report-redesign/v2/overview/format-card.tsx`.
-- Confirm UI-only; no data/report logic changed.
+## Resultado esperado
+
+- Formato: o gráfico tem peso visual claro — número editorial gigante + barra vertical totalmente preenchida, leitura imediata da dominância.
+- Frequência: os números deixam de "flutuar"; ficam contidos num bloco discreto coerente com a linguagem dos cartões do report; toda a paleta do azul é a mesma do resto das secções.
