@@ -1303,13 +1303,16 @@
     "retentionMessage": "Os relatórios ficam disponíveis durante {{days}} dias após a geração."
   },
   "end_of_free": {
-    "eyebrow": "Fim da leitura pública",
-    "title": "Há mais por trás deste perfil",
-    "description": "No relatório completo entra a análise temporal, a leitura editorial do ritmo e o confronto detalhado com os concorrentes.",
-    "chips": {
-      "competitors": "Concorrentes",
-      "rank": "Posição no escalão",
-      "more_sections": "+ 5 secções"
+    "eyebrow": "Viste os primeiros sinais",
+    "title": "Transforma sinais em decisões.",
+    "description": "O relatório completo mostra o que está a funcionar, o que está a falhar e que decisões podem melhorar a leitura estratégica deste perfil nos <strong>próximos 30 dias</strong>.",
+    "benefits_title": "No relatório completo vais conseguir",
+    "benefits": {
+      "best_worst": "Ver as melhores e piores publicações",
+      "formats": "Perceber que formatos repetir ou reduzir",
+      "rhythm": "Identificar padrões de ritmo e frequência",
+      "competitors": "Comparar o perfil com concorrentes",
+      "opportunities": "Descobrir oportunidades editoriais"
     },
     "price": {
       "launch": "9",
@@ -1318,8 +1321,8 @@
       "caption_prefix": "",
       "caption_suffix": "pagamento único · sem subscrição"
     },
-    "cta": "Garantir preço de lançamento",
-    "footnote": "Entras na lista e avisamos-te quando abrir · pagamento único, sem subscrição"
+    "cta": "Desbloquear análise completa",
+    "reassurance": "Ideal para quem gere, analisa ou compara perfis de Instagram e precisa de decisões claras, não só de métricas."
   },
   "end_feedback": {
     "question": "Esta leitura foi útil?",
