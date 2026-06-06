@@ -1299,6 +1299,8 @@ export function ReportBlockSidebar({
         competitorCount={competitorCount}
         competitorMax={competitorMax}
         compact={compact}
+        primaryHandle={profileList[0]?.handle}
+        existingCompetitors={profileList.slice(1).map((p) => p.handle)}
       />
     </nav>
   );
