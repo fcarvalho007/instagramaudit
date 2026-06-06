@@ -264,20 +264,33 @@ function WeeklyRhythmChart({
   const BAR_MIN = 18;
   const ZERO_LINE = 4;
   const ACCENT = "var(--accent-primary, #3772E5)";
+  // Stronger, more cinematic palette — bars must be unmistakably visible
+  // on the light surface. Peak uses full accent; other days use a deeper
+  // tonal blue (not a near-white wash); zero days collapse to a clear
+  // hairline.
   const ACCENT_SOFT =
-    "color-mix(in oklab, var(--accent-primary, #3772E5) 22%, #FFFFFF)";
+    "color-mix(in oklab, var(--accent-primary, #3772E5) 55%, #FFFFFF)";
+  const TRACK_TINT =
+    "color-mix(in oklab, var(--accent-primary, #3772E5) 5%, #FFFFFF)";
   const ZERO_TINT =
-    "color-mix(in oklab, var(--accent-primary, #3772E5) 8%, #FFFFFF)";
+    "color-mix(in oklab, var(--accent-primary, #3772E5) 20%, #FFFFFF)";
 
   return (
-    <div className="mt-8 rounded-xl border border-border-subtle/60 bg-surface-base/40 px-4 md:px-5 pt-5 pb-4">
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-eyebrow-sm text-content-tertiary">
+    <div className="mt-8 rounded-xl border border-border-default bg-surface-base/60 px-4 md:px-6 pt-5 pb-5">
+      <div className="flex items-center justify-between mb-5">
+        <span className="text-eyebrow text-content-primary font-semibold">
           {t("frequency.weekly_rhythm.title")}
         </span>
-        <span className="inline-flex items-center gap-1.5 text-[11px] text-content-tertiary tabular-nums">
+        <span
+          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]"
+          style={{
+            background:
+              "color-mix(in oklab, var(--accent-primary, #3772E5) 10%, #FFFFFF)",
+            color: ACCENT,
+          }}
+        >
           <span
-            className="inline-block h-2 w-2 rounded-sm"
+            className="inline-block h-2 w-2 rounded-full"
             style={{ background: ACCENT }}
           />
           {t("frequency.weekly_rhythm.peak_chip")}
@@ -295,7 +308,11 @@ function WeeklyRhythmChart({
         {/* baseline hairline */}
         <div
           aria-hidden="true"
-          className="absolute left-0 right-0 bottom-0 h-px bg-border-default/60"
+          className="absolute left-0 right-0 bottom-0 h-px"
+          style={{
+            background:
+              "color-mix(in oklab, var(--accent-primary, #3772E5) 25%, #FFFFFF)",
+          }}
         />
         {buckets.map((b) => {
           const isPeak = b.weekday === top.weekday && b.posts > 0;
@@ -314,24 +331,34 @@ function WeeklyRhythmChart({
               key={b.weekday}
               className="relative flex flex-col items-center justify-end h-full"
             >
+              {/* subtle column track for readability */}
+              <div
+                aria-hidden="true"
+                className="absolute left-1/2 -translate-x-1/2 bottom-0 w-full max-w-[42px] rounded-t-[4px]"
+                style={{
+                  height: `${BAR_MAX}px`,
+                  background: TRACK_TINT,
+                }}
+              />
               <span
-                className={`mb-1.5 text-[11px] leading-none tabular-nums ${
+                className={`relative z-[1] mb-2 leading-none tabular-nums ${
                   isPeak
-                    ? "font-semibold text-content-primary"
+                    ? "text-[14px] font-bold"
                     : isZero
-                      ? "text-content-tertiary"
-                      : "font-medium text-content-secondary"
+                      ? "text-[11px] text-content-tertiary"
+                      : "text-[12px] font-semibold text-content-primary"
                 }`}
+                style={isPeak ? { color: ACCENT } : undefined}
               >
                 {b.posts}
               </span>
               <div
-                className="block w-full max-w-[42px] rounded-t-[4px]"
+                className="relative z-[1] block w-full max-w-[42px] rounded-t-[5px]"
                 style={{
                   height: `${height}px`,
                   background,
                   boxShadow: isPeak
-                    ? "0 2px 6px -2px color-mix(in oklab, var(--accent-primary, #3772E5) 50%, transparent)"
+                    ? "0 6px 14px -6px color-mix(in oklab, var(--accent-primary, #3772E5) 65%, transparent)"
                     : undefined,
                 }}
               />
@@ -340,7 +367,7 @@ function WeeklyRhythmChart({
         })}
       </div>
       <div
-        className="grid gap-2 sm:gap-3 mt-2.5"
+        className="grid gap-2 sm:gap-3 mt-3 pt-2.5 border-t border-border-default/50"
         style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}
       >
         {weekdayShort.map((wd, i) => {
@@ -348,11 +375,12 @@ function WeeklyRhythmChart({
           return (
             <span
               key={i}
-              className={`text-xs text-center leading-none select-none ${
+              className={`text-xs text-center leading-none select-none uppercase tracking-[0.08em] ${
                 isPeak
-                  ? "font-semibold text-content-primary"
+                  ? "font-bold"
                   : "text-content-tertiary"
               }`}
+              style={isPeak ? { color: ACCENT } : undefined}
             >
               {wd}
             </span>
