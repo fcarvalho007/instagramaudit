@@ -1,186 +1,179 @@
+## Goal
 
-# Auditoria escrita — Lifecycle real de emails AuditProfiles
-
-> 100% read-only. Nenhum email enviado, nenhum evento escrito, nenhum dado alterado.
-> Fontes inspeccionadas: `src/lib/email/**`, `src/lib/admin/email-template-registry.ts`,
-> `src/lib/admin/automation-flow-types.ts`, `src/routes/api/admin/automation-flow.ts`,
-> `src/routes/api/admin/send-*.ts`, `src/routes/api/public/eupago-webhook.ts`,
-> `src/lib/unlock.server.ts`, `src/lib/beta.functions.ts`,
-> e `product_events` / `leads` / `report_requests` (últimos 30–90 dias).
+Reduce operational confusion in `/admin/email-lab` and `/admin/automacoes` so that **active**, **manual**, **transactional**, **planned**, **kill-switch OFF** and **legacy** templates/flows are visually and semantically distinct. Metadata + admin UI only. No senders, triggers, copy, prices, checkout, EuPago, credits, entitlements, report generation or schema are touched.
 
 ---
 
-## 1. Sumário executivo
+## Files to change
 
-**Estado real:** **Mostly correct in code, but admin UI is confusing and parts of the lifecycle are not yet observable in production.**
+1. `src/lib/admin/email-template-registry.ts`
+2. `src/components/admin/v2/email-lab/email-lab-page.tsx`
+3. `src/lib/admin/automation-flow-types.ts`
+4. `src/routes/api/admin/automation-flow.ts` (metadata only — `stage` reassignment + KPI exclusion of `planeado`; no behaviour, no email logic)
+5. `src/components/admin/v2/automacoes/automation-flow-page.tsx`
+6. `src/components/admin/v2/automacoes/stage-group.tsx` (only if a new "planned" variant note is needed; otherwise reuse `muted`)
 
-- O código de envio está consolidado e correcto: o orquestrador `lead-magnet-sequence` chama exclusivamente `sendReportSavedEmail`, com dedup unificado contra os três eventos (`report_saved_email_sent`, `beta_welcome_email_sent`, `report_summary_email_sent`).
-- `welcome_beta` e `report_summary` **já não têm callers em produção** (apenas o registry e testes os importam). Não podem disparar.
-- `payment_confirmed` está atrás do kill-switch `PAYMENT_CONFIRMATION_EMAIL_ENABLED` (default OFF) com idempotência por `payment_id`.
-- `feedback_request` ficou com idempotência por `(lead_id, report_request_id)` via `feedback_request_email_sent` (hardening recente).
-- `request_received` continua a disparar imediatamente na submissão beta.
-- **Risco principal não é "envia errado"**, é **observabilidade e clareza do admin**:
-  - Em `/admin/automacoes` o "a aguardar" do flow **Pedido recebido** = `leads.commercial_status='novo_pedido'` (11 leads hoje). Não significa "11 emails na fila" — esses 11 já receberam (ou tentaram receber) o email. Significa "11 leads a aguardar acção do admin". É a fonte de confusão descrita no pedido.
-  - Em `product_events` dos últimos 90 dias **não há nenhum** `request_received_email_sent`, `report_saved_email_sent`, `report_link_sent`, `feedback_request_email_sent`, `commercial_followup_sent` nem `payment_*`. Só temos 8x `beta_welcome_email_sent` + 8x `report_summary_email_sent` de **2026-05-29** (pré-consolidação). Isto pode significar (a) que após o deploy da nova lógica ninguém passou pelos triggers de produção, ou (b) que algo está a falhar silenciosamente antes de escrever os eventos novos. Recomenda-se uma validação controlada antes de assumir que está OK.
-
-Veredicto curto: **Mostly correct but confusing in admin · pronto para validação controlada antes de produção, mas com 1 correcção textual recomendada na UI**.
+Nothing else is edited. No email template HTML/text, no sender file, no webhook, no payment/credit/entitlement file.
 
 ---
 
-## 2. Lifecycle implementado hoje (tabela)
+## 1. `/admin/email-lab`
 
-| Stage | Template key | Nome user-facing | Trigger / evento | Modo | Delay | Envia em prod? | Evento escrito | Status mostrado no admin | Notas / riscos |
-|---|---|---|---|---|---|---|---|---|---|
-| 01 Captação | `request_received` | Pedido recebido | `beta.functions.ts → createBetaRequest` (form submit) | Automático | imediato | **Sim** | `request_received_email_sent` / `_failed` | Activo / Transaccional | "A aguardar" = leads em `novo_pedido` (admin ainda não aprovou) — **não** é fila de email. |
-| 01 Captação | — | Geração do relatório | Admin gera manualmente | Sistema | manual | n/a | `report_generated` | Bloqueado / sistema | Não envia email. |
-| 02 Entrega (**principal**) | `report_saved` | Relatório guardado | `unlock.server.ts → sendLeadMagnetSequence` (1º unlock de cada `report_request`) | Automático | imediato | **Sim** | `report_saved_email_sent` / `_failed` | Activo / Transaccional · primary_delivery | Dedup unificado também respeita os eventos legacy. Variante "welcome" vs "returning" decide-se via `sendWelcome`. |
-| 02 Entrega (variante) | `report_ready` | Relatório pronto — envio manual / signed URL | Admin · `send-report-link.ts` | Manual | manual | Sim (manual) | `report_link_sent` (do admin route) | Activo / Manual | Falhas count via `report_requests.delivery_status='failed'`. |
-| 02 Entrega (sistema) | — | Relatório visto | `report_viewed` (open público) | Automático | imediato | n/a | `report_viewed` | Bloqueado / sistema | Avança `commercial_status` para `relatorio_visto`. |
-| 03 Retenção | `feedback_request` | Pedido de feedback | Admin · `send-feedback-request.ts` | Manual | manual | Sim (manual) | `feedback_requested` + `feedback_request_email_sent` / `_failed` | Activo / Manual | Idempotente por `(lead_id, report_request_id)` desde o hardening. Note: "Sem auto-trigger nesta fase". |
-| 04 Conversão | `commercial_followup` | Follow-up comercial | Admin · `send-commercial-followup.ts` | Manual | manual | Sim (manual) | `commercial_followup_sent` | Activo / Manual | Note: "Auto-trigger não activo nesta fase". |
-| 05 Pagamento | `payment_confirmed` | Pagamento confirmado | `eupago-webhook.ts` (branch paid, depois de update + grantEntitlement + `payment_webhook_paid`) | Automático | imediato | **Apenas se `PAYMENT_CONFIRMATION_EMAIL_ENABLED=true`** | `payment_confirmation_email_sent` / `_skipped` / `_failed` | Activo / Transaccional / Kill-switch OFF | Idempotente por `payment_id`. Falha NUNCA afecta pagamento/entitlement. |
-| 99 Legado | `welcome_beta` | Boas-vindas à beta | — (nenhum caller em produção) | — | — | **Não** | só dedup honra `beta_welcome_email_sent` | Legado / Desactivado | Renderer/sender ficam em disco para auditoria de overrides. |
-| 99 Legado | `report_summary` | Resumo do relatório | — (nenhum caller em produção) | — | — | **Não** | só dedup honra `report_summary_email_sent` | Legado / Desactivado | Idem. |
-| 99 Planeado | `personal_area_saved` | Área pessoal guardada | — (sem trigger) | Automático (planeado) | — | **Não** | `personal_area_saved_sent` (`instrumented:false`) | Planeado / Sem trigger | Reservado para fluxo de criação de conta. |
+### 1A. New "Planeado" lifecycle stage
 
----
+In `email-template-registry.ts`:
+- Extend `EmailLifecycleStage` with `"planeado"`.
+- Insert `"planeado"` in `LIFECYCLE_ORDER` **before** `"legado"` (so order becomes: captacao → entrega → retencao → conversao → pagamento → planeado → legado).
+- Add `LIFECYCLE_LABELS.planeado = "Planeado / a ligar"`.
+- Reclassify `personal_area_saved`:
+  - `lifecycleStage: "planeado"` (was `"legado"`).
+  - `title: "Área pessoal guardada — planeado"` (already close; keep).
+  - `shortDescription: "Reservado para futura área pessoal com signup real. Ainda sem trigger em produção."`
+  - Keep `statusBadges: ["planeado", "sem_trigger"]` and `lifecycleRole: "planned"`.
 
-## 3. Sequência exacta por cenário
+### 1B. Clarify active main-lifecycle templates
 
-### A. Novo pedido beta (antes de existir relatório)
-1. `request_received` envia imediatamente via `sendTransactionalEmail`.
-2. Escreve `beta_request_created` (sempre) **e** `request_received_email_sent`/`_failed` (best-effort).
-3. `lead.commercial_status` fica `novo_pedido`. Admin vê este lead no slot "Pedido recebido" como "a aguardar acção".
-4. **Nada mais envia** até admin gerar o relatório ou o lead fazer unlock.
+In `email-template-registry.ts`:
+- `report_saved`:
+  - `title: "Relatório guardado"`
+  - `shortDescription: "Email principal automático após unlock. Substitui boas-vindas + resumo."`
+- `report_ready`:
+  - `title: "Relatório pronto — envio manual / signed URL"` (already set)
+  - `shortDescription: "Variante manual ou legacy-compatible. Não é o email principal do lifecycle actual."` (already set; verify)
 
-### B. Relatório fica disponível / unlock público
-1. `unlock.server.ts` cria/encontra `report_request` e marca como `unlocked`.
-2. Avança `commercial_status` para `relatorio_visto` (via `maybeAdvanceLeadStatus`).
-3. Chama `sendLeadMagnetSequence` (awaited):
-   - **Dedup primeiro**: se já existe `report_saved_email_sent` **OU** `beta_welcome_email_sent` **OU** `report_summary_email_sent` para `(lead_id, report_request_id)` → retorna `skipped_duplicate` e **não envia nada**. Isto protege leads que receberam o pair legacy antes da consolidação.
-   - Senão envia **um** `report_saved` (variante `welcome` se `sendWelcome=true`, caso contrário `returning`) e escreve `report_saved_email_sent` (ou `_failed`).
-4. `welcome_beta` e `report_summary` **não disparam**: não existem callers no código de produção (`grep` confirma — só `send-*.server.ts`, registry, testes).
-5. Sync Brevo (awaited) e Brevo `BETA_WELCOMED_AT` stamp (fire-and-forget) só na variante welcome.
+No copy inside the rendered email files is touched.
 
-### C. Returning lead faz outro unlock
-1. Mesma sequência que B, mas com `sendWelcome=false` → copy "returning" do `report_saved`.
-2. Dedup por `report_request_id` continua a evitar duplicados na mesma análise; novo `report_request` → novo email.
+### 1C. Hide legacy templates by default in Email Lab
 
-### D. Admin envia manualmente o link do relatório
-1. POST `/api/admin/send-report-link` → renderiza `report_ready` (signed URL), envia, escreve `report_link_sent`, actualiza `report_requests.delivery_status`.
-2. **Separado** de `report_saved`. Não emite `report_saved_email_sent`.
+In `email-lab-page.tsx`:
+- Add `const [showLegacy, setShowLegacy] = useState(false);`
+- In the `grouped` memo, filter out groups whose stage is `"legado"` when `!showLegacy`.
+- Render a toggle row above the list (or just below the filter chips):
+  - Label: `"Mostrar legados (welcome_beta, report_summary)"`
+  - Hidden state hint: `"2 templates ocultos · mantidos apenas para auditoria"`.
+- When the active `selectedKey` is legacy and `showLegacy` is `false`, fall back to `report_saved` so the right-hand detail panel never goes blank.
+- The `"legado"` chip in `FILTER_CHIPS` automatically forces `showLegacy=true` (selecting the chip flips the toggle on).
 
-### E. Admin pede feedback
-1. POST `/api/admin/send-feedback-request` → check `alreadySentForRequest(lead_id, report_request_id)`. Se já existe `feedback_request_email_sent` → retorna `skipped_duplicate` (200) e UI mostra toast info.
-2. Caso contrário envia `feedback_request`, escreve `feedback_requested` + `feedback_request_email_sent` (ou `_failed`).
+### 1D. KPI tiles — show real composition
 
-### F. Admin envia follow-up comercial
-1. POST `/api/admin/send-commercial-followup` → envia `commercial_followup`, escreve `commercial_followup_sent`. Continua **só manual** — nenhum auto-trigger no código.
+Replace the current 4-tile row (Total / Ligados / Sem trigger / Envios 30d) with a breakdown that mirrors the operational reality. New tiles, computed in-page from `TEMPLATES`:
 
-### G. EuPago marca pagamento como paid
-1. Webhook actualiza `lead_payments.status='paid'`.
-2. `grantEntitlement` (try/catch — falha não bloqueia ack).
-3. Redenção de cupão se aplicável.
-4. Escreve `payment_webhook_paid`.
-5. Fire-and-forget: `sendPaymentConfirmedEmail({ paymentId })` — guards na ordem: kill-switch → idempotência (`payment_confirmation_email_sent` por `payment_id`) → row paga → email do lead → URL do relatório. Falha escreve `payment_confirmation_email_skipped` ou `_failed` e responde 200 ao EuPago em todos os cenários.
+- `Total registados` = 9
+- `Operacionais` = templates with `lifecycleRole = "main_lifecycle"` OR `statusBadges` includes `"ligado"` AND `lifecycleStage` not in `{legado, planeado}`
+- `Manuais` = `statusBadges` includes `"manual"`
+- `Transaccionais` = `statusBadges` includes `"transaccional"`
+- `Planeados` = `lifecycleStage === "planeado"`
+- `Legados` = `lifecycleStage === "legado"`
+- Keep `Envios (30d)` tile as a secondary row (uses the existing automation-flow KPI fetch).
+
+Layout: 6 small tiles on desktop (`sm:grid-cols-6`), 2 columns on mobile. The pure "Total registados" tile is muted; "Operacionais" stays as the dominant green tile.
+
+### 1E. Group order in the left list
+
+Render groups in `LIFECYCLE_ORDER`. With the new order, "Planeado" appears as its own section between "Pagamento" and (hidden by default) "Legado / desactivado".
 
 ---
 
-## 4. Consistência admin vs código
+## 2. `/admin/automacoes`
 
-### `/admin/email-lab`
-- Grupos lifecycle (`captacao`, `entrega`, `retencao`, `conversao`, `pagamento`, `legado`) **correctos** e coerentes com o código.
-- `lifecycleRole`, `statusBadges` e `wiring.idempotencyEvent` no registry batem certo com os senders.
-- `welcome_beta` e `report_summary` marcados `legado` + `desactivado` + `lifecycleRole=legacy` — correcto.
-- `report_ready` claramente marcado `manual_fallback` — correcto.
-- `report_saved` no slot principal de entrega (`primary_delivery`) — correcto.
-- Preview usa os mesmos renderers que produção (`renderReportSaved`, `renderPaymentConfirmed`, etc.) — copy e design estão alinhados.
+### 2A. New `98_planeado` stage
 
-### `/admin/automacoes`
-- **KPI breakdown** já distingue `activeCount`, `manualCount`, `killSwitchOffCount`, `legacyCount`, `totalCount` — bom. "9 automações activas" deixa de ser uma mentira porque agora `operationalActiveCount` exclui legado e kill-switch-off.
-- **`payment_confirmed`** mostra badge `kill_switch_off` + note "Activar apenas em validação controlada antes de produção" — correcto.
-- **`feedback_pedido`** mostra "Sem auto-trigger nesta fase" — correcto.
-- **`follow_up_comercial`** mostra "Auto-trigger não activo nesta fase" — correcto.
-- **Cards legado** (`welcome_beta`, `report_summary`, `personal_area_saved`) em `99_legado` com variante `muted` — visualmente correcto.
-- ⚠️ **Problema #1 (alto)** — `pedido_recebido.eventTypes = ["beta_request_created"]`. O contador "Enviados (30d)" deste flow conta **criação de pedidos**, não emails enviados. Deveria contar `request_received_email_sent`. O `welcome_beta` e o `report_summary` continuam a contar 8 envios "legacy" como se estivessem activos (`sentEvents` agrega sem filtrar `wired`), e o tooltip não explica que aqueles 8 são pré-consolidação.
-- ⚠️ **Problema #2 (alto)** — `eligibleCount` do flow `pedido_recebido` = `countEq("novo_pedido")` = **11**. A UI rotula isto como "a aguardar". É verdadeiro do ponto de vista de lifecycle (11 leads aguardam que o admin avance para `em_analise`), mas é **lido como "11 emails por enviar"** — confusão directa com a preocupação reportada. O email `request_received` já saiu (ou tentou sair) imediatamente após o submit.
-- ⚠️ **Problema #3 (médio)** — Mesmo padrão em `link_enviado` (`eligibleCount = countEq("relatorio_gerado")`): com 0 leads em `relatorio_gerado` hoje, está OK; mas conceptualmente é "à espera que o admin envie o link", não "email queued".
+In `automation-flow-types.ts`:
+- Extend `FlowStage` with `"98_planeado"`.
+- Insert a new entry in `STAGE_DEFS` **before** `99_legado`:
+  ```text
+  number: "98"
+  eyebrow: "Planeado · sem trigger"
+  title: "A ligar futuramente"
+  description: "Reservado para signup real / área pessoal. Não dispara em produção."
+  tokenColor/tokenBg: reuse admin-stage-legado tokens (muted) until dedicated tokens are added.
+  ```
 
-### Resposta directa às perguntas críticas
-- **Pode um lead com relatório aparecer como `request_received` waiting?** Sim — porque o flow conta `commercial_status='novo_pedido'`, que só avança quando o admin passa para `em_analise`. Se o admin nunca avança, o lead fica visualmente "a aguardar pedido recebido" mesmo já tendo o email enviado. **Não é bug funcional, é label confuso.**
-- **`request_received` pode ser enviado depois do relatório existir?** Não, é one-shot na submissão. Não há re-envio.
-- **`welcome_beta` ou `report_summary` podem disparar em produção?** Não. Não há caller. Verificado com `rg` em todo o `src/`.
-- **`report_saved` pode ser saltado por causa de eventos legacy?** Sim, **por design**: a dedup unificada cobre os 8 leads de May 29 (que receberam o par legacy). Eles **não** vão receber `report_saved` no mesmo `report_request`. Correcto e desejado.
-- **Mesmo `report_request` pode receber duplicados?** Não, em nenhum dos flows com idempotência (`report_saved`, `feedback_request`, `payment_confirmed`). `request_received` é one-shot por submissão; `commercial_followup` e `report_ready` são manuais e dependem do admin não clicar duas vezes (este último não tem dedup — risco baixo, é manual).
-- **`payment_confirmed` só envia com kill-switch ON?** Sim. `isKillSwitchOn()` exige literal `"true"`. Default OFF. Sem `.env` na sandbox → OFF agora.
-- **Mismatch entre `/admin/email-lab`, `/admin/automacoes` e código?** Pequenos (ver problemas #1–#3 acima e #4 abaixo).
+### 2B. Move `personal_area_saved` out of Legado
 
----
+In `routes/api/admin/automation-flow.ts`:
+- For decl `personal_area_saved`:
+  - `stage: "98_planeado"` (was `"99_legado"`)
+  - `lifecycleBadges: ["planeado", "sem_trigger"]` (already set)
+  - `note: "A ligar futuramente ao evento handle_new_user ou signup real."`
 
-## 5. Data freshness (últimos 30–90 dias)
+No trigger, no event, no wiring changed.
 
-`product_events` (90d):
-- 0 × `request_received_email_sent`, 0 × `report_saved_email_sent`, 0 × `report_link_sent`, 0 × `feedback_request_email_sent`, 0 × `commercial_followup_sent`, 0 × `payment_confirmation_email_*`, 0 × `payment_webhook_paid`.
-- 8 × `beta_welcome_email_sent` + 8 × `report_summary_email_sent` em **2026-05-29** (antes da consolidação).
-- 204 × `report_viewed`, 8 × `unlock_completed`, 8 × `report_saved_to_account`, 9 × `lead_status_changed`.
+### 2C. Keep `welcome_beta` + `report_summary` in `99_legado`, with stronger note
 
-`leads`: 11 em `novo_pedido`, 8 em `relatorio_visto`, 0 nos restantes status (`em_analise`, `relatorio_gerado`, `link_enviado`, `feedback_pedido`, …).
+In `routes/api/admin/automation-flow.ts`:
+- Set `note` on both legacy decls: `"Absorvido por report_saved. Mantido apenas para histórico, overrides e auditoria."`
+- Keep `stage: "99_legado"` and `lifecycleBadges: ["legado"]`.
 
-`report_requests` (top 10): todos `request_status='unlocked'`, mas `pdf_status='not_generated'` e `pdf_generated_at IS NULL`. A média "tempo até `report_generated`" no admin → "sem dados" (esperado).
+In `automation-flow-page.tsx` / `stage-group.tsx`:
+- The legacy stage already renders with `variant="muted"` and "Mantido para histórico, compatibilidade e auditoria. Não dispara em produção." — keep as is. No collapse interaction required (the stage is already visually demoted and last).
 
-**Implicações:**
-- Os 8 leads em `relatorio_visto` já tiveram o pair legacy entregue. Não vão receber `report_saved` num re-unlock do mesmo `report_request` (dedup correcto). **Não estão "stuck"** do ponto de vista funcional; apenas o admin não os fez progredir para `feedback_pedido`.
-- Não há ainda nenhum envio do novo lifecycle em `product_events` — **não é possível validar end-to-end sem fazer uma execução controlada**. Não é evidência de bug, mas é evidência de "não testado em produção".
+### 2D. KPI clarity (top tiles)
 
----
+In `routes/api/admin/automation-flow.ts`, update `AutomationKpis.systemActive`:
+- `operationalActiveCount`: already excludes `99_legado` and `kill_switch_off`. Also exclude `98_planeado` (status `"preparing"` already prevents counting, but exclude explicitly via stage filter for clarity).
+- Extend `systemActive` with `plannedCount = flows in stage 98_planeado`.
 
-## 6. Problemas encontrados
+In `automation-flow-types.ts` interface `AutomationKpis.systemActive`, add `plannedCount: number`.
 
-| # | Severidade | Área | Problema | Evidência | Porque importa | Proposta | Ficheiros |
-|---|---|---|---|---|---|---|---|
-| 1 | HIGH | admin UI / copy | "A aguardar" no card `pedido_recebido` (e `link_enviado`) é interpretado como fila de emails, mas é estado de lifecycle | 11 leads em `novo_pedido` vs. 0 envios do novo lifecycle | Confunde admin → pensa que há emails por enviar quando o email já saiu | Mudar label de "A aguardar" para "Leads neste estado" + tooltip explicativo nos cards que não são triggers de email | `automation-node.tsx`, `stage-group.tsx`, possivelmente `automation-flow-types.ts` (label) |
-| 2 | HIGH | admin UI / metadata | `pedido_recebido.eventTypes` conta `beta_request_created` em "Enviados", não o `request_received_email_sent` | `FLOW_EVENTS.pedido_recebido` em `automation-flow-types.ts` linha 314 | "Enviados" inclui pedidos onde o email pode ter falhado | Trocar `types` para `["request_received_email_sent"]` (manter `beta_request_created` só para timing) | `automation-flow-types.ts` |
-| 3 | MEDIUM | admin UI | Cards legacy ainda mostram `sentEvents=8` (Maio 29) sem indicar "histórico pré-consolidação" | DB query a 90d | Pode sugerir que ainda disparam | Mostrar `sentEvents=0` quando `stage==='99_legado'` **ou** exibir label "8 (histórico pré-consolidação · não dispara hoje)" | `automation-node.tsx` ou `automation-flow.ts` (derivar campo) |
-| 4 | MEDIUM | observabilidade | 0 eventos do novo lifecycle em 90d ⇒ ninguém validou `report_saved` / `request_received_email_sent` / `payment_confirmed` end-to-end em produção | DB query | Não temos prova de que o novo caminho escreve `product_events` correctamente | Validação controlada (Test A: nova lead beta, Test B: unlock controlado, Test C: pagamento controlado com kill-switch ON) | n/a (procedure) |
-| 5 | LOW | code/admin | `feedback_request_email_sent` não está em `FLOW_EVENTS.feedback_pedido.types` (só `feedback_requested`) | `automation-flow-types.ts` linha 325 | "Enviados" subestima envios reais (`feedback_requested` é escrito antes do envio; `feedback_request_email_sent` é o sinal de sucesso) | Acrescentar `feedback_request_email_sent` ao set | `automation-flow-types.ts` |
-| 6 | LOW | code | `send-report-link.ts` (manual) não tem dedup; admin a fazer double-click pode reenviar | `rg recordProductEvent src/routes/api/admin` mostra `report_link_sent` mas sem `alreadySentForRequest` equivalente | Manual, mas o mesmo padrão de hardening do `feedback_request` faz sentido | Aplicar mesma idempotência baseada em `report_link_sent` por `report_request_id` | `send-report-link.ts` |
-| 7 | LOW | UI clarity | Stage 02 description fala em "principal" mas o card `link_enviado` ainda aparece com badge `primary_delivery` | `automation-flow.ts` linhas 377 e 350 | Dois cards na mesma stage com `primary_delivery` baralha leitura | Remover `extraTag:"primary_delivery"` do `link_enviado` (deixar só `report_saved`) | `automation-flow.ts` |
+In `automation-flow-page.tsx` `KpiRow`, update the hint string for the first tile to include `plannedCount`:
+- `"{manuais} manuais · {killSwitch} kill-switch OFF · {planeados} planeados · {legado} legado"`
 
-Nenhum BLOCKER encontrado.
+### 2E. Main visible sequence
 
----
+With the changes above, the rendered sequence becomes exactly:
 
-## 7. Recomendações (sem implementação)
+```text
+01 Pedido recebido
+02 Relatório guardado
+   - report_saved   (primary)
+   - link_enviado   (secondary / manual / signed URL — already rendered as variant="secondary")
+03 Pedido de feedback
+04 Follow-up comercial
+05 Pagamento confirmado
+98 Planeado · sem trigger    (personal_area_saved)
+99 Legado / auditoria        (welcome_beta, report_summary)
+```
 
-**A. No-code / metadata / labels (rápido, baixo risco)**
-- Trocar label "A aguardar" → "Leads neste estado" para flows cujo `eligibleCount` deriva de `commercial_status` (não fila).
-- Adicionar tooltip nos KPIs e cards explicando "a aguardar = leads neste estado do lifecycle, não emails na fila".
-- Anotar cards legacy com "Sentos pré-consolidação · não dispara hoje".
-
-**B. UI clarity**
-- Esconder `sentEvents` em cards `99_legado` (ou mostrar com claim explícito).
-- Remover `primary_delivery` do `link_enviado`.
-
-**C. Comportamental (precisa aprovação)**
-- Corrigir `FLOW_EVENTS.pedido_recebido.types` para `request_received_email_sent`.
-- Acrescentar `feedback_request_email_sent` a `FLOW_EVENTS.feedback_pedido.types`.
-- Aplicar dedup ao `send-report-link.ts` (mesmo padrão `feedback_request`).
-
-**D. Data cleanup / backfill**
-- Nenhum cleanup necessário. Os 8 eventos legacy de Maio são correctamente honrados pela dedup. Não apagar.
-
-**E. Futuro**
-- Validar a hipótese "auto-trigger D+1 para `feedback_request`" depois de termos amostragem real.
-- Quando criar conta estiver pronto, ligar `personal_area_saved` e instrumentar `personal_area_saved_sent`.
+The existing `STAGE_FLOW_ORDER["02_entrega"]` keeps `report_saved` first.
 
 ---
 
-## 8. Recomendação final
+## 3. Safety guarantees (must hold for the implementation)
 
-- **Seguro avançar para validação controlada?** **Sim, com 1 ajuste textual antes** (Problema #1 — relabel "A aguardar" → "Leads neste estado" e/ou adicionar tooltip). Os senders, a dedup e os kill-switches estão correctos; o que falta é confirmar que o caminho escreve `product_events` em produção (e isso é exactamente o que a validação controlada faz).
-- **Ou corrigir admin/lifecycle primeiro?** Apenas a correcção textual #1 (e idealmente #2 e #5 — metadata de eventos). Não é necessário tocar em senders.
-- **Próximo prompt mais seguro (single, pequeno):**
+- No file under `src/lib/email/templates/**` is edited (no copy, no HTML/text changes).
+- No file under `src/lib/email/send-*.ts` or `src/lib/email/lead-magnet-sequence.ts` is edited.
+- No webhook (`src/routes/api/public/eupago-webhook.ts`), no payment / credit / entitlement / report-generation file is touched.
+- No DB migration. No schema change. No `supabase.from(...).update(...)` added.
+- No env / secret added or read.
+- `wired`, `triggerEvent`, `idempotencyEvent` and `FLOW_EVENTS` entries are NOT changed for any flow.
+- `personal_area_saved.wired` stays `false`, `wiring.automatic` stays `false`, `idempotencyEvent` unchanged — only the stage label and description move.
 
-  > "Implementa apenas as correcções de label e metadata dos Problemas #1, #2 e #5 do audit anterior. Sem alterar senders, sem novos triggers, sem mexer em preços/checkout/EuPago/créditos/entitlements/geração de relatório/schema. Só labels em `automation-node.tsx`/`stage-group.tsx` e `types` em `automation-flow-types.ts`."
+---
 
-  Depois disso, prompt seguinte = validação controlada do `report_saved` (já tens o template desse pedido nos prompts anteriores).
+## 4. Manual validation checklist (after implementation)
+
+Email Lab (`/admin/email-lab`):
+1. KPI tiles show: Total 9, Operacionais 3, Manuais 3, Transaccionais 3, Planeados 1, Legados 2 (counts will be derived; verify they match the categorisation table).
+2. Left list shows groups in order Captação → Entrega → Retenção → Conversão → Pagamento → Planeado → (Legado hidden).
+3. `personal_area_saved` appears under **Planeado**, not Legado, with the new description and `planeado` + `sem_trigger` badges.
+4. Toggle "Mostrar legados" reveals `welcome_beta` and `report_summary` under "Legado / desactivado"; toggle off hides them and the right pane falls back to `report_saved` if a legacy template was selected.
+5. `report_saved` detail header shows `lifecycleRole = "Email principal do lifecycle"` and the new description.
+6. `report_ready` detail header shows it as `Variante manual / fallback` (already in place).
+
+Automations (`/admin/automacoes` → Fluxo):
+7. Stage `98 · Planeado · sem trigger` exists with `personal_area_saved` only, muted, with the new note.
+8. Stage `99 · Legado` contains only `welcome_beta` and `report_summary`, with the "Absorvido por report_saved" note.
+9. Stage `02 · Entrega` shows `report_saved` first (primary), then `link_enviado` (secondary).
+10. Top KPI "Fluxos operacionais" hint shows `manuais · kill-switch OFF · planeados · legado`, and the numerator does NOT include legacy, kill-switch OFF or planned.
+11. No automation actually fires (read-only page). No email is sent. No payment row, no credit, no entitlement is touched.
+
+---
+
+## 5. Out of scope (will not be done in this prompt)
+
+- Editing email copy or HTML for any template (including `payment_confirmed` mockup alignment).
+- Adding new triggers or wiring `personal_area_saved`.
+- Changing `PAYMENT_CONFIRMATION_EMAIL_ENABLED` default.
+- Deleting legacy templates from disk.
+- Any DB migration or schema change.
