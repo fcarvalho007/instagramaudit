@@ -658,7 +658,6 @@ function ExploreSection({
                 action_type: "competitor_add",
                 competitor_handle: newHandle,
                 credit_amount: 1,
-                data_source: result.data_source,
               },
             },
           }).catch(() => {});
