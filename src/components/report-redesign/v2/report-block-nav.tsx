@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Menu, Lock, ArrowRight } from "lucide-react";
+import { Menu, Lock, ArrowRight, Check, UserPlus, CalendarClock, Users, CheckCircle2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
@@ -23,6 +23,7 @@ import { scrollToBlock, useActiveBlock } from "./use-active-block";
 import { useReportTracking } from "./report-tracking-context";
 import { usePremiumCta } from "./premium-cta-context";
 import { trackEvent } from "@/lib/tracking.functions";
+import { PUBLIC_PRODUCTS } from "@/lib/payments/products";
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -56,6 +57,14 @@ interface SidebarProps {
   premiumUnlocked?: boolean;
   /** Handler that opens the existing UnlockModal (lead-magnet flow). */
   onUnlockClick?: () => void;
+  /** Free sample size used by the Explorar period chip. */
+  sampleSize?: number;
+  /** Number of days observed in the sample window. */
+  observedDays?: number;
+  /** Current competitor count for the Explorar section (Pro state). */
+  competitorCount?: number;
+  /** Max competitors allowed in Pro. Defaults to 3. */
+  competitorMax?: number;
 }
 
 // ── Item builder ─────────────────────────────────────────────────────
