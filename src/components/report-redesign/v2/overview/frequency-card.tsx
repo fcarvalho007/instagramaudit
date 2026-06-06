@@ -80,6 +80,60 @@ export interface FrequencyCardProps {
 
 // ─── Weekly summary helpers ─────────────────────────────────────────
 
+// ─── KPI tile (icon + eyebrow on top, value below) ──────────────────
+
+function KpiTile({
+  icon,
+  label,
+  value,
+  unit,
+  valueSuffix,
+  isCategorical,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  unit?: string;
+  valueSuffix?: string;
+  isCategorical?: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-border-default bg-surface-base/60 px-4 md:px-5 py-4 md:py-5">
+      <div className="flex items-center gap-2 mb-3">
+        <span
+          className="inline-flex h-7 w-7 items-center justify-center rounded-full text-accent-primary"
+          style={{
+            background:
+              "color-mix(in oklab, var(--accent-primary, #3772E5) 10%, #FFFFFF)",
+          }}
+        >
+          {icon}
+        </span>
+        <span className="text-eyebrow-sm text-content-secondary">{label}</span>
+      </div>
+      <div className="flex items-baseline gap-1.5 flex-wrap">
+        <span
+          className={
+            isCategorical
+              ? "font-sans text-[1.5rem] md:text-[1.75rem] font-semibold leading-none text-content-primary"
+              : "font-sans text-[2rem] md:text-[2.25rem] font-semibold tabular-nums leading-none text-content-primary"
+          }
+        >
+          {value}
+        </span>
+        {valueSuffix ? (
+          <span className="font-sans text-[1.25rem] md:text-[1.5rem] font-semibold leading-none text-content-secondary/70">
+            {valueSuffix}
+          </span>
+        ) : null}
+        {unit ? (
+          <span className="text-xs text-content-tertiary pb-1">{unit}</span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 /** Aggregate posts/days by weekday (Mon=0..Sun=6). */
 function aggregateByWeekday(days: DayEntry[]): Array<{
   weekday: number;
