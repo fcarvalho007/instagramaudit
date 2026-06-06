@@ -253,6 +253,8 @@ function AdminPreviewChrome({ username, variant, load, onLogout, featuresOverrid
             analyzedAtIso={load.snapshotMeta.created_at}
             variant={variant}
             featuresOverride={featuresOverride}
+            premiumUnlocked={variant !== "public_mvp"}
+            unlocked={variant !== "public_mvp"}
             actions={{}}
           />
           <CoverageNotice load={load} />

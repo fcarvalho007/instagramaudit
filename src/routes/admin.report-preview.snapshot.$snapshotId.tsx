@@ -224,6 +224,8 @@ function AdminPreviewChrome({ snapshotId, load, onLogout }: ChromeProps) {
             analyzedAtIso={load.snapshotMeta.created_at}
             expiresAtIso={load.snapshotMeta.expires_at}
             variant="internal_lab"
+            premiumUnlocked
+            unlocked
             actions={{}}
           />
           <CoverageNotice load={load} />
