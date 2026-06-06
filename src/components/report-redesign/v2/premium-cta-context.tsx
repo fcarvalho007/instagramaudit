@@ -22,7 +22,8 @@ export type PremiumCtaSource =
   | "analysis_period_selector"
   | "lock_gate"
   | "sticky_unlock_bar"
-  | "premium_section";
+  | "premium_section"
+  | "overview_pro_teaser";
 
 interface PremiumCtaExtra {
   /** Period chip the user was looking at when they clicked, e.g. "30d". */
