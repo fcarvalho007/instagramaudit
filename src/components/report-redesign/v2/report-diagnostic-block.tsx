@@ -140,21 +140,114 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
         dominantFormatLabel: dominantFormat?.label ?? null,
       });
 
-  // ── Commercial Pro report: render only 06 (Contexto estratégico) + 07 (Prioridades) ──
+  // ── Commercial Pro report: render section 06 (Diagnóstico editorial) + 07 (Prioridades) ──
   if (!isLab) {
-    const strategicContext = buildStrategicContext({
-      contentType,
-      funnel,
-      audience,
-      integration,
-      aiSections: result.enriched.aiInsightsV2?.sections,
-      editorialVerdict: result.enriched.aiInsightsV2?.editorialVerdict ?? null,
-    });
+    const captionSemantic = parseCaptionSemanticAnalysis(payload);
+    const captionEngagementStrategy =
+      captionSemantic?.commentEngagement?.strategyLabel ?? null;
+    const captionAsksForCommentsPct =
+      captionSemantic?.commentEngagement?.asksForCommentsPct ?? null;
+    const effectiveCommentIntel =
+      features.commentIntelligence === "full"
+        ? result.enriched.commentIntelligence
+        : null;
+
+    const groupA = compact([
+      renderContentTypeCard(contentType, t),
+      renderFunnelCard(funnel, t),
+    ]);
+    const groupBHashtag = hashtags.available ? (
+      <HashtagDiagnosticsCard
+        key="q03"
+        items={hashtags.items}
+        postsAnalyzed={posts.length}
+        posts={posts}
+      />
+    ) : null;
+    const groupC = compact([
+      renderAudienceCard(
+        audience,
+        effectiveCommentIntel,
+        captionEngagementStrategy,
+        captionAsksForCommentsPct,
+        t,
+      ),
+    ]);
+    const groupD = compact([renderIntegrationCard(integration, t)]);
+
+    const hasAnyCard =
+      groupA.length > 0 ||
+      groupBHashtag !== null ||
+      true /* caption + visual sempre renderizam com empty-state próprio */ ||
+      groupC.length > 0 ||
+      groupD.length > 0;
+
     return (
       <div className="space-y-12 md:space-y-14">
-        <div id="contexto-estrategico" className="scroll-mt-24">
-          <StrategicContextCard context={strategicContext} />
+        <div id="diagnostico-editorial" className="scroll-mt-24 space-y-10 md:space-y-12">
+          {hasAnyCard ? (
+            <>
+              {groupA.length > 0 ? (
+                <ReportDiagnosticGroup
+                  letter="A"
+                  label={t("diagnostic_groups.A")}
+                  questionsCount={groupA.length}
+                >
+                  {groupA}
+                </ReportDiagnosticGroup>
+              ) : null}
+
+              <ReportDiagnosticGroup
+                letter="B"
+                label={t("diagnostic_groups.B")}
+                questionsCount={(groupBHashtag ? 1 : 0) + 1}
+              >
+                {groupBHashtag}
+                <CaptionDiagnosticsCard
+                  data={captionIntel}
+                  semantic={captionSemantic}
+                  posts={posts}
+                />
+              </ReportDiagnosticGroup>
+
+              <ReportDiagnosticGroup
+                letter="E"
+                label={t("diagnostic_groups.E")}
+                questionsCount={1}
+              >
+                <VisualCoverAnalysisCard
+                  posts={posts}
+                  analysis={parseVisualCoverAnalysis(payload)}
+                />
+              </ReportDiagnosticGroup>
+
+              {groupC.length > 0 ? (
+                <ReportDiagnosticGroup
+                  letter="C"
+                  label={t("diagnostic_groups.C")}
+                  questionsCount={groupC.length}
+                >
+                  {groupC}
+                </ReportDiagnosticGroup>
+              ) : null}
+
+              {groupD.length > 0 ? (
+                <ReportDiagnosticGroup
+                  letter="D"
+                  label={t("diagnostic_groups.D")}
+                  questionsCount={groupD.length}
+                >
+                  {groupD}
+                </ReportDiagnosticGroup>
+              ) : null}
+            </>
+          ) : (
+            <p className="text-sm text-content-secondary leading-relaxed max-w-2xl">
+              {t("diagnostic_groups.small_sample")}
+            </p>
+          )}
         </div>
+
         {priorityItems.length > 0 && (
           <div id="prioridades" className="scroll-mt-24">
             <ReportDiagnosticPriorities
@@ -249,15 +342,13 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
           ) : null}
 
           {groupD.length > 0 ? (
-            <div id="contexto-estrategico" className="scroll-mt-24">
-              <ReportDiagnosticGroup
-                letter="D"
-                label={t("diagnostic_groups.D")}
-                questionsCount={groupD.length}
-              >
-                {groupD}
-              </ReportDiagnosticGroup>
-            </div>
+            <ReportDiagnosticGroup
+              letter="D"
+              label={t("diagnostic_groups.D")}
+              questionsCount={groupD.length}
+            >
+              {groupD}
+            </ReportDiagnosticGroup>
           ) : null}
 
           {/* Prioridades de ação (AI ou determinísticas) */}
