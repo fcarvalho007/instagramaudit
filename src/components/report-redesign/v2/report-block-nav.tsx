@@ -549,28 +549,6 @@ function UnlockPromoCard({
   );
 }
 
-function UnlockedStatusCard({ totalSections }: { totalSections: number }) {
-  const { t } = useTranslation("report");
-  return (
-    <div className="rounded-lg border border-border-default bg-white p-3 flex items-center gap-3">
-      <span
-        aria-hidden="true"
-        className="inline-flex size-9 items-center justify-center rounded-full bg-emerald-50 text-emerald-600"
-      >
-        <CheckCircle2 className="size-5" />
-      </span>
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-content-primary">
-          {t("nav.status.unlocked_title")}
-        </p>
-        <p className="text-xs text-content-secondary mt-0.5">
-          {t("nav.status.unlocked_subtitle", { count: totalSections })}
-        </p>
-      </div>
-    </div>
-  );
-}
-
 function SidebarList({
   items,
   active,
