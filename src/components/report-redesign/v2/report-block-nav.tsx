@@ -1003,6 +1003,8 @@ function SidebarList({
   competitorCount = 0,
   competitorMax = 3,
   compact = false,
+  primaryHandle,
+  existingCompetitors = [],
 }: {
   items: SidebarItem[];
   active: string | null;
@@ -1016,6 +1018,8 @@ function SidebarList({
   competitorCount?: number;
   competitorMax?: number;
   compact?: boolean;
+  primaryHandle?: string;
+  existingCompetitors?: string[];
 }) {
   const { t } = useTranslation("report");
   const { snapshotId, handle, variant: trackingVariant } = useReportTracking();
