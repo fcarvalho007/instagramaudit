@@ -76,6 +76,7 @@ function parseCaptionSemanticAnalysis(
 interface Props {
   result: AdapterResult;
   payload?: SnapshotPayload;
+  premiumUnlocked?: boolean;
 }
 
 /**
@@ -85,13 +86,15 @@ interface Props {
  * Toda a evidência vem de classifiers puros sobre `result` + `payload`.
  * Não chama providers, OpenAI, Supabase write, nada.
  */
-export function ReportDiagnosticBlock({ result, payload }: Props) {
+export function ReportDiagnosticBlock({ result, payload, premiumUnlocked = false }: Props) {
   const { t } = useTranslation("report");
   const posts = payload?.posts ?? [];
   const features = useVariantFeatures();
   const variant = useReportVariant();
   const isLab = variant === "internal_lab";
   const isFree = variant === "public_mvp";
+  const showPaidPlaceholders =
+    premiumUnlocked || variant === "pro_preview" || variant === "internal_lab";
   const km = result.data.keyMetrics;
   const topHashtags = result.data.topHashtags ?? [];
   const topKeywords = result.data.topKeywords ?? [];
@@ -151,7 +154,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   const insightsState = getEnrichmentState(payload, "insights_v2");
 
   const renderCoverSlot = (): ReactNode => {
-    if (!isFree && coverState === "pending" && coverAnalysis === null) {
+    if (showPaidPlaceholders && coverState === "pending" && coverAnalysis === null) {
       return (
         <EnrichmentPlaceholderCard
           variant="pending"
@@ -161,7 +164,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
         />
       );
     }
-    if (!isFree && coverState === "error" && coverAnalysis === null) {
+    if (showPaidPlaceholders && coverState === "error" && coverAnalysis === null) {
       return (
         <EnrichmentPlaceholderCard
           variant="error"
@@ -180,7 +183,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
     captionIntelData: ReturnType<typeof buildCaptionIntelligence>,
     captionSemantic: CaptionSemanticAnalysis | null,
   ): ReactNode => {
-    if (!isFree && captionStateGate === "pending" && captionSemantic === null) {
+    if (showPaidPlaceholders && captionStateGate === "pending" && captionSemantic === null) {
       return (
         <EnrichmentPlaceholderCard
           variant="pending"
@@ -190,7 +193,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
         />
       );
     }
-    if (!isFree && captionStateGate === "error" && captionSemantic === null) {
+    if (showPaidPlaceholders && captionStateGate === "error" && captionSemantic === null) {
       return (
         <EnrichmentPlaceholderCard
           variant="error"
@@ -210,7 +213,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   };
 
   const renderInsightsPending = (): ReactNode => {
-    if (isFree) return null;
+    if (!showPaidPlaceholders) return null;
     if (result.enriched.aiInsightsV2 != null) return null;
     if (insightsState === "pending") {
       return (
