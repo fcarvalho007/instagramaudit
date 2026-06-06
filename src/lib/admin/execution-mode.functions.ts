@@ -88,7 +88,10 @@ export const getTestProfileStatuses = createServerFn({ method: "GET" }).handler(
       if (enrichmentStatus) {
         const coreTypes = ["dataforseo", "insights_v1", "insights_v2", "visual_cover", "caption_semantic"];
         allEnrichmentsComplete = coreTypes.every(
-          (t) => enrichmentStatus[t] === "success" || enrichmentStatus[t] === "skipped",
+          (t) =>
+            enrichmentStatus[t] === "success" ||
+            enrichmentStatus[t] === "skipped" ||
+            enrichmentStatus[t] === "skipped_free",
         );
       }
 

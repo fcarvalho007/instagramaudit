@@ -15,6 +15,7 @@ export type EnrichmentStatus =
   | "success"
   | "error"
   | "skipped"
+  | "skipped_free"
   | "disabled";
 
 /** Per-enrichment-type status map embedded in normalized_payload. */
@@ -109,6 +110,13 @@ export const PAID_ENRICHMENT_TYPES: EnrichmentType[] = [
 ];
 
 /**
+ * Enrichments run for the **Internal Lab** path (admin scrapes). Alias of
+ * `ALL_ENRICHMENT_TYPES`; kept as a named export so lab callers express
+ * intent and so the Free/Pro/Lab policy is symmetrical and greppable.
+ */
+export const LAB_ENRICHMENT_TYPES: EnrichmentType[] = [...ALL_ENRICHMENT_TYPES];
+
+/**
  * Build the initial `enrichment_status` map for a Free snapshot:
  * Paid enrichments are pre-marked as `skipped` so admin diagnostics
  * (analysis-cost-breakdown, execution-mode) reflect reality. Comments
@@ -118,7 +126,10 @@ export const PAID_ENRICHMENT_TYPES: EnrichmentType[] = [
 export function buildFreeEnrichmentStatus(): EnrichmentStatusMap {
   const status = buildInitialEnrichmentStatus();
   for (const t of PAID_ENRICHMENT_TYPES) {
-    status[t] = "skipped";
+    // Distinct from "skipped" (which we reserve for runtime/budget skips)
+    // so admin diagnostics can tell apart "skipped because Free tier" from
+    // "skipped because daily cap reached".
+    status[t] = "skipped_free";
   }
   return status;
 }
