@@ -45,6 +45,8 @@ import type { CommentIntelligence } from "@/lib/analysis/types";
 import { VisualCoverAnalysisCard } from "./visual-cover-analysis-card";
 import type { VisualCoverAnalysis } from "@/lib/report/visual-cover-types";
 import { useReportVariant, useVariantFeatures } from "@/lib/report/report-variant";
+import { getEnrichmentState } from "./enrichment-pending";
+import { EnrichmentPlaceholderCard } from "./enrichment-placeholder-card";
 
 /** Parse persisted visual_cover_analysis from snapshot payload. */
 function parseVisualCoverAnalysis(
@@ -89,6 +91,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   const features = useVariantFeatures();
   const variant = useReportVariant();
   const isLab = variant === "internal_lab";
+  const isFree = variant === "public_mvp";
   const km = result.data.keyMetrics;
   const topHashtags = result.data.topHashtags ?? [];
   const topKeywords = result.data.topKeywords ?? [];
@@ -139,6 +142,96 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
         dominantFormatShare: dominantFormat?.sharePct ?? 0,
         dominantFormatLabel: dominantFormat?.label ?? null,
       });
+
+  // ── Enrichment pending / error placeholders (Pro + Lab only) ─────
+  const coverAnalysis = parseVisualCoverAnalysis(payload);
+  const captionSemanticForState = parseCaptionSemanticAnalysis(payload);
+  const coverState = getEnrichmentState(payload, "visual_cover");
+  const captionStateGate = getEnrichmentState(payload, "caption_semantic");
+  const insightsState = getEnrichmentState(payload, "insights_v2");
+
+  const renderCoverSlot = (): ReactNode => {
+    if (!isFree && coverState === "pending" && coverAnalysis === null) {
+      return (
+        <EnrichmentPlaceholderCard
+          variant="pending"
+          title={t("pending.cover.title")}
+          body={t("pending.cover.body")}
+          className="md:col-span-2"
+        />
+      );
+    }
+    if (!isFree && coverState === "error" && coverAnalysis === null) {
+      return (
+        <EnrichmentPlaceholderCard
+          variant="error"
+          title={t("pending.cover.title")}
+          body={t("pending.error.body")}
+          className="md:col-span-2"
+        />
+      );
+    }
+    return (
+      <VisualCoverAnalysisCard posts={posts} analysis={coverAnalysis} />
+    );
+  };
+
+  const renderCaptionSlot = (
+    captionIntelData: ReturnType<typeof buildCaptionIntelligence>,
+    captionSemantic: CaptionSemanticAnalysis | null,
+  ): ReactNode => {
+    if (!isFree && captionStateGate === "pending" && captionSemantic === null) {
+      return (
+        <EnrichmentPlaceholderCard
+          variant="pending"
+          title={t("pending.caption.title")}
+          body={t("pending.caption.body")}
+          className="md:col-span-2"
+        />
+      );
+    }
+    if (!isFree && captionStateGate === "error" && captionSemantic === null) {
+      return (
+        <EnrichmentPlaceholderCard
+          variant="error"
+          title={t("pending.caption.title")}
+          body={t("pending.error.body")}
+          className="md:col-span-2"
+        />
+      );
+    }
+    return (
+      <CaptionDiagnosticsCard
+        data={captionIntelData}
+        semantic={captionSemantic}
+        posts={posts}
+      />
+    );
+  };
+
+  const renderInsightsPending = (): ReactNode => {
+    if (isFree) return null;
+    if (result.enriched.aiInsightsV2 != null) return null;
+    if (insightsState === "pending") {
+      return (
+        <EnrichmentPlaceholderCard
+          variant="pending"
+          title={t("pending.insights.title")}
+          body={t("pending.insights.body")}
+        />
+      );
+    }
+    if (insightsState === "error") {
+      return (
+        <EnrichmentPlaceholderCard
+          variant="error"
+          title={t("pending.insights.title")}
+          body={t("pending.error.body")}
+        />
+      );
+    }
+    return null;
+  };
 
   // ── Commercial Pro report: render section 06 (Diagnóstico editorial) + 07 (Prioridades) ──
   if (!isLab) {
@@ -220,11 +313,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
               >
                 {groupBHashtag}
                 <div id="diag-legendas" className="scroll-mt-24">
-                  <CaptionDiagnosticsCard
-                    data={captionIntel}
-                    semantic={captionSemantic}
-                    posts={posts}
-                  />
+                  {renderCaptionSlot(captionIntel, captionSemantic)}
                 </div>
               </ReportDiagnosticGroup>
 
@@ -235,10 +324,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
                 layout="stack"
               >
                 <div id="diag-capas" className="scroll-mt-24">
-                  <VisualCoverAnalysisCard
-                    posts={posts}
-                    analysis={parseVisualCoverAnalysis(payload)}
-                  />
+                  {renderCoverSlot()}
                 </div>
               </ReportDiagnosticGroup>
 
@@ -270,6 +356,10 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
             </p>
           )}
         </div>
+
+        {renderInsightsPending() ? (
+          <div className="scroll-mt-24">{renderInsightsPending()}</div>
+        ) : null}
 
         {priorityItems.length > 0 && (
           <div id="prioridades" className="scroll-mt-24">
@@ -339,7 +429,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
             questionsCount={groupB.length + 1}
           >
             {groupB}
-            <CaptionDiagnosticsCard data={captionIntel} semantic={captionSemantic} posts={posts} />
+            {renderCaptionSlot(captionIntel, captionSemantic)}
           </ReportDiagnosticGroup>
 
           {/* E · Análise visual */}
@@ -348,10 +438,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
             label={t("diagnostic_groups.E")}
             questionsCount={1}
           >
-            <VisualCoverAnalysisCard
-              posts={posts}
-              analysis={parseVisualCoverAnalysis(payload)}
-            />
+            {renderCoverSlot()}
           </ReportDiagnosticGroup>
 
           {groupC.length > 0 ? (
@@ -375,6 +462,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
           ) : null}
 
           {/* Prioridades de ação (AI ou determinísticas) */}
+          {renderInsightsPending()}
           {priorityItems.length > 0 && (
             <div id="prioridades" className="scroll-mt-24">
               <ReportDiagnosticPriorities
