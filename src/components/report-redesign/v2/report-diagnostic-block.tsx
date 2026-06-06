@@ -216,6 +216,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
                 letter="B"
                 label={t("diagnostic_groups.B")}
                 questionsCount={(groupBHashtag ? 1 : 0) + 1}
+                layout="stack"
               >
                 {groupBHashtag}
                 <div id="diag-legendas" className="scroll-mt-24">
@@ -231,6 +232,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
                 letter="E"
                 label={t("diagnostic_groups.E")}
                 questionsCount={1}
+                layout="stack"
               >
                 <div id="diag-capas" className="scroll-mt-24">
                   <VisualCoverAnalysisCard
@@ -245,6 +247,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
                   letter="C"
                   label={t("diagnostic_groups.C")}
                   questionsCount={groupC.length}
+                  layout="stack"
                 >
                   {groupC}
                 </ReportDiagnosticGroup>
@@ -255,6 +258,7 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
                   letter="D"
                   label={t("diagnostic_groups.D")}
                   questionsCount={groupD.length}
+                  layout="stack"
                 >
                   {groupD}
                 </ReportDiagnosticGroup>
