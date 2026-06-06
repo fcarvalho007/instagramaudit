@@ -250,17 +250,13 @@ export function ReportShellV2({
               {/* 01 · Overview (redesigned) */}
               {features.blockOverview !== "hidden" && (
               <ReportBlockSection block={overview} tone="canvas" first>
-                {lockBoundary === "engagement" && !unlocked ? (
-                  // Estado A · Anónimo — só Identity Card; LockGate logo abaixo.
-                  <ReportOverviewBlock
-                    result={result}
-                    renderInsight={renderInsight}
-                    payload={payload}
-                    mode="free"
-                  />
-                ) : lockBoundary === "engagement" && unlocked && !premiumUnlocked ? (
-                  // Estado B · Lead capturado, sem PRO — Identity + Engagement +
-                  // teaser PRO para Frequência/Formatos/Publicações-chave.
+                {lockBoundary === "engagement" && !premiumUnlocked ? (
+                  // Free público (onboarding-first) — Identity + Engagement +
+                  // 5 teaser cards (Frequência, Formatos, Publicações-chave,
+                  // Diagnóstico, Prioridades). Renderiza sempre, mesmo que
+                  // `unlocked` esteja momentaneamente a false durante o
+                  // bootstrap, para evitar o estado vazio em que o corpo
+                  // do relatório só mostra o Identity Card.
                   <ReportOverviewBlock
                     result={result}
                     renderInsight={renderInsight}
@@ -276,19 +272,6 @@ export function ReportShellV2({
                 )}
               </ReportBlockSection>
               )}
-
-              {/* Estado A · Anónimo — lead magnet logo após o Identity Card.
-                  Substitui o resto do Bloco 1 (Engagement/Frequência/Formato/
-                  Best vs Worst) e o "Há mais por trás" até o lead ser captado. */}
-              {features.blockOverview !== "hidden" &&
-                lockBoundary === "engagement" &&
-                !unlocked && (
-                  <section id="lead-magnet-card" className="mt-6 md:mt-8">
-                    <LockGatePremium
-                      handle={result.data.profile.username}
-                    />
-                  </section>
-                )}
 
               {/* Fluxo público: blocos 2–6 só em premium. Sidebar/tabs
                   comunicam "5 por desbloquear". Em estado B (lead capturado
