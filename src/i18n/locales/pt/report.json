@@ -615,7 +615,10 @@
       "competitors_count": "{{count}} de {{max}} concorrentes adicionados",
       "period_locked_hint": "Filtros de período disponíveis no relatório completo.",
       "competitors_locked_hint": "Comparação com concorrentes no relatório completo.",
-      "add_competitor_short": "Concorrente"
+      "add_competitor_short": "Concorrente",
+      "beta_credits_available": "{{count}} crédito beta disponível",
+      "beta_credits_available_plural": "{{count}} créditos beta disponíveis",
+      "beta_credits_empty": "Sem créditos beta disponíveis"
     },
     "status": {
       "unlocked_title": "Relatório completo",
