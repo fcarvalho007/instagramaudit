@@ -1,80 +1,93 @@
-# Redesign end-of-free paywall — neutral strategic version
+## Goal
 
-## Files to edit
+Refactor `FrequencyCard` so it reads as an editorial report block, not a dashboard. One chart, three breathing inline metrics, one conclusion paragraph.
 
-1. `src/components/report-redesign/v2/end-of-free-block.tsx` — layout + structure + price source.
-2. `src/i18n/locales/pt/report.json` — copy under `end_of_free` only (PT-PT).
+## Target file (single)
 
-No changes to checkout, EuPago, entitlements, products catalog, gating, analytics, schema, or any other component. The CTA continues to call `handlePremiumAccessClick("lock_gate", { cta: "guarantee_launch_price" })` — same event signature, same destination.
+- `src/components/report-redesign/v2/overview/frequency-card.tsx`
 
-## Price source
+No i18n keys are added or removed (we reuse existing strings: `frequency.title`, `frequency.status.high`, `frequency.subtitle`, `frequency.weekly_rhythm.*`, `frequency.weekday_short/long`, `frequency.kpi.cadence_*`, `frequency.kpi.consistency_*`, `frequency.kpi.peak_*`, `frequency.verdict.*`). No data, score, calc, snapshot, or report-generation logic is touched.
 
-`LAUNCH_PRICE = "9"` is currently hardcoded in the component. Replace it with the existing source of truth from `src/lib/payments/products.ts`:
+## What gets removed
 
-```ts
-import { PUBLIC_PRODUCTS } from "@/lib/payments/products";
-const priceLabel = PUBLIC_PRODUCTS.report_full_9.priceLabel; // "9€"
+1. **30-day calendar block** (eyebrow + legend + weekday headers + week grid) — the entire `weeks.length > 0` branch and its helpers usages.
+2. **`FrequencyKpiStrip` boxed component** — replaced by clean inline metrics (no borders, no card).
+3. **Peak/gap chips** above bars in `WeeklyRhythm` and the surrounding card chrome (`rounded-xl border bg-surface-muted/60`).
+4. **`InsightCallout` "Cadência forte…" boxed container** — replaced by an inline conclusion line with a subtle check icon.
+5. Two-column `md:grid-cols-5` split (rhythm + calendar) collapses to a single full-width chart.
+
+Dead helpers (`buildWeekGrid`, `cellStyle`, `legendBg`, `fmtLocaleDate`, `PT_MONTHS`, `EN_MONTHS`, `backFillToWindow` if unused elsewhere) will be removed from this file. `FrequencyKpiStrip` function will be removed. `InsightCallout` import dropped if unused.
+
+## What stays
+
+- Section header via `ReportCardSectionHeader` (title + green "Alta" qualifier + subtitle "1 post a cada 2–3 dias · 12 publicações em 30 dias"). No change to header component.
+- `aggregateByWeekday`, `pickMostActive`, `pickQuietest` helpers — reused by the bar chart and the conclusion sentence.
+- `WeeklyRhythm` interpretation sentence logic (the i18n strings already say "Publicação concentrada à Terça…").
+- `ExternalReferenceNote` and `ExternalSourceNote` blocks at the bottom (Socialinsider attribution) — unchanged.
+
+## New layout
+
+```text
+┌── article (rounded-2xl, border, bg-surface-secondary, px-6/8 py-7/8) ─────┐
+│  Frequência de publicação   Alta                                          │
+│  1 post a cada 2–3 dias · 12 publicações em 30 dias                       │
+│                                                                           │
+│  2,8            33%            Terça                                      │
+│  posts/semana   dias c/ publ.  dia de pico                                │
+│                                                                           │
+│  RITMO POR DIA DA SEMANA                                                  │
+│  [bars: S T Q Q S S D — Tuesday peak in primary blue, zeros = thin line]  │
+│                                                                           │
+│  ──────────────────────────────────────────────                           │
+│  Publicação concentrada à Terça. A Quarta é o ponto mais fraco — 4 dias… │
+│  ✓ Cadência forte e consistente. Publica mais que a média…                │
+│                                                                           │
+│  [Socialinsider note, unchanged]                                          │
+└───────────────────────────────────────────────────────────────────────────┘
 ```
 
-No new product, no new price. If/when the product's `priceLabel` changes upstream, the card follows automatically.
+### Inline metrics row
 
-## i18n copy (PT-PT, under `end_of_free`)
+- `<div class="mt-6 flex flex-wrap gap-x-10 gap-y-5 sm:gap-x-14">`, one `<div>` per metric.
+- Number: Fraunces-friendly via `font-sans text-[2rem] md:text-[2.25rem] font-medium tabular-nums leading-none text-content-primary`.
+- Label: `mt-2 text-xs text-content-tertiary`.
+- Values: cadence `formatNumber(postingFrequencyWeekly, lang, {1,1})` + small `%` for consistency rendered as superscript-sized secondary, peak weekday from `pickMostActive` (`weekdayLong[top.weekday]`). Same data sources `FrequencyKpiStrip` used today.
 
-```
-eyebrow: "VISTE OS PRIMEIROS SINAIS"
-title: "Transforma sinais em decisões."
-description: "O relatório completo mostra o que está a funcionar, o que está a falhar e que decisões podem melhorar a leitura estratégica deste perfil nos próximos 30 dias."
-benefits_title: "NO RELATÓRIO COMPLETO VAIS CONSEGUIR"
-benefits: [
-  "Ver as melhores e piores publicações",
-  "Perceber que formatos repetir ou reduzir",
-  "Identificar padrões de ritmo e frequência",
-  "Comparar o perfil com concorrentes",
-  "Descobrir oportunidades editoriais"
-]
-price.caption_suffix: "pagamento único · sem subscrição"
-cta: "Desbloquear análise completa"
-reassurance: "Ideal para quem gere, analisa ou compara perfis de Instagram e precisa de decisões claras, não só de métricas."
-```
+### Single chart `WeeklyRhythmEditorial` (replaces `WeeklyRhythm`)
 
-Existing `chips.*` keys removed (no longer used), plus old `title`, `description`, `footnote`, replaced. `nav.access.cta` is no longer referenced by this component — leaving the key untouched in other consumers.
+- Eyebrow `RITMO POR DIA DA SEMANA` via `frequency.weekly_rhythm.title`.
+- 7-column grid, `min-h` ~110px so values can sit above bars.
+- Value label above each bar (e.g. `2`, `4`, `0`) — `text-[11px] font-semibold text-content-secondary tabular-nums`, peak day uses `text-content-primary`.
+- Bar styling:
+  - Peak (Tuesday in mock): `bg-[var(--accent-blue,#3772E5)]` solid, full height (~56px).
+  - Other days with posts: `bg-[#3772E5]/20` (calm light blue), height proportional, min ~12px.
+  - Zero days: render as 2px tall `bg-content-tertiary/25` line (no full empty bar).
+- Weekday labels below in `text-xs text-content-tertiary`, peak in `text-content-primary font-medium`.
+- No peak/gap chips. No card border. Just the chart sitting on the section surface.
 
-## Layout (matches mockup, refined)
+### Conclusion area (replaces `InsightCallout`)
 
-Card: `max-w-2xl`, centred, `bg-white`, `rounded-2xl`, `border-border-default`, soft shadow — preserved.
+- Spacing `mt-7 pt-5 border-t border-border-default/70 space-y-2`.
+- First line: existing `WeeklyRhythm` `interpretation` string (with `<b>` HTML kept via `dangerouslySetInnerHTML`) — `text-[14px] text-content-secondary leading-relaxed`.
+- Second line: `<p class="flex items-start gap-2 text-[14px] text-content-secondary leading-relaxed">` with a tiny `CheckCircle2` lucide icon at `size-4 mt-[2px] text-[hsl(var(--signal-success))]` (or whatever success token exists; falls back to `text-emerald-600` only if no token), then `<strong class="font-semibold text-content-primary">{verdict.strong}</strong> {verdict.rest}`.
+- No tinted background, no card.
 
-Vertical rhythm:
+### Insufficient-cadence branch
 
-1. Eyebrow (uppercase Inter, `text-eyebrow-sm`, `text-content-tertiary`).
-2. Headline — Fraunces, `text-3xl sm:text-4xl md:text-[2.5rem]`, **not italic** (sentence with period). Centred.
-3. Subheadline — Inter, `text-[15px]`, `text-content-secondary`, `max-w-xl mx-auto`, with "próximos 30 dias" bolded via `<strong className="font-semibold text-content-primary">` substring (Trans component).
-4. **Benefits block** — replaces the chip row. Framed sub-card: `rounded-xl border border-border-default bg-surface-muted/60 px-5 py-5 sm:px-6 sm:py-6 text-left`.
-   - Small uppercase title row at top (eyebrow).
-   - 5 rows, each: subtle icon (`ArrowUpRight`, `Repeat`, `CalendarClock`, `Users`, `Lightbulb`) `size-4 text-accent-primary/80` + label (Inter `text-[14px] text-content-primary`).
-   - `gap-2.5` between rows.
-5. Price — Fraunces, `text-[3rem] sm:text-[3.5rem]`, dynamic from `priceLabel`. Caption below: `text-[13px] text-content-tertiary`.
-6. CTA — existing pill button, `bg-accent-primary`, label "Desbloquear análise completa", trailing `ArrowRight` (preserved).
-7. Reassurance — `text-[12.5px] text-content-tertiary max-w-md mx-auto`, no icon (cleaner than current `Bell`).
-
-Spacing: `mt-5` after eyebrow, `mt-4` after headline, `mt-7` before benefits block, `mt-8` before price, `mt-2` price caption, `mt-6` before CTA, `mt-5` before reassurance.
-
-## Responsive
-
-- Card: `px-5 py-9 sm:px-10 sm:py-12`. Mobile keeps centred composition; benefits block stays full-width inside the card with `text-left`.
-- No horizontal overflow; icons are `size-4` so 5-row list wraps fine on 320px.
-- Headline scales `text-3xl → 4xl → [2.5rem]`.
+Keep the existing guard: when `isInsufficient`, skip metrics + chart + conclusion (same as today), still render Socialinsider notes. Just no boxed pieces remain.
 
 ## Out of scope (explicit)
 
-- No change to `usePremiumCta`, `handlePremiumAccessClick`, lock_gate event, or destination.
-- No change to `PUBLIC_PRODUCTS`, `products.server.ts`, EuPago flow, entitlements, credits.
-- No change to gating logic in `report-shell-v2.tsx` (the component is still rendered in the same slot).
-- No A/B variants, no banner rotation, no new analytics events.
+- No changes to `score-utils`, `computeFrequencia`, scoring thresholds.
+- No changes to subtitle copy, headline copy, or any `report.json` keys.
+- No changes to `ReportCardSectionHeader`, `InsightCallout` (file untouched; just unused here).
+- No changes to other overview cards (`format-card`, etc.) or report shell.
+- No new dependencies (lucide-react `CheckCircle2` is already used elsewhere in the codebase).
 
-## Validation
+## Validation checklist
 
-After edit:
-1. Preview desktop (1440px): centred card, benefits block visible, dynamic 9€ rendered.
-2. Preview mobile (375px): single column, no clipping, benefits readable.
-3. Click CTA → confirm it still opens the existing premium-interest dialog (lock_gate event).
-4. Grep confirms no other consumer relied on removed i18n keys (`end_of_free.chips`, `end_of_free.title` old text, `end_of_free.footnote`).
+- Desktop 1440: metrics in one row, chart spans full width, Tuesday bar dominant, zero days appear as thin line, conclusion sits under a hairline divider.
+- Mobile 375: metrics wrap into 2 rows or stack cleanly via `flex-wrap`, chart remains 7 columns (bars narrower), conclusion reflows.
+- Insufficient-cadence profile: only header + Socialinsider note render (no orphan empty chart).
+- No TypeScript errors from removed helpers/imports.
+- Snapshot data unchanged; only JSX/CSS in this one file changed.

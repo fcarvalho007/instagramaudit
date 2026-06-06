@@ -4,12 +4,15 @@
  */
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
+import { CheckCircle2 } from "lucide-react";
 import { computeFrequencia } from "./score-utils";
-import { InsightCallout } from "./insight-callout";
 import type { SocialinsiderInstagramContext } from "@/lib/knowledge/socialinsider-context";
 import { ExternalSourceNote, formatDateRange } from "./external-source-note";
 import { formatNumber } from "@/lib/i18n/format";
-import { ReportCardSectionHeader, type ReportSectionQualifierTone } from "../report-card-section-header";
+import {
+  ReportCardSectionHeader,
+  type ReportSectionQualifierTone,
+} from "../report-card-section-header";
 
 function getFrequencyStatusKey(score: number): "high" | "medium" | "low" {
   if (score >= 70) return "high";
@@ -18,16 +21,6 @@ function getFrequencyStatusKey(score: number): "high" | "medium" | "low" {
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
-
-const PT_MONTHS = [
-  "janeiro", "fevereiro", "março", "abril", "maio", "junho",
-  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
-];
-
-const EN_MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
 
 export function getFrequencyHeadline(postsPerDay: number): string {
   if (postsPerDay > 1.2) return "Mais de 1 post por dia";
@@ -62,15 +55,6 @@ export function getFrequencyVerdict(score: number): { strong: string; rest: stri
     strong: "Cadência irregular.",
     rest: "A audiência não cria hábito de te encontrar.",
   };
-}
-
-function fmtLocaleDate(iso: string, lang: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  if (lang.startsWith("en")) {
-    return `${EN_MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
-  }
-  return `${d.getUTCDate()} de ${PT_MONTHS[d.getUTCMonth()]}`;
 }
 
 // ─── Props ──────────────────────────────────────────────────────────
@@ -179,278 +163,6 @@ function pickQuietest(
 }
 
 /**
- * Unified rhythm visual: 7 weekday bars with "pico" / "falha" chips
- * annotating peak and quietest weekday, followed by a single
- * interpretive sentence. Replaces the older two-block layout.
- */
-function WeeklyRhythm({ days, t, embedded = false }: { days: DayEntry[]; t: TFunction; embedded?: boolean }) {
-  const buckets = aggregateByWeekday(days);
-  const totalPosts = buckets.reduce((s, b) => s + b.posts, 0);
-  if (totalPosts === 0) return null;
-
-  const top = pickMostActive(buckets);
-  const quietPick = pickQuietest(buckets, t);
-  // Resolve quiet weekday index from the long label (when not "weekend").
-  const weekdayLong =
-    (t("frequency.weekday_long", { returnObjects: true }) as string[]) ?? [];
-  const quietIdx = quietPick
-    ? weekdayLong.findIndex((w) => w === quietPick.label)
-    : -1;
-  const maxPosts = Math.max(...buckets.map((b) => b.posts));
-  const weekdayShort =
-    (t("frequency.weekday_short", { returnObjects: true }) as string[]) ?? [];
-
-  // Bar heights: peak full, others scaled, quiet bar collapsed to ~3px.
-  const BAR_MAX = 28;
-  const BAR_MIN = 6;
-  const BAR_QUIET = 3;
-
-  const interpretation = (() => {
-    const peakLabel = weekdayLong[top.weekday] ?? "";
-    if (quietPick && quietIdx >= 0) {
-      const silentCount = buckets[quietIdx].daysSilent;
-      return t(
-        silentCount === 1
-          ? "frequency.weekly_rhythm.interpretation_with_quiet_one"
-          : "frequency.weekly_rhythm.interpretation_with_quiet_other",
-        { peak: peakLabel, quiet: quietPick.label, count: silentCount },
-      );
-    }
-    if (quietPick) {
-      // Weekend label case — no single index; use the generic phrasing.
-      return t("frequency.weekly_rhythm.interpretation_peak_only", {
-        peak: peakLabel,
-      });
-    }
-    return t("frequency.weekly_rhythm.interpretation_uniform");
-  })();
-
-  const inner = (
-    <div className="rounded-xl border border-border-default bg-surface-muted/60 px-4 py-4 md:px-5 md:py-5 h-full">
-        <span className="text-eyebrow-sm text-content-tertiary block mb-4">
-          {t("frequency.weekly_rhythm.title")}
-        </span>
-
-        {/* Bars + chips row */}
-        <div
-          className="grid gap-1.5 items-end"
-          style={{ gridTemplateColumns: "repeat(7, 1fr)", minHeight: `${BAR_MAX + 22}px` }}
-          role="img"
-          aria-label={t("frequency.weekly_rhythm.aria_distribution")}
-        >
-          {buckets.map((b) => {
-            const isPeak = b.weekday === top.weekday && b.posts > 0;
-            const isGap = quietIdx === b.weekday;
-            const ratio = maxPosts > 0 ? b.posts / maxPosts : 0;
-            const height = isGap
-              ? BAR_QUIET
-              : b.posts > 0
-                ? Math.max(BAR_MIN, Math.round(ratio * BAR_MAX))
-                : BAR_MIN;
-            const bg = isPeak
-              ? "rgba(29,158,117,0.95)"
-              : isGap
-                ? "rgba(186,117,23,0.35)"
-                : b.posts > 0
-                  ? "rgba(29,158,117,0.45)"
-                  : "rgba(148,163,184,0.25)";
-            return (
-              <div key={b.weekday} className="flex flex-col items-center gap-1">
-                {isPeak ? (
-                  <span
-                    className="text-[10px] font-semibold leading-none px-1.5 py-[2px] rounded-sm"
-                    style={{
-                      color: "rgba(29,158,117,0.95)",
-                      background: "rgba(29,158,117,0.12)",
-                    }}
-                  >
-                    {t("frequency.weekly_rhythm.peak_chip")}
-                  </span>
-                ) : isGap ? (
-                  <span
-                    className="text-[10px] font-semibold leading-none px-1.5 py-[2px] rounded-sm"
-                    style={{
-                      color: "rgba(186,117,23,0.95)",
-                      background: "rgba(186,117,23,0.12)",
-                    }}
-                  >
-                    {t("frequency.weekly_rhythm.gap_chip")}
-                  </span>
-                ) : (
-                  <span className="text-[10px] leading-none" aria-hidden>
-                    &nbsp;
-                  </span>
-                )}
-                <span
-                  className="rounded-[3px] w-full"
-                  style={{ height: `${height}px`, background: bg }}
-                />
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Weekday labels */}
-        <div
-          className="grid gap-1.5 mt-2"
-          style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
-        >
-          {weekdayShort.map((wd, i) => {
-            const isPeak = i === top.weekday && buckets[i].posts > 0;
-            const isGap = i === quietIdx;
-            return (
-              <span
-                key={i}
-                className={`text-xs text-center leading-none select-none ${
-                  isPeak || isGap
-                    ? "font-semibold text-content-primary"
-                    : "text-content-tertiary"
-                }`}
-              >
-                {wd}
-              </span>
-            );
-          })}
-        </div>
-
-        {/* Single interpretive sentence */}
-        <p
-          className="text-[14px] text-content-secondary leading-relaxed mt-4 pt-3 border-t border-border-default/60 [&_b]:font-semibold [&_b]:text-content-primary"
-          dangerouslySetInnerHTML={{ __html: interpretation }}
-        />
-    </div>
-  );
-  return embedded ? inner : <div className="px-5 md:px-6 mt-4">{inner}</div>;
-}
-
-// ─── KPI strip (Cadência · Consistência · Pico semanal) ─────────────
-
-function FrequencyKpiStrip({
-  postingFrequencyWeekly,
-  publishedCount,
-  totalDays,
-  days,
-  t,
-  lang,
-}: {
-  postingFrequencyWeekly: number;
-  publishedCount: number;
-  totalDays: number;
-  days: DayEntry[];
-  t: TFunction;
-  lang: "en" | "pt";
-}) {
-  const cadenceValue = formatNumber(postingFrequencyWeekly, lang, {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  });
-  const consistencyPct =
-    totalDays > 0 ? (publishedCount / totalDays) * 100 : 0;
-  const consistencyValue = formatNumber(consistencyPct, lang, {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  });
-
-  const buckets = aggregateByWeekday(days);
-  const top = pickMostActive(buckets);
-  const weekdayLong =
-    (t("frequency.weekday_long", { returnObjects: true }) as string[]) ?? [];
-  const hasPeak = top.posts > 0;
-  const peakLabel = hasPeak ? weekdayLong[top.weekday] ?? "—" : "—";
-  const peakCaption = hasPeak
-    ? t(
-        top.posts === 1
-          ? "frequency.kpi.peak_caption_posts_one"
-          : "frequency.kpi.peak_caption_posts_other",
-        { count: top.posts },
-      )
-    : t("frequency.kpi.peak_caption_none");
-
-  return (
-    <div className="px-5 md:px-6 mt-4">
-      <div className="rounded-xl border border-border-default bg-white grid grid-cols-1 sm:grid-cols-3 overflow-hidden divide-y divide-border-default/60 sm:divide-y-0">
-        {/* Cadência */}
-        <div className="px-4 py-4 sm:px-5 sm:py-5">
-          <span className="text-eyebrow-sm text-content-secondary block mb-2">
-            {t("frequency.kpi.cadence_label")}
-          </span>
-          <div className="flex items-baseline gap-1.5">
-            <span className="font-sans text-[1.25rem] sm:text-[1.5rem] font-semibold tabular-nums text-content-primary leading-none">
-              {cadenceValue}
-            </span>
-            <span className="text-xs text-content-tertiary">
-              {t("frequency.kpi.cadence_unit")}
-            </span>
-          </div>
-        </div>
-
-        {/* Consistência */}
-        <div className="px-4 py-4 sm:px-5 sm:py-5 sm:border-l sm:border-border-default/60">
-          <span className="text-eyebrow-sm text-content-secondary block mb-2">
-            {t("frequency.kpi.consistency_label")}
-          </span>
-          <div className="flex items-baseline gap-1">
-            <span className="font-sans text-[1.25rem] sm:text-[1.5rem] font-semibold tabular-nums text-content-primary leading-none">
-              {consistencyValue}
-            </span>
-            <span className="font-sans text-[1.25rem] sm:text-[1.5rem] font-semibold text-content-secondary/60 leading-none">
-              %
-            </span>
-          </div>
-          <span className="block text-xs text-content-tertiary mt-1.5 leading-snug">
-            {t("frequency.kpi.consistency_caption")}
-          </span>
-        </div>
-
-        {/* Pico semanal */}
-        <div className="px-4 py-4 sm:px-5 sm:py-5 sm:border-l sm:border-border-default/60">
-          <span className="text-eyebrow-sm text-content-secondary block mb-2">
-            {t("frequency.kpi.peak_label")}
-          </span>
-          <span
-            className={`block font-sans text-[1.25rem] sm:text-[1.5rem] font-semibold leading-none ${
-              hasPeak ? "text-content-primary" : "text-content-tertiary"
-            }`}
-          >
-            {peakLabel}
-          </span>
-          <span className="block text-xs text-content-tertiary mt-1.5 leading-snug">
-            {peakCaption}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Calendar grid helpers ──────────────────────────────────────────
-
-/**
- * Build a week-aligned grid from raw day entries.
- * Pads the start so the first day lands on the correct weekday column (Mon = 0).
- */
-function buildWeekGrid(days: DayEntry[]): (DayEntry | null)[][] {
-  if (days.length === 0) return [];
-
-  const firstDate = new Date(days[0].date);
-  // JS getUTCDay: 0=Sun. Shift to Mon=0: (day+6)%7
-  const startDow = (firstDate.getUTCDay() + 6) % 7;
-
-  const padded: (DayEntry | null)[] = Array.from<null>({ length: startDow }).fill(null);
-  for (const d of days) padded.push(d);
-
-  // Pad right so the last row is always a complete week — keeps the grid
-  // visually aligned with the analysis window (e.g. 30 days = 5 rows).
-  while (padded.length % 7 !== 0) padded.push(null);
-
-  const weeks: (DayEntry | null)[][] = [];
-  for (let i = 0; i < padded.length; i += 7) {
-    weeks.push(padded.slice(i, i + 7));
-  }
-  return weeks;
-}
-
-/**
  * Ensure the day series spans exactly `window` days. If the upstream
  * timeline is shorter (e.g. last post older than today, or no posts in the
  * last few days), append empty trailing entries so the calendar/legend
@@ -471,29 +183,171 @@ function backFillToWindow(days: DayEntry[], windowDays: number): DayEntry[] {
   return filled;
 }
 
+// ─── Editorial weekly rhythm chart ──────────────────────────────────
+
 /**
- * Cell styles by post count.
- *   0: muted slate (visible but calm)
- *   1: soft green
- *   2: medium green
- *   3+: full green
+ * Single-focus chart: 7 weekday bars with the post count above each bar.
+ * Peak weekday is rendered in the primary blue accent; other days with
+ * posts use a calm light blue; zero-post days collapse to a hairline.
  */
-function cellStyle(count: number): { bg: string; border: string } {
-  if (count === 0)
-    return { bg: "rgb(244,247,251)", border: "1px solid rgba(148,163,184,0.28)" };
-  if (count === 1)
-    return { bg: "rgba(29,158,117,0.40)", border: "1px solid rgba(29,158,117,0.55)" };
-  if (count === 2)
-    return { bg: "rgba(29,158,117,0.65)", border: "1px solid rgba(29,158,117,0.75)" };
-  return { bg: "rgba(29,158,117,0.90)", border: "1px solid rgba(29,158,117,0.95)" };
+function WeeklyRhythmChart({
+  days,
+  t,
+}: {
+  days: DayEntry[];
+  t: TFunction;
+}) {
+  const buckets = aggregateByWeekday(days);
+  const totalPosts = buckets.reduce((s, b) => s + b.posts, 0);
+  if (totalPosts === 0) return null;
+
+  const top = pickMostActive(buckets);
+  const maxPosts = Math.max(1, ...buckets.map((b) => b.posts));
+  const weekdayShort =
+    (t("frequency.weekday_short", { returnObjects: true }) as string[]) ?? [];
+
+  const BAR_MAX = 64;
+  const BAR_MIN = 14;
+  const ZERO_LINE = 2;
+  const ACCENT = "#3772E5";
+
+  return (
+    <div className="mt-8">
+      <span className="text-eyebrow-sm text-content-tertiary block mb-5">
+        {t("frequency.weekly_rhythm.title")}
+      </span>
+      <div
+        className="grid gap-2 sm:gap-3 items-end"
+        style={{
+          gridTemplateColumns: "repeat(7, 1fr)",
+          minHeight: `${BAR_MAX + 28}px`,
+        }}
+        role="img"
+        aria-label={t("frequency.weekly_rhythm.aria_distribution")}
+      >
+        {buckets.map((b) => {
+          const isPeak = b.weekday === top.weekday && b.posts > 0;
+          const isZero = b.posts === 0;
+          const ratio = b.posts / maxPosts;
+          const height = isZero
+            ? ZERO_LINE
+            : Math.max(BAR_MIN, Math.round(ratio * BAR_MAX));
+          const background = isPeak
+            ? ACCENT
+            : isZero
+              ? "rgba(148,163,184,0.45)"
+              : "rgba(55,114,229,0.18)";
+          return (
+            <div
+              key={b.weekday}
+              className="flex flex-col items-center justify-end gap-2"
+            >
+              <span
+                className={`text-[11px] leading-none tabular-nums ${
+                  isPeak
+                    ? "font-semibold text-content-primary"
+                    : isZero
+                      ? "text-content-tertiary"
+                      : "font-medium text-content-secondary"
+                }`}
+              >
+                {b.posts}
+              </span>
+              <span
+                className="w-full rounded-[3px]"
+                style={{ height: `${height}px`, background }}
+              />
+            </div>
+          );
+        })}
+      </div>
+      <div
+        className="grid gap-2 sm:gap-3 mt-2.5"
+        style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
+      >
+        {weekdayShort.map((wd, i) => {
+          const isPeak = i === top.weekday && buckets[i].posts > 0;
+          return (
+            <span
+              key={i}
+              className={`text-xs text-center leading-none select-none ${
+                isPeak
+                  ? "font-medium text-content-primary"
+                  : "text-content-tertiary"
+              }`}
+            >
+              {wd}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
-/** Flat bg colour for legend swatches — matches cell fill. */
-function legendBg(count: number): string {
-  if (count === 0) return "rgb(244,247,251)";
-  if (count === 1) return "rgba(29,158,117,0.40)";
-  if (count === 2) return "rgba(29,158,117,0.65)";
-  return "rgba(29,158,117,0.90)";
+/** Editorial conclusion lines under a hairline divider. */
+function FrequencyConclusion({
+  days,
+  verdict,
+  showSuccessMark,
+  t,
+}: {
+  days: DayEntry[];
+  verdict: { strong: string; rest: string };
+  showSuccessMark: boolean;
+  t: TFunction;
+}) {
+  const buckets = aggregateByWeekday(days);
+  const top = pickMostActive(buckets);
+  const quietPick = pickQuietest(buckets, t);
+  const weekdayLong =
+    (t("frequency.weekday_long", { returnObjects: true }) as string[]) ?? [];
+  const quietIdx = quietPick
+    ? weekdayLong.findIndex((w) => w === quietPick.label)
+    : -1;
+
+  const peakLabel = weekdayLong[top.weekday] ?? "";
+  const interpretation = (() => {
+    if (quietPick && quietIdx >= 0) {
+      const silentCount = buckets[quietIdx].daysSilent;
+      return t(
+        silentCount === 1
+          ? "frequency.weekly_rhythm.interpretation_with_quiet_one"
+          : "frequency.weekly_rhythm.interpretation_with_quiet_other",
+        { peak: peakLabel, quiet: quietPick.label, count: silentCount },
+      );
+    }
+    if (quietPick) {
+      return t("frequency.weekly_rhythm.interpretation_peak_only", {
+        peak: peakLabel,
+      });
+    }
+    return t("frequency.weekly_rhythm.interpretation_uniform");
+  })();
+
+  return (
+    <div className="mt-8 pt-5 border-t border-border-default/70 space-y-2.5">
+      <p
+        className="text-[14px] text-content-secondary leading-relaxed [&_b]:font-semibold [&_b]:text-content-primary"
+        dangerouslySetInnerHTML={{ __html: interpretation }}
+      />
+      <p className="flex items-start gap-2 text-[14px] text-content-secondary leading-relaxed">
+        {showSuccessMark && (
+          <CheckCircle2
+            className="size-4 mt-[3px] shrink-0"
+            style={{ color: "rgba(29,158,117,0.95)" }}
+            aria-hidden="true"
+          />
+        )}
+        <span>
+          <strong className="font-semibold text-content-primary">
+            {verdict.strong}
+          </strong>{" "}
+          {verdict.rest}
+        </span>
+      </p>
+    </div>
+  );
 }
 
 // ─── Component ──────────────────────────────────────────────────────
@@ -554,17 +408,6 @@ export function FrequencyCard({
     rest: t(`frequency.verdict.${verdictKey}.rest`),
   };
   const frequencyStatus = t(`frequency.status.${statusKey}`);
-  const verdictTone =
-    score >= 70 ? ("positive" as const) : score >= 40 ? ("warning" as const) : ("danger" as const);
-  const verdictLabel = t(
-    score >= 70
-      ? "frequency.verdict_label.strong"
-      : score >= 40
-        ? "frequency.verdict_label.improve"
-        : "frequency.verdict_label.alert",
-  );
-  const weekdayShort = (t("frequency.weekday_short", { returnObjects: true }) as string[]) ?? [];
-
   // Dynamic subtitle: "1 post a cada 1–2 dias · 12 publicações em 18 dias"
   const hasUsableData =
     !isInsufficient && effectiveSampleSize > 0 && effectiveWindowDays > 0;
@@ -583,15 +426,26 @@ export function FrequencyCard({
     : null;
 
   const publishedCount = windowedDays.filter((d) => d.published).length;
-  const pausedCount = windowedDays.length - publishedCount;
-  const maxPosts = Math.max(1, ...windowedDays.map((d) => d.postCount));
+  const lang: "en" | "pt" = i18n.language.startsWith("pt") ? "pt" : "en";
 
-  const weeks = buildWeekGrid(windowedDays);
+  // Inline summary metrics (no boxed cards): posts/week · % active days · peak weekday.
+  const buckets = aggregateByWeekday(windowedDays);
+  const top = pickMostActive(buckets);
+  const weekdayLong =
+    (t("frequency.weekday_long", { returnObjects: true }) as string[]) ?? [];
+  const peakLabel = top.posts > 0 ? weekdayLong[top.weekday] ?? "—" : "—";
+  const cadenceValue = formatNumber(postingFrequencyWeekly, lang, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+  const consistencyPct =
+    windowedDays.length > 0
+      ? Math.round((publishedCount / windowedDays.length) * 100)
+      : 0;
 
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden flex flex-col">
-      {/* Header */}
-      <div className="px-5 md:px-6 pt-5 md:pt-6 pb-1 space-y-2">
+      <div className="px-5 md:px-7 pt-6 md:pt-7 pb-6 md:pb-7">
         <ReportCardSectionHeader
           title={t("frequency.title")}
           qualifier={!isInsufficient ? frequencyStatus : undefined}
@@ -605,148 +459,56 @@ export function FrequencyCard({
           subtitle={subtitleLine ?? (isInsufficient ? headline : undefined)}
           bottomMargin={false}
         />
-      </div>
 
-      {/* KPI strip (Cadência · Consistência · Pico semanal) — gated on usable data */}
-      {!isInsufficient && hasUsableData && (
-        <FrequencyKpiStrip
-          postingFrequencyWeekly={postingFrequencyWeekly}
-          publishedCount={publishedCount}
-          totalDays={windowedDays.length}
-          days={windowedDays}
-          t={t}
-          lang={i18n.language.startsWith("pt") ? "pt" : "en"}
-        />
-      )}
-
-      {/* Ritmo por dia da semana — hidden when cadence is insufficient */}
-      {(!isInsufficient || weeks.length > 0) && (
-        <div className="px-5 md:px-6 mt-6 grid gap-4 md:gap-5 md:grid-cols-5">
-          {!isInsufficient && (
-            <div className="md:col-span-2">
-              <WeeklyRhythm days={windowedDays} t={t} embedded />
-            </div>
-          )}
-          {weeks.length > 0 && (
-            <div className={!isInsufficient ? "md:col-span-3" : "md:col-span-5"}>
-              <div className="rounded-xl border border-border-default bg-surface-muted/60 px-4 py-4 md:px-5 md:py-5 h-full flex flex-col">
-                {/* Header row: eyebrow + legend */}
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex flex-col gap-0.5 min-w-0">
-                    <span className="text-eyebrow-sm text-content-tertiary">
-                      {t("frequency.calendar.eyebrow", { days: effectiveWindowDays })}
-                    </span>
-                    <span className="text-xs text-content-tertiary leading-snug">
-                      {t(
-                        publishedCount === 1
-                          ? "frequency.calendar.published_one"
-                          : "frequency.calendar.published_other",
-                        { count: publishedCount },
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 sm:justify-end">
-                    <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
-                      <span
-                        className="size-[10px] rounded-[3px] shrink-0"
-                        aria-hidden="true"
-                        style={{ background: legendBg(0), border: "1px solid rgba(148,163,184,0.35)" }}
-                      />
-                      {t("frequency.calendar.legend_none")}
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
-                      <span
-                        className="size-[10px] rounded-[3px] shrink-0"
-                        aria-hidden="true"
-                        style={{ background: legendBg(1) }}
-                      />
-                      {t("frequency.calendar.legend_one")}
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
-                      <span
-                        className="size-[10px] rounded-[3px] shrink-0"
-                        aria-hidden="true"
-                        style={{ background: legendBg(2) }}
-                      />
-                      {t("frequency.calendar.legend_two")}
-                    </span>
-                  </div>
+        {!isInsufficient && hasUsableData && (
+          <>
+            {/* Inline metrics — no borders, no boxes */}
+            <div className="mt-7 flex flex-wrap gap-x-10 gap-y-5 sm:gap-x-14">
+              <div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="font-sans text-[2rem] md:text-[2.25rem] font-semibold tabular-nums leading-none text-content-primary">
+                    {cadenceValue}
+                  </span>
                 </div>
-
-                {/* Weekday headers */}
-                <div className="grid grid-cols-7 gap-1.5 mt-4 mb-1.5">
-                  {weekdayShort.map((wd, i) => (
-                    <span
-                      key={i}
-                      className="text-eyebrow-sm text-content-tertiary text-center leading-none select-none"
-                    >
-                      {wd}
-                    </span>
-                  ))}
+                <span className="block mt-2 text-xs text-content-tertiary">
+                  {t("frequency.kpi.cadence_label").toLowerCase()}
+                </span>
+              </div>
+              <div>
+                <div className="flex items-baseline gap-0.5">
+                  <span className="font-sans text-[2rem] md:text-[2.25rem] font-semibold tabular-nums leading-none text-content-primary">
+                    {consistencyPct}
+                  </span>
+                  <span className="font-sans text-[1.25rem] md:text-[1.5rem] font-semibold leading-none text-content-secondary/70">
+                    %
+                  </span>
                 </div>
-
-                {/* Week rows */}
-                <div
-                  role="img"
-                  aria-label={t("frequency.calendar.aria", { published: publishedCount, paused: pausedCount })}
-                  className="grid gap-1.5"
-                  style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
-                >
-                  {weeks.flatMap((week, wi) =>
-                    Array.from({ length: 7 }).map((_, di) => {
-                      const day = week[di] ?? null;
-                      if (!day) {
-                        return (
-                          <span
-                            key={`pad-${wi}-${di}`}
-                            className="aspect-square rounded-md"
-                          />
-                        );
-                      }
-                      const dateLabel = fmtLocaleDate(day.date, i18n.language);
-                      const tooltipPosts = day.postCount > 0
-                        ? t(
-                            day.postCount === 1
-                              ? "frequency.weekly_summary.posts_one"
-                              : "frequency.weekly_summary.posts_other",
-                            { count: day.postCount },
-                          )
-                        : t("frequency.calendar.tooltip_no_post");
-                      return (
-                        <span
-                          key={day.date}
-                          title={`${dateLabel} · ${tooltipPosts}`}
-                          className="relative aspect-square rounded-md flex items-center justify-center transition-colors"
-                          style={{ background: cellStyle(day.postCount).bg, border: cellStyle(day.postCount).border }}
-                        >
-                          {day.postCount > 1 && (
-                            <span
-                              className="text-[11px] font-semibold leading-none text-white select-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]"
-                              aria-hidden="true"
-                            >
-                              {day.postCount}
-                            </span>
-                          )}
-                        </span>
-                      );
-                    }),
-                  )}
-                </div>
+                <span className="block mt-2 text-xs text-content-tertiary">
+                  {t("frequency.kpi.consistency_label").toLowerCase()}
+                </span>
+              </div>
+              <div>
+                <span className="block font-sans text-[2rem] md:text-[2.25rem] font-semibold leading-none text-content-primary">
+                  {peakLabel}
+                </span>
+                <span className="block mt-2 text-xs text-content-tertiary">
+                  {t("frequency.kpi.peak_label").toLowerCase()}
+                </span>
               </div>
             </div>
-          )}
-        </div>
-      )}
 
-      {/* Verdict — suppressed when cadence is insufficient (no strong claims). */}
-      {!isInsufficient && (
-      <InsightCallout tone={verdictTone} label={verdictLabel} className="mt-6 mx-5 md:mx-6 mb-5 sm:mb-6">
-        <p>
-          <span className="font-semibold">{verdict.strong}</span>{" "}
-          {verdict.rest}
-        </p>
-      </InsightCallout>
-      )}
+            <WeeklyRhythmChart days={windowedDays} t={t} />
+
+            <FrequencyConclusion
+              days={windowedDays}
+              verdict={verdict}
+              showSuccessMark={score >= 70}
+              t={t}
+            />
+          </>
+        )}
+      </div>
+
       <ExternalReferenceNote
         refs={socialinsiderRef ?? null}
         headline={headline}
