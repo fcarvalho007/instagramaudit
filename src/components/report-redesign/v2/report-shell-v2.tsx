@@ -127,7 +127,6 @@ export function ReportShellV2({
   const [overview, diagnostico, performance, conteudo, procura, benchmark] =
     useBlocks();
 
-  const gated = lockBoundary === "engagement" && !premiumUnlocked;
   const handleUnlockClick = onUnlockClick ?? (() => {});
 
   // Deep-link via URL hash (`#performance` etc.). Runs once on mount;
