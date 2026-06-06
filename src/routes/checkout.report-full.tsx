@@ -55,6 +55,7 @@ const searchSchema = z.object({
     .max(40)
     .regex(/^[A-Za-z0-9_-]+$/)
     .optional(),
+  status: z.enum(["success"]).optional(),
 });
 
 const leadSessionQueryOptions = queryOptions({
