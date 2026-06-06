@@ -618,7 +618,20 @@
       "add_competitor_short": "Competitor",
       "beta_credits_available": "{{count}} beta credit available",
       "beta_credits_available_plural": "{{count}} beta credits available",
-      "beta_credits_empty": "No beta credits available"
+      "beta_credits_empty": "No beta credits available",
+      "consume_dialog": {
+        "title": "Use 1 beta credit",
+        "description_period": "We'll fetch and process new public data for the {{days}}-day window. This uses 1 credit.",
+        "description_competitor": "We'll fetch and process new public data to add a competitor to the report. This uses 1 credit.",
+        "balance_label": "Current balance",
+        "balance_after": "Balance after this action",
+        "cta_use": "Use 1 credit",
+        "cta_cancel": "Cancel",
+        "empty_title": "No credits available",
+        "empty_body": "You're out of beta credits. We're collecting feedback on how to expand this feature.",
+        "empty_cta": "Send feedback",
+        "soon_note": "This feature is in beta — you'll be notified when the new analysis is ready."
+      }
     },
     "status": {
       "unlocked_title": "Full report",
