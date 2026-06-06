@@ -1,58 +1,80 @@
-# Formato Pouco variado — desktop refinement
+# Redesign end-of-free paywall — neutral strategic version
 
-## File to edit
+## Files to edit
 
-- `src/components/report-redesign/v2/overview/format-card.tsx` (only this file)
+1. `src/components/report-redesign/v2/end-of-free-block.tsx` — layout + structure + price source.
+2. `src/i18n/locales/pt/report.json` — copy under `end_of_free` only (PT-PT).
 
-`FormatBreakdown` (donut + legend) is already structured fine and stays as is. The problem is contained in the thumbnail grid block (lines 311–369) and its relationship to the breakdown above.
+No changes to checkout, EuPago, entitlements, products catalog, gating, analytics, schema, or any other component. The CTA continues to call `handlePremiumAccessClick("lock_gate", { cta: "guarantee_launch_price" })` — same event signature, same destination.
 
-## What's wrong today
+## Price source
 
-The thumbnail grid uses `grid-cols-3 sm:grid-cols-4 md:grid-cols-4` with `aspectRatio: 1/1`. On a wide desktop card the four columns balloon each thumb to ~170–200px, so the gallery dominates the section and pushes the donut summary out of focus.
+`LAUNCH_PRICE = "9"` is currently hardcoded in the component. Replace it with the existing source of truth from `src/lib/payments/products.ts`:
 
-## Plan
-
-### 1. Cap thumb size with auto-fill on desktop
-
-Swap the rigid `md:grid-cols-4` for an `auto-fill` track that caps cell size:
-
-```
-grid gap-2 grid-cols-3 sm:grid-cols-4
-md:[grid-template-columns:repeat(auto-fill,minmax(84px,1fr))]
-lg:[grid-template-columns:repeat(auto-fill,minmax(96px,1fr))]
+```ts
+import { PUBLIC_PRODUCTS } from "@/lib/payments/products";
+const priceLabel = PUBLIC_PRODUCTS.report_full_9.priceLabel; // "9€"
 ```
 
-Result: thumbnails stay ~84–110px square on desktop regardless of card width, while mobile keeps the existing 3–4 columns. No max-width hack needed; the grid fills naturally and wraps to additional rows if the card is very wide.
+No new product, no new price. If/when the product's `priceLabel` changes upstream, the card follows automatically.
 
-### 2. Reframe the gallery as supporting evidence
+## i18n copy (PT-PT, under `end_of_free`)
 
-Wrap the eyebrow + grid + legend in a subtle sub-frame so it visually reads as secondary to the donut:
+```
+eyebrow: "VISTE OS PRIMEIROS SINAIS"
+title: "Transforma sinais em decisões."
+description: "O relatório completo mostra o que está a funcionar, o que está a falhar e que decisões podem melhorar a leitura estratégica deste perfil nos próximos 30 dias."
+benefits_title: "NO RELATÓRIO COMPLETO VAIS CONSEGUIR"
+benefits: [
+  "Ver as melhores e piores publicações",
+  "Perceber que formatos repetir ou reduzir",
+  "Identificar padrões de ritmo e frequência",
+  "Comparar o perfil com concorrentes",
+  "Descobrir oportunidades editoriais"
+]
+price.caption_suffix: "pagamento único · sem subscrição"
+cta: "Desbloquear análise completa"
+reassurance: "Ideal para quem gere, analisa ou compara perfis de Instagram e precisa de decisões claras, não só de métricas."
+```
 
-- `rounded-xl border border-border-default bg-surface-muted/40 px-4 py-4 md:px-5 md:py-5`
-- Eyebrow stays `text-eyebrow-sm`, copy unchanged (`12 posts analisados`).
-- Legend moves to the eyebrow row on desktop (`flex justify-between`), wraps below on mobile — same chips, no copy change.
+Existing `chips.*` keys removed (no longer used), plus old `title`, `description`, `footnote`, replaced. `nav.access.cta` is no longer referenced by this component — leaving the key untouched in other consumers.
 
-### 3. Spacing rhythm
+## Layout (matches mockup, refined)
 
-- Promote space between donut breakdown and the gallery sub-frame from `mt-5` → `mt-6`.
-- Tighten the gap between the gallery and the "A melhorar" insight callout: keep `mt-auto` for vertical fill but ensure the callout has `mt-6` after the framed gallery so it reads connected, not floating.
-- Reduce inter-thumb gap from `gap-2` → `gap-1.5` on desktop for a calmer rhythm; keep `gap-2` on mobile.
+Card: `max-w-2xl`, centred, `bg-white`, `rounded-2xl`, `border-border-default`, soft shadow — preserved.
 
-### 4. Thumb cell polish (minor)
+Vertical rhythm:
 
-- Border `border-border-subtle/40` → `border-border-default/60` for crisper edges at the smaller size.
-- Format dot kept (`size-2.5`); already proportional.
+1. Eyebrow (uppercase Inter, `text-eyebrow-sm`, `text-content-tertiary`).
+2. Headline — Fraunces, `text-3xl sm:text-4xl md:text-[2.5rem]`, **not italic** (sentence with period). Centred.
+3. Subheadline — Inter, `text-[15px]`, `text-content-secondary`, `max-w-xl mx-auto`, with "próximos 30 dias" bolded via `<strong className="font-semibold text-content-primary">` substring (Trans component).
+4. **Benefits block** — replaces the chip row. Framed sub-card: `rounded-xl border border-border-default bg-surface-muted/60 px-5 py-5 sm:px-6 sm:py-6 text-left`.
+   - Small uppercase title row at top (eyebrow).
+   - 5 rows, each: subtle icon (`ArrowUpRight`, `Repeat`, `CalendarClock`, `Users`, `Lightbulb`) `size-4 text-accent-primary/80` + label (Inter `text-[14px] text-content-primary`).
+   - `gap-2.5` between rows.
+5. Price — Fraunces, `text-[3rem] sm:text-[3.5rem]`, dynamic from `priceLabel`. Caption below: `text-[13px] text-content-tertiary`.
+6. CTA — existing pill button, `bg-accent-primary`, label "Desbloquear análise completa", trailing `ArrowRight` (preserved).
+7. Reassurance — `text-[12.5px] text-content-tertiary max-w-md mx-auto`, no icon (cleaner than current `Bell`).
 
-### 5. Out of scope
+Spacing: `mt-5` after eyebrow, `mt-4` after headline, `mt-7` before benefits block, `mt-8` before price, `mt-2` price caption, `mt-6` before CTA, `mt-5` before reassurance.
 
-- `FormatBreakdown` (donut + per-format legend rows) — no change.
-- `ExternalReferenceTable`, `ExternalSourceNote`, verdict copy — no change.
-- Data: `formats`, `postsAnalyzed`, `sortedPosts`, classification — no change.
-- Other report sections, payment, unlock, report generation — no change.
+## Responsive
 
-## Deliverables
+- Card: `px-5 py-9 sm:px-10 sm:py-12`. Mobile keeps centred composition; benefits block stays full-width inside the card with `text-left`.
+- No horizontal overflow; icons are `size-4` so 5-row list wraps fine on 320px.
+- Headline scales `text-3xl → 4xl → [2.5rem]`.
 
-1. Files changed: only `format-card.tsx`.
-2. Visual summary (thumb cap, framed gallery, legend repositioned, spacing).
-3. Confirmation no data/scoring/payment/unlock logic touched.
-4. Desktop + mobile visual checklist via preview.
+## Out of scope (explicit)
+
+- No change to `usePremiumCta`, `handlePremiumAccessClick`, lock_gate event, or destination.
+- No change to `PUBLIC_PRODUCTS`, `products.server.ts`, EuPago flow, entitlements, credits.
+- No change to gating logic in `report-shell-v2.tsx` (the component is still rendered in the same slot).
+- No A/B variants, no banner rotation, no new analytics events.
+
+## Validation
+
+After edit:
+1. Preview desktop (1440px): centred card, benefits block visible, dynamic 9€ rendered.
+2. Preview mobile (375px): single column, no clipping, benefits readable.
+3. Click CTA → confirm it still opens the existing premium-interest dialog (lock_gate event).
+4. Grep confirms no other consumer relied on removed i18n keys (`end_of_free.chips`, `end_of_free.title` old text, `end_of_free.footnote`).
