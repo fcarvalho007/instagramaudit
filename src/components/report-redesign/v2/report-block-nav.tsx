@@ -1043,11 +1043,17 @@ function SidebarList({
                       <LockedItemRow
                         item={item}
                         isActive={item.block.id === active}
-                        onClick={() =>
-                          handlePremiumAccessClick("sidebar_section", {
-                            block_id: item.block.id,
-                          })
-                        }
+                        onClick={() => {
+                          // First scroll the user to the matching teaser
+                          // card so they see what's locked, then open the
+                          // existing premium dialog after the scroll lands.
+                          scrollToBlock(item.block.id);
+                          window.setTimeout(() => {
+                            handlePremiumAccessClick("sidebar_section", {
+                              block_id: item.block.id,
+                            });
+                          }, 350);
+                        }}
                         compact={compact}
                       />
                       {isDiag && !compact && (

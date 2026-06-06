@@ -7,10 +7,13 @@ import { usePremiumCta } from "./premium-cta-context";
 
 /**
  * Hook that drives the sticky bar visibility.
- * - Shows when `#engagement` has scrolled past the top (user is now in
- *   the locked premium teaser zone).
+ * - Shows when the first premium teaser card (`#frequencia`) enters the
+ *   viewport — that's exactly the moment the user crosses from the free
+ *   Engagement section into the locked teaser zone.
  * - Hides while `#lead-magnet-card` (final paywall CTA) is in view, so
  *   the sticky doesn't compete with the main CTA.
+ * - If `#frequencia` is not in the DOM (PRO / internal lab), the bar
+ *   stays hidden — the shell additionally gates the mount.
  */
 function useStickyUnlockTrigger() {
   const [passedFree, setPassedFree] = useState(false);
@@ -19,36 +22,50 @@ function useStickyUnlockTrigger() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const engagement = document.getElementById("engagement");
-    const finalCta = document.getElementById("lead-magnet-card");
+    if (!("IntersectionObserver" in window)) return;
 
-    const onScroll = () => {
-      if (engagement) {
-        const rect = engagement.getBoundingClientRect();
-        // user has scrolled past Engagement when its bottom is above viewport
-        setPassedFree(rect.bottom < 80);
+    let teaserObserver: IntersectionObserver | undefined;
+    let finalObserver: IntersectionObserver | undefined;
+
+    // Retry briefly: the teaser card mounts asynchronously after the
+    // initial render (loader → snapshot → adapter), so the anchor may
+    // not exist yet on first effect run.
+    let attempts = 0;
+    const wire = () => {
+      const teaser = document.getElementById("frequencia");
+      const finalCta = document.getElementById("lead-magnet-card");
+
+      if (teaser && !teaserObserver) {
+        teaserObserver = new IntersectionObserver(
+          (entries) => {
+            const entry = entries[0];
+            if (entry?.isIntersecting) setPassedFree(true);
+          },
+          { rootMargin: "0px 0px -10% 0px", threshold: 0 },
+        );
+        teaserObserver.observe(teaser);
+      }
+
+      if (finalCta && !finalObserver) {
+        finalObserver = new IntersectionObserver(
+          (entries) => {
+            const entry = entries[0];
+            if (entry) setFinalCtaVisible(entry.isIntersecting);
+          },
+          { rootMargin: "0px 0px -80px 0px", threshold: 0 },
+        );
+        finalObserver.observe(finalCta);
+      }
+
+      if ((!teaser || !finalCta) && attempts < 20) {
+        attempts += 1;
+        window.setTimeout(wire, 250);
       }
     };
-    onScroll();
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-
-    let finalObserver: IntersectionObserver | undefined;
-    if (finalCta && "IntersectionObserver" in window) {
-      finalObserver = new IntersectionObserver(
-        (entries) => {
-          const entry = entries[0];
-          if (entry) setFinalCtaVisible(entry.isIntersecting);
-        },
-        { rootMargin: "0px 0px -80px 0px", threshold: 0 },
-      );
-      finalObserver.observe(finalCta);
-    }
+    wire();
 
     return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      teaserObserver?.disconnect();
       finalObserver?.disconnect();
     };
   }, []);

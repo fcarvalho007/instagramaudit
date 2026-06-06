@@ -35,8 +35,6 @@ import { ReportFramedBlock } from "../report-framed-block";
 import { Lock, Sparkles } from "lucide-react";
 import { ReportMethodology } from "../report-methodology";
 import { REDESIGN_TOKENS } from "../report-tokens";
-import { ReportLockGate } from "@/components/product/report-lock-gate";
-
 import { useBlocks } from "./block-config";
 import { ReportBlockSidebar, ReportBlockTopTabs } from "./report-block-nav";
 import { ReportBlockSection } from "./report-block-section";
@@ -54,32 +52,6 @@ import { StickyUnlockBar } from "./sticky-unlock-bar";
 import { ReportShortcutDialog } from "./report-shortcut-dialog";
 import { useReportKeyboardShortcuts } from "./use-report-keyboard-shortcuts";
 import { scrollToBlock } from "./use-active-block";
-import { usePremiumCta } from "./premium-cta-context";
-
-/**
- * Body lock-gate CTA rendered between the free overview and the rest of
- * the report. In the onboarding-first flow this is no longer a
- * lead-capture entry point — every visitor who reaches the shell has
- * already onboarded. The CTA therefore routes through the unified
- * `PremiumCtaProvider` (same modal as the sidebar, period selector and
- * sticky bar) and emits `premium_cta_clicked` with
- * `source_component: "lock_gate"`. Does not open onboarding, call
- * Apify/OpenAI, mutate report data, or consume credits.
- */
-function LockGatePremium({ handle }: { handle: string }) {
-  const { handlePremiumAccessClick } = usePremiumCta();
-  return (
-    <ReportLockGate
-      unlocked={false}
-      onUnlockClick={() =>
-        handlePremiumAccessClick("lock_gate", { cta: "body_unlock" })
-      }
-      handle={handle}
-    >
-      {null}
-    </ReportLockGate>
-  );
-}
 
 interface ReportShellV2Props {
   result: AdapterResult;
@@ -155,7 +127,6 @@ export function ReportShellV2({
   const [overview, diagnostico, performance, conteudo, procura, benchmark] =
     useBlocks();
 
-  const gated = lockBoundary === "engagement" && !premiumUnlocked;
   const handleUnlockClick = onUnlockClick ?? (() => {});
 
   // Deep-link via URL hash (`#performance` etc.). Runs once on mount;
@@ -250,17 +221,13 @@ export function ReportShellV2({
               {/* 01 · Overview (redesigned) */}
               {features.blockOverview !== "hidden" && (
               <ReportBlockSection block={overview} tone="canvas" first>
-                {lockBoundary === "engagement" && !unlocked ? (
-                  // Estado A · Anónimo — só Identity Card; LockGate logo abaixo.
-                  <ReportOverviewBlock
-                    result={result}
-                    renderInsight={renderInsight}
-                    payload={payload}
-                    mode="free"
-                  />
-                ) : lockBoundary === "engagement" && unlocked && !premiumUnlocked ? (
-                  // Estado B · Lead capturado, sem PRO — Identity + Engagement +
-                  // teaser PRO para Frequência/Formatos/Publicações-chave.
+                {lockBoundary === "engagement" && !premiumUnlocked ? (
+                  // Free público (onboarding-first) — Identity + Engagement +
+                  // 5 teaser cards (Frequência, Formatos, Publicações-chave,
+                  // Diagnóstico, Prioridades). Renderiza sempre, mesmo que
+                  // `unlocked` esteja momentaneamente a false durante o
+                  // bootstrap, para evitar o estado vazio em que o corpo
+                  // do relatório só mostra o Identity Card.
                   <ReportOverviewBlock
                     result={result}
                     renderInsight={renderInsight}
@@ -276,19 +243,6 @@ export function ReportShellV2({
                 )}
               </ReportBlockSection>
               )}
-
-              {/* Estado A · Anónimo — lead magnet logo após o Identity Card.
-                  Substitui o resto do Bloco 1 (Engagement/Frequência/Formato/
-                  Best vs Worst) e o "Há mais por trás" até o lead ser captado. */}
-              {features.blockOverview !== "hidden" &&
-                lockBoundary === "engagement" &&
-                !unlocked && (
-                  <section id="lead-magnet-card" className="mt-6 md:mt-8">
-                    <LockGatePremium
-                      handle={result.data.profile.username}
-                    />
-                  </section>
-                )}
 
               {/* Fluxo público: blocos 2–6 só em premium. Sidebar/tabs
                   comunicam "5 por desbloquear". Em estado B (lead capturado
