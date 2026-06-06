@@ -615,7 +615,10 @@
       "competitors_count": "{{count}} of {{max}} competitors added",
       "period_locked_hint": "Period filters available in the full report.",
       "competitors_locked_hint": "Competitor comparison available in the full report.",
-      "add_competitor_short": "Competitor"
+      "add_competitor_short": "Competitor",
+      "beta_credits_available": "{{count}} beta credit available",
+      "beta_credits_available_plural": "{{count}} beta credits available",
+      "beta_credits_empty": "No beta credits available"
     },
     "status": {
       "unlocked_title": "Full report",
