@@ -614,7 +614,8 @@
       "add_competitor_aria": "Add competitor for comparison",
       "competitors_count": "{{count}} of {{max}} competitors added",
       "period_locked_hint": "Period filters available in the full report.",
-      "competitors_locked_hint": "Competitor comparison available in the full report."
+      "competitors_locked_hint": "Competitor comparison available in the full report.",
+      "add_competitor_short": "Competitor"
     },
     "status": {
       "unlocked_title": "Full report",
