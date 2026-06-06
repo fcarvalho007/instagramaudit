@@ -806,6 +806,10 @@ function ExploreSection({
             intent={intent}
             balance={balance}
             onConfirm={onConfirmConsume}
+            submitting={submitting}
+            errorMessage={errorMessage}
+            primaryHandle={primaryHandle}
+            existingCompetitors={existingCompetitors}
           />
         ) : null}
       </section>
