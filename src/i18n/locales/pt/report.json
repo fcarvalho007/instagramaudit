@@ -1416,5 +1416,24 @@
     "tag": "beta · ajuda-nos a afinar",
     "thanks": "Obrigado pelo teu sinal.",
     "error": "Não foi possível registar. Tenta mais tarde."
+  },
+  "pending": {
+    "eyebrow_pending": "Análise em curso",
+    "eyebrow_error": "Leitura indisponível",
+    "cover": {
+      "title": "A preparar análise das capas…",
+      "body": "Estamos a avaliar clareza visual, consistência e leitura em 1 segundo."
+    },
+    "caption": {
+      "title": "A preparar leitura das legendas…",
+      "body": "Estamos a analisar padrões de linguagem, temas e chamadas à acção."
+    },
+    "insights": {
+      "title": "A preparar síntese editorial…",
+      "body": "As recomendações finais ficam disponíveis assim que a análise terminar."
+    },
+    "error": {
+      "body": "Não foi possível concluir esta leitura automática. O restante relatório continua disponível."
+    }
   }
 }
