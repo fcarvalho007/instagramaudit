@@ -619,7 +619,8 @@
     "status": {
       "unlocked_title": "Relatório completo",
       "unlocked_subtitle": "{{count}} secções desbloqueadas",
-      "header_paid": "Relatório completo · {{count}} secções"
+      "header_paid": "Relatório completo · {{count}} secções",
+      "header_paid_compact": "Relatório completo"
     },
     "unlock": {
       "eyebrow": "Desbloquear",
