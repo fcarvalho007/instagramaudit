@@ -1,106 +1,67 @@
+## Goal
 
-# Auditoria — Gating, sidebar, créditos e plano para bónus beta pós-compra
+For free/public users, every locked action in the report sidebar (main CTA, locked premium sections, locked period chips 30d/90d, locked "Adicionar concorrente") opens the existing `PremiumInterestDialog` via the existing `PremiumCtaProvider` / `usePremiumCta` flow, with contextual copy that reflects what was clicked. No payment, pricing, checkout, credit, entitlement, scraping, or report-generation logic is touched.
 
-## 1. Ficheiros inspecionados
+## Current state (free user)
 
-- `src/lib/credits/credits.server.ts` — ledger append-only, `grantInitialCredits` (+2), `reserveCredit` (-1), `confirm/release`, `getBalance`.
-- `src/lib/credits/lead-reports.server.ts` — associação lead↔relatório (não cobra a 2ª vez).
-- `src/lib/credits/__tests__/credits.test.ts` — contrato testado (idempotência, duplicados por `cache_key`).
-- `src/routes/api/onboarding/start.ts` — chama `grantInitialCredits(leadId)` depois de criar/atualizar o lead. **É aqui que os 2 créditos são atribuídos hoje, na captura de lead.**
-- `src/routes/api/analyze-public-v1.ts` — `reserveCredit` no gate; ledger é consumido por cada análise nova (cache hits do mesmo lead não cobram).
-- `src/lib/payments/entitlements.server.ts` — `grantEntitlement` idempotente por `(lead_id, product_code)`.
-- `src/lib/payments/eupago.server.ts` / `eupago.functions.ts` — criação de checkout, verificação HMAC.
-- `src/routes/api/public/eupago-webhook.ts` — recebe webhook, marca `lead_payments.paid`, chama `grantEntitlement`, `recordProductEvent("payment_webhook_paid")`, dispara email `payment_confirmed` (kill-switch).
-- `src/lib/email/send-payment-confirmed.server.ts` — email transacional pós-pagamento (idempotente via `product_events`).
-- `src/components/report-redesign/v2/premium-cta-context.tsx` — fonte única de truth do CTA premium (`PremiumInterestDialog`).
-- `src/components/report-redesign/v2/premium-interest-dialog.tsx` — modal de pricing/unlock.
-- `src/components/report-redesign/v2/report-block-nav.tsx` (linhas 524–693) — `ExploreSection` com chips de período e botão "Add competitor" no sidebar.
-- `src/components/report-redesign/v2/analysis-period-selector.tsx`, `sticky-unlock-bar.tsx`, `end-of-free-block.tsx` — outros pontos de entrada do CTA.
+- Main CTA `UnlockPromoCard` → `handlePremiumAccessClick("sidebar")` — opens modal ✅ but source is generic.
+- Locked period chips 30d/90d → `handlePremiumAccessClick("sidebar_period", { selected_window })` — opens modal ✅.
+- Locked "Add competitor" → `handlePremiumAccessClick("sidebar_add_competitor")` — opens modal ✅.
+- Mobile compact period button → `handlePremiumAccessClick("sidebar_period")` — opens modal ✅.
+- **Locked premium section rows (`LockedItemRow`)** → call `onAccessibleClick(item.block.id)` → `scrollToBlock(id)`. **Bug: silently scrolls instead of opening the modal.** ❌
+- Modal copy is identical for every source — no contextual sentence.
 
-## 2. Mapa de comportamento atual
+The `PremiumCtaSource` union already includes `sidebar_section`, `sidebar_period`, `sidebar_add_competitor`. A new `sidebar_main_cta` value is required to satisfy the requested taxonomy.
 
-**Free user**
-- CTA principal / secções premium / chips de período locked / botão "Add competitor" locked → todos chamam `handlePremiumAccessClick(<source>)` → abre **o mesmo** `PremiumInterestDialog`. ✅
-- Nenhum crédito é consumido em modo "ler relatório free" (cache hit do próprio lead = 0 créditos).
+## Changes
 
-**Paid user (premiumUnlocked = true)**
-- Sidebar mostra estado "pro" visualmente, mas:
-  - Chips 30d / 90d → **sem handler** (botão aria-disabled removido; clicks no-op).
-  - "Add competitor" → `scrollToBlock("benchmark")` com TODO explícito ("wire to real competitor manager once available").
-- Não existe indicador de saldo de créditos no sidebar.
-- Não existe modal de confirmação "Usar 1 crédito".
+### 1. `src/components/report-redesign/v2/premium-cta-context.tsx`
 
-## 3. Capacidades de créditos já existentes
+- Extend the `PremiumCtaSource` union with `"sidebar_main_cta"`. Keep `"sidebar"` as a deprecated alias (still typed) for backwards compatibility with any legacy callers — no removal, no behaviour change elsewhere.
 
-| Capacidade | Estado |
-|---|---|
-| Tabela `credit_ledger` + RPC `credit_balance` | ✅ existe |
-| Grant idempotente (índice `uniq_credit_ledger_initial_grant`) | ✅ por lead, reason=`initial_grant` |
-| Reserve / Confirm / Release | ✅ com índice `uniq_credit_ledger_reserve_per_report` por `(lead_id, cache_key)` |
-| Associação a `lead_id` | ✅ obrigatória; `user_id` ainda não usado pelo ledger |
-| Reason livre (`admin_adjust`, etc.) | ✅ tipo já inclui `admin_adjust` |
-| Product events para grants/usos | ⚠️ Parcial — `analyze-public-v1` emite eventos; o grant inicial **não** emite `product_event`. Webhook EuPago já emite `payment_webhook_paid`. |
+### 2. `src/components/report-redesign/v2/report-block-nav.tsx`
 
-**Constatação chave:** os 2 créditos atuais são consumidos no fluxo free (1 para o relatório inicial). Quando o utilizador paga, normalmente já está a 0 ou 1 créditos. Por isso o "bónus beta pós-compra" precisa de ser um **grant separado** ligado ao `payment_id`, não uma reutilização de `grantInitialCredits`.
+- `UnlockPromoCard` `openDialog` handler: change source from `"sidebar"` to `"sidebar_main_cta"`.
+- In `SidebarList`, when rendering the free-state `premium` list, replace the current `onAccessibleClick(item.block.id)` callback on `LockedItemRow` with a handler that calls `handlePremiumAccessClick("sidebar_section", { block_id: item.block.id })`. This stops the silent scroll and opens the modal. Premium "accessible" state (`premiumUnlocked`) remains unaffected — paid users still use `onAccessibleClick`.
+- Mobile `ReportBlockTopTabs` shows only accessible items in the bottom rail; the locked premium list lives inside the same `SidebarList` rendered in the sheet, so the fix above also covers mobile.
+- No changes to period chip logic, "Add competitor", credit balance display, `ConsumeCreditDialog`, `focusLeadMagnet`, lab variant, or scroll-spy.
 
-## 4. Plano de implementação proposto
+### 3. `src/components/report-redesign/v2/premium-interest-dialog.tsx`
 
-### 4.1 Backend — grant idempotente pós-pagamento
+- Accept the existing `sourceComponent` prop and pick a contextual subtitle from i18n based on it:
+  - `sidebar_section` → "Esta secção faz parte do relatório completo."
+  - `sidebar_period` → "Para analisar períodos maiores, desbloqueia o relatório completo."
+  - `sidebar_add_competitor` → "A comparação com concorrentes faz parte do relatório completo."
+  - `sidebar_main_cta` and everything else → keep the current default `premium.dialog.subtitle`.
+- Render the contextual sentence as a small eyebrow-style line above (or replacing) the default subtitle so the rest of the dialog (cards, prices, hero, coupon, footer) is untouched. The post-purchase beta-credits bonus is NOT mentioned anywhere in this dialog.
+- Keep the 9€ card CTA copy and behaviour exactly as today (it already navigates to `/checkout/report-full` with `source: sourceComponent`). The "Desbloquear por 9€" label requirement is already satisfied implicitly by the dynamic price from `PUBLIC_PRODUCTS.report_full_9.priceLabel` shown on the card; we only need to confirm the existing `premium.dialog.single.cta` string reads "Desbloquear por 9€" and adjust the i18n string if it does not. No hardcoded price is added.
 
-Criar `grantPostPurchaseBetaCredits({ leadId, paymentId })` em `src/lib/credits/credits.server.ts`:
-- Insere uma linha no `credit_ledger` com `delta = +2`, `reason = "admin_adjust"` (já permitido pelo tipo) e `metadata = { kind: "post_purchase_beta_bonus", payment_id }`.
-- **Idempotência sem migração:** antes de inserir, faz `select id from credit_ledger where lead_id = $1 and metadata->>'kind' = 'post_purchase_beta_bonus' and metadata->>'payment_id' = $2 limit 1`. Se existir, no-op. (Trade-off explícito: garante idempotência ao nível aplicacional sem alterar o schema; ver §5.)
+### 4. `src/i18n/locales/{pt,en}/report.json`
 
-Chamada a partir de `src/routes/api/public/eupago-webhook.ts`, **dentro** do bloco `if (normalized === "paid")`, **após** `grantEntitlement` e **antes** do `recordProductEvent` existente — ou logo a seguir. Falhas isoladas em `try/catch` (não derrubam o webhook, igual ao padrão atual). Emite também `recordProductEvent({ eventType: "credits_post_purchase_granted", leadId, metadata: { payment_id, delta: 2 }})`.
+- Under `premium.dialog`, add a `contextual` map:
+  ```
+  contextual: {
+    sidebar_section, sidebar_period, sidebar_add_competitor
+  }
+  ```
+- Update `premium.dialog.single.cta` to "Desbloquear por {{price}}" (PT) / "Unlock for {{price}}" (EN), interpolating the dynamic `PUBLIC_PRODUCTS.report_full_9.priceLabel`. Keeps a single source of truth for the price.
 
-### 4.2 Frontend — sidebar paid state
+## Tracking
 
-`report-block-nav.tsx` (`ExploreSection`, paid branch):
-- Mostrar saldo de créditos: chip discreto `"{n} créditos beta disponíveis"` (i18n `nav.explore.beta_credits_available`).
-- Período (chips 30d/90d) e "Add competitor" passam a abrir um novo `ConsumeCreditDialog` (a criar em `src/components/report-redesign/v2/consume-credit-dialog.tsx`):
-  - Copy contextual ("nova janela 30d" / "adicionar concorrente").
-  - Explica que vai recolher e processar dados públicos novos.
-  - CTA: `"Usar 1 crédito"` (enabled) se `balance >= 1`.
-  - Se `balance < 1`: estado "sem créditos disponíveis" — mensagem + link para feedback/waitlist (sem inventar loja de créditos).
+- `premium_cta_clicked` events keep their existing payload; `source_component` will now correctly reflect `sidebar_main_cta` / `sidebar_section` for newly wired clicks. No event is removed.
+- Downstream `pricing_option_clicked` and `payment_cta_clicked` inside the dialog continue to forward `sourceComponent` — no change.
 
-### 4.3 Saldo no cliente
+## What is explicitly NOT changed
 
-Adicionar server function `getMyCreditBalance` em `src/lib/credits/credits.functions.ts` (a criar) — leitura via cookie `lead_id` já usada pelo onboarding. Consumida pelo `PremiumCtaProvider` (ou novo `CreditsContext`) e exposta como `useCredits()`.
+- Product prices, `PUBLIC_PRODUCTS`, checkout routes, EuPago webhook, entitlements, credits ledger, `ConsumeCreditDialog`, `grantPostPurchaseBetaCredits`, scraping, `analyze-public-v1`, report generation, metric calculations, RLS, DB schema.
+- Paid-user behaviour in the sidebar: period chips and Add competitor keep opening `ConsumeCreditDialog`, accessible section rows keep scrolling.
 
-### 4.4 Confirmação → consumo real
+## Manual validation checklist
 
-**Importante:** o consumo real (`reserveCredit` + nova análise) **fica fora deste plano**. O dialog confirma intenção e, ao "Usar 1 crédito", invoca o endpoint existente `/api/analyze-public-v1` com parâmetros (`window=30`, ou `competitor=<handle>`). Esse endpoint já reserva crédito atomicamente. Se o endpoint ainda não aceitar `window`/`competitor`, marcamos como TODO de follow-up sem mexer agora.
-
-## 5. Alterações de schema
-
-**Nenhuma é estritamente necessária.** A idempotência do bónus pós-compra é assegurada ao nível aplicacional via `select … limit 1` antes do insert.
-
-**Opcional (recomendado em fase 2):** adicionar índice único parcial `uniq_credit_ledger_post_purchase_beta` em `credit_ledger ((metadata->>'payment_id')) where reason = 'admin_adjust' and metadata->>'kind' = 'post_purchase_beta_bonus'` para garantia ao nível de DB. **Não incluo no plano atual** porque o pedido pede para parar e explicar antes de propor changes — posso adicionar a migration num passo seguinte se aprovares.
-
-## 6. Ficheiros que vou editar
-
-- `src/lib/credits/credits.server.ts` — adicionar `grantPostPurchaseBetaCredits`.
-- `src/lib/credits/credits.functions.ts` — **novo**, expõe `getMyCreditBalance` ao cliente.
-- `src/routes/api/public/eupago-webhook.ts` — chamada ao novo grant.
-- `src/components/report-redesign/v2/consume-credit-dialog.tsx` — **novo** modal.
-- `src/components/report-redesign/v2/report-block-nav.tsx` — sidebar paid: indicador de saldo + handlers que abrem o dialog.
-- `src/components/report-redesign/v2/premium-cta-context.tsx` (ou novo `credits-context.tsx`) — expor `balance` e helpers.
-- `src/i18n/locales/pt/*.json` (+ `en/*` para consistência) — strings novas.
-- Testes: `src/lib/credits/__tests__/credits.test.ts` (cobrir idempotência do novo grant), pequeno smoke test do webhook.
-
-**Não vou tocar em:** preços, payloads EuPago, lógica de checkout, entitlements rules, geração do relatório, scraping, schema da DB.
-
-## 7. Riscos e safeguards
-
-- **Risco:** webhook re-entregar e duplicar bónus. **Safeguard:** check aplicacional `metadata->>'payment_id'` antes de inserir + `try/catch` isolado.
-- **Risco:** revelar o bónus antes da compra. **Safeguard:** strings e indicador de créditos só renderizados quando `premiumUnlocked === true`. Pricing modal/copy não menciona bónus.
-- **Risco:** consumo acidental sem confirmação. **Safeguard:** chips de período e "Add competitor" no estado paid passam **sempre** pelo `ConsumeCreditDialog` antes de qualquer fetch.
-- **Risco:** lead pagar mas chegar com 0 créditos antigos → confusão. **Safeguard:** bónus é +2 absolutos ao saldo atual; copy do email/modal pós-compra deixa claro "2 créditos beta adicionados".
-- **Risco:** alterar contratos do `analyze-public-v1`. **Safeguard:** plano só liga o dialog ao endpoint atual; suporte a `window`/`competitor` fica como follow-up explícito.
-
-## 8. Aprovação
-
-Por favor confirma:
-1. OK em usar `reason = "admin_adjust"` + `metadata.kind = "post_purchase_beta_bonus"` (sem migration) para o grant?
-2. OK em deixar a parte de "passar `window`/`competitor` ao `analyze-public-v1`" como follow-up separado (este plano só wireia o dialog e o saldo)?
-3. OK em revelar o bónus apenas no sidebar pós-compra + no email `payment_confirmed` (sem o anunciar antes)?
+1. Free public report: click "Desbloquear relatório completo" (sidebar main CTA) → `PremiumInterestDialog` opens with default subtitle; `premium_cta_clicked` event fires with `source_component: "sidebar_main_cta"`.
+2. Free user: click any locked premium section row in the sidebar (desktop and mobile sheet) → modal opens with contextual line "Esta secção faz parte do relatório completo."; no scroll happens; `source_component: "sidebar_section"` and `block_id` are tracked.
+3. Free user: click 30d or 90d chip (desktop expanded and mobile compact) → modal opens with "Para analisar períodos maiores…"; `selected_window` continues to be tracked.
+4. Free user: click locked "Adicionar concorrente" (desktop and mobile compact) → modal opens with "A comparação com concorrentes…".
+5. In all four cases no network call to `analyze-public-v1` is made, no credit is reserved, and clicking the 9€ card still navigates to `/checkout/report-full?source=<contextual>`.
+6. Paid user: section rows still scroll, period chips and Add competitor still open `ConsumeCreditDialog`, beta-credit balance line is unchanged.
+7. The dialog never shows any reference to "créditos beta" / post-purchase bonus.

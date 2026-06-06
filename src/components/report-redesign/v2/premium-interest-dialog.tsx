@@ -38,6 +38,18 @@ export function PremiumInterestDialog({
   const navigate = useNavigate();
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
 
+  // Contextual one-liner shown above the default subtitle, depending on
+  // which sidebar action opened the dialog. Falls back to no extra line
+  // for sources without dedicated copy (e.g. sidebar_main_cta).
+  const contextualKey: Record<string, string | undefined> = {
+    sidebar_section: "premium.dialog.contextual.sidebar_section",
+    sidebar_period: "premium.dialog.contextual.sidebar_period",
+    sidebar_add_competitor: "premium.dialog.contextual.sidebar_add_competitor",
+  };
+  const contextualLine = contextualKey[sourceComponent]
+    ? t(contextualKey[sourceComponent] as string)
+    : null;
+
   const handleSelect = (option: PricingOption) => {
     trackEvent({
       data: {
@@ -89,6 +101,11 @@ export function PremiumInterestDialog({
           <DialogTitle className="text-lg font-semibold text-content-primary">
             {t("premium.dialog.title")}
           </DialogTitle>
+          {contextualLine ? (
+            <p className="text-sm font-medium text-accent-primary leading-relaxed">
+              {contextualLine}
+            </p>
+          ) : null}
           <DialogDescription className="text-sm text-content-secondary leading-relaxed">
             {t("premium.dialog.subtitle")}
           </DialogDescription>

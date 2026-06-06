@@ -828,7 +828,7 @@
           "Editorial reading + competitors",
           "Practical recommendations"
         ],
-        "cta": "Get full report"
+        "cta": "Unlock for €9"
       },
       "hero": {
         "label": "Report + human",
@@ -847,6 +847,11 @@
         "trust": "No subscription · no automatic renewal",
         "services_question": "Need to analyse several digital assets or prepare training for your team?",
         "services_cta": "Talk about audit or training"
+      },
+      "contextual": {
+        "sidebar_section": "This section is part of the full report.",
+        "sidebar_period": "To analyse longer windows, unlock the full report.",
+        "sidebar_add_competitor": "Competitor comparison is part of the full report."
       }
     }
   },
