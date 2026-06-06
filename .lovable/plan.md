@@ -1,106 +1,143 @@
-# QA audit — paid Add Competitor beta credit flow
+# Audit — First Overview Card (Editorial Identity)
 
-## 1. Exact `premiumUnlocked` condition (production)
+**Read-only audit. No code changes.**
 
-Source: `src/lib/payments/entitlements.functions.ts` → `getMyReportEntitlement`.
+The card the user describes (37/100, "Micro (10K–50K)", verdict "Cadência forte, sinal fraco", long paragraph, sample summary, 3 metric cards, "O que funciona / O que limita") is **`EditorialIdentityCard`**, NOT the small `FreeInitialReadingCard` added earlier. It is rendered in Free, Pro and Lab.
 
-```text
-premiumUnlocked = hasEntitlement(leadId, "report_full_9")
-where leadId = getLeadFromCookie()  // cookie name: lead_session
-```
+---
 
-- If there is no `lead_session` cookie → `{ hasLead: false, premiumUnlocked: false }`.
-- If `lead_entitlements` has no row with `lead_id = <session lead>` AND `product_code = 'report_full_9'` → `premiumUnlocked: false`.
-- Any thrown error → `premiumUnlocked: false` (fail-closed).
-- The route `src/routes/analyze.$username.tsx` reads only this function for the Pro gate (line 400-407). Credit balance is NOT consulted.
+## 1. Files inspected
 
-## 2. Does Pro require `lead_entitlements.product_code = 'report_full_9'`?
+- `src/components/report-redesign/v2/report-overview-block.tsx` — mounts the card in all 3 modes (`all`, `free`, `free_with_engagement`).
+- `src/components/report-redesign/v2/overview/editorial-identity-card.tsx` — the card itself (IndexBlock, IndexRuler, MetricsStrip, BulletColumn, deriveSignals).
+- `src/components/report-redesign/v2/overview/score-utils.ts` — `computeEnvolvimento`, `computeFrequencia`, `computeGlobalScore`.
+- `src/lib/report/editorial-verdict.ts` — `deriveEditorialVerdict` guard (AI vs deterministic resolver).
+- `src/lib/report/editorial-verdict-fallback.ts` — `buildFallbackVerdict` + 6 deterministic keys.
+- `src/lib/report/cadence-label.ts` — `buildCadenceLabelPt`, `classifyHashtagsState`, `pickHashtagsForVerdict`.
+- `src/i18n/locales/pt/report.json` → `identity.fallback.*` — the 6 verdict paragraphs (the long text the user is reviewing comes from here).
+- `src/lib/report/post-aggregates.ts` + `src/lib/report/block01-sample.ts` — averages (likes/comments).
 
-Yes. Confirmed in `entitlements.functions.ts` line 20 and `entitlements.server.ts` (`SELECT … FROM lead_entitlements WHERE product_code = $1`). Credit ledger balance is irrelevant to the gate. The Add Competitor button in `report-block-nav.tsx` (line 756-762) only opens the consume-credit dialog when `premiumUnlocked === true`; otherwise it routes through `handlePremiumAccessClick("sidebar_add_competitor")` (upsell, not consumption).
+---
 
-## 3. Is credit balance alone sufficient?
+## 2. Data dependency table
 
-No. A lead with `credit_balance > 0` but no `lead_entitlements` row sees the same locked sidebar as a free user. Credits are only debited after Pro is unlocked, inside the competitor confirm handler.
+| Visible element | Component | Source field | Apify | Deterministic | OpenAI | DataForSEO | Hardcoded / fallback |
+|---|---|---|---|---|---|---|---|
+| "37/100" hero number | `IndexBlock` | `computeGlobalScore(envolvimento, frequencia)` = 60% engagement-vs-benchmark + 40% cadence | indirect (posts/followers) | ✅ pure | ❌ | ❌ | no |
+| Scale label "Micro (10K–50K)" | `IndexBlock` → `tierLabelFromFollowers` + `tierRangeFromFollowers` | `result.data.profile.followers` | ✅ followers | ✅ thresholds (Nano/Micro/Mid/Macro/Mega) | ❌ | ❌ | thresholds hardcoded |
+| Median marker on ruler | `IndexRuler` | `medianIndexFromBenchmark(overall, deltaPp)` = `overall − deltaPp × 4.5` | indirect | ✅ (linear approx — NOT a real tier median) | ❌ | ❌ | approximation, flagged in comments |
+| "Abaixo da mediana do escalão Micro" | `IndexBlock` qualitativeLine | `clamped` thresholds: <25 / 25–45 / 45–65 / 65–85 / 85+ | indirect | ✅ thresholds | ❌ | ❌ | i18n `identity.index.qual_*` |
+| Verdict title ("Cadência forte, sinal fraco") | resolver → `copy.title` | `aiVerdict?.title` OR `buildFallbackVerdict().title` from `identity.fallback.<key>.title` | indirect | ✅ when AI absent/rejected | ⚠️ if AI verdict passed guard | ❌ | 6 deterministic keys |
+| Long paragraph (1st + 2nd) | resolver → `copy.paragraph` | same path; fallback uses `identity.fallback.<key>.paragraph` | indirect | ✅ when AI absent/rejected | ⚠️ same | ❌ | i18n template, **same text for every profile in that band** |
+| Sample summary paragraph (cadence + hashtags) | `buildFallbackVerdict` qualifierSentences appended after `\n\n` | `cadenceLabelPt` from `buildCadenceLabelPt`; `hashtagsState` + `topHashtags` from `classifyHashtagsState` / `pickHashtagsForVerdict` | ✅ posts → cadence + hashtags | ✅ | ❌ | ❌ | only in fallback path; if AI verdict wins, qualifiers are NOT appended |
+| Cadence "1 post every 2–3 days" | `buildCadenceLabelPt` | `enriched.cadence.weekly` + `.sufficient` | ✅ | ✅ thresholds (≥5 / ≥2 / ≥1 / <1) | ❌ | ❌ | strings inlined |
+| Recurring hashtags | `pickHashtagsForVerdict` (top 2 with uses ≥ 2) | `result.data.topHashtags` | ✅ | ✅ | ❌ | ❌ | — |
+| Avg likes (MetricsStrip) | `computePostAverages` of `buildBlock01Sample.performancePosts` | snapshot `posts` | ✅ | ✅ | ❌ | ❌ | fallback to `content_summary.average_likes` |
+| Avg comments | same | same | ✅ | ✅ | ❌ | ❌ | same fallback |
+| Weekly rhythm | `postingFrequencyWeekly` | `k.postingFrequencyWeekly` from snapshot | ✅ | ✅ | ❌ | ❌ | — |
+| "O que funciona" bullets | `deriveSignals` when fallback wins; else `aiVerdict.strengths` | scores + ppw + followers + delta + dominantFormatShare | indirect | ✅ thresholds | ⚠️ AI strengths used when guard passes | ❌ | 4 fallback bullets if list <2 |
+| "O que limita" bullets | same | same | indirect | ✅ | ⚠️ same | ❌ | 4 fallback bullets if list <2 |
 
-## 4. Current DB state (production = preview, single Supabase project)
+---
 
-```text
-lead_entitlements where product_code='report_full_9' → 0 rows
-Test leads with credits but no entitlement:
-  - validator+freegate@auditprofiles.test   1 credit, no entitlement
-  - frederico.carvalho@digitalfc.pt          1 credit, no entitlement
-  - fredericodigital@gmail.com               1 credit, no entitlement
-```
+## 3. Deterministic rules table
 
-No lead in the database currently satisfies the gate. Any QA path that walks the real `analyze.$username.tsx` Pro flow must either (a) complete a real EuPago payment, or (b) have a `lead_entitlements` row inserted manually.
+| Rule | Inputs | Threshold | Output | Frederico example | Fallback |
+|---|---|---|---|---|---|
+| Profile index | `engagementRate`, `engagementBenchmark`, `postingFrequencyWeekly` | `0.6 × min(100, eng/bench × 100) + 0.4 × freq score` | 0–100 int | low engagement ratio + ppw ≥ 3 → ~30–40 | bench=0 → envolvimento=0 |
+| Scale label | `followers` | ≥1M / ≥250K / ≥50K / ≥10K / else | Mega/Macro/Mid/Micro/Nano | 10K–50K → Micro | `null` if 0 |
+| "Cadência forte" | `postsPerWeek30d` | `ppw ≥ 2.5` AND `engRatio < 0.7` → key=`cadence_no_signal` | title "Cadência forte, sinal fraco" | matches | n/a |
+| "sinal fraco" | `engagementPct / benchmarkEngagementPct` | `< 0.7` of benchmark | same key | matches | bench null → falls to other branch |
+| Verdict key picker | engRatio, ppw, avgComments, postsAnalyzed | 1) postsAnalyzed<4 → `opportunity/limited_data` · 2) engRatio≥0.9 & comments<2 → `attention_no_conversation` · 3) engRatio≥1 & ppw≥2.5 → `solid_consistent` · 4) engRatio≥1 & ppw<1 → `irregular_reach` · 5) ppw≥2.5 & engRatio<0.7 → `cadence_no_signal` · 6) engRatio<0.7 & comments<2 → `no_direction` · 7) else → `opportunity/promising` | one of 6 keys | rule 5 | always returns a key |
+| Cadence sentence | `weekly`, `sufficient` | ≥5/≥2/≥1/<1 | "cerca de 1 post por dia" / "a cada 2–3 dias" / "1 a 2 / semana" / "menos de 1 / semana" | ppw≈3 → "a cada 2–3 dias" | `sufficient=false` → "a amostra ainda não permite avaliar a cadência" |
+| Hashtag state | `topHashtags[].uses` | any uses≥2 → recurring · all =1 → weak · 0 → absent | 1 sentence | weak/recurring | safe default `absent` |
+| "O que funciona" — `freq_consistent` | `ppw` | 3 ≤ ppw ≤ 7 | adds bullet | yes | `fallback_active` if list <2 |
+| "audience_relevant" | tier | not Nano | adds bullet | yes | — |
+| "engagement_above" | `engagementDeltaPct` | ≥ +10% | adds bullet | no | — |
+| "format_mixed" | `dominantFormatShare` | < 55% | adds bullet | depends | — |
+| "O que limita" — `freq_weak` | ppw | < 1 | adds bullet | no | — |
+| "freq_excess" | ppw | > 7 | adds bullet | no | — |
+| "engagement_below" | delta | ≤ -30% | adds bullet | likely yes | — |
+| "format_repetitive" | dominantFormatShare | ≥ 70% | adds bullet | depends | `fallback_diversify` / `fallback_conversation` to fill |
 
-## 5. Admin / preview bypasses
+---
 
-- `/admin/report-preview/<username>?variant=pro_preview` and `?variant=internal_lab` hardcode `premiumUnlocked={variant !== "public_mvp"}` on `<ReportShellV2 />` (line 205). The sidebar's Add Competitor renders unlocked there, but the route does **not** exercise the live entitlement check, the lead-session cookie path, or the credit debit. It is UI-only QA.
-- The admin preview route is admin-gated (cookie + `ADMIN_ALLOWED_EMAILS`), independent from the user `lead_session`.
-- There is no "impersonate lead" or "test login" mechanism. Public auth is Google OAuth only.
-- The preview deployment (`*-dev.lovable.app`) and production (`auditprofiles.com`) share the same Lovable Cloud / Supabase project; entitlement/credit state is identical between them. Only the bundled frontend differs.
+## 4. AI dependency verdict
 
-## 6. Can a temporary test entitlement be created in preview only?
+- **Reads `enriched.aiInsightsV2?.editorialVerdict`** (passed as `aiVerdict`). When present and the guard `deriveEditorialVerdict` finds ≤1 contradiction the AI title/paragraph/strengths/limitations are rendered. With ≥2 contradictions or `null`, the fallback wins.
+- **Does NOT read**: `ai_insights_v2.sections.hero.text` (explicitly noted in code comment), `visual_cover_analysis`, `caption_semantic_analysis`, `comment_intelligence`, DataForSEO / `market_signals`.
+- **Whole card can render with zero paid enrichments** — every visible element has a deterministic fallback. Verdict guard guarantees: AI presence is opportunistic, not required.
+- The "sample summary" sentence (cadence + hashtags) appended after `\n\n` is **only present in the fallback path**. When the AI verdict wins, those qualifiers are dropped — that's why Pro reports with AI sometimes show no cadence-label line and Free reports without AI always show it.
 
-No — preview and production share the same `lead_entitlements` table. A test entitlement inserted "in preview" is also visible in production. It can, however, be scoped to a clearly synthetic lead (e.g. `validator+freegate@auditprofiles.test`) and revoked immediately after QA.
+---
 
-## 7. Where the QA should run
+## 5. Free vs Pro behaviour
 
-- **Functional / UI QA of the locked-vs-unlocked sidebar, dialog copy, layout, "1 crédito" label, button states, competitor cap, mobile rendering** → `/admin/report-preview/<handle>?variant=pro_preview` on the preview deployment. No DB writes, no credit burn, no Apify call.
-- **True end-to-end paid path (entitlement → balance fetch → consume_credit → competitor scrape → snapshot rebuild)** → `/analyze/<handle>` on the preview deployment, logged in via Google as the QA lead, with one of:
-  - Path A (clean): complete a real €9 EuPago purchase with a dedicated QA Google account.
-  - Path B (cheap, recommended for beta): operator inserts a single `lead_entitlements` row for the QA lead just before QA, and deletes it after — explicitly out of scope for this audit task.
+- Card component is identical in Free (`mode="free"` and `mode="free_with_engagement"`), Pro (`mode="all"`) and Lab preview. Same props, same data path, same scores.
+- Free payload sanitisation does NOT strip `aiInsightsV2.editorialVerdict` today, so when AI ran, Free will show the AI verdict too. (If sanitisation removes it later, the card silently falls back — no breakage.)
+- No Pro-only field is exposed exclusively on this card. The 3 metric tiles, the bullets and the verdict all derive from public-enough data.
+- The recently-added `FreeInitialReadingCard` is a SEPARATE small block that renders only in `mode="free_with_engagement"` AFTER the Identity Card — it's a second deterministic teaser, not the card under audit.
 
-## 8. Avoiding unnecessary credit / Apify spend
+---
 
-- One Add Competitor confirm = 1 credit debited in `credit_ledger` AND 1 Apify primary scrape against the competitor handle. There is no dry-run flag in the consume-credit path.
-- Pick a competitor handle already in `APIFY_ALLOWLIST` and small (low post count) to keep the Apify cost minimal.
-- Pre-load the QA lead with exactly the credits needed (current `validator+freegate` lead has 1 — enough for one competitor; no top-up required).
-- Do NOT exercise the flow on the production domain with a real customer's Google session.
+## 6. Copy risk analysis
 
-## Recommendations
+Source: `identity.fallback.cadence_no_signal.paragraph` (i18n template, **identical for every profile assigned this key**).
 
-| Item | Recommendation |
-|---|---|
-| **Environment** | Preview deployment `*-dev.lovable.app` (same DB, isolates from real users on the custom domain). |
-| **Account** | Dedicated QA Google account (not a personal one). Linked to lead `validator+freegate@auditprofiles.test` via `link_user_to_existing_reports` after first login, OR a freshly-created QA lead. |
-| **Entitlement state** | Exactly one row in `lead_entitlements (lead_id, product_code='report_full_9')`. Currently absent — must be created before QA. |
-| **Credit balance** | ≥ 1 (current QA lead already has 1). |
-| **DB setup needed?** | Yes — one `lead_entitlements` insert for the QA lead, granted out-of-band. Not part of this audit; requires an explicit follow-up prompt. |
-| **Expected spend** | 1 credit + 1 Apify scrape (no €). |
+| Claim | Supported? | Determ/Inferred | Soften? | Move to Pro? |
+|---|---|---|---|---|
+| "eficiência editorial em défice" | Partly — derives from `engRatio < 0.7` AND `ppw ≥ 2.5`; the value-judgement "défice" is interpretive | Inferred | Yes — replace with neutral "menos resposta do que o volume publicado sugeriria" | Keep |
+| "o conteúdo não está a transformar atenção em resposta significativa" | Weak — we measure engagement vs tier benchmark, not "attention". Comments count is not consulted in this key | Inferred | Yes — replace with "a taxa de envolvimento fica abaixo da referência do escalão apesar da cadência" | Keep |
+| "a tensão observada está entre o esforço de produção e a clareza do ângulo editorial" | Not supported — no signal about production effort or angle clarity | Inferred / editorial | Yes — remove or move to Pro | Move to Pro (AI verdict only) |
+| "formatos repetidos sem variação de gancho ou de enquadramento" | Not supported in this card — `dominantFormatShare` isn't read inside `pickKey`; the claim is generic | Hardcoded template, NOT data-driven | Yes — remove or gate behind `dominantFormatShare ≥ 70` | Move to Pro / gate |
+| "a amostra ainda não permite concluir se o problema é de tema, ritmo narrativo ou conexão" | Honest hedge, but appears even with healthy sample sizes | Hardcoded template | Keep only when `postsAnalyzed < N` (e.g. 8) | Keep with gate |
 
-## Safest execution prompt for the real QA (to paste later, after entitlement is in place)
+Bottom line: the deterministic paragraph **overreaches** by asserting causes ("ângulo editorial", "gancho", "enquadramento") that the picker did not measure. The hedge sentence is honest but currently fires regardless of sample size.
 
-```text
-Run a runtime validation of the paid Add Competitor flow on the preview
-deployment only. Do not touch production traffic.
+---
 
-Pre-check:
-1. Lead `validator+freegate@auditprofiles.test` has credit_balance >= 1 and
-   one row in lead_entitlements with product_code = 'report_full_9'. Abort
-   otherwise; do not insert the row in this run.
-2. Confirm APIFY_ENABLED=true and the chosen competitor handle is in
-   APIFY_ALLOWLIST.
-3. Sign in on `*-dev.lovable.app` via Google with the dedicated QA account.
+## 7. UX/UI audit
 
-Execute:
-4. Open /analyze/<primary handle>. Confirm premiumUnlocked=true (sidebar
-   shows credit chip and Add Competitor enabled).
-5. Click Add Competitor. Type the allowlisted competitor handle. Confirm.
+- Block is text-heavy: title + 2 long paragraphs + qualifier sentences + warnings + evidence list + 3 metric tiles + 2 bullet columns. On mobile this scrolls for 2–3 viewports before the user reaches Engagement.
+- The cadence/hashtags qualifier sentence is buried inside the paragraph. Promoting it to a dedicated "Amostra recente" row (one short line, monoline icons) would make it scannable and let the paragraph shrink.
+- "O que funciona / O que limita" remains the strongest diagnostic and should stay below the verdict — that grid is the most scannable artefact on the card.
+- For Free: keep verdict title + 1 short paragraph (≤ 2 sentences) + sample row + bullets. Drop the second long paragraph (move it to Pro under "Leitura aprofundada").
+- For Pro: keep both paragraphs but only when the AI verdict has passed the guard; the deterministic fallback should run only the short version, since its language is currently generic.
 
-Verify after T0:
-- credit_ledger: 1 new row, delta = -1, reason competitor.
-- enrichment_jobs / provider_call_logs: exactly 1 new apify row for the
-  competitor handle, status success.
-- No OpenAI calls. No DataForSEO calls. No new EuPago payment.
-- analysis_snapshots: the primary snapshot's competitor_usernames now
-  includes the added handle; new normalized_payload renders the competitor
-  side-by-side in the report.
-- No regression in pre-existing snapshots.
+---
 
-Output:
-- Lead id, snapshot id, competitor handle.
-- credit_ledger row, provider_call_logs row, enrichment_jobs row.
-- PASS / FAIL.
-```
+## 8. Recommended refinement plan (do not implement yet)
+
+1. **Soften deterministic copy.** Edit the 6 keys in `src/i18n/locales/pt/report.json` (`identity.fallback.*.paragraph`) to:
+   - Shorten to ≤ 2 sentences.
+   - Remove unmeasured causal claims ("ângulo editorial", "gancho", "enquadramento").
+   - Reference only signals the picker actually used (engRatio, ppw, avgComments, sample size).
+2. **Gate the hedge sentence.** Append "A amostra ainda não permite concluir…" only when `postsAnalyzed < 8`, via a `qualifierSentences.push(...)` branch in `buildFallbackVerdict`.
+3. **Promote sample summary to a visible row.** Replace the inline `qualifierSentences.join(" ")` with a small dedicated row above the MetricsStrip ("Amostra recente · 1 post a cada 2–3 dias · #saude · #portugal"), data-driven from `cadenceLabelPt` and `pickHashtagsForVerdict`. Keeps both fallback and AI paths producing that row.
+4. **Add a Free-vs-Pro paragraph length switch.** In Pro keep both paragraphs of the AI verdict; in Free render only the first paragraph plus the sample row + bullets.
+5. **No changes** to: `score-utils.ts`, `editorial-verdict.ts` guard, AI prompt, provider calls, payload schema, Free payload sanitisation, gating, payments, entitlements.
+
+---
+
+## 9. Exact next implementation prompt (paste later, do NOT implement now)
+
+> Use Chat/Plan Mode first, then Edit Mode.
+>
+> Goal: Refine the deterministic copy and layout of the first overview card (`EditorialIdentityCard`) without changing data sources.
+>
+> Scope of allowed changes:
+> 1. `src/i18n/locales/pt/report.json` and `src/i18n/locales/en/report.json` — rewrite the 6 `identity.fallback.*.paragraph` values to ≤ 2 sentences, removing causal claims that aren't measured by `pickKey` in `editorial-verdict-fallback.ts`. Keep titles unchanged.
+> 2. `src/lib/report/editorial-verdict-fallback.ts` — gate the "A amostra ainda não permite concluir…" hedge to `metrics.postsAnalyzed < 8`. No change to `pickKey` logic, thresholds or band mapping.
+> 3. `src/components/report-redesign/v2/overview/editorial-identity-card.tsx` — extract the sample summary (cadence sentence + hashtag chips) into a dedicated row rendered above `MetricsStrip`, fed from `cadenceLabelPt`, `hashtagsState` and `topHashtags` props (already passed in). When those props are absent or `cadenceSufficient === false`, omit the row.
+> 4. Pass a new `variant: "free" | "pro"` prop (default `"pro"`) from `report-overview-block.tsx`. In `"free"` only render the first paragraph of `copy.paragraph` (split on `\n\n`); in `"pro"` render both. No other behavioural difference.
+>
+> Forbidden:
+> - No changes to `score-utils.ts` weights, `deriveEditorialVerdict` guard, AI prompt, snapshot schema, payload sanitisation, gating, EuPago, entitlements, credits, payments, Apify, DataForSEO, OpenAI calls, Internal Lab.
+>
+> Validation:
+> 1. Free report renders shorter paragraph + visible sample row + bullets.
+> 2. Pro report (when AI verdict passes guard) renders both paragraphs unchanged.
+> 3. Deterministic fallback profile renders without unmeasured causal language.
+> 4. Hedge sentence only appears when `postsAnalyzed < 8`.
+> 5. Mobile: card height shrinks visibly on Free.
+> 6. No new provider calls, no schema changes, no cost.
