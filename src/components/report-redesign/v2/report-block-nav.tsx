@@ -1325,7 +1325,8 @@ export function ReportBlockTopTabs({
   sampleSize = 0,
   observedDays = 0,
   competitorCount = 0,
-  competitorMax = 3,
+  competitorMax = 2,
+  competitorHandles,
 }: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
