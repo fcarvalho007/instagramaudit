@@ -1079,6 +1079,8 @@ function lifecycleAccent(stage: EmailLifecycleStage): string {
       return "rgb(var(--admin-leads-500))";
     case "pagamento":
       return "rgb(var(--admin-success-500))";
+    case "planeado":
+      return "rgb(var(--admin-warning-500))";
     case "legado":
       return "rgb(var(--admin-text-tertiary))";
   }
