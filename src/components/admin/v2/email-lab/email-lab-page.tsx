@@ -125,12 +125,21 @@ export function EmailLabPage() {
   });
   const [search, setSearch] = useState("");
   const [chip, setChip] = useState<FilterChip>("todos");
+  const [showLegacy, setShowLegacy] = useState(false);
   const [tab, setTab] = useState<DetailTab>("preview");
   const [previewMode, setPreviewMode] = useState<"html" | "text">("html");
   const [reloadTick, setReloadTick] = useState(0);
   const [copyState, setCopyState] = useState<"idle" | "ok">("idle");
 
-  const selected = TEMPLATES.find((t) => t.key === selectedKey)!;
+  // If the selected template is legacy and legacy is hidden, fall back to
+  // the main lifecycle email so the detail pane never goes blank.
+  const selectedRaw = TEMPLATES.find((t) => t.key === selectedKey)!;
+  const selectedIsLegacy = lifecycleOf(selectedRaw) === "legado";
+  const effectiveLegacyVisible = showLegacy || chip === "legado";
+  const selected =
+    selectedIsLegacy && !effectiveLegacyVisible
+      ? TEMPLATES.find((t) => t.key === "report_saved")!
+      : selectedRaw;
   const rendered = useMemo<RenderedEmail | { error: string }>(() => {
     try {
       return selected.render();
@@ -143,8 +152,25 @@ export function EmailLabPage() {
   const renderError = "error" in rendered ? rendered.error : null;
   const safeRendered = renderError ? null : (rendered as RenderedEmail);
 
-  const wiredCount = TEMPLATES.filter((t) => t.wired).length;
-  const orphanCount = TEMPLATES.length - wiredCount;
+  // Composition breakdown — mirrors the operational reality.
+  const operationalCount = TEMPLATES.filter(
+    (t) =>
+      (t.statusBadges ?? []).includes("ligado") &&
+      t.lifecycleStage !== "legado" &&
+      t.lifecycleStage !== "planeado",
+  ).length;
+  const manualCount = TEMPLATES.filter((t) =>
+    (t.statusBadges ?? []).includes("manual"),
+  ).length;
+  const transactionalCount = TEMPLATES.filter((t) =>
+    (t.statusBadges ?? []).includes("transaccional"),
+  ).length;
+  const plannedCount = TEMPLATES.filter(
+    (t) => t.lifecycleStage === "planeado",
+  ).length;
+  const legacyCount = TEMPLATES.filter(
+    (t) => t.lifecycleStage === "legado",
+  ).length;
 
   // Reaproveita o agregado de /api/admin/automation-flow para mostrar
   // contagem real de envios nos últimos 30 dias (mesma fonte que o cockpit
@@ -174,8 +200,11 @@ export function EmailLabPage() {
       items: TEMPLATES.filter((t) => lifecycleOf(t) === stage)
         .filter((t) => matchesChip(t, chip))
         .filter(filterText),
-    })).filter((g) => g.items.length > 0);
-  }, [search, chip]);
+    }))
+      .filter((g) => g.items.length > 0)
+      // Hide the legacy section unless user opted in (or filtered by it).
+      .filter((g) => g.stage !== "legado" || effectiveLegacyVisible);
+  }, [search, chip, effectiveLegacyVisible]);
 
   const handleCopy = async () => {
     if (!safeRendered) return;
@@ -214,20 +243,43 @@ export function EmailLabPage() {
 
       <div className="flex flex-col gap-5">
         {/* KPIs */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <KpiTile label="Total" value={TEMPLATES.length} sub="templates" />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <KpiTile
-            label="Ligados"
-            value={wiredCount}
-            sub="com trigger"
+            label="Total registados"
+            value={TEMPLATES.length}
+            sub="templates"
+            tone="muted"
+          />
+          <KpiTile
+            label="Operacionais"
+            value={operationalCount}
+            sub="ligados · lifecycle activo"
             tone="success"
           />
           <KpiTile
-            label="Sem trigger"
-            value={orphanCount}
-            sub={orphanCount === 1 ? "por ligar" : "por ligar"}
+            label="Manuais"
+            value={manualCount}
+            sub="enviados pelo admin"
+          />
+          <KpiTile
+            label="Transaccionais"
+            value={transactionalCount}
+            sub="event-driven"
+          />
+          <KpiTile
+            label="Planeados"
+            value={plannedCount}
+            sub="sem trigger"
             tone="warning"
           />
+          <KpiTile
+            label="Legados"
+            value={legacyCount}
+            sub="só auditoria"
+            tone="muted"
+          />
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <KpiTile
             label="Envios (30d)"
             value={sentLast30d ?? "—"}
@@ -243,6 +295,12 @@ export function EmailLabPage() {
           <div className="flex flex-col gap-3">
             <SearchBox value={search} onChange={setSearch} />
             <FilterChips value={chip} onChange={setChip} />
+            <LegacyToggle
+              showLegacy={showLegacy}
+              onToggle={() => setShowLegacy((v) => !v)}
+              legacyCount={legacyCount}
+              forcedOn={chip === "legado"}
+            />
             {grouped.length === 0 ? (
               <p className="text-[12px] text-admin-text-tertiary">
                 Sem templates a corresponder ao filtro.
@@ -429,6 +487,72 @@ function SearchBox({
         className="w-full border-0 bg-transparent text-[13px] text-admin-text-primary outline-none placeholder:text-admin-text-tertiary"
       />
     </label>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* Legacy toggle                                                              */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+function LegacyToggle({
+  showLegacy,
+  onToggle,
+  legacyCount,
+  forcedOn,
+}: {
+  showLegacy: boolean;
+  onToggle: () => void;
+  legacyCount: number;
+  forcedOn: boolean;
+}) {
+  const visible = showLegacy || forcedOn;
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={forcedOn}
+      className="flex items-center justify-between rounded-lg border px-3 py-2 text-left text-[11px] transition-colors"
+      style={{
+        borderColor: "rgb(var(--admin-border-default))",
+        background: visible
+          ? "rgb(var(--admin-surface-muted))"
+          : "rgb(var(--admin-surface-base))",
+        opacity: forcedOn ? 0.7 : 1,
+        cursor: forcedOn ? "not-allowed" : "pointer",
+      }}
+      title={
+        forcedOn
+          ? "Filtro \"Legado\" activo — secção sempre visível."
+          : visible
+            ? "Esconder legados"
+            : "Mostrar legados (welcome_beta, report_summary)"
+      }
+    >
+      <span className="flex flex-col">
+        <span className="font-semibold text-admin-text-secondary">
+          {visible ? "A mostrar legados" : "Mostrar legados"}
+        </span>
+        <span className="text-admin-text-tertiary">
+          {visible
+            ? `${legacyCount} templates visíveis · só para auditoria`
+            : `${legacyCount} templates ocultos · mantidos apenas para auditoria`}
+        </span>
+      </span>
+      <span
+        aria-hidden="true"
+        className="ml-2 inline-flex h-4 w-7 shrink-0 items-center rounded-full px-0.5 transition-colors"
+        style={{
+          background: visible
+            ? "rgb(var(--admin-text-primary))"
+            : "rgb(var(--admin-text-tertiary) / 0.3)",
+        }}
+      >
+        <span
+          className="block h-3 w-3 rounded-full bg-white transition-transform"
+          style={{ transform: visible ? "translateX(12px)" : "translateX(0)" }}
+        />
+      </span>
+    </button>
   );
 }
 
@@ -1079,6 +1203,8 @@ function lifecycleAccent(stage: EmailLifecycleStage): string {
       return "rgb(var(--admin-leads-500))";
     case "pagamento":
       return "rgb(var(--admin-success-500))";
+    case "planeado":
+      return "rgb(var(--admin-warning-500))";
     case "legado":
       return "rgb(var(--admin-text-tertiary))";
   }

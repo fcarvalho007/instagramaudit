@@ -279,6 +279,7 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
             stage: "99_legado",
             lifecycleBadges: ["legado"],
             wired: false,
+            note: "Absorvido por report_saved. Mantido apenas para histórico, overrides e auditoria.",
           },
           {
             key: "pedido_recebido",
@@ -399,7 +400,7 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
             kind: "automatic",
             fromStatus: null,
             toStatus: null,
-            stage: "99_legado",
+            stage: "98_planeado",
             visualKind: "email",
             extraTag: null,
             timing: {
@@ -418,6 +419,7 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
             failures: 0,
             wired: FLOW_EVENTS.personal_area_saved.instrumented,
             lifecycleBadges: ["sem_trigger", "planeado"],
+            note: "A ligar futuramente ao evento handle_new_user ou signup real.",
           },
           {
             key: "relatorio_visto",
@@ -506,6 +508,7 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
             failures: 0,
             wired: false,
             lifecycleBadges: ["legado"],
+            note: "Absorvido por report_saved. Mantido apenas para histórico, overrides e auditoria.",
           },
           {
             key: "feedback_recebido",
@@ -648,18 +651,21 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
         // Breakdown that explicitly excludes legacy and kill-switch-off
         // from the "operational" headline, so the KPI doesn't lie.
         const legacyCount = flows.filter((f) => f.stage === "99_legado").length;
+        const plannedCount = flows.filter((f) => f.stage === "98_planeado").length;
         const killSwitchOffCount = flows.filter((f) =>
           (f.lifecycleBadges ?? []).includes("kill_switch_off"),
         ).length;
         const manualCount = flows.filter(
           (f) =>
             f.stage !== "99_legado" &&
+            f.stage !== "98_planeado" &&
             (f.lifecycleBadges ?? []).includes("manual"),
         ).length;
         const operationalActiveCount = flows.filter(
           (f) =>
             f.status === "active" &&
             f.stage !== "99_legado" &&
+            f.stage !== "98_planeado" &&
             !(f.lifecycleBadges ?? []).includes("kill_switch_off"),
         ).length;
         // Leads que aguardam acção do admin = união (não soma) das fases
@@ -691,6 +697,7 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
             manualCount,
             killSwitchOffCount,
             legacyCount,
+            plannedCount,
             totalCount: flows.length,
           },
           sent: { last30d: sentLast30d, deltaVsYesterday: sentToday - sentYest },
