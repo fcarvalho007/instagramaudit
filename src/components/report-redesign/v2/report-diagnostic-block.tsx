@@ -44,7 +44,9 @@ import {
 import type { CommentIntelligence } from "@/lib/analysis/types";
 import { VisualCoverAnalysisCard } from "./visual-cover-analysis-card";
 import type { VisualCoverAnalysis } from "@/lib/report/visual-cover-types";
-import { useVariantFeatures } from "@/lib/report/report-variant";
+import { useReportVariant, useVariantFeatures } from "@/lib/report/report-variant";
+import { buildStrategicContext } from "@/lib/report/strategic-context";
+import { StrategicContextCard } from "./strategic-context-card";
 
 /** Parse persisted visual_cover_analysis from snapshot payload. */
 function parseVisualCoverAnalysis(
@@ -87,6 +89,8 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
   const { t } = useTranslation("report");
   const posts = payload?.posts ?? [];
   const features = useVariantFeatures();
+  const variant = useReportVariant();
+  const isLab = variant === "internal_lab";
   const km = result.data.keyMetrics;
   const topHashtags = result.data.topHashtags ?? [];
   const topKeywords = result.data.topKeywords ?? [];
@@ -137,6 +141,33 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
         dominantFormatShare: dominantFormat?.sharePct ?? 0,
         dominantFormatLabel: dominantFormat?.label ?? null,
       });
+
+  // ── Commercial Pro report: render only 06 (Contexto estratégico) + 07 (Prioridades) ──
+  if (!isLab) {
+    const strategicContext = buildStrategicContext({
+      contentType,
+      funnel,
+      audience,
+      integration,
+      aiSections: result.enriched.aiInsightsV2?.sections,
+      editorialVerdict: result.enriched.aiInsightsV2?.editorial_verdict ?? null,
+    });
+    return (
+      <div className="space-y-12 md:space-y-14">
+        <div id="contexto-estrategico" className="scroll-mt-24">
+          <StrategicContextCard context={strategicContext} />
+        </div>
+        {priorityItems.length > 0 && (
+          <div id="prioridades" className="scroll-mt-24">
+            <ReportDiagnosticPriorities
+              items={priorityItems}
+              source={prioritySource}
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // Build cards as nullable list, then split into groups
   // A · Identidade editorial: Q01 + Q02
