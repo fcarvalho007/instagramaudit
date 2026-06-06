@@ -408,17 +408,6 @@ export function FrequencyCard({
     rest: t(`frequency.verdict.${verdictKey}.rest`),
   };
   const frequencyStatus = t(`frequency.status.${statusKey}`);
-  const verdictTone =
-    score >= 70 ? ("positive" as const) : score >= 40 ? ("warning" as const) : ("danger" as const);
-  const verdictLabel = t(
-    score >= 70
-      ? "frequency.verdict_label.strong"
-      : score >= 40
-        ? "frequency.verdict_label.improve"
-        : "frequency.verdict_label.alert",
-  );
-  const weekdayShort = (t("frequency.weekday_short", { returnObjects: true }) as string[]) ?? [];
-
   // Dynamic subtitle: "1 post a cada 1–2 dias · 12 publicações em 18 dias"
   const hasUsableData =
     !isInsufficient && effectiveSampleSize > 0 && effectiveWindowDays > 0;
@@ -437,15 +426,26 @@ export function FrequencyCard({
     : null;
 
   const publishedCount = windowedDays.filter((d) => d.published).length;
-  const pausedCount = windowedDays.length - publishedCount;
-  const maxPosts = Math.max(1, ...windowedDays.map((d) => d.postCount));
+  const lang: "en" | "pt" = i18n.language.startsWith("pt") ? "pt" : "en";
 
-  const weeks = buildWeekGrid(windowedDays);
+  // Inline summary metrics (no boxed cards): posts/week · % active days · peak weekday.
+  const buckets = aggregateByWeekday(windowedDays);
+  const top = pickMostActive(buckets);
+  const weekdayLong =
+    (t("frequency.weekday_long", { returnObjects: true }) as string[]) ?? [];
+  const peakLabel = top.posts > 0 ? weekdayLong[top.weekday] ?? "—" : "—";
+  const cadenceValue = formatNumber(postingFrequencyWeekly, lang, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+  const consistencyPct =
+    windowedDays.length > 0
+      ? Math.round((publishedCount / windowedDays.length) * 100)
+      : 0;
 
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden flex flex-col">
-      {/* Header */}
-      <div className="px-5 md:px-6 pt-5 md:pt-6 pb-1 space-y-2">
+      <div className="px-5 md:px-7 pt-6 md:pt-7 pb-6 md:pb-7">
         <ReportCardSectionHeader
           title={t("frequency.title")}
           qualifier={!isInsufficient ? frequencyStatus : undefined}
@@ -459,148 +459,56 @@ export function FrequencyCard({
           subtitle={subtitleLine ?? (isInsufficient ? headline : undefined)}
           bottomMargin={false}
         />
-      </div>
 
-      {/* KPI strip (Cadência · Consistência · Pico semanal) — gated on usable data */}
-      {!isInsufficient && hasUsableData && (
-        <FrequencyKpiStrip
-          postingFrequencyWeekly={postingFrequencyWeekly}
-          publishedCount={publishedCount}
-          totalDays={windowedDays.length}
-          days={windowedDays}
-          t={t}
-          lang={i18n.language.startsWith("pt") ? "pt" : "en"}
-        />
-      )}
-
-      {/* Ritmo por dia da semana — hidden when cadence is insufficient */}
-      {(!isInsufficient || weeks.length > 0) && (
-        <div className="px-5 md:px-6 mt-6 grid gap-4 md:gap-5 md:grid-cols-5">
-          {!isInsufficient && (
-            <div className="md:col-span-2">
-              <WeeklyRhythm days={windowedDays} t={t} embedded />
-            </div>
-          )}
-          {weeks.length > 0 && (
-            <div className={!isInsufficient ? "md:col-span-3" : "md:col-span-5"}>
-              <div className="rounded-xl border border-border-default bg-surface-muted/60 px-4 py-4 md:px-5 md:py-5 h-full flex flex-col">
-                {/* Header row: eyebrow + legend */}
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex flex-col gap-0.5 min-w-0">
-                    <span className="text-eyebrow-sm text-content-tertiary">
-                      {t("frequency.calendar.eyebrow", { days: effectiveWindowDays })}
-                    </span>
-                    <span className="text-xs text-content-tertiary leading-snug">
-                      {t(
-                        publishedCount === 1
-                          ? "frequency.calendar.published_one"
-                          : "frequency.calendar.published_other",
-                        { count: publishedCount },
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 sm:justify-end">
-                    <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
-                      <span
-                        className="size-[10px] rounded-[3px] shrink-0"
-                        aria-hidden="true"
-                        style={{ background: legendBg(0), border: "1px solid rgba(148,163,184,0.35)" }}
-                      />
-                      {t("frequency.calendar.legend_none")}
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
-                      <span
-                        className="size-[10px] rounded-[3px] shrink-0"
-                        aria-hidden="true"
-                        style={{ background: legendBg(1) }}
-                      />
-                      {t("frequency.calendar.legend_one")}
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
-                      <span
-                        className="size-[10px] rounded-[3px] shrink-0"
-                        aria-hidden="true"
-                        style={{ background: legendBg(2) }}
-                      />
-                      {t("frequency.calendar.legend_two")}
-                    </span>
-                  </div>
+        {!isInsufficient && hasUsableData && (
+          <>
+            {/* Inline metrics — no borders, no boxes */}
+            <div className="mt-7 flex flex-wrap gap-x-10 gap-y-5 sm:gap-x-14">
+              <div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="font-sans text-[2rem] md:text-[2.25rem] font-semibold tabular-nums leading-none text-content-primary">
+                    {cadenceValue}
+                  </span>
                 </div>
-
-                {/* Weekday headers */}
-                <div className="grid grid-cols-7 gap-1.5 mt-4 mb-1.5">
-                  {weekdayShort.map((wd, i) => (
-                    <span
-                      key={i}
-                      className="text-eyebrow-sm text-content-tertiary text-center leading-none select-none"
-                    >
-                      {wd}
-                    </span>
-                  ))}
+                <span className="block mt-2 text-xs text-content-tertiary">
+                  {t("frequency.kpi.cadence_label").toLowerCase()}
+                </span>
+              </div>
+              <div>
+                <div className="flex items-baseline gap-0.5">
+                  <span className="font-sans text-[2rem] md:text-[2.25rem] font-semibold tabular-nums leading-none text-content-primary">
+                    {consistencyPct}
+                  </span>
+                  <span className="font-sans text-[1.25rem] md:text-[1.5rem] font-semibold leading-none text-content-secondary/70">
+                    %
+                  </span>
                 </div>
-
-                {/* Week rows */}
-                <div
-                  role="img"
-                  aria-label={t("frequency.calendar.aria", { published: publishedCount, paused: pausedCount })}
-                  className="grid gap-1.5"
-                  style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
-                >
-                  {weeks.flatMap((week, wi) =>
-                    Array.from({ length: 7 }).map((_, di) => {
-                      const day = week[di] ?? null;
-                      if (!day) {
-                        return (
-                          <span
-                            key={`pad-${wi}-${di}`}
-                            className="aspect-square rounded-md"
-                          />
-                        );
-                      }
-                      const dateLabel = fmtLocaleDate(day.date, i18n.language);
-                      const tooltipPosts = day.postCount > 0
-                        ? t(
-                            day.postCount === 1
-                              ? "frequency.weekly_summary.posts_one"
-                              : "frequency.weekly_summary.posts_other",
-                            { count: day.postCount },
-                          )
-                        : t("frequency.calendar.tooltip_no_post");
-                      return (
-                        <span
-                          key={day.date}
-                          title={`${dateLabel} · ${tooltipPosts}`}
-                          className="relative aspect-square rounded-md flex items-center justify-center transition-colors"
-                          style={{ background: cellStyle(day.postCount).bg, border: cellStyle(day.postCount).border }}
-                        >
-                          {day.postCount > 1 && (
-                            <span
-                              className="text-[11px] font-semibold leading-none text-white select-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]"
-                              aria-hidden="true"
-                            >
-                              {day.postCount}
-                            </span>
-                          )}
-                        </span>
-                      );
-                    }),
-                  )}
-                </div>
+                <span className="block mt-2 text-xs text-content-tertiary">
+                  {t("frequency.kpi.consistency_label").toLowerCase()}
+                </span>
+              </div>
+              <div>
+                <span className="block font-sans text-[2rem] md:text-[2.25rem] font-semibold leading-none text-content-primary">
+                  {peakLabel}
+                </span>
+                <span className="block mt-2 text-xs text-content-tertiary">
+                  {t("frequency.kpi.peak_label").toLowerCase()}
+                </span>
               </div>
             </div>
-          )}
-        </div>
-      )}
 
-      {/* Verdict — suppressed when cadence is insufficient (no strong claims). */}
-      {!isInsufficient && (
-      <InsightCallout tone={verdictTone} label={verdictLabel} className="mt-6 mx-5 md:mx-6 mb-5 sm:mb-6">
-        <p>
-          <span className="font-semibold">{verdict.strong}</span>{" "}
-          {verdict.rest}
-        </p>
-      </InsightCallout>
-      )}
+            <WeeklyRhythmChart days={windowedDays} t={t} />
+
+            <FrequencyConclusion
+              days={windowedDays}
+              verdict={verdict}
+              showSuccessMark={score >= 70}
+              t={t}
+            />
+          </>
+        )}
+      </div>
+
       <ExternalReferenceNote
         refs={socialinsiderRef ?? null}
         headline={headline}
