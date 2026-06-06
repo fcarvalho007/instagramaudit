@@ -1,65 +1,126 @@
-# Sticky Unlock Bar — Refinamento (Opção A)
+# Free/Public Enrichment Gate — Production Runtime Validation
 
-Alinhar a `StickyUnlockBar` com os mockups: fundo escuro de marca, cadeado destacado, mini-indicador de progresso real, contador único e dismissal persistente em mobile. Sem mexer em pricing, checkout, gating ou geração de relatório.
+## Goal
+Confirm in production that an `analyze-public-v1` call produces a Free snapshot whose enrichment is fully skipped (no OpenAI, no DataForSEO, no paid enrichers), Apify primary scrape runs once, and the public report renders the expected Free structure (overview + initial reading + engagement + 5 locked teasers + sticky unlock bar).
 
-## Ficheiro a alterar
-- `src/components/report-redesign/v2/sticky-unlock-bar.tsx` (único)
+This plan spends **one** real Apify primary scrape. Nothing else.
 
-## Mudanças
+## Open questions before execution
 
-### 1. Estilo visual (desktop + mobile)
-- Fundo: navy de marca `#03045E` (já é token de report) com leve transparência sobre `rgba(11,16,32,0.96)` + `backdrop-blur`. Texto branco/`#CAF0F8` para subtítulo.
-- Cadeado: passa a quadrado destacado `bg-white/8` `rounded-lg` com cadeado em `#90E0EF`.
-- CTA "Desbloquear": mantém `bg-accent-primary` (`#3772E5`) com `text-white`, hover `bg-[#3D9AFF]`. Pill, font-semibold, sentence case.
-- Preço `9€` branco, sufixo "único" em `text-white/60`.
-- Borda superior: hairline `border-white/8` em vez de `border-border-default`.
-- Sombra: `0 -12px 32px -16px rgba(3,4,94,.45)` para a barra "saltar" da página clara.
+1. **Handle to use.** Confirm which `APIFY_ALLOWLIST` handle to consume. Default candidate: `frederico.m.carvalho` (current test profile). Approve or replace.
+2. **Pre-check on 24h freshness.** If the chosen handle already has a fresh snapshot (<24h), the gate will return cached and Apify will NOT run — the test does not validate the fresh path. Options:
+   - (a) Pick a different allowlisted handle with no fresh snapshot.
+   - (b) Skip the test until the existing snapshot ages out.
+   We do NOT delete snapshots.
+3. **Build freshness.** Confirm the latest preview was published to `auditprofiles.com` before we trigger. If not, run validation against the published version that IS live and note the version, or pause until publish.
 
-### 2. Mini-indicador de progresso (real, alinhado a 5)
-- Fonte única: os 5 teasers premium definidos em `PREMIUM_TEASERS` (`report-overview-block.tsx`) — `frequencia`, `formatos`, `publicacoes-chave`, `diagnostico-editorial`, `prioridades`. Total = **5**.
-- Hook novo `useTeaserProgress(["frequencia","formatos","publicacoes-chave","diagnostico-editorial","prioridades"])` interno ao ficheiro: um `IntersectionObserver` por anchor; marca cada um como "visto" quando entra no viewport (one-shot, sem desmarcar).
-- Render: 5 segmentos `h-[3px] w-6 rounded-full`; vistos = `bg-[#22C55E]` (verde calmo), por ver = `bg-white/15`.
-- Label do contador = `Faltam ${5 - viewed} secções premium` quando `viewed < 5`; quando todos vistos, oculta a linha de subtítulo e mantém só "Desbloqueia o relatório completo" para coerência. Subtítulo curto (`frequência, formatos, publicações-chave, diagnóstico, prioridades`) só quando `viewed === 0` no desktop; mobile sempre oculta.
+I will not POST anything until these three are confirmed.
 
-### 3. Reconciliação do contador (single source of truth)
-- Eliminar o "5 secções" hardcoded espalhado. Centralizar em constante local `PREMIUM_TEASER_IDS` e derivar `TOTAL = 5` daí. Texto da barra usa sempre esta constante.
-- (Fora deste prompt) os textos "Relatório completo · 5 secções premium" em `report-overview-block.tsx` já dizem 5 — coerentes. Nenhuma alteração necessária noutros ficheiros nesta task.
+## Pre-checks (read-only, no cost)
 
-### 4. Comportamento de scroll (já correcto, validar)
-- Aparece quando `#frequencia` intersecta (1º teaser premium) → continua igual.
-- Esconde quando `#lead-magnet-card` está visível → continua igual.
-- Nenhuma alteração lógica ao `useStickyUnlockTrigger`.
+1. `supabase--read_query` — confirm handle is in `APIFY_ALLOWLIST` secret (read from config or hardcoded allowlist source, whichever the codebase uses).
+2. `supabase--read_query` — `SELECT id, created_at, expires_at FROM analysis_snapshots WHERE instagram_username = '<handle>' ORDER BY created_at DESC LIMIT 3;` to confirm no valid (<24h, not expired) snapshot exists.
+3. Record `T0 = now()` (UTC) immediately before the POST.
+4. Confirm production URL responds: `GET https://auditprofiles.com/` returns 200 and serves the latest build (check build hash / footer version if available).
 
-### 5. Dismissal persistente em mobile
-- Estado `dismissed` passa a hidratar de `sessionStorage.getItem("sticky_unlock_bar:dismissed") === "1"`.
-- Ao fechar: `setDismissed(true)` e `sessionStorage.setItem("sticky_unlock_bar:dismissed","1")`.
-- SSR-safe: leitura dentro de `useEffect` com lazy state initializer guard `typeof window !== "undefined"`.
-- Aplica-se a ambos os variants (uma só preferência partilhada).
+## Action (one real call, one Apify scrape)
 
-### 6. Layout mobile (variante info + botão)
-Alinhar com o segundo mockup:
-- Card empilhado em duas linhas em vez de uma:
-  - Linha superior: cadeado quadrado + ("Faltam 5 secções" + "9€ · pagamento único") + 5 segmentos à direita.
-  - Linha inferior: botão CTA full-width "Desbloquear relatório completo".
-- Mantém `mx-3 mb-[72px]` para ficar acima da tab bar.
-- Mantém `×` discreto no canto superior direito do card.
+```
+POST https://auditprofiles.com/api/analyze-public-v1
+Content-Type: application/json
 
-### 7. Acessibilidade
-- `aria-label` no `nav`/`section` da barra.
-- Indicador de progresso com `role="progressbar"` `aria-valuemin=0 aria-valuemax=5 aria-valuenow={viewed}` e `aria-label="Secções premium vistas"`.
-- Botão fechar mantém `aria-label="Fechar barra"`.
+{
+  "instagram_username": "<handle>",
+  "competitor_usernames": []
+}
+```
 
-## Forbidden (não tocar)
-- `PUBLIC_PRODUCTS`, preços, EuPago, checkout, entitlements, credits, schema.
-- AI / Apify / DataForSEO / OpenAI.
-- Geração de relatório, snapshot, Pro/Lab.
-- `report-overview-block.tsx`, premium teasers, gating do shell.
+Capture HTTP status, response body, and the returned snapshot id / cache key.
 
-## Validação manual
-1. Free report: barra escura aparece ao chegar ao 1º teaser; desaparece no card final.
-2. Indicador mostra 5 segmentos; vão ficando verdes ao scrollar por cada teaser.
-3. Contador mostra "Faltam 5 → 4 → 3 → … → 0" coerente.
-4. Pro/Lab: barra não aparece (`#frequencia` não está montado nesses modos para free; gating do shell mantém-se).
-5. Mobile: layout em duas linhas com CTA full-width; fechar guarda em `sessionStorage`; reload mesma sessão → não reaparece; nova janela/sessão → reaparece.
-6. Preço dinâmico continua a vir de `PUBLIC_PRODUCTS.report_full_9.priceLabel`.
-7. Contraste AA do branco sobre `#03045E` e do `#3772E5` sobre o mesmo fundo.
+## Validation queries (all read-only)
+
+### A. Snapshot enrichment_status
+```sql
+SELECT id, created_at,
+       normalized_payload->'enrichment_status' AS enrichment_status
+FROM analysis_snapshots
+WHERE instagram_username = '<handle>'
+  AND created_at >= '<T0>'
+ORDER BY created_at DESC
+LIMIT 1;
+```
+**Expect** all 5 keys = `skipped_free`:
+- `dataforseo`
+- `insights_v1`
+- `insights_v2`
+- `visual_cover`
+- `caption_semantic`
+
+### B. enrichment_jobs for this snapshot
+```sql
+SELECT enrichment_type, status, created_at
+FROM enrichment_jobs
+WHERE snapshot_id = '<snapshot_id>';
+```
+**Expect** 0 rows for `dataforseo`, `insights_v1`, `insights_v2`, `visual_cover`, `caption_semantic`. Any row of those types = FAIL.
+
+### C. provider_call_logs after T0
+```sql
+SELECT provider, actor, status, created_at, estimated_cost_usd, source_context
+FROM provider_call_logs
+WHERE created_at >= '<T0>'
+  AND handle = '<handle>'
+ORDER BY created_at DESC;
+```
+**Expect**:
+- Exactly one Apify primary scrape row (status success).
+- Zero `openai` rows.
+- Zero `dataforseo` rows.
+
+### D. Non-regression on existing snapshots
+```sql
+SELECT id, updated_at FROM analysis_snapshots
+WHERE instagram_username = '<handle>' AND id <> '<new_snapshot_id>'
+ORDER BY updated_at DESC LIMIT 5;
+```
+**Expect** no `updated_at` after T0.
+
+## UI render check
+Open `https://auditprofiles.com/analyze/<handle>` (incognito, no login). Confirm:
+- "Visão geral" block present.
+- "Leitura inicial do perfil" present.
+- Engagement block present.
+- 5 locked premium teaser cards present (frequencia, formatos, publicacoes-chave, diagnostico-editorial, prioridades).
+- Sticky unlock bar appears when scrolling into the teaser area, disappears at the lead magnet card.
+
+Capture one screenshot of the teaser area + sticky bar.
+
+## Output template (filled after run)
+
+- **Handle used:** …
+- **T0:** … (UTC)
+- **Snapshot ID:** …
+- **Enrichment status table:** key → value
+- **Enrichment jobs table:** rows or `(none)`
+- **Provider calls table:** rows
+- **Apify estimated cost (USD):** …
+- **UI observations:** bullet list + screenshot ref
+- **Old snapshots changed:** yes/no
+- **Verdict:** PASS / FAIL with reason
+
+## Hard constraints (do not violate)
+
+- Do NOT call `/api/checkout`, EuPago, or grant `lead_entitlements`.
+- Do NOT trigger Pro/Lab regeneration.
+- Do NOT enqueue or run OpenAI, DataForSEO, visual_cover, caption_semantic, insights_v1/v2 enrichers — even manually.
+- Do NOT modify DB rows. All SQL above is `SELECT`.
+- Do NOT delete or update existing snapshots, payments, entitlements, credits, or user_roles.
+- Spend cap for this validation: **1 Apify primary scrape**. If the response indicates cache hit, do NOT retry with cache busting.
+
+## What I need from you to proceed
+
+1. Approved handle.
+2. Confirmation that no fresh snapshot exists for it (or approval to pick another).
+3. Confirmation the latest build is published to `auditprofiles.com`.
+
+Once approved and we're in build mode, I will execute pre-checks → POST → validation queries → UI check → fill the output template.
