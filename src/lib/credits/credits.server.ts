@@ -22,6 +22,8 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
 
 export const INITIAL_GRANT = 2;
+export const POST_PURCHASE_BETA_BONUS = 2;
+export const POST_PURCHASE_BETA_KIND = "post_purchase_beta_bonus";
 
 export class InsufficientCreditsError extends Error {
   readonly code = "insufficient_credits" as const;
@@ -92,6 +94,48 @@ export async function grantInitialCredits(leadId: string): Promise<void> {
   const code = (error as { code?: string }).code;
   if (code === "23505") return;
   throw new Error(`grantInitialCredits failed: ${error.message}`);
+}
+
+/**
+ * Idempotent post-purchase beta bonus: +2 créditos atribuídos depois de
+ * um pagamento confirmado. Único por `payment_id` ao nível aplicacional —
+ * verifica se já existe uma linha com
+ * `reason='admin_adjust'` + `metadata.kind='post_purchase_beta_bonus'`
+ * + `metadata.payment_id=<paymentId>` antes de inserir.
+ *
+ * Não anunciado antes da compra. Falhas isoladas pelo caller (webhook).
+ * Devolve `{ granted: boolean }` — `false` quando já existia.
+ */
+export async function grantPostPurchaseBetaCredits(input: {
+  leadId: string;
+  paymentId: string;
+}): Promise<{ granted: boolean }> {
+  const { data: existing, error: selectError } = await supabaseAdmin
+    .from("credit_ledger")
+    .select("id")
+    .eq("lead_id", input.leadId)
+    .eq("reason", "admin_adjust")
+    .filter("metadata->>kind", "eq", POST_PURCHASE_BETA_KIND)
+    .filter("metadata->>payment_id", "eq", input.paymentId)
+    .limit(1)
+    .maybeSingle();
+  if (selectError) {
+    throw new Error(
+      `grantPostPurchaseBetaCredits select failed: ${selectError.message}`,
+    );
+  }
+  if (existing) return { granted: false };
+
+  await insertLedger({
+    lead_id: input.leadId,
+    delta: POST_PURCHASE_BETA_BONUS,
+    reason: "admin_adjust",
+    metadata: {
+      kind: POST_PURCHASE_BETA_KIND,
+      payment_id: input.paymentId,
+    } as Json,
+  });
+  return { granted: true };
 }
 
 export interface ReserveResult {
