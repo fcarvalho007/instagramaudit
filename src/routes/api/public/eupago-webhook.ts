@@ -16,6 +16,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { verifyWebhookSignature } from "@/lib/payments/eupago.server";
 import { grantEntitlement } from "@/lib/payments/entitlements.server";
+import { grantPostPurchaseBetaCredits } from "@/lib/credits/credits.server";
 import { recordProductEvent } from "@/lib/tracking.server";
 import type { ProductCode } from "@/lib/payments/products";
 
@@ -158,6 +159,32 @@ export const Route = createFileRoute("/api/public/eupago-webhook")({
             });
           } catch (err) {
             console.error("[eupago-webhook] grantEntitlement failed", err);
+          }
+
+          // Post-purchase beta bonus: +2 créditos, idempotente por payment_id.
+          // Isolado num try/catch para nunca derrubar o webhook.
+          try {
+            const result = await grantPostPurchaseBetaCredits({
+              leadId: row.lead_id,
+              paymentId: row.id,
+            });
+            if (result.granted) {
+              await recordProductEvent({
+                eventType: "credits_post_purchase_granted",
+                leadId: row.lead_id,
+                metadata: {
+                  payment_id: row.id,
+                  product_code: row.product,
+                  delta: 2,
+                  kind: "post_purchase_beta_bonus",
+                },
+              });
+            }
+          } catch (err) {
+            console.error(
+              "[eupago-webhook] grantPostPurchaseBetaCredits failed",
+              err,
+            );
           }
 
           // Register coupon redemption (idempotent) if the payment was created
