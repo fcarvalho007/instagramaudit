@@ -600,6 +600,33 @@
       "body": "Indica o nome e email e responde a 3 perguntas rápidas para guardares a visão geral completa.",
       "cta": "Guardar visão geral",
       "cta_aria": "Guardar visão geral completa"
+    },
+    "explore": {
+      "title": "Explorar",
+      "period_label": "Período de análise",
+      "period_observed": "{{days}} dias observados",
+      "competitors_label": "Concorrentes",
+      "add_competitor": "Adicionar concorrente",
+      "add_competitor_aria": "Adicionar concorrente para comparação",
+      "competitors_count": "{{count}} de {{max}} concorrentes adicionados",
+      "period_locked_hint": "Filtros de período disponíveis no relatório completo.",
+      "competitors_locked_hint": "Comparação com concorrentes no relatório completo."
+    },
+    "status": {
+      "unlocked_title": "Relatório completo",
+      "unlocked_subtitle": "{{count}} secções desbloqueadas"
+    },
+    "unlock": {
+      "eyebrow": "Desbloquear",
+      "title": "Desbloquear relatório completo",
+      "cta_full": "Desbloquear · {{price}}",
+      "cta_compact": "Desbloquear · {{price}}",
+      "benefits": {
+        "sections": "{{count}} secções premium",
+        "periods": "Filtros de período",
+        "competitors": "Comparar concorrentes"
+      },
+      "trust": "Pagamento único. Sem subscrição."
     }
   },
   "shell": {

@@ -1,12 +1,10 @@
-import { Download, Loader2, Share2, UserPlus } from "lucide-react";
+import { Download, Loader2, Share2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
 import type { ReportPageActions } from "@/components/report/report-page";
 import { ShareReportPopover } from "@/components/report-share/share-popover";
 import { cn } from "@/lib/utils";
-
-import { scrollToBlock } from "./use-active-block";
 
 interface ReportUtilityBarProps {
   result: AdapterResult;
@@ -44,22 +42,6 @@ export function ReportUtilityBar({
     >
       <div className="mx-auto max-w-[1520px] px-3 sm:px-6">
         <div className="flex items-center justify-end gap-1.5 sm:gap-2 h-11">
-          <button
-            type="button"
-            onClick={() => scrollToBlock("benchmark")}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg",
-              "border border-border-default bg-white text-content-secondary",
-              "px-2.5 sm:px-3 h-8 text-xs sm:text-sm font-medium",
-              "transition-colors duration-150",
-              "hover:bg-surface-muted hover:border-border-strong hover:text-content-primary",
-            )}
-          >
-            <UserPlus className="size-3.5" aria-hidden="true" />
-            <span className="hidden sm:inline">
-              {t("hero.actions.add_competitor")}
-            </span>
-          </button>
           <button
             type="button"
             onClick={actions.onExportPdf}

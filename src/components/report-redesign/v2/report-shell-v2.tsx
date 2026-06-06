@@ -41,7 +41,6 @@ import { useBlocks } from "./block-config";
 import { ReportBlockSidebar, ReportBlockTopTabs } from "./report-block-nav";
 import { ReportBlockSection } from "./report-block-section";
 import { ReportHeroV2 } from "./report-hero-v2";
-import { AnalysisPeriodSelector } from "./analysis-period-selector";
 import { ReportOverviewBlock } from "./report-overview-block";
 import { ReportDiagnosticBlock } from "./report-diagnostic-block";
 // BlockFeedback removido — feedback agora só no EndFeedbackStrip (fim do bloco gratuito).
@@ -210,19 +209,12 @@ export function ReportShellV2({
               à direita (desktop). Em mobile/tablet, empilhado. */}
           <div className="w-full pt-3 pb-2 sm:pt-4 sm:pb-3">
             <div className="mx-auto max-w-[1520px] px-5 md:px-6 lg:px-8">
-              <div className="flex flex-col lg:flex-row lg:items-stretch rounded-xl sm:rounded-2xl border border-border-default bg-white shadow-card overflow-hidden">
+              <div className="flex rounded-xl sm:rounded-2xl border border-border-default bg-white shadow-card overflow-hidden">
                 <ReportHeroV2
                   result={result}
                   actions={actions}
                   analyzedAtIso={analyzedAtIso ?? null}
                   expiresAtIso={expiresAtIso ?? null}
-                />
-                <AnalysisPeriodSelector
-                  sampleSize={result.data.profile.postsAnalyzed ?? 0}
-                  observedDays={result.coverage.windowDays ?? 0}
-                  snapshotId={snapshotId ?? null}
-                  handle={result.data.profile.username ?? null}
-                  variant={variant}
                 />
               </div>
             </div>
@@ -237,6 +229,8 @@ export function ReportShellV2({
           unlocked={unlocked}
           premiumUnlocked={premiumUnlocked}
           onUnlockClick={handleUnlockClick}
+          sampleSize={result.data.profile.postsAnalyzed ?? 0}
+          observedDays={result.coverage.windowDays ?? 0}
         />
 
         {/* Layout 2-col a partir do bloco 01 */}
@@ -249,6 +243,8 @@ export function ReportShellV2({
               unlocked={unlocked}
               premiumUnlocked={premiumUnlocked}
               onUnlockClick={handleUnlockClick}
+              sampleSize={result.data.profile.postsAnalyzed ?? 0}
+              observedDays={result.coverage.windowDays ?? 0}
             />
             <main className="min-w-0 flex-1 overflow-x-clip">
               {/* 01 · Overview (redesigned) */}

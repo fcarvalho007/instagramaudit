@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Menu, Lock, ArrowRight } from "lucide-react";
+import { Menu, Lock, ArrowRight, Check, UserPlus, CheckCircle2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
@@ -23,6 +23,7 @@ import { scrollToBlock, useActiveBlock } from "./use-active-block";
 import { useReportTracking } from "./report-tracking-context";
 import { usePremiumCta } from "./premium-cta-context";
 import { trackEvent } from "@/lib/tracking.functions";
+import { PUBLIC_PRODUCTS } from "@/lib/payments/products";
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -56,6 +57,14 @@ interface SidebarProps {
   premiumUnlocked?: boolean;
   /** Handler that opens the existing UnlockModal (lead-magnet flow). */
   onUnlockClick?: () => void;
+  /** Free sample size used by the Explorar period chip. */
+  sampleSize?: number;
+  /** Number of days observed in the sample window. */
+  observedDays?: number;
+  /** Current competitor count for the Explorar section (Pro state). */
+  competitorCount?: number;
+  /** Max competitors allowed in Pro. Defaults to 3. */
+  competitorMax?: number;
 }
 
 // ── Item builder ─────────────────────────────────────────────────────
@@ -334,38 +343,201 @@ function ItemRow({
   );
 }
 
-function PremiumBlockCard({
-  items,
-  onOpenDialog,
+// ── Sidebar list (shared layout for desktop + mobile drawer) ─────────
+
+function LockedItemRow({
+  item,
+  onClick,
 }: {
-  items: SidebarItem[];
-  onOpenDialog: () => void;
+  item: SidebarItem;
+  onClick: () => void;
 }) {
   const { t } = useTranslation("report");
   return (
-    <div className="rounded-lg border border-border-default bg-surface-muted/40 p-3">
-      <div className="flex items-center gap-2 border-b border-border-default/60 pb-2 mb-2">
-        <Lock className="size-3.5 text-content-secondary" aria-hidden="true" />
-        <span className="text-sm font-semibold text-content-primary">
-          {t("nav.premium")}
-        </span>
-        <span className="ml-auto text-xs text-content-tertiary tabular-nums">
-          {t("nav.access.premium_count", { count: items.length })}
-        </span>
-      </div>
-      <ul className="space-y-0.5 mb-3">
-        {items.map((item) => (
-          <li
-            key={item.block.id}
-            aria-disabled="true"
-            className="flex items-center gap-3 px-1 py-1.5 text-sm text-content-tertiary"
-          >
-            <span className="font-display italic tabular-nums text-content-tertiary">
-              {item.block.number}
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={t("nav.access.cta_aria")}
+      className={cn(
+        "group relative w-full flex items-center gap-3",
+        "rounded-lg pl-3 pr-2.5 py-2.5 text-left",
+        "transition-colors duration-150",
+        "text-content-tertiary hover:bg-surface-muted/70 hover:text-content-secondary",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-primary))] focus-visible:ring-offset-1 focus-visible:ring-offset-white",
+      )}
+    >
+      <span className="font-display italic tabular-nums text-sm text-content-tertiary">
+        {item.block.number}
+      </span>
+      <span className="text-sm font-medium truncate">{item.block.shortLabel}</span>
+      <Lock
+        className="ml-auto size-3.5 text-content-tertiary"
+        aria-hidden="true"
+      />
+    </button>
+  );
+}
+
+const PREMIUM_WINDOWS = [30, 60, 90, 365] as const;
+
+function ExploreSection({
+  premiumUnlocked,
+  sampleSize,
+  observedDays,
+  competitorCount,
+  competitorMax,
+}: {
+  premiumUnlocked: boolean;
+  sampleSize: number;
+  observedDays: number;
+  competitorCount: number;
+  competitorMax: number;
+}) {
+  const { t } = useTranslation("report");
+  const { handlePremiumAccessClick } = usePremiumCta();
+
+  const onPeriodLockedClick = (days: number) => {
+    handlePremiumAccessClick("sidebar_period", {
+      selected_window: `${days}d`,
+    });
+  };
+
+  const onAddCompetitor = () => {
+    if (premiumUnlocked) {
+      // TODO: wire to real competitor manager once available.
+      scrollToBlock("benchmark");
+      return;
+    }
+    handlePremiumAccessClick("sidebar_add_competitor");
+  };
+
+  return (
+    <section className="space-y-3">
+      <p className="px-2 text-eyebrow-sm text-content-tertiary">
+        {t("nav.explore.title")}
+      </p>
+
+      {/* Period */}
+      <div className="px-2 space-y-1.5">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-xs font-semibold text-content-secondary">
+            {t("nav.explore.period_label")}
+          </span>
+          {observedDays > 0 ? (
+            <span className="text-[11px] text-content-tertiary tabular-nums">
+              {t("nav.explore.period_observed", { days: observedDays })}
             </span>
-            <span className="truncate">{item.block.shortLabel}</span>
-          </li>
-        ))}
+          ) : null}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2 py-0.5",
+              "bg-content-primary text-white text-[11px] font-semibold",
+            )}
+            aria-current="true"
+          >
+            <Check className="size-3" strokeWidth={3} aria-hidden="true" />
+            {sampleSize > 0 ? sampleSize : "—"}
+          </span>
+          {PREMIUM_WINDOWS.map((days) => (
+            <button
+              key={days}
+              type="button"
+              onClick={() => !premiumUnlocked && onPeriodLockedClick(days)}
+              aria-disabled={premiumUnlocked ? undefined : "true"}
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full px-2 py-0.5",
+                "border border-border-default text-[11px] font-medium",
+                "transition-colors duration-150",
+                premiumUnlocked
+                  ? "bg-white text-content-secondary hover:border-border-strong hover:text-content-primary cursor-default"
+                  : "bg-surface-muted text-content-tertiary hover:bg-surface-base hover:border-border-strong hover:text-content-secondary",
+              )}
+              title={!premiumUnlocked ? t("nav.explore.period_locked_hint") : undefined}
+            >
+              {!premiumUnlocked && (
+                <Lock className="size-2.5" aria-hidden="true" />
+              )}
+              {days === 365 ? "12m" : `${days}d`}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Competitors */}
+      <div className="px-2 space-y-1.5">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-xs font-semibold text-content-secondary">
+            {t("nav.explore.competitors_label")}
+          </span>
+          {premiumUnlocked ? (
+            <span className="text-[11px] text-content-tertiary tabular-nums">
+              {t("nav.explore.competitors_count", {
+                count: competitorCount,
+                max: competitorMax,
+              })}
+            </span>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={onAddCompetitor}
+          aria-label={t("nav.explore.add_competitor_aria")}
+          className={cn(
+            "inline-flex w-full items-center justify-center gap-1.5",
+            "rounded-lg border border-dashed h-9 px-3",
+            "text-xs font-medium transition-colors duration-150",
+            premiumUnlocked
+              ? "border-border-default bg-white text-content-secondary hover:border-border-strong hover:text-content-primary"
+              : "border-border-default bg-surface-muted text-content-tertiary hover:border-border-strong hover:text-content-secondary",
+          )}
+          title={!premiumUnlocked ? t("nav.explore.competitors_locked_hint") : undefined}
+        >
+          {premiumUnlocked ? (
+            <UserPlus className="size-3.5" aria-hidden="true" />
+          ) : (
+            <Lock className="size-3" aria-hidden="true" />
+          )}
+          <span>{t("nav.explore.add_competitor")}</span>
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function UnlockPromoCard({
+  premiumCount,
+  onOpenDialog,
+}: {
+  premiumCount: number;
+  onOpenDialog: () => void;
+}) {
+  const { t } = useTranslation("report");
+  const priceLabel = PUBLIC_PRODUCTS.report_full_9.priceLabel;
+  return (
+    <div className="rounded-lg border border-border-default bg-surface-muted/40 p-3 space-y-3">
+      <div>
+        <p className="text-eyebrow-sm text-content-tertiary">
+          {t("nav.unlock.eyebrow")}
+        </p>
+        <p className="mt-0.5 text-sm font-semibold text-content-primary">
+          {t("nav.unlock.title")}
+        </p>
+      </div>
+      <ul className="space-y-1.5 text-xs text-content-secondary">
+        <li className="flex items-center gap-2">
+          <Check className="size-3.5 text-[rgb(var(--accent-primary))] shrink-0" aria-hidden="true" />
+          <span>{t("nav.unlock.benefits.sections", { count: premiumCount })}</span>
+        </li>
+        <li className="flex items-center gap-2">
+          <Check className="size-3.5 text-[rgb(var(--accent-primary))] shrink-0" aria-hidden="true" />
+          <span>{t("nav.unlock.benefits.periods")}</span>
+        </li>
+        <li className="flex items-center gap-2">
+          <Check className="size-3.5 text-[rgb(var(--accent-primary))] shrink-0" aria-hidden="true" />
+          <span>{t("nav.unlock.benefits.competitors")}</span>
+        </li>
       </ul>
       <button
         type="button"
@@ -378,76 +550,37 @@ function PremiumBlockCard({
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-primary))] focus-visible:ring-offset-1",
         )}
       >
-        {t("nav.access.cta")}
+        {t("nav.unlock.cta_full", { price: priceLabel })}
         <ArrowRight className="size-3.5" aria-hidden="true" />
       </button>
-      <p className="mt-2 text-center text-xs leading-relaxed text-content-tertiary">
-        {t("nav.access.trust")}
+      <p className="text-center text-[11px] leading-relaxed text-content-tertiary">
+        {t("nav.unlock.trust")}
       </p>
     </div>
   );
 }
 
-/**
- * Pre-lead-capture variant of the premium card. Same visual frame, but
- * the CTA leads to the lead-magnet card (free continuation) instead of
- * the pricing dialog. No price, no pack wording.
- */
-function ContinueReadingCard({
-  items,
-  onContinue,
-}: {
-  items: SidebarItem[];
-  onContinue: () => void;
-}) {
+function UnlockedStatusCard({ totalSections }: { totalSections: number }) {
   const { t } = useTranslation("report");
   return (
-    <div className="rounded-lg border border-border-default bg-surface-muted/40 p-3">
-      <div className="flex items-center gap-2 border-b border-border-default/60 pb-2 mb-2">
-        <Lock className="size-3.5 text-content-secondary" aria-hidden="true" />
-        <span className="text-sm font-semibold text-content-primary">
-          {t("nav.premium")}
-        </span>
-        <span className="ml-auto text-xs text-content-tertiary tabular-nums">
-          {t("nav.access.premium_count", { count: items.length })}
-        </span>
-      </div>
-      <ul className="space-y-0.5 mb-3">
-        {items.map((item) => (
-          <li
-            key={item.block.id}
-            aria-disabled="true"
-            className="flex items-center gap-3 px-1 py-1.5 text-sm text-content-tertiary"
-          >
-            <span className="font-display italic tabular-nums text-content-tertiary">
-              {item.block.number}
-            </span>
-            <span className="truncate">{item.block.shortLabel}</span>
-          </li>
-        ))}
-      </ul>
-      <button
-        type="button"
-        onClick={onContinue}
-        aria-label={t("nav.access_locked.cta_aria")}
-        className={cn(
-          "inline-flex w-full items-center justify-center gap-2 rounded-full",
-          "bg-[rgb(var(--accent-primary))] px-4 py-2.5 text-sm font-semibold text-white",
-          "hover:bg-[rgb(var(--accent-luminous))] transition-colors",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-primary))] focus-visible:ring-offset-1",
-        )}
+    <div className="rounded-lg border border-border-default bg-white p-3 flex items-center gap-3">
+      <span
+        aria-hidden="true"
+        className="inline-flex size-9 items-center justify-center rounded-full bg-emerald-50 text-emerald-600"
       >
-        {t("nav.access_locked.cta")}
-        <ArrowRight className="size-3.5" aria-hidden="true" />
-      </button>
-      <p className="mt-2 text-center text-xs leading-relaxed text-content-tertiary">
-        {t("nav.access_locked.trust")}
-      </p>
+        <CheckCircle2 className="size-5" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-content-primary">
+          {t("nav.status.unlocked_title")}
+        </p>
+        <p className="text-xs text-content-secondary mt-0.5">
+          {t("nav.status.unlocked_subtitle", { count: totalSections })}
+        </p>
+      </div>
     </div>
   );
 }
-
-// ── Sidebar list (shared layout for desktop + mobile drawer) ─────────
 
 function SidebarList({
   items,
@@ -456,6 +589,11 @@ function SidebarList({
   onAccessibleClick,
   unlocked = true,
   onUnlockClick,
+  premiumUnlocked = false,
+  sampleSize = 0,
+  observedDays = 0,
+  competitorCount = 0,
+  competitorMax = 3,
 }: {
   items: SidebarItem[];
   active: string | null;
@@ -463,6 +601,11 @@ function SidebarList({
   onAccessibleClick: (id: string) => void;
   unlocked?: boolean;
   onUnlockClick?: () => void;
+  premiumUnlocked?: boolean;
+  sampleSize?: number;
+  observedDays?: number;
+  competitorCount?: number;
+  competitorMax?: number;
 }) {
   const { t } = useTranslation("report");
   const { snapshotId, handle, variant: trackingVariant } = useReportTracking();
@@ -517,12 +660,14 @@ function SidebarList({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <ProgressSummary items={items} />
 
       <section className="space-y-1">
         <p className="px-2 text-eyebrow-sm text-content-tertiary">
-          {t("nav.access.available_now")}
+          {premiumUnlocked
+            ? t("nav.access.available_now")
+            : t("nav.access.available_now")}
         </p>
         <ul className="space-y-0.5">
           {incluidos.map((item) => (
@@ -538,11 +683,41 @@ function SidebarList({
       </section>
 
       {premium.length > 0 && (
-        unlocked ? (
-          <PremiumBlockCard items={premium} onOpenDialog={openDialog} />
-        ) : (
-          <ContinueReadingCard items={premium} onContinue={focusLeadMagnet} />
-        )
+        <section className="space-y-1">
+          <p className="px-2 text-eyebrow-sm text-content-tertiary">
+            {t("nav.premium")}
+          </p>
+          <ul className="space-y-0.5">
+            {premium.map((item) => (
+              <li key={item.block.id}>
+                <LockedItemRow
+                  item={item}
+                  onClick={() =>
+                    handlePremiumAccessClick("sidebar_section", {
+                      section: item.block.id,
+                    })
+                  }
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <ExploreSection
+        premiumUnlocked={premiumUnlocked}
+        sampleSize={sampleSize}
+        observedDays={observedDays}
+        competitorCount={competitorCount}
+        competitorMax={competitorMax}
+      />
+
+      {premiumUnlocked ? (
+        <UnlockedStatusCard totalSections={items.length} />
+      ) : unlocked ? (
+        <UnlockPromoCard premiumCount={premium.length} onOpenDialog={openDialog} />
+      ) : (
+        <UnlockPromoCard premiumCount={premium.length} onOpenDialog={focusLeadMagnet} />
       )}
     </div>
   );
@@ -550,7 +725,19 @@ function SidebarList({
 
 // ── Desktop sidebar ──────────────────────────────────────────────────
 
-export function ReportBlockSidebar({ variant, features, profile, profiles, unlocked, premiumUnlocked = false, onUnlockClick }: SidebarProps) {
+export function ReportBlockSidebar({
+  variant,
+  features,
+  profile,
+  profiles,
+  unlocked,
+  premiumUnlocked = false,
+  onUnlockClick,
+  sampleSize = 0,
+  observedDays = 0,
+  competitorCount = 0,
+  competitorMax = 3,
+}: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
   const profileList = useMemo(
@@ -592,6 +779,11 @@ export function ReportBlockSidebar({ variant, features, profile, profiles, unloc
         onAccessibleClick={scrollToBlock}
         unlocked={unlocked}
         onUnlockClick={onUnlockClick}
+        premiumUnlocked={premiumUnlocked}
+        sampleSize={sampleSize}
+        observedDays={observedDays}
+        competitorCount={competitorCount}
+        competitorMax={competitorMax}
       />
     </nav>
   );
@@ -599,7 +791,19 @@ export function ReportBlockSidebar({ variant, features, profile, profiles, unloc
 
 // ── Mobile bottom tabs + drawer ──────────────────────────────────────
 
-export function ReportBlockTopTabs({ variant, features, profile, profiles, unlocked, premiumUnlocked = false, onUnlockClick }: SidebarProps) {
+export function ReportBlockTopTabs({
+  variant,
+  features,
+  profile,
+  profiles,
+  unlocked,
+  premiumUnlocked = false,
+  onUnlockClick,
+  sampleSize = 0,
+  observedDays = 0,
+  competitorCount = 0,
+  competitorMax = 3,
+}: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
   const profileList = useMemo(
@@ -744,6 +948,11 @@ export function ReportBlockTopTabs({ variant, features, profile, profiles, unloc
                   setSheetOpen(false);
                   setTimeout(() => onUnlockClick?.(), 180);
                 }}
+                premiumUnlocked={premiumUnlocked}
+                sampleSize={sampleSize}
+                observedDays={observedDays}
+                competitorCount={competitorCount}
+                competitorMax={competitorMax}
               />
             </div>
           </SheetContent>
