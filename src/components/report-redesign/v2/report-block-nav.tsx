@@ -529,29 +529,7 @@ function UnlockPromoCard({
   const { t } = useTranslation("report");
   const priceLabel = PUBLIC_PRODUCTS.report_full_9.priceLabel;
   return (
-    <div className="rounded-lg border border-border-default bg-surface-muted/40 p-3 space-y-3">
-      <div>
-        <p className="text-eyebrow-sm text-content-tertiary">
-          {t("nav.unlock.eyebrow")}
-        </p>
-        <p className="mt-0.5 text-sm font-semibold text-content-primary">
-          {t("nav.unlock.title")}
-        </p>
-      </div>
-      <ul className="space-y-1.5 text-xs text-content-secondary">
-        <li className="flex items-center gap-2">
-          <Check className="size-3.5 text-[rgb(var(--accent-primary))] shrink-0" aria-hidden="true" />
-          <span>{t("nav.unlock.benefits.sections", { count: premiumCount })}</span>
-        </li>
-        <li className="flex items-center gap-2">
-          <Check className="size-3.5 text-[rgb(var(--accent-primary))] shrink-0" aria-hidden="true" />
-          <span>{t("nav.unlock.benefits.periods")}</span>
-        </li>
-        <li className="flex items-center gap-2">
-          <Check className="size-3.5 text-[rgb(var(--accent-primary))] shrink-0" aria-hidden="true" />
-          <span>{t("nav.unlock.benefits.competitors")}</span>
-        </li>
-      </ul>
+    <div className="rounded-lg border border-border-default bg-surface-muted/40 p-3 space-y-2.5">
       <button
         type="button"
         onClick={onOpenDialog}
@@ -563,11 +541,11 @@ function UnlockPromoCard({
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-primary))] focus-visible:ring-offset-1",
         )}
       >
-        {t("nav.unlock.cta_full", { price: priceLabel })}
+        {t("nav.access.cta")}
         <ArrowRight className="size-3.5" aria-hidden="true" />
       </button>
       <p className="text-center text-[11px] leading-relaxed text-content-tertiary">
-        {t("nav.unlock.trust")}
+        {t("nav.unlock.subcopy", { count: premiumCount })}
       </p>
     </div>
   );
