@@ -664,6 +664,15 @@ function ExploreSection({
             <Lock className="size-2.5 text-content-tertiary" aria-hidden="true" />
           )}
         </button>
+        {premiumUnlocked ? (
+          <ConsumeCreditDialog
+            open={dialogOpen}
+            onOpenChange={setDialogOpen}
+            intent={intent}
+            balance={balance}
+            onConfirm={onConfirmConsume}
+          />
+        ) : null}
       </section>
     );
   }
