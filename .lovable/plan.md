@@ -1,94 +1,108 @@
-## Plan: "Preparing analysis" placeholders for pending paid AI enrichments
+# Runtime validation — Free/Public enrichment gate
 
-Show calm, editorial placeholders for the Pro report cards that depend on AI enrichments while the corresponding job is still `pending`/`running`. Read state from `normalized_payload.enrichment_status` already persisted by the backend — no provider, scheduling, billing, credit or schema changes.
+Objective: prove that a fresh Free/Public analysis on one allowlisted handle runs **Apify only**, marks all paid enrichments as `skipped_free`, and enqueues zero paid `enrichment_jobs`.
 
-### Status read
+## Scope guard
 
-Add a tiny helper module:
+- Allowed: 1 Apify primary scrape, real DB rows in `analysis_snapshots`, `provider_call_logs`, `analysis_events`.
+- Forbidden: payments, Pro unlock, paid enrichment enqueue, OpenAI calls, DataForSEO calls.
+- No code changes. Read-only validation + one HTTP call to the public analyze endpoint.
 
-- `src/components/report-redesign/v2/enrichment-pending.ts`
-  - `getEnrichmentState(payload, type) → 'ready' | 'pending' | 'error' | 'skipped_free'`
-  - Treats `pending` and `running` as `pending`.
-  - Treats `skipped` / `disabled` as `ready` (degrade silently — current behaviour).
+## Step 1 — Pre-checks (read-only)
 
-### New placeholder component
+1. Confirm `APIFY_ALLOWLIST` contains the target handle (read secret).
+2. Pick handle (default candidate: `frederico.m.carvalho` from project knowledge — confirm it's allowlisted; if not, ask which allowlisted handle to use).
+3. Confirm no fresh snapshot in last 24h:
+   ```sql
+   SELECT id, created_at, expires_at, analysis_status
+   FROM analysis_snapshots
+   WHERE instagram_username = '<handle>' AND created_at > now() - interval '24 hours'
+   ORDER BY created_at DESC;
+   ```
+   If a fresh row exists → STOP and ask user to pick another handle (we must not skip the gate via cache).
+4. Record `T0 = now()` (UTC) before triggering.
 
-- `src/components/report-redesign/v2/enrichment-placeholder-card.tsx`
-  - Editorial card: hairline border, `bg-surface-secondary`, small `Sparkles` icon in a soft circle, eyebrow, title, body. No spinner.
-  - Variants:
-    - `pending` → Sparkles + neutral eyebrow `"Análise em curso"`.
-    - `error` → AlertTriangle + muted body with the calm fallback copy.
-  - Accepts `eyebrow`, `title`, `body`, optional `className` for `md:col-span-2` parity with the real cards.
+## Step 2 — Trigger Free/Public analysis
 
-### Diagnostic block wiring
+One call to the public analyze endpoint with the chosen handle, no competitors, no auth. Exact path/method discovered from `src/routes/api/analyze-public-v1.ts` (POST `/api/analyze-public-v1`). Use `stack_modern--invoke-server-function` against the preview build.
 
-`src/components/report-redesign/v2/report-diagnostic-block.tsx`:
+## Step 3 — Validate snapshot
 
-For the Pro / commercial branch (the `if (!isLab)` block) and the Lab branch:
+```sql
+SELECT id, instagram_username, created_at,
+       normalized_payload->'enrichment_status' AS enrichment_status
+FROM analysis_snapshots
+WHERE instagram_username = '<handle>' AND created_at >= T0
+ORDER BY created_at DESC LIMIT 1;
+```
 
-- Compute `coverState = getEnrichmentState(payload, 'visual_cover')` and `captionState = getEnrichmentState(payload, 'caption_semantic')`.
-- Replace `<VisualCoverAnalysisCard …/>` with:
-  - `coverState === 'pending'` → placeholder (`title: "A preparar análise das capas…"`, body: `"Estamos a avaliar clareza visual, consistência e leitura em 1 segundo."`).
-  - `coverState === 'error'` and `parseVisualCoverAnalysis(payload) === null` → error fallback placeholder.
-  - else → existing card.
-- Replace `<CaptionDiagnosticsCard …/>` with:
-  - `captionState === 'pending'` and `parseCaptionSemanticAnalysis(payload) === null` → placeholder (`"A preparar leitura das legendas…"`, `"Estamos a analisar padrões de linguagem, temas e chamadas à acção."`).
-  - `captionState === 'error'` and no semantic data → error fallback placeholder (still keep deterministic caption intel card visible? → No, replace whole card to avoid mixed signals).
-  - else → existing card (which already falls back to deterministic data on its own).
+Expected `enrichment_status`:
 
-`insights_v2`:
-- Compute `insightsState = getEnrichmentState(payload, 'insights_v2')`.
-- When `insightsState === 'pending'` AND `result.enriched.aiInsightsV2 == null`: render a single placeholder ABOVE `<ReportDiagnosticPriorities …/>` (`"A preparar síntese editorial…"`, `"As recomendações finais ficam disponíveis assim que a análise terminar."`).
-- When `insightsState === 'error'` AND `aiInsightsV2 == null`: render the calm error placeholder instead.
-- Deterministic priorities (`derivePriorities`) still render below — they were already the fallback and stay valuable.
+| key             | expected      |
+|-----------------|---------------|
+| dataforseo      | skipped_free  |
+| insights_v1     | skipped_free  |
+| insights_v2     | skipped_free  |
+| visual_cover    | skipped_free  |
+| caption_semantic| skipped_free  |
 
-### Variant scoping
+Any other value → FAIL.
 
-All placeholders gated by `variant !== 'public_mvp'` (i.e. `pro_preview` and `internal_lab`). Free teasers stay 100% untouched. Implementation note: the Free render path never hits this code (the Free shell renders `PremiumTeaserCard`s, not `ReportDiagnosticBlock`), but we add an explicit `variant === 'public_mvp' ? null : ...` guard for safety.
+## Step 4 — Validate no paid jobs enqueued
 
-### Auto-refresh on success
+```sql
+SELECT enrichment_type, status, created_at
+FROM enrichment_jobs
+WHERE snapshot_id = '<new_snapshot_id>';
+```
 
-No new polling. When the user refreshes the page (or the existing snapshot refresh path runs), the loader re-reads `normalized_payload` — placeholders disappear automatically once `enrichment_status[type] === 'success'` and the corresponding payload key is present. No state changes needed in this PR.
+Expected: **0 rows** for `dataforseo`, `insights_v1`, `insights_v2`, `visual_cover`, `caption_semantic`. Ideally 0 rows total (since `FREE_ENRICHMENT_TYPES = []`). Any paid row → FAIL.
 
-### i18n
+## Step 5 — Validate provider calls
 
-Add under `report.json` (PT + EN) namespace `pending`:
+```sql
+SELECT provider, actor, status, created_at, source_context
+FROM provider_call_logs
+WHERE handle = '<handle>' AND created_at >= T0
+ORDER BY created_at;
+```
 
-PT:
-- `cover.title`: "A preparar análise das capas…"
-- `cover.body`: "Estamos a avaliar clareza visual, consistência e leitura em 1 segundo."
-- `caption.title`: "A preparar leitura das legendas…"
-- `caption.body`: "Estamos a analisar padrões de linguagem, temas e chamadas à acção."
-- `insights.title`: "A preparar síntese editorial…"
-- `insights.body`: "As recomendações finais ficam disponíveis assim que a análise terminar."
-- `error.body`: "Não foi possível concluir esta leitura automática. O restante relatório continua disponível."
-- `eyebrow_pending`: "Análise em curso"
-- `eyebrow_error`: "Leitura indisponível"
+Expected:
+- ≥1 row with `provider = 'apify'`.
+- **0 rows** with `provider IN ('openai','dataforseo')`.
 
-EN equivalents.
+Also confirm no comment scraper rows (`comment_enrichment_jobs` for new snapshot_id should be empty unless explicitly free-scope).
 
-### Out of scope (explicitly NOT changed)
+## Step 6 — Validate UI render (optional, browser)
 
-- Provider calls (Apify, OpenAI, DataForSEO)
-- Enrichment scheduling / enqueue / runner
-- Pricing, checkout, EuPago, entitlements, credit reserve/confirm/release
-- Report calculations and snapshot schema
+Open `/analyze/<handle>` in preview and confirm:
+- Visão geral renders
+- Engagement renders
+- 5 locked premium teaser cards visible
+- No Pro AI cards rendered (insights v2, visual cover, caption semantic, comment intelligence, market signals)
 
-### Files changed (planned)
+## Step 7 — Regression check
 
-- ADD `src/components/report-redesign/v2/enrichment-pending.ts`
-- ADD `src/components/report-redesign/v2/enrichment-placeholder-card.tsx`
-- EDIT `src/components/report-redesign/v2/report-diagnostic-block.tsx`
-- EDIT `src/i18n/locales/pt/report.json`
-- EDIT `src/i18n/locales/en/report.json`
+```sql
+SELECT count(*) AS modified_pre_gate
+FROM analysis_snapshots
+WHERE updated_at >= T0 AND created_at < T0;
+```
 
-### Manual validation checklist
+Expected: 0. Any non-zero → investigate which pre-gate snapshot was touched.
 
-1. Pro snapshot with `enrichment_status.visual_cover = 'pending'` and no `visual_cover_analysis` → Capas card shows pending placeholder.
-2. Pro snapshot with `caption_semantic = 'pending'` and no `caption_semantic_analysis` → Legendas card shows pending placeholder.
-3. Pro snapshot with `insights_v2 = 'pending'` and no `ai_insights_v2` → pending placeholder appears before deterministic priorities.
-4. Pro snapshot with all three `success` and payloads present → real cards render, no placeholders.
-5. Pro snapshot with any of the three `error` and no payload → calm error placeholder shown.
-6. Free report (`public_mvp` variant) → no placeholders, teasers unchanged.
-7. Internal Lab snapshot with pending states → placeholders also shown (verifies parity).
-8. After a refresh that completes enrichment → placeholders disappear automatically.
+## Step 8 — Report
+
+Produce final output table:
+- Handle used
+- Snapshot ID + created_at
+- Enrichment status table (5 keys)
+- Enrichment jobs found (count + types)
+- Provider calls found (provider, count, status)
+- PASS/FAIL per validation step
+- Overall verdict + any regression
+
+## Open questions before running
+
+1. Confirm target handle. Default: `frederico.m.carvalho` (project test profile). Override if you want a different allowlisted handle.
+2. Confirm we may invoke against the **preview** deployment (`id-preview--…lovable.app`) rather than production (`instagramaudit.lovable.app`). Preview is safer for test scrapes; production is what real users hit. Default: preview.
