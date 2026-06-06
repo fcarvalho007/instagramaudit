@@ -74,6 +74,10 @@ interface ReportShellV2Props {
    *  alone must NOT set this. Defaults to false. */
   premiumUnlocked?: boolean;
   onUnlockClick?: () => void;
+  /** Concorrentes actualmente em comparação (do `?vs=`). Usado para
+   *  o sidebar saber `competitorCount` real e enviar `existingCompetitors`
+   *  ao fluxo de "Adicionar concorrente". */
+  competitorHandles?: string[];
 }
 
 /**
