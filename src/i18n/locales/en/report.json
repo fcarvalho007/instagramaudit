@@ -637,7 +637,17 @@
         "balance_hint": "You have {{count}} beta credit available.",
         "balance_hint_plural": "You have {{count}} beta credits available.",
         "cta_use_period": "Use 1 credit and generate analysis",
-        "cta_use_competitor": "Use 1 credit and add competitor"
+        "cta_use_competitor": "Use 1 credit and add competitor",
+        "competitor_handle_label": "Competitor username",
+        "competitor_handle_placeholder": "@profile_to_compare",
+        "competitor_handle_invalid": "Invalid username. Use only letters, numbers, dots or underscore.",
+        "competitor_handle_duplicate": "This profile is already in the analysis.",
+        "submitting": "Preparing analysis…",
+        "success_toast": "Competitor added — analysis ready.",
+        "error_generic": "Couldn't add the competitor. Please try again shortly.",
+        "error_generic_with_code": "Couldn't add the competitor ({{code}}).",
+        "period_coming_soon_title": "Custom window in preparation",
+        "period_coming_soon_body": "Per-period analysis (30d/90d) isn't available in this beta yet. You'll be notified when it ships — no credit cost."
       }
     },
     "status": {

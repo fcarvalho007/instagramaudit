@@ -637,7 +637,17 @@
         "balance_hint": "Tens {{count}} crédito beta disponível.",
         "balance_hint_plural": "Tens {{count}} créditos beta disponíveis.",
         "cta_use_period": "Usar 1 crédito e gerar análise",
-        "cta_use_competitor": "Usar 1 crédito e adicionar concorrente"
+        "cta_use_competitor": "Usar 1 crédito e adicionar concorrente",
+        "competitor_handle_label": "Username do concorrente",
+        "competitor_handle_placeholder": "@perfil_a_comparar",
+        "competitor_handle_invalid": "Username inválido. Usa apenas letras, números, pontos ou underscore.",
+        "competitor_handle_duplicate": "Este perfil já está incluído na análise.",
+        "submitting": "A preparar análise…",
+        "success_toast": "Concorrente adicionado — análise pronta.",
+        "error_generic": "Não foi possível adicionar o concorrente. Tentar novamente dentro de instantes.",
+        "error_generic_with_code": "Não foi possível adicionar o concorrente ({{code}}).",
+        "period_coming_soon_title": "Janela personalizada em preparação",
+        "period_coming_soon_body": "A análise por período (30d/90d) ainda não está disponível nesta versão beta. Vais ser notificado quando ficar pronta — sem custo de crédito."
       }
     },
     "status": {

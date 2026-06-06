@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { Menu, Lock, ArrowRight, Check, UserPlus, CheckCircle2, Calendar, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   Sheet,
@@ -26,6 +28,7 @@ import { trackEvent } from "@/lib/tracking.functions";
 import { PUBLIC_PRODUCTS } from "@/lib/payments/products";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyCreditBalance } from "@/lib/credits/credits.functions";
+import { fetchPublicAnalysis } from "@/lib/analysis/client";
 import {
   ConsumeCreditDialog,
   type ConsumeCreditIntent,
@@ -534,6 +537,8 @@ function ExploreSection({
   competitorCount,
   competitorMax,
   compact = false,
+  primaryHandle,
+  existingCompetitors = [],
 }: {
   premiumUnlocked: boolean;
   sampleSize: number;
@@ -541,6 +546,8 @@ function ExploreSection({
   competitorCount: number;
   competitorMax: number;
   compact?: boolean;
+  primaryHandle?: string;
+  existingCompetitors?: string[];
 }) {
   const { t } = useTranslation("report");
   const { handlePremiumAccessClick } = usePremiumCta();
@@ -548,6 +555,9 @@ function ExploreSection({
   const [balance, setBalance] = useState(0);
   const [intent, setIntent] = useState<ConsumeCreditIntent | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   // Carrega o saldo de créditos beta apenas no estado paid — nunca antes
   // da compra, para nunca revelar o bónus ao utilizador free.
@@ -567,8 +577,18 @@ function ExploreSection({
     };
   }, [premiumUnlocked, fetchBalance]);
 
+  const refreshBalance = useCallback(async () => {
+    try {
+      const r = await fetchBalance();
+      if (r.hasLead) setBalance(r.balance);
+    } catch {
+      /* ignore */
+    }
+  }, [fetchBalance]);
+
   const openConsumeDialog = useCallback((nextIntent: ConsumeCreditIntent) => {
     setIntent(nextIntent);
+    setErrorMessage(null);
     setDialogOpen(true);
     trackEvent({
       data: {
@@ -583,34 +603,136 @@ function ExploreSection({
     }).catch(() => {});
   }, [balance]);
 
-  const onConfirmConsume = useCallback((nextIntent: ConsumeCreditIntent) => {
-    // O consumo real (reserveCredit + nova análise) fica como follow-up.
-    // Por agora só fechamos o dialog e registamos a intenção.
-    const specificEvent =
-      nextIntent.kind === "period"
-        ? "beta_credit_used_period"
-        : "beta_credit_used_competitor";
-    trackEvent({
-      data: {
-        eventType: specificEvent,
-        metadata: {
-          intent_days:
-            nextIntent.kind === "period" ? nextIntent.days : undefined,
+  const onConfirmConsume = useCallback(
+    async (nextIntent: ConsumeCreditIntent) => {
+      // Period: backend não suporta janela personalizada ainda — apenas
+      // regista intenção (NÃO consome crédito) e fecha o dialog. UI já
+      // mostra "em preparação".
+      if (nextIntent.kind === "period") {
+        trackEvent({
+          data: {
+            eventType: "beta_credit_intent_period",
+            metadata: {
+              action_type: "period_analysis",
+              days: nextIntent.days,
+            },
+          },
+        }).catch(() => {});
+        setDialogOpen(false);
+        return;
+      }
+
+      // Competitor: chama o endpoint existente, que reserva/confirma/
+      // liberta o crédito server-side de forma atómica.
+      const newHandle = nextIntent.handle?.trim().toLowerCase();
+      if (!newHandle || !primaryHandle) {
+        setErrorMessage(t("nav.explore.consume_dialog.error_generic"));
+        return;
+      }
+      if (submitting) return;
+
+      setSubmitting(true);
+      setErrorMessage(null);
+
+      trackEvent({
+        data: {
+          eventType: "beta_credit_intent_competitor",
+          metadata: {
+            action_type: "competitor_add",
+            competitor_handle: newHandle,
+            credit_amount: 1,
+          },
         },
-      },
-    }).catch(() => {});
-    trackEvent({
-      data: {
-        eventType: "beta_credit_used",
-        metadata: {
-          action_type: nextIntent.kind,
-          intent_days:
-            nextIntent.kind === "period" ? nextIntent.days : undefined,
-        },
-      },
-    }).catch(() => {});
-    setDialogOpen(false);
-  }, []);
+      }).catch(() => {});
+
+      const competitorList = [...existingCompetitors, newHandle].slice(0, 2);
+
+      try {
+        const result = await fetchPublicAnalysis(primaryHandle, competitorList);
+
+        if (result.success) {
+          trackEvent({
+            data: {
+              eventType: "beta_credit_used_competitor",
+              metadata: {
+                action_type: "competitor_add",
+                competitor_handle: newHandle,
+                credit_amount: 1,
+              },
+            },
+          }).catch(() => {});
+          trackEvent({
+            data: {
+              eventType: "beta_credit_used",
+              metadata: {
+                action_type: "competitor_add",
+                competitor_handle: newHandle,
+                credit_amount: 1,
+              },
+            },
+          }).catch(() => {});
+
+          await refreshBalance();
+          toast.success(t("nav.explore.consume_dialog.success_toast"));
+          setDialogOpen(false);
+
+          // Atualiza o URL com a nova lista; o route re-faz fetch
+          // (servido do snapshot/cache, sem novo débito de crédito —
+          // o endpoint deduplica por (lead_id, cache_key)).
+          navigate({
+            to: "/analyze/$username",
+            params: { username: primaryHandle },
+            search: { vs: competitorList.join(",") },
+            replace: false,
+          }).catch(() => {});
+        } else {
+          trackEvent({
+            data: {
+              eventType: "beta_credit_use_failed",
+              metadata: {
+                action_type: "competitor_add",
+                competitor_handle: newHandle,
+                error_code: result.error_code,
+              },
+            },
+          }).catch(() => {});
+          // O servidor já libertou a reserva — refresca o saldo para
+          // reflectir o estado real.
+          await refreshBalance();
+          setErrorMessage(
+            t("nav.explore.consume_dialog.error_generic_with_code", {
+              code: result.error_code,
+              defaultValue:
+                result.message ?? t("nav.explore.consume_dialog.error_generic"),
+            }),
+          );
+        }
+      } catch (err) {
+        trackEvent({
+          data: {
+            eventType: "beta_credit_use_failed",
+            metadata: {
+              action_type: "competitor_add",
+              competitor_handle: newHandle,
+              error_code: "NETWORK_ERROR",
+            },
+          },
+        }).catch(() => {});
+        await refreshBalance();
+        setErrorMessage(t("nav.explore.consume_dialog.error_generic"));
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [
+      primaryHandle,
+      existingCompetitors,
+      submitting,
+      navigate,
+      refreshBalance,
+      t,
+    ],
+  );
 
   const onPeriodLockedClick = (days: number) => {
     handlePremiumAccessClick("sidebar_period", {
@@ -684,6 +806,10 @@ function ExploreSection({
             intent={intent}
             balance={balance}
             onConfirm={onConfirmConsume}
+            submitting={submitting}
+            errorMessage={errorMessage}
+            primaryHandle={primaryHandle}
+            existingCompetitors={existingCompetitors}
           />
         ) : null}
       </section>
@@ -802,6 +928,10 @@ function ExploreSection({
           intent={intent}
           balance={balance}
           onConfirm={onConfirmConsume}
+          submitting={submitting}
+          errorMessage={errorMessage}
+          primaryHandle={primaryHandle}
+          existingCompetitors={existingCompetitors}
         />
       ) : null}
     </section>
@@ -873,6 +1003,8 @@ function SidebarList({
   competitorCount = 0,
   competitorMax = 3,
   compact = false,
+  primaryHandle,
+  existingCompetitors = [],
 }: {
   items: SidebarItem[];
   active: string | null;
@@ -886,6 +1018,8 @@ function SidebarList({
   competitorCount?: number;
   competitorMax?: number;
   compact?: boolean;
+  primaryHandle?: string;
+  existingCompetitors?: string[];
 }) {
   const { t } = useTranslation("report");
   const { snapshotId, handle, variant: trackingVariant } = useReportTracking();
@@ -1077,6 +1211,8 @@ function SidebarList({
         competitorCount={competitorCount}
         competitorMax={competitorMax}
         compact={compact}
+        primaryHandle={primaryHandle}
+        existingCompetitors={existingCompetitors}
       />
 
       {!premiumUnlocked && (
@@ -1163,6 +1299,8 @@ export function ReportBlockSidebar({
         competitorCount={competitorCount}
         competitorMax={competitorMax}
         compact={compact}
+        primaryHandle={profileList[0]?.handle}
+        existingCompetitors={profileList.slice(1).map((p) => p.handle)}
       />
     </nav>
   );
@@ -1336,6 +1474,8 @@ export function ReportBlockTopTabs({
                 observedDays={observedDays}
                 competitorCount={competitorCount}
                 competitorMax={competitorMax}
+                primaryHandle={profileList[0]?.handle}
+                existingCompetitors={profileList.slice(1).map((p) => p.handle)}
               />
             </div>
           </SheetContent>

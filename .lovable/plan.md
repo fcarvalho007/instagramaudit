@@ -1,85 +1,90 @@
 ## Goal
 
-Replace the hard-coded `premiumUnlocked={false}` in `src/routes/analyze.$username.tsx` with a real check against `lead_entitlements` for product `report_full_9`, using the existing `lead_session` cookie. No schema, payment, checkout, pricing, EuPago or report-generation changes.
+Make the paid sidebar "Adicionar concorrente" action actually consume a beta credit and trigger a new analysis using the existing endpoint. Keep the period (30d/90d) chips opening the modal but in a clear "em preparação" state with **no credit consumption** (backend support deferred — confirmed by user).
 
-## Audit findings
+## Why scoped this way
 
-- **Hard-coded flag**: `src/routes/analyze.$username.tsx:429` passes `premiumUnlocked={false}` with a TODO. The other variants are correct:
-  - `admin.report-lab.tsx:462` and `admin_.report-preview.$username.tsx:205`: `premiumUnlocked={variant !== "public_mvp"}` (lab/pro_preview force-on).
-  - `admin_.report-preview.snapshot.$snapshotId.tsx:191`: `premiumUnlocked` (admin preview forces on).
-- **Entitlement source of truth**: `src/lib/payments/entitlements.server.ts` already exposes `hasEntitlement(leadId, productCode)` reading `public.lead_entitlements`. This is the single source the EuPago webhook writes to via `grantEntitlement`.
-- **Lead session**: `src/lib/leads/lead-cookie.server.ts#getLeadFromCookie` (HMAC-signed `lead_session` cookie), already used by `getMyCreditBalance` and `getLeadSessionStatus`.
-- **Credit balance**: `getMyCreditBalance` already returns `{ hasLead, balance }` and is consumed by `report-block-nav.tsx` — it only fetches when `premiumUnlocked === true`. Once the flag is real, the sidebar will start showing the beta balance automatically. No change needed here.
-- **No existing entitlement server fn**: nothing today exposes `hasEntitlement` to the client; this is the missing piece.
+`/api/analyze-public-v1` already:
+- Accepts `instagram_username` + `competitor_usernames` (max 2)
+- Reserves a credit server-side via `reserveCredit({ leadId, cacheKey })`
+- Has a partial unique index on `(lead_id, cache_key)` → built-in idempotency (server returns `duplicate` on concurrent retries, single credit)
+- Confirms on success, releases on failure
+- Persists snapshot and refreshes lead session
+
+So competitor add is mostly a frontend wiring job. It does NOT accept a period/window param today; adding one is out of scope here.
 
 ## Changes
 
-### 1) New server fn — `src/lib/payments/entitlements.functions.ts`
+### 1. `src/components/report-redesign/v2/consume-credit-dialog.tsx`
+- Add `submitting` prop. Confirm button shows spinner + disabled while submitting. Cancel disabled too. Backdrop click disabled while submitting.
+- For competitor intent, add a small input (`@handle`) — required, lowercased, regex `^[a-z0-9._]{1,30}$`, trimmed, `@` stripped. Inline validation message (pt-PT). Confirm disabled when invalid or equal to primary/existing competitor.
+- New optional field on `ConsumeCreditIntent` for competitor: `{ kind: "competitor"; handle?: string }` (handle filled from the input on submit).
+- For period intent, replace the confirm CTA with a calm "Em preparação" state explaining período personalizado virá em breve; **no credit consumed**, no submit. Keep balance line for context.
 
-Client-safe wrapper that reads the lead cookie and asks `hasEntitlement(leadId, "report_full_9")`. Fail-closed on any error:
+### 2. `src/components/report-redesign/v2/report-block-nav.tsx`
+- Pass current `primaryHandle` and existing `competitorHandles` (already available via report payload) into the nav so we can build the new competitor list.
+- `onConfirmConsume` becomes async:
+  - `period` branch → only fire tracking events (`beta_credit_intent_period`, no `_used`), close modal. No fetch, no credit. UX message: "Janela personalizada em preparação."
+  - `competitor` branch:
+    1. Set `submitting=true`.
+    2. Track `beta_credit_intent_competitor`.
+    3. Call `fetchPublicAnalysis(primaryHandle, [...existingCompetitors, newHandle].slice(0, 2))`.
+    4. On `{ success: true }`: track `beta_credit_used` + `beta_credit_used_competitor` with metadata `{ action_type, competitor_handle, snapshot_id, lead_id, credit_amount: 1 }`. Refresh balance (re-call `getMyCreditBalance`). Close dialog. Show toast "Concorrente adicionado — análise pronta." Call existing `router.invalidate()` so the report reloads with the new snapshot.
+    5. On `{ success: false }`: track `beta_credit_use_failed` with `error_code`. Keep dialog open, show inline error. The server already released the credit; refresh balance anyway.
+  - `finally` → `submitting=false`.
+- Double-submit guard: button disabled while `submitting=true` (UI) + existing in-flight Map in `fetchPublicAnalysis` (network) + server unique index on `(lead_id, cache_key)` (db). Three layers.
+- Empty-balance branch unchanged (already opens feedback CTA).
 
-```ts
-import { createServerFn } from "@tanstack/react-start";
+### 3. `src/lib/credits/credits.functions.ts`
+- No changes — `getMyCreditBalance` is already wired and re-callable.
 
-export const getMyReportEntitlement = createServerFn({ method: "GET" }).handler(
-  async () => {
-    try {
-      const { getLeadFromCookie } = await import("@/lib/leads/lead-cookie.server");
-      const leadId = getLeadFromCookie();
-      if (!leadId) return { hasLead: false as const, premiumUnlocked: false };
+### 4. `src/lib/products/product-events.functions.ts` (or wherever `trackEvent` lives)
+- No schema changes. Just emit the new event types listed above using existing `product_events` insert.
 
-      const { hasEntitlement } = await import("./entitlements.server");
-      const premium = await hasEntitlement(leadId, "report_full_9");
-      return { hasLead: true as const, premiumUnlocked: premium };
-    } catch {
-      // Fail-closed: never crash the report, never grant premium on error.
-      return { hasLead: false as const, premiumUnlocked: false };
-    }
-  },
-);
-```
+### 5. i18n `src/locales/pt/report.json`
+- Add keys: `consume_dialog.competitor_handle_label`, `competitor_handle_placeholder`, `competitor_handle_invalid`, `competitor_handle_duplicate`, `submitting`, `success_toast`, `error_toast`, `period_coming_soon_title`, `period_coming_soon_body`.
 
-This mirrors `getMyCreditBalance` exactly — same cookie source, same swallow-and-fallback shape, same `await import` pattern to keep `client.server` out of client bundles.
+## Credit lifecycle (recap)
 
-### 2) Wire it in `src/routes/analyze.$username.tsx`
+| Step | Actor | Action |
+|------|-------|--------|
+| 1 | User | Confirm in dialog |
+| 2 | Client | POST `/api/analyze-public-v1` with new competitor list |
+| 3 | Server | `reserveCredit({leadId, cacheKey})` → -1, returns `reservationId` (or `duplicate`) |
+| 4 | Server | Runs Apify + persists snapshot |
+| 5a | Server (success) | `confirmReservation({reservationId, snapshotId})` → audit row, balance stays at -1 |
+| 5b | Server (failure before snapshot) | `releaseReservation({reservationId})` → +1, balance restored |
+| 6 | Client | Refresh balance pill, invalidate router |
 
-In `AnalyzeContent` (already a client component): add a `useState<boolean>(false)` for `premiumUnlocked` plus a `useEffect` that calls `useServerFn(getMyReportEntitlement)` once on mount, and updates state. Pass to `<ReportShellV2 premiumUnlocked={premiumUnlocked} />` and delete the TODO comment.
+## Idempotency keys
 
-Remains `false` on initial render (correct fail-closed default) and flips to `true` only after the server confirms the entitlement.
+- **Client UI**: `submitting` state disables confirm.
+- **Client network**: `fetchPublicAnalysis` in-flight Map keyed on `handle|competitors`.
+- **Server DB**: unique partial index `uniq_credit_ledger_reserve_per_report` on `(lead_id, cache_key)` where `reason='reserve'` and no matching release/confirm. Second concurrent POST returns `duplicate` and serves the in-flight result without a second debit.
 
-### Untouched (explicitly)
+## Not implemented (explicit follow-ups)
 
-- `lead_entitlements` schema, RLS, grants.
-- `grantEntitlement`, EuPago webhook, `lead_payments`, checkout routes, prices in `products.server.ts` / `products.ts`.
-- `getMyCreditBalance`, `credits.server.ts`, beta credit ledger.
-- `UnlockModal`, `PremiumCtaProvider`, `PremiumInterestDialog`, sticky bar, teaser cards.
-- `report-shell-v2.tsx`, `report-block-nav.tsx` (already consume `premiumUnlocked` correctly).
-- Admin variants `pro_preview` / `internal_lab` (their `variant !== "public_mvp"` override is preserved — they never call the new server fn).
-- Report generation / snapshot adapter / calculations.
+- **Period 30d/90d** (extending endpoint with `period_days` + `onlyPostsNewerThan` + cacheKey rebuild). Chips open modal in "em preparação" state. No credit spent. Will need a separate prompt.
+- No new credit-store / top-up flow. Empty state still routes to feedback as today.
 
-## Behaviour matrix
+## Validation checklist
 
-| Situation | premiumUnlocked |
-|---|---|
-| No `lead_session` cookie | `false` (free) |
-| Cookie valid, no entitlement row | `false` (free) |
-| Cookie valid, entitlement row exists for `report_full_9` | `true` (pro) |
-| Entitlement lookup throws / SESSION_SECRET missing | `false` (fail-closed) |
-| `variant = "pro_preview"` (admin route) | `true` (unchanged — variant override) |
-| `variant = "internal_lab"` (admin route) | `true` (unchanged — variant override) |
+1. Paid user with 2 credits clicks "Adicionar concorrente" → dialog opens with input.
+2. Enter valid handle → confirm → spinner → analysis runs → toast → balance becomes 1.
+3. Double-click confirm during submit → only one POST fires; only one credit debited.
+4. Hard refresh while in-flight + click confirm again → server returns `duplicate`; no second debit.
+5. Invalid handle (e.g. `@`, length 0, special char) → confirm disabled.
+6. Handle equal to primary or existing competitor → confirm disabled with inline message.
+7. Apify fails → balance restored; dialog shows error; balance pill refreshes to 2.
+8. Paid user with 0 credits clicks competitor → empty state ("Pedir mais créditos") → no fetch, no debit.
+9. Paid user clicks 30d / 90d → "em preparação" state, no credit consumed, no fetch.
+10. Free user clicks any chip → existing pricing/unlock modal (unchanged).
+11. No payment / pricing / EuPago / entitlement / schema logic changed.
 
-## Manual validation
+## Files changed (expected)
 
-1. **Free**: open `/analyze/<handle>` without paying → sidebar shows "2 de 7 secções acessíveis", teasers 03–07 locked, sticky unlock bar appears, no credit balance.
-2. **Paid**: simulate by inserting a `lead_entitlements` row for the current `lead_id` + `report_full_9` (admin SQL), reload → sidebar shows premium active, all 7 sections accessible, balance pill rendered when `getMyCreditBalance` returns `hasLead: true`, no purchase CTA, period/competitor actions open `ConsumeCreditDialog`.
-3. **No cookie**: clear cookies, reload `/analyze/...` → onboarding modal flow as today (server already forces `ONBOARDING_REQUIRED`); after onboarding, premium stays `false`.
-4. **Admin `pro_preview`**: `/admin_/report-preview/<username>?variant=pro_preview` still shows premium (variant override path untouched).
-5. **Admin `internal_lab`**: `/admin/report-lab` still shows lab-only sections, still admin-gated.
-6. **Fail-closed**: temporarily break `SESSION_SECRET` → report still renders in free mode, no crash.
+- `src/components/report-redesign/v2/consume-credit-dialog.tsx` — submitting state, competitor input, period "em preparação".
+- `src/components/report-redesign/v2/report-block-nav.tsx` — async confirm, calls `fetchPublicAnalysis`, refreshes balance, tracks lifecycle events, router.invalidate.
+- `src/locales/pt/report.json` (or equivalent) — new strings.
 
-## Output (after build)
-
-- Files changed: `src/lib/payments/entitlements.functions.ts` (new), `src/routes/analyze.$username.tsx`.
-- `premiumUnlocked` is now derived from `getMyReportEntitlement()` → `hasEntitlement(leadId, "report_full_9")` in `public.lead_entitlements`.
-- Missing/failed lookup → `false` (fail-closed); never crashes.
-- No payment, pricing, schema, EuPago, checkout or report-generation logic changed.
+No backend / migration / schema / pricing / EuPago / entitlement files touched.
