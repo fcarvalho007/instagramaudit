@@ -1,101 +1,112 @@
-# Plano — Teaser premium em 5 cards bloqueados (03–07)
+# Plano — Barra sticky de conversão (free report)
 
-## Estado atual
+## Estado actual
 
-No modo `free_with_engagement` (lead capturado, sem PRO) o `ReportOverviewBlock` renderiza:
-- 01 Identity Card
-- Methodology line
-- 02 Engagement (id `engagement`)
-- **1 único `OverviewProTeaser`** que agrupa Frequência + Formatos + Publicações-chave (e nada para 06/07)
+- `StickyUnlockBar` (`src/components/report-redesign/v2/sticky-unlock-bar.tsx`) já existe mas é **mobile-only**, **navy escuro** (`bg-content-primary`), pinned a `bottom-[64px]` (acima da bottom nav), e está gated por `!unlocked` — ou seja, hoje só aparece a visitantes sem lead capturado. No fluxo onboarding-first essa condição quase nunca é verdadeira.
+- Wiring em `report-shell-v2.tsx` (linha 449): `{lockBoundary === "engagement" && !premiumUnlocked && !unlocked && <StickyUnlockBar />}`.
+- CTA usa `usePremiumCta().handlePremiumAccessClick("sticky_unlock_bar")` — fluxo de checkout/unlock partilhado.
+- Preço dinâmico disponível em `PUBLIC_PRODUCTS.report_full_9.priceLabel` (já usado em `end-of-free-block.tsx` e no novo `PremiumTeaserCard`).
+- Existe um CTA final em `ReportEndOfFreeBlock` envolvido pela `<section id="lead-magnet-card">`.
 
-Já existe estrutura para o resto:
-- `COMMERCIAL_SECTIONS` em `block-config.ts` define 7 secções (free + pro) com `id`, `number`, `shortLabel`, `tier`, `icon`.
-- Preço dinâmico: `PUBLIC_PRODUCTS.report_full_9.priceLabel` (usado em `end-of-free-block.tsx`).
-- CTA premium centralizado: `usePremiumCta().handlePremiumAccessClick("overview_pro_teaser")` — já registado no `premium-cta-context`.
-- Sidebar comercial (`report-block-nav.tsx`) já consome `COMMERCIAL_SECTIONS` com tier free/pro — está OK.
+## Mudanças
 
-## Mudanças propostas
+### 1. Redesenhar `StickyUnlockBar`
+Ficheiro: `src/components/report-redesign/v2/sticky-unlock-bar.tsx` (reescrita)
 
-### 1. Novo componente `PremiumTeaserCard`
-Ficheiro: `src/components/report-redesign/v2/premium-teaser-card.tsx`
+- **Variantes responsive:** desktop (`hidden md:flex`) e mobile (`md:hidden`).
+- **Superfície:** branca/off-white (`bg-surface-base`), borda topo subtil (`border-t border-border-default`), shadow suave para cima (`shadow-[0_-8px_24px_-12px_rgba(3,4,94,0.10)]`).
+- **Position:** `fixed inset-x-0 bottom-0 z-30`, com `pb-[env(safe-area-inset-bottom)]` para iOS. Mobile sobe acima da bottom nav (`bottom-[64px]`); desktop fica colado ao fundo.
 
-Props: `{ number, eyebrow, title, description, source }` (source para tracking via `handlePremiumAccessClick`).
+**Desktop layout:**
+```
+[🔒]  Faltam-te 5 secções premium                 9€ único   [Desbloquear]
+      frequência, formatos, publicações-chave e prioridades
+```
+- Esquerda: ícone Lock em chip (`bg-surface-muted`), título Inter SemiBold + subcopy Inter Regular `text-content-secondary`.
+- Meio: `priceLabel` (Inter SemiBold, tabular-nums) + "único" em `text-content-tertiary`.
+- Direita: pill `bg-accent-primary text-white` "Desbloquear".
+- Botão close `×` (opcional, à direita extrema) — dismiss por sessão.
 
-Layout (espelha o screenshot anexado, alinhado ao design tokens Ocean Breeze já em uso):
-- Container: `rounded-2xl border border-border-default bg-surface-base shadow-card p-6 md:p-8`.
-- Linha topo: número grande em chip suave à esquerda (`bg-surface-muted`, número em Inter SemiBold), eyebrow + título centro, badge `Premium` (ícone Lock + label) à direita.
-- Eyebrow: `.text-eyebrow-sm text-accent-primary` (e.g. "FREQUÊNCIA EDITORIAL").
-- Título: `font-display text-xl md:text-2xl text-content-primary`.
-- Descrição: `text-sm md:text-[15px] text-content-secondary`.
-- Área blur preview: bloco decorativo com 3–4 barras `bg-accent-primary/15` + `bg-surface-muted` com `filter: blur(6px)` e `aria-hidden`. Altura ~120px md / ~80px sm. Gradient overlay branco em baixo para fade.
-- CTA centrado sobre o blur: pill `bg-white border border-border-default shadow-sm` com ícone Lock + texto `Desbloquear por {priceLabel}` (preço lido de `PUBLIC_PRODUCTS.report_full_9.priceLabel` — nunca hardcoded).
-- onClick → `handlePremiumAccessClick(source)`. Sem mudar lógica de checkout.
+**Mobile layout (uma linha compacta):**
+```
+[🔒] 5 secções por desbloquear        [Ver tudo]
+     9€ · pagamento único
+```
+- Altura ~56px, sem bordas redondas pesadas, sem uppercase, sentence case.
 
-Mobile: padding `p-5`, número/badge em linha compacta, blur preview mais curto.
+### 2. Trigger de visibilidade
+Substituir o gating `!unlocked` por **observação de scroll**.
 
-### 2. Substituir `OverviewProTeaser` por lista de 5 cards
-Ficheiro: `src/components/report-redesign/v2/report-overview-block.tsx`
+- Hook interno usando `IntersectionObserver`:
+  - **Mostrar** quando o `#engagement` deixa de estar visível por cima (i.e. user já passou da última secção free).
+  - **Esconder** quando `#lead-magnet-card` (ReportEndOfFreeBlock) entra no viewport — o CTA principal está visível, sticky torna-se redundante.
+- Implementação: novo hook `useStickyUnlockTrigger()` em `sticky-unlock-bar.tsx`:
+  - Observa `#engagement` (rootMargin top negativo) → set `passedFree=true` quando `boundingClientRect.bottom < 0`.
+  - Observa `#lead-magnet-card` → set `finalCtaVisible=true` enquanto `isIntersecting`.
+  - `visible = passedFree && !finalCtaVisible && !dismissed`.
+- Animação: fade + translate-y 8px → 0 em 180ms. Sem bounce.
 
-No bloco `mode === "free_with_engagement"`:
-- Manter Methodology + Engagement.
-- Substituir o `<OverviewProTeaser />` por uma secção com:
-  - Eyebrow discreto: `RELATÓRIO COMPLETO · 5 secções premium` (opcional, alinhado à esquerda).
-  - Stack vertical (`space-y-5 md:space-y-6`) de 5 `<PremiumTeaserCard>` com âncoras `id="frequencia"`, `id="formatos"`, `id="publicacoes-chave"`, `id="contexto-estrategico"`, `id="prioridades"` e `scroll-mt-24` para a sidebar continuar a funcionar.
-- Remover (ou manter como deprecated não usado) a função `OverviewProTeaser` antiga.
+### 3. Dismissal
+- Botão `×` (aria-label "Fechar barra"). Set `dismissed` em React state (sessão actual, sem cookies/localStorage — alinha com "current session unless safe preference pattern existe", e não existe).
+- Após dismiss, não reaparece nesta sessão.
 
-Copy dos 5 cards (i18n via report namespace, fallback inline):
+### 4. Gating no shell
+Ficheiro: `src/components/report-redesign/v2/report-shell-v2.tsx`
 
-| # | Eyebrow | Title | Description |
-|---|---|---|---|
-| 03 | FREQUÊNCIA EDITORIAL | Com que ritmo publica este perfil? | Percebe se o perfil publica com consistência suficiente e onde existem quebras de ritmo. |
-| 04 | MIX DE FORMATOS | Que formatos dominam a estratégia? | Vê se o perfil depende demasiado de um formato ou se há espaço para variar. |
-| 05 | PUBLICAÇÕES-CHAVE | Que posts puxam o perfil para cima? | Identifica os melhores e piores conteúdos e percebe onde estão os padrões. |
-| 06 | CONTEXTO ESTRATÉGICO | O que estes sinais dizem sobre o perfil? | Recebe uma leitura editorial sobre posicionamento, conteúdo e oportunidades. |
-| 07 | PRIORIDADES DE ACÇÃO | O que testar, corrigir ou repetir? | Fica com recomendações práticas para transformar dados em decisões. |
+Alterar a condição (~linha 449):
+```diff
+- {lockBoundary === "engagement" && !premiumUnlocked && !unlocked && (
+-   <StickyUnlockBar />
+- )}
++ {lockBoundary === "engagement" && !premiumUnlocked && (
++   <StickyUnlockBar />
++ )}
+```
+- `lockBoundary === "engagement"` garante só fluxo público.
+- `!premiumUnlocked` garante esconder em PRO/internal_lab.
+- Variant `internal_lab` nunca define `lockBoundary="engagement"` (continua sem sticky).
 
-### 3. Tracking source
-Reutilizar `"overview_pro_teaser"` (já no union type de `premium-cta-context.tsx`) para todos os 5 cards — sem novo evento, evita mexer em analytics. (Alternativa, se desejado mais tarde: adicionar `"premium_teaser_card"` ao union; **fora deste plano** para respeitar a constraint de não tocar tracking.)
+### 5. Preço dinâmico
+- Importar `PUBLIC_PRODUCTS` e ler `priceLabel` — texto "9€ único" / "9€ · pagamento único" é montado a partir do label, não hardcoded.
 
-### 4. Sidebar
-**Sem mudanças.** `report-block-nav.tsx` já lista as 7 `COMMERCIAL_SECTIONS` com badges free/premium para variantes comerciais e omite os blocos lab. Já satisfaz o requisito.
-
-### 5. ReportEndOfFreeBlock
-Permanece como está — continua a aparecer no fim, agora abaixo dos 5 teasers, reforçando o CTA único do preço.
+### 6. Padding inferior
+Hoje o shell já tem `<div className="h-28 lg:hidden">` no fim. Adicionar variante desktop `lg:block lg:h-20` apenas quando a sticky bar estiver renderizada, para evitar tapar o footer.
 
 ## Ficheiros a editar
 
-- `src/components/report-redesign/v2/premium-teaser-card.tsx` (novo)
-- `src/components/report-redesign/v2/report-overview-block.tsx` (substituir `<OverviewProTeaser />` por 5 cards; pode remover a função)
-- `public/locales/pt/report.json` (adicionar strings `premium_teasers.*` — opcional, com fallbacks inline para não bloquear)
+- `src/components/report-redesign/v2/sticky-unlock-bar.tsx` (reescrita: desktop+mobile, trigger scroll, dismiss, preço dinâmico)
+- `src/components/report-redesign/v2/report-shell-v2.tsx` (uma linha — remover `!unlocked` da condição; adicionar spacer desktop)
 
 ## Fora do âmbito (não tocar)
 
-- `report-variant.ts`, gating logic, `premiumUnlocked`
-- `PUBLIC_PRODUCTS`, products.server.ts, EuPago, checkout, entitlements, créditos
-- Cálculos, scraping, geração de relatório
-- Sidebar (já correcta)
-- Lab-only blocks (continuam invisíveis no fluxo comercial)
-- Eventos de analytics existentes
+- Pricing, checkout, EuPago, entitlements, créditos, unlock flow
+- Geração de relatório, cálculos, scraping
+- Schema / DB / migrations
+- `report-variant.ts`, `premium-cta-context.tsx` (já tem `sticky_unlock_bar` no union)
+- Lab/PRO views
 
 ## Riscos e salvaguardas
 
-- **Risco:** blur excessivo prejudica leitura → mitigar com `blur(6px)` + opacidade 60% + gradient fade.
-- **Risco:** preço hardcoded → garantir leitura via `PUBLIC_PRODUCTS.report_full_9.priceLabel`.
-- **Risco:** quebra de âncoras da sidebar (`frequencia`, `formatos`, etc.) → aplicar os mesmos `id` nos teaser cards.
-- **Risco:** mobile overflow → testar com `max-w-full`, `min-w-0`, `overflow-hidden` no container do blur.
+- **Risco:** sticky tapa o CTA final → mitigado por hide-when-`lead-magnet-card`-visible.
+- **Risco:** preço hardcoded → usar `PUBLIC_PRODUCTS.report_full_9.priceLabel`.
+- **Risco:** overflow horizontal mobile → `min-w-0`, `truncate` nas linhas de texto.
+- **Risco:** safe-area iOS → `pb-[env(safe-area-inset-bottom)]`.
+- **Risco:** aparecer em pro_preview/internal_lab → gating já o impede via `lockBoundary` + `!premiumUnlocked`.
+- **Risco:** quebrar teste existente `premium-cta-unification.test.ts` que verifica `lockBoundary === "engagement" && !premiumUnlocked && <StickyUnlockBar`. A nova condição mantém esses dois operandos (apenas remove `!unlocked`), então o regex `[\s\S]*?` continua a match. Validar com `bunx vitest run premium-cta-unification`.
 
 ## Checklist de validação manual
 
-Desktop e mobile, em `/analyze/$username` no estado free com lead capturado (sem PRO):
-1. Aparecem 01 Visão geral + 02 Engagement totalmente.
-2. Aparecem 5 cards premium bloqueados na ordem 03→07 com títulos visíveis.
-3. Cada card mostra: número, eyebrow, título, descrição, badge Premium, área blur, CTA "Desbloquear por 9€" (preço vindo de `PUBLIC_PRODUCTS`).
-4. CTA abre o mesmo fluxo de unlock existente (PremiumCtaProvider).
-5. Sidebar continua a mostrar 2/7 livres + 5 premium, sem blocos lab.
-6. Clicar em itens da sidebar 03–07 faz scroll até cada teaser card correspondente.
-7. Mobile: sem overflow horizontal, blur preview proporcional, CTA legível.
-8. `ReportEndOfFreeBlock` continua a aparecer no fim.
-9. Variantes `pro_preview` e `internal_lab` não são afectadas (cards reais continuam a render).
+Desktop + mobile, `/analyze/$username` em estado free pós-lead:
+1. Sticky bar **não aparece** ao topo antes do Engagement.
+2. Aparece com fade após o user passar do Engagement / entrar nos teaser cards.
+3. Mantém-se visível enquanto faz scroll pelos 5 teasers.
+4. Desaparece (ou faz fade out) quando o CTA final `lead-magnet-card` entra em viewport.
+5. Botão "Desbloquear" / "Ver tudo" abre o mesmo `PremiumCtaProvider` (sem novo checkout).
+6. Botão `×` esconde durante a sessão; não reaparece até reload.
+7. Mobile: sem overflow horizontal, respeita safe-area, altura compacta (~56px).
+8. Preço mostrado vem de `PUBLIC_PRODUCTS.report_full_9.priceLabel`.
+9. Em `pro_preview` (premium unlocked) e `internal_lab`: sticky **não aparece**.
+10. Em variante anónima sem lead: continua a funcionar (já era esse o caso, e o teste de unificação continua verde).
 
 ## Aprovação
 
