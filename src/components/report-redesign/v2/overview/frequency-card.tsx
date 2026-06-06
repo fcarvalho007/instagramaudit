@@ -4,12 +4,15 @@
  */
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
+import { CheckCircle2 } from "lucide-react";
 import { computeFrequencia } from "./score-utils";
-import { InsightCallout } from "./insight-callout";
 import type { SocialinsiderInstagramContext } from "@/lib/knowledge/socialinsider-context";
 import { ExternalSourceNote, formatDateRange } from "./external-source-note";
 import { formatNumber } from "@/lib/i18n/format";
-import { ReportCardSectionHeader, type ReportSectionQualifierTone } from "../report-card-section-header";
+import {
+  ReportCardSectionHeader,
+  type ReportSectionQualifierTone,
+} from "../report-card-section-header";
 
 function getFrequencyStatusKey(score: number): "high" | "medium" | "low" {
   if (score >= 70) return "high";
