@@ -434,6 +434,24 @@ function ReportLabPage() {
       {/* ── 6. REPORT PREVIEW ──────────────────────────────────── */}
       {load.kind === "ready" && (
         <div className="rounded-2xl border border-admin-border overflow-hidden shadow-[var(--shadow-admin-card)]">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-admin-border bg-admin-surface-muted/60 px-5 py-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-admin-text-tertiary">
+                Pré-visualização condensada · {variant}
+              </p>
+              <p className="mt-0.5 text-[12.5px] text-admin-text-secondary">
+                Para validar como o cliente {variant === "pro_preview" ? "Pro" : variant === "internal_lab" ? "interno" : "público"} vê, abre em ecrã completo.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => window.open(`/admin/report-preview/${activeProfile}?variant=${variant}`, "_blank")}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-admin-text-primary px-3.5 py-2 text-[12.5px] font-medium text-white transition-colors hover:opacity-90"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Abrir em ecrã completo
+            </button>
+          </div>
           <ReportThemeWrapper>
             <ReportShellV2
               result={load.result}
