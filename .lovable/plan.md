@@ -1,61 +1,54 @@
-## Goal
+## Avaliação do bloco "Transforma sinais em decisões"
 
-Refinar duas secções do relatório:
+Ficheiro: `src/components/report-redesign/v2/end-of-free-block.tsx`
 
-1. **Formato** — o gráfico de proporção aparece "vazio" no preview. Substituir por um visual cinematográfico, claramente preenchido, com hierarquia óbvia (Carrosséis 83% dominante vs Reels 17%).
-2. **Frequência de publicação** — alinhar a paleta com o resto do report e dar contenção aos números soltos (2,8 / 33% / Terça) através de um agrupamento subtil que se enquadra no estilo editorial.
+### Diagnóstico
 
-Sem alterações de lógica, dados, i18n ou geração de PDF.
+1. **Tipo demasiado contida** — `text-3xl sm:text-4xl md:text-[2.5rem]` é igual à escala dos cartões interiores; sendo o último bloco do relatório (momento de decisão) devia ter peso editorial superior.
+2. **Card de benefícios compete com o headline** — borda + fundo muted + ícones a cor accent criam um "mini-card dentro de card" que rouba protagonismo ao título e ao CTA.
+3. **`9€` em Fraunces** infringe a regra core do projecto: números públicos devem ser Inter SemiBold/Bold tabular-nums, nunca font-display.
+4. **CTA modesto** — `text-sm` num momento de conversão; merece +1 nível.
+5. **Hierarquia plana** — eyebrow → título → desc → card → preço → CTA → reassurance é uma sequência longa de igual peso. Falta um pico claro.
+6. **Fundo branco isolado sobre canvas** é correcto, mas sem qualquer assinatura visual: o bloco lê-se como mais um card e não como um fecho.
 
-## Ficheiros a alterar
+### Mudanças propostas (visuais, sem alterar i18n nem lógica)
 
-- `src/components/report-redesign/v2/overview/format-card.tsx`
-- `src/components/report-redesign/v2/overview/frequency-card.tsx`
+**Tipografia (mais impacto):**
+- Título → `text-[2.25rem] sm:text-[3rem] md:text-[3.5rem]` em Fraunces SemiBold (peso `font-semibold` em vez de `font-normal`), leading `1.05`.
+- Descrição → escala para `text-[17px] sm:text-[18px]`, largura max-w-2xl para respirar.
+- Preço `9€` → Inter SemiBold tabular-nums `text-[4rem] sm:text-[4.5rem]` (corrige violação de tokens). Cor `--accent-primary` para criar segundo pico visual depois do título.
+- Caption de preço → `text-[13px] uppercase tracking-[0.14em] text-content-tertiary` (eyebrow style) — mais elegante, menos repetitivo.
+- CTA → `px-7 py-3.5 text-[15px]` + sombra ligeiramente mais presente.
 
-## 1. Formato — gráfico cinematográfico
+**Reduzir / simplificar:**
+- Lista de benefícios **sai do mini-card interior**: passa a lista hairline-divider (sem fundo, sem borda), centrada com max-w-md, ícones menos saturados (`text-content-tertiary` em vez de `accent-primary/80`). Mantém-se os 5 itens (são prova de valor concreta — não vale a pena cortar).
+- Eyebrow do bloco de benefícios passa de uppercase pequena para uma linha de transição mais leve, ou remove-se (o título "vais conseguir" deixa de competir com o título principal). Avaliação: remover, deixa o título principal sozinho como ancora.
+- Reassurance final → encolhe para `text-[12.5px]` mas centra-se acima do CTA OU mantém-se abaixo, mas sem max-w para terminar limpo.
 
-Diagnóstico do "branco":
-O `FormatProportionBar` actual usa `color-mix(... var(--surface-base))` para segmentos secundários e depende de tokens que, em alguns contextos, devolvem um tom quase indistinguível do cartão. O segmento dominante (Carrosséis 83%) está a render-se sobre fundo do card e visualmente desaparece.
+**Fundo / card:**
+- Card mantém-se branco, mas com:
+  - Padding mais generoso: `px-6 py-12 sm:px-12 sm:py-16` (mais ar vertical, foco no título).
+  - `max-w-2xl` → `max-w-xl` para o card ficar mais coeso e cinematográfico (o relatório todo respira no canvas em volta).
+  - Sombra ligeiramente mais densa: `shadow-[0_8px_40px_-12px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.04)]` — comunica "card final, distinto".
+  - Gradiente vertical muito subtil interior: `bg-[linear-gradient(180deg,#FFFFFF_0%,#F8FAFE_100%)]` em vez de branco chapado — assina o fim do relatório sem ser ruidoso.
+  - Border passa a `border-border-subtle/70` para acentuar a sombra.
 
-Redesign (substitui `FormatProportionBar`):
+**Hierarquia nova (mais clara):**
+1. Eyebrow (kicker discreto)
+2. **Título grande** (pico 1)
+3. Descrição lead
+4. Lista de benefícios borderless (suporte)
+5. **`9€` grande em accent** (pico 2)
+6. Caption uppercase pequena
+7. **CTA proeminente** (pico 3)
+8. Reassurance hairline
 
-- **Hero split de duas colunas** dentro do card:
-  - Coluna esquerda (~62%): número editorial gigante `83%` em Fraunces SemiBold (text-[4rem] md:text-[5rem]), com label `Carrosséis · 10 de 12` por baixo em Inter eyebrow. Cor: `--accent-primary`.
-  - Coluna direita (~38%): bloco vertical proporcional (uma barra vertical alta) dividido em dois segmentos preenchidos:
-    - Carrosséis: 83% da altura, fundo sólido `--accent-primary`.
-    - Reels: 17% da altura, fundo `color-mix(in oklab, var(--accent-primary) 28%, white)` (tint claro garantido, sem dependência de `--surface-base`).
-    - Cada segmento mostra `%` e label internamente (Inter SemiBold tabular-nums), branco sobre azul / `--content-primary` sobre tint.
-  - Borda hairline `border-border-subtle/60`, `rounded-xl`, altura ~140px md:160px — proporção cinematográfica.
-- **Legenda abaixo** mantém-se (Carrosséis · Reels · Imagens 0), apenas usa pontos com a mesma família azul (não emerald/sky/amber), unificando a paleta com o resto do report.
-- Mantém `role="img"` + `aria-label` reutilizando i18n existente. Sem alteração à matemática (mesmo rounding-to-100, mesmo `segments` source).
+### Garantias
 
-Comportamento:
-- Se houver 3+ formatos com count>0, a barra vertical empilha N segmentos pela mesma ordem desc, o número grande à esquerda continua a mostrar o dominante.
-- Sem dados: retorna `null` (igual ao actual).
+- Zero alterações em `i18n` keys, `PUBLIC_PRODUCTS`, `usePremiumCta`, handler `openInterest`, posicionamento no shell, ou acessibilidade (`aria-label`, `aria-hidden` mantêm-se).
+- Apenas markup + classes Tailwind + um inline-style para o gradiente do card.
+- Mobile validado: títulos crescem suavemente; padding adapta-se via breakpoints `sm:`.
 
-Filmstrip e bloco "A MELHORAR" mantêm-se exactamente como estão.
+### Resultado esperado
 
-## 2. Frequência — contenção dos números + paleta unificada
-
-Mudanças visuais apenas:
-
-- **Agrupar os três KPIs (cadência / consistência / pico semanal)** num bloco horizontal com hairlines verticais subtis em vez de soltos no fluxo:
-  - Container: `mt-6 rounded-xl border border-border-subtle/60 bg-surface-base/40 px-5 md:px-6 py-4 md:py-5`.
-  - 3 colunas com `divide-x divide-border-subtle/60`, cada coluna mantém o número grande Fraunces + label Inter já existentes.
-  - No mobile, mantém-se em flex-wrap mas dentro do container, sem divisores verticais visíveis (`sm:divide-x`).
-- **Alinhamento de cor:**
-  - Constante local `ACCENT = "#3772E5"` no `WeeklyRhythmChart` passa a `var(--accent-primary)` (com fallback) para igualar exactamente o azul do card Formato e o resto dos accents do report.
-  - Tints (barras secundárias com posts e barra zero) também passam a `color-mix` sobre `--accent-primary`, eliminando o `rgba(55,114,229,0.18)` hardcoded.
-  - O ✓ verde da conclusão "Cadência forte e consistente" mantém-se (sinal positivo é semântico, não decorativo).
-- O bloco do gráfico semanal e a conclusão editorial permanecem inalterados em estrutura — apenas tokens de cor unificados.
-
-## Garantias
-
-- Zero alterações em: cálculos (`computeFrequencia`, `aggregateByWeekday`, rounding-to-100), props, i18n keys, ordem das secções, lógica de cadência insuficiente, PDF, mocks, testes.
-- Apenas markup + classes Tailwind + estilos inline de cor.
-- Mobile/desktop validados visualmente em 375 / 820 / 1440.
-
-## Resultado esperado
-
-- Formato: o gráfico tem peso visual claro — número editorial gigante + barra vertical totalmente preenchida, leitura imediata da dominância.
-- Frequência: os números deixam de "flutuar"; ficam contidos num bloco discreto coerente com a linguagem dos cartões do report; toda a paleta do azul é a mesma do resto das secções.
+Bloco lê-se como o **fecho** do relatório (não como mais um cartão): título com peso editorial real, preço em destaque coerente com a paleta accent, lista de benefícios mais leve, CTA com gravidade adequada ao momento de decisão.
