@@ -9,6 +9,12 @@ import {
   FileText,
   Search,
   BarChart3,
+  Activity,
+  CalendarClock,
+  LayoutGrid,
+  Star,
+  Compass,
+  ListChecks,
 } from "lucide-react";
 
 /**
@@ -144,15 +150,6 @@ export interface CommercialSection {
   tier: SectionTier;
   icon: LucideIcon;
 }
-
-import {
-  Activity,
-  CalendarClock,
-  LayoutGrid,
-  Star,
-  Compass,
-  ListChecks,
-} from "lucide-react";
 
 export const COMMERCIAL_SECTIONS: readonly CommercialSection[] = [
   { id: "overview",              number: "01", shortLabel: "Visão geral",         tier: "free", icon: Eye },
