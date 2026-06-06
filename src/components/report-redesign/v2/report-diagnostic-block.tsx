@@ -152,28 +152,43 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
         ? result.enriched.commentIntelligence
         : null;
 
+    const withAnchor = (id: string, node: ReactNode | null): ReactNode | null =>
+      node ? (
+        <div key={id} id={id} className="scroll-mt-24">
+          {node}
+        </div>
+      ) : null;
+
     const groupA = compact([
-      renderContentTypeCard(contentType, t),
-      renderFunnelCard(funnel, t),
+      withAnchor("diag-conteudo", renderContentTypeCard(contentType, t)),
+      withAnchor("diag-funil", renderFunnelCard(funnel, t)),
     ]);
-    const groupBHashtag = hashtags.available ? (
-      <HashtagDiagnosticsCard
-        key="q03"
-        items={hashtags.items}
-        postsAnalyzed={posts.length}
-        posts={posts}
-      />
-    ) : null;
+    const groupBHashtag = hashtags.available
+      ? withAnchor(
+          "diag-hashtags",
+          <HashtagDiagnosticsCard
+            key="q03"
+            items={hashtags.items}
+            postsAnalyzed={posts.length}
+            posts={posts}
+          />,
+        )
+      : null;
     const groupC = compact([
-      renderAudienceCard(
-        audience,
-        effectiveCommentIntel,
-        captionEngagementStrategy,
-        captionAsksForCommentsPct,
-        t,
+      withAnchor(
+        "diag-audiencia",
+        renderAudienceCard(
+          audience,
+          effectiveCommentIntel,
+          captionEngagementStrategy,
+          captionAsksForCommentsPct,
+          t,
+        ),
       ),
     ]);
-    const groupD = compact([renderIntegrationCard(integration, t)]);
+    const groupD = compact([
+      withAnchor("diag-integracao", renderIntegrationCard(integration, t)),
+    ]);
 
     const hasAnyCard =
       groupA.length > 0 ||
@@ -203,11 +218,13 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
                 questionsCount={(groupBHashtag ? 1 : 0) + 1}
               >
                 {groupBHashtag}
-                <CaptionDiagnosticsCard
-                  data={captionIntel}
-                  semantic={captionSemantic}
-                  posts={posts}
-                />
+                <div id="diag-legendas" className="scroll-mt-24">
+                  <CaptionDiagnosticsCard
+                    data={captionIntel}
+                    semantic={captionSemantic}
+                    posts={posts}
+                  />
+                </div>
               </ReportDiagnosticGroup>
 
               <ReportDiagnosticGroup
@@ -215,10 +232,12 @@ export function ReportDiagnosticBlock({ result, payload }: Props) {
                 label={t("diagnostic_groups.E")}
                 questionsCount={1}
               >
-                <VisualCoverAnalysisCard
-                  posts={posts}
-                  analysis={parseVisualCoverAnalysis(payload)}
-                />
+                <div id="diag-capas" className="scroll-mt-24">
+                  <VisualCoverAnalysisCard
+                    posts={posts}
+                    analysis={parseVisualCoverAnalysis(payload)}
+                  />
+                </div>
               </ReportDiagnosticGroup>
 
               {groupC.length > 0 ? (
