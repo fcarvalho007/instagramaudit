@@ -12,7 +12,7 @@ import { Fragment, useState, type ComponentType } from "react";
 import { Play, Image, GalleryHorizontalEnd } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { InsightCallout, type InsightTone } from "./insight-callout";
+import type { InsightTone } from "./insight-callout";
 import type {
   SocialinsiderFormatRef,
   SocialinsiderInstagramContext,
@@ -284,8 +284,6 @@ export function FormatCard({
     parts: ariaFormatParts.join(", "),
   });
 
-  const activeFormats = sortedFormats;
-
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden flex flex-col">
       {/* Header */}
@@ -305,78 +303,30 @@ export function FormatCard({
         />
       </div>
 
-      {/* Breakdown — donut + legend */}
-      <FormatBreakdown formats={formats} postsAnalyzed={postsAnalyzed} t={t} />
+      {/* Hero proportion bar + legend */}
+      <FormatProportionBar formats={formats} t={t} ariaLabel={ariaLabel} />
 
-      {/* Thumbnail grid */}
+      {/* Thumbnail filmstrip — single elegant row */}
       {sortedPosts.length > 0 && (
-        <div className="px-5 md:px-6 mt-6">
-          <div className="rounded-xl border border-border-default bg-surface-muted/40 px-4 py-4 md:px-5 md:py-5">
-            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mb-3">
-              <span className="text-eyebrow-sm text-content-tertiary">
-                {t("format.analyzed_count", { count: postsAnalyzed })}
-              </span>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                {activeFormats.map((f) => {
-                  const style = FORMAT_STYLE[f.format];
-                  return (
-                    <span key={f.format} className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
-                      <span className={`size-[7px] rounded-full ${style.dot} shrink-0`} aria-hidden="true" />
-                      {tFormatPlural(t, f.format)} ({f.count})
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-            <div
-              role="img"
-              aria-label={ariaLabel}
-              className="grid gap-2 md:gap-1.5 grid-cols-3 sm:grid-cols-4 md:[grid-template-columns:repeat(auto-fill,minmax(84px,1fr))] lg:[grid-template-columns:repeat(auto-fill,minmax(96px,1fr))]"
-            >
-            {sortedPosts.map((post, idx) => {
-              const fk = TYPE_TO_FORMAT_KEY[post.type] ?? "unknown";
-              const style = FORMAT_STYLE[fk] ?? FORMAT_STYLE.unknown;
-              const Icon = style.icon;
-              const label = tTypeSingular(t, post.type);
-              return (
-                <span
-                  key={`${post.date}-${idx}`}
-                  title={t("format.thumb_aria", { label, date: post.date })}
-                  className="relative rounded-md overflow-hidden bg-surface-muted border border-border-default/60"
-                  style={{ aspectRatio: "1/1" }}
-                >
-                  {post.thumbnailUrl ? (
-                    <PostThumb
-                      src={post.thumbnailUrl}
-                      alt={label}
-                      fallbackIcon={Icon}
-                      fallbackIconColor={style.iconColor}
-                    />
-                  ) : (
-                    <span className="absolute inset-0 flex items-center justify-center">
-                      <Icon className={`size-8 ${style.iconColor}`} aria-hidden="true" />
-                    </span>
-                  )}
-                  {/* Small format dot indicator — bottom-right */}
-                  <span
-                    className={`absolute bottom-1.5 right-1.5 size-2.5 rounded-full ring-1 ring-white ${style.dot}`}
-                    aria-hidden="true"
-                  />
-                </span>
-              );
-            })}
-            </div>
-          </div>
-        </div>
+        <FormatFilmstrip
+          posts={sortedPosts}
+          postsAnalyzed={postsAnalyzed}
+          t={t}
+        />
       )}
 
-      {/* Verdict */}
-      <InsightCallout tone={calloutTone} label={calloutLabel} className="mt-6 mx-5 md:mx-6 mb-5 sm:mb-6">
-        <p>
-          <span className="font-semibold">{verdict.strong}</span>{" "}
-          {verdict.rest}
-        </p>
-      </InsightCallout>
+      {/* Verdict — calmer, editorial */}
+      <div className="px-5 md:px-6 mt-6 mb-5 sm:mb-6">
+        <div className="border-t border-border-subtle/60 pt-4">
+          <span className="text-eyebrow-sm text-content-tertiary">
+            {calloutLabel}
+          </span>
+          <p className="mt-1.5 text-[14px] leading-relaxed text-content-secondary">
+            <span className="font-semibold text-content-primary">{verdict.strong}</span>{" "}
+            {verdict.rest}
+          </p>
+        </div>
+      </div>
       {socialinsiderRef ? (
         <p className="px-5 md:px-6 -mt-4 mb-3 text-[13px] text-content-secondary leading-relaxed">
           {t("format.external_ref.bridge")}
@@ -437,21 +387,22 @@ function PostThumb({
   );
 }
 
-/** Donut + per-format legend showing distribution of published formats. */
-function FormatBreakdown({
+/**
+ * Premium horizontal proportion bar — the section's hero visual.
+ * Zero-count formats appear only in the legend below, not as bar segments.
+ */
+function FormatProportionBar({
   formats,
-  postsAnalyzed,
   t,
+  ariaLabel,
 }: {
   formats: FormatEntry[];
-  postsAnalyzed: number;
   t: TFunction;
+  ariaLabel: string;
 }) {
-  void postsAnalyzed;
   const byKey = new Map<FormatKey, FormatEntry>();
   formats.forEach((f) => byKey.set(f.format, f));
 
-  // Always show Carrossel, Reels, Imagem. Add Video only if it has count.
   const rows: FormatKey[] = [...BREAKDOWN_ORDER];
   const video = byKey.get("Video");
   if (video && video.count > 0) rows.push("Video");
@@ -459,9 +410,7 @@ function FormatBreakdown({
   const total = rows.reduce((s, k) => s + (byKey.get(k)?.count ?? 0), 0);
   if (total === 0) return null;
 
-  // Normalised percentages that always sum to 100 (largest segment absorbs
-  // rounding drift). Anchor everything to `total` (Σcount), not the
-  // upstream `postsAnalyzed` — they can differ if format_stats is partial.
+  // Same normalised-to-100 rounding logic as before (no math change).
   const rawPcts = rows.map((k) => {
     const c = byKey.get(k)?.count ?? 0;
     return total > 0 ? (c / total) * 100 : 0;
@@ -476,119 +425,163 @@ function FormatBreakdown({
   const pctByKey = new Map<FormatKey, number>();
   rows.forEach((k, i) => pctByKey.set(k, rounded[i]));
 
-  // Donut geometry
-  const size = 76;
-  const stroke = 9;
-  const radius = (size - stroke) / 2;
-  const circumference = 2 * Math.PI * radius;
-  let offsetAcc = 0;
+  // Bar segments: only formats with count > 0, ordered by share desc.
+  const segments = rows
+    .map((k) => ({
+      key: k,
+      count: byKey.get(k)?.count ?? 0,
+      pct: pctByKey.get(k) ?? 0,
+    }))
+    .filter((s) => s.count > 0)
+    .sort((a, b) => b.pct - a.pct);
+
+  const accent = "var(--accent-primary, #3772E5)";
+  const segmentBg = (idx: number) =>
+    idx === 0
+      ? accent
+      : `color-mix(in oklab, ${accent} ${Math.max(14, 26 - idx * 6)}%, var(--surface-base, #FAFBFD))`;
+  const segmentFg = (idx: number) =>
+    idx === 0 ? "#FFFFFF" : "var(--content-primary, #0F172A)";
 
   return (
     <div className="px-5 md:px-6 mt-5">
+      {/* Hero bar */}
       <div
-        className="flex items-center gap-4 md:gap-5 rounded-xl bg-surface-muted/60 border border-border-subtle/50 px-4 md:px-5 py-3"
         role="img"
-        aria-label={t("format.aria_breakdown", {
-          total,
-          parts: rows
-            .map((k) =>
-              t("format.breakdown_part", {
-                count: byKey.get(k)?.count ?? 0,
-                label: tFormatLegend(t, k),
-                pct: pctByKey.get(k) ?? 0,
-              }),
-            )
-            .join(", "),
-        })}
+        aria-label={ariaLabel}
+        className="flex w-full overflow-hidden rounded-xl border border-border-subtle/50 h-[68px] md:h-[76px]"
       >
-        {/* Donut */}
-        <div className="relative shrink-0" style={{ width: size, height: size }}>
-          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
-            <circle
-              cx={size / 2}
-              cy={size / 2}
-              r={radius}
-              fill="none"
-              stroke="currentColor"
-              className="text-border-subtle/60"
-              strokeWidth={stroke}
-            />
-            {rows.map((k) => {
-              const entry = byKey.get(k);
-              const count = entry?.count ?? 0;
-              if (count === 0) return null;
-              const share = count / total;
-              const arcLen = share * circumference;
-              const dasharray = `${arcLen} ${circumference - arcLen}`;
-              const dashoffset = -offsetAcc;
-              offsetAcc += arcLen;
-              return (
-                <circle
-                  key={k}
-                  cx={size / 2}
-                  cy={size / 2}
-                  r={radius}
-                  fill="none"
-                  stroke={FORMAT_HEX[k]}
-                  strokeWidth={stroke}
-                  strokeDasharray={dasharray}
-                  strokeDashoffset={dashoffset}
-                  transform={`rotate(-90 ${size / 2} ${size / 2})`}
-                  strokeLinecap="butt"
-                />
-              );
-            })}
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-            <span className="text-[1.25rem] font-semibold text-content-primary tabular-nums">
-              {total}
-            </span>
-          </div>
-        </div>
+        {segments.map((seg, idx) => {
+          const label = tFormatPlural(t, seg.key);
+          const showInlineLabel = seg.pct >= 12;
+          return (
+            <div
+              key={seg.key}
+              className="flex flex-col justify-center px-4 md:px-5 min-w-0"
+              style={{
+                width: `${seg.pct}%`,
+                backgroundColor: segmentBg(idx),
+                color: segmentFg(idx),
+              }}
+              title={`${seg.pct}% · ${label} · ${seg.count}`}
+            >
+              <span className="text-[1.5rem] md:text-[1.75rem] leading-none font-semibold tabular-nums">
+                {seg.pct}%
+              </span>
+              {showInlineLabel ? (
+                <span
+                  className="mt-1 text-[11px] md:text-xs leading-tight tabular-nums truncate"
+                  style={{
+                    color:
+                      idx === 0
+                        ? "color-mix(in oklab, #FFFFFF 78%, transparent)"
+                        : "var(--content-secondary, #475569)",
+                  }}
+                >
+                  {label} · {seg.count}
+                </span>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
 
-        {/* Legend */}
-        <div className="flex-1 min-w-0 grid grid-cols-[1fr_auto_auto] gap-x-3 gap-y-1.5 items-center">
-          {rows.map((k) => {
-            const entry = byKey.get(k);
-            const count = entry?.count ?? 0;
-            const pct = pctByKey.get(k) ?? 0;
-            const isZero = count === 0;
-            return (
-              <Fragment key={k}>
-                <span
-                  className={`flex items-center gap-2 text-[14px] ${
-                    isZero ? "text-content-tertiary" : "text-content-primary"
-                  }`}
-                >
-                  <span
-                    className="size-2 rounded-full shrink-0"
-                    style={{
-                      backgroundColor: isZero
-                        ? "var(--border-subtle, #E2E8F0)"
-                        : FORMAT_HEX[k],
-                    }}
-                    aria-hidden="true"
-                  />
-                  {tFormatLegend(t, k)}
+      {/* Subtle legend */}
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+        {rows.map((k) => {
+          const entry = byKey.get(k);
+          const count = entry?.count ?? 0;
+          const isZero = count === 0;
+          return (
+            <span
+              key={k}
+              className={`inline-flex items-center gap-1.5 text-xs tabular-nums ${
+                isZero ? "text-content-tertiary" : "text-content-secondary"
+              }`}
+            >
+              <span
+                className="size-2 rounded-full shrink-0"
+                style={{
+                  backgroundColor: isZero
+                    ? "var(--border-subtle, #E2E8F0)"
+                    : FORMAT_HEX[k],
+                }}
+                aria-hidden="true"
+              />
+              {tFormatLegend(t, k)} {count}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Single-row filmstrip of post thumbnails with overflow fade + +N chip. */
+function FormatFilmstrip({
+  posts,
+  postsAnalyzed,
+  t,
+}: {
+  posts: AnalysedPostFormat[];
+  postsAnalyzed: number;
+  t: TFunction;
+}) {
+  const MAX_VISIBLE = 12;
+  const visible = posts.slice(0, MAX_VISIBLE);
+  const overflow = Math.max(0, posts.length - MAX_VISIBLE);
+
+  return (
+    <div className="px-5 md:px-6 mt-6">
+      <div className="mb-2.5">
+        <span className="text-eyebrow-sm text-content-tertiary">
+          {t("format.analyzed_count", { count: postsAnalyzed })}
+        </span>
+      </div>
+      <div
+        className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        style={{
+          maskImage:
+            "linear-gradient(to right, black 0, black calc(100% - 32px), transparent 100%)",
+          WebkitMaskImage:
+            "linear-gradient(to right, black 0, black calc(100% - 32px), transparent 100%)",
+        }}
+      >
+        {visible.map((post, idx) => {
+          const fk = TYPE_TO_FORMAT_KEY[post.type] ?? "unknown";
+          const style = FORMAT_STYLE[fk] ?? FORMAT_STYLE.unknown;
+          const Icon = style.icon;
+          const label = tTypeSingular(t, post.type);
+          return (
+            <span
+              key={`${post.date}-${idx}`}
+              title={t("format.thumb_aria", { label, date: post.date })}
+              className="relative shrink-0 h-16 w-16 md:h-20 md:w-20 rounded-lg overflow-hidden bg-surface-muted border border-border-default/60"
+            >
+              {post.thumbnailUrl ? (
+                <PostThumb
+                  src={post.thumbnailUrl}
+                  alt={label}
+                  fallbackIcon={Icon}
+                  fallbackIconColor={style.iconColor}
+                />
+              ) : (
+                <span className="absolute inset-0 flex items-center justify-center">
+                  <Icon className={`size-6 ${style.iconColor}`} aria-hidden="true" />
                 </span>
-                <span
-                  className={`text-[14px] font-semibold tabular-nums text-right ${
-                    isZero ? "text-content-tertiary" : "text-content-primary"
-                  }`}
-                >
-                  {count}
-                </span>
-                <span
-                  className={`text-[12px] tabular-nums text-right ${
-                    isZero ? "text-content-tertiary" : "text-accent-primary"
-                  }`}
-                >
-                  {pct}%
-                </span>
-              </Fragment>
-            );
-          })}
-        </div>
+              )}
+              <span
+                className={`absolute bottom-1 right-1 size-2 rounded-full ring-1 ring-white ${style.dot}`}
+                aria-hidden="true"
+              />
+            </span>
+          );
+        })}
+        {overflow > 0 ? (
+          <span className="relative shrink-0 h-16 w-16 md:h-20 md:w-20 rounded-lg border border-border-default/60 bg-surface-muted flex items-center justify-center text-[13px] font-semibold text-content-secondary tabular-nums">
+            +{overflow}
+          </span>
+        ) : null}
       </div>
     </div>
   );
