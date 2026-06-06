@@ -744,6 +744,10 @@ export function ReportBlockSidebar({
   );
   const accessibleIds = items.filter((i) => i.access !== "locked").map((i) => i.block.id);
   const active = useActiveBlock(accessibleIds);
+  const isCommercial = variant !== "internal_lab";
+  const paidStatus = isCommercial && premiumUnlocked
+    ? { totalSections: items.length }
+    : null;
 
   return (
     <nav
@@ -759,7 +763,7 @@ export function ReportBlockSidebar({
         "p-4 xl:p-5",
       )}
     >
-      <ProfileHeader profiles={profileList} />
+      <ProfileHeader profiles={profileList} paidStatus={paidStatus} />
       <div className="mb-2 flex justify-end">
         <VariantBadge variant={variant} />
       </div>
