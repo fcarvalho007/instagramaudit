@@ -1482,7 +1482,9 @@ export function ReportBlockTopTabs({
                 competitorCount={competitorCount}
                 competitorMax={competitorMax}
                 primaryHandle={profileList[0]?.handle}
-                existingCompetitors={profileList.slice(1).map((p) => p.handle)}
+                existingCompetitors={
+                  competitorHandles ?? profileList.slice(1).map((p) => p.handle)
+                }
               />
             </div>
           </SheetContent>
