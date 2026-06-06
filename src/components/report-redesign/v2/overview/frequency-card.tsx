@@ -486,39 +486,26 @@ export function FrequencyCard({
 
         {!isInsufficient && hasUsableData && (
           <>
-            {/* KPI strip — contained in a hairline block, aligned with the rest of the report cards */}
-            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 rounded-xl border border-border-subtle/60 bg-surface-base/40 overflow-hidden">
-              <div className="px-5 md:px-6 py-4 md:py-5 sm:border-r border-border-subtle/60 border-b sm:border-b-0">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="font-sans text-[2rem] md:text-[2.25rem] font-semibold tabular-nums leading-none text-content-primary">
-                    {cadenceValue}
-                  </span>
-                </div>
-                <span className="block mt-2 text-xs text-content-tertiary">
-                  {t("frequency.kpi.cadence_label").toLowerCase()}
-                </span>
-              </div>
-              <div className="px-5 md:px-6 py-4 md:py-5 sm:border-r border-border-subtle/60 border-b sm:border-b-0">
-                <div className="flex items-baseline gap-0.5">
-                  <span className="font-sans text-[2rem] md:text-[2.25rem] font-semibold tabular-nums leading-none text-content-primary">
-                    {consistencyPct}
-                  </span>
-                  <span className="font-sans text-[1.25rem] md:text-[1.5rem] font-semibold leading-none text-content-secondary/70">
-                    %
-                  </span>
-                </div>
-                <span className="block mt-2 text-xs text-content-tertiary">
-                  {t("frequency.kpi.consistency_label").toLowerCase()}
-                </span>
-              </div>
-              <div className="px-5 md:px-6 py-4 md:py-5">
-                <span className="block font-sans text-[2rem] md:text-[2.25rem] font-semibold leading-none text-content-primary">
-                  {peakLabel}
-                </span>
-                <span className="block mt-2 text-xs text-content-tertiary">
-                  {t("frequency.kpi.peak_label").toLowerCase()}
-                </span>
-              </div>
+            {/* KPI strip — icon + eyebrow on top, value below (aligned with "Índice do perfil" card pattern) */}
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+              <KpiTile
+                icon={<Activity className="h-3.5 w-3.5" aria-hidden="true" />}
+                label={t("frequency.kpi.cadence_label")}
+                unit={t("frequency.kpi.cadence_unit")}
+                value={cadenceValue}
+              />
+              <KpiTile
+                icon={<CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />}
+                label={t("frequency.kpi.consistency_label")}
+                value={String(consistencyPct)}
+                valueSuffix="%"
+              />
+              <KpiTile
+                icon={<TrendingUp className="h-3.5 w-3.5" aria-hidden="true" />}
+                label={t("frequency.kpi.peak_label")}
+                value={peakLabel}
+                isCategorical
+              />
             </div>
 
             <WeeklyRhythmChart days={windowedDays} t={t} />
