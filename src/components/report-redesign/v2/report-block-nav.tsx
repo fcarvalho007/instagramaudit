@@ -486,6 +486,10 @@ function LockedItemRow({
 
 const PREMIUM_WINDOWS = [30, 90] as const;
 
+// TODO: centralisar este limite num módulo partilhado (ex.: lib/config) quando
+// existir um sítio óbvio. Por agora vive aqui colado ao único consumidor.
+const COMPETITOR_MAX = 2;
+
 const DIAGNOSTIC_SECTION_ID = "diagnostico-editorial";
 
 const DIAGNOSTIC_SUBITEMS = [
@@ -649,6 +653,12 @@ function ExploreSection({
       }).catch(() => {});
 
       const competitorList = [...existingCompetitors, newHandle].slice(0, 2);
+      // Guard defensivo: o botão já deveria estar desactivado em 2/2.
+      if (existingCompetitors.length >= COMPETITOR_MAX) {
+        setErrorMessage(t("nav.explore.competitor_limit_reached"));
+        setSubmitting(false);
+        return;
+      }
 
       try {
         const result = await fetchPublicAnalysis(primaryHandle, competitorList);
@@ -745,6 +755,7 @@ function ExploreSection({
 
   const onAddCompetitor = () => {
     if (premiumUnlocked) {
+      if (competitorCount >= COMPETITOR_MAX) return;
       openConsumeDialog({ kind: "competitor" });
       return;
     }
