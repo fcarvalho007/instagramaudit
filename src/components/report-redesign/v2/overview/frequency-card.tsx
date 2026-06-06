@@ -183,7 +183,7 @@ function pickQuietest(
  * annotating peak and quietest weekday, followed by a single
  * interpretive sentence. Replaces the older two-block layout.
  */
-function WeeklyRhythm({ days, t }: { days: DayEntry[]; t: TFunction }) {
+function WeeklyRhythm({ days, t, embedded = false }: { days: DayEntry[]; t: TFunction; embedded?: boolean }) {
   const buckets = aggregateByWeekday(days);
   const totalPosts = buckets.reduce((s, b) => s + b.posts, 0);
   if (totalPosts === 0) return null;
@@ -225,9 +225,8 @@ function WeeklyRhythm({ days, t }: { days: DayEntry[]; t: TFunction }) {
     return t("frequency.weekly_rhythm.interpretation_uniform");
   })();
 
-  return (
-    <div className="px-5 md:px-6 mt-4">
-      <div className="rounded-xl border border-border-default bg-surface-muted/60 px-4 py-4">
+  const inner = (
+    <div className="rounded-xl border border-border-default bg-surface-muted/60 px-4 py-4 md:px-5 md:py-5 h-full">
         <span className="text-eyebrow-sm text-content-tertiary block mb-4">
           {t("frequency.weekly_rhythm.title")}
         </span>
