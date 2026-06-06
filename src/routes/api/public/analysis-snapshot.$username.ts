@@ -17,6 +17,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { buildReportBenchmarkInput } from "@/lib/report/benchmark-input.server";
 import type { SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
+import { readLeadIdFromRequest } from "@/lib/leads/lead-cookie.server";
+import { hasEntitlement } from "@/lib/payments/entitlements.server";
+import {
+  sanitizeSnapshotForAccessLevel,
+  type SnapshotAccessLevel,
+} from "@/lib/report/sanitize-snapshot";
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -31,7 +37,7 @@ function json(body: unknown, status = 200): Response {
 export const Route = createFileRoute("/api/public/analysis-snapshot/$username")({
   server: {
     handlers: {
-      GET: async ({ params }) => {
+      GET: async ({ params, request }) => {
         const handle = (params.username ?? "").trim().toLowerCase().replace(/^@/, "");
         if (!handle || !/^[a-z0-9._]{1,30}$/.test(handle)) {
           return json(
@@ -79,12 +85,31 @@ export const Route = createFileRoute("/api/public/analysis-snapshot/$username")(
         const payload = (data.normalized_payload ?? {}) as SnapshotPayload;
         const benchmark = await buildReportBenchmarkInput(payload);
 
+        // Derive access level server-side. Fail-closed: any cookie/DB
+        // error keeps the caller on Free and the response scrubbed.
+        let accessLevel: SnapshotAccessLevel = "free";
+        try {
+          const leadId = readLeadIdFromRequest(request);
+          if (leadId && (await hasEntitlement(leadId, "report_full_9"))) {
+            accessLevel = "pro";
+          }
+        } catch {
+          accessLevel = "free";
+        }
+
+        // Non-mutating sanitisation. The stored snapshot is untouched —
+        // we only scrub the outbound JSON.
+        const sanitizedPayload = sanitizeSnapshotForAccessLevel(
+          payload as unknown as Record<string, unknown>,
+          accessLevel,
+        ) as SnapshotPayload;
+
         return json({
           success: true,
           snapshot: {
             id: data.id,
             instagram_username: data.instagram_username,
-            payload,
+            payload: sanitizedPayload,
             meta: {
               generated_at: data.created_at,
               instagram_username: data.instagram_username,

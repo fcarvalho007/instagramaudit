@@ -1,110 +1,159 @@
-## 1. Executive summary
+## Goal
 
-I reviewed the public/free report, Pro report, app sidebar, sticky unlock bar, pricing/unlock modal, credit-confirmation modal, pricing-interest modal, checkout shells and the design tokens. Overall posture is **decent**: shadcn primitives carry most ARIA, focus order is sensible, a global `:focus-visible` ring exists in `src/styles/tokens.css`, and PT copy is generally clear. The main weaknesses are predictable for a fast-moving SaaS:
+Stop the public snapshot endpoint from passively returning paid-only enriched fields (insights v1/v2, visual cover, caption semantic, comment intelligence, market signals) inside `normalized_payload` when the caller is not Pro. Response-level sanitisation only — no schema, no storage, no provider, no entitlement, no checkout changes.
 
-- Several **muted text colours** (slate-400, content-tertiary, `text-[11px]`) sit below WCAG AA 4.5:1 on white surfaces.
-- The **app sidebar / topbar** still uses raw `slate-*` classes (violates project core rule) and omits `aria-current`, `aria-label="Principal"` and an explicit `<header>`/`role="navigation"`.
-- The **sticky unlock bar** uses `aria-hidden` for visual hide while leaving focusable buttons inside — buttons become unreachable yet still in tab order on some browsers; also the mobile "Ver tudo" label is vague (the user even flagged this pattern in the brief).
-- Several dialogs use `text-[11px]` and `text-xs` for error / status text, which is borderline on mobile and screen magnification.
-- Charts (engagement chart, KPI grid, heatmap) have **no text alternative / summary** for screen readers.
-- The competitor input field has label + error association ✓, but the error message uses `text-[11px]` (~11 px) and only colour to indicate state.
-- Locked premium cards rely on **blur + lock icon + colour** — content is visually obscured but the underlying DOM is still read by AT, which both leaks info and confuses screen readers (no `aria-hidden` or "Conteúdo bloqueado" label).
-- Global `:focus-visible` ring exists, but several custom buttons override `focus:outline-none` and only add `focus-visible:ring-2 …/40` (40 % alpha) — visible on white, weak on muted backgrounds.
+## Where the leak is
 
-Nothing is catastrophic; all top items are 1–2 line fixes.
+`/analyze/$username` (browser) → `GET /api/public/analysis-snapshot/$username` → returns `data.normalized_payload` as `snapshot.payload` **verbatim** (see `src/routes/api/public/analysis-snapshot.$username.ts:79-97`).
 
-## 2. Top 10 accessibility issues (ranked)
+`SnapshotPayload` (typed in `src/lib/report/snapshot-to-report-data.ts:118-201`) declares optional paid fields:
+- `ai_insights_v1`
+- `ai_insights_v2`
+- `visual_cover_analysis`
+- `caption_semantic_analysis`
+- `market_signals_free`
+- `market_signals_paid`
+- `comment_intelligence` (read as `(payload as { comment_intelligence?: … }).comment_intelligence`)
 
-| # | Severity | Area | Finding |
-|---|---|---|---|
-| 1 | **High** | `src/components/app/app-sidebar.tsx`, `app-topbar.tsx` | Nav items are plain `<Link>` without `aria-current="page"`; sidebar is `<aside>` not `<nav aria-label="Principal">`. Active state is colour-only (`bg-slate-100`). Screen reader users can't tell which section is active. Also `text-slate-400` for email/logout (~3.0:1) fails AA. |
-| 2 | **High** | `src/components/report-redesign/v2/sticky-unlock-bar.tsx` | Bar wrapper uses `aria-hidden={!visible}` plus `pointer-events-none` for hide, but the inner buttons are still in the DOM. When `visible=false`, focus can still land on "Desbloquear"/"Fechar" via Tab in some browsers while AT is told to ignore them — focus appears to "vanish". Should toggle mount or `inert`. Also missing `role="region" aria-label="Acesso premium"`. |
-| 3 | **High** | Sticky bar mobile | CTA label "Ver tudo" is non-descriptive (user flagged this in the brief). Should read "Desbloquear relatório completo · €9" or similar. Same button on desktop reads "Desbloquear" ✓ — inconsistent. |
-| 4 | **High** | All locked premium cards (`premium-teaser-card.tsx`, blur overlays in report v2) | Blurred content is still in the accessibility tree. Result: screen readers read teaser data the user hasn't paid for, and the lock state is conveyed only by an icon + colour. Need `aria-hidden="true"` on the blurred payload + a sibling `<p>` "Conteúdo premium — desbloquear por €9". |
-| 5 | **High** | Charts in `src/components/report/*` and `report-redesign/v2/report-engagement-benchmark-chart.tsx` | Recharts surfaces have no `role="img" aria-label` and no text summary (e.g. "Engagement médio: 3,2 %, benchmark do nicho: 2,1 %"). Fails WCAG 1.1.1 / 1.4.5. |
-| 6 | **Medium** | `consume-credit-dialog.tsx` | Competitor handle error uses `text-[11px]` (~11 px) — below readable minimum on small viewports and against project core rule "minimum readable size text-xs (12px)". Also `aria-invalid` is set but the error `<p>` has no `role="alert"` (only the network errorMessage does), so the inline validation isn't announced live. |
-| 7 | **Medium** | `sticky-unlock-bar.tsx`, multiple buttons in v2 | Custom buttons use `focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40` (alpha 40 %). On white surfaces the ring is ~1.6:1 against `surface-base`, well below the 3:1 non-text contrast requirement (WCAG 1.4.11). Drop the `/40` or raise to `/70`. |
-| 8 | **Medium** | App layout (`src/components/app/app-layout.tsx`, header) | No skip link ("Saltar para conteúdo"), no landmark `<header role="banner">` wrapper on the topbar, and the mobile topbar's hamburger button has only an icon (no `aria-label="Abrir menu"`, no `aria-expanded`). |
-| 9 | **Medium** | Contrast — repeated across report v2 and pricing | `text-content-tertiary` and `text-slate-400` are used for prices' "único" suffix, balance hints, "soon_note", chart axis labels. Several measured at ~3.5–4.0:1 on `surface-base`. Promote to `content-secondary` for any non-decorative text. |
-| 10 | **Medium** | Pricing interest modal (`pricing-interest-modal.tsx`) and Add competitor input | RadioGroup options are wrapped via shadcn (good), but the modal title is a generic translation and the price text is rendered separately from the title — screen readers hear "Quanto pagarias?" without context of which plan. Need the dialog title to include `planLabel` + `planPrice`, or set `aria-describedby` to a sentence that includes both. |
+`/api/analyze-public-v1` (the other public path) already projects only `profile / content_summary / competitors / posts / format_stats / enrichment_status` into its response (`src/routes/api/analyze-public-v1.ts:1435-1483`) — it does NOT spread paid fields. ✅ No change needed there.
 
-## 3. Quick wins (also improve visual clarity)
+The admin/Lab UIs use `/api/admin/snapshot/...` and `/api/admin/snapshot-by-id/...`, not the public endpoints. ✅ Not affected by this fix.
 
-These are 1–2 line, low-risk changes that pay off both visually and for AT:
+## Plan
 
-1. **Sidebar active state**: add `aria-current="page"` + a 2 px left border or pill (already half-done with `bg-slate-100`). Replace `slate-*` with `content-*` / `surface-*` tokens at the same time. Removes a core-rule violation.
-2. **Sticky bar CTA label**: change mobile "Ver tudo" → "Desbloquear · €9" (or the price token already in scope). Consistency + clarity.
-3. **Sticky bar lifecycle**: when `!visible`, return `null` (or add the `inert` attribute) instead of `aria-hidden` + `pointer-events-none`. Removes phantom-focus bug and shrinks DOM.
-4. **Locked teaser cards**: add `aria-hidden="true"` on the blurred payload and a visible "Conteúdo premium" badge that doubles as the AT label. Solves both the leak and the lock-icon-noise issue.
-5. **Focus ring alpha**: in the custom button classes, replace `ring-accent-primary/40` with the bare token. The site-wide `:focus-visible` already provides a strong default — let it through.
-6. **Mobile topbar hamburger**: add `aria-label="Abrir menu"`, `aria-expanded={open}`, `aria-controls="app-mobile-nav"`. Two attributes, three users helped (keyboard, screen reader, voice control).
-7. **Skip link** in `app-layout.tsx` and `report-shell-v2.tsx`: a single visually-hidden `<a href="#conteudo">Saltar para o conteúdo</a>` that becomes visible on focus.
-8. **Promote muted prices/suffixes** ("único", "pagamento único", balance hints) from `content-tertiary` → `content-secondary`. Improves both contrast and visual hierarchy.
-9. **Dialog titles include plan + price** in the pricing-interest modal (DialogTitle template). Better headlines for everyone.
-10. **Reduced motion**: the sticky bar uses `transition-[opacity,transform] duration-200`. Wrap in `motion-safe:` or honour `prefers-reduced-motion` (the global file already shows the pattern). One Tailwind variant.
+### Step 1 — New helper (pure, no IO)
 
-## 4. Defer to a later accessibility sprint
+Create `src/lib/report/sanitize-snapshot.ts`:
 
-- Full chart accessibility (data tables for each visualisation, sonification, etc.) — needs design.
-- Comprehensive heading-order pass across all marketing routes (precos, servicos, landing variants).
-- A11y test harness (axe-core / playwright a11y assertions) in CI.
-- Full PT-PT copy review of error strings across forms (signup, reset password, beta request).
-- Heatmap (`report-posting-heatmap.tsx`) keyboard interaction and AT description — requires a small redesign.
-- Admin/backoffice accessibility — out of public scope, low priority while it stays internal.
+```ts
+export type SnapshotAccessLevel = "free" | "pro" | "internal_lab";
 
-## 5. Files likely affected (quick wins first)
+/**
+ * Paid-only fields stripped from the public snapshot payload before it
+ * leaves the server for Free callers. Keep this list aligned with
+ * `SnapshotPayload` and any future enrichment additions.
+ */
+export const PAID_SNAPSHOT_FIELDS = [
+  "ai_insights_v1",
+  "ai_insights_v2",
+  "visual_cover_analysis",
+  "caption_semantic_analysis",
+  "comment_intelligence",
+  "market_signals_free",
+  "market_signals_paid",
+] as const;
 
-```text
-src/components/app/app-sidebar.tsx
-src/components/app/app-topbar.tsx
-src/components/app/app-layout.tsx
-src/components/report-redesign/v2/sticky-unlock-bar.tsx
-src/components/report-redesign/v2/premium-teaser-card.tsx
-src/components/report-redesign/v2/report-shell-v2.tsx
-src/components/report-redesign/v2/consume-credit-dialog.tsx
-src/components/pricing/pricing-interest-modal.tsx
-src/components/report/report-engagement-history.tsx (charts)
-src/components/report-redesign/v2/report-engagement-benchmark-chart.tsx
-src/components/layout/header.tsx
-src/styles/tokens.css  (only if we re-tune focus ring or muted tokens)
+export function sanitizeSnapshotForAccessLevel<T extends Record<string, unknown>>(
+  payload: T,
+  accessLevel: SnapshotAccessLevel,
+): T {
+  if (accessLevel === "pro" || accessLevel === "internal_lab") return payload;
+  // Free: shallow clone and drop paid fields. Does NOT mutate the input,
+  // so the DB row / cached object is untouched.
+  const next = { ...payload };
+  for (const key of PAID_SNAPSHOT_FIELDS) {
+    if (key in next) delete (next as Record<string, unknown>)[key];
+  }
+  return next;
+}
 ```
 
-No schema, no pricing, no EuPago, no credits, no checkout logic touched by any of the above.
+Notes:
+- Pure function, no Supabase, no cookies — safe to unit-test and reuse from any future public read path.
+- Free retains everything else the UI needs: `profile`, `content_summary`, `format_stats`, `posts`, `competitors`, `enrichment_status` (so the v2 pending placeholders keep working), and any deterministic metric blocks already on the snapshot.
 
-## 6. Recommended implementation prompts (one small fix per prompt)
+### Step 2 — Wire it into `/api/public/analysis-snapshot/$username`
 
-Each is intentionally narrow so it can be run independently in build mode.
+Edit `src/routes/api/public/analysis-snapshot.$username.ts`:
 
-1. **Sidebar a11y + de-slate**
-   > In `src/components/app/app-sidebar.tsx` and `app-topbar.tsx`, replace all `slate-*` classes with semantic tokens (`content-primary`, `content-secondary`, `surface-base`, `surface-muted`, `border-default`). Wrap the desktop nav in `<nav aria-label="Principal">` and add `aria-current="page"` to the active link. No behaviour changes.
+1. Add imports:
+   ```ts
+   import { readLeadIdFromRequest } from "@/lib/leads/lead-cookie.server";
+   import { hasEntitlement } from "@/lib/payments/entitlements.server";
+   import {
+     sanitizeSnapshotForAccessLevel,
+     type SnapshotAccessLevel,
+   } from "@/lib/report/sanitize-snapshot";
+   ```
 
-2. **Mobile topbar hamburger**
-   > In `src/components/app/app-topbar.tsx`, add `aria-label="Abrir menu"`, `aria-expanded`, and `aria-controls` to the menu button; give the collapsible nav an `id` and `role="navigation"`.
+2. Inside `GET: async ({ params, request }) => { … }` after loading `payload`:
+   ```ts
+   let accessLevel: SnapshotAccessLevel = "free";
+   try {
+     const leadId = readLeadIdFromRequest(request);
+     if (leadId && (await hasEntitlement(leadId, "report_full_9"))) {
+       accessLevel = "pro";
+     }
+   } catch {
+     // Fail-closed: any cookie/DB error keeps the caller on Free.
+     accessLevel = "free";
+   }
 
-3. **Sticky unlock bar — mount + label**
-   > In `src/components/report-redesign/v2/sticky-unlock-bar.tsx`: return `null` when `!visible`. Rename the mobile CTA from "Ver tudo" to "Desbloquear · {priceLabel}". Drop `aria-hidden` hack. Honour `prefers-reduced-motion`.
+   const sanitizedPayload = sanitizeSnapshotForAccessLevel(payload, accessLevel);
+   // `benchmark` is built from the original payload (only reads
+   // profile + content_summary, no paid fields) — unchanged.
+   ```
 
-4. **Custom button focus rings**
-   > Across `sticky-unlock-bar.tsx` and any v2 button that overrides `focus:outline-none`, remove the `/40` alpha on `focus-visible:ring-accent-primary` so the ring meets 3:1 contrast, or remove the override entirely and rely on the global `:focus-visible` rule in `src/styles/tokens.css`.
+3. Return `payload: sanitizedPayload` (everything else identical).
 
-5. **Locked premium card AT-safety**
-   > In `src/components/report-redesign/v2/premium-teaser-card.tsx`, wrap the blurred content in a `<div aria-hidden="true">` and add a sibling visible badge "Conteúdo premium — desbloquear por {priceLabel}" that screen readers announce. No payload changes.
+This is the only behavioural change. Pro carriers (lead cookie + `report_full_9` entitlement) get the full payload; everyone else gets the scrubbed one.
 
-6. **Skip link + landmarks**
-   > In `src/components/app/app-layout.tsx` and `src/components/report-redesign/v2/report-shell-v2.tsx`, add a visually-hidden "Saltar para o conteúdo" link as the first focusable element targeting the existing `<main>`. Give `<main>` an `id="conteudo"`.
+### Step 3 — Leave `/api/public/analysis-snapshot/by-id/$snapshotId` alone
 
-7. **Consume-credit dialog — error live + min size**
-   > In `src/components/report-redesign/v2/consume-credit-dialog.tsx`, raise `text-[11px]` → `text-xs`, and add `role="alert"` to the inline `competitor-handle-error` paragraph. No validation logic changes.
+This route is consumed by `src/routes/report.print.$snapshotId.tsx`, which is the print target for the PDFShift PDF renderer (Pro-only output). PDFShift calls the print URL from its own infra — it does NOT carry a `lead_session` cookie, so cookie-based entitlement derivation would falsely scrub the payload and break Pro PDFs. Sanitising this path correctly requires a signed-URL or shared-secret scheme (separate scope, listed under "Follow-ups" below). Today's change does not touch it.
 
-8. **Pricing-interest modal — title carries plan**
-   > In `src/components/pricing/pricing-interest-modal.tsx`, render the plan label + price inside `DialogTitle` (or `aria-describedby` pointing at a sentence containing both). Keeps visual layout, fixes the "out of context" announcement.
+### Step 4 — Sanity tests (no provider / payment / credit / schema changes)
 
-9. **Muted text contrast pass**
-   > For non-decorative copy (price suffixes "único", balance hints, soon notes, chart axes), promote `content-tertiary` → `content-secondary`. Scope: report v2 sidebar/topbar, sticky bar, consume-credit dialog. No layout changes.
+Add `src/lib/report/__tests__/sanitize-snapshot.test.ts` covering:
+- Free strips all 7 paid fields and leaves the rest intact.
+- Pro returns the payload reference unchanged.
+- Internal Lab returns the payload reference unchanged.
+- Sanitisation is non-mutating (original object still has the fields).
+- Missing paid fields don't throw.
 
-10. **Chart text alternative (minimum)**
-    > For the engagement benchmark chart and KPI grid charts in v2, add `role="img"` plus a derived `aria-label` (e.g. "Engagement médio do perfil: 3,2 %; benchmark do nicho: 2,1 %"). Full data-table alternative deferred.
+## Files changed
 
-## 7. Implementation status
+| File | Change |
+|---|---|
+| `src/lib/report/sanitize-snapshot.ts` | **new** — pure helper + access-level type. |
+| `src/lib/report/__tests__/sanitize-snapshot.test.ts` | **new** — unit tests. |
+| `src/routes/api/public/analysis-snapshot.$username.ts` | derive `accessLevel` from lead cookie + entitlement; sanitise `payload` before returning. |
 
-Nothing implemented. This is a planning artefact only — every prompt above is meant to be triggered explicitly by the user, one at a time, in build mode.
+Nothing else is touched. No schema, no migrations, no admin routes, no Pro report components, no checkout, no EuPago, no credits.
+
+## Fields scrubbed for Free
+
+- `ai_insights_v1`
+- `ai_insights_v2`
+- `visual_cover_analysis`
+- `caption_semantic_analysis`
+- `comment_intelligence`
+- `market_signals_free`
+- `market_signals_paid`
+
+Free **keeps**: `profile`, `content_summary`, `format_stats`, `posts`, `competitors`, `enrichment_status`, and any deterministic metric blocks the snapshot already carries.
+
+## How Pro / Internal Lab bypass sanitisation
+
+- **Pro**: derived server-side from the signed `lead_session` cookie + `hasEntitlement(leadId, "report_full_9")` (existing helper in `src/lib/payments/entitlements.server.ts`). When true, `sanitizeSnapshotForAccessLevel(payload, "pro")` returns the payload unchanged.
+- **Internal Lab**: the Lab/admin UI fetches `/api/admin/snapshot/...` and `/api/admin/snapshot-by-id/...`, which are separate routes never touched here. The helper still accepts `"internal_lab"` so any future admin caller wanting to reuse the public route can opt out of scrubbing explicitly.
+
+## Storage invariant
+
+`sanitizeSnapshotForAccessLevel` does `{ ...payload }` and `delete next.<key>`. The original `payload` object (and therefore `analysis_snapshots.normalized_payload`) is never mutated. No `UPDATE` is issued by the route. Storage stays exactly as written by the enrichment pipeline.
+
+## Manual validation checklist
+
+1. **Old pre-gate snapshot, anonymous (no cookie)**
+   `curl https://auditprofiles.com/api/public/analysis-snapshot/<old-handle> | jq '.snapshot.payload | keys'`
+   → expect: no `ai_insights_v1/v2`, no `visual_cover_analysis`, no `caption_semantic_analysis`, no `comment_intelligence`, no `market_signals_*`.
+2. **Free UI smoke**: `/analyze/<old-handle>` still renders Visão geral + Engagement + 5 PremiumTeaserCards + sidebar. No console errors.
+3. **Pro UI smoke**: log in with a lead that holds `report_full_9` entitlement, hit the same handle, confirm Diagnóstico editorial + Prioridades + cover/caption sections still render. Use DevTools → Network → response preview to confirm `ai_insights_v2`, `visual_cover_analysis`, `caption_semantic_analysis` are present.
+4. **Lab smoke**: open `/admin/report-lab?h=<handle>` (admin auth required) — confirms it still uses `/api/admin/snapshot/...` and renders the full payload.
+5. **DB invariant**: `select id, jsonb_object_keys(normalized_payload) from analysis_snapshots where instagram_username = '<handle>' order by created_at desc limit 1;` before and after — keys identical (storage not mutated).
+6. **PDF print smoke** (sanity, even though that route is unchanged): regenerate a Pro PDF and confirm the cover/insights sections still render — proves Step 3's decision to leave `by-id` alone was correct.
+
+## Follow-ups (out of scope today)
+
+- Apply the same sanitisation to `/api/public/analysis-snapshot/by-id/$snapshotId` once a signed-URL or shared-secret scheme exists for PDFShift; otherwise the by-id route remains a leak for anyone who can guess a snapshot UUID.
+- Extend `PAID_SNAPSHOT_FIELDS` whenever a new enrichment is added to `SnapshotPayload` (add a TODO comment in `snapshot-to-report-data.ts` pointing at the helper).
