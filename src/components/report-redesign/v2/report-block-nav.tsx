@@ -893,7 +893,7 @@ function SidebarList({
   }, [active]);
 
   const openDialog = () => {
-    handlePremiumAccessClick("sidebar");
+    handlePremiumAccessClick("sidebar_main_cta");
   };
 
   const focusLeadMagnet = () => {
