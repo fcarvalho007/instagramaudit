@@ -307,8 +307,11 @@ vi.mock("@/lib/market-signals/cache", () => ({
 
 vi.mock("@/lib/enrichment/types", () => ({
   ALL_ENRICHMENT_TYPES: [],
+  FREE_ENRICHMENT_TYPES: [],
+  PAID_ENRICHMENT_TYPES: [],
   ENRICHMENT_PRIORITY: {},
   buildInitialEnrichmentStatus: () => ({}),
+  buildFreeEnrichmentStatus: () => ({}),
 }));
 
 // ─── Real modules used by the gate (NOT mocked) ────────────────────────
