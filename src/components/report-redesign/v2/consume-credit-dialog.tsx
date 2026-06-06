@@ -164,7 +164,7 @@ export function ConsumeCreditDialog({
               {handleInvalidMsg ? (
                 <p
                   id="competitor-handle-error"
-                  className="text-[11px] text-signal-error"
+                  className="text-[11px] text-signal-danger"
                 >
                   {handleInvalidMsg}
                 </p>
@@ -203,7 +203,7 @@ export function ConsumeCreditDialog({
         ) : null}
 
         {errorMessage ? (
-          <p className="text-xs text-signal-error" role="alert">
+          <p className="text-xs text-signal-danger" role="alert">
             {errorMessage}
           </p>
         ) : null}
