@@ -22,16 +22,6 @@ function getFrequencyStatusKey(score: number): "high" | "medium" | "low" {
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
-const PT_MONTHS = [
-  "janeiro", "fevereiro", "março", "abril", "maio", "junho",
-  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
-];
-
-const EN_MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-
 export function getFrequencyHeadline(postsPerDay: number): string {
   if (postsPerDay > 1.2) return "Mais de 1 post por dia";
   if (postsPerDay >= 0.85) return "Cerca de 1 post por dia";
@@ -65,15 +55,6 @@ export function getFrequencyVerdict(score: number): { strong: string; rest: stri
     strong: "Cadência irregular.",
     rest: "A audiência não cria hábito de te encontrar.",
   };
-}
-
-function fmtLocaleDate(iso: string, lang: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  if (lang.startsWith("en")) {
-    return `${EN_MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
-  }
-  return `${d.getUTCDate()} de ${PT_MONTHS[d.getUTCMonth()]}`;
 }
 
 // ─── Props ──────────────────────────────────────────────────────────
