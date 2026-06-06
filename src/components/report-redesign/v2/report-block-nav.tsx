@@ -465,6 +465,11 @@ function SidebarList({
   onAccessibleClick,
   unlocked = true,
   onUnlockClick,
+  premiumUnlocked = false,
+  sampleSize = 0,
+  observedDays = 0,
+  competitorCount = 0,
+  competitorMax = 3,
 }: {
   items: SidebarItem[];
   active: string | null;
@@ -472,6 +477,11 @@ function SidebarList({
   onAccessibleClick: (id: string) => void;
   unlocked?: boolean;
   onUnlockClick?: () => void;
+  premiumUnlocked?: boolean;
+  sampleSize?: number;
+  observedDays?: number;
+  competitorCount?: number;
+  competitorMax?: number;
 }) {
   const { t } = useTranslation("report");
   const { snapshotId, handle, variant: trackingVariant } = useReportTracking();
@@ -526,12 +536,14 @@ function SidebarList({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <ProgressSummary items={items} />
 
       <section className="space-y-1">
         <p className="px-2 text-eyebrow-sm text-content-tertiary">
-          {t("nav.access.available_now")}
+          {premiumUnlocked
+            ? t("nav.access.available_now")
+            : t("nav.access.available_now")}
         </p>
         <ul className="space-y-0.5">
           {incluidos.map((item) => (
@@ -547,11 +559,41 @@ function SidebarList({
       </section>
 
       {premium.length > 0 && (
-        unlocked ? (
-          <PremiumBlockCard items={premium} onOpenDialog={openDialog} />
-        ) : (
-          <ContinueReadingCard items={premium} onContinue={focusLeadMagnet} />
-        )
+        <section className="space-y-1">
+          <p className="px-2 text-eyebrow-sm text-content-tertiary">
+            {t("nav.premium")}
+          </p>
+          <ul className="space-y-0.5">
+            {premium.map((item) => (
+              <li key={item.block.id}>
+                <LockedItemRow
+                  item={item}
+                  onClick={() =>
+                    handlePremiumAccessClick("sidebar_section", {
+                      section: item.block.id,
+                    })
+                  }
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <ExploreSection
+        premiumUnlocked={premiumUnlocked}
+        sampleSize={sampleSize}
+        observedDays={observedDays}
+        competitorCount={competitorCount}
+        competitorMax={competitorMax}
+      />
+
+      {premiumUnlocked ? (
+        <UnlockedStatusCard totalSections={items.length} />
+      ) : unlocked ? (
+        <UnlockPromoCard premiumCount={premium.length} onOpenDialog={openDialog} />
+      ) : (
+        <UnlockPromoCard premiumCount={premium.length} onOpenDialog={focusLeadMagnet} />
       )}
     </div>
   );
