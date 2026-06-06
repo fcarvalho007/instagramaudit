@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { Menu, Lock, ArrowRight, Check, UserPlus, CheckCircle2, Calendar, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
@@ -24,6 +24,12 @@ import { useReportTracking } from "./report-tracking-context";
 import { usePremiumCta } from "./premium-cta-context";
 import { trackEvent } from "@/lib/tracking.functions";
 import { PUBLIC_PRODUCTS } from "@/lib/payments/products";
+import { useServerFn } from "@tanstack/react-start";
+import { getMyCreditBalance } from "@/lib/credits/credits.functions";
+import {
+  ConsumeCreditDialog,
+  type ConsumeCreditIntent,
+} from "./consume-credit-dialog";
 
 /**
  * Hook: returns true once the user has scrolled past `threshold` px.
