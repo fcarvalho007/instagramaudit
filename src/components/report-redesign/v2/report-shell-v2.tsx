@@ -208,8 +208,8 @@ export function ReportShellV2({
         <section className="bg-surface-base">
           {/* Top bar: identity + actions à esquerda, selector de período
               à direita (desktop). Em mobile/tablet, empilhado. */}
-          <div className="w-full px-3 sm:px-6 pt-2 pb-2 sm:pt-3 sm:pb-3">
-            <div className="mx-auto max-w-[1520px]">
+          <div className="w-full pt-3 pb-2 sm:pt-4 sm:pb-3">
+            <div className="mx-auto max-w-[1520px] px-5 md:px-6 lg:px-8">
               <div className="flex flex-col lg:flex-row lg:items-stretch rounded-xl sm:rounded-2xl border border-border-default bg-white shadow-card overflow-hidden">
                 <ReportHeroV2
                   result={result}
