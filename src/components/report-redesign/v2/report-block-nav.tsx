@@ -545,7 +545,7 @@ function SidebarList({
 
 // ── Desktop sidebar ──────────────────────────────────────────────────
 
-export function ReportBlockSidebar({ variant, features, profile, profiles, unlocked, onUnlockClick }: SidebarProps) {
+export function ReportBlockSidebar({ variant, features, profile, profiles, unlocked, premiumUnlocked = false, onUnlockClick }: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
   const profileList = useMemo(
@@ -553,8 +553,11 @@ export function ReportBlockSidebar({ variant, features, profile, profiles, unloc
     [profile, profiles],
   );
   const items = useMemo(
-    () => buildSidebarItems(blocks, variant, features),
-    [blocks, variant, features],
+    () =>
+      variant === "internal_lab"
+        ? buildSidebarItems(blocks, variant, features)
+        : buildCommercialSidebarItems(premiumUnlocked),
+    [blocks, variant, features, premiumUnlocked],
   );
   const accessibleIds = items.filter((i) => i.access !== "locked").map((i) => i.block.id);
   const active = useActiveBlock(accessibleIds);
@@ -591,7 +594,7 @@ export function ReportBlockSidebar({ variant, features, profile, profiles, unloc
 
 // ── Mobile bottom tabs + drawer ──────────────────────────────────────
 
-export function ReportBlockTopTabs({ variant, features, profile, profiles, unlocked, onUnlockClick }: SidebarProps) {
+export function ReportBlockTopTabs({ variant, features, profile, profiles, unlocked, premiumUnlocked = false, onUnlockClick }: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
   const profileList = useMemo(
@@ -599,8 +602,11 @@ export function ReportBlockTopTabs({ variant, features, profile, profiles, unloc
     [profile, profiles],
   );
   const items = useMemo(
-    () => buildSidebarItems(blocks, variant, features),
-    [blocks, variant, features],
+    () =>
+      variant === "internal_lab"
+        ? buildSidebarItems(blocks, variant, features)
+        : buildCommercialSidebarItems(premiumUnlocked),
+    [blocks, variant, features, premiumUnlocked],
   );
   const accessible = items.filter((i) => i.access !== "locked");
   const accessibleIds = accessible.map((i) => i.block.id);
