@@ -16,6 +16,7 @@ import { fetchPublicAnalysis } from "@/lib/analysis/client";
 import { getPublishedFeatures } from "@/lib/admin/variant-overrides.functions";
 import type { VariantFeatures } from "@/lib/report/report-variant";
 import { trackEvent } from "@/lib/tracking.functions";
+import { getMyReportEntitlement } from "@/lib/payments/entitlements.functions";
 import {
   snapshotToReportData,
   type AdapterResult,
@@ -393,6 +394,23 @@ function AnalyzeReady({
   const [unlocked, setUnlocked] = useState<boolean>(true);
   const [unlockOpen, setUnlockOpen] = useState(false);
 
+  // Premium real: entitlement `report_full_9` para o lead da sessão.
+  // Default fail-closed a false; flip-on apenas depois do servidor confirmar.
+  const [premiumUnlocked, setPremiumUnlocked] = useState<boolean>(false);
+  useEffect(() => {
+    let cancelled = false;
+    getMyReportEntitlement()
+      .then((r) => {
+        if (!cancelled && r.premiumUnlocked) setPremiumUnlocked(true);
+      })
+      .catch(() => {
+        /* fail-closed: mantém free */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Track report view (fire-and-forget). Guarded por module-level Set +
   // sessionStorage para sobreviver a StrictMode double-invokes, remounts entre
   // route changes e refreshes dentro do mesmo tab.
@@ -423,10 +441,9 @@ function AnalyzeReady({
         featuresOverride={featuresOverride}
         lockBoundary="engagement"
         unlocked={unlocked}
-        // TODO: ligar a estado real de compra quando o gateway de
-        // pagamento estiver ativo. Hoje, todos os CTAs premium vão pelo
-        // PremiumCtaProvider para o PremiumInterestDialog (waitlist).
-        premiumUnlocked={false}
+        // Estado real: derivado de `lead_entitlements` (product `report_full_9`)
+        // via `getMyReportEntitlement`. Fail-closed em erro/sessão ausente.
+        premiumUnlocked={premiumUnlocked}
         // Lead-capture flow ONLY (UnlockModal). Premium CTAs vão pelo
         // PremiumCtaProvider dentro do shell — não passam por aqui.
         onUnlockClick={() => setUnlockOpen(true)}
