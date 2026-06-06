@@ -446,7 +446,7 @@ export function ReportShellV2({
             esta barra desaparece. Mantemos a dependência em `unlocked`
             (em vez de remover de vez) para que estados futuros
             (admin previews, deep-links sem cookie) possam reactivar. */}
-        {lockBoundary === "engagement" && !premiumUnlocked && !unlocked && (
+        {lockBoundary === "engagement" && !premiumUnlocked && (
           <StickyUnlockBar />
         )}
         <ReportShortcutDialog
