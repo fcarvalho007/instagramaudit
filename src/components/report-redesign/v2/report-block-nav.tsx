@@ -727,6 +727,7 @@ function SidebarList({
 }) {
   const { t } = useTranslation("report");
   const { snapshotId, handle, variant: trackingVariant } = useReportTracking();
+  const { handlePremiumAccessClick } = usePremiumCta();
   const incluidos = items.filter((i) => i.group === "incluido");
   const premium = items.filter((i) => i.group === "premium");
   // The grouped Free / Premium layout is the commercial sidebar shape.
