@@ -310,15 +310,29 @@ export function FormatCard({
 
       {/* Thumbnail grid */}
       {sortedPosts.length > 0 && (
-        <div className="px-5 md:px-6 mt-5">
-          <span className="text-eyebrow-sm text-content-tertiary block mb-2">
-            {t("format.analyzed_count", { count: postsAnalyzed })}
-          </span>
-          <div
-            role="img"
-            aria-label={ariaLabel}
-            className="grid gap-2 grid-cols-3 sm:grid-cols-4 md:grid-cols-4"
-          >
+        <div className="px-5 md:px-6 mt-6">
+          <div className="rounded-xl border border-border-default bg-surface-muted/40 px-4 py-4 md:px-5 md:py-5">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mb-3">
+              <span className="text-eyebrow-sm text-content-tertiary">
+                {t("format.analyzed_count", { count: postsAnalyzed })}
+              </span>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                {activeFormats.map((f) => {
+                  const style = FORMAT_STYLE[f.format];
+                  return (
+                    <span key={f.format} className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
+                      <span className={`size-[7px] rounded-full ${style.dot} shrink-0`} aria-hidden="true" />
+                      {tFormatPlural(t, f.format)} ({f.count})
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+            <div
+              role="img"
+              aria-label={ariaLabel}
+              className="grid gap-2 md:gap-1.5 grid-cols-3 sm:grid-cols-4 md:[grid-template-columns:repeat(auto-fill,minmax(84px,1fr))] lg:[grid-template-columns:repeat(auto-fill,minmax(96px,1fr))]"
+            >
             {sortedPosts.map((post, idx) => {
               const fk = TYPE_TO_FORMAT_KEY[post.type] ?? "unknown";
               const style = FORMAT_STYLE[fk] ?? FORMAT_STYLE.unknown;
@@ -328,7 +342,7 @@ export function FormatCard({
                 <span
                   key={`${post.date}-${idx}`}
                   title={t("format.thumb_aria", { label, date: post.date })}
-                  className="relative rounded-md overflow-hidden bg-surface-muted border border-border-subtle/40"
+                  className="relative rounded-md overflow-hidden bg-surface-muted border border-border-default/60"
                   style={{ aspectRatio: "1/1" }}
                 >
                   {post.thumbnailUrl ? (
@@ -351,25 +365,13 @@ export function FormatCard({
                 </span>
               );
             })}
-          </div>
-
-          {/* Legend */}
-          <div className="flex items-center gap-3 mt-2">
-            {activeFormats.map((f) => {
-              const style = FORMAT_STYLE[f.format];
-              return (
-                <span key={f.format} className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
-                  <span className={`size-[7px] rounded-full ${style.dot} shrink-0`} aria-hidden="true" />
-                  {tFormatPlural(t, f.format)} ({f.count})
-                </span>
-              );
-            })}
+            </div>
           </div>
         </div>
       )}
 
       {/* Verdict */}
-      <InsightCallout tone={calloutTone} label={calloutLabel} className="mt-auto mx-5 md:mx-6 mb-5 sm:mb-6">
+      <InsightCallout tone={calloutTone} label={calloutLabel} className="mt-6 mx-5 md:mx-6 mb-5 sm:mb-6">
         <p>
           <span className="font-semibold">{verdict.strong}</span>{" "}
           {verdict.rest}
