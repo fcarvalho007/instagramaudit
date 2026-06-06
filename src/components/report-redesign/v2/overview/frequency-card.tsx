@@ -260,157 +260,104 @@ function WeeklyRhythmChart({
   const weekdayShort =
     (t("frequency.weekday_short", { returnObjects: true }) as string[]) ?? [];
 
-  // ── SVG geometry (viewBox-based, scales 100% width) ──
-  const VB_W = 700;
-  const VB_H = 220;
-  const PAD_X = 16;
-  const TOP_VALUES = 26;        // space reserved for numeric values above bars
-  const PLOT_H = 140;            // bar plotting area height
-  const LABELS_H = 30;           // bottom labels area
-  const BAR_W = 34;              // bar width (viewBox units)
-  const LANE_W = 44;             // soft column lane behind each bar
-  const BAR_MIN_ACTIVE = 22;     // ensure active bars are always visible
-  const ZERO_HAIRLINE = 3;
+  // Ocean Breeze palette — calibrated for light surface
+  const NAVY = "#03045E";
+  const OCEAN = "#0077B6";
+  const CYAN = "#00B4D8";
+  const AQUA = "#90E0EF";
+  const TRACK = "#F1F4F9";
 
-  const plotTop = TOP_VALUES;
-  const baselineY = plotTop + PLOT_H;
-  const labelY = baselineY + LABELS_H - 10;
-
-  const colStep = (VB_W - PAD_X * 2) / 7;
-  const colCenter = (i: number) => PAD_X + colStep * i + colStep / 2;
-
-  // Calibrated palette — stable, no color-mix layering
-  const ACCENT = "var(--accent-primary, #3772E5)";
-  const ACCENT_SOFT = "#A6BEF1";   // calm blue, clearly visible on white surface
-  const ZERO_TINT = "#D6DEEC";     // muted grey-blue hairline
-  const LANE_FILL = "var(--surface-muted, #F1F4F9)";
-  const BASELINE = "rgba(3, 4, 94, 0.18)";
+  const fillFor = (posts: number, isPeak: boolean) => {
+    if (isPeak) return NAVY;
+    const ratio = posts / maxPosts;
+    if (ratio >= 1) return OCEAN;
+    if (ratio >= 0.5) return CYAN;
+    return AQUA;
+  };
 
   return (
-    <div className="mt-8 rounded-xl border border-border-default bg-surface-base/60 px-4 md:px-6 pt-5 pb-5">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-eyebrow text-content-primary font-semibold">
+    <div
+      className="mt-8 rounded-2xl border border-border-default bg-surface-base/60 px-6 md:px-8 pt-6 pb-7"
+      role="img"
+      aria-label={t("frequency.weekly_rhythm.aria_distribution")}
+    >
+      <div className="flex items-center justify-between mb-8 md:mb-10">
+        <span className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.2em] text-content-tertiary">
           {t("frequency.weekly_rhythm.title")}
         </span>
-        <span
-          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]"
-          style={{
-            background:
-              "color-mix(in oklab, var(--accent-primary, #3772E5) 10%, #FFFFFF)",
-            color: ACCENT,
-          }}
-        >
-          <span
-            className="inline-block h-2 w-2 rounded-full"
-            style={{ background: ACCENT }}
-          />
+        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-content-tertiary/70">
           {t("frequency.weekly_rhythm.peak_chip")}
         </span>
       </div>
-      <svg
-        viewBox={`0 0 ${VB_W} ${VB_H}`}
-        width="100%"
-        height="auto"
-        preserveAspectRatio="xMidYMid meet"
-        role="img"
-        aria-label={t("frequency.weekly_rhythm.aria_distribution")}
-        className="block"
-        style={{ maxHeight: 220 }}
-      >
-        {/* Soft column lanes */}
-        {buckets.map((_, i) => (
-          <rect
-            key={`lane-${i}`}
-            x={colCenter(i) - LANE_W / 2}
-            y={plotTop}
-            width={LANE_W}
-            height={PLOT_H}
-            rx={6}
-            ry={6}
-            fill={LANE_FILL}
-            opacity={0.55}
-          />
-        ))}
 
-        {/* Baseline */}
-        <line
-          x1={PAD_X}
-          x2={VB_W - PAD_X}
-          y1={baselineY}
-          y2={baselineY}
-          stroke={BASELINE}
-          strokeWidth={1}
-        />
-
-        {/* Bars + values */}
+      <div className="flex items-end justify-between gap-2 px-1">
         {buckets.map((b, i) => {
           const isPeak = b.weekday === top.weekday && b.posts > 0;
           const isZero = b.posts === 0;
-          const ratio = b.posts / maxPosts;
-          const rawH = Math.round(ratio * (PLOT_H - 8));
-          const h = isZero
-            ? ZERO_HAIRLINE
-            : Math.max(BAR_MIN_ACTIVE, rawH);
-          const y = baselineY - h;
-          const fill = isPeak ? ACCENT : isZero ? ZERO_TINT : ACCENT_SOFT;
-          const valueY = isZero ? baselineY - 10 : y - 8;
-          const cx = colCenter(i);
+          const pct = Math.max(0, Math.min(100, (b.posts / maxPosts) * 100));
+          const fill = fillFor(b.posts, isPeak);
+          const label = weekdayShort[i] ?? "";
           return (
-            <g key={`bar-${i}`}>
-              <rect
-                x={cx - BAR_W / 2}
-                y={y}
-                width={BAR_W}
-                height={h}
-                rx={isZero ? 1.5 : 5}
-                ry={isZero ? 1.5 : 5}
-                fill={fill}
-              />
-              <text
-                x={cx}
-                y={valueY}
-                textAnchor="middle"
-                fontFamily="Inter, system-ui, sans-serif"
-                fontSize={isPeak ? 15 : isZero ? 11 : 13}
-                fontWeight={isPeak ? 700 : isZero ? 500 : 600}
-                fill={
-                  isPeak
-                    ? ACCENT
+            <div
+              key={`col-${i}`}
+              className="flex flex-col items-center gap-3 w-full max-w-[48px]"
+            >
+              <span
+                className="text-[11px] tabular-nums"
+                style={{
+                  color: isPeak
+                    ? NAVY
                     : isZero
-                      ? "var(--content-tertiary, #64748B)"
-                      : "var(--content-primary, #0F172A)"
-                }
-                style={{ fontVariantNumeric: "tabular-nums" }}
+                      ? "transparent"
+                      : "rgba(3, 4, 94, 0.45)",
+                  fontWeight: isPeak ? 700 : 600,
+                }}
+                aria-hidden={isZero || undefined}
               >
                 {b.posts}
-              </text>
-            </g>
-          );
-        })}
+              </span>
 
-        {/* Weekday labels */}
-        {weekdayShort.map((wd, i) => {
-          const isPeak = i === top.weekday && buckets[i].posts > 0;
-          return (
-            <text
-              key={`lbl-${i}`}
-              x={colCenter(i)}
-              y={labelY}
-              textAnchor="middle"
-              fontFamily="Inter, system-ui, sans-serif"
-              fontSize={12}
-              fontWeight={isPeak ? 700 : 500}
-              letterSpacing="0.08em"
-              fill={
-                isPeak ? ACCENT : "var(--content-tertiary, #64748B)"
-              }
-              style={{ textTransform: "uppercase" }}
-            >
-              {wd}
-            </text>
+              {isZero ? (
+                <div className="w-full h-24 flex items-end justify-center">
+                  <div
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ background: TRACK }}
+                  />
+                </div>
+              ) : (
+                <div
+                  className="w-full h-24 rounded-full relative overflow-hidden"
+                  style={{
+                    background: TRACK,
+                    boxShadow: isPeak
+                      ? "inset 0 0 0 1px rgba(3, 4, 94, 0.12)"
+                      : undefined,
+                  }}
+                >
+                  <div
+                    className="absolute bottom-0 left-0 w-full rounded-full transition-[height] duration-500 ease-out"
+                    style={{ height: `${pct}%`, background: fill }}
+                  />
+                </div>
+              )}
+
+              <span
+                className="text-xs uppercase tracking-[0.08em]"
+                style={{
+                  color: isPeak
+                    ? NAVY
+                    : isZero
+                      ? "rgba(3, 4, 94, 0.22)"
+                      : "rgba(3, 4, 94, 0.6)",
+                  fontWeight: isPeak ? 700 : 500,
+                }}
+              >
+                {label}
+              </span>
+            </div>
           );
         })}
-      </svg>
+      </div>
     </div>
   );
 }
