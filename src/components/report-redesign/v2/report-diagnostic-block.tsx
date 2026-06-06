@@ -45,8 +45,6 @@ import type { CommentIntelligence } from "@/lib/analysis/types";
 import { VisualCoverAnalysisCard } from "./visual-cover-analysis-card";
 import type { VisualCoverAnalysis } from "@/lib/report/visual-cover-types";
 import { useReportVariant, useVariantFeatures } from "@/lib/report/report-variant";
-import { buildStrategicContext } from "@/lib/report/strategic-context";
-import { StrategicContextCard } from "./strategic-context-card";
 
 /** Parse persisted visual_cover_analysis from snapshot payload. */
 function parseVisualCoverAnalysis(
