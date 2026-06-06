@@ -343,6 +343,7 @@ function AnalyzePage() {
             payload={state.payload}
             analyzedAtIso={state.analyzedAtIso}
             expiresAtIso={state.expiresAtIso}
+            competitors={competitors}
           />
         )}
       </div>
@@ -367,12 +368,14 @@ function AnalyzeReady({
   payload,
   analyzedAtIso,
   expiresAtIso,
+  competitors,
 }: {
   result: AdapterResult;
   snapshotId: string;
   payload: SnapshotPayload;
   analyzedAtIso: string | null;
   expiresAtIso: string | null;
+  competitors: string[];
 }) {
   const shareActions = useReportShareActions({ snapshotId });
 
@@ -444,6 +447,7 @@ function AnalyzeReady({
         // Estado real: derivado de `lead_entitlements` (product `report_full_9`)
         // via `getMyReportEntitlement`. Fail-closed em erro/sessão ausente.
         premiumUnlocked={premiumUnlocked}
+        competitorHandles={competitors}
         // Lead-capture flow ONLY (UnlockModal). Premium CTAs vão pelo
         // PremiumCtaProvider dentro do shell — não passam por aqui.
         onUnlockClick={() => setUnlockOpen(true)}

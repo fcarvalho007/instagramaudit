@@ -103,6 +103,9 @@ interface SidebarProps {
   competitorCount?: number;
   /** Max competitors allowed in Pro. Defaults to 3. */
   competitorMax?: number;
+  /** Lista actual de concorrentes para alimentar o "Adicionar concorrente"
+   *  (passada do shell a partir do `?vs=`). */
+  competitorHandles?: string[];
 }
 
 // ── Item builder ─────────────────────────────────────────────────────
@@ -1001,7 +1004,7 @@ function SidebarList({
   sampleSize = 0,
   observedDays = 0,
   competitorCount = 0,
-  competitorMax = 3,
+  competitorMax = 2,
   compact = false,
   primaryHandle,
   existingCompetitors = [],
@@ -1239,7 +1242,8 @@ export function ReportBlockSidebar({
   sampleSize = 0,
   observedDays = 0,
   competitorCount = 0,
-  competitorMax = 3,
+  competitorMax = 2,
+  competitorHandles,
 }: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
@@ -1300,7 +1304,9 @@ export function ReportBlockSidebar({
         competitorMax={competitorMax}
         compact={compact}
         primaryHandle={profileList[0]?.handle}
-        existingCompetitors={profileList.slice(1).map((p) => p.handle)}
+        existingCompetitors={
+          competitorHandles ?? profileList.slice(1).map((p) => p.handle)
+        }
       />
     </nav>
   );
@@ -1319,7 +1325,8 @@ export function ReportBlockTopTabs({
   sampleSize = 0,
   observedDays = 0,
   competitorCount = 0,
-  competitorMax = 3,
+  competitorMax = 2,
+  competitorHandles,
 }: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
@@ -1475,7 +1482,9 @@ export function ReportBlockTopTabs({
                 competitorCount={competitorCount}
                 competitorMax={competitorMax}
                 primaryHandle={profileList[0]?.handle}
-                existingCompetitors={profileList.slice(1).map((p) => p.handle)}
+                existingCompetitors={
+                  competitorHandles ?? profileList.slice(1).map((p) => p.handle)
+                }
               />
             </div>
           </SheetContent>
