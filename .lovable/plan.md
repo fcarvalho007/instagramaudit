@@ -1,46 +1,58 @@
-## Plan: Sincronizar admin preview com produção (sticky bar + lock teasers)
+# Fix pending enrichment placeholders on the real Pro report
 
-### Causa raiz
+## Problem
 
-A barra sticky e o teaser inline de "boundary" do plano free são renderizados pelo `ReportShellV2` apenas quando recebe a prop `lockBoundary="engagement"`:
+In `src/components/report-redesign/v2/report-diagnostic-block.tsx`, the pending/error placeholders for paid enrichments are gated by:
 
-- `src/components/report-redesign/v2/report-shell-v2.tsx:233` — inline teaser
-- `src/components/report-redesign/v2/report-shell-v2.tsx:408` — `<StickyUnlockBar />`
-
-A rota pública `/analyze/$username` passa `lockBoundary="engagement"` (linha 445). A rota admin `/admin/report-preview/$username` (`src/routes/admin_.report-preview.$username.tsx`) **NÃO** passa essa prop, por isso o preview em ecrã completo do admin não mostra a sticky bar mesmo com `variant=public_mvp`.
-
-### Alteração
-
-**Ficheiro:** `src/routes/admin_.report-preview.$username.tsx`
-
-No `<ReportShellV2 ... />` (linhas 197–208), passar `lockBoundary` derivado da variante, de modo a espelhar exactamente o gating de produção:
-
-```tsx
-lockBoundary={variant === "public_mvp" ? "engagement" : null}
+```ts
+const isFree = variant === "public_mvp";
+if (!isFree && coverState === "pending" && coverAnalysis === null) { ... }
 ```
 
-Mantém:
-- `premiumUnlocked={variant !== "public_mvp"}` (já correcto)
-- `unlocked={variant !== "public_mvp"}` (já correcto)
-- Toda a lógica de fetch, gate admin, exit pill, lab banner — intocada.
+But on the real public flow (`/analyze/$username`), Pro users keep `variant="public_mvp"` and only flip `premiumUnlocked` to `true`. So `isFree` is `true` for Pro users on the real path and the placeholders never render.
 
-A condição de mount da sticky bar dentro do shell (`lockBoundary === "engagement" && !premiumUnlocked`) passa a ser verdadeira em `public_mvp`, igual a produção. Em `pro_preview` e `internal_lab` continua escondida (como já é).
+`pro_preview` and `internal_lab` (admin) pass non-`public_mvp` variants, which is why placeholders only show there today.
 
-### Fora de scope
+## Fix
 
-- `src/routes/admin_.report-preview.snapshot.$snapshotId.tsx` — esta rota é hard-coded a `variant="internal_lab"` + `premiumUnlocked`/`unlocked` → não devia mostrar sticky bar. Não mexer.
-- Sem alterações a `ReportShellV2`, à `StickyUnlockBar`, a payloads, a entitlements ou a qualquer lógica de pagamento/gate.
-- Sem alterações de copy.
+Thread `premiumUnlocked` into `ReportDiagnosticBlock` and replace the `!isFree` gate with a positive "paid access" gate.
 
-### Validação manual
+### Files changed
 
-1. Abrir `/admin/report-preview/frederico.m.carvalho?variant=public_mvp&draft=false` → ao passar do Engagement para o teaser `#frequencia`, a sticky bar aparece (igual a produção `/analyze/frederico.m.carvalho`).
-2. Abrir mesma URL com `variant=pro_preview` → sticky bar NÃO aparece.
-3. Abrir mesma URL com `variant=internal_lab` → sticky bar NÃO aparece; banner amarelo do Lab continua.
-4. `/admin/report-preview/snapshot/<id>` continua sem sticky bar (intencional, full Lab).
-5. Sem regressões em `/analyze/$username`.
+1. `src/components/report-redesign/v2/report-diagnostic-block.tsx`
+   - Add `premiumUnlocked?: boolean` to `Props` (default `false`).
+   - Compute:
+     ```ts
+     const showPaidPlaceholders =
+       premiumUnlocked || variant === "pro_preview" || variant === "internal_lab";
+     ```
+   - Replace the four `!isFree` checks in `renderCoverSlot` and `renderCaptionSlot` with `showPaidPlaceholders`.
+   - Replace `if (isFree) return null;` in `renderInsightsPending` with `if (!showPaidPlaceholders) return null;`.
+   - Leave the rest of the file (Free teaser logic, comment-intelligence suppression at line 397, classifiers, priorities) untouched.
 
-### Output esperado
+2. `src/components/report-redesign/v2/report-shell-v2.tsx`
+   - At the single call site (line 264), pass `premiumUnlocked`:
+     ```tsx
+     <ReportDiagnosticBlock result={result} payload={payload} premiumUnlocked={premiumUnlocked} />
+     ```
+   - No other change.
 
-- Ficheiros alterados: `src/routes/admin_.report-preview.$username.tsx` (1 linha adicionada na prop list).
-- Confirmação de que nenhuma lógica de gating, entitlements, fetch ou pagamento foi tocada.
+### Why this is safe
+
+- `ReportDiagnosticBlock` is already only mounted when `premiumUnlocked === true` (shell line 262) on the real public path, so Free users never reach this code → Free teasers remain unchanged.
+- `admin_.report-preview.$username.tsx` passes `premiumUnlocked={variant !== "public_mvp"}`, so `pro_preview` and `internal_lab` keep showing placeholders (covered by the explicit `variant === "pro_preview" || "internal_lab"` legs as a belt-and-braces for any future admin path that mounts the block with `premiumUnlocked=false`).
+
+## Not changed
+
+Provider calls, enrichment scheduling, pricing, EuPago, entitlements, credits, schema, free teasers, comment-intelligence gating, sticky bar, report calculations.
+
+## Manual validation checklist
+
+1. `/analyze/<free handle>` → no diagnostic block at all, teasers intact, no pending placeholders.
+2. `/analyze/<pro handle>` with `visual_cover=pending` and no payload → "A preparar análise das capas…" placeholder.
+3. Same with `caption_semantic=pending` → "A preparar leitura das legendas…" placeholder.
+4. Same with `insights_v2=pending` → "A preparar síntese editorial…" placeholder.
+5. Same with `error` state and no payload → calm error placeholder.
+6. `/admin/report-preview/<h>?variant=internal_lab` → placeholders still render.
+7. `/admin/report-preview/<h>?variant=pro_preview` → placeholders still render.
+8. `/admin/report-preview/<h>?variant=public_mvp` → diagnostic block hidden by shell gate, no regression.
