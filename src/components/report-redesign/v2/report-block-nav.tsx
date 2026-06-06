@@ -211,7 +211,13 @@ function ProfileAvatar({
   );
 }
 
-function ProfileHeader({ profiles }: { profiles: SidebarProfile[] }) {
+function ProfileHeader({
+  profiles,
+  paidStatus,
+}: {
+  profiles: SidebarProfile[];
+  paidStatus?: { totalSections: number } | null;
+}) {
   const { t } = useTranslation("report");
   if (profiles.length === 0) return null;
   const isMulti = profiles.length > 1;
@@ -221,29 +227,37 @@ function ProfileHeader({ profiles }: { profiles: SidebarProfile[] }) {
   const primary = profiles[0];
   const primaryHandle = formatHandle(primary.handle);
   return (
-    <div className="flex items-center gap-3 px-1 pb-3 mb-3 border-b border-border-default/60">
-      {!isMulti && <ProfileAvatar profile={primary} />}
-      <div className="min-w-0 flex-1">
-        <p className="text-eyebrow-sm text-content-tertiary mb-1">{eyebrow}</p>
-        {isMulti ? (
-          <div className="flex items-center">
-            {profiles.map((p) => (
-              <span
-                key={p.handle}
-                title={formatHandle(p.handle)}
-                aria-label={formatHandle(p.handle)}
-                className="-ml-2 first:ml-0 inline-flex"
-              >
-                <ProfileAvatar profile={p} size="sm" ringOffset={false} />
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="truncate text-base font-semibold text-content-primary">
-            {primaryHandle}
-          </p>
-        )}
+    <div className="px-1 pb-3 mb-3 border-b border-border-default/60">
+      <div className="flex items-center gap-3">
+        {!isMulti && <ProfileAvatar profile={primary} />}
+        <div className="min-w-0 flex-1">
+          <p className="text-eyebrow-sm text-content-tertiary mb-1">{eyebrow}</p>
+          {isMulti ? (
+            <div className="flex items-center">
+              {profiles.map((p) => (
+                <span
+                  key={p.handle}
+                  title={formatHandle(p.handle)}
+                  aria-label={formatHandle(p.handle)}
+                  className="-ml-2 first:ml-0 inline-flex"
+                >
+                  <ProfileAvatar profile={p} size="sm" ringOffset={false} />
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="truncate text-base font-semibold text-content-primary">
+              {primaryHandle}
+            </p>
+          )}
+        </div>
       </div>
+      {paidStatus ? (
+        <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+          <CheckCircle2 className="size-3.5" aria-hidden="true" />
+          {t("nav.status.header_paid", { count: paidStatus.totalSections })}
+        </p>
+      ) : null}
     </div>
   );
 }
