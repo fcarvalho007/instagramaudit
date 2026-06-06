@@ -368,12 +368,14 @@ function AnalyzeReady({
   payload,
   analyzedAtIso,
   expiresAtIso,
+  competitors,
 }: {
   result: AdapterResult;
   snapshotId: string;
   payload: SnapshotPayload;
   analyzedAtIso: string | null;
   expiresAtIso: string | null;
+  competitors: string[];
 }) {
   const shareActions = useReportShareActions({ snapshotId });
 
