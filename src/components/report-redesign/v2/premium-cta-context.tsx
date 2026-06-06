@@ -19,6 +19,7 @@ import { scrollToBlock } from "./use-active-block";
  */
 export type PremiumCtaSource =
   | "sidebar"
+  | "sidebar_main_cta"
   | "sidebar_section"
   | "sidebar_period"
   | "sidebar_add_competitor"
