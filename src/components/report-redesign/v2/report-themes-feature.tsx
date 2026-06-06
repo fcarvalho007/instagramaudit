@@ -1,6 +1,7 @@
 import { Hash, Quote, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ReportSourceLabel } from "./report-source-label";
+import { ReportCardSectionHeader } from "./report-card-section-header";
 
 import { cn } from "@/lib/utils";
 import type { ThemesResult } from "@/lib/report/block02-diagnostic";
