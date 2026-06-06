@@ -345,11 +345,13 @@ function ItemRow({
   isActive,
   onClick,
   showBadge = true,
+  compact = false,
 }: {
   item: SidebarItem;
   isActive: boolean;
   onClick: () => void;
   showBadge?: boolean;
+  compact?: boolean;
 }) {
   const { t } = useTranslation("report");
   const isFree = item.accessBadge === "free";
@@ -366,7 +368,8 @@ function ItemRow({
       aria-current={isActive ? "true" : undefined}
       className={cn(
         "group relative w-full flex items-center gap-3",
-        "rounded-lg pl-3 pr-2.5 py-2.5 text-left",
+        "rounded-lg pl-3 pr-2.5 text-left",
+        compact ? "py-1.5" : "py-2.5",
         "transition-colors duration-150",
         "focus-visible:outline-none focus-visible:ring-2",
         "focus-visible:ring-[rgb(var(--accent-primary))] focus-visible:ring-offset-1",
@@ -399,7 +402,7 @@ function ItemRow({
       >
         {item.block.shortLabel}
       </span>
-      {showBadge ? (
+      {showBadge && !compact ? (
         <span
           className={cn(
             "ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.06em] ring-1",
@@ -417,33 +420,54 @@ function ItemRow({
 
 function LockedItemRow({
   item,
+  isActive,
   onClick,
+  compact = false,
 }: {
   item: SidebarItem;
+  isActive: boolean;
   onClick: () => void;
+  compact?: boolean;
 }) {
   const { t } = useTranslation("report");
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-current={isActive ? "true" : undefined}
       aria-label={t("nav.access.cta_aria")}
       className={cn(
         "group relative w-full flex items-center gap-3",
-        "rounded-lg pl-3 pr-2.5 py-2.5 text-left",
+        "rounded-lg pl-3 pr-2.5 text-left",
+        compact ? "py-1.5" : "py-2.5",
         "transition-colors duration-150",
-        "text-content-tertiary hover:bg-surface-muted/70 hover:text-content-secondary",
+        isActive
+          ? "bg-surface-muted/70 text-content-secondary"
+          : "text-content-tertiary hover:bg-surface-muted/70 hover:text-content-secondary",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-primary))] focus-visible:ring-offset-1 focus-visible:ring-offset-white",
       )}
     >
-      <span className="font-display italic tabular-nums text-sm text-content-tertiary">
-        {item.block.number}
-      </span>
-      <span className="text-sm font-medium truncate">{item.block.shortLabel}</span>
+      <span
+        aria-hidden="true"
+        className={cn(
+          "absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-r-full transition-colors",
+          isActive ? "bg-border-strong" : "bg-transparent group-hover:bg-border-default",
+        )}
+      />
       <Lock
-        className="ml-auto size-3.5 text-content-tertiary"
+        className="size-3 text-content-tertiary"
         aria-hidden="true"
       />
+      <span className={cn(
+        "font-display italic tabular-nums text-sm",
+        isActive ? "text-content-secondary" : "text-content-tertiary",
+      )}>
+        {item.block.number}
+      </span>
+      <span className={cn(
+        "text-sm truncate",
+        isActive ? "font-semibold" : "font-medium",
+      )}>{item.block.shortLabel}</span>
     </button>
   );
 }
