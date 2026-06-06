@@ -261,7 +261,7 @@ export function ReportShellV2({
               {/* 02 · Diagnóstico editorial — só fora do gate em premium */}
               {premiumUnlocked && features.blockDiagnosis !== "hidden" && (
               <ReportBlockSection block={diagnostico} tone="canvas">
-                <ReportDiagnosticBlock result={result} payload={payload} />
+                <ReportDiagnosticBlock result={result} payload={payload} premiumUnlocked={premiumUnlocked} />
               </ReportBlockSection>
               )}
 
