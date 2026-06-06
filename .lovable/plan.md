@@ -1,32 +1,46 @@
-## Plan: Refine Sticky Unlock Bar Copy
+## Plan: Sincronizar admin preview com produção (sticky bar + lock teasers)
 
-### Scope
-Update two strings in `src/components/report-redesign/v2/sticky-unlock-bar.tsx` to accurately reflect all 5 locked premium sections. No logic, pricing, checkout, entitlements, or trigger behaviour changes.
+### Causa raiz
 
-### Changes
+A barra sticky e o teaser inline de "boundary" do plano free são renderizados pelo `ReportShellV2` apenas quando recebe a prop `lockBoundary="engagement"`:
 
-**1. Desktop subcopy (line 124)**
-Before: `frequência, formatos, publicações-chave e prioridades`
-After:  `frequência, formatos, publicações-chave, diagnóstico e prioridades`
+- `src/components/report-redesign/v2/report-shell-v2.tsx:233` — inline teaser
+- `src/components/report-redesign/v2/report-shell-v2.tsx:408` — `<StickyUnlockBar />`
 
-**2. Mobile CTA label (line 194)**
-Before: `Ver tudo`
-After:  `Desbloquear`
+A rota pública `/analyze/$username` passa `lockBoundary="engagement"` (linha 445). A rota admin `/admin/report-preview/$username` (`src/routes/admin_.report-preview.$username.tsx`) **NÃO** passa essa prop, por isso o preview em ecrã completo do admin não mostra a sticky bar mesmo com `variant=public_mvp`.
 
-### Invariants preserved
-- Title strings remain unchanged.
-- `priceLabel` stays dynamic from `PUBLIC_PRODUCTS.report_full_9.priceLabel`.
-- `handleUnlock` still routes through `usePremiumCta()` with source `sticky_unlock_bar`.
-- `useStickyUnlockTrigger()` logic untouched.
-- No component API or prop changes.
-- No pricing, checkout, EuPago, entitlement, report-gating, or payment logic changed.
+### Alteração
 
-### Validation
-1. Desktop sticky bar names all 5 key premium areas (frequência, formatos, publicações-chave, diagnóstico, prioridades).
-2. Mobile copy remains compact (single-line title + price subcopy).
-3. Price remains dynamic via existing `priceLabel`.
-4. CTA still opens existing unlock modal via `handlePremiumAccessClick`.
-5. No logic changed — purely copy edits.
+**Ficheiro:** `src/routes/admin_.report-preview.$username.tsx`
 
-### File
-- `src/components/report-redesign/v2/sticky-unlock-bar.tsx` (2 line replacements)
+No `<ReportShellV2 ... />` (linhas 197–208), passar `lockBoundary` derivado da variante, de modo a espelhar exactamente o gating de produção:
+
+```tsx
+lockBoundary={variant === "public_mvp" ? "engagement" : null}
+```
+
+Mantém:
+- `premiumUnlocked={variant !== "public_mvp"}` (já correcto)
+- `unlocked={variant !== "public_mvp"}` (já correcto)
+- Toda a lógica de fetch, gate admin, exit pill, lab banner — intocada.
+
+A condição de mount da sticky bar dentro do shell (`lockBoundary === "engagement" && !premiumUnlocked`) passa a ser verdadeira em `public_mvp`, igual a produção. Em `pro_preview` e `internal_lab` continua escondida (como já é).
+
+### Fora de scope
+
+- `src/routes/admin_.report-preview.snapshot.$snapshotId.tsx` — esta rota é hard-coded a `variant="internal_lab"` + `premiumUnlocked`/`unlocked` → não devia mostrar sticky bar. Não mexer.
+- Sem alterações a `ReportShellV2`, à `StickyUnlockBar`, a payloads, a entitlements ou a qualquer lógica de pagamento/gate.
+- Sem alterações de copy.
+
+### Validação manual
+
+1. Abrir `/admin/report-preview/frederico.m.carvalho?variant=public_mvp&draft=false` → ao passar do Engagement para o teaser `#frequencia`, a sticky bar aparece (igual a produção `/analyze/frederico.m.carvalho`).
+2. Abrir mesma URL com `variant=pro_preview` → sticky bar NÃO aparece.
+3. Abrir mesma URL com `variant=internal_lab` → sticky bar NÃO aparece; banner amarelo do Lab continua.
+4. `/admin/report-preview/snapshot/<id>` continua sem sticky bar (intencional, full Lab).
+5. Sem regressões em `/analyze/$username`.
+
+### Output esperado
+
+- Ficheiros alterados: `src/routes/admin_.report-preview.$username.tsx` (1 linha adicionada na prop list).
+- Confirmação de que nenhuma lógica de gating, entitlements, fetch ou pagamento foi tocada.

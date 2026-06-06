@@ -204,6 +204,7 @@ function AdminReportPreviewPage() {
             featuresOverride={featuresOverride}
             premiumUnlocked={variant !== "public_mvp"}
             unlocked={variant !== "public_mvp"}
+            lockBoundary={variant === "public_mvp" ? "engagement" : null}
             actions={{}}
           />
         )}
