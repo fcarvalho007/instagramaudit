@@ -635,6 +635,17 @@
         "competitors": "Comparar concorrentes"
       },
       "trust": "Pagamento único. Sem subscrição."
+    },
+    "diagnostic_subitems": {
+      "note": "7 perguntas estratégicas",
+      "conteudo": "Conteúdo",
+      "funil": "Funil",
+      "hashtags": "Hashtags",
+      "legendas": "Legendas",
+      "capas": "Capas",
+      "audiencia": "Audiência",
+      "integracao": "Integração",
+      "toggle_aria": "Mostrar/esconder sub-itens do diagnóstico"
     }
   },
   "shell": {
