@@ -24,6 +24,7 @@ import {
 import { computePostAverages } from "@/lib/report/post-aggregates";
 import { buildBlock01Sample } from "@/lib/report/block01-sample";
 import { PremiumTeaserCard } from "./premium-teaser-card";
+import { FreeInitialReadingCard } from "./overview/free-initial-reading-card";
 
 const PREMIUM_TEASERS = [
   {
@@ -257,6 +258,17 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
             sufficient={enriched.cadence.sufficient}
             pinnedExcluded={sample?.pinnedPostsExcluded ?? 0}
             outliersExcluded={sample?.dateOutliersExcluded ?? 0}
+          />
+          <FreeInitialReadingCard
+            engagementRate={k.engagementRate}
+            engagementBenchmark={k.engagementBenchmark}
+            postingFrequencyWeekly={k.postingFrequencyWeekly}
+            cadenceSufficient={enriched.cadence.sufficient}
+            dominantFormat={k.dominantFormat}
+            dominantFormatShare={k.dominantFormatShare}
+            hasRecurringHashtags={
+              (result.data.topHashtags ?? []).some((h) => (h.uses ?? 0) >= 2)
+            }
           />
           <div id="engagement" className="scroll-mt-24">
             <EngagementCardRefined result={result} />
