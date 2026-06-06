@@ -87,6 +87,7 @@ export type EmailLifecycleStage =
   | "retencao"
   | "conversao"
   | "pagamento"
+  | "planeado"
   | "legado";
 
 export const LIFECYCLE_ORDER: EmailLifecycleStage[] = [
@@ -95,6 +96,7 @@ export const LIFECYCLE_ORDER: EmailLifecycleStage[] = [
   "retencao",
   "conversao",
   "pagamento",
+  "planeado",
   "legado",
 ];
 
@@ -104,6 +106,7 @@ export const LIFECYCLE_LABELS: Record<EmailLifecycleStage, string> = {
   retencao: "Retenção",
   conversao: "Conversão",
   pagamento: "Pagamento",
+  planeado: "Planeado / a ligar",
   legado: "Legado / desactivado",
 };
 
@@ -345,12 +348,13 @@ export const EMAIL_TEMPLATES: EmailTemplateEntry[] = [
     title: "Área pessoal guardada — planeado",
     internalName: "personal_area_saved",
     category: "conta",
-    shortDescription: "Guardámos a análise na tua área pessoal.",
+    shortDescription:
+      "Reservado para futura área pessoal com signup real. Ainda sem trigger em produção.",
     wired: false,
     wiredAt: null,
     wiredNote:
       "Função `sendPersonalAreaSavedEmail` existe mas sem trigger automático. Reservado para o fluxo de criação de conta (a ligar em handle_new_user / link_user_to_existing_reports).",
-    lifecycleStage: "legado",
+    lifecycleStage: "planeado",
     statusBadges: ["planeado", "sem_trigger"],
     lifecycleRole: "planned",
     requiredVariables: ["firstName", "instagramHandle", "appUrl"],

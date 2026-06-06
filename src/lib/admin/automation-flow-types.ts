@@ -21,6 +21,7 @@ export type FlowStage =
   | "03_retencao"
   | "04_conversao"
   | "05_pagamento"
+  | "98_planeado"
   | "99_legado";
 
 export interface StageDef {
@@ -91,6 +92,16 @@ export const STAGE_DEFS: readonly StageDef[] = [
     description: "Branch paid do EuPago — transaccional.",
     tokenColor: "admin-stage-pagamento",
     tokenBg: "admin-stage-pagamento-bg",
+  },
+  {
+    key: "98_planeado",
+    number: "98",
+    eyebrow: "Planeado · sem trigger",
+    title: "A ligar futuramente",
+    description:
+      "Reservado para signup real / área pessoal. Não dispara em produção.",
+    tokenColor: "admin-stage-legado",
+    tokenBg: "admin-stage-legado-bg",
   },
   {
     key: "99_legado",
@@ -243,6 +254,8 @@ export interface AutomationKpis {
     killSwitchOffCount: number;
     /** Flows in the legacy stage (`99_legado`). */
     legacyCount: number;
+    /** Flows in the planned stage (`98_planeado`). */
+    plannedCount: number;
     totalCount: number;
   };
   sent: { last30d: number; deltaVsYesterday: number };
