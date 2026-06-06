@@ -1,119 +1,70 @@
-# QA Plan — Paid Add Competitor + Beta Credit Flow
+# QA Plan — Pro Pending-Enrichment Placeholders
 
-**Target:** `https://auditprofiles.com` (production)
-**Paid user:** project owner / `frederico.m.carvalho`
-**Competitor handle to add:** `martimsilvai` (must be in `APIFY_ALLOWLIST`)
-**Read-only intent + 1 real paid action** (1 beta credit + 1 Apify scrape).
-**No code, schema, pricing, EuPago, entitlement, or report-generation changes.**
+**Target:** `https://auditprofiles.com` (production).
+**No code, schema, pricing, EuPago, credit, entitlement, or report-calc changes.**
+**Provider calls:** none triggered — only existing cached snapshots are read.
+**DB writes:** scoped to `analysis_snapshots.normalized_payload.enrichment_status` via the existing `set_enrichment_status(uuid, text, text)` RPC, with strict revert at end. No new rows, no schema change.
 
-> ⚠️ Heads-up: last validation found production is on an older build than preview. If Add Competitor button/flow is missing on production, I will stop, report it, and not switch environments without your go-ahead.
-
----
-
-## Step 0 — Pre-flight (read-only)
-
-- `APIFY_ALLOWLIST` includes `martimsilvai` (confirm via env/config check).
-- Lookup `frederico.m.carvalho`'s `lead_id` + active `lead_entitlements` (Pro/`report_full_9` or equivalent).
-- Read current `beta_credits` balance and current competitor list on the active report snapshot.
-- Record `T0 = now()` and snapshot id for the diff window.
-- Confirm preconditions: paid entitlement present, ≥1 beta credit, competitor count = 0 or 1.
-
-If preconditions fail → STOP and report.
+> Heads-up: a prior audit found production runs an older build than preview. If `report-diagnostic-block.tsx`'s `EnrichmentPlaceholderCard` paths are not deployed there, all pending/error checks will visually fall back to whatever the older build renders. I will report this distinctly per state.
 
 ---
 
-## Step 1 — Paid sidebar state (visual + DOM)
+## 0 — Pre-flight (read-only)
 
-Open report for `frederico.m.carvalho` in browser. Verify:
-- Sidebar shows "Premium ativo" (or equivalent badge).
-- Sidebar shows real beta-credit balance matching DB.
-- Competitor counter shows `X de 2` matching DB.
-
-PASS/FAIL per item + screenshot.
-
----
-
-## Step 2 — Add competitor dialog (UI gating, no spend yet)
-
-Click "Adicionar concorrente". Verify dialog opens. Probe input states (no submit):
-- Invalid handle (`@@@`, empty, spaces) → CTA disabled / error.
-- Primary handle (`frederico.m.carvalho`) → rejected with copy.
-- Existing competitor (if any) → rejected with copy.
-- Valid new handle (`martimsilvai`) → CTA enabled.
-
-PASS/FAIL per state. No fetches expected at this point — verify via network panel.
+- Confirm `report-diagnostic-block.tsx` is the only renderer using `getEnrichmentState` + `EnrichmentPlaceholderCard` (already verified — covers visual_cover, caption_semantic, insights_v2).
+- Confirm i18n keys present in PT report bundle: `pending.cover.title/body`, `pending.caption.title/body`, `pending.insights.title/body`, `pending.error.body`.
+- Snapshot inventory (already collected):
+  - `100xengineers` `f9fb5f2b…` — all enrichments `success` → success-state baseline.
+  - `lfmnz` `cbe8fb5d…` — `visual_cover=error`, `insights_v2=error`, `insights_v1=pending` → covers error states + does NOT require a write.
+  - Pending flips needed for: `visual_cover=pending`, `caption_semantic=pending`, `insights_v2=pending`.
 
 ---
 
-## Step 3 — Submit the paid add (the only real spend)
+## 1 — Snapshot flips (write, revert at end)
 
-Confirm with `martimsilvai`. Capture:
-- Exactly one POST to `/api/analyze-public-v1`.
-- Submitting state visible on CTA.
-- DB: a `credit_ledger` row with reservation → confirmation (delta -1) tied to the snapshot.
-- DB: `beta_credits` balance decremented by exactly 1.
-- URL updates to include `?vs=martimsilvai` (or merges into existing `vs`).
-- Report reloads with competitor context (new competitor visible in UI).
-- Success toast.
-- `provider_call_logs` shows 1 new `apify` row for `martimsilvai` after T0, no unexpected OpenAI/DataForSEO.
+For each pending state I flip ONE snapshot via the existing security-definer RPC `set_enrichment_status(snapshot_id, key, value)`, screenshot, then revert to the original value in the SAME pass.
 
-PASS/FAIL per item + before/after balance + URL diff.
+| State to test | Snapshot | Field | Set to | Revert to |
+|---|---|---|---|---|
+| visual_cover pending | `webhspt` `28702b3d…` | `visual_cover` | `pending` | `success` |
+| caption_semantic pending | `robs.cortez` `3cd9340c…` | `caption_semantic` | `pending` | `success` |
+| insights_v2 pending | `pedrocaramez` `5e23f34f…` | `insights_v2` | `pending` | `error` (original) |
 
----
+I record original values before each flip and confirm the revert with a SELECT before moving on. If any revert fails, I STOP and report which snapshot is in a flipped state so you can manually reset.
 
-## Step 4 — Limit enforcement at 2/2
+A safety net: at the end of the whole pass, one final SELECT prints `enrichment_status` for all three snapshots so you can independently confirm they were restored.
 
-After step 3, if counter is now `2 de 2`:
-- "Adicionar concorrente" button is disabled.
-- Clicking does not open dialog (verify via DOM event + network).
-- No fetch to `/api/analyze-public-v1` starts.
-- No new `credit_ledger` row.
-- Limit hint copy visible.
-
-If we ended step 3 at `1 de 2`, I will note that 2/2 was not reached in this run and report it as "not exercised" rather than fabricate a second paid add.
+> **Important caveat:** the placeholder card only renders when the corresponding parsed payload is `null`. For snapshots where `visual_cover` / `caption_semantic` payloads already exist (`success` originally), flipping the status to `pending` will NOT show the placeholder because `coverAnalysis !== null` (see `report-diagnostic-block.tsx:154,183`). I will note this and, if needed, additionally probe a snapshot whose payload is truly absent (or document it as a known guard so the user knows the placeholder is only shown when there is genuinely no data to display).
 
 ---
 
-## Step 5 — Failure-path probe (no real spend)
+## 2 — Visual checks on production
 
-Inspect the client code path for failure handling without triggering a real failure:
-- Verify the reserve → confirm/release pattern exists in the add-competitor handler.
-- Verify error toast + balance refetch on `/api/analyze-public-v1` non-2xx.
+For each scenario I open `https://auditprofiles.com/analyze/<handle>` in the browser and screenshot the Pro `#diagnostico` section. No login is required because these are cached snapshots and the analyze route is public.
 
-If we cannot validate without a real failure, mark as "code-path verified, runtime not exercised". I will NOT force a backend failure on production.
+| # | Scenario | Handle | Expected copy / behaviour |
+|---|---|---|---|
+| 1 | visual_cover pending | webhspt (flipped) | Card titled "A preparar análise das capas…" with calm body, no empty layout. (subject to caveat above) |
+| 2 | caption_semantic pending | robs.cortez (flipped) | "A preparar leitura das legendas…", calm body. |
+| 3 | insights_v2 pending | pedrocaramez (flipped) | "A preparar síntese editorial…"; if deterministic priorities exist they still render below. |
+| 4a | visual_cover error | lfmnz (live) | Calm error placeholder copy, no broken layout. |
+| 4b | caption_semantic error | n/a live | Static-only verdict (no live error snapshot for this key). |
+| 4c | insights_v2 error | any (live) | Calm error placeholder copy, no broken layout. |
+| 5 | All success | 100xengineers | Real Capas / Legendas / Insights cards render; no placeholder visible. |
+| 6 | Free render | 100xengineers, no `?pro=` | Teasers visible, NO "A preparar…" copy (helper short-circuits via `isFree`). |
+| 7 | Lab | `/admin` lab path or whichever lab route shows the diagnostic block | Same placeholders render (helper does not gate on `isLab`). |
 
----
-
-## Step 6 — Period chips (30d / 90d)
-
-Click 30d and 90d chips. Verify:
-- Each shows "em preparação" (or equivalent) state.
-- No `credit_ledger` change.
-- No new fetch to analyze endpoint.
-
-PASS/FAIL per chip.
-
----
-
-## Step 7 — Free-user path (no spend)
-
-In a separate incognito session (no auth / no entitlement), open the same report and click Adicionar concorrente:
-- Pricing/unlock modal opens.
-- No fetch to `/api/analyze-public-v1`.
-- No `credit_ledger` row.
-
-PASS/FAIL.
+Each row gets a PASS / FAIL / CODE-OK-NOT-EXERCISED / DEPLOYMENT-MISMATCH verdict. If production is on an older build, I will retry the same scenario on preview to distinguish a code bug from a deploy lag, and report both.
 
 ---
 
-## Output
+## 3 — Output
 
-I will return:
-1. PASS/FAIL checklist for every numbered item in Steps 1–7.
-2. Beta credit balance before vs after (with `credit_ledger` row ids).
-3. New snapshot/competitor state and `?vs=` value after add.
-4. Network events observed (method, URL, status) for the add.
-5. Any regression vs the documented contract (e.g. duplicate POSTs, missing balance refresh, mismatched counter, copy issues).
-6. Any "not exercised" items with the reason.
+1. PASS/FAIL table for all 7 scenarios with screenshots.
+2. Exact copy observed vs expected (PT).
+3. Any visual issue (overflow, broken grid, missing eyebrow, contrast).
+4. Production vs preview parity note where it matters.
+5. Final `enrichment_status` snapshot for the 3 flipped rows confirming full revert, plus the `credit_ledger` row count before/after as a sanity check (no credit should move).
+6. Explicit "not exercised" list with reasons.
 
-No files will be edited. No payments, entitlements, pricing, schema, or report calculations will be touched.
+No file edits. No new rows in any table. No payment / entitlement / pricing / credit / schema mutation.
