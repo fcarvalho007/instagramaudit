@@ -96,9 +96,9 @@ import {
 } from "@/lib/credits/lead-reports.server";
 import { getAnalysisExecutionMode } from "@/lib/admin/execution-mode.server";
 import {
-  ALL_ENRICHMENT_TYPES,
+  FREE_ENRICHMENT_TYPES,
   ENRICHMENT_PRIORITY,
-  buildInitialEnrichmentStatus,
+  buildFreeEnrichmentStatus,
 } from "@/lib/enrichment/types";
 import { prefetchThumbnailsAsBase64 } from "@/lib/analysis/thumbnail-cache.server";
 import { setEnrichmentStatusAtomic } from "@/lib/analysis/cache";
@@ -1107,7 +1107,11 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             ...(marketSignalsFree
               ? { market_signals_free: marketSignalsFree }
               : {}),
-            enrichment_status: buildInitialEnrichmentStatus(),
+            // Free path: only Apify+comments stay pending. Paid
+            // enrichments (DataForSEO + OpenAI v1/v2 + visual_cover +
+            // caption_semantic) are pre-marked as `skipped` and only
+            // enqueued post-purchase via `enqueuePaidEnrichments`.
+            enrichment_status: buildFreeEnrichmentStatus(),
             ...(Object.keys(thumbnailBase64Map).length > 0
               ? { _thumbnail_base64: thumbnailBase64Map }
               : {}),
@@ -1175,7 +1179,10 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
 
           if (snapshotId) {
             try {
-              const enrichmentRows = ALL_ENRICHMENT_TYPES.map((type) => ({
+              // Only enqueue the Free enrichment subset. Paid types are
+              // skipped here and enqueued later on entitlement grant
+              // (EuPago webhook → enqueuePaidEnrichments).
+              const enrichmentRows = FREE_ENRICHMENT_TYPES.map((type) => ({
                 snapshot_id: snapshotId,
                 analysis_event_id: analysisEventId ?? null,
                 handle: primary,
@@ -1184,30 +1191,42 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 priority: ENRICHMENT_PRIORITY[type],
               }));
 
-              const { error: insertErr } = await supabaseAdmin
-                .from("enrichment_jobs")
-                .insert(enrichmentRows as never);
+              if (enrichmentRows.length > 0) {
+                const { error: insertErr } = await supabaseAdmin
+                  .from("enrichment_jobs")
+                  .insert(enrichmentRows as never);
 
-              if (insertErr) {
-                console.error("[analyze-public-v1] failed to create enrichment_jobs", insertErr.message);
+                if (insertErr) {
+                  console.error("[analyze-public-v1] failed to create enrichment_jobs", insertErr.message);
+                } else {
+                  console.info(
+                    "[analyze-public-v1] created",
+                    enrichmentRows.length,
+                    "free enrichment_jobs for snapshot",
+                    snapshotId,
+                  );
+                }
+
+                // Fire-and-forget: trigger the async enrichment endpoint
+                const internalToken = process.env.INTERNAL_API_TOKEN;
+                if (internalToken) {
+                  const origin = new URL(request.url).origin;
+                  fetch(`${origin}/api/public/enrich-snapshot`, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${internalToken}`,
+                    },
+                    body: JSON.stringify({ snapshot_id: snapshotId }),
+                  }).catch((triggerErr) => {
+                    console.warn("[analyze-public-v1] enrich-snapshot trigger failed (job table ensures delivery)", triggerErr);
+                  });
+                }
               } else {
-                console.info("[analyze-public-v1] created", enrichmentRows.length, "enrichment_jobs for snapshot", snapshotId);
-              }
-
-              // Fire-and-forget: trigger the async enrichment endpoint
-              const internalToken = process.env.INTERNAL_API_TOKEN;
-              if (internalToken) {
-                const origin = new URL(request.url).origin;
-                fetch(`${origin}/api/public/enrich-snapshot`, {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${internalToken}`,
-                  },
-                  body: JSON.stringify({ snapshot_id: snapshotId }),
-                }).catch((triggerErr) => {
-                  console.warn("[analyze-public-v1] enrich-snapshot trigger failed (job table ensures delivery)", triggerErr);
-                });
+                console.info(
+                  "[analyze-public-v1] no free enrichments to enqueue; paid set deferred until entitlement grant",
+                  snapshotId,
+                );
               }
             } catch (err) {
               console.error("[analyze-public-v1] enrichment job creation failed", err);

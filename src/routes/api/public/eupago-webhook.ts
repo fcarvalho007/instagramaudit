@@ -18,6 +18,7 @@ import { verifyWebhookSignature } from "@/lib/payments/eupago.server";
 import { grantEntitlement } from "@/lib/payments/entitlements.server";
 import { grantPostPurchaseBetaCredits } from "@/lib/credits/credits.server";
 import { recordProductEvent } from "@/lib/tracking.server";
+import { enqueuePaidEnrichmentsForPayment } from "@/lib/enrichment/enqueue-paid.server";
 import type { ProductCode } from "@/lib/payments/products";
 
 const UUID_RE =
@@ -105,13 +106,14 @@ export const Route = createFileRoute("/api/public/eupago-webhook")({
           status: string;
           paid_at: string | null;
           metadata: Record<string, unknown> | null;
+          report_cache_key?: string | null;
         };
         let row: PaymentRow | null = null;
 
         if (providerPaymentId) {
           const { data } = await supabaseAdmin
             .from("lead_payments")
-            .select("id, lead_id, product, status, paid_at, metadata")
+            .select("id, lead_id, product, status, paid_at, metadata, report_cache_key")
             .eq("provider_payment_id", providerPaymentId)
             .maybeSingle();
           row = (data as PaymentRow | null) ?? null;
@@ -119,7 +121,7 @@ export const Route = createFileRoute("/api/public/eupago-webhook")({
         if (!row && identifier && UUID_RE.test(identifier)) {
           const { data } = await supabaseAdmin
             .from("lead_payments")
-            .select("id, lead_id, product, status, paid_at, metadata")
+            .select("id, lead_id, product, status, paid_at, metadata, report_cache_key")
             .eq("id", identifier)
             .maybeSingle();
           row = (data as PaymentRow | null) ?? null;
@@ -159,6 +161,22 @@ export const Route = createFileRoute("/api/public/eupago-webhook")({
             });
           } catch (err) {
             console.error("[eupago-webhook] grantEntitlement failed", err);
+          }
+
+          // Top-up paid enrichments on the snapshot the user just unlocked.
+          // Best-effort: never throws. Runs Apify-derived snapshot through
+          // the DataForSEO + OpenAI + visual_cover + caption_semantic
+          // pipeline so the Pro view has full data on next render.
+          try {
+            await enqueuePaidEnrichmentsForPayment({
+              reportCacheKey: row.report_cache_key ?? null,
+              origin: new URL(request.url).origin,
+            });
+          } catch (err) {
+            console.error(
+              "[eupago-webhook] enqueuePaidEnrichmentsForPayment failed",
+              err,
+            );
           }
 
           // Post-purchase beta bonus: +2 créditos, idempotente por payment_id.
