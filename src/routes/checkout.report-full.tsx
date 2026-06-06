@@ -95,6 +95,14 @@ function CheckoutSteps() {
   const navigate = useNavigate();
   const createCheckout = useServerFn(createEupagoCheckout);
 
+  if (search.status === "success") {
+    return (
+      <PostPurchaseSuccessPanel
+        returnPath={search.return ?? "/app/reports"}
+      />
+    );
+  }
+
   const [step, setStep] = useState(1);
   const [reportPriority, setReportPriority] =
     useState<ReportPriority | null>(null);
