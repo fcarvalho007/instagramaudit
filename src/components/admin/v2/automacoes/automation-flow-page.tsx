@@ -171,7 +171,7 @@ function KpiRow({ kpis }: { kpis: NonNullable<AutomationFlowResponse["kpis"]> })
       label: "Fluxos operacionais",
       value: kpis.systemActive.activeCount,
       headline: "automáticos",
-      hint: `${kpis.systemActive.manualCount} manuais · ${kpis.systemActive.killSwitchOffCount} kill-switch OFF · ${kpis.systemActive.legacyCount} legado`,
+      hint: `${kpis.systemActive.manualCount} manuais · ${kpis.systemActive.killSwitchOffCount} kill-switch OFF · ${kpis.systemActive.plannedCount} planeados · ${kpis.systemActive.legacyCount} legado`,
       tokenColor: "admin-pill-active-fg",
       tokenBg: "admin-pill-active-bg",
       icon: <CheckCircle2 size={18} className="text-[rgb(var(--admin-pill-active-fg))]" />,
