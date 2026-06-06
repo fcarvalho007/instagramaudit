@@ -6,11 +6,8 @@ import {
   greetingText,
   joinLines,
   p,
-  pMuted,
   renderButtonHtml,
   renderUrlFallbackHtml,
-  signatureHtml,
-  signatureText,
   wrapHtml,
 } from "../shared";
 
@@ -77,7 +74,6 @@ export function getPaymentConfirmedParts(
   const reportUrl = input.reportUrl.trim();
   const productName = input.productName.trim();
   const amountLabel = input.amountLabel.trim();
-  const handleLabel = handle ? `@${handle}` : "o teu relatório";
   const preheader = preheaderFor(handle);
 
   // ---- HTML body ----
@@ -99,25 +95,30 @@ export function getPaymentConfirmedParts(
   </tr>
 </table>`;
 
-  const greetingComma = input.firstName && input.firstName.trim()
-    ? `, ${escapeHtml(input.firstName.trim().split(/\s+/)[0] ?? "")}`
-    : "";
+  const leadSentenceHtml = handle
+    ? `O relatório completo de <strong style="color:#0a0e1a;">@${escapeHtml(handle)}</strong> está desbloqueado — com acesso vitalício às 6 secções.`
+    : `O relatório completo está desbloqueado — com acesso vitalício às 6 secções.`;
+
+  const reassuranceCardHtml = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;margin:0 0 20px 0;">
+  <tr>
+    <td style="padding:14px 18px;">
+      <p style="margin:0;font-size:14px;line-height:1.55;color:#1e3a8a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Pagamento único, sem subscrição nem renovação automática. O relatório fica guardado na tua conta.</p>
+    </td>
+  </tr>
+</table>`;
+
+  const signatureBlockHtml = `<p style="margin:24px 0 0 0;font-size:14px;line-height:1.6;color:#57534e;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Obrigado pela confiança,<br/>Frederico · AuditProfiles</p>`;
 
   const bodyHtml = [
     p(greetingHtml(input.firstName)),
-    p(
-      `Obrigado${greetingComma}. O relatório completo de <strong style="color:#0a0e1a;">${escapeHtml(handleLabel)}</strong> está desbloqueado e fica guardado na tua conta.`,
-    ),
+    p(leadSentenceHtml),
     receiptCardHtml,
     renderButtonHtml("Abrir relatório completo", reportUrl),
     `<div style="height:20px;"></div>`,
     renderUrlFallbackHtml(reportUrl),
     `<div style="height:20px;"></div>`,
-    pMuted("Pagamento único, sem subscrição nem renovação automática."),
-    pMuted(
-      "Qualquer questão sobre o pagamento ou o relatório, responde a este email.",
-    ),
-    signatureHtml("Até já,"),
+    reassuranceCardHtml,
+    signatureBlockHtml,
   ].join("\n");
 
   // ---- Plain text body ----
@@ -128,15 +129,14 @@ export function getPaymentConfirmedParts(
   if (reference) textReceiptLines.push(`Referência: ${reference}`);
   textReceiptLines.push(`Total: ${amountLabel}`);
 
-  const textGreetingComma = input.firstName && input.firstName.trim()
-    ? `, ${input.firstName.trim().split(/\s+/)[0] ?? ""}`
-    : "";
+  const leadSentenceText = handle
+    ? `O relatório completo de @${handle} está desbloqueado — com acesso vitalício às 6 secções.`
+    : `O relatório completo está desbloqueado — com acesso vitalício às 6 secções.`;
 
   const text = joinLines([
     greetingText(input.firstName),
     "",
-    `Obrigado${textGreetingComma}.`,
-    `O relatório completo de ${handleLabel} está desbloqueado e fica guardado na tua conta.`,
+    leadSentenceText,
     "",
     "— Recibo —",
     ...textReceiptLines,
@@ -144,11 +144,10 @@ export function getPaymentConfirmedParts(
     "Abrir relatório completo:",
     reportUrl,
     "",
-    "Pagamento único, sem subscrição nem renovação automática.",
+    "Pagamento único, sem subscrição nem renovação automática. O relatório fica guardado na tua conta.",
     "",
-    "Qualquer questão sobre o pagamento ou o relatório, responde a este email.",
-    "",
-    ...signatureText("Até já,"),
+    "Obrigado pela confiança,",
+    "Frederico · AuditProfiles",
   ]);
 
   return {
