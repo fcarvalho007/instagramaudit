@@ -94,7 +94,10 @@ function commercialToSidebarItem(
   const accessBadge: AccessBadge = s.tier === "free" ? "free" : "premium";
   const access: AccessState =
     s.tier === "free" || premiumUnlocked ? "accessible" : "locked";
-  const group: Group = s.tier === "free" ? "incluido" : "premium";
+  // When Pro is unlocked, every section sits in the "available now" list.
+  // Otherwise, premium-tier sections move into the locked Premium card.
+  const group: Group =
+    s.tier === "free" || premiumUnlocked ? "incluido" : "premium";
   const pseudoBlock = {
     id: s.id,
     number: s.number,
