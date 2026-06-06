@@ -473,10 +473,7 @@ function FormatProportionBar({
             <span className="font-semibold text-content-primary">
               {dominantCapital}
             </span>{" "}
-            · {dominant.count} {t("format.subtitle.extra_of", {
-              defaultValue: "de",
-            })}{" "}
-            {total}
+            · <span className="tabular-nums">{dominant.count}/{total}</span>
           </span>
         </div>
 
