@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { Menu, Lock, ArrowRight, Check, UserPlus, CheckCircle2, Calendar, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
@@ -24,6 +24,12 @@ import { useReportTracking } from "./report-tracking-context";
 import { usePremiumCta } from "./premium-cta-context";
 import { trackEvent } from "@/lib/tracking.functions";
 import { PUBLIC_PRODUCTS } from "@/lib/payments/products";
+import { useServerFn } from "@tanstack/react-start";
+import { getMyCreditBalance } from "@/lib/credits/credits.functions";
+import {
+  ConsumeCreditDialog,
+  type ConsumeCreditIntent,
+} from "./consume-credit-dialog";
 
 /**
  * Hook: returns true once the user has scrolled past `threshold` px.
@@ -538,6 +544,60 @@ function ExploreSection({
 }) {
   const { t } = useTranslation("report");
   const { handlePremiumAccessClick } = usePremiumCta();
+  const fetchBalance = useServerFn(getMyCreditBalance);
+  const [balance, setBalance] = useState(0);
+  const [intent, setIntent] = useState<ConsumeCreditIntent | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Carrega o saldo de créditos beta apenas no estado paid — nunca antes
+  // da compra, para nunca revelar o bónus ao utilizador free.
+  useEffect(() => {
+    if (!premiumUnlocked) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetchBalance();
+        if (!cancelled && r.hasLead) setBalance(r.balance);
+      } catch {
+        /* sem créditos visíveis em caso de falha */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [premiumUnlocked, fetchBalance]);
+
+  const openConsumeDialog = useCallback((nextIntent: ConsumeCreditIntent) => {
+    setIntent(nextIntent);
+    setDialogOpen(true);
+    trackEvent({
+      data: {
+        eventType: "credit_consume_dialog_opened",
+        metadata: {
+          intent_kind: nextIntent.kind,
+          intent_days:
+            nextIntent.kind === "period" ? nextIntent.days : undefined,
+          balance,
+        },
+      },
+    }).catch(() => {});
+  }, [balance]);
+
+  const onConfirmConsume = useCallback((nextIntent: ConsumeCreditIntent) => {
+    // O consumo real (reserveCredit + nova análise) fica como follow-up.
+    // Por agora só fechamos o dialog e registamos a intenção.
+    trackEvent({
+      data: {
+        eventType: "credit_consume_confirmed",
+        metadata: {
+          intent_kind: nextIntent.kind,
+          intent_days:
+            nextIntent.kind === "period" ? nextIntent.days : undefined,
+        },
+      },
+    }).catch(() => {});
+    setDialogOpen(false);
+  }, []);
 
   const onPeriodLockedClick = (days: number) => {
     handlePremiumAccessClick("sidebar_period", {
@@ -547,11 +607,14 @@ function ExploreSection({
 
   const onAddCompetitor = () => {
     if (premiumUnlocked) {
-      // TODO: wire to real competitor manager once available.
-      scrollToBlock("benchmark");
+      openConsumeDialog({ kind: "competitor" });
       return;
     }
     handlePremiumAccessClick("sidebar_add_competitor");
+  };
+
+  const onPeriodPaidClick = (days: number) => {
+    openConsumeDialog({ kind: "period", days });
   };
 
   // Compact layout: render "Período" and "Concorrente" as two small
@@ -559,7 +622,13 @@ function ExploreSection({
   // UI-only placeholder (paid, same behaviour as the expanded chips).
   if (compact) {
     const onPeriodCompact = () => {
-      if (!premiumUnlocked) handlePremiumAccessClick("sidebar_period");
+      if (premiumUnlocked) {
+        // Sem dia específico no compact — abre o dialog genérico
+        // (paid users escolhem a janela no relatório completo).
+        openConsumeDialog({ kind: "period", days: 30 });
+        return;
+      }
+      handlePremiumAccessClick("sidebar_period");
     };
     return (
       <section className="grid grid-cols-2 gap-1.5 px-1">
@@ -595,6 +664,15 @@ function ExploreSection({
             <Lock className="size-2.5 text-content-tertiary" aria-hidden="true" />
           )}
         </button>
+        {premiumUnlocked ? (
+          <ConsumeCreditDialog
+            open={dialogOpen}
+            onOpenChange={setDialogOpen}
+            intent={intent}
+            balance={balance}
+            onConfirm={onConfirmConsume}
+          />
+        ) : null}
       </section>
     );
   }
@@ -636,7 +714,11 @@ function ExploreSection({
             <button
               key={days}
               type="button"
-              onClick={() => !premiumUnlocked && onPeriodLockedClick(days)}
+              onClick={() =>
+                premiumUnlocked
+                  ? onPeriodPaidClick(days)
+                  : onPeriodLockedClick(days)
+              }
               aria-disabled={premiumUnlocked ? undefined : "true"}
               className={cn(
                 "inline-flex items-center gap-1 rounded-full px-2 py-0.5",
@@ -689,6 +771,26 @@ function ExploreSection({
           </p>
         ) : null}
       </div>
+
+      {premiumUnlocked ? (
+        <div className="px-2">
+          <p className="text-[11px] text-content-tertiary tabular-nums">
+            {balance > 0
+              ? t("nav.explore.beta_credits_available", { count: balance })
+              : t("nav.explore.beta_credits_empty")}
+          </p>
+        </div>
+      ) : null}
+
+      {premiumUnlocked ? (
+        <ConsumeCreditDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          intent={intent}
+          balance={balance}
+          onConfirm={onConfirmConsume}
+        />
+      ) : null}
     </section>
   );
 }
