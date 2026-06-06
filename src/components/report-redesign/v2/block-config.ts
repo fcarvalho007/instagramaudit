@@ -157,6 +157,6 @@ export const COMMERCIAL_SECTIONS: readonly CommercialSection[] = [
   { id: "frequencia",            number: "03", shortLabel: "Frequência editorial", tier: "pro",  icon: CalendarClock },
   { id: "formatos",              number: "04", shortLabel: "Mix de formatos",     tier: "pro",  icon: LayoutGrid },
   { id: "publicacoes-chave",     number: "05", shortLabel: "Publicações-chave",   tier: "pro",  icon: Star },
-  { id: "contexto-estrategico",  number: "06", shortLabel: "Contexto estratégico", tier: "pro",  icon: Compass },
+  { id: "diagnostico-editorial", number: "06", shortLabel: "Diagnóstico editorial", tier: "pro", icon: Stethoscope },
   { id: "prioridades",           number: "07", shortLabel: "Prioridades de acção", tier: "pro",  icon: ListChecks },
 ] as const;
