@@ -4,7 +4,7 @@
  */
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, CalendarClock, Activity, TrendingUp } from "lucide-react";
 import { computeFrequencia } from "./score-utils";
 import type { SocialinsiderInstagramContext } from "@/lib/knowledge/socialinsider-context";
 import { ExternalSourceNote, formatDateRange } from "./external-source-note";
