@@ -289,29 +289,19 @@ export function FormatCard({
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden flex flex-col">
       {/* Header */}
       <div className="px-5 md:px-6 pt-5 md:pt-6 space-y-2">
-        <div className="flex items-start gap-3">
-          <h3 className="font-display text-[1.25rem] sm:text-[1.5rem] md:text-[1.75rem] font-semibold tracking-tight text-content-primary leading-[1.15]">
-            {t("format.title")}{" "}
-            <span
-              className="font-semibold"
-              style={{
-                borderBottom: `2px solid ${
-                  variationKey === "varied_high"
-                    ? "rgba(29,158,117,0.50)"
-                    : variationKey === "varied"
-                      ? "rgba(37,99,217,0.40)"
-                      : "rgba(217,119,6,0.50)"
-                }`,
-                paddingBottom: "1px",
-              }}
-            >
-              {variationStatus}
-            </span>
-          </h3>
-        </div>
-        <p className="text-[14px] text-content-secondary leading-relaxed">
-          {subtitleLine}
-        </p>
+        <ReportCardSectionHeader
+          title={t("format.title")}
+          qualifier={variationStatus}
+          qualifierTone={
+            variationKey === "varied_high"
+              ? "positive"
+              : variationKey === "varied"
+                ? "info"
+                : "warning"
+          }
+          subtitle={subtitleLine}
+          bottomMargin={false}
+        />
       </div>
 
       {/* Breakdown — donut + legend */}
