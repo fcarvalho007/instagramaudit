@@ -1,13 +1,15 @@
 /**
- * /admin/report-preview/:username — pré-visualização administrativa do
- * relatório real gerado a partir de `analysis_snapshots.normalized_payload`.
+ * /admin/report-preview/snapshot/:snapshotId — pré-visualização de um
+ * snapshot específico por id.
  *
- * - Acesso restrito: mesma lógica do gate de /admin (Google Sign-in + allowlist).
- * - NÃO chama Apify, NÃO regenera, NÃO altera a snapshot.
- * - Renderiza o mesmo layout do mock (`/report/example`) substituindo apenas
- *   variant="internal_lab" para mostrar todos os blocos enriquecidos.
- * - Usa o mesmo `ReportThemeWrapper` (paleta clara) do exemplo.
- * - `noindex, nofollow`.
+ * Espelha `/admin/report-preview/$username` mas garante que se renderiza
+ * exactamente a linha listada no painel "Relatórios". Útil porque
+ * `analysis_snapshots` faz upsert por `cache_key`: a "última snapshot do
+ * username" pode divergir do que estava na tabela quando o admin clicou.
+ *
+ * Acesso: mesmo gate de /admin (Google + allowlist).
+ * NÃO chama Apify, NÃO regenera, NÃO altera a snapshot.
+ * `noindex, nofollow`.
  */
 
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -19,11 +21,6 @@ import { AdminGate } from "@/components/admin/admin-gate";
 import { Toaster } from "@/components/ui/sonner";
 import { adminFetch } from "@/lib/admin/fetch";
 import { clearAdminEmail, readAdminEmail } from "@/lib/admin/simple-gate";
-import { zodValidator, fallback } from "@tanstack/zod-adapter";
-import { z } from "zod";
-import type { ReportVariant } from "@/lib/report/report-variant";
-import type { VariantFeatures } from "@/lib/report/report-variant";
-import { getDraftFeatures, getPublishedFeatures } from "@/lib/admin/variant-overrides.functions";
 import {
   snapshotToReportData,
   type AdapterResult,
@@ -31,39 +28,24 @@ import {
   type SnapshotMetadata,
   type ReportBenchmarkInput,
 } from "@/lib/report/snapshot-to-report-data";
+import {
+  CostBreakdownPanel,
+  type CostSummaryView,
+  type ProviderCallView,
+} from "@/components/admin/cockpit/parts/cost-breakdown-panel";
 
-// ── Search params schema ───────────────────────────────────────────
-
-const VALID_VARIANTS = ["public_mvp", "internal_lab", "pro_preview"] as const;
-
-const previewSearchSchema = z.object({
-  variant: fallback(z.enum(VALID_VARIANTS), "public_mvp").default("public_mvp"),
-  draft: fallback(z.boolean(), false).default(false),
-});
-
-const VARIANT_LABELS: Record<ReportVariant, string> = {
-  public_mvp: "Public MVP",
-  internal_lab: "Internal Lab",
-  pro_preview: "Pro Preview",
-};
-
-const VARIANT_BADGE_TONES: Record<ReportVariant, string> = {
-  public_mvp: "bg-blue-50 text-blue-700 border-blue-200",
-  internal_lab: "bg-amber-50 text-amber-700 border-amber-200",
-  pro_preview: "bg-purple-50 text-purple-700 border-purple-200",
-};
-
-export const Route = createFileRoute("/admin/report-preview/$username")({
-  validateSearch: zodValidator(previewSearchSchema),
-  component: AdminReportPreviewPage,
+export const Route = createFileRoute(
+  "/admin_/report-preview/snapshot/$snapshotId",
+)({
+  component: AdminSnapshotPreviewPage,
   head: () => ({
     meta: [
-      { title: "Pré-visualização de relatório · Admin · AuditProfiles" },
+      { title: "Pré-visualização de snapshot · Admin · AuditProfiles" },
       { name: "robots", content: "noindex, nofollow" },
     ],
     scripts: [
       // Pré-hidratação: paleta clara antes do primeiro paint em hard reloads.
-      { children: `document.body&&document.body.setAttribute("data-theme","light")` },
+      { children: `document.body.setAttribute("data-theme","light")` },
     ],
   }),
 });
@@ -78,8 +60,11 @@ interface SnapshotResponse {
     payload: SnapshotPayload;
     meta: SnapshotMetadata;
     created_at: string;
+    updated_at: string;
     expires_at: string | null;
     benchmark?: ReportBenchmarkInput;
+    cost_summary?: CostSummaryView;
+    provider_calls?: ProviderCallView[];
   } | null;
   error_code?: string;
   message?: string;
@@ -93,39 +78,29 @@ type LoadState =
   | {
       kind: "ready";
       result: AdapterResult;
-      snapshotId: string;
       payload: SnapshotPayload;
-      snapshotMeta: { created_at: string; expires_at: string | null };
+      snapshotMeta: {
+        id: string;
+        instagram_username: string;
+        created_at: string;
+        updated_at: string;
+        expires_at: string | null;
+      };
+      costSummary: CostSummaryView | null;
+      providerCalls: ProviderCallView[];
     };
 
-function AdminReportPreviewPage() {
-  const { username } = Route.useParams();
-  const { variant, draft } = Route.useSearch();
+function AdminSnapshotPreviewPage() {
+  const { snapshotId } = Route.useParams();
   const [authState, setAuthState] = useState<AuthState>("checking");
   const [load, setLoad] = useState<LoadState>({ kind: "idle" });
-  const [featuresOverride, setFeaturesOverride] = useState<VariantFeatures | null>(null);
 
   // ---------- Admin gate simples (localStorage) ----------
   useEffect(() => {
     setAuthState(readAdminEmail() ? "in" : "signed_out");
   }, []);
 
-  // ---------- Load effective features ----------
-  useEffect(() => {
-    if (authState !== "in") return;
-    (async () => {
-      try {
-        const features = draft
-          ? await getDraftFeatures({ data: { variant } })
-          : await getPublishedFeatures({ data: { variant } });
-        setFeaturesOverride(features);
-      } catch {
-        setFeaturesOverride(null);
-      }
-    })();
-  }, [authState, variant, draft]);
-
-  // ---------- Load snapshot once admin is in ----------
+  // ---------- Load snapshot por id assim que o admin entra ----------
   useEffect(() => {
     if (authState !== "in") return;
     let cancelled = false;
@@ -133,7 +108,7 @@ function AdminReportPreviewPage() {
     (async () => {
       try {
         const res = await adminFetch(
-          `/api/admin/snapshot/${encodeURIComponent(username.toLowerCase())}`,
+          `/api/admin/snapshot-by-id/${encodeURIComponent(snapshotId)}`,
         );
         const body = (await res.json().catch(() => ({}))) as SnapshotResponse;
         if (cancelled) return;
@@ -156,12 +131,16 @@ function AdminReportPreviewPage() {
         setLoad({
           kind: "ready",
           result,
-          snapshotId: body.snapshot.id,
           payload: body.snapshot.payload ?? {},
           snapshotMeta: {
+            id: body.snapshot.id,
+            instagram_username: body.snapshot.instagram_username,
             created_at: body.snapshot.created_at,
+            updated_at: body.snapshot.updated_at,
             expires_at: body.snapshot.expires_at ?? null,
           },
+          costSummary: body.snapshot.cost_summary ?? null,
+          providerCalls: body.snapshot.provider_calls ?? [],
         });
       } catch (e) {
         if (cancelled) return;
@@ -174,14 +153,13 @@ function AdminReportPreviewPage() {
     return () => {
       cancelled = true;
     };
-  }, [authState, username]);
+  }, [authState, snapshotId]);
 
   async function handleLogout() {
     clearAdminEmail();
     setAuthState("signed_out");
   }
 
-  // ---------- Auth states ----------
   if (authState === "checking") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface-base text-content-secondary">
@@ -199,43 +177,36 @@ function AdminReportPreviewPage() {
     );
   }
 
-  // ---------- Authorized: render preview ----------
   return (
     <ReportThemeWrapper>
       <AdminPreviewChrome
-        username={username}
-        variant={variant}
+        snapshotId={snapshotId}
         load={load}
         onLogout={handleLogout}
-        featuresOverride={featuresOverride}
-        isDraft={draft}
       />
     </ReportThemeWrapper>
   );
 }
 
 interface ChromeProps {
-  username: string;
-  variant: ReportVariant;
+  snapshotId: string;
   load: LoadState;
   onLogout: () => void;
-  featuresOverride?: VariantFeatures | null;
-  isDraft?: boolean;
 }
 
-function AdminPreviewChrome({ username, variant, load, onLogout, featuresOverride, isDraft }: ChromeProps) {
+function AdminPreviewChrome({ snapshotId, load, onLogout }: ChromeProps) {
   return (
     <div className="bg-surface-base min-h-screen">
-      <AdminBanner username={username} variant={variant} load={load} onLogout={onLogout} isDraft={isDraft} />
+      <AdminBanner snapshotId={snapshotId} load={load} onLogout={onLogout} />
       {load.kind === "loading" || load.kind === "idle" ? (
         <PreviewMessage
           title="A carregar snapshot…"
-          body={`A obter o relatório mais recente para @${username}.`}
+          body={`A obter o snapshot ${snapshotId}.`}
         />
       ) : load.kind === "missing" ? (
         <PreviewMessage
-          title="Ainda não existe relatório para este perfil."
-          body={`Não existe nenhum snapshot guardado para @${username}. Corre uma análise primeiro a partir do cockpit ou da página /analyze/${username}.`}
+          title="Snapshot não encontrado."
+          body={`O snapshot ${snapshotId} já não existe (pode ter sido eliminado pela retenção de 5 dias) ou nunca existiu.`}
         />
       ) : load.kind === "error" ? (
         <PreviewMessage
@@ -248,16 +219,22 @@ function AdminPreviewChrome({ username, variant, load, onLogout, featuresOverrid
           <CoverageStrip load={load} />
           <ReportShellV2
             result={load.result}
-            snapshotId={load.snapshotId}
+            snapshotId={load.snapshotMeta.id}
             payload={load.payload}
             analyzedAtIso={load.snapshotMeta.created_at}
-            variant={variant}
-            featuresOverride={featuresOverride}
-            premiumUnlocked={variant !== "public_mvp"}
-            unlocked={variant !== "public_mvp"}
+            expiresAtIso={load.snapshotMeta.expires_at}
+            variant="internal_lab"
+            premiumUnlocked
+            unlocked
             actions={{}}
           />
           <CoverageNotice load={load} />
+          {load.costSummary ? (
+            <CostBreakdownPanel
+              summary={load.costSummary}
+              calls={load.providerCalls}
+            />
+          ) : null}
         </>
       )}
       <AdminFooterNotice />
@@ -265,34 +242,41 @@ function AdminPreviewChrome({ username, variant, load, onLogout, featuresOverrid
   );
 }
 
-function AdminBanner({ username, variant, load, onLogout, isDraft }: ChromeProps) {
-  const generated =
-    load.kind === "ready"
-      ? new Date(load.snapshotMeta.created_at).toLocaleString("pt-PT", {
-          dateStyle: "medium",
-          timeStyle: "short",
-        })
-      : null;
+function AdminBanner({ snapshotId, load, onLogout }: ChromeProps) {
+  const ready = load.kind === "ready" ? load : null;
+  const generated = ready
+    ? new Date(ready.snapshotMeta.created_at).toLocaleString("pt-PT", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : null;
+  const updated = ready
+    ? new Date(ready.snapshotMeta.updated_at).toLocaleString("pt-PT", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : null;
+  const handle = ready?.snapshotMeta.instagram_username ?? null;
   return (
     <div className="border-b border-border-default/40 bg-surface-secondary">
       <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-3 md:flex-row md:items-center md:justify-between">
         <div className="space-y-1">
           <p className="text-eyebrow text-content-tertiary">
-            AuditProfiles · Admin · Pré-visualização
-            <span className={`ml-2 inline-flex items-center rounded-full border px-2 py-0.5 text-[12px] font-semibold ${VARIANT_BADGE_TONES[variant]}`}>
-              {VARIANT_LABELS[variant]}
-            </span>
-            {isDraft && (
-              <span className="ml-2 inline-flex items-center rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[12px] font-semibold text-amber-700">
-                DRAFT
-              </span>
-            )}
+            AuditProfiles · Admin · Pré-visualização por snapshot
           </p>
           <p className="text-sm text-content-primary">
-            @{username}
+            {handle ? <>@{handle}</> : <>snapshot</>}
+            <span className="ml-2 font-mono text-xs text-content-tertiary">
+              · id {snapshotId.slice(0, 8)}…
+            </span>
             {generated ? (
               <span className="ml-2 text-content-tertiary">
-                · snapshot de {generated}
+                · gerado {generated}
+              </span>
+            ) : null}
+            {updated ? (
+              <span className="ml-2 text-content-tertiary">
+                · actualizado {updated}
               </span>
             ) : null}
           </p>
@@ -312,7 +296,7 @@ function AdminBanner({ username, variant, load, onLogout, isDraft }: ChromeProps
       <div className="border-t border-border-subtle/30 bg-tint-warning/40">
         <div className="mx-auto max-w-7xl px-6 py-2">
           <p className="text-eyebrow text-signal-warning">
-            Relatório disponível durante 5 dias após geração ·
+            Relatório disponível durante 5 dias após a última actualização ·
             visível apenas a administradores · não indexável
           </p>
         </div>
@@ -325,6 +309,7 @@ function CoverageNotice({ load }: { load: Extract<LoadState, { kind: "ready" }> 
   const c = load.result.coverage;
   const meta = load.result.data.meta;
   const lines: string[] = [];
+  // Always-on: amostra real (publicações + janela aproximada).
   lines.push(
     c.windowDays > 0
       ? `Amostra real: ${c.postsAvailable} publicações · janela aproximada de ${c.windowDays} dias.`
@@ -386,6 +371,11 @@ function CoverageNotice({ load }: { load: Extract<LoadState, { kind: "ready" }> 
   );
 }
 
+/**
+ * Compact coverage strip rendered above the report itself. Five chips give
+ * the admin an at-a-glance read of what's real vs partial vs missing before
+ * scrolling through the report body.
+ */
 function CoverageStrip({ load }: { load: Extract<LoadState, { kind: "ready" }> }) {
   const c = load.result.coverage;
   const benchmarkChip =
@@ -480,7 +470,7 @@ function AdminFooterNotice() {
     <footer className="border-t border-border-subtle/30 bg-surface-secondary">
       <div className="mx-auto max-w-7xl px-6 py-4">
         <p className="text-eyebrow text-content-tertiary">
-          Pré-visualização administrativa · Relatório disponível durante 5 dias após geração
+          Pré-visualização administrativa · Relatório disponível durante 5 dias após a última actualização
         </p>
       </div>
     </footer>
