@@ -897,8 +897,12 @@ export function ReportBlockSidebar({
         : buildCommercialSidebarItems(premiumUnlocked),
     [blocks, variant, features, premiumUnlocked],
   );
-  const accessibleIds = items.filter((i) => i.access !== "locked").map((i) => i.block.id);
-  const active = useActiveBlock(accessibleIds);
+  // Scroll-spy across ALL sections — locked teaser cards still own a
+  // matching DOM anchor (`#frequencia`, `#publicacoes-chave`, …), so they
+  // light up as the reader scrolls past their teaser.
+  const allIds = useMemo(() => items.map((i) => i.block.id), [items]);
+  const active = useActiveBlock(allIds);
+  const compact = useSidebarCompact();
   const isCommercial = variant !== "internal_lab";
   const paidStatus = isCommercial && premiumUnlocked
     ? { totalSections: items.length }
@@ -915,13 +919,16 @@ export function ReportBlockSidebar({
         "rounded-2xl border border-border-default",
         "bg-white",
         "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_18px_40px_-24px_rgba(15,23,42,0.12)]",
-        "p-4 xl:p-5",
+        "transition-all duration-200",
+        compact ? "p-3" : "p-4 xl:p-5",
       )}
     >
-      <ProfileHeader profiles={profileList} paidStatus={paidStatus} />
-      <div className="mb-2 flex justify-end">
-        <VariantBadge variant={variant} />
-      </div>
+      <ProfileHeader profiles={profileList} paidStatus={paidStatus} compact={compact} />
+      {!compact && (
+        <div className="mb-2 flex justify-end">
+          <VariantBadge variant={variant} />
+        </div>
+      )}
       <SidebarList
         items={items}
         active={active}
@@ -934,6 +941,7 @@ export function ReportBlockSidebar({
         observedDays={observedDays}
         competitorCount={competitorCount}
         competitorMax={competitorMax}
+        compact={compact}
       />
     </nav>
   );
