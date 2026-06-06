@@ -776,10 +776,7 @@ function ExploreSection({
         <div className="px-2">
           <p className="text-[11px] text-content-tertiary tabular-nums">
             {balance > 0
-              ? t("nav.explore.beta_credits_available", {
-                  count: balance,
-                  defaultValue_plural: "",
-                })
+              ? t("nav.explore.beta_credits_available", { count: balance })
               : t("nav.explore.beta_credits_empty")}
           </p>
         </div>
