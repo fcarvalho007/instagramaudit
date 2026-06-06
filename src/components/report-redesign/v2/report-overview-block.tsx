@@ -23,6 +23,8 @@ import {
 } from "@/lib/report/cadence-label";
 import { computePostAverages } from "@/lib/report/post-aggregates";
 import { buildBlock01Sample } from "@/lib/report/block01-sample";
+import { Lock, Sparkles } from "lucide-react";
+import { usePremiumCta } from "./premium-cta-context";
 
 export interface Props {
   result: AdapterResult;
@@ -32,10 +34,13 @@ export interface Props {
    * Split rendering for the public lock gate:
    * - "all" (default): renders everything.
    * - "free": renders only the Editorial Identity Card (above the gate).
+   * - "free_with_engagement": renders Identity Card + Methodology Line +
+   *   Engagement card. Frequency, Format and Best-vs-Worst become PRO
+   *   teaser placeholders. Used by the post-lead-capture FREE flow.
    * - "locked": renders content from the Engagement card onward
    *   (Engagement, Frequency+Format grid, Best vs Worst posts).
    */
-  mode?: "all" | "free" | "locked";
+  mode?: "all" | "free" | "free_with_engagement" | "locked";
 }
 
 function normaliseFormatKey(raw: string | null | undefined): "Reels" | "Carousels" | "Imagens" | null {
@@ -193,6 +198,20 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
         />
       )}
 
+      {mode === "free_with_engagement" && (
+        <>
+          <MethodologyLine
+            count={sample?.performancePosts.length ?? 0}
+            observedDays={enriched.cadence.windowDays}
+            sufficient={enriched.cadence.sufficient}
+            pinnedExcluded={sample?.pinnedPostsExcluded ?? 0}
+            outliersExcluded={sample?.dateOutliersExcluded ?? 0}
+          />
+          <EngagementCardRefined result={result} />
+          <OverviewProTeaser />
+        </>
+      )}
+
       {(mode === "all" || mode === "locked") && (
         <>
           {/* Zona C — Card de Taxa de Envolvimento (lock boundary) */}
@@ -233,6 +252,61 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
           />
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * Teaser único que substitui Frequência editorial + Mix de formatos +
+ * Publicações-chave no fluxo FREE pós-lead-capture. Concentra os três
+ * cartões num só CTA PRO (sem blur de dados reais — menos render, copy
+ * editorial mais limpa). O CTA é encaminhado pelo `PremiumCtaProvider`
+ * (mesma waitlist que sidebar/sticky/end-of-free), com
+ * `source_component: "overview_pro_teaser"`.
+ */
+function OverviewProTeaser() {
+  const { handlePremiumAccessClick } = usePremiumCta();
+  return (
+    <div className="rounded-2xl border border-border-default bg-surface-base/60 p-6 md:p-8 shadow-card">
+      <div className="flex items-start gap-4">
+        <div className="hidden md:flex size-10 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--accent-soft-pale))]">
+          <Lock
+            className="size-4 text-[rgb(var(--accent-primary))]"
+            aria-hidden="true"
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-eyebrow-sm text-[rgb(var(--accent-primary))]">
+            PRO
+          </p>
+          <h3 className="mt-1 text-lg md:text-xl font-semibold text-content-primary">
+            Mais 3 blocos no relatório PRO
+          </h3>
+          <p className="mt-2 text-sm md:text-[15px] text-content-secondary leading-relaxed max-w-2xl">
+            <strong className="font-semibold text-content-primary">
+              Frequência editorial
+            </strong>
+            ,{" "}
+            <strong className="font-semibold text-content-primary">
+              Mix de formatos
+            </strong>{" "}
+            e{" "}
+            <strong className="font-semibold text-content-primary">
+              Publicações-chave
+            </strong>{" "}
+            ficam disponíveis no relatório PRO, junto com o contexto
+            estratégico e as prioridades de acção.
+          </p>
+          <button
+            type="button"
+            onClick={() => handlePremiumAccessClick("overview_pro_teaser")}
+            className="mt-4 inline-flex items-center gap-2 rounded-full bg-content-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-content-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-primary))] focus-visible:ring-offset-1"
+          >
+            <Sparkles className="size-3.5" aria-hidden="true" />
+            Desbloquear o relatório PRO
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

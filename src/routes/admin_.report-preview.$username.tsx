@@ -13,7 +13,8 @@
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FlaskConical } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
 import { ReportShellV2 } from "@/components/report-redesign/v2/report-shell-v2";
 import { AdminGate } from "@/components/admin/admin-gate";
@@ -218,21 +219,50 @@ function ExitPreviewPill({
   variant: ReportVariant;
 }) {
   const navigate = useNavigate();
+  const variantLabel: Record<ReportVariant, { label: string; className: string }> = {
+    public_mvp: {
+      label: "PÚBLICO",
+      className: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+    },
+    pro_preview: {
+      label: "PRO",
+      className: "bg-[rgb(var(--accent-soft-pale))] text-[rgb(var(--accent-violet-deep))] ring-[rgb(var(--accent-soft))]",
+    },
+    internal_lab: {
+      label: "INTERNAL · LAB",
+      className: "bg-amber-50 text-amber-700 ring-amber-200",
+    },
+  };
+  const meta = variantLabel[variant];
   return (
-    <button
-      type="button"
-      onClick={() =>
-        navigate({
-          to: "/admin/report-lab",
-          search: { profile: username, variant },
-        })
-      }
-      className="fixed top-3 right-3 z-50 inline-flex items-center gap-1.5 rounded-full border border-border-default/50 bg-white/90 px-3 py-1.5 text-[12px] font-medium text-content-secondary shadow-sm backdrop-blur-sm transition-colors hover:border-border-strong/60 hover:text-content-primary print:hidden"
-      aria-label="Sair da pré-visualização"
-    >
-      <ArrowLeft className="h-3.5 w-3.5" />
-      Sair da pré-visualização
-    </button>
+    <div className="fixed top-3 right-3 z-50 flex items-center gap-2 print:hidden">
+      <span
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] ring-1 shadow-sm backdrop-blur-sm",
+          meta.className,
+        )}
+        aria-label={`Variante: ${meta.label}`}
+      >
+        {variant === "internal_lab" ? (
+          <FlaskConical className="h-3 w-3" aria-hidden="true" />
+        ) : null}
+        {meta.label}
+      </span>
+      <button
+        type="button"
+        onClick={() =>
+          navigate({
+            to: "/admin/report-lab",
+            search: { profile: username, variant },
+          })
+        }
+        className="inline-flex items-center gap-1.5 rounded-full border border-border-default/50 bg-white/90 px-3 py-1.5 text-[12px] font-medium text-content-secondary shadow-sm backdrop-blur-sm transition-colors hover:border-border-strong/60 hover:text-content-primary"
+        aria-label="Sair da pré-visualização"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Sair da pré-visualização
+      </button>
+    </div>
   );
 }
 
