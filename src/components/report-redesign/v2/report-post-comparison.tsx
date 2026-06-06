@@ -179,15 +179,14 @@ export function PostComparisonBlock({
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
       {/* Header */}
       <div className="px-5 md:px-6 pt-6 md:pt-8 pb-4 space-y-2">
-        <h3 className="font-display text-[1.5rem] sm:text-[1.75rem] md:text-[2rem] font-semibold tracking-tight text-content-primary leading-tight break-words">
-          {t("posts.title")}
-        </h3>
-        <p className="text-eyebrow-sm text-content-tertiary">
-          {(() => {
+        <ReportCardSectionHeader
+          title={t("posts.title")}
+          eyebrow={(() => {
             const picked = pickSubtitleKey(cadenceMethod, sampleSize ?? 0);
             return t(picked.key, picked.params);
           })()}
-        </p>
+          bottomMargin={false}
+        />
       </div>
 
       {hasComparison && best && worst ? (
