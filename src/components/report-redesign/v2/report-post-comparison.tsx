@@ -19,6 +19,7 @@ import { formatNumber } from "@/lib/i18n/format";
 import type { SupportedLanguage } from "@/i18n";
 import { InsightCallout } from "./overview/insight-callout";
 import { usePremiumCta } from "./premium-cta-context";
+import { ReportCardSectionHeader } from "./report-card-section-header";
 
 type EnrichedPost = ReportEnriched["topPosts"][number];
 type ScatterPost = ReportEnriched["allPostsScatter"][number];
