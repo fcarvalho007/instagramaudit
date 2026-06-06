@@ -5,6 +5,12 @@ interface Props {
   letter: "A" | "B" | "C" | "D" | "E";
   label: string;
   questionsCount: number;
+  /**
+   * "split" (default) → grelha 2-col em desktop, ideal para 2 cartões `half`.
+   * "stack" → coluna única full-width, ideal para grupos com 1 cartão
+   * ou cartões editoriais largos (hashtags, legendas, capas, audiência, integração).
+   */
+  layout?: "split" | "stack";
   children: ReactNode;
 }
 
@@ -17,6 +23,7 @@ export function ReportDiagnosticGroup({
   letter,
   label,
   questionsCount,
+  layout = "split",
   children,
 }: Props) {
   const { t } = useTranslation("report");
@@ -36,9 +43,13 @@ export function ReportDiagnosticGroup({
           {t("diagnostic.group_questions", { count: questionsCount })}
         </span>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-        {children}
-      </div>
+      {layout === "stack" ? (
+        <div className="flex flex-col gap-5 md:gap-6">{children}</div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
