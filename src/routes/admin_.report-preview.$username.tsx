@@ -289,3 +289,18 @@ function CenteredMessage({
     </div>
   );
 }
+
+function LabFullPreviewBanner() {
+  return (
+    <div className="border-b border-amber-200 bg-amber-50/70 px-5 py-3 print:hidden">
+      <div className="mx-auto max-w-[1520px] flex flex-col gap-1 md:flex-row md:items-center md:justify-between md:gap-4">
+        <p className="text-eyebrow-sm font-semibold text-amber-800">
+          LAB INTERNO · FULL PREVIEW
+        </p>
+        <p className="text-xs text-amber-800/80 leading-relaxed">
+          Este modo mostra blocos experimentais e não representa a versão comercial.
+        </p>
+      </div>
+    </div>
+  );
+}
