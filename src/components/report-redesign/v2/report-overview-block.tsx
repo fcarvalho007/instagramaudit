@@ -141,7 +141,6 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
 
       {(mode === "all" || mode === "free") && (
         /* Zona B — Editorial Identity Card (replaces 6-card grid) */
-        <div id="overview" className="scroll-mt-24">
         <EditorialIdentityCard
           scores={scores}
           aiVerdict={enriched.aiInsightsV2?.editorialVerdict ?? null}
@@ -185,7 +184,6 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
             2,
           )}
         />
-        </div>
       )}
 
       {(mode === "all" || mode === "free") && (
