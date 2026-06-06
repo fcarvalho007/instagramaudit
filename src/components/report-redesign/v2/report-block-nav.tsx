@@ -13,7 +13,12 @@ import {
   type ReportVariant,
   type VariantFeatures,
 } from "@/lib/report/report-variant";
-import { useBlocks, type BlockConfig } from "./block-config";
+import {
+  useBlocks,
+  type BlockConfig,
+  COMMERCIAL_SECTIONS,
+  type CommercialSection,
+} from "./block-config";
 import { scrollToBlock, useActiveBlock } from "./use-active-block";
 import { useReportTracking } from "./report-tracking-context";
 import { usePremiumCta } from "./premium-cta-context";
@@ -46,6 +51,9 @@ interface SidebarProps {
   /** When false in public_mvp, sidebar shows a soft "continue free" CTA
    *  instead of the pricing/access card. */
   unlocked?: boolean;
+  /** True only when the user has paid Pro access. Commercial sidebar
+   *  uses this to unlock items 03–07. Defaults to false. */
+  premiumUnlocked?: boolean;
   /** Handler that opens the existing UnlockModal (lead-magnet flow). */
   onUnlockClick?: () => void;
 }
@@ -72,6 +80,40 @@ function buildSidebarItems(
     }
     return { block, group: "premium", access: "locked", accessBadge };
   });
+}
+
+/**
+ * Convert a CommercialSection into a SidebarItem reusing the existing
+ * sidebar UI. The synthesized BlockConfig only fills fields actually
+ * read by `ItemRow` (id, number, shortLabel, icon).
+ */
+function commercialToSidebarItem(
+  s: CommercialSection,
+  premiumUnlocked: boolean,
+): SidebarItem {
+  const accessBadge: AccessBadge = s.tier === "free" ? "free" : "premium";
+  const access: AccessState =
+    s.tier === "free" || premiumUnlocked ? "accessible" : "locked";
+  const group: Group = s.tier === "free" ? "incluido" : "premium";
+  const pseudoBlock = {
+    id: s.id,
+    number: s.number,
+    shortLabel: s.shortLabel,
+    question: "",
+    subtitle: "",
+    icon: s.icon,
+    featureKey: "blockOverview",
+    tier: s.tier,
+  } as unknown as BlockConfig;
+  return { block: pseudoBlock, group, access, accessBadge };
+}
+
+function buildCommercialSidebarItems(
+  premiumUnlocked: boolean,
+): SidebarItem[] {
+  return COMMERCIAL_SECTIONS.map((s) =>
+    commercialToSidebarItem(s, premiumUnlocked),
+  );
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
