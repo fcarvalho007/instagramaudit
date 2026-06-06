@@ -621,16 +621,23 @@
       "beta_credits_empty": "0 credits available",
       "consume_dialog": {
         "title": "Use 1 beta credit",
-        "description_period": "We'll fetch and process new public data for the {{days}}-day window. This uses 1 credit.",
-        "description_competitor": "We'll fetch and process new public data to add a competitor to the report. This uses 1 credit.",
+        "description_period": "To analyse this profile for a different period, AuditProfiles needs to fetch and process new public Instagram data.",
+        "description_competitor": "We'll fetch and process this profile's public data to compare it with the current analysis.",
         "balance_label": "Current balance",
         "balance_after": "Balance after this action",
         "cta_use": "Use 1 credit",
         "cta_cancel": "Cancel",
         "empty_title": "No credits available",
-        "empty_body": "You're out of beta credits. We're collecting feedback on how to expand this feature.",
-        "empty_cta": "Send feedback",
-        "soon_note": "This feature is in beta — you'll be notified when the new analysis is ready."
+        "empty_body": "You don't have any credits available right now.",
+        "empty_cta": "Request more credits",
+        "soon_note": "This feature is in beta — you'll be notified when the new analysis is ready.",
+        "title_period": "Generate new analysis?",
+        "title_competitor": "Add competitor to comparison?",
+        "credit_line": "This action uses 1 credit.",
+        "balance_hint": "You have {{count}} beta credit available.",
+        "balance_hint_plural": "You have {{count}} beta credits available.",
+        "cta_use_period": "Use 1 credit and generate analysis",
+        "cta_use_competitor": "Use 1 credit and add competitor"
       }
     },
     "status": {

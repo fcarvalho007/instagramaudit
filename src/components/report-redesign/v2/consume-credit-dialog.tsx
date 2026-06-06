@@ -57,6 +57,14 @@ export function ConsumeCreditDialog({
     intent.kind === "period"
       ? t("nav.explore.consume_dialog.description_period", { days: intent.days })
       : t("nav.explore.consume_dialog.description_competitor");
+  const title =
+    intent.kind === "period"
+      ? t("nav.explore.consume_dialog.title_period")
+      : t("nav.explore.consume_dialog.title_competitor");
+  const confirmCta =
+    intent.kind === "period"
+      ? t("nav.explore.consume_dialog.cta_use_period")
+      : t("nav.explore.consume_dialog.cta_use_competitor");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -64,7 +72,7 @@ export function ConsumeCreditDialog({
         <DialogHeader>
           <DialogTitle>
             {hasCredit
-              ? t("nav.explore.consume_dialog.title")
+              ? title
               : t("nav.explore.consume_dialog.empty_title")}
           </DialogTitle>
           <DialogDescription>
@@ -75,6 +83,13 @@ export function ConsumeCreditDialog({
         </DialogHeader>
 
         {hasCredit ? (
+          <>
+            <p className="text-xs text-content-secondary">
+              {t("nav.explore.consume_dialog.credit_line")}
+            </p>
+            <p className="text-xs text-content-tertiary">
+              {t("nav.explore.consume_dialog.balance_hint", { count: balance })}
+            </p>
           <div className="rounded-md border border-border-default bg-surface-muted px-3 py-2 text-xs text-content-secondary tabular-nums">
             <div className="flex items-center justify-between">
               <span>{t("nav.explore.consume_dialog.balance_label")}</span>
@@ -87,6 +102,7 @@ export function ConsumeCreditDialog({
               </span>
             </div>
           </div>
+          </>
         ) : null}
 
         {hasCredit ? (
@@ -104,7 +120,7 @@ export function ConsumeCreditDialog({
           </Button>
           {hasCredit ? (
             <Button onClick={() => onConfirm(intent)}>
-              {t("nav.explore.consume_dialog.cta_use")}
+              {confirmCta}
             </Button>
           ) : (
             <Button

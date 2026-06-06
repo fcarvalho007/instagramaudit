@@ -621,16 +621,23 @@
       "beta_credits_empty": "0 créditos disponíveis",
       "consume_dialog": {
         "title": "Usar 1 crédito beta",
-        "description_period": "Vamos recolher e processar dados públicos novos para a janela de {{days}} dias. Esta ação consome 1 crédito.",
-        "description_competitor": "Vamos recolher e processar dados públicos novos para adicionar um concorrente ao relatório. Esta ação consome 1 crédito.",
+        "description_period": "Para analisar este perfil noutro período, o AuditProfiles precisa de recolher e processar novos dados públicos do Instagram.",
+        "description_competitor": "Vamos recolher e processar os dados públicos deste perfil para comparar com a análise actual.",
         "balance_label": "Saldo atual",
         "balance_after": "Saldo após esta ação",
         "cta_use": "Usar 1 crédito",
         "cta_cancel": "Cancelar",
         "empty_title": "Sem créditos disponíveis",
-        "empty_body": "Já não tens créditos beta. Estamos a recolher feedback sobre como expandir esta funcionalidade.",
-        "empty_cta": "Enviar feedback",
-        "soon_note": "Esta funcionalidade está em fase beta — vais ser notificado quando a nova análise estiver pronta."
+        "empty_body": "Neste momento não tens créditos disponíveis.",
+        "empty_cta": "Pedir mais créditos",
+        "soon_note": "Esta funcionalidade está em fase beta — vais ser notificado quando a nova análise estiver pronta.",
+        "title_period": "Gerar nova análise?",
+        "title_competitor": "Adicionar concorrente à comparação?",
+        "credit_line": "Esta operação usa 1 crédito.",
+        "balance_hint": "Tens {{count}} crédito beta disponível.",
+        "balance_hint_plural": "Tens {{count}} créditos beta disponíveis.",
+        "cta_use_period": "Usar 1 crédito e gerar análise",
+        "cta_use_competitor": "Usar 1 crédito e adicionar concorrente"
       }
     },
     "status": {
