@@ -1,67 +1,81 @@
-# Free/Public OpenAI Dependency Audit
+# Free/Pro/Lab Enrichment Gate — Finalization
 
-## TL;DR
+## Status before this turn
 
-Free/Public (mode `free_with_engagement`, used when `lockBoundary === "engagement" && !premiumUnlocked`) renders **MethodologyLine + EngagementCardRefined + 5 PremiumTeaserCard**. It does **NOT** render `EditorialIdentityCard`. The earlier QA note conflated the `free` mode (used elsewhere) with the live `free_with_engagement` mode (used in production for public reports).
+The bulk of the gate already shipped in the prior session:
 
-**Free needs Apify only. No OpenAI, no DataForSEO, no visual_cover, no caption_semantic.**
+- `FREE_ENRICHMENT_TYPES` (`[]`) and `PAID_ENRICHMENT_TYPES` exist in `src/lib/enrichment/types.ts`.
+- `buildFreeEnrichmentStatus()` pre-marks paid jobs as `skipped` in the snapshot.
+- `src/routes/api/analyze-public-v1.ts` enqueues only `FREE_ENRICHMENT_TYPES` and seeds `enrichment_status` via the Free builder.
+- `src/lib/enrichment/enqueue-paid.server.ts` top-ups missing paid jobs idempotently on entitlement.
+- `src/routes/api/public/eupago-webhook.ts` calls the top-up after successful payment.
+- Internal Lab path (admin lab scrape) is unaffected and continues to run any/all enrichments today.
 
-## 1. Current Free Visible Component Map
+The dependency audit (previous turn) confirmed Free renders MethodologyLine + EngagementCardRefined + 5 PremiumTeaserCard only — no OpenAI/DFS/visual/caption needed.
 
-Source: `src/components/report-redesign/v2/report-shell-v2.tsx` (lines 233–253) → `ReportOverviewBlock mode="free_with_engagement"` (src/components/report-redesign/v2/report-overview-block.tsx lines 252–280).
+This turn finishes the spec by adding: (1) an explicit `LAB_ENRICHMENT_TYPES` alias and (2) a clearer "skipped_free" status label so admin diagnostics distinguish "skipped for cost (Free tier)" from "skipped for budget".
 
-Rendered for Free public:
-- `MethodologyLine` (transparency line: sample size, days, exclusions)
-- `EngagementCardRefined` (id="engagement")
-- 5 × `PremiumTeaserCard` (static locked teasers for blocks 03–07)
-- `ReportHeroV2` (hero, from shell)
-- Sidebar / TopTabs nav
+## Changes
 
-**Not rendered in Free public:**
-- `EditorialIdentityCard` (only in modes `"all"` / `"free"`, which the live path does not use)
-- Blocks 02–06 main bodies (guarded by `premiumUnlocked`)
-- `ReportDiagnosticBlock`, `ReportTemporalChart`, `ReportThemesFeature`, `ReportCommentIntelligence`, `VisualCoverAnalysisCard`, `CaptionDiagnosticsCard`, `ReportDiagnosticPriorities` — all premium-only
+### 1. `src/lib/enrichment/types.ts`
+- Extend `EnrichmentStatus` union to add `"skipped_free"` (kept distinct from `"skipped"`, which we will reserve for budget/runtime skips).
+- Add `LAB_ENRICHMENT_TYPES = ALL_ENRICHMENT_TYPES` as a named alias used by lab callers (documentation + future-proofing).
+- Update `buildFreeEnrichmentStatus()` to mark paid jobs as `"skipped_free"` instead of `"skipped"`.
 
-## 2. Dependency Table by Visible Free Component
+### 2. `src/lib/enrichment/enqueue-paid.server.ts`
+- Update the top-up filter (`enqueuePaidEnrichmentsForSnapshot`, line 54) to treat **both** `"skipped"` and `"skipped_free"` as "ready to be re-enqueued on Pro unlock". Otherwise Pro unlock would silently never enqueue jobs marked `skipped_free`.
 
-| Component | Apify | insights_v1 | insights_v2 | DataForSEO | visual_cover | caption_semantic |
-|---|---|---|---|---|---|---|
-| `ReportHeroV2` | yes (profile + posts) | no | no | no | no | no |
-| `MethodologyLine` | yes (count/days/exclusions) | no | no | no | no | no |
-| `EngagementCardRefined` | yes (engagement, benchmark) | no | no | no | no | no |
-| `PremiumTeaserCard` (×5) | no (static copy) | no | no | no | no | no |
-| Sidebar / TopTabs | no | no | no | no | no | no |
+### 3. `src/lib/admin/execution-mode.functions.ts` (line 91)
+- Update the "completed" predicate to count `"skipped"`, `"skipped_free"`, and `"success"` as terminal so admin "execution mode" badge remains correct for Free snapshots.
 
-`renderInsight(...)` is passed down but every Free component path ignores it (no `renderInsight` call inside the `free_with_engagement` branch).
+### 4. `src/routes/api/admin/analysis-cost-breakdown.ts` (line 144)
+- Same change: treat `"skipped_free"` as a terminal state alongside `"skipped"` / `"success"` so the cost-breakdown completion check still passes for Free.
 
-## 3. Answers to Audit Questions
+### 5. `src/routes/api/__tests__/analyze-public-v1-credit-gate.test.ts`
+- Re-export `LAB_ENRICHMENT_TYPES: []` in the mock so the import-protection doesn't trip.
 
-1. **Does `free_with_engagement` render `EditorialIdentityCard`?** — **No.** The Identity Card lives in the `(mode === "all" || mode === "free")` branch (report-overview-block.tsx line 193). The `free_with_engagement` branch (line 252) renders only MethodologyLine + Engagement + Teasers.
-2. **Does `EditorialIdentityCard` require `ai_insights_v1`/`v2`?** — It consumes `enriched.aiInsightsV2?.editorialVerdict ?? null` (optional). It has a deterministic fallback (`src/lib/report/editorial-verdict-fallback.ts`). But it is moot — the card is not rendered in Free public.
-3. **Deterministic fallback without OpenAI?** — Yes, via `editorial-verdict-fallback.ts`. (Again, not exercised in Free.)
-4. **Does Engagement need OpenAI/DFS/visual/caption?** — **No.** `EngagementCardRefined` consumes only `result` (Apify-derived metrics).
-5. **Do locked PremiumTeaserCard items need enrichment?** — **No.** Static i18n copy + CTA only.
-6. **Strictly necessary enrichments for Free:** **Apify only.**
-7. **Safely skippable for Free:** `dataforseo`, `insights_v1`, `insights_v2`, `visual_cover`, `caption_semantic`, `comments` — none are read in the Free render path.
+### Not changed
+- No DB schema change (enrichment_status is a free-form JSON map; adding a new string value is non-breaking).
+- No prompts, prices, EuPago flow, credits, entitlements, payments, or report calculations.
+- No UI change. The new status string is admin-only.
+- `run-enrichment.server.ts` does not branch on `"skipped"`, so it is untouched.
 
-## 4. Verdicts
+## Final policy table
 
-- **`insights_v1` required in Free?** No.
-- **`insights_v2` required in Free?** No.
-- **Can Free be Apify-only?** **Yes.**
-- **QA note status:** Incorrect for the live path. EditorialIdentityCard is only reachable if the report ever runs in `mode="free"` (legacy/lab) — not the production public flow.
-
-## 5. Recommended Enrichment Policy (no implementation in this turn)
-
-| Tier | Apify | insights_v1 | insights_v2 | DataForSEO | visual_cover | caption_semantic | comments |
+| Tier | Apify | dataforseo | insights_v1 | insights_v2 | visual_cover | caption_semantic | comments |
 |---|---|---|---|---|---|---|---|
-| **Free / Public** | run | skip | skip | skip | skip | skip | skip |
-| **Pro (unlocked)** | run (cached) | run | run | run | run | run | gated by post count |
+| **Free / Public** | run | skipped_free | skipped_free | skipped_free | skipped_free | skipped_free | gated by `COMMENT_SCRAPER_ENABLED` |
+| **Pro (after entitlement)** | reuse snapshot | enqueue | enqueue | enqueue | enqueue | enqueue | gated |
 | **Internal Lab** | run | run | run | run | run | run | run |
 
-This matches the current `FREE_ENRICHMENT_TYPES` (empty) / `PAID_ENRICHMENT_TYPES` split already wired in `src/lib/enrichment/types.ts` and the webhook top-up in `src/lib/enrichment/enqueue-paid.server.ts`. **No code change is needed to remove an OpenAI dependency from Free — there is none.**
+**Skipped in Free:** dataforseo, insights_v1, insights_v2, visual_cover, caption_semantic.
+**Deferred to Pro:** the same five, enqueued idempotently by the EuPago webhook.
+**Kept in Lab:** all of the above (`LAB_ENRICHMENT_TYPES`).
 
-## 6. Follow-up (not part of this audit)
+## Estimated saving per Free analysis
 
-- Consider deleting or renaming the unused `mode="free"` branch in `ReportOverviewBlock` to remove the ambiguity that caused the QA confusion.
-- Add a unit test asserting `free_with_engagement` does not render `EditorialIdentityCard` to prevent regression.
+Order-of-magnitude (using current provider unit costs in `provider_call_logs`):
+
+| Job | Typical cost per analysis |
+|---|---|
+| dataforseo (SERP + keywords) | ~$0.005–$0.020 |
+| insights_v1 (OpenAI) | ~$0.005–$0.015 |
+| insights_v2 (OpenAI) | ~$0.010–$0.030 |
+| visual_cover (OpenAI vision, per cover) | ~$0.020–$0.080 |
+| caption_semantic (OpenAI) | ~$0.005–$0.015 |
+| **Total skipped on Free** | **~$0.045–$0.160** per analysis |
+
+Apify base scrape (~$0.01–$0.04) remains. Effective Free cost drops by roughly **70–85%**.
+
+## Manual validation checklist
+
+1. Trigger a fresh public analysis for a new handle (clear cache). Expect:
+   - `analysis_snapshots.normalized_payload.enrichment_status` shows the 5 paid jobs as `"skipped_free"`.
+   - `enrichment_jobs` table has **no rows** for `dataforseo / insights_v1 / insights_v2 / visual_cover / caption_semantic` for that snapshot.
+   - `/analyze/$username` renders MethodologyLine + Engagement + 5 teasers; no console errors.
+2. Trigger a paid checkout for that snapshot and confirm EuPago webhook delivery.
+   - Webhook logs `enqueuePaidEnrichmentsForPayment: enqueued [...]`.
+   - `enrichment_jobs` now has the 5 paid rows pending → running → success.
+   - Reload `/analyze/$username` after grants: full Pro report renders.
+3. Internal Lab scrape (admin lab) is unchanged — verify cost breakdown still shows the lab analysis with all jobs.
+4. No new errors in admin → Execution Mode and Cost Breakdown for Free snapshots (they correctly report "completed (Free tier)").
