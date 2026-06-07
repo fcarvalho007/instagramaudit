@@ -954,11 +954,23 @@ function ExploreSection({
 
       {premiumUnlocked ? (
         <div className="px-2">
-          <p className="text-[11px] text-content-tertiary tabular-nums">
+          <p
+            className="text-[11px] text-content-tertiary tabular-nums"
+            title={
+              balance >= 3
+                ? "1 incluído na compra + 2 bónus beta"
+                : undefined
+            }
+          >
             {balance > 0
               ? t("nav.explore.beta_credits_available", { count: balance })
               : t("nav.explore.beta_credits_empty")}
           </p>
+          {balance >= 3 ? (
+            <p className="mt-0.5 text-[10px] text-content-tertiary">
+              1 incluído na compra + 2 bónus beta
+            </p>
+          ) : null}
         </div>
       ) : null}
 
