@@ -1315,6 +1315,16 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
           // analyze-public-v1.ts (lines 980–983). Window alignment is a
           // future enhancement; cards label the comparison transparently.
           windowAligned: false,
+          bio:
+            typeof p.bio === "string" && p.bio.trim().length > 0
+              ? p.bio
+              : null,
+          externalUrls: Array.isArray(p.external_urls)
+            ? (p.external_urls.filter(
+                (u): u is string => typeof u === "string" && u.length > 0,
+              ))
+            : [],
+          isVerified: p.is_verified === true,
         };
       })
       .filter((v): v is NonNullable<typeof v> => v !== null);

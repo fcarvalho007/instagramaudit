@@ -24,6 +24,12 @@ export interface ReportCompetitorBreakdownEntry {
    * `false` for any 30d/90d primary window.
    */
   windowAligned: boolean;
+  /** Bio text — null when missing. */
+  bio: string | null;
+  /** External URLs declared on the competitor profile. */
+  externalUrls: string[];
+  /** Verified account flag. */
+  isVerified: boolean;
 }
 
 // Deterministic temporal series — 30 daily data points with realistic shape
@@ -363,6 +369,9 @@ export const reportData = {
        * comparison transparently.
        */
       windowAligned: false,
+      bio: "Marketing digital · estratégia · workshops",
+      externalUrls: ["https://marketingdigital.pt"],
+      isVerified: false,
     },
   ] as ReportCompetitorBreakdownEntry[],
 
