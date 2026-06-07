@@ -1320,7 +1320,7 @@ export function ReportBlockSidebar({
         "bg-white",
         "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_18px_40px_-24px_rgba(15,23,42,0.12)]",
         "transition-all duration-200",
-        compact ? "p-3" : "p-3 xl:p-4",
+        compact ? "p-3.5" : "p-3 xl:p-4",
       )}
     >
       {compact && (
