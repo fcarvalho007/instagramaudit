@@ -1,87 +1,144 @@
+# Audit · Profile vs Competitor in Pro Report
 
-## Root cause (confirmed)
+## 1. Como os dados de concorrência fluem hoje
 
-Em `src/routes/api/analyze-public-v1.ts:259-293`, o input do actor `apify/instagram-scraper` muda de forma incompatível quando há janela:
+Pipeline: `/api/analyze-public-v1` → `analysis_snapshots.normalized_payload` → `snapshotToReportData` → `ReportShellV2` → cards.
 
-```ts
-resultsType: cfg.onlyPostsNewerThan ? "posts" : "details",
-...
-maxItems: 1,
-```
+**Fetch (route `analyze-public-v1.ts`, linhas 991–1130):**
+- Para cada competitor é chamado `fetchProfileWithPostsLogged(handle)` **sem `windowCfg`** → competitors ficam sempre em **baseline** (comentário explícito linhas 980–983).
+- Resultado é normalizado para `CompetitorAnalysis` (success) com apenas:
+  - `profile: PublicAnalysisProfile` (username, display_name, avatar, bio, followers, following, posts_count, is_verified, category, external_urls, is_business)
+  - `content_summary: PublicAnalysisContentSummary` (posts_analyzed, dominant_format, average_likes, average_comments, average_engagement_rate, estimated_posts_per_week)
+- **Não é guardado**: `latestPosts`, `format_stats`, `enriched posts`, hashtags, captions, thumbnails, comment_intelligence, AI insights, market signals, visual_cover, caption_semantic.
 
-Comportamento real do actor:
+**Persistência (linhas 1181–1214):** `normalized_payload.competitors = competitorResults` — array de `CompetitorAnalysis` com a forma reduzida acima.
 
-- **`resultsType:"details"`** → cada item devolvido é um **profile object** (`username`, `followersCount`, `latestPosts[]` embebido, …). `normalizeProfile(row)` encontra `username` + `followersCount` → OK.
-- **`resultsType:"posts"`** → cada item devolvido é um **post object** (`type`, `caption`, `ownerUsername`, `timestamp`, … sem `username` nem `followersCount` no shape esperado). Combinado com `maxItems: 1`, o run devolve **no máximo 1 post** (ou 0 se nenhum post cair no `onlyPostsNewerThan`).
-  - 0 posts → `result.items[0] = undefined` → `primaryRow = null` → `normalizeProfile(null)` → null.
-  - 1 post → `normalizeProfile` falha porque `pickString(raw.username)` é null (o post tem `ownerUsername`, não `username`) → return null.
+**Adapter (`snapshot-to-report-data.ts`, linhas 1267–1282):** ⚠️ Hoje o adapter **descarta** as métricas reais dos competitors. Quando há ≥1 competitor no payload, emite apenas uma linha (o próprio perfil) com `engagement = keyMetrics.engagementRate`. Os competitors reais não chegam ao `ReportData.competitors`.
 
-Em ambos os casos o pipeline cai no `if (!primaryProfile)` na linha 1004 e devolve `PROFILE_NOT_FOUND`, apesar do Apify ter respondido 200 com sucesso (o que explica o `provider_call_logs` PASS, `posts_returned=0`, e crédito reservado/libertado correctamente).
+**Componente actual (`ReportCompetitors`):** desenha um gauge horizontal de `engagement` por linha (mock tem 3 entradas). Só suporta um único eixo de comparação.
 
-Não é um bug do normalizer, do cache, dos créditos ou do gate Pro. É o `actorInput` que muda de modo sem o resto do pipeline acompanhar.
+## 2. O que existe vs. o que falta por competitor
 
-## Comparação das duas hipóteses
+| Métrica                          | Disponível no payload do competitor | Fonte |
+| -------------------------------- | ----------------------------------- | ----- |
+| Followers                        | ✅                                  | `profile.followers_count` |
+| Posts analisados                 | ✅                                  | `content_summary.posts_analyzed` |
+| Engagement médio %               | ✅                                  | `content_summary.average_engagement_rate` |
+| Média de likes / post            | ✅                                  | `content_summary.average_likes` |
+| Média de comentários / post      | ✅                                  | `content_summary.average_comments` |
+| Frequência semanal               | ✅                                  | `content_summary.estimated_posts_per_week` |
+| Formato dominante (label)        | ✅                                  | `content_summary.dominant_format` |
+| Distribuição de formato (mix %)  | ❌                                  | precisaria de `format_stats` do competitor |
+| Distribuição por dia da semana   | ❌                                  | precisaria de posts brutos |
+| Heatmap / posting rhythm         | ❌                                  | precisaria de posts brutos |
+| Top posts                        | ❌                                  | nem URLs nem métricas por post |
+| Hashtags / keywords / themes     | ❌                                  | precisaria captions+hashtags |
+| Caption patterns / CTA / tom     | ❌                                  | precisaria caption_semantic pago |
+| Visual covers                    | ❌                                  | requer visual_cover pago |
+| Comment intelligence             | ❌                                  | scraper de comentários pago |
+| AI insights / editorial verdict  | ❌                                  | OpenAI pago |
+| Market signals / links           | ❌                                  | DataForSEO + bio links |
 
-### A. Manter `resultsType:"details"` também em 30d/90d
-- O actor em modo `details` devolve o **profile** com `latestPosts[]` (até ~12 posts recentes, independentemente de `resultsLimit`).
-- Aplicar o filtro de janela **client-side** em `primaryPosts` (filtrar por `postTimestampMs > now - N days`).
-- `onlyPostsNewerThan` em `details` é, na prática, ignorado pelo actor — o limite efectivo de posts é o que vier embebido (~12).
+Janela: hoje **competitors são sempre baseline**, mesmo quando o perfil principal pede 30d/90d. Para qualquer comparação “like-for-like” no Pro 30d/90d, ou (a) refazemos competitor com a mesma window, ou (b) marcamos a tabela com nota “competitor em baseline”.
 
-**Prós:** 1 só call por handle, profile garantido, sem PROFILE_NOT_FOUND falsos, custo idêntico ao baseline, mesmo path de normalização.
-**Contras:** Para perfis muito activos, 30d/90d pode ficar limitado a ~12 posts (vs. 100/300 prometidos pelo `resultsLimit`). Janelas mais largas perdem profundidade. Em perfis com cadência baixa, 12 posts já cobrem 30d/90d e a perda é zero.
+## 3. Tabela de viabilidade por card
 
-### B. Manter `resultsType:"posts"` e fazer um segundo call em `details`
-- Call 1 (`details`, `maxItems:1`) → profile shell + latestPosts baseline.
-- Call 2 (`posts`, `maxItems: resultsLimit`, `onlyPostsNewerThan`) → posts dentro da janela.
-- Merge no pipeline: profile vem do call 1, `primaryPosts` vem do call 2.
+| # | Bloco / card                      | Padrão | Dados existentes? | Classificação |
+| - | --------------------------------- | ------ | ----------------- | ------------- |
+| 1 | Overview · profile index / KPIs   | 1      | followers, posts_count, engagement, likes/post, comentários/post — ✅ | **Pronto agora** |
+| 2 | Engagement (gauge + benchmark)    | 1      | engagement médio — ✅ (benchmark do competitor não) | **Pronto agora** (sem reposicionar gauge) |
+| 3 | Cadence / frequência semanal      | 1      | `estimated_posts_per_week` — ✅ | **Pronto agora** |
+| 4 | Format breakdown                  | 2      | só `dominant_format` (label); falta `format_stats` do competitor | **Métrica derivada necessária** (re-emitir `format_stats` no fetch do competitor) |
+| 5 | Posting heatmap / dias da semana  | 2      | requer posts brutos do competitor | **Métrica derivada necessária** (persistir `latestPosts` do competitor, mesmo cap=12) |
+| 6 | Best days                         | 2      | idem heatmap | **Métrica derivada necessária** |
+| 7 | Top posts / publicações-chave     | 3      | nenhum post do competitor é persistido | **Métrica derivada necessária** (e expõe thumbnails — decidir privacidade) |
+| 8 | Hashtags & keywords               | 3      | nada (sem captions/hashtags) | **Métrica derivada necessária** |
+| 9 | Caption diagnostics / comunicação | 3      | requer caption_semantic | **Necessita enrichment pago** |
+| 10| Visual cover analysis             | 3      | requer visual_cover | **Necessita enrichment pago** |
+| 11| Comment intelligence              | 3      | requer comment scraper | **Necessita enrichment pago** |
+| 12| AI insights / verdict editorial   | 3      | OpenAI por competitor | **Não comparar ainda** (custo + risco) |
+| 13| Editorial patterns / temas        | 3      | derivado de captions | **Necessita enrichment pago** |
+| 14| Market signals                    | 3      | DataForSEO por competitor | **Não comparar ainda** |
+| 15| Links / integração bio            | 3      | `external_urls` já existe ✅ | **Pronto agora** (tabela qualitativa) |
+| 16| Prioridades                       | 3      | depende de AI insights | **Não comparar ainda** |
+| 17| Diagnóstico editorial             | 3      | depende de captions+AI | **Necessita enrichment pago** |
 
-**Prós:** Honra `resultsLimit:100/300` real, dá profundidade total na janela, profile sempre presente.
-**Contras:** **Custo ~2× por análise Pro** (dois runs Apify por handle), mais latência (2 timeouts a somar), mais código em pipeline + logging (`provider_call_logs` duplicados), mais superfície de erro parcial (call 1 OK / call 2 falha), mais complexidade no cache_key.
+Resumo:
+- **Prontos agora** (Padrão 1 ou 3 qualitativo): Overview/KPIs, Engagement, Cadence, Links/bio.
+- **Bloqueados por métricas derivadas deterministas** (precisam persistir mais campos do competitor, sem custo extra de provider — basta guardar mais do que o Apify já devolveu): Format mix, Heatmap, Best days, Top posts, Hashtags & keywords.
+- **Bloqueados por enrichment pago**: Captions, Visual cover, Comments, Editorial patterns.
+- **Não comparar ainda**: AI insights, Market signals, Prioridades.
 
-## Recomendação MVP
+## 4. Riscos e dados em falta
 
-**Opção A** — manter `resultsType:"details"` sempre, remover o ternário, e filtrar `primaryPosts` por data no servidor antes de `computeContentSummary`. Trade-off aceitável para PR1 porque:
+- ⚠️ **Adapter perde dados:** `snapshot-to-report-data.ts` (linhas 1267–1282) descarta hoje todos os `content_summary` dos competitors. Qualquer card de comparação precisa de uma nova fatia `ReportData.competitorBreakdown` (ou similar) para passar métricas por competitor às cards.
+- ⚠️ **Forma de `ReportData.competitors`** está fixada a `{ username, engagement, followers, isOwn, avatarGradient }`. Não é onde devem viver os novos dados — convém uma nova chave dedicada e manter a actual para o gráfico legado.
+- ⚠️ **Window mismatch:** competitor está sempre em baseline. Para Pro 30d/90d, comparar com "últimos 30d do competitor" exige refetch com window — aumenta custo Apify ~2× (1 perfil extra). Decisão de produto pendente. MVP: assumir baseline e rotular claramente “últimos 30d (perfil) vs. baseline (concorrente)”.
+- ⚠️ **Mock/locked components:** `ReportCompetitors` actual é o gauge horizontal; manter intacto ou redesenhar? Recomendo deixar como está (compatível com mock) e criar primitivas novas (`CompareStatBlock`, `CompareBarPair`, `CompareTable`) usadas nas restantes cards.
+- ⚠️ **Padrão visual:** mobile-first com pares lado-a-lado pode estourar em ≤360px — primitiva precisa de fallback empilhado.
+- ⚠️ **/report.example está locked** (memória do projecto) — não tocar; usar `/analyze/$username` para QA visual.
+- ⚠️ **Não vamos chamar provider** nesta auditoria; qualquer refetch para popular o competitor é fora de scope.
 
-1. Fiabilidade total: zero PROFILE_NOT_FOUND falsos.
-2. Custo Apify igual a baseline (não duplica).
-3. Permite validar A/B/C/D já no próximo turno sem novo gasto incremental.
-4. Mantém o gate Pro (`report_full_9`) e o consumo de 1 crédito como diferenciadores — o valor Pro fica em "janela analítica + insights pagos" e não em "número bruto de posts".
-5. Se mais tarde se confirmar via dados que o limite de ~12 posts é insuficiente para Pro, evolui-se para Opção B num PR posterior, com o pipeline já estável.
+## 5. Sequência recomendada de implementação
 
-## Comportamento esperado após o fix
+**Fase 0 — Primitivas (sem dados novos):**
+1. Criar 3 componentes reusáveis em `src/components/report-redesign/v2/compare/`:
+   - `compare-stat-block.tsx` (Padrão 1)
+   - `compare-bar-pair.tsx` (Padrão 2)
+   - `compare-table.tsx` (Padrão 3)
+2. Adicionar tipo `ReportData.competitorBreakdown` ou similar e popular no adapter a partir de `payload.competitors[].content_summary` quando há ≥1 competitor.
+3. Expor um helper `getCompetitor(index)` no contexto.
 
-| Cenário | Resposta esperada |
-|---|---|
-| Profile encontrado, posts ≥ 1 dentro da janela | `success:true`, posts filtrados por data, `data_source:"fresh"` ou `cache` |
-| Profile encontrado, 0 posts dentro da janela (mas tem posts mais antigos) | `success:true`, `primaryPosts=[]`, `content_summary` baseado em 0 posts, métricas de profile normais. **NÃO** devolver `PROFILE_PERSONAL_NO_FEED` neste caso — o feed existe, só não tem posts recentes. Precisa de novo error code ou de devolver sucesso com summary vazio (ver "Decisão pendente"). |
-| Profile encontrado, 0 posts em absoluto + business → personal/private | mantém `PROFILE_PERSONAL_NO_FEED` / `PROFILE_PRIVATE` (lógica linhas 1043-1064 não muda) |
-| Profile realmente inexistente (404 Apify) | `PROFILE_NOT_FOUND` (caminho legítimo, via `ApifyUpstreamError.status===404`) |
+**Fase 1 — Cards "prontos agora" (Padrão 1 + qualitativo):**
+- Overview/KPIs · Engagement · Cadence · Links bio.
+- Cobertura: 1 competitor, etiqueta clara “concorrente em baseline” quando window do perfil ≠ baseline.
 
-## Decisão pendente (antes de implementar)
+**Fase 2 — Métricas derivadas deterministas:**
+- Estender o fetch do competitor para persistir `latestPosts` (cap 12) e `format_stats` no payload — sem chamada extra a Apify (a resposta atual já traz `latestPosts`).
+- Activar comparação em: Format mix, Heatmap, Best days, Top posts, Hashtags & keywords.
 
-A lógica actual em `linhas 1043-1064` interpreta `primaryPosts.length === 0` como "perfil sem feed" (private / personal). Com janelas, 0 posts em 30d pode ser apenas "esteve em pausa", não "sem feed". Duas vias:
+**Fase 3 — Comparação com enrichment pago (decisão de produto):**
+- Apenas se o utilizador pagar enrichment para o competitor (custo duplicado).
+- Captions · Visual cover · Comments · Editorial patterns.
 
-- **B1** Aplicar a classificação private/personal **só** quando `window === "baseline"`. Para 30d/90d, devolver `success:true` com summary vazio + flag `no_posts_in_window`.
-- **B2** Aplicar sempre a classificação actual — mais simples, mas mostra "perfil privado" para utilizadores Pro que só estiveram inactivos 30 dias. UX errada.
+**Fase 4 — Window alignment (opcional):**
+- Refetch do competitor com a window do perfil quando estiver activa.
+- Avaliar impacto em créditos antes de avançar.
 
-Recomendação: **B1**.
+## 6. Ficheiros prováveis a tocar por fase
 
-## Ficheiros a editar
+**Fase 0:**
+- `src/components/report-redesign/v2/compare/compare-stat-block.tsx` (novo)
+- `src/components/report-redesign/v2/compare/compare-bar-pair.tsx` (novo)
+- `src/components/report-redesign/v2/compare/compare-table.tsx` (novo)
+- `src/lib/report/snapshot-to-report-data.ts` (estender adapter — adicionar novo campo, não tocar no array `competitors` legacy)
+- `src/components/report/report-mock-data.ts` (acrescentar mock do novo campo)
 
-1. `src/routes/api/analyze-public-v1.ts`
-   - `fetchProfileWithPosts` (≈259-298): remover o ternário; `resultsType:"details"` fixo; `resultsLimit` continua a vir do config (afecta latestPosts embebido).
-   - Bloco `try { … }` (≈1029-1064): aplicar filtro `onlyPostsNewerThan` (ms) sobre `primaryPosts` quando `primaryWindowCfg !== baseline`; ajustar a classificação private/personal para correr apenas em baseline (decisão B1).
+**Fase 1:**
+- `src/components/report-redesign/v2/report-kpi-grid-v2.tsx`
+- `src/components/report-redesign/v2/report-overview-cards.tsx`
+- `src/components/report-redesign/v2/report-overview-engagement.tsx`
+- `src/components/report/report-benchmark-gauge.tsx` (apenas se necessário — preferir wrapper)
+- `src/components/report-enriched/report-enriched-top-links.tsx` ou novo card de comparação de links
 
-2. (Opcional) `src/lib/analysis/window-configs.ts`: actualizar o comentário em `resultsLimit` para reflectir que em modo `details` o cap real é o do actor (~12), não 100/300. Não altera comportamento.
+**Fase 2:**
+- `src/routes/api/analyze-public-v1.ts` (persistir `latestPosts` + `format_stats` por competitor)
+- `src/lib/analysis/types.ts` (estender `CompetitorAnalysis` success com novos campos opcionais)
+- `src/lib/report/snapshot-to-report-data.ts` (calcular hashtags/heatmap/best-days por competitor)
+- Cards: `report-format-breakdown.tsx`, `report-posting-heatmap.tsx`, `report-best-days.tsx`, `report-top-posts.tsx`, `report-hashtags-keywords.tsx`
+- ⚠️ Mudança de schema do snapshot — bump `schema_version` para 3.
 
-Nada toca em: créditos, EuPago, checkout, preços, schema, UI, `normalize.ts`, cache layer, gate Pro, snapshot persistence.
+**Fase 3+:** edge functions/server fns de enrichment + cards correspondentes (`caption-diagnostics-card`, `visual-cover-analysis-card`, `report-comment-intelligence`, `report-editorial-patterns`).
 
-## Prompt exacto para o próximo turno (build mode)
+## 7. Próximo prompt (Fase 0 — primitivas reusáveis)
 
-> Em build mode, aplica o fix MVP A em `src/routes/api/analyze-public-v1.ts`:
+> Build mode. Implementar a Fase 0 da feature “Perfil vs Concorrente” sem tocar em providers, créditos, checkout, schema da BD ou Free report.
 >
-> 1. Em `fetchProfileWithPosts`, substituir `resultsType: cfg.onlyPostsNewerThan ? "posts" : "details"` por `resultsType: "details"` fixo. Manter `resultsLimit`, `addParentData:false`, `maxItems:1`, `maxTotalChargeUsd`, e continuar a passar `onlyPostsNewerThan` no `actorInput` quando definido (o actor ignora-o em details, mas mantém-se por consistência e diagnóstico futuro).
-> 2. No bloco que extrai `primaryPosts` (≈linhas 1029-1037), aplicar filtro client-side quando `primaryWindowCfg.onlyPostsNewerThan` está definido: parsear "30 days" / "90 days" → ms, e filtrar `primaryPosts` por `postTimestampMs(post) >= Date.now() - windowMs`. Usar `postTimestampMs` já exportado de `src/lib/analysis/normalize.ts`.
-> 3. Ajustar o bloco `if (primaryPosts.length === 0)` (≈linhas 1043-1064): só correr a classificação `PROFILE_PERSONAL_NO_FEED` / `PROFILE_PRIVATE` quando `window === "baseline"`. Para 30d/90d, prosseguir o fluxo normal com `primaryPosts: []` e deixar `computeContentSummary` produzir summary vazio.
-> 4. Não tocar em créditos, EuPago, checkout, preços, schema, UI, normalize, snapshot ou cache.
-> 5. Após o edit, voltar ao Chat Mode e dar luz verde para o utilizador correr B/C/D no browser. Não executar 90d. Não usar INTERNAL_API_TOKEN.
+> 1. Criar `src/components/report-redesign/v2/compare/compare-stat-block.tsx` — Padrão 1: dois blocos lado-a-lado (mobile: empilhados), “vs” central, etiqueta deterministica de delta (`+0,42 pp`, `−12%`, `igual`). Props: `label`, `primary: { handle, value, formatted }`, `competitor: { handle, value, formatted }`, `unit: "pp"|"%"|"x"|"abs"`, `higherIsBetter?: boolean`.
+> 2. Criar `compare-bar-pair.tsx` — Padrão 2: lista de categorias com 2 barras pareadas (azul = perfil, roxo = concorrente). Props: `categories: Array<{ key, label, primary, competitor }>`, `unit`.
+> 3. Criar `compare-table.tsx` — Padrão 3: tabela compacta com 1 coluna por perfil e linhas de labels deterministicas. Props: `rows: Array<{ label, primary, competitor }>`, `caption?`.
+> 4. Todas as primitivas usam tokens semânticos (Iconosquare light + Ocean Breeze), Inter para números/labels, sem font-mono, sem hardcoded colors, mobile-first (≥360px), com fallback empilhado.
+> 5. Estender `snapshot-to-report-data.ts` para emitir um novo campo `competitorBreakdown: Array<{ username, displayName, followers, summary: PublicAnalysisContentSummary }>` populado quando `payload.competitors[]` tem entradas com `success: true`. Não alterar o array `competitors` legacy (gauge horizontal continua a funcionar).
+> 6. Adicionar mock equivalente em `report-mock-data.ts` (1 competitor de exemplo) para QA visual em `/report.example` (sem modificar o resto da página) — confirmar que `/report.example` continua igual sem o novo campo activo.
+> 7. Não consumir crédito, não chamar Apify/OpenAI/DataForSEO, não mexer em entitlements, EuPago, preços ou UI fora destas primitivas.
+> 8. Entregar: ficheiros criados, diff do adapter, screenshot mobile + desktop de cada primitiva isolada (storybook-style ou rota dev), confirmação de typecheck.
