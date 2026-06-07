@@ -1,6 +1,6 @@
 import { ArrowRight, Check } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { CheckoutPrimaryButton } from "@/components/checkout/checkout-primary-button";
 
 interface Props {
   onAccept: () => void;
@@ -53,16 +53,15 @@ export function HumanDiagnosisUpsell({ onAccept, onDecline, disabled }: Props) {
               </li>
             ))}
           </ul>
-          <Button
+          <CheckoutPrimaryButton
             type="button"
-            variant="primary"
             onClick={onAccept}
             disabled={disabled}
             className="mt-5 w-full gap-2"
           >
             Sim, quero o diagnóstico humano
             <ArrowRight className="size-4" aria-hidden="true" />
-          </Button>
+          </CheckoutPrimaryButton>
         </div>
       </div>
 
