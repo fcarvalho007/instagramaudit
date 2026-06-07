@@ -24,6 +24,13 @@ export interface CompareSide {
    * legacy centered delta chip for back-compat.
    */
   subText?: string;
+  /**
+   * Optional exact-value text used as the `title` attribute on the value
+   * (native tooltip on hover). When omitted, the `formatted` string is
+   * used. Useful when `formatted` is a compact notation like "1,1 M" and
+   * the caller wants to expose the precise underlying integer.
+   */
+  title?: string;
 }
 
 export interface CompareBarCategory {
