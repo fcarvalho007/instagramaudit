@@ -22,6 +22,10 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { recordProductEvent } from "@/lib/tracking.server";
 import { PUBLIC_PRODUCTS, isProductCode } from "@/lib/payments/products";
+import {
+  POST_PURCHASE_BETA_BONUS,
+  PURCHASE_INCLUDED_AMOUNT,
+} from "@/lib/credits/credits.server";
 
 import { renderPaymentConfirmed } from "./templates/payment-confirmed";
 import { sendTransactionalEmail } from "./transactional-email.server";
@@ -216,6 +220,16 @@ export async function sendPaymentConfirmedEmail(
       null;
     const firstName = firstNameFrom(lead.name);
 
+    // Créditos pós-compra (alinhado com o webhook): apenas
+    // `report_full_9` recebe a breakdown 1 incluído + 2 bónus beta.
+    const creditsGranted =
+      payment.product === "report_full_9"
+        ? {
+            included: PURCHASE_INCLUDED_AMOUNT,
+            bonus: POST_PURCHASE_BETA_BONUS,
+          }
+        : null;
+
     let rendered;
     try {
       rendered = await renderWithOverride(
@@ -238,6 +252,7 @@ export async function sendPaymentConfirmedEmail(
             paymentMethod,
             paymentReference,
             reportUrl,
+            creditsGranted,
           }),
       );
     } catch (err) {
