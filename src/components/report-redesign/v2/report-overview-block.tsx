@@ -28,6 +28,9 @@ import { CompetitorOverviewCompare } from "./overview/competitor-overview-compar
 import { CompetitorEngagementCompare } from "./competitor-engagement-compare";
 import { CompetitorCadenceCompare } from "./competitor-cadence-compare";
 import { CompetitorBioCompare } from "./competitor-bio-compare";
+import { CompetitorFormatCompare } from "./competitor-format-compare";
+import { CompetitorWeekdayCompare } from "./competitor-weekday-compare";
+import { normaliseFormatKey } from "@/lib/report/format-keys";
 
 const PREMIUM_TEASERS = [
   {
@@ -101,14 +104,6 @@ export interface Props {
    *   (Engagement, Frequency+Format grid, Best vs Worst posts).
    */
   mode?: "all" | "free" | "free_with_engagement" | "locked";
-}
-
-function normaliseFormatKey(raw: string | null | undefined): "Reels" | "Carousels" | "Imagens" | null {
-  const s = (raw ?? "").toLowerCase();
-  if (s.startsWith("reel")) return "Reels";
-  if (s.startsWith("carro") || s.startsWith("carou")) return "Carousels";
-  if (s.startsWith("imag")) return "Imagens";
-  return null;
 }
 
 export function ReportOverviewBlock({ result, renderInsight: _renderInsight, payload, mode = "all" }: Props) {
