@@ -1,109 +1,109 @@
-## Objectivo
+## Resultado da QA do Add Competitor
 
-Aplicar o redesign do modal "Adicionar concorrente" exactamente como na imagem anexada — sem mexer em lógica de créditos, validação de handle, gating Pro ou disparo de análise.
+**VERDICT: FAIL — o fluxo Add Competitor nunca chegou ao backend após T_QA0.**
 
-## Ficheiros tocados
+T_QA0 = `2026-06-06 19:30:56Z` · lead `01bf861c-6a17-4b36-81b7-130ef2f143da`
 
-1. `src/components/report-redesign/v2/consume-credit-dialog.tsx` — só o ramo `isCompetitor`.
-2. `src/i18n/locales/pt/report.json` + `src/i18n/locales/en/report.json` — copy nova, sem remover chaves antigas (continuam usadas pelo ramo `period`).
+### 1. Add Competitor — sucesso?
 
-Nenhum outro ficheiro é tocado. O ramo `period` (30d/90d) e o ramo `empty` (sem créditos) continuam exactamente como estão.
+**Não.** Nenhuma evidência de que o utilizador tenha submetido o formulário do modal:
+- Nenhuma chamada a `analyze-public-v1` com `competitors` preenchido depois de T_QA0.
+- Nenhuma linha em `product_events` para este lead desde T_QA0.
+- `analysis_snapshots.competitor_usernames` continua `[]`.
 
-## Mudanças no `ConsumeCreditDialog` (ramo competitor + hasCredit + !atCompetitorLimit)
+### 2. Saldo de créditos antes/depois T_QA0
 
-Estrutura nova, de cima para baixo:
+| Momento | Saldo | Origem |
+|---|---|---|
+| Antes T_QA0 (após uso inicial às 17:06) | **1** | `initial_grant +2`, `reserve -1`, `confirm 0` |
+| Depois T_QA0 (agora) | **1** | sem alterações |
 
-```text
-┌──────────────────────────────────────────────┐
-│ [▢ UserPlus]                              ✕  │  ← header com ícone
-│                                              │
-│ Adicionar concorrente                        │  ← title serif (Fraunces)
-│ Recolhemos os dados públicos deste perfil e  │  ← description nova
-│ colocamos a análise lado a lado com a tua.   │
-│                                              │
-│ Username do concorrente                      │  ← label
-│ [ @ perfil_a_comparar                ]       │  ← input (foco azul)
-│ (mensagem de erro inline se inválido)        │
-│                                              │
-│ ⓘ Na fase beta, comparas 1 concorrente de    │  ← info-card AZUL
-│   cada vez. Em breve poderás comparar        │     (substitui o soon_note
-│   vários em simultâneo.                      │     antigo no fundo)
-│                                              │
-│ ──────────────────────────────────────       │  ← divider
-│                                              │
-│ 🪙 Usa 1 crédito beta        ┌────────────┐  │  ← linha calma
-│    tens 1 disponível          │grátis na   │  │     (substitui tabela
-│                               │   beta     │  │     saldo/após acção)
-│                               └────────────┘  │
-│                                              │
-│             [Cancelar]  [Adicionar e comparar →]
-└──────────────────────────────────────────────┘
+### 3. `credit_ledger` desde T_QA0
+
+**0 linhas novas.** Todas as 3 linhas existentes são de `2026-06-06 17:06:35`–`17:06:36` (antes da QA):
+
+| created_at | delta | reason | handle | reservation_id |
+|---|---|---|---|---|
+| 17:06:35 | +2 | `initial_grant` | — | — |
+| 17:06:36 | −1 | `reserve` | frederico.m.carvalho | a0b14579-… |
+| 17:06:36 | 0  | `confirm` | — | a0b14579-… |
+
+### 4. `provider_call_logs` desde T_QA0
+
+**0 linhas.** Apify não correu.
+
+### 5. Só Apify? — N/A
+
+Nenhum provider correu.
+
+### 6. OpenAI / DataForSEO
+
+**0 chamadas** (consistente com #4 — nenhuma análise nova foi disparada).
+
+### 7. `analysis_snapshots` — competitor_usernames
+
+Único snapshot de `frederico.m.carvalho` (`id=683e4c21-…`) continua com:
+- `competitor_usernames: []`
+- `updated_at: 2026-06-06 09:05` (anterior a T_QA0)
+- `expires_at: 2026-06-07 08:51` (ainda dentro de cache)
+
+### 8. URL / search state com competitor
+
+Não aplicável — sem competitor adicionado, sem mudança de URL para validar. Os 2 `analysis_events` registados desde T_QA0 (07:18 e 07:21 desta manhã) são `data_source=cache`, `competitor_handles=[]` → o utilizador reabriu o relatório a partir do cache, sem submeter Add Competitor.
+
+### Hipótese para o FAIL
+
+O entitlement foi corretamente inserido e o `premiumUnlocked` deve estar a render — mas:
+- ou o utilizador abriu o modal e não clicou em "Adicionar e comparar";
+- ou o build com o redesign (acabado de fazer) ainda não tinha hot-reloaded quando o teste decorreu;
+- ou o `onConfirmConsume` para `intent.kind === "competitor"` em `report-block-nav.tsx` está stub (igual ao `period`) e não chama o backend.
+
+Vale a pena, num passo seguinte (fora desta QA de rollback), inspecionar `report-block-nav.tsx` para confirmar se o ramo `competitor` em `onConfirmConsume` chama mesmo `fetchPublicAnalysis(primaryHandle, [...existing, newHandle])` ou se ficou stub.
+
+---
+
+## Plano de rollback (tarefas 9–11)
+
+A executar **em build mode**, com `supabase--insert` (um único DELETE):
+
+```sql
+DELETE FROM lead_entitlements
+WHERE id = '48a99b2d-49a4-4a40-abe5-d1e5436a142c'
+  AND lead_id = '01bf861c-6a17-4b36-81b7-130ef2f143da'
+  AND product_code = 'report_full_9'
+  AND metadata->>'source' = 'qa_manual';
 ```
 
-### Detalhes visuais
+As 4 condições (`id` + `lead_id` + `product_code` + `metadata.source=qa_manual`) garantem que **só** a linha QA é removida, mesmo no improvável caso de alguém ter inserido outra `report_full_9` entretanto.
 
-- **Header com ícone**: pequena tile quadrada `rounded-md` com `bg-[--surface-muted]` (ou azul muito leve, derivado do token primário) + `UserPlus` da lucide-react, cor `text-accent-primary`. Renderizado dentro do `DialogHeader`, acima do `DialogTitle`. O `DialogContent` já garante o `✕` no topo direito.
-- **Título**: continua a usar `DialogTitle` (que já é serif via tokens — confirmar `font-serif` se necessário aplicar explicitamente).
-- **Description**: copy nova (ver i18n).
-- **Input**: mantém-se o componente actual; o foco azul já existe via tokens. Sem mudança de comportamento.
-- **Info-card azul** (substitui o `soon_note` no fundo): `rounded-md border border-[--accent-primary]/20 bg-[--accent-primary]/8 px-3 py-2.5 text-xs text-content-secondary` com ícone `Info` (lucide) no topo-esquerda em `text-accent-primary`. Texto com "1 concorrente de cada vez" em `<strong>` (peso 600). Posicionado **imediatamente a seguir ao input e à mensagem de erro**.
-- **Divider**: `<div className="h-px bg-border-default" />`.
-- **Linha do crédito** (substitui o bloco actual `balance_label` / `balance_after`):
-  - Esquerda: `Coins` (lucide) em `text-signal-success` (verde calmo) + 2 linhas — `Usa 1 crédito beta` (semibold, `text-content-primary`) e `tens {n} disponível` (xs, `text-content-tertiary`).
-  - Direita: pill `rounded-full bg-signal-success/12 text-signal-success px-2.5 py-1 text-eyebrow-sm` com "grátis na beta".
-  - Layout `flex items-center justify-between`.
-- **Footer**:
-  - `Cancelar` → `Button variant="outline"` (em vez do `ghost` actual) para ter borda visível ao lado do CTA.
-  - CTA primário → `Button` default (já azul sólido `#3772E5` do token `--accent-primary`, alinhado à core memory) com label "Adicionar e comparar" + `ArrowRight` (lucide) à direita, dentro de `gap-2`. Mantém `disabled={submitting || !competitorReady}` e o spinner `Loader2` quando `submitting`.
+### Pós-rollback (read-only, executado a seguir)
 
-### O que SAI deste ramo (mas chaves i18n ficam para o ramo `period`)
+```sql
+-- A) confirmar que a linha foi removida
+SELECT COUNT(*) AS qa_row_count
+FROM lead_entitlements
+WHERE id = '48a99b2d-49a4-4a40-abe5-d1e5436a142c';
+-- esperado: 0
 
-- `consume_dialog.credit_line` — deixa de ser renderizado no ramo competitor.
-- `consume_dialog.balance_hint` / `balance_hint_plural` — substituídas pela nova linha do crédito.
-- O bloco `<div className="rounded-md … balance_label … balance_after">` (linhas 195-206) — eliminado no ramo competitor.
-- `consume_dialog.soon_note` (renderizado nas linhas 227-231) — eliminado no ramo competitor (substituído pelo info-card azul logo após o input). Mantém-se a chave para uso futuro / ramo `period`.
+-- B) confirmar que o lead não tem mais nenhuma report_full_9
+SELECT COUNT(*) AS report_full_9_remaining
+FROM lead_entitlements
+WHERE lead_id = '01bf861c-6a17-4b36-81b7-130ef2f143da'
+  AND product_code = 'report_full_9';
+-- esperado: 0 (a QA já confirmou que era a única — não existia entitlement prévio independente)
+```
 
-### O que NÃO muda (regras críticas)
+### Estado esperado depois do rollback
 
-- `onConfirm`, `handleConfirmClick`, validação `competitorReady`, `atCompetitorLimit`, lógica `submitting`, bloqueio de fecho durante submissão, mensagens de erro inline (`handleInvalidMsg`, `errorMessage`).
-- Ramo `period` (30d/90d) — visual inalterado.
-- Ramo `empty` (sem créditos) — visual inalterado.
-- Ramo `atCompetitorLimit` — visual inalterado.
-- Props públicas do componente.
+- `lead_entitlements` para este lead: **0 linhas `report_full_9`** → `premiumUnlocked = false`.
+- `credit_ledger`: **inalterado** (3 linhas, saldo = 1). Os 2 créditos beta iniciais ficam preservados.
+- `analysis_snapshots` / `provider_call_logs` / `analysis_events`: **inalterados** (nada para reverter — nada foi consumido).
 
-## Mudanças i18n
+## Cleanup ainda em aberto após rollback
 
-### PT (`src/i18n/locales/pt/report.json` → `nav.explore.consume_dialog`)
+1. **Nenhum** do lado dos dados — todas as escritas QA limitam-se à linha de entitlement.
+2. **Investigação separada (fora de scope):** confirmar se o `onConfirmConsume` para `intent.kind === "competitor"` em `src/components/report-redesign/v2/report-block-nav.tsx` chama mesmo o endpoint, ou se está stub como o ramo `period` estava. Sem isto, repetir a QA dará outra vez FAIL.
 
-- `description_competitor` → `"Recolhemos os dados públicos deste perfil e colocamos a análise lado a lado com a tua."`
-- `cta_use_competitor` → `"Adicionar e comparar"`  *(antes: "Usar 1 crédito e adicionar concorrente")*
-- **Novas chaves**:
-  - `competitor_beta_note` → `"Na fase beta, comparas <strong>1 concorrente de cada vez</strong>. Em breve poderás comparar vários em simultâneo."` (renderizado com `<Trans>` do `react-i18next` para suportar o `<strong>`).
-  - `credit_use_label` → `"Usa 1 crédito beta"`
-  - `credit_available_hint` → `"tens {{count}} disponível"`
-  - `credit_available_hint_plural` → `"tens {{count}} disponíveis"`
-  - `free_in_beta_badge` → `"grátis na beta"`
+## Restrições respeitadas
 
-Chaves antigas (`credit_line`, `balance_label`, `balance_after`, `balance_hint`, `soon_note`) **ficam** no ficheiro — ainda são usadas pelo ramo `period`.
-
-### EN (`src/i18n/locales/en/report.json`)
-
-Equivalentes em inglês para todas as novas chaves + reescrita das alteradas. Mesma estrutura.
-
-## Pontos que a copy do utilizador levantou e que **não** abordo neste PR
-
-1. **"grátis na beta" — o que acontece quando a beta terminar?**
-   O badge fica codificado no componente; quando a beta acabar, basta esconder/remover o badge e ajustar `credit_use_label` (por exemplo para `"Usa 1 crédito"`). Não introduzo flag dinâmica neste PR — assumo a intenção descrita (preparar transição).
-2. **UX para remover/trocar concorrente quando o limite beta é 1**:
-   Fora de scope deste redesign. Hoje, `atCompetitorLimit` já mostra um estado dedicado ("Limite de 2 concorrentes atingido") — fica como trabalho futuro pensar no fluxo de substituição quando o limite efectivo da beta for 1.
-
-## Validação manual após implementar
-
-1. Abrir um relatório em estado Pro (`premiumUnlocked`), clicar **Adicionar concorrente** → modal aparece com o novo layout (ícone topo, info azul, linha calma com badge verde, CTA azul "Adicionar e comparar →").
-2. Escrever username inválido → mensagem de erro inline aparece, CTA fica disabled.
-3. Escrever username duplicado (igual ao primário ou já presente) → mensagem específica, CTA disabled.
-4. Submeter username válido → spinner + label `submitting` no CTA, modal bloqueado a fechar.
-5. Ramo `period` (clicar num chip 30d/90d) → modal **continua exactamente como hoje** (sem regressão).
-6. Ramo `empty` (saldo 0) → modal continua como hoje.
-7. Mobile (≤640px) → header + info azul + linha do crédito empilham bem, footer mantém os 2 botões lado a lado em ecrãs `sm` e empilha em mobile estreito (comportamento já garantido pelo `DialogFooter`).
-8. Toggle de idioma PT/EN → todas as strings novas aparecem traduzidas.
+Sem alterações a pricing, checkout, EuPago, schema, cálculos de relatório ou lógica de providers. Só leitura + um único DELETE alvo no rollback.
