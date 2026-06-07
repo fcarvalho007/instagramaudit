@@ -1,85 +1,80 @@
-## Objectivo
-Reformular o cartão do upsell "Diagnóstico de Autoridade Digital" (passo 3 do checkout) para o layout de duas zonas: **capa navy** (eyebrow + título + preço) + **corpo branco** (bullets + CTA), como na referência enviada. Apenas alterações visuais.
+## Auditoria
 
-## Ficheiro
-`src/components/checkout/human-diagnosis-upsell.tsx` (único)
+### 1. `/api/debug/lead-session-status` está protegido por design
+`src/routes/api/debug/lead-session-status.ts:80` chama `requireAdminSession()` antes de qualquer leitura. O gate aceita o header `X-Admin-Email` validado contra `ADMIN_ALLOWED_EMAILS`. A protecção é **intencional** — devolve diagnóstico do cookie + `lead_id_prefix` + `lead_exists`, que não deve ser público. Não mudar.
 
-## Estado actual
-Cartão totalmente branco, eyebrow em chip azul claro, título serif, preço, bullets e botão empilhados sem divisão.
+### 2. Já existem 3 serverFns públicos seguros que lêem o `lead_session`
+Todos usam `getLeadFromCookie()` server-side e fazem fail-closed. Nenhum devolve PII ou `lead_id`:
 
-## Mudança proposta
+| ServerFn | Ficheiro | Retorno |
+|---|---|---|
+| `getLeadSessionStatus` | `src/lib/leads/lead-session.functions.ts` | `{ hasLead: boolean }` |
+| `getMyReportEntitlement` | `src/lib/payments/entitlements.functions.ts` | `{ hasLead, premiumUnlocked }` (== `has_report_full_9`) |
+| `getMyCreditBalance` | `src/lib/credits/credits.functions.ts` | `{ hasLead, balance }` |
 
-Estrutura nova do cartão:
+Já cobrem 3 dos 4 campos pedidos (`hasLeadSession`, `has_report_full_9`, `credit_balance`). Só falta `lead_id` / `email_normalized`, que por política nunca devem ser expostos publicamente.
 
+### 3. Nenhum endpoint público devolve `lead_id` — é intencional
+A regra do projecto é: `lead_id` é PII operacional, só sai pelo gate admin. O endpoint de debug já dá apenas `lead_id_prefix` (primeiros 8 chars) para evitar exfiltração mesmo no admin.
+
+## Proposta — sem alterações de código
+
+### Caminho recomendado: Caminho A (admin, zero risco)
+Tu já és admin (`ADMIN_ALLOWED_EMAILS` configurado). Para confirmar o lead da QA browser session:
+
+1. No mesmo browser/tab da QA, abrir `/admin` e fazer login.
+2. Em DevTools → Console:
+   ```js
+   await fetch('/api/debug/lead-session-status', {
+     headers: { 'X-Admin-Email': localStorage.getItem('admin-email') }
+   }).then(r => r.json())
+   ```
+3. Confirmar `has_lead_session_cookie: true`, `decoded_cookie_valid: true`, `lead_exists: true`, anotar `lead_id_prefix`.
+
+### Complemento: Caminho B (serverFns públicos, valida desbloqueio + saldo)
+Nas mesmas DevTools:
+```js
+// Cada serverFn tem URL hashed; mais simples: usar o React Query devtools
+// ou aceder via UI (sidebar/sticky bar do relatório já chama estes 3).
 ```
-┌──────────────────────────────────────┐
-│  [bg: content-primary navy]          │
-│  ADICIONAR DIAGNÓSTICO HUMANO        │ ← eyebrow accent-luminous
-│  Diagnóstico de Autoridade Digital   │ ← Fraunces, text-inverse
-│  97€  149€  total · em vez de 9€     │ ← Fraunces grande + risco + meta
-├──────────────────────────────────────┤
-│  [bg: white]                         │
-│  ✓ Relatório completo incluído       │
-│  ✓ Chamada de 30 min com um humano   │
-│  ✓ 3 prioridades de melhoria claras  │
-│  ✓ Orientação para conteúdo …        │
-│  [ Sim, quero o diagnóstico humano ] │ ← Button variant="primary"
-└──────────────────────────────────────┘
-   Continuar só com o relatório de 9€    ← link subtil por baixo
+Confirmar via UI do relatório:
+- Sidebar "Créditos" → mostra `balance` (vem de `getMyCreditBalance`).
+- Banner desbloqueio → mostra `premiumUnlocked` (vem de `getMyReportEntitlement`).
+
+Se ambos refletirem o estado esperado, a sessão **está ligada** ao lead correcto, mesmo sem leres o cookie.
+
+### Mapear `lead_id_prefix` → `lead_id` completo (server-side, sem expor)
+Para a QA do Add Competitor, com o prefixo do Caminho A e o handle analisado:
+```sql
+SELECT id, email_normalized, created_at
+FROM leads
+WHERE id::text LIKE '<prefix>%'
+ORDER BY created_at DESC
+LIMIT 5;
 ```
+Executa-se via `supabase--read_query` (ferramenta server-side). Tu vês o `lead_id`; o browser não.
 
-### Detalhes visuais
+## Quando criar nova rota (Caminho C — só se A não servir)
+Se por alguma razão **não conseguires entrar em `/admin`** no mesmo browser do QA (ex: cookies cross-site bloqueados em preview, ou QA num device de terceiros), abrimos um patch mínimo:
 
-**Capa (navy)**
-- `bg-[rgb(var(--text-primary))]` (#0F1B3D — navy do tema global, equivalente prático ao #0B1020 pedido; não há token mais escuro definido)
-- Padding: `px-5 py-5 sm:px-6 sm:py-6`
-- Eyebrow: `text-eyebrow-sm text-[rgb(var(--accent-luminous))]` (cyan/azul luminoso, sem chip — o fundo navy já isola)
-- Título: `font-fraunces text-2xl sm:text-[28px] font-medium text-[rgb(var(--text-inverse))]`
-- Preço: `font-fraunces text-5xl font-semibold text-[rgb(var(--text-inverse))] tabular-nums leading-none`
-- Preço riscado: `font-fraunces text-xl text-[rgb(var(--text-inverse))]/50 line-through tabular-nums`
-- Meta "total · em vez de 9€": `text-xs text-[rgb(var(--accent-luminous))]`
+- Novo ficheiro: `src/routes/api/debug/lead-session-qa.ts`
+- Gate: `process.env.QA_DEBUG_ENABLED === "true"` (novo secret, fail-closed por omissão)
+- Retorno: `{ hasLeadSession, lead_id, email_normalized, has_report_full_9, credit_balance }` — sem cookie raw, sem snapshots, sem payloads.
+- `Cache-Control: no-store`.
+- A flag fica OFF em produção; ligas só durante a janela de QA.
 
-**Corpo (branco)**
-- `bg-white px-5 py-5 sm:px-6 sm:py-6`
-- Check icon: `text-accent-primary` (mantém)
-- Bullets: `text-sm text-content-secondary` (mantém)
-- Botão `variant="primary"` full-width (mantém)
+**Não criar agora.** A propor só se confirmares que o Caminho A não é viável.
 
-**Container**
-- `overflow-hidden rounded-2xl border border-border-default shadow-[0_18px_48px_-32px_rgba(15,23,42,0.18)]`
-- Remove o padding do container raiz — passa para cada zona — para a divisão chegar borda a borda.
+## Fora de âmbito (até instrução em contrário)
+- Inserir entitlement manual.
+- Top-up de créditos manual.
+- Chamar Apify.
+- PR1 window validation.
+- Add Competitor backend QA.
 
-**Saída**
-- Link "Continuar só com o relatório de 9€" mantém-se como está (subtil, underline on hover).
+## Output que peço
+Diz-me apenas qual caminho seguir:
+- **A** — vou pelo admin gate, sem mudar código (recomendado).
+- **C** — preciso da rota QA com feature flag; abre o patch.
 
-### Copy
-- "Sim, quero diagnóstico humano" → "Sim, quero o diagnóstico humano" (adiciona o artigo, mais natural em PT-PT, como na referência).
-- Restante copy inalterada.
-
-## Tokens usados (todos já existentes)
-- `--text-primary` (#0F1B3D) — fundo navy da capa
-- `--text-inverse` (#FAFBFC) — texto sobre navy
-- `--accent-luminous` (#4F8CFF) — eyebrow e meta na capa
-- `--accent-primary` (#3772E5) — checks e CTA (via Button primary)
-- `--border-default`, `--content-secondary` — sem alteração
-
-> Nota: o utilizador pediu #0B1020 (mais escuro) e cyan #00B4D8. Esses valores só existem na palette do *relatório* (`tokens-light.css`, scoped a `[data-theme="light"]`), não no tema global do checkout. Uso os equivalentes globais (`text-primary` navy + `accent-luminous`) para respeitar a regra "sem hardcode" e a identidade global. Se preferires o navy exacto da referência, abrimos um token novo `--surface-inverse-deep: 11 16 32` em `tokens.css` — diz e incluo no patch.
-
-## Fora de âmbito
-- Outros passos do checkout
-- Order summary, progresso, footer
-- Lógica de pagamento, preços, EuPago, schema, créditos
-- Tradução / copy fora dos dois ajustes acima
-
-## Validação manual
-1. Cartão renderiza com capa navy + corpo branco, sem gradiente roxo.
-2. Preço 97€ legível em branco; 149€ risca-se em opacidade reduzida.
-3. Eyebrow e meta em azul luminoso, contraste suficiente sobre navy (AA).
-4. Botão "Sim, quero o diagnóstico humano" mantém estilo primário azul.
-5. Link "Continuar só com o relatório de 9€" continua visível e clicável.
-6. Mobile 375px: capa e corpo empilhados, sem overflow do preço.
-7. Nenhum hex hardcoded no componente.
-
-## Output após build
-- Ficheiros alterados: `src/components/checkout/human-diagnosis-upsell.tsx`
-- Confirmação que nenhuma lógica de pagamento/preço foi tocada.
+Quando tiveres o `lead_id` confirmado por A ou C, retomamos o QA do Add Competitor com a verificação de créditos antes/depois.
