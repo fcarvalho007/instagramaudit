@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
+import { Trans } from "react-i18next";
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, UserPlus, Info, Coins, ArrowRight } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -133,6 +134,14 @@ export function ConsumeCreditDialog({
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
+          {hasCredit && isCompetitor && !atCompetitorLimit ? (
+            <div
+              aria-hidden="true"
+              className="mb-1 flex size-10 items-center justify-center rounded-lg bg-accent-primary/10 text-accent-primary"
+            >
+              <UserPlus className="size-5" />
+            </div>
+          ) : null}
           <DialogTitle>
             {atCompetitorLimit
               ? t("nav.explore.competitor_limit_reached")
@@ -186,24 +195,33 @@ export function ConsumeCreditDialog({
                 </p>
               ) : null}
             </div>
-            <p className="text-xs text-content-secondary">
-              {t("nav.explore.consume_dialog.credit_line")}
-            </p>
-            <p className="text-xs text-content-tertiary">
-              {t("nav.explore.consume_dialog.balance_hint", { count: balance })}
-            </p>
-          <div className="rounded-md border border-border-default bg-surface-muted px-3 py-2 text-xs text-content-secondary tabular-nums">
-            <div className="flex items-center justify-between">
-              <span>{t("nav.explore.consume_dialog.balance_label")}</span>
-              <span className="font-semibold text-content-primary">{balance}</span>
+            <div className="flex gap-2 rounded-md border border-accent-primary/20 bg-accent-primary/8 px-3 py-2.5 text-xs text-content-secondary">
+              <Info className="mt-0.5 size-4 shrink-0 text-accent-primary" aria-hidden="true" />
+              <p className="leading-relaxed">
+                <Trans
+                  i18nKey="nav.explore.consume_dialog.competitor_beta_note"
+                  t={t}
+                  components={{ strong: <strong className="font-semibold text-content-primary" /> }}
+                />
+              </p>
             </div>
-            <div className="mt-1 flex items-center justify-between">
-              <span>{t("nav.explore.consume_dialog.balance_after")}</span>
-              <span className="font-semibold text-content-primary">
-                {balance - 1}
+            <div className="h-px bg-border-default" />
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <Coins className="size-5 text-signal-success" aria-hidden="true" />
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-content-primary">
+                    {t("nav.explore.consume_dialog.credit_use_label")}
+                  </span>
+                  <span className="text-xs text-content-tertiary">
+                    {t("nav.explore.consume_dialog.credit_available_hint", { count: balance })}
+                  </span>
+                </div>
+              </div>
+              <span className="rounded-full bg-signal-success/12 px-2.5 py-1 text-eyebrow-sm text-signal-success">
+                {t("nav.explore.consume_dialog.free_in_beta_badge")}
               </span>
             </div>
-          </div>
           </>
         ) : null}
 
@@ -224,15 +242,9 @@ export function ConsumeCreditDialog({
           </p>
         ) : null}
 
-        {hasCredit && isCompetitor ? (
-          <p className="text-[11px] text-content-tertiary">
-            {t("nav.explore.consume_dialog.soon_note")}
-          </p>
-        ) : null}
-
         <DialogFooter className="gap-2 sm:gap-2">
           <Button
-            variant="ghost"
+            variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={submitting}
           >
@@ -243,6 +255,7 @@ export function ConsumeCreditDialog({
               <Button
                 onClick={handleConfirmClick}
                 disabled={submitting || !competitorReady}
+                className="gap-2"
               >
                 {submitting ? (
                   <>
@@ -250,7 +263,10 @@ export function ConsumeCreditDialog({
                     {t("nav.explore.consume_dialog.submitting")}
                   </>
                 ) : (
-                  confirmCta
+                  <>
+                    {confirmCta}
+                    <ArrowRight className="size-4" aria-hidden="true" />
+                  </>
                 )}
               </Button>
             )
