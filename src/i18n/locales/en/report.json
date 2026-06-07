@@ -604,6 +604,7 @@
     },
     "eyebrow_single": "Profile analysis",
     "eyebrow_multi": "Comparing {{count}} profiles",
+    "eyebrow_analyzing": "Analyzing",
     "explore": {
       "title": "Explore",
       "period_label": "Analysis period",
@@ -678,7 +679,7 @@
       "trust": "One-time payment. No subscription."
     },
     "diagnostic_subitems": {
-      "note": "7 strategic questions",
+      "note": "7 strategic items",
       "conteudo": "Content",
       "funil": "Funnel",
       "hashtags": "Hashtags",
