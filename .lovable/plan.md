@@ -1,87 +1,112 @@
 ## Goal
 
-When `competitorBreakdown[0]` exists in **Pro mode (`all`)**, render Overview / Engagement / Cadence as comparison-aware cards instead of *original card + appended compare block*. No data, schema, provider, credit, payment, entitlement or Free/Public changes.
+Refine the visual design of Phase 1 comparison cards (Overview, Engagement, Cadence) to match the approved mockup: tinted side panels (blue vs indigo), large editorial number, per-side deterministic text below each value, plain `vs` separator, white outer card with Fraunces title. Padrão 2 (paired bars) explicitly out of scope.
 
-## Current state (after audit)
+## Mockup deltas (vs current)
 
-In `src/components/report-redesign/v2/report-overview-block.tsx`:
-
-- **Overview** — `EditorialIdentityCard` (always) + `CompetitorOverviewCompare` (grid with 6 rows: Seguidores, Posts analisados, ER, Likes, Comments, Posts/semana) + `CompetitorBioCompare`.
-- **Engagement** — `EngagementCardRefined` (single-profile) **then** `CompetitorEngagementCompare` appended below (ER + likes + comments + verdict).
-- **Cadence** — `FrequencyCard` (calendar + posts/week) **then** `CompetitorCadenceCompare` appended below (posts/week).
-
-Result: same KPI shown twice per card, ER appears 3× across the block (Overview grid, Engagement card, Engagement compare).
-
-## Target behaviour
-
-| Card | No competitor | With 1 competitor |
+| Element | Current | Mockup |
 |---|---|---|
-| Identity Card | unchanged | unchanged (identity ≠ KPI compare) |
-| Overview compare (KPI grid) | not rendered | trimmed to **identity rows only**: Seguidores, Publicações analisadas |
-| Bio compare | not rendered | unchanged |
-| Engagement | `EngagementCardRefined` | `CompetitorEngagementCompare` **in place of** the single-profile card |
-| Cadence/Frequência | `FrequencyCard` | `CompetitorCadenceCompare` **in place of** `FrequencyCard` |
+| Outer card | `bg-surface-secondary` + `rounded-xl` + small padding, eyebrow-only header | White `bg-surface-primary` + `rounded-2xl` + `shadow-card`, Fraunces H3 title, generous padding |
+| Side panels | White card + 1px subtle border + small number `text-2xl` | Tinted bg (blue 50 / indigo 50), 1.5px accent border (blue / indigo), large number `text-3xl sm:text-4xl` |
+| Handle | Dot + truncated handle in muted grey | Handle in accent color (`text-accent-primary` / `text-compare-competitor`), small |
+| Centered delta chip | Coloured pill below the pair (`+12 %`, `−0,42 pp`) | Removed. Replaced by per-side text inline under each value: primary side gets directional text ("↓ abaixo do concorrente"), competitor side gets relational text ("4,8× o teu valor") |
+| `vs` separator | Pill with border | Plain uppercase eyebrow text, no border |
+| Table headers (Padrão 3) | Eyebrow + dot | Eyebrow underlined with accent color (blue/indigo) |
 
-This collapses the duplication: each metric appears once, in the comparison-aware version. The comparison block becomes the card, not a sibling below it.
+## Edits
 
-The `windowAligned === false` hint already lives inside the compare blocks (subtle, single line) — preserved.
+### 1. `src/components/report-redesign/v2/compare/compare-stat-block.tsx` — refactor side panels + delta
 
-## Edits (single file)
+- Side panel: switch from `bg-surface-primary border-border-subtle` to:
+  - primary → `bg-accent-primary/8 border border-accent-primary/30` (or `bg-[hsl(var(--accent-primary)/0.06)]` if tokens require explicit form)
+  - competitor → `bg-compare-competitor/8 border border-compare-competitor/30`
+- Handle: `text-xs font-medium` colored `text-accent-primary` / `text-compare-competitor`.
+- Value: `text-3xl sm:text-4xl font-semibold tabular-nums`.
+- Add `subText?: string` field to each `CompareSide` (rendered as small `text-xs text-content-secondary` row under the value, with arrow `↓`/`↑`/`=` symbol prefix when caller supplies tone).
+- Replace centered delta chip with: caller-provided `primary.subText` / `competitor.subText`. **Fallback**: when neither is provided, compute deterministic two-sided text via `buildDeltaPair()` (new helper) using existing `buildDelta`.
+- Center column: `<span>vs</span>` with `text-eyebrow-sm text-content-tertiary` (no border, no bg).
+- Padding/spacing: outer `p-5 sm:p-6`, panel `px-4 py-4 sm:py-5`, `gap-4`.
 
-**`src/components/report-redesign/v2/report-overview-block.tsx`** — only conditional render orchestration changes; no new components, no signature changes.
+### 2. `src/components/report-redesign/v2/compare/compare-delta.ts` — add helper
 
-1. **Overview KPI grid** (lines 266–279) — pass a `scope="identity"` flag (or trim inline) so `CompetitorOverviewCompare` only emits Seguidores + Publicações analisadas rows. → Implemented as a new `scope?: "identity" | "all"` prop on `CompetitorOverviewCompare` defaulting to `"all"` (back-compat). In the block we pass `scope="identity"`.
+Export `buildDeltaPair(primary, competitor, unit, higherIsBetter)` → `{ primarySubText, competitorSubText, tone }`. Reuses `buildDelta` for the numeric calc; produces pt-PT text:
 
-2. **Engagement** (lines 370–385) — replace:
-   ```text
-   <EngagementCardRefined/>
-   {firstCompetitor ? <CompetitorEngagementCompare/> : null}
-   ```
-   with:
-   ```text
-   firstCompetitor
-     ? <CompetitorEngagementCompare/>
-     : <EngagementCardRefined/>
-   ```
+- Primary side text rule:
+  - `ratio ≥ 1.05` → `"↑ acima do concorrente"`
+  - `ratio ≤ 0.95` → `"↓ abaixo do concorrente"`
+  - else → `"≈ em linha com o concorrente"`
+- Competitor side text rule:
+  - `ratio < 0.95` → `${(1/ratio).toFixed(1)}× o teu valor` (e.g. `4,8× o teu valor`)
+  - `ratio > 1.05` → `${ratio.toFixed(1)}× menos que tu`
+  - else → `"em linha com o teu valor"`
+- For `unit === "pp"` use absolute pp diff text: `"+0,38 pp acima"` / `"−0,38 pp abaixo"` on the appropriate side.
+- Zero/edge cases: degrade to neutral phrasing, never throw.
 
-3. **Cadence** (lines 389–411) — replace:
-   ```text
-   <FrequencyCard/>
-   {firstCompetitor ? <CompetitorCadenceCompare/> : null}
-   ```
-   with:
-   ```text
-   firstCompetitor
-     ? <CompetitorCadenceCompare/>
-     : <FrequencyCard/>
-   ```
+Existing `buildDelta` keeps its current signature and callers (tests stay green).
 
-**`src/components/report-redesign/v2/overview/competitor-overview-compare.tsx`** — add `scope?: "identity" | "all"` prop. When `"identity"`, `buildRows` returns only Seguidores + Publicações analisadas. Default `"all"` keeps existing callers (none today besides the block) unchanged.
+### 3. `src/components/report-redesign/v2/compare/compare-types.ts` — extend `CompareSide`
+
+Add optional `subText?: string`. No breaking change.
+
+### 4. Outer comparison cards — Fraunces title + white shell
+
+Apply consistent shell to the three Phase 1 comparison sections (they currently have ad-hoc shells):
+
+- `src/components/report-redesign/v2/overview/competitor-overview-compare.tsx`
+- `src/components/report-redesign/v2/competitor-engagement-compare.tsx`
+- `src/components/report-redesign/v2/competitor-cadence-compare.tsx`
+
+Shell pattern:
+```text
+<section class="rounded-2xl border border-border-default bg-surface-primary shadow-card p-5 sm:p-6">
+  <header class="space-y-1 mb-5">
+    <span class="text-eyebrow-sm text-content-tertiary">{eyebrow}</span>
+    <h3 class="font-serif text-xl sm:text-2xl text-content-primary">{title}</h3>
+    {hint && <p class="text-xs text-content-tertiary">{hint}</p>}
+  </header>
+  {/* CompareStatBlock(s) without their own outer chrome */}
+</section>
+```
+
+`CompetitorCadenceCompare` currently has no outer chrome (just the inner `CompareStatBlock` + p verdict). Add the white card shell so it matches the mockup's "card de relatório premium" feel.
+
+For `CompetitorEngagementCompare`, drop the legacy `SupportRow` rows (Likes/Comments) — they duplicate the headline metric. Keep only: title + 1 `CompareStatBlock` (ER) + verdict line. (Likes/comments comparison already lives in the Overview identity grid; removing here eliminates duplication and matches mockup's single-metric pattern.)
+
+For `CompetitorOverviewCompare`: title becomes "Identidade vs concorrente"; the inner grid keeps 2 `CompareStatBlock` cards (Seguidores, Publicações analisadas) under `scope="identity"`.
+
+To prevent double-shell when `CompareStatBlock` is used inside a parent shell, add `variant?: "card" | "bare"` to `CompareStatBlock`. `"card"` (default) keeps today's wrapping for back-compat; `"bare"` drops the outer `<section>` + border/bg/padding and renders only the header + grid + per-side subtext. The three Phase 1 cards pass `variant="bare"` since they sit inside the new white shell.
+
+### 5. `compare-table.tsx` — header underline accents (Padrão 3)
+
+- Desktop `<thead>`: replace dot with `border-b-2` accent under each column header text (blue under primary handle, indigo under competitor handle). Implement via wrapping the handle text in a `<span class="inline-block pb-1.5 border-b-2 border-accent-primary">` / `border-compare-competitor`.
+- Mobile cells: unchanged (already legible).
+
+This affects `CompetitorBioCompare` (the only consumer). No data changes.
 
 ## Out of scope (untouched)
 
-- `FormatCard`, `PostComparisonBlock`, `EditorialIdentityCard`, `MethodologyLine`, `CompetitorBioCompare`, `ReportCompetitors` legacy gauge.
-- Free / `free_with_engagement` / `locked` modes other than what is required to keep the conditional inside `all`/`locked` paths working — the existing rendering of Engagement/Cadence under `mode === "locked"` is unchanged structurally but inherits the new `firstCompetitor ? compare : card` switch.
-- Multi-competitor (Fase 1.5), Add Competitor flow, providers, credits, EuPago, checkout, entitlements, snapshot schema, Apify, OpenAI, DataForSEO.
-- `CompetitorEngagementCompare` / `CompetitorCadenceCompare` internals (already use `CompareStatBlock` + `vs` semantics + delta verdict).
+- Data shape, schema, providers, credits, payments, checkout, entitlements, Add Competitor, Free/Public report, `ReportCompetitors` legacy gauge.
+- Padrão 2 (paired bars) — Format Mix card not implemented this phase.
+- `EngagementCardRefined`, `FrequencyCard`, `EditorialIdentityCard`, `MethodologyLine`, `FormatCard`, `PostComparisonBlock`.
+- Tests under `compare/__tests__` continue to pass (`buildDelta` signature unchanged; `CompareStatBlock` default visual behavior preserved when no `subText`/`variant` passed).
 
 ## Risks
 
-- **`EngagementCardRefined` carries extra UI** (benchmark chart, methodology hint). Replacing it removes that visualization when a competitor exists. Mitigation: acceptable per goal ("comparison should be visually central, no duplicated metric"). If user later wants benchmark chart preserved, we add a second phase to inject it inside the compare card.
-- **`FrequencyCard` carries calendar/timeline**. Same trade-off; the calendar disappears in comparison mode. Documented; reversible in a follow-up by composing the calendar inside `CompetitorCadenceCompare`.
-- **No new files**, no new exports, no new tests required for typecheck — risk of typecheck regression is minimal.
+- **Two delta systems coexist** (chip fallback for legacy callers, per-side text for new Phase 1 cards). Mitigated by `variant`/`subText` being optional. Documented in JSDoc.
+- **Accent color tokens** — `bg-accent-primary/8` requires Tailwind to support alpha modifier on CSS variable token. Verified at build time; if it fails, fall back to explicit utility classes in `tokens-light.css` (`.bg-compare-primary-tint`, `.bg-compare-competitor-tint`).
+- Removing Likes/Comments support rows from `CompetitorEngagementCompare` is a perceived data loss — but they already exist in Overview identity card scope (Likes/Comments are part of `competitorBreakdown`). Documented in PR summary.
 
-## Validation checklist
+## Validation
 
-1. `nunomarkl` (has competitor) → Engagement/Cadence show compare cards only, no duplicated single-profile card above; Overview compare grid shows only Seguidores + Publicações analisadas.
-2. `frederico.m.carvalho` (no competitor) → identical to today.
-3. Free / `free_with_engagement` modes → identical to today (no `firstCompetitor` branch triggered).
-4. 375px viewport → no horizontal overflow (compare blocks already use `grid-cols-1` mobile-first).
-5. `bun tsc --noEmit` (executed automatically) → passes.
-6. No provider calls on render (pure read from `result.data.competitorBreakdown`).
+1. `nunomarkl` (Pro + competitor): Overview/Engagement/Cadence cards have white shell, Fraunces H3, tinted side panels, large number, per-side text, plain `vs`, no centered chip.
+2. `frederico.m.carvalho` (no competitor): unchanged.
+3. Free / `free_with_engagement`: unchanged.
+4. Bio compare (`Padrão 3`) shows underline accents under column headers.
+5. 375px viewport: panels stack vertically with `vs` centered above competitor side; no horizontal overflow.
+6. `bun tsc --noEmit` passes; existing compare tests pass.
+7. Existing `CompareStatBlock` consumers without `variant`/`subText` render identically.
 
 ## Output after build
 
-- Files changed: 2 (`report-overview-block.tsx`, `overview/competitor-overview-compare.tsx`).
-- Before/after summary in chat.
-- Confirmation that compare blocks replace, not append.
+- Files changed: 6 (`compare-stat-block.tsx`, `compare-delta.ts`, `compare-types.ts`, `competitor-overview-compare.tsx`, `competitor-engagement-compare.tsx`, `competitor-cadence-compare.tsx`, `compare-table.tsx`).
+- Before/after visual summary with mobile note.
