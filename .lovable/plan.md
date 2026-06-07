@@ -1,62 +1,34 @@
-# Fix — Competitor colour distinction (scoped, no global theme change)
+# QA Audit — Competitor colour fix + Phase 1 regression
 
-## Root cause
-In `src/styles/tokens-light.css`, `--accent-secondary: 0 119 182` is identical to `--accent-primary: 0 119 182` (both ocean blue). Compare components use `bg-accent-secondary` for the competitor dot, so primary and competitor render the same blue.
+Read-only. Zero code edits, zero UI actions on real data, zero provider calls.
 
-## Strategy
-Introduce a **comparison-scoped** token + utility class. Do NOT touch `--accent-secondary` (used in chart-impressions, glass aurora, etc.).
+## Constraints (locked in)
+- Preview/mock only for competitor visual states.
+- Scenario 3 (2 competitors) → code-level reasoning only, no real adds.
+- Published site touched **only** for: (a) Free/Public regression, (b) network panel sanity (zero Apify/OpenAI/DataForSEO).
+- QA entitlement `7ae71c27…` → **kept** (still required for the pending PR1 30d B/C/D fetches). Rollback happens at the end of the PR1 stream, not this audit.
 
-## Changes
+## Test matrix
 
-### 1. New token — `src/styles/tokens-light.css`
-Add inside `:root, [data-theme="light"]`:
-```css
---compare-competitor: 118 100 228;  /* #7664E4 soft indigo */
-```
+| # | Scenario | Source | Method |
+|---|----------|--------|--------|
+| 1 | Pro, 0 competitors | code | `firstCompetitor = competitorBreakdown[0] ?? null` → 3 blocks return `null`. PASS by inspection |
+| 2 | Pro, 1 competitor | **mock** via `/admin/report-preview/frederico.m.carvalho?variant=pro_preview` (fixture has exactly 1: `marketing.digital.pt`) | Screenshot desktop + 375px. Verify: 3 compare blocks render; primary dot = ocean blue; competitor dot = indigo `#7664E4`; "Concorrente em janela baseline." hint visible (mock has `windowAligned:false`) |
+| 3 | Pro, 2 competitors | code | `competitorBreakdown[0]` only is consumed (line 120 + TODO Fase 1.5 at line 118). Second entry ignored, no layout break possible. PASS by inspection |
+| 4 | Free/Public regression | **published** `auditprofiles.com` Free report | Confirm zero compare blocks render (gated by `mode === "all"` / `(mode === "all" \|\| "locked")`). Locked teasers visually unchanged |
+| 5 | Mobile 375px | mock (scenario 2 viewport) | No horizontal overflow; `grid-cols-1 sm:grid-cols-[1fr_auto_1fr]` stacks cleanly |
+| 6 | Provider-call sanity | published Free + mock Pro | Network panel filtered to `apify\|openai\|dataforseo` → zero requests during render |
+| 7 | Colour distinction | mock | Primary blue vs competitor indigo visually distinct AND `@handle` text present beside each dot (redundant signal, a11y safe) |
 
-Mirror in `src/styles/tokens.css` (dark theme) with same RGB so the class works in both themes.
+## Handoff
+The admin preview route requires the user's admin session; the agent browser tool cannot log in. The agent will:
+1. Re-confirm the code-level scenarios (1, 3, 4 gating) by grep.
+2. Hit the published Free/Public path for scenarios 4 + 6 (no login needed).
+3. Ask the user to open the admin preview URL with their session and paste a screenshot OR a quick PASS/FAIL for scenarios 2, 5, 7 (60-second check).
 
-### 2. New utility — `src/styles.css`
-```css
-@utility bg-compare-competitor {
-  background-color: rgb(var(--compare-competitor));
-}
-@utility text-compare-competitor {
-  color: rgb(var(--compare-competitor));
-}
-@utility border-compare-competitor {
-  border-color: rgb(var(--compare-competitor));
-}
-```
-(only the variants actually used in compare components — likely just `bg-`).
-
-### 3. Swap class in 5 files
-Replace `bg-accent-secondary` → `bg-compare-competitor` in:
-- `src/components/report-redesign/v2/compare/compare-stat-block.tsx` (1 hit, line 100)
-- `src/components/report-redesign/v2/compare/compare-table.tsx` (2 hits, lines 122, 147)
-- `src/components/report-redesign/v2/compare/compare-bar-pair.tsx` (2 hits, lines 113, 140) + update comment line 22
-- `src/components/report-redesign/v2/competitor-engagement-compare.tsx` (1 hit, line 152)
-
-Primary side keeps `bg-accent-primary` (blue). No changes to text labels, handles or layout — `@username` text already carries the meaning textually, so colour is redundant signalling (✓ a11y).
-
-### 4. `competitor-overview-compare.tsx` & `competitor-cadence-compare.tsx` & `competitor-bio-compare.tsx`
-No direct colour classes — they delegate to `CompareStatBlock`. Covered by step 3 swap. No edits.
-
-## Out of scope (unchanged)
-- `--accent-secondary` token, all chart series, glass aurora, AI insight boxes, sticky bars, buttons, checkout, landing, Free/Public report, `ReportCompetitors` legacy gauge, data, providers, schema, payments, credits, entitlements, Add Competitor flow.
-
-## Validation checklist
-1. Primary dots/bars = blue `#0077B6` (light) / `#3772E5` (dark).
-2. Competitor dots/bars = indigo `#7664E4` in both themes.
-3. Free/Public render path (`mode !== "all"` and `mode !== "locked"`) — no compare blocks render → no visual diff.
-4. Report without competitor (`competitorBreakdown=[]`) — components return `null` → no visual diff.
-5. Mobile 375px — pure colour swap, no layout impact.
-6. Typecheck — only string class names changed, no type surface modified.
-7. Grep `bg-compare-competitor` only inside `report-redesign/v2/compare/` and the 4 Phase 1 competitor components.
-8. Each competitor pair already shows `@handle` as text next to the dot → colour is not the sole carrier.
-
-## Deliverables in build mode
-- Files changed: 2 token files, 1 styles file, 4 component files.
-- Token used: `--compare-competitor: 118 100 228` → utility `bg-compare-competitor`.
-- Confirmation `--accent-secondary` is unchanged (grep diff).
-- Before: both sides ocean blue. After: primary ocean blue, competitor soft indigo.
+## Deliverable
+Single PASS/FAIL table + screenshot from published Free path + agent confirmation of:
+- `--accent-secondary` token unchanged.
+- `bg-compare-competitor` only present in compare/Phase 1 files.
+- Entitlement `7ae71c27…` still present (not rolled back, justification logged).
+- Go/No-go for Phase 2.
