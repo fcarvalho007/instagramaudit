@@ -16,7 +16,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { verifyWebhookSignature } from "@/lib/payments/eupago.server";
 import { grantEntitlement } from "@/lib/payments/entitlements.server";
-import { grantPostPurchaseBetaCredits } from "@/lib/credits/credits.server";
+import {
+  grantPostPurchaseBetaCredits,
+  grantPurchaseIncludedCredit,
+  POST_PURCHASE_BETA_BONUS,
+  POST_PURCHASE_TOTAL_GRANTED,
+  PURCHASE_INCLUDED_AMOUNT,
+  PURCHASE_INCLUDED_KIND,
+  POST_PURCHASE_BETA_KIND,
+} from "@/lib/credits/credits.server";
 import { recordProductEvent } from "@/lib/tracking.server";
 import { enqueuePaidEnrichmentsForPayment } from "@/lib/enrichment/enqueue-paid.server";
 import type { ProductCode } from "@/lib/payments/products";
@@ -179,30 +187,66 @@ export const Route = createFileRoute("/api/public/eupago-webhook")({
             );
           }
 
-          // Post-purchase beta bonus: +2 créditos, idempotente por payment_id.
-          // Isolado num try/catch para nunca derrubar o webhook.
-          try {
-            const result = await grantPostPurchaseBetaCredits({
-              leadId: row.lead_id,
-              paymentId: row.id,
-            });
-            if (result.granted) {
-              await recordProductEvent({
-                eventType: "credits_post_purchase_granted",
+          // Créditos pós-compra: aplica-se apenas a `report_full_9`.
+          // (+1 incluído na compra) + (+2 bónus beta) = 3.
+          // Cada grant é idempotente por (lead_id, payment_id, metadata.kind).
+          if (row.product === "report_full_9") {
+            try {
+              const included = await grantPurchaseIncludedCredit({
                 leadId: row.lead_id,
-                metadata: {
-                  payment_id: row.id,
-                  product_code: row.product,
-                  delta: 2,
-                  kind: "post_purchase_beta_bonus",
-                },
+                paymentId: row.id,
+                productCode: row.product,
               });
+              if (included.granted) {
+                await recordProductEvent({
+                  eventType: "credits_purchase_included_granted",
+                  leadId: row.lead_id,
+                  metadata: {
+                    payment_id: row.id,
+                    product_code: row.product,
+                    delta: PURCHASE_INCLUDED_AMOUNT,
+                    kind: PURCHASE_INCLUDED_KIND,
+                    source: "payment_confirmed",
+                    total_granted: POST_PURCHASE_TOTAL_GRANTED,
+                  },
+                });
+              }
+            } catch (err) {
+              console.error(
+                "[eupago-webhook] grantPurchaseIncludedCredit failed",
+                err,
+              );
             }
-          } catch (err) {
-            console.error(
-              "[eupago-webhook] grantPostPurchaseBetaCredits failed",
-              err,
-            );
+
+            try {
+              const bonus = await grantPostPurchaseBetaCredits({
+                leadId: row.lead_id,
+                paymentId: row.id,
+                productCode: row.product,
+              });
+              if (bonus.granted) {
+                await recordProductEvent({
+                  eventType: "credits_post_purchase_granted",
+                  leadId: row.lead_id,
+                  metadata: {
+                    payment_id: row.id,
+                    product_code: row.product,
+                    delta: POST_PURCHASE_BETA_BONUS,
+                    kind: POST_PURCHASE_BETA_KIND,
+                    source: "payment_confirmed",
+                    beta_bonus: true,
+                    included_credits: PURCHASE_INCLUDED_AMOUNT,
+                    bonus_credits: POST_PURCHASE_BETA_BONUS,
+                    total_granted: POST_PURCHASE_TOTAL_GRANTED,
+                  },
+                });
+              }
+            } catch (err) {
+              console.error(
+                "[eupago-webhook] grantPostPurchaseBetaCredits failed",
+                err,
+              );
+            }
           }
 
           // Register coupon redemption (idempotent) if the payment was created
