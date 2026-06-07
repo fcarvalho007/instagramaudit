@@ -103,6 +103,14 @@ import {
 import { prefetchThumbnailsAsBase64 } from "@/lib/analysis/thumbnail-cache.server";
 import { setEnrichmentStatusAtomic } from "@/lib/analysis/cache";
 import { PUBLIC_INSTAGRAM_POSTS_LIMIT } from "@/lib/analysis/constants";
+import {
+  PUBLIC_WINDOW_CONFIGS,
+  isPublicWindowKind,
+  isWideWindow,
+  type PublicWindowConfig,
+  type PublicWindowKind,
+} from "@/lib/analysis/window-configs";
+import { hasEntitlement } from "@/lib/payments/entitlements.server";
 
 // Unified Apify actor — returns profile details with `latestPosts[]` embedded
 // in a single call per handle. Replaces the previous two-actor split.
@@ -121,6 +129,13 @@ const PayloadSchema = z.object({
     .max(MAX_COMPETITORS)
     .optional()
     .default([]),
+  // PR 1: public window for the PRIMARY profile only. Defaults to
+  // "baseline" so existing Free callers stay byte-compatible.
+  // 60d / 365d are Lab-only and intentionally excluded from this surface.
+  window: z
+    .enum(["baseline", "30d", "90d"])
+    .optional()
+    .default("baseline"),
 });
 
 const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
@@ -150,6 +165,8 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
     "Precisamos do teu nome e email para gerar o relatório.",
   INSUFFICIENT_CREDITS:
     "Já usaste os teus 2 relatórios gratuitos.",
+  WINDOW_REQUIRES_PRO:
+    "A análise por período (30d/90d) está disponível no plano Pro.",
 };
 
 const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
@@ -167,6 +184,7 @@ const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
   CACHE_ONLY_NO_DATA: 503,
   ONBOARDING_REQUIRED: 402,
   INSUFFICIENT_CREDITS: 402,
+  WINDOW_REQUIRES_PRO: 403,
 };
 
 /**
