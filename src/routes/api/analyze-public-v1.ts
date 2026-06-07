@@ -466,6 +466,10 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           return failure("INVALID_USERNAME");
         }
         const primary = parsed.data.instagram_username;
+        const windowKind: PublicWindowKind = isPublicWindowKind(parsed.data.window)
+          ? parsed.data.window
+          : "baseline";
+        const primaryWindowCfg = PUBLIC_WINDOW_CONFIGS[windowKind];
 
         // Dedup competitors: lowercase comparison, drop primary, drop dupes,
         // cap at MAX_COMPETITORS. Original casing preserved for display.
@@ -508,7 +512,10 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         const isInternalBypass =
           !!internalToken && authHeader === `Bearer ${internalToken}`;
 
-        const cacheKey = buildCacheKey(primary, competitors);
+        // Cache key includes the window suffix ONLY for wide windows. For
+        // baseline this is byte-identical to the legacy key, so existing
+        // Free snapshots remain valid and reachable.
+        const cacheKey = buildCacheKey(primary, competitors, windowKind);
 
         // ── Credit gate (Fase 2) ───────────────────────────────────────
         // Política:
@@ -550,6 +557,25 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             return failure("ONBOARDING_REQUIRED");
           }
           alreadyAssociated = await leadOwnsReport(leadId, cacheKey);
+          // ── Pro gate for wide windows (30d/90d) ─────────────────
+          // Wide windows require the `report_full_9` entitlement. We
+          // check BEFORE reserving credit so a Free lead is never
+          // charged for a window they cannot use.
+          if (isWideWindow(windowKind)) {
+            const isPro = await hasEntitlement(leadId, "report_full_9");
+            if (!isPro) {
+              await logEvent({
+                handle: primary,
+                competitorHandles: competitors,
+                cacheKey,
+                dataSource: "none",
+                outcome: "blocked_credits",
+                errorCode: "WINDOW_REQUIRES_PRO",
+                estimatedCostUsd: 0,
+              });
+              return failure("WINDOW_REQUIRES_PRO");
+            }
+          }
           // Cache fresh + relatório já atribuído a este lead → 0 créditos.
           const skipReserve = cacheFreshHit && alreadyAssociated;
           if (!skipReserve) {
