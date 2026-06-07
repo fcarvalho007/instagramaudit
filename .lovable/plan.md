@@ -1,70 +1,67 @@
-# Plano — 3 correções visuais no relatório público
+# PR1 Window Validation — Plan
 
-## 1. Primeiro card volta ao `EditorialIdentityCard` rico (37/100 + verdict + MetricsStrip + split funciona/limita)
+Lead alvo: `7b946d45-ecb1-49dc-8702-68d85a860c47` (`fredericodigital@gmail.com`), saldo = 1 crédito, sem `report_full_9`.
 
-O ficheiro `src/components/report-redesign/v2/report-overview-block.tsx` já importa e renderiza `EditorialIdentityCard` no modo `free_with_engagement`. O screenshot do estado actual mostra ainda o `FreeInitialReadingCard` antigo (título "Leitura inicial do perfil"), o que indica que a versão deployada não corresponde ao código.
+Endpoint sob teste: `POST /api/analyze-public-v1` com body `{ instagram_username, window }`. O Pro-gate vive em `src/routes/api/analyze-public-v1.ts` linhas 559–577 (`isWideWindow` → `hasEntitlement('report_full_9')` → `WINDOW_REQUIRES_PRO` antes de `reserveCredit`).
 
-Ação:
-- **Forçar o estado correcto**: reler `report-overview-block.tsx` no momento da implementação para confirmar que o branch `mode === "free_with_engagement"` renderiza `EditorialIdentityCard` (lines ~257-308). Se já estiver, fazer um touch trivial (reordenar 1 import) para garantir HMR/build pick up.
-- **Eliminar** o ficheiro órfão `src/components/report-redesign/v2/overview/free-initial-reading-card.tsx` para garantir que nunca mais é renderizado por engano. (Já não é importado em lado nenhum — confirmado por `rg`.)
+Perfil de teste: `frederico.m.carvalho` (perfil do APIFY_ALLOWLIST).
 
-Sem alterações ao componente `EditorialIdentityCard` em si — o visual do screenshot 1 já é o que ele produz.
+## Pré-requisito (bloqueante)
 
-## 2. Sidebar não corta no portátil (≈1024–1280px, viewport 1084x744)
+O endpoint identifica o lead pelo cookie `lead_session`. Para invocar a partir do sandbox preciso do **valor actual do cookie `lead_session`** do browser onde fizeste a QA (DevTools → Application → Cookies → copia o valor completo).
 
-O `<nav>` em `report-block-nav.tsx` é `sticky top-24` com `max-h-[calc(100vh-7rem)]` e padding generoso. No portátil, a soma de Progress + Free + Premium + Explorar + Promo CTA ultrapassa a altura visível.
+Sem esse valor não posso executar PR1 a partir daqui (o sandbox não tem sessão do browser). Alternativa: corres tu os 4 fetches no DevTools e colas-me as respostas — eu faço o resto (snapshot do credit_ledger antes/depois, leitura dos events/logs, rollback).
 
-Ajustes pontuais em `src/components/report-redesign/v2/report-block-nav.tsx` (só CSS, sem mudar lógica nem secções):
+## Passos
 
-a) `ReportBlockSidebar` `<nav>`:
-- `sticky top-24` → `sticky top-20`
-- `max-h-[calc(100vh-7rem)]` → `max-h-[calc(100vh-5.5rem)]`
-- padding non-compact `p-4 xl:p-5` → `p-3 xl:p-4`
+### 1. T0 — snapshot do estado base
+Read-only no Supabase, registo em memória:
+- `credit_balance(lead_id)` actual
+- contagem actual em `analysis_events`, `provider_call_logs`, `analysis_snapshots` para o handle `frederico.m.carvalho`
+- entitlements actuais do lead
 
-b) `SidebarList` espaçamentos non-compact:
-- wrapper `space-y-4` → `space-y-3`
-- `ProgressSummary` `pt-3 pb-1` → `pt-1 pb-1`, `mb-2` → `mb-1.5`
-- `ItemRow` non-compact `py-2.5` → `py-2`
-- secções de items `space-y-1` → `space-y-0.5`
+### 2. Grant temporário `report_full_9`
+Via `supabase--insert`:
+```sql
+INSERT INTO lead_entitlements (lead_id, product_code, metadata)
+VALUES ('7b946d45-ecb1-49dc-8702-68d85a860c47', 'report_full_9',
+        jsonb_build_object('source','manual_pr1_validation','granted_for','PR1_window_validation'));
+```
+Sem créditos adicionados. Sem `payment_id`.
 
-c) `ExploreSection` non-compact:
-- `<section className="space-y-3">` → `space-y-2`
-- bloco Period `space-y-1.5` → `space-y-1`
-- bloco Competitors `space-y-1.5` → `space-y-1`
-- botão "Adicionar concorrente" `h-9` → `h-8`
+### 3. Cenários (ordem rígida)
 
-d) `UnlockPromoCard` non-compact:
-- `p-3 space-y-2.5` → `p-2.5 space-y-2`
-- botão `py-2.5 text-sm` → `py-2 text-[13px]`
+| # | Cenário | Body | Cookie | Esperado |
+|---|---|---|---|---|
+| A | Baseline (controlo) | `{ instagram_username:"frederico.m.carvalho" }` (sem `window`) | lead_session | sucesso, sem débito de crédito (ou débito normal Free se cache miss) |
+| B | Pro 30d 1ª chamada | `{..., window:"30d"}` | lead_session | sucesso, **-1 crédito**, novo snapshot com cache_key sufixado |
+| C | Pro 30d repeat | idem B | lead_session | cache hit, **0 créditos consumidos**, `alreadyAssociated=true` |
+| D | Free 30d sem entitlement | idem B | lead_session | depois do rollback temporário da entitlement: `WINDOW_REQUIRES_PRO`, **0 créditos consumidos** |
 
-Estes ajustes encolhem ~80–110 px no total e permitem que a 1ª dobra mostre Progress + Free + Premium + topo do Explorar sem scroll, mantendo o restante acessível com pequeno scroll dentro do `<nav>` (não scroll de página).
+Para D faço rollback **antes** da chamada e re-confirmo saldo. Não executo 90d. Não uso `INTERNAL_API_TOKEN`.
 
-## 3. Botão "Desbloquear relatório completo" → "Desbloquear relatório"
+### 4. Rollback final
+```sql
+DELETE FROM lead_entitlements
+WHERE lead_id='7b946d45-ecb1-49dc-8702-68d85a860c47'
+  AND product_code='report_full_9'
+  AND metadata->>'source'='manual_pr1_validation';
+```
+Garante 0 entitlements `report_full_9` no fim. Saldo de créditos final = saldo inicial − 1 (do cenário B).
 
-Mudar apenas a string usada pelo botão da sidebar (não os e-mails, não o sticky bar, não os outros CTAs que cabem confortavelmente).
+### 5. Relatório
+Tabela com, por cenário:
+- HTTP status + `outcome`/`errorCode` da resposta
+- delta em `credit_ledger` (linhas novas, `delta`, `reason`)
+- `analysis_events` novas (`data_source`, `outcome`, `error_code`)
+- `provider_call_logs` novos (`actor`, `posts_returned`, `actual_cost_usd`)
+- `analysis_snapshots` (`cache_key`, `created_at`)
+- veredicto PASS/FAIL por regra
 
-Ficheiro: `src/i18n/locales/pt/report.json`
-- Linha 590 (`nav.access.cta`): `"Desbloquear relatório completo"` → `"Desbloquear relatório"`
-- Linha 591 (`nav.access.cta_aria`): `"Desbloquear relatório completo"` → `"Desbloquear relatório"`
+PR2 fica bloqueado até 4/4 PASS.
 
-**Não alterar**:
-- `pricing.json` (já é "Desbloquear relatório")
-- `report.json` linha 38 (outro contexto — `lock_modal.cta`)
-- `report.json` linha 669 (sticky unlock bar — confirmar visualmente que cabe; se não couber, mudar também — caso contrário deixar)
-- emails (`commercial-followup.ts`) — não é UI
-- testes (`premium-cta-unification.test.ts`) — actualizar para "Desbloquear relatório" para passarem
+## Fora de scope
+Checkout, EuPago, preços, schema, UI, lógica de pagamento, 90d, qualquer write fora de `lead_entitlements` (insert + delete simétricos).
 
-Ajustar `src/components/report-redesign/v2/__tests__/premium-cta-unification.test.ts` linhas 25, 27 e 48 para a nova string.
-
-## Fora do scope
-
-- Nenhuma alteração a `EditorialIdentityCard`, a outros cards, ao layout do main content, ao sticky-unlock-bar, ao mobile bottom tabs.
-- Nenhuma alteração de lógica, dados ou backend.
-- Sem mexer em outras keys de i18n.
-
-## Validação
-
-1. `/analyze/frederico.m.carvalho` mostra 1º card com 37/100, "Cadência forte, sinal fraco" estilo, MetricsStrip com ícones, e split verde/âmbar de funciona/limita.
-2. Em viewport 1084×744 a sidebar mostra Progress + Free + Premium + topo do Explorar na 1ª dobra (sem necessidade de scroll para ver o botão de unlock).
-3. Botão da sidebar lê "Desbloquear relatório" numa só linha.
-4. Testes Vitest passam (`premium-cta-unification.test.ts` actualizado).
+## Próximo passo
+Cola o valor do cookie `lead_session` (ou diz-me se preferes correr tu os fetches). Em build mode executo passos 1→5 numa só rajada.
