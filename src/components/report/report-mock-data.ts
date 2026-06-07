@@ -3,6 +3,29 @@
  * All numbers, dates, and labels are consistent across every section.
  */
 
+/**
+ * Per-competitor deterministic breakdown — populated by the real-data
+ * adapter from `payload.competitors[].content_summary`. Phase 0 covers
+ * the metrics already available without a second Apify call.
+ */
+export interface ReportCompetitorBreakdownEntry {
+  username: string;
+  displayName: string;
+  followers: number;
+  postsAnalyzed: number;
+  averageEngagementRate: number;
+  averageLikes: number;
+  averageComments: number;
+  estimatedPostsPerWeek: number;
+  dominantFormat: string;
+  /**
+   * True when the competitor was fetched with the same window as the
+   * primary profile. Today competitors are always baseline, so this is
+   * `false` for any 30d/90d primary window.
+   */
+  windowAligned: boolean;
+}
+
 // Deterministic temporal series — 30 daily data points with realistic shape
 function buildTemporalSeries() {
   const baseDate = new Date(2026, 2, 19); // 19 Mar 2026
