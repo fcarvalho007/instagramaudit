@@ -24,6 +24,8 @@ import {
 import { computePostAverages } from "@/lib/report/post-aggregates";
 import { buildBlock01Sample } from "@/lib/report/block01-sample";
 import { PremiumTeaserCard } from "./premium-teaser-card";
+import { CompetitorOverviewCompare } from "./overview/competitor-overview-compare";
+import { CompetitorEngagementCompare } from "./competitor-engagement-compare";
 
 const PREMIUM_TEASERS = [
   {
@@ -110,6 +112,11 @@ function normaliseFormatKey(raw: string | null | undefined): "Reels" | "Carousel
 export function ReportOverviewBlock({ result, renderInsight: _renderInsight, payload, mode = "all" }: Props) {
   const k = result.data.keyMetrics;
   const enriched = result.enriched;
+
+  // TODO: multi-competitor layout (Fase 1.5). Today we render only the first
+  // entry; the remaining competitors stay in the legacy gauge.
+  const firstCompetitor = result.data.competitorBreakdown[0] ?? null;
+  const primaryHandle = result.data.profile.username;
 
   // Single source of truth: derive likes/comments averages from the same
   // canonical Block 1 sample that feeds the engagement rate
@@ -254,6 +261,21 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
         />
       )}
 
+      {mode === "all" && firstCompetitor ? (
+        <CompetitorOverviewCompare
+          primary={{
+            handle: primaryHandle,
+            followers: result.data.profile.followers,
+            postsAnalyzed: k.postsAnalyzed,
+            engagementRate: k.engagementRate,
+            averageLikes: avgLikes,
+            averageComments: avgComments,
+            postingFrequencyWeekly: k.postingFrequencyWeekly,
+          }}
+          competitor={firstCompetitor}
+        />
+      ) : null}
+
       {mode === "free_with_engagement" && (
         <>
           <MethodologyLine
@@ -335,6 +357,19 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
           {/* Zona C — Card de Taxa de Envolvimento (lock boundary) */}
           <div id="engagement" className="scroll-mt-24">
             <EngagementCardRefined result={result} />
+            {firstCompetitor ? (
+              <div className="mt-6 md:mt-8">
+                <CompetitorEngagementCompare
+                  primary={{
+                    handle: primaryHandle,
+                    engagementRate: k.engagementRate,
+                    averageLikes: avgLikes,
+                    averageComments: avgComments,
+                  }}
+                  competitor={firstCompetitor}
+                />
+              </div>
+            ) : null}
           </div>
 
           {/* Zona D — Frequência + Tipo de conteúdo (stack vertical) */}
