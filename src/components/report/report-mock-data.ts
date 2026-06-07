@@ -30,6 +30,21 @@ export interface ReportCompetitorBreakdownEntry {
   externalUrls: string[];
   /** Verified account flag. */
   isVerified: boolean;
+  /**
+   * Phase 2B — deterministic per-post detail persisted alongside the
+   * competitor's profile/content_summary. All fields are optional /
+   * may be empty so older snapshots (and the example mock) continue
+   * to render. The shape mirrors what `enrichPosts` produces minus
+   * the fields we deliberately strip for competitors
+   * (coauthors, tagged_users, location_name, thumbnail_storage_url).
+   */
+  posts?: unknown[];
+  formatStats?: Record<
+    string,
+    { count?: number; share_pct?: number; avg_engagement_pct?: number }
+  > | null;
+  weekdayCounts?: number[];
+  topHashtags?: Array<{ tag: string; count: number }>;
 }
 
 // Deterministic temporal series — 30 daily data points with realistic shape
@@ -372,6 +387,22 @@ export const reportData = {
       bio: "Marketing digital · estratégia · workshops",
       externalUrls: ["https://marketingdigital.pt"],
       isVerified: false,
+      // Phase 2B — plausible deterministic per-post detail for the mock.
+      posts: [],
+      formatStats: {
+        Reels: { count: 18, share_pct: 56.3, avg_engagement_pct: 0.62 },
+        "Carrosséis": { count: 9, share_pct: 28.1, avg_engagement_pct: 0.41 },
+        Imagens: { count: 5, share_pct: 15.6, avg_engagement_pct: 0.28 },
+      },
+      // [Dom, Seg, Ter, Qua, Qui, Sex, Sáb] (UTC weekday index 0..6)
+      weekdayCounts: [2, 5, 6, 7, 5, 4, 3],
+      topHashtags: [
+        { tag: "marketingdigital", count: 14 },
+        { tag: "estrategia", count: 9 },
+        { tag: "instagrambusiness", count: 7 },
+        { tag: "socialmedia", count: 6 },
+        { tag: "growth", count: 4 },
+      ],
     },
   ] as ReportCompetitorBreakdownEntry[],
 
