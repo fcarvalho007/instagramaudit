@@ -1,88 +1,118 @@
-## Objetivo
+# PR1 — Comandos browser para validação manual
 
-Após pagamento confirmado de `report_full_9`, atribuir automaticamente **+3 créditos** (1 incluído + 2 bónus beta), de forma idempotente, restrito a este produto, e refletir isso no email e no sidebar.
+Lead de teste: `7b946d45-ecb1-49dc-8702-68d85a860c47` (`fredericodigital@gmail.com`).
+Handle de teste: `frederico.m.carvalho` (ajusta se preferires outro do allowlist).
+Endpoint: `POST /api/analyze-public-v1` (mesma origem do preview/published — o cookie `lead_session` viaja automaticamente com `credentials: "include"`).
 
-## Estado atual (relevante)
+Tu fazes os 4 fetch no DevTools. Eu faço todas as leituras SQL, o insert temporário de entitlement Pro, e o rollback.
 
-- `eupago-webhook.ts` no ramo `paid` já chama `grantEntitlement` e `grantPostPurchaseBetaCredits` (+2, idempotente por `payment_id`, `metadata.kind='post_purchase_beta_bonus'`).
-- **Não existe** o "+1 incluído na compra".
-- Bónus aplicado a **qualquer produto** pago — precisa ser restrito a `report_full_9`.
-- Email `payment-confirmed.ts` já menciona "2 créditos adicionais"; precisa de passar a falar de 1+2 = 3.
-- Sidebar lê saldo via `getMyCreditBalance` e mostra `nav.explore.beta_credits_available` — só precisa de copy refinada.
+---
 
-## Mudanças
+## Snippet base (cola uma vez por chamada)
 
-### 1. `src/lib/credits/credits.server.ts`
+Cada cenário só muda o `window`. Define isto antes:
 
-- Adicionar constante `PURCHASE_INCLUDED_KIND = "purchase_included_credit"` e `PURCHASE_INCLUDED_AMOUNT = 1`.
-- Nova função `grantPurchaseIncludedCredit({ leadId, paymentId, productCode })`:
-  - Mesma estratégia de idempotência aplicacional do bónus beta: SELECT por `reason='admin_adjust'` + `metadata->>kind='purchase_included_credit'` + `metadata->>payment_id=<paymentId>`.
-  - Insere `delta=+1`, `reason='admin_adjust'`, metadata: `{ kind, payment_id, product_code, source: "payment_confirmed", included_credits: 1 }`.
-  - Devolve `{ granted: boolean }`.
-- Atualizar `grantPostPurchaseBetaCredits` para aceitar `productCode` e enriquecer metadata: `{ kind, payment_id, product_code, source: "payment_confirmed", beta_bonus: true, bonus_credits: 2, included_credits: 1, total_granted: 3 }`. Mantém idempotência por `payment_id`.
+```js
+const HANDLE = "frederico.m.carvalho";
 
-### 2. `src/routes/api/public/eupago-webhook.ts`
+async function analyze(windowKind) {
+  const t0 = performance.now();
+  const res = await fetch("/api/analyze-public-v1", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      instagram_username: HANDLE,
+      competitor_usernames: [],
+      window: windowKind,
+    }),
+  });
+  const ms = Math.round(performance.now() - t0);
+  let body;
+  try { body = await res.json(); } catch { body = await res.text(); }
+  console.log("STATUS", res.status, "in", ms, "ms");
+  console.log(JSON.stringify(body, null, 2));
+  return { status: res.status, body, ms };
+}
+```
 
-No bloco `normalized === "paid"`, após `grantEntitlement` e antes do email:
+Cola a resposta de cada chamada (status + JSON resumido — não precisas do payload todo, basta `success`, `error_code`, `data_source` / `outcome` / `cache_key` se existirem, e `analysis_snapshot_id` se vier).
 
-- **Restringir** a atribuição de créditos a `row.product === "report_full_9"`. Para `authority_diagnosis_97` ou outros, saltar (mantém comportamento legado de não receber créditos).
-- Chamar sequencialmente, dentro de try/catch isolado (não derruba webhook):
-  1. `grantPurchaseIncludedCredit({ leadId, paymentId: row.id, productCode: row.product })`
-  2. `grantPostPurchaseBetaCredits({ leadId, paymentId: row.id, productCode: row.product })`
-- Registar `recordProductEvent` `credits_purchase_included_granted` e atualizar o evento `credits_post_purchase_granted` para incluir `total_granted: 3` quando ambos foram concedidos.
+---
 
-### 3. Email — `src/lib/email/templates/payment-confirmed.ts`
+## Sequência dos 4 cenários
 
-- Substituir o card "Oferta beta desbloqueada" por copy com a totalidade 1+2=3:
-  > **Créditos ativados**
-  > Além do acesso ao relatório completo, ativámos **3 créditos** na tua conta: 1 incluído na compra + 2 créditos extra por esta fase beta. Podes usá-los para testar novas janelas de análise ou adicionar concorrentes.
-- Atualizar versão `text` em conformidade.
-- Card é mostrado apenas quando `productName` corresponde ao relatório completo. Adicionar input opcional `creditsGranted?: { included: number; bonus: number } | null` em `PaymentConfirmedInput`; `send-payment-confirmed.server.ts` passa `{ included: 1, bonus: 2 }` apenas para `report_full_9`, `null` caso contrário (card omitido). Não introduz mudança visual para outros produtos.
+### A. Baseline sem janela (Free OK)
 
-### 4. Sidebar — `src/components/report-redesign/v2/report-block-nav.tsx` e i18n
+Pré-condição: **sem** `lead_entitlements` Pro para este lead. (Eu confirmo via SELECT antes.)
 
-- Atualizar string `nav.explore.beta_credits_available` (PT) para versão neutra que funcione para 3, 2 ou 1 crédito.
-- Adicionar tooltip/aria opcional com a breakdown quando saldo = 3 imediatamente após compra: "1 incluído na compra + 2 bónus beta". Implementação simples: tooltip estático no hover do badge se `balance >= 3`. Sem nova chamada de rede.
+```js
+await analyze("baseline");
+```
 
-### 5. Tests — `src/lib/credits/__tests__/credits-post-purchase.test.ts`
+Esperado: `200`, sucesso normal Free. Consumo de 1 crédito ou cache hit, sem `WINDOW_REQUIRES_PRO`.
 
-Estender o ficheiro existente (mesmo mock):
+---
 
-- `grantPurchaseIncludedCredit`: +1 ao saldo numa primeira chamada; segunda chamada com mesmo `payment_id` é no-op (saldo continua 1).
-- Sequência combinada: incluído + bónus → saldo = 3 com 2 linhas no ledger; retry da sequência mantém saldo = 3.
-- Pagamentos diferentes acumulam (3 + 3 = 6).
+### B. Pro 30d — primeira chamada
 
-Novo ficheiro `src/routes/api/public/__tests__/eupago-webhook-credits.test.ts` (mock leve de `grantEntitlement`, `grantPurchaseIncludedCredit`, `grantPostPurchaseBetaCredits`, `recordProductEvent`, `enqueuePaidEnrichmentsForPayment` e `lead_payments`):
+Pré-condição: eu insiro entitlement `report_full_9` temporário em `lead_entitlements` para este lead (com `metadata.kind = "qa_temporary"` para distinguir). Confirmo `hasEntitlement` SELECT antes de te dar luz verde.
 
-- `report_full_9` paid → grants chamados uma vez cada com `productCode='report_full_9'`.
-- `authority_diagnosis_97` paid → **nenhum** dos dois grants é chamado.
-- Status `expired` / `failed` / `pending` → grants nunca chamados.
-- Re-entrega do mesmo webhook (segunda invocação) → grants chamados de novo mas devolvem `granted: false` (idempotência aplicacional já testada na suite de credits).
+```js
+await analyze("30d");
+```
 
-Email render test em `src/lib/email/templates/__tests__` (ou estender existente se houver):
-- `report_full_9` com `creditsGranted={included:1,bonus:2}` → HTML/text contêm "3 créditos", "1 incluído", "2 créditos extra".
-- Outro produto com `creditsGranted=null` → card ausente.
+Esperado: `200`, sucesso Pro com janela 30d, sem `WINDOW_REQUIRES_PRO`, e geração fresh (ou cache fresh se já existir snapshot 30d) — eu confirmo no `analysis_events` / `provider_call_logs`.
 
-## Idempotência (resumo)
+---
 
-- Chave lógica por grant: `(lead_id, reason='admin_adjust', metadata.kind, metadata.payment_id)`.
-- Verificada via SELECT pré-insert (mesmo padrão já em produção para o bónus beta).
-- Webhook idempotente continua a beneficiar do early-return `row.status === 'paid' && row.paid_at`; mesmo se este falhar (race), os grants individuais são no-op.
-- Sem nova migração de schema.
+### C. Pro 30d — repetição (cache hit)
 
-## O que NÃO muda
+Mesma cookie, mesmo entitlement ainda ativo. Logo a seguir a B:
 
-- Preços, montantes do checkout, request à EuPago, transição de estado de pagamento.
-- Lógica de `grantEntitlement`, fluxo de cupões, enrichments pagos.
-- Lógica do relatório gratuito, Apify, OpenAI, DataForSEO.
-- Schema da BD (apenas metadata adicional dentro de `credit_ledger.metadata`).
-- Backfill retroativo — apenas pagamentos futuros.
+```js
+await analyze("30d");
+```
 
-## Output ao terminar a implementação
+Esperado: `200`, `data_source: "cache"` (ou equivalente), zero novas chamadas Apify, e — se o relatório já está associado ao lead — zero crédito adicional reservado.
 
-- Lista de ficheiros alterados.
-- Exemplo de linhas no `credit_ledger` para uma compra `report_full_9`.
-- Estratégia de idempotência confirmada.
-- Cópia exata adicionada ao email.
-- Lista de testes adicionados + resultado.
-- Confirmação de que nenhum montante ou request a EuPago foi alterado.
+---
+
+### D. Free 30d após rollback do entitlement
+
+Pré-condição: eu faço rollback (`DELETE` da linha temporária inserida em B). Confirmo via SELECT que `hasEntitlement(leadId, "report_full_9") === false`.
+
+```js
+await analyze("30d");
+```
+
+Esperado: `403`, `error_code: "WINDOW_REQUIRES_PRO"`, mensagem em PT, **sem** consumir crédito e **sem** chamada Apify (gate corre antes do `reserveCredit`).
+
+---
+
+## Verificações server-side que eu corro entre cenários
+
+Antes de A, depois de cada cenário, e no fim:
+
+1. `credit_balance(leadId)` antes/depois para ver delta de cada cenário.
+2. `credit_ledger` últimas 10 linhas para o `leadId` — confirmar que A consumiu (ou cache), B reservou+confirmou crédito, C não criou nova linha (ou só `reservation` revertida), D não criou linha nenhuma.
+3. `analysis_events` últimas 10 linhas para `handle = frederico.m.carvalho` — confirmar `outcome` e `data_source` (fresh vs cache vs blocked_credits) por cenário.
+4. `provider_call_logs` últimas 5 linhas para confirmar se houve ou não chamada Apify em cada cenário (sobretudo confirmar que C e D **não** geram nova linha).
+5. `analysis_snapshots` mais recente para `frederico.m.carvalho` — confirmar `cache_key` (sufixo `:w=30d`) em B/C.
+
+## Inserts / rollbacks que eu corro
+
+- **Antes de B**: `INSERT INTO lead_entitlements (lead_id, product_code, metadata) VALUES ('7b946d45-…', 'report_full_9', '{"kind":"qa_temporary","granted_by":"qa_pr1"}');`
+- **Depois de C, antes de D**: `DELETE FROM lead_entitlements WHERE lead_id = '7b946d45-…' AND product_code = 'report_full_9' AND metadata->>'kind' = 'qa_temporary';`
+- **No fim**: confirmar que não ficou nenhum entitlement `qa_temporary` ativo, e reportar deltas de saldo.
+
+## Restrições
+
+- Sem `INTERNAL_API_TOKEN`, sem header `x-internal-token` — o cookie `lead_session` é o único auth.
+- Sem `window: "90d"` em nenhum momento.
+- Sem expor o valor do cookie no chat.
+- Sem mexer em pagamentos, EuPago, ou nos +3 créditos do plano paralelo.
+
+## O que reporto no fim
+
+Tabela com, por cenário: `status`, `error_code` (se houver), `data_source`, `outcome`, delta `credit_balance`, nova linha em `provider_call_logs` (sim/não), `cache_key` resultante, e confirmação do gate Pro em D.
