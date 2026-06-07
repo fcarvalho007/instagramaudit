@@ -24,6 +24,15 @@ export interface PaymentConfirmedInput {
   paymentReference?: string | null;
   /** Public report URL — required. */
   reportUrl: string;
+  /**
+   * Quando presente, renderiza o card "Créditos ativados" com a
+   * breakdown explícita (incluído + bónus = total). Quando `null`/omisso
+   * o card é omitido (produtos sem grant de créditos).
+   */
+  creditsGranted?: {
+    included: number;
+    bonus: number;
+  } | null;
 }
 
 const SUBJECT = "Pagamento confirmado — relatório completo desbloqueado";
@@ -107,19 +116,24 @@ export function getPaymentConfirmedParts(
   </tr>
 </table>`;
 
-  // Surpresa pós-compra: bónus de 2 créditos beta. Hoje
-  // `grantPostPurchaseBetaCredits` corre no webhook para qualquer pagamento
-  // antes do envio deste email, por isso o card é incondicional. Se mais
-  // tarde o bónus passar a ser product-scoped, introduzir um
-  // `showBetaBonus?: boolean` em `PaymentConfirmedInput` e gatekeepar.
-  const betaBonusCardHtml = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#fafaf9;border:1px solid #e7e5e4;border-radius:10px;margin:0 0 20px 0;">
+  // Créditos ativados (apenas quando o caller passou `creditsGranted`,
+  // hoje só para `report_full_9`). A copy explicita a breakdown
+  // incluído + bónus para corresponder ao que aparece na sidebar.
+  const credits = input.creditsGranted ?? null;
+  const includedCredits = Math.max(0, credits?.included ?? 0);
+  const bonusCredits = Math.max(0, credits?.bonus ?? 0);
+  const totalCredits = includedCredits + bonusCredits;
+  const showCreditsCard = credits !== null && totalCredits > 0;
+  const creditsCardHtml = showCreditsCard
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#fafaf9;border:1px solid #e7e5e4;border-radius:10px;margin:0 0 20px 0;">
   <tr>
     <td style="padding:18px 20px;">
-      <p style="margin:0 0 8px 0;font-size:11px;line-height:1.4;letter-spacing:0.14em;color:#78716c;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-weight:600;">Oferta beta desbloqueada</p>
-      <p style="margin:0;font-size:14px;line-height:1.55;color:#0a0e1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Como estamos em beta, oferecemos 2 créditos adicionais para explorares mais o relatório. Podes usá-los para gerar outro período ou adicionar concorrentes.</p>
+      <p style="margin:0 0 8px 0;font-size:11px;line-height:1.4;letter-spacing:0.14em;color:#78716c;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-weight:600;">Créditos ativados</p>
+      <p style="margin:0;font-size:14px;line-height:1.55;color:#0a0e1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Além do acesso ao relatório completo, ativámos <strong style="color:#0a0e1a;">${totalCredits} créditos</strong> na tua conta: ${includedCredits} incluído na compra e ${bonusCredits} créditos extra por esta fase beta. Podes usá-los para testar novas janelas de análise ou adicionar concorrentes.</p>
     </td>
   </tr>
-</table>`;
+</table>`
+    : "";
 
   const signatureBlockHtml = `<p style="margin:24px 0 0 0;font-size:14px;line-height:1.6;color:#57534e;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Obrigado pela confiança,<br/>Frederico · AuditProfiles</p>`;
 
@@ -132,9 +146,11 @@ export function getPaymentConfirmedParts(
     renderUrlFallbackHtml(reportUrl),
     `<div style="height:20px;"></div>`,
     reassuranceCardHtml,
-    betaBonusCardHtml,
+    creditsCardHtml,
     signatureBlockHtml,
-  ].join("\n");
+  ]
+    .filter((segment) => segment && segment.trim().length > 0)
+    .join("\n");
 
   // ---- Plain text body ----
   const textReceiptLines: string[] = [];
@@ -148,6 +164,15 @@ export function getPaymentConfirmedParts(
     ? `O relatório completo de @${handle} está desbloqueado — com acesso vitalício às 6 secções.`
     : `O relatório completo está desbloqueado — com acesso vitalício às 6 secções.`;
 
+  const creditsTextLines = showCreditsCard
+    ? [
+        "",
+        "— Créditos ativados —",
+        `Além do acesso ao relatório completo, ativámos ${totalCredits} créditos na tua conta: ${includedCredits} incluído na compra e ${bonusCredits} créditos extra por esta fase beta.`,
+        "Podes usá-los para testar novas janelas de análise ou adicionar concorrentes.",
+      ]
+    : [];
+
   const text = joinLines([
     greetingText(input.firstName),
     "",
@@ -160,10 +185,7 @@ export function getPaymentConfirmedParts(
     reportUrl,
     "",
     "Pagamento único, sem subscrição nem renovação automática. O relatório fica guardado na tua conta.",
-    "",
-    "— Oferta beta desbloqueada —",
-    "Como estamos em beta, oferecemos 2 créditos adicionais para explorares mais o relatório.",
-    "Podes usá-los para gerar outro período ou adicionar concorrentes.",
+    ...creditsTextLines,
     "",
     "Obrigado pela confiança,",
     "Frederico · AuditProfiles",
