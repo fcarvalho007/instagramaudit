@@ -587,8 +587,8 @@
       "section_paid": "Secções",
       "progress": "{{accessible}} de {{total}} secções acessíveis",
       "premium_count": "{{count}} por desbloquear",
-      "cta": "Desbloquear relatório completo",
-      "cta_aria": "Desbloquear relatório completo",
+      "cta": "Desbloquear relatório",
+      "cta_aria": "Desbloquear relatório",
       "trust": "Acede ao Diagnóstico editorial e às restantes secções premium."
     },
     "access_locked": {
