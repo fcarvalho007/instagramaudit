@@ -26,6 +26,7 @@ import { buildBlock01Sample } from "@/lib/report/block01-sample";
 import { PremiumTeaserCard } from "./premium-teaser-card";
 import { CompetitorOverviewCompare } from "./overview/competitor-overview-compare";
 import { CompetitorEngagementCompare } from "./competitor-engagement-compare";
+import { CompetitorCadenceCompare } from "./competitor-cadence-compare";
 
 const PREMIUM_TEASERS = [
   {
@@ -385,6 +386,17 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
               cadenceWindowDays={enriched.cadence.windowDays}
               socialinsiderRef={result.externalReferences}
             />
+            {firstCompetitor ? (
+              <div className="mt-6 md:mt-8">
+                <CompetitorCadenceCompare
+                  primary={{
+                    handle: primaryHandle,
+                    postingFrequencyWeekly: k.postingFrequencyWeekly,
+                  }}
+                  competitor={firstCompetitor}
+                />
+              </div>
+            ) : null}
             </div>
             <div id="formatos" className="scroll-mt-24">
             <FormatCard
