@@ -255,7 +255,9 @@ function SignalList({
   emptyLabel: string;
 }) {
   const dotClass =
-    tone === "positive" ? "bg-[var(--report-primary,#0077B6)]" : "bg-[#BA7517]";
+    tone === "positive"
+      ? "bg-[rgb(var(--signal-success))]"
+      : "bg-[rgb(var(--signal-warning))]";
   return (
     <div>
       <p className="text-eyebrow-sm text-content-tertiary">{title}</p>
