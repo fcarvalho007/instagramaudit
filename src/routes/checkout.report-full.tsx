@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
+import { CheckoutPrimaryButton } from "@/components/checkout/checkout-primary-button";
 import { StepProgress } from "@/components/checkout/step-progress";
 import { ConfirmUnlockCard } from "@/components/checkout/confirm-unlock-card";
 import {
@@ -20,7 +21,8 @@ import { OrderSummary } from "@/components/checkout/order-summary";
 import { MissingLeadSession } from "@/components/checkout/missing-lead-session";
 import {
   ReportPriorityForm,
-  type ReportPriority,
+  GOAL_TO_LEGACY_PRIORITY,
+  type ReportGoal,
 } from "@/components/checkout/report-priority-form";
 import { HumanDiagnosisUpsell } from "@/components/checkout/human-diagnosis-upsell";
 import { createEupagoCheckout } from "@/lib/payments/eupago.functions";
@@ -33,9 +35,9 @@ const UPSELL_TARGET: ProductCode = "authority_diagnosis_97";
 
 const STEP_LABELS = [
   "Confirmar desbloqueio",
-  "Prioridade",
+  "Objectivo",
   "Leitura humana?",
-  "Faturação e pagamento",
+  "Faturação",
 ];
 
 const searchSchema = z.object({
@@ -104,8 +106,7 @@ function CheckoutSteps() {
   const createCheckout = useServerFn(createEupagoCheckout);
 
   const [step, setStep] = useState(1);
-  const [reportPriority, setReportPriority] =
-    useState<ReportPriority | null>(null);
+  const [reportGoals, setReportGoals] = useState<ReportGoal[]>([]);
   const [selectedProduct, setSelectedProduct] =
     useState<ProductCode>(SOURCE_PRODUCT);
   const [upsellPresented, setUpsellPresented] = useState(false);
@@ -114,6 +115,11 @@ function CheckoutSteps() {
   const [billingErrors, setBillingErrors] = useState<BillingErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const primaryGoal = reportGoals[0] ?? null;
+  const reportPriorityLegacy = primaryGoal
+    ? GOAL_TO_LEGACY_PRIORITY[primaryGoal]
+    : undefined;
 
   useEffect(() => {
     trackEvent({
@@ -254,7 +260,8 @@ function CheckoutSteps() {
               : "/checkout/report-full?status=success",
           source_component: search.source ?? "checkout_report_full",
           coupon_code: search.coupon,
-          report_priority: reportPriority ?? undefined,
+          report_priority: reportPriorityLegacy,
+          report_goals: reportGoals.length > 0 ? reportGoals : undefined,
           upsell: {
             presented: upsellPresented,
             accepted: upsellAccepted,
@@ -331,24 +338,28 @@ function CheckoutSteps() {
           <section className="space-y-5">
             <header>
               <h1 className="font-fraunces text-2xl font-medium text-content-primary">
-                Por onde queres começar?
+                O que te traz aqui?
               </h1>
               <p className="mt-2 text-sm text-content-secondary">
-                Uma escolha rápida para destacarmos a secção certa primeiro.
+                Podes escolher mais do que um. A primeira escolha conta como principal.
               </p>
             </header>
             <ReportPriorityForm
-              value={reportPriority}
-              onChange={setReportPriority}
+              goals={reportGoals}
+              onChange={setReportGoals}
             />
             <StepActions
               backLabel="Voltar"
               onBack={goBack}
               nextLabel="Continuar"
-              nextDisabled={!reportPriority}
+              nextDisabled={reportGoals.length === 0}
               onNext={() => {
-                if (!reportPriority) return;
-                trackStepComplete({ report_priority: reportPriority });
+                if (reportGoals.length === 0) return;
+                trackStepComplete({
+                  report_goals: reportGoals,
+                  report_priority: reportPriorityLegacy,
+                  primary_goal: primaryGoal,
+                });
                 goNext();
               }}
             />
@@ -430,9 +441,8 @@ function CheckoutSteps() {
                 <ArrowLeft className="size-4" aria-hidden="true" />
                 Voltar
               </Button>
-              <Button
+              <CheckoutPrimaryButton
                 type="button"
-                variant="primary"
                 onClick={submitPayment}
                 disabled={submitting}
                 className="gap-2 w-full sm:w-auto"
@@ -451,7 +461,7 @@ function CheckoutSteps() {
                     <ArrowRight className="size-4" aria-hidden="true" />
                   </>
                 )}
-              </Button>
+              </CheckoutPrimaryButton>
             </div>
           </section>
         ) : null}
@@ -483,16 +493,15 @@ function StepActions({
         <ArrowLeft className="size-4" aria-hidden="true" />
         {backLabel}
       </Button>
-      <Button
+      <CheckoutPrimaryButton
         type="button"
-        variant="primary"
         onClick={onNext}
         disabled={nextDisabled}
         className="gap-2"
       >
         {nextLabel}
         <ArrowRight className="size-4" aria-hidden="true" />
-      </Button>
+      </CheckoutPrimaryButton>
     </div>
   );
 }

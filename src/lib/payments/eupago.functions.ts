@@ -87,6 +87,18 @@ const inputSchema = z
         "recommendations",
       ])
       .optional(),
+    report_goals: z
+      .array(
+        z.enum([
+          "compare_competitors",
+          "what_to_publish",
+          "what_works",
+          "present_to_client",
+        ]),
+      )
+      .min(1)
+      .max(4)
+      .optional(),
     upsell: z
       .object({
         presented: z.boolean(),
@@ -226,6 +238,8 @@ export const createEupagoCheckout = createServerFn({ method: "POST" })
           qualification: data.qualification ?? null,
           upsell_interest: data.upsell_interest ?? null,
           report_priority: data.report_priority ?? null,
+          report_goals: data.report_goals ?? null,
+          primary_goal: data.report_goals?.[0] ?? null,
           billing: data.billing ?? null,
           source_product: upsellSource ?? product.code,
           target_product: upsellPresented
