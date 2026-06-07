@@ -1,99 +1,48 @@
-## PR1 window validation — setup for browser session
+## Phase 1 competitor comparison — already implemented
 
-### Current state (confirmed)
+A prior round of this session already shipped Phase 1 exactly to the spec in this prompt. No new code changes are required. Below is the verification, with file/line citations.
 
-- **Lead:** `01bf861c-6a17-4b36-81b7-130ef2f143da` — `frederico.carvalho@digitalfc.pt` (created 2026-06-06)
-- **Credit balance:** `1` (≥ 1, so no top-up needed)
-- **Existing `report_full_9` entitlement:** none
-- **Latest snapshot for `frederico.m.carvalho`:** baseline (no `window_kind`), `cache_key = v1:frederico.m.carvalho|`, expires 2026-06-08 13:34Z — cached and reusable for the baseline A call
+### Files already in place
 
-### Step 1 — Grant temporary QA entitlement (Edit mode)
+- `src/components/report-redesign/v2/overview/competitor-overview-compare.tsx`
+- `src/components/report-redesign/v2/competitor-engagement-compare.tsx`
+- `src/components/report-redesign/v2/competitor-cadence-compare.tsx`
+- `src/components/report-redesign/v2/report-overview-block.tsx` (wiring)
+- `src/components/report-redesign/v2/compare/` primitives — already used (`CompareStatBlock`, `buildDelta`, compare types)
 
-```sql
-INSERT INTO lead_entitlements (lead_id, product_code, payment_id, metadata)
-VALUES (
-  '01bf861c-6a17-4b36-81b7-130ef2f143da',
-  'report_full_9',
-  NULL,
-  jsonb_build_object(
-    'source', 'manual_pr1_validation',
-    'session', 'auditprofiles_browser',
-    't0', to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
-  )
-);
-```
+### Wiring confirmed in `report-overview-block.tsx`
 
-Then re-read to confirm exactly one new row with `metadata.source = 'manual_pr1_validation'` and `payment_id IS NULL`.
+- Line 120: `const firstCompetitor = result.data.competitorBreakdown[0] ?? null;` — only the first competitor is used (second is ignored; TODO for multi-competitor lives there).
+- Lines 266–277: `<CompetitorOverviewCompare … />` inserted into the Overview block, guarded by `mode === "all" && firstCompetitor`.
+- Lines 372–381: `<CompetitorEngagementCompare … />` inserted into the Engagement block, guarded by the same condition.
+- Lines 400–407: `<CompetitorCadenceCompare … />` inserted into the Cadence/Frequency block, guarded by the same condition.
 
-### Step 2 — Hand off to user for browser calls (B & C)
+### Spec → implementation mapping
 
-The user runs these in the DevTools console on `auditprofiles.com` (same tab as the logged-in lead session). All use `credentials: "include"` so the session cookie is sent. No `INTERNAL_API_TOKEN`.
+| Requirement | Status |
+| --- | --- |
+| Cards wired: Overview, Engagement, Cadence | ✅ (3 blocks) |
+| Metrics: followers, posts analysed, engagement rate | ✅ Overview |
+| Metrics: avg engagement, avg likes/post, avg comments/post | ✅ Engagement (rows hidden when null/0) |
+| Metric: estimated posts per week | ✅ Cadence |
+| Format Mix / Hashtags / Captions / Comments etc. | ❌ Deliberately deferred to Phase 2 |
+| `averageEngagementRate` already in pp — no re-scaling | ✅ Components format as `%` directly |
+| `windowAligned === false` → neutral hint | ✅ "Concorrente em amostra recente/baseline." shown when primary window is 30d/90d |
+| `competitorBreakdown.length === 0` → cards unchanged | ✅ Guard returns no compare block |
+| Missing metric row hidden, no invented zeros | ✅ `isPositive(...)` filter in Overview; Engagement/Cadence return `null` when no data |
+| Empty comparison block never rendered | ✅ All three components return `null` early when no comparable rows |
+| Primary left/blue, competitor right/secondary | ✅ via existing compare primitives |
+| Free/Public report unchanged | ✅ All three blocks gated behind `mode === "all"` |
+| `ReportCompetitors` legacy gauge untouched | ✅ Not imported or modified in this work |
+| Mobile 375px no overflow | ✅ `CompareStatBlock` uses `grid-cols-1 sm:grid-cols-[1fr_auto_1fr]` (stacks on mobile); `<main>` has `overflow-x-clip` |
+| Values readable as text | ✅ Numeric + labelled handles, not colour-only |
+| No backend / Apify / OpenAI / DataForSEO changes | ✅ Pure presentation, reads already-loaded `competitorBreakdown` |
+| No checkout / EuPago / credits / entitlements / schema / pricing changes | ✅ |
 
-**A — Baseline (Free, no window) — should still work, no credit consumed:**
-```js
-await fetch('/api/analyze-public-v1', {
-  method: 'POST', credentials: 'include',
-  headers: {'Content-Type': 'application/json'},
-  body: JSON.stringify({ username: 'frederico.m.carvalho' })
-}).then(r => r.json())
-```
+### Recommended action
 
-**B — First Pro 30d call — should succeed and consume 1 credit:**
-```js
-await fetch('/api/analyze-public-v1', {
-  method: 'POST', credentials: 'include',
-  headers: {'Content-Type': 'application/json'},
-  body: JSON.stringify({ username: 'frederico.m.carvalho', window: '30d' })
-}).then(r => r.json())
-```
+No edits needed. If you want me to verify visually in the preview at 375px and desktop, I can do that next. Otherwise this can be closed as already-done and we can move to Phase 2 (Format Mix + Posting Rhythm), whose payload extension (Fase 2B) is also already merged.
 
-**C — Repeat Pro 30d call — should hit cache, NOT consume another credit:**
-```js
-// Same call as B, run again immediately
-await fetch('/api/analyze-public-v1', {
-  method: 'POST', credentials: 'include',
-  headers: {'Content-Type': 'application/json'},
-  body: JSON.stringify({ username: 'frederico.m.carvalho', window: '30d' })
-}).then(r => r.json())
-```
+### Side note (not part of this task)
 
-User pastes the three JSON responses back. I verify:
-- A → `success: true`, baseline payload
-- B → `success: true`, `data_source` fresh, credit ledger now `0` (1 debit appended with `reason` referencing 30d run)
-- C → `success: true`, `data_source` cache/stale, ledger unchanged
-
-### Step 3 — Rollback temporary entitlement (Edit mode, after B+C)
-
-Once B+C are confirmed, delete ONLY the QA row, scoped by metadata so paid rows can never match:
-
-```sql
-DELETE FROM lead_entitlements
-WHERE lead_id = '01bf861c-6a17-4b36-81b7-130ef2f143da'
-  AND product_code = 'report_full_9'
-  AND payment_id IS NULL
-  AND metadata->>'source' = 'manual_pr1_validation';
-```
-
-Re-read and confirm 0 entitlements for the lead.
-
-### Step 4 — Hand off for browser call D
-
-**D — Free 30d after rollback — should return `WINDOW_REQUIRES_PRO`:**
-```js
-await fetch('/api/analyze-public-v1', {
-  method: 'POST', credentials: 'include',
-  headers: {'Content-Type': 'application/json'},
-  body: JSON.stringify({ username: 'frederico.m.carvalho', window: '30d' })
-}).then(r => r.json())
-```
-
-Expected: HTTP 4xx with `error: "WINDOW_REQUIRES_PRO"` (or analogous code). No credit consumed.
-
-### Out of scope (untouched)
-
-Payments, checkout, EuPago, schema, Apify, OpenAI, DataForSEO, `INTERNAL_API_TOKEN`, 90d window. No code changes; only one row inserted then deleted in `lead_entitlements`.
-
-### Pause points
-
-- After Step 1 → ask user to run A, B, C and paste outputs.
-- After Step 3 → ask user to run D and paste output.
+The temporary QA entitlement `7ae71c27…` granted to lead `01bf861c…` (PR1 validation) is still in `lead_entitlements`. The B/C/D browser-console results were never pasted back, so the rollback step is still pending. Let me know when you want to either complete that validation or roll it back without running B/C/D.
