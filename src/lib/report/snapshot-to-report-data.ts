@@ -1325,6 +1325,35 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
               ))
             : [],
           isVerified: p.is_verified === true,
+          // Phase 2B — deterministic post-derived detail (optional;
+          // older snapshots simply omit these and cards hide).
+          posts: Array.isArray((c as Record<string, unknown>).posts)
+            ? ((c as Record<string, unknown>).posts as unknown[])
+            : [],
+          formatStats:
+            (c as Record<string, unknown>).format_stats &&
+            typeof (c as Record<string, unknown>).format_stats === "object"
+              ? ((c as Record<string, unknown>).format_stats as Record<
+                  string,
+                  { count?: number; share_pct?: number; avg_engagement_pct?: number }
+                >)
+              : null,
+          weekdayCounts: Array.isArray((c as Record<string, unknown>).weekday_counts)
+            ? ((c as Record<string, unknown>).weekday_counts as unknown[])
+                .map((n) => num(n, 0))
+                .slice(0, 7)
+            : [],
+          topHashtags: Array.isArray((c as Record<string, unknown>).top_hashtags)
+            ? ((c as Record<string, unknown>).top_hashtags as unknown[])
+                .map((entry) => {
+                  if (!entry || typeof entry !== "object") return null;
+                  const e = entry as Record<string, unknown>;
+                  const tag = typeof e.tag === "string" ? e.tag : null;
+                  if (!tag) return null;
+                  return { tag, count: num(e.count, 0) };
+                })
+                .filter((v): v is { tag: string; count: number } => v !== null)
+            : [],
         };
       })
       .filter((v): v is NonNullable<typeof v> => v !== null);
