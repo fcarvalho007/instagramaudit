@@ -331,8 +331,8 @@ function ProgressSummary({ items }: { items: SidebarItem[] }) {
   const accessible = items.filter((i) => i.access === "accessible").length;
   const total = items.length;
   return (
-    <div className="px-1 pt-3 pb-1">
-      <p className="mb-2 text-xs font-medium text-content-secondary">
+    <div className="px-1 pt-1 pb-1">
+      <p className="mb-1.5 text-xs font-medium text-content-secondary">
         {t("nav.access.progress", { accessible, total })}
       </p>
       <div className="flex w-full gap-1" aria-hidden="true">
@@ -381,7 +381,7 @@ function ItemRow({
       className={cn(
         "group relative w-full flex items-center gap-3",
         "rounded-lg pl-3 pr-2.5 text-left",
-        compact ? "py-1.5" : "py-2.5",
+        compact ? "py-1.5" : "py-2",
         "transition-colors duration-150",
         "focus-visible:outline-none focus-visible:ring-2",
         "focus-visible:ring-[rgb(var(--accent-primary))] focus-visible:ring-offset-1",
@@ -451,7 +451,7 @@ function LockedItemRow({
       className={cn(
         "group relative w-full flex items-center gap-3",
         "rounded-lg pl-3 pr-2.5 text-left",
-        compact ? "py-1.5" : "py-2.5",
+        compact ? "py-1.5" : "py-2",
         "transition-colors duration-150",
         isActive
           ? "bg-surface-muted/70 text-content-secondary"
@@ -837,13 +837,13 @@ function ExploreSection({
   }
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-2">
       <p className="px-2 text-eyebrow-sm text-content-tertiary">
         {t("nav.explore.title")}
       </p>
 
       {/* Period */}
-      <div className="px-2 space-y-1.5">
+      <div className="px-2 space-y-1">
         <div className="flex items-baseline justify-between gap-2">
           <span className="text-xs font-semibold text-content-secondary">
             {t("nav.explore.period_label")}
@@ -899,7 +899,7 @@ function ExploreSection({
       </div>
 
       {/* Competitors */}
-      <div className="px-2 space-y-1.5">
+      <div className="px-2 space-y-1">
         <button
           type="button"
           onClick={onAddCompetitor}
@@ -907,7 +907,7 @@ function ExploreSection({
           aria-label={t("nav.explore.add_competitor_aria")}
           className={cn(
             "inline-flex w-full items-center justify-center gap-1.5",
-            "rounded-lg border border-dashed h-9 px-3",
+            "rounded-lg border border-dashed h-8 px-3",
             "text-xs font-medium transition-colors duration-150",
             premiumUnlocked
               ? competitorCount >= COMPETITOR_MAX
@@ -1007,14 +1007,14 @@ function UnlockPromoCard({
     );
   }
   return (
-    <div className="rounded-lg border border-border-default bg-surface-muted/40 p-3 space-y-2.5">
+    <div className="rounded-lg border border-border-default bg-surface-muted/40 p-2.5 space-y-2">
       <button
         type="button"
         onClick={onOpenDialog}
         aria-label={t("nav.access.cta_aria")}
         className={cn(
           "inline-flex w-full items-center justify-center gap-2 rounded-full",
-          "bg-content-primary px-4 py-2.5 text-sm font-semibold text-white",
+          "bg-content-primary px-4 py-2 text-[13px] font-semibold text-white",
           "hover:bg-content-primary/90 transition-colors",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-primary))] focus-visible:ring-offset-1",
         )}
@@ -1123,7 +1123,7 @@ function SidebarList({
   }
 
   return (
-    <div className={cn("transition-all duration-200", compact ? "space-y-2" : "space-y-4")}>
+    <div className={cn("transition-all duration-200", compact ? "space-y-2" : "space-y-3")}>
       {!premiumUnlocked && !compact && <ProgressSummary items={items} />}
 
       {premiumUnlocked ? (
@@ -1133,7 +1133,7 @@ function SidebarList({
               {t("nav.access.section_paid")}
             </p>
           )}
-          <ul className="space-y-0.5">
+          <ul className="space-y-0">
             {items.map((item) => {
               const isDiag = item.block.id === DIAGNOSTIC_SECTION_ID;
               const showSubs = !compact && isDiag && diagExpanded;
@@ -1311,13 +1311,13 @@ export function ReportBlockSidebar({
       className={cn(
         "hidden lg:block self-start shrink-0",
         "w-64 xl:w-72",
-        "sticky top-24",
-        "max-h-[calc(100vh-7rem)] overflow-y-auto",
+        "sticky top-20",
+        "max-h-[calc(100vh-5.5rem)] overflow-y-auto",
         "rounded-2xl border border-border-default",
         "bg-white",
         "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_18px_40px_-24px_rgba(15,23,42,0.12)]",
         "transition-all duration-200",
-        compact ? "p-3" : "p-4 xl:p-5",
+        compact ? "p-3" : "p-3 xl:p-4",
       )}
     >
       {compact && (
