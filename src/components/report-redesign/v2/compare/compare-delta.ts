@@ -72,3 +72,96 @@ function tone(diff: number, higherIsBetter: boolean): DeltaTone {
   const wins = higherIsBetter ? diff > 0 : diff < 0;
   return wins ? "positive" : "negative";
 }
+
+/**
+ * Per-side deterministic text used by the redesigned `CompareStatBlock`.
+ *
+ * - Primary side describes direction relative to the competitor.
+ * - Competitor side describes the ratio relative to the primary
+ *   ("X× o teu valor" / "X× menos que tu"), or `pp` deltas for
+ *   percentage-point units.
+ *
+ * Pure pt-PT, no AI, no color — caller picks the tone via `tone`.
+ */
+export interface DeltaPair {
+  primarySubText: string;
+  competitorSubText: string;
+  tone: DeltaTone;
+}
+
+export function buildDeltaPair(
+  primary: number,
+  competitor: number,
+  unit: CompareUnit,
+  higherIsBetter: boolean,
+): DeltaPair {
+  if (!Number.isFinite(primary) || !Number.isFinite(competitor)) {
+    return { primarySubText: "", competitorSubText: "", tone: "neutral" };
+  }
+
+  if (unit === "pp") {
+    const diff = primary - competitor;
+    const rounded = Math.round(diff * 100) / 100;
+    if (rounded === 0) {
+      return {
+        primarySubText: "= em linha com o concorrente",
+        competitorSubText: "em linha com o teu valor",
+        tone: "neutral",
+      };
+    }
+    const absLabel = `${fmtNumberPt(Math.abs(rounded), 2)} pp`;
+    if (rounded > 0) {
+      return {
+        primarySubText: `↑ +${absLabel} acima`,
+        competitorSubText: `−${absLabel} abaixo do teu valor`,
+        tone: tone(rounded, higherIsBetter),
+      };
+    }
+    return {
+      primarySubText: `↓ −${absLabel} abaixo`,
+      competitorSubText: `+${absLabel} acima do teu valor`,
+      tone: tone(rounded, higherIsBetter),
+    };
+  }
+
+  // Relative — competitor as base.
+  if (competitor === 0) {
+    if (primary === 0) {
+      return {
+        primarySubText: "= em linha com o concorrente",
+        competitorSubText: "em linha com o teu valor",
+        tone: "neutral",
+      };
+    }
+    return {
+      primarySubText: "↑ acima do concorrente",
+      competitorSubText: "sem dados comparáveis",
+      tone: tone(primary, higherIsBetter),
+    };
+  }
+
+  const ratio = primary / competitor;
+  // In-line band ±5%.
+  if (ratio >= 0.95 && ratio <= 1.05) {
+    return {
+      primarySubText: "= em linha com o concorrente",
+      competitorSubText: "em linha com o teu valor",
+      tone: "neutral",
+    };
+  }
+  if (ratio > 1.05) {
+    const mult = fmtNumberPt(ratio, 1);
+    return {
+      primarySubText: "↑ acima do concorrente",
+      competitorSubText: `${mult}× menos que tu`,
+      tone: tone(1, higherIsBetter),
+    };
+  }
+  const inverse = competitor / primary;
+  const mult = fmtNumberPt(inverse, 1);
+  return {
+    primarySubText: "↓ abaixo do concorrente",
+    competitorSubText: `${mult}× o teu valor`,
+    tone: tone(-1, higherIsBetter),
+  };
+}
