@@ -318,6 +318,31 @@ export const reportData = {
     { day: "Dom", fullDay: "Domingo", avgEngagement: 0.38, isLeader: false },
   ],
 
+  // Per-competitor deterministic breakdown used by the new "Profile vs
+  // Competitor" primitives (Padrão 1/2/3). Legacy `competitors` array
+  // above continues to power ReportCompetitors (horizontal gauge) — the
+  // two slices are independent on purpose so the locked component is not
+  // touched. Empty array hides any comparison surfaces.
+  competitorBreakdown: [
+    {
+      username: "marketing.digital.pt",
+      displayName: "Marketing Digital PT",
+      followers: 12800,
+      postsAnalyzed: 32,
+      averageEngagementRate: 0.5,
+      averageLikes: 64,
+      averageComments: 4,
+      estimatedPostsPerWeek: 5.1,
+      dominantFormat: "Reels",
+      /**
+       * Window flag — when the primary profile is in 30d/90d but the
+       * competitor was fetched in baseline, the UI labels the
+       * comparison transparently.
+       */
+      windowAligned: false,
+    },
+  ] as ReportCompetitorBreakdownEntry[],
+
   // Mini-trend (last 15 days) drawn next to each hero KPI value.
   // The "Estado do benchmark" card omits a sparkline and uses a badge.
   heroSparklines: {
