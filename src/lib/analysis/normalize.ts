@@ -172,7 +172,7 @@ function numberToMs(n: number): number {
   return n > MS_THRESHOLD ? n : n * 1000;
 }
 
-function postTimestampMs(post: RawPost): number | null {
+export function postTimestampMs(post: RawPost): number | null {
   if (typeof post.timestamp === "number" && Number.isFinite(post.timestamp)) {
     return numberToMs(post.timestamp);
   }
