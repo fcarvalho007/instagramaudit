@@ -1320,8 +1320,14 @@ export function ReportBlockSidebar({
         compact ? "p-3" : "p-4 xl:p-5",
       )}
     >
-      <ProfileHeader profiles={profileList} paidStatus={paidStatus} compact={compact} />
-      {!compact && (
+      {compact && (
+        <ProfileHeader
+          profiles={profileList}
+          paidStatus={paidStatus}
+          compact
+        />
+      )}
+      {compact && (
         <div className="mb-2 flex justify-end">
           <VariantBadge variant={variant} />
         </div>
