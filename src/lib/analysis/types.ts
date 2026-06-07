@@ -99,6 +99,20 @@ export type CompetitorAnalysis =
       success: true;
       profile: PublicAnalysisProfile;
       content_summary: PublicAnalysisContentSummary;
+      /**
+       * Deterministic per-post detail for the competitor (Phase 2B).
+       * Optional for backwards-compatibility with snapshots persisted
+       * before this field landed. Capped at PUBLIC_INSTAGRAM_POSTS_LIMIT
+       * by `enrichPosts`. Excludes coauthors/tagged_users/location_name
+       * for privacy and storage reasons.
+       */
+      posts?: import("./normalize").EnrichedPost[];
+      /** Per-format aggregates derived from `posts`. */
+      format_stats?: import("./normalize").FormatStats;
+      /** Length-7 array of post counts indexed [Sun..Sat] (UTC). */
+      weekday_counts?: number[];
+      /** Top hashtags by occurrence (desc), capped at 10. */
+      top_hashtags?: Array<{ tag: string; count: number }>;
     }
   | {
       success: false;

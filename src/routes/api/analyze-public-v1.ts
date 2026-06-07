@@ -1121,10 +1121,48 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 posts,
                 profile.followers_count,
               );
+              // Phase 2B: persist deterministic per-post detail for the
+              // competitor — reuses `enrichPosts` (same helper as the
+              // primary profile). Excludes coauthors/tagged_users/
+              // location_name/thumbnail_storage_url for competitors.
+              // No additional provider calls — `posts` is the same
+              // `latestPosts[]` already returned by the Apify fetch.
+              const enriched = enrichPosts(posts, profile.followers_count);
+              const weekdayCounts = [0, 0, 0, 0, 0, 0, 0];
+              const hashtagTally = new Map<string, number>();
+              for (const p of enriched.posts) {
+                if (typeof p.weekday === "number" && p.weekday >= 0 && p.weekday <= 6) {
+                  weekdayCounts[p.weekday] += 1;
+                }
+                for (const raw of p.hashtags ?? []) {
+                  const tag = String(raw).toLowerCase();
+                  if (!tag) continue;
+                  hashtagTally.set(tag, (hashtagTally.get(tag) ?? 0) + 1);
+                }
+              }
+              const topHashtags = Array.from(hashtagTally.entries())
+                .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+                .slice(0, 10)
+                .map(([tag, count]) => ({ tag, count }));
+              // Strip fields we explicitly do NOT persist for competitors.
+              const sanitizedPosts = enriched.posts.map((p) => {
+                const {
+                  coauthors: _c,
+                  tagged_users: _t,
+                  location_name: _l,
+                  thumbnail_storage_url: _s,
+                  ...rest
+                } = p;
+                return rest;
+              });
               return {
                 success: true as const,
                 profile,
                 content_summary: summary,
+                posts: sanitizedPosts,
+                format_stats: enriched.format_stats,
+                weekday_counts: weekdayCounts,
+                top_hashtags: topHashtags,
               };
             },
           );
