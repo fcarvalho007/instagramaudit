@@ -251,37 +251,45 @@ function competitorFailure(
  */
 async function fetchProfileWithPosts(
   username: string,
+  cfg: PublicWindowConfig = PUBLIC_WINDOW_CONFIGS.baseline,
 ): Promise<{
   row: Record<string, unknown> | null;
   runId: string | null;
   actualCostUsd: number | null;
 }> {
+  const actorInput: Record<string, unknown> = {
+    directUrls: [`https://www.instagram.com/${username}/`],
+    resultsType: cfg.onlyPostsNewerThan ? "posts" : "details",
+    // `resultsLimit` controls the size of `latestPosts[]` inside the
+    // single profile row returned by the actor. It is NOT the number of
+    // profiles per run (see `maxItems` below).
+    resultsLimit: cfg.resultsLimit,
+    addParentData: false,
+  };
+  if (cfg.onlyPostsNewerThan) {
+    actorInput.onlyPostsNewerThan = cfg.onlyPostsNewerThan;
+  }
   const result = await runActorWithMetadata<Record<string, unknown>>(
     UNIFIED_ACTOR,
+    actorInput,
     {
-      directUrls: [`https://www.instagram.com/${username}/`],
-      resultsType: "details",
-      // `resultsLimit` controls the size of `latestPosts[]` inside the
-      // single profile row returned by the actor. It is NOT the number of
-      // profiles per run (see `maxItems` below).
-      resultsLimit: PUBLIC_INSTAGRAM_POSTS_LIMIT,
-      addParentData: false,
-    },
-    {
-      timeoutMs: 60_000,
-      apifyTimeoutSecs: 55,
+      timeoutMs: cfg.timeoutMs,
+      apifyTimeoutSecs: cfg.apifyTimeoutSecs,
       // Cost guards for the smoke-test phase.
       //
       // Apify input contract (do not confuse the two limits):
       //   - `directUrls`: 1 URL  → 1 Instagram profile per run.
       //   - `maxItems: 1`        → at most 1 profile ROW returned per run.
-      //   - `resultsLimit: 12`   → up to 12 POSTS inside that profile's
-      //                            `latestPosts[]` array.
+      //   - `resultsLimit: N`    → up to N POSTS inside that profile's
+      //                            `latestPosts[]` array. Baseline uses
+      //                            PUBLIC_INSTAGRAM_POSTS_LIMIT; wide
+      //                            windows (30d/90d) bump this and add
+      //                            `onlyPostsNewerThan`.
       // This call therefore returns ONE profile with UP TO 12 recent
       // posts — never 12 profiles. `maxTotalChargeUsd` is a hard USD cap
       // per call as a final safety net.
       maxItems: 1,
-      maxTotalChargeUsd: 0.10,
+      maxTotalChargeUsd: cfg.maxTotalChargeUsd,
     },
   );
   return {
@@ -296,14 +304,17 @@ async function fetchProfileWithPosts(
  * handle (success, http_error, timeout, config_error, network_error). Never
  * throws — returns the row, the originating error if any, and the new log id.
  */
-async function fetchProfileWithPostsLogged(username: string): Promise<{
+async function fetchProfileWithPostsLogged(
+  username: string,
+  cfg: PublicWindowConfig = PUBLIC_WINDOW_CONFIGS.baseline,
+): Promise<{
   row: Record<string, unknown> | null;
   error: unknown | null;
   providerCallLogId: string | null;
 }> {
   const startedAt = Date.now();
   try {
-    const { row, runId, actualCostUsd } = await fetchProfileWithPosts(username);
+    const { row, runId, actualCostUsd } = await fetchProfileWithPosts(username, cfg);
     const posts = Array.isArray((row as { latestPosts?: unknown })?.latestPosts)
       ? ((row as { latestPosts: unknown[] }).latestPosts.length as number)
       : 0;
