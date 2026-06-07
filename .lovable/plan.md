@@ -1,48 +1,86 @@
-# Refinos à sidebar do relatório
+# PR1 window validation — execução sem partilhar cookie
 
-Escopo: apenas `src/components/report-redesign/v2/report-block-nav.tsx` e `src/i18n/locales/pt/report.json` (+ EN simétrico para não partir chaves). Nada toca em dados, pagamento, schema ou outras secções.
+Opção escolhida: **B** (split server/SQL + browser). É a mais rápida, sem código novo a fazer merge, e mantém o cookie no teu browser.
 
-## 1. Primeira dobra (estado expandido)
-- Remover o eyebrow "EXPLORAR" acima de "Período de análise" (a `<p>` que imprime `nav.explore.title` no `ExploreSection` expandido). Os labels "Período de análise" e o botão "Adicionar concorrente" continuam a identificar a secção, ganha-se ~28 px verticais.
-- Substituir o chip "12 pub." por "12 publicações": mudar `nav.explore.period_sample` de `"{{count}} pub."` para `"{{count}} publicações"` (PT) e o equivalente EN (`"{{count}} posts"` já está bem).
+A Opção C (rota QA/admin) também é viável mas exige um endpoint novo a viver no repositório — mais superfície de ataque para uma validação pontual. Fica como fallback se a B falhar.
 
-## 2. Estado compact (sidebar quando se faz scroll)
-Hoje o compact corta o ProfileHeader em `gap-2 / pb-2 mb-2 / text-sm`, esconde o eyebrow, e o `ExploreSection` colapsa para dois botões `h-8` colados. Vai parecer entalado. Ajustes:
+## Divisão de responsabilidades
 
-- `ProfileHeader` compact:
-  - Voltar a mostrar um eyebrow, mas curto e em uppercase: novo string `nav.eyebrow_analyzing` = "A analisar" (EN: "Analyzing"). Só aparece no estado compact (no expandido continua "Análise de perfil").
-  - Manter handle por baixo. `pb-3 mb-3` em vez de `pb-2 mb-2`, e manter a `border-b` subtil também em compact (hoje só existe no expandido) para separar do bloco de navegação.
-  - Avatar continua `size="sm"` para não comer altura.
+### Lado AI (server / SQL) — antes
+1. **T0 snapshot** (read-only) para `lead_id = 7b946d45-ecb1-49dc-8702-68d85a860c47` e `handle = frederico.m.carvalho`:
+   - `credit_ledger` — saldo + últimas 10 linhas.
+   - `lead_entitlements` — confirmar que `report_full_9` não existe.
+   - `analysis_events` — últimas 10 entradas do handle.
+   - `provider_call_logs` — últimas 10 (provider, status, custo).
+   - `analysis_snapshots` — últimas 5 `cache_key` do handle.
+2. **Grant temporário** de `report_full_9` via `supabase--insert`:
+   ```sql
+   INSERT INTO public.lead_entitlements
+     (lead_id, product_code, metadata)
+   VALUES
+     ('7b946d45-ecb1-49dc-8702-68d85a860c47', 'report_full_9',
+      '{"source":"manual_pr1_validation","granted_by":"lovable_ai","note":"temporary, will rollback"}'::jsonb);
+   ```
+   Sem crédito adicional. Confirmar leitura.
 
-- Lista de items em compact: subir o `py-1.5` para `py-2` no `ItemRow`/`LockedItemRow` quando compact, e aumentar `space-y-0.5` da lista para `space-y-1`. Continua mais denso que o expandido, mas deixa de parecer comprimido.
+### Lado utilizador (browser DevTools) — depois do grant
+Quatro chamadas, mesmo separador onde o cookie `lead_session` está válido (`auditprofiles.com` ou preview). Todas com `credentials: "include"`. Cola apenas as respostas JSON (não headers).
 
-- `ExploreSection` compact: trocar o grid colado por dois botões com `h-9` e `gap-2`, e adicionar um pequeno eyebrow opcional só com a palavra "Explorar" em `text-eyebrow-sm` (sem maiúsculas grandes), `mb-1.5`. Mantém o resto idêntico (período + concorrente lado a lado).
+Snippet pronto a colar (corre os 4 sequencialmente e imprime o resultado):
+```js
+const base = location.origin;
+const body = (extra={}) => ({
+  method: "POST",
+  credentials: "include",
+  headers: {"Content-Type":"application/json"},
+  body: JSON.stringify({ instagram_username: "frederico.m.carvalho", ...extra }),
+});
+const run = async (label, extra) => {
+  const r = await fetch(`${base}/api/analyze-public-v1`, body(extra));
+  const j = await r.json().catch(()=>({_nonJson:true}));
+  console.log(label, r.status, j);
+  return { label, status: r.status, body: j };
+};
+const out = [];
+out.push(await run("A_baseline", {}));
+out.push(await run("B_pro_30d_first", { window: "30d" }));
+out.push(await run("C_pro_30d_repeat", { window: "30d" }));
+// D corre DEPOIS do rollback do entitlement — não incluir aqui ainda.
+copy(JSON.stringify(out, null, 2));
+console.log("→ Resultados A/B/C copiados para o clipboard.");
+```
 
-- Padding global da `<nav>` no estado compact passa de `p-3` para `p-3.5` para respirar.
+Colas o output em chat. Cenário D (Free 30d sem entitlement) corre só após o rollback (passo seguinte), com:
+```js
+const r = await fetch(`${base}/api/analyze-public-v1`, body({ window: "30d" }));
+console.log("D_free_30d_no_ent", r.status, await r.json());
+```
 
-## 3. Cadeado a gold (premium)
-- Token já existe: `--accent-gold` (#BA7517). Aplicar com moderação:
-  - Todos os ícones `Lock` dentro do `LockedItemRow` e do `ExploreSection` (locked period chips e botão "Adicionar concorrente" no estado free) passam a usar `text-[rgb(var(--accent-gold))]` em vez de `text-content-tertiary`.
-  - Cadeado do `ProgressSummary` / `paidStatus` continua neutro (não é um lock).
-  - Não tocar nos cadeados do checkout/sticky bar (fora do escopo).
-
-## 4. Diagnóstico editorial — manter a sublinha útil
-Hoje a linha "7 perguntas estratégicas" aparece logo abaixo do item 06 quando está bloqueado e expandido, mas desaparece em compact e quando o user é premium.
-
-- Reescrever a string: `nav.diagnostic_subitems.note` → "7 itens estratégicos" (PT); manter EN equivalente ("7 strategic items").
-- Mostrar a sublinha também no estado **premium expandido** (mesmo quando os sub-itens estão escondidos) — útil como descritor. Continua escondida quando o utilizador abre a sub-lista (DiagExpanded) para não duplicar.
-- Em **compact** continua escondida (espaço crítico).
-- Estilo: `pl-9 pr-3 -mt-0.5 pb-1 text-[11px] text-content-tertiary` (igual ao actual).
-
-## 5. Eyebrow "A ANALISAR" no topo (só em scroll)
-Já coberto pelo ponto 2 (ProfileHeader compact). Comportamento:
-- Sem scroll → header expandido com avatar grande + "Análise de perfil" + @handle (inalterado).
-- Com scroll → header compact com eyebrow "A ANALISAR" (uppercase, `text-eyebrow-sm text-content-tertiary`) e @handle por baixo em negrito.
-
-## Ficheiros tocados
-- `src/components/report-redesign/v2/report-block-nav.tsx` — ajustes acima.
-- `src/i18n/locales/pt/report.json` — `period_sample`, `diagnostic_subitems.note`, novo `eyebrow_analyzing`.
-- `src/i18n/locales/en/report.json` — mesmas chaves simétricas (sem mudar conteúdo já bom).
+### Lado AI (server / SQL) — depois
+3. **Rollback** do entitlement:
+   ```sql
+   DELETE FROM public.lead_entitlements
+   WHERE lead_id = '7b946d45-ecb1-49dc-8702-68d85a860c47'
+     AND product_code = 'report_full_9'
+     AND metadata->>'source' = 'manual_pr1_validation';
+   ```
+4. Após o utilizador colar a resposta de **D**, snapshot final (mesmas 5 queries de T0) + diff:
+   - delta de `credit_ledger` (esperado: -1 em B, 0 em A/C/D).
+   - novos `analysis_events` (data_source: fresh/cache).
+   - novos `provider_call_logs` para B (esperado: 1 chamada Apify) e 0 para C (cache hit).
+   - novo `analysis_snapshots` com `cache_key` distinto para a janela 30d em B; C reusa o mesmo.
+5. Tabela final PASS/FAIL por regra:
+   - baseline funciona sem window ✓
+   - 30d só passa com `report_full_9` ✓
+   - 30d primeira chamada consome 1 crédito ✓
+   - 30d repeat = cache hit, 0 créditos ✓
+   - 30d sem entitlement = `WINDOW_REQUIRES_PRO`, 0 créditos ✓
 
 ## Fora de escopo
-- Conteúdo dos blocos do relatório, lógica de créditos/entitlements, checkout, PR1 window validation (que ficou pendente do cookie), e qualquer ficheiro server-side.
+- Janela 90d (excluída desta ronda).
+- `INTERNAL_API_TOKEN` (não usado).
+- Qualquer alteração a checkout, EuPago, preços, schema, UI, lógica de pagamento.
+- Criar rota QA/admin (fica como Opção C de reserva).
+
+## Próximo passo
+Diz "ok" para eu entrar em build mode e correr o T0 + grant. Depois disso, corres o snippet no DevTools e colas o output. Eu faço rollback e relatório final.
