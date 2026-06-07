@@ -24,6 +24,10 @@ import type { Json } from "@/integrations/supabase/types";
 export const INITIAL_GRANT = 2;
 export const POST_PURCHASE_BETA_BONUS = 2;
 export const POST_PURCHASE_BETA_KIND = "post_purchase_beta_bonus";
+export const PURCHASE_INCLUDED_AMOUNT = 1;
+export const PURCHASE_INCLUDED_KIND = "purchase_included_credit";
+export const POST_PURCHASE_TOTAL_GRANTED =
+  PURCHASE_INCLUDED_AMOUNT + POST_PURCHASE_BETA_BONUS;
 
 export class InsufficientCreditsError extends Error {
   readonly code = "insufficient_credits" as const;
@@ -109,6 +113,7 @@ export async function grantInitialCredits(leadId: string): Promise<void> {
 export async function grantPostPurchaseBetaCredits(input: {
   leadId: string;
   paymentId: string;
+  productCode?: string | null;
 }): Promise<{ granted: boolean }> {
   const { data: existing, error: selectError } = await supabaseAdmin
     .from("credit_ledger")
@@ -133,6 +138,58 @@ export async function grantPostPurchaseBetaCredits(input: {
     metadata: {
       kind: POST_PURCHASE_BETA_KIND,
       payment_id: input.paymentId,
+      product_code: input.productCode ?? null,
+      source: "payment_confirmed",
+      beta_bonus: true,
+      included_credits: PURCHASE_INCLUDED_AMOUNT,
+      bonus_credits: POST_PURCHASE_BETA_BONUS,
+      total_granted: POST_PURCHASE_TOTAL_GRANTED,
+    } as Json,
+  });
+  return { granted: true };
+}
+
+/**
+ * Idempotent +1 crédito "incluído na compra". Mesmo padrão de unicidade
+ * aplicacional do bónus beta: `(lead_id, reason='admin_adjust',
+ * metadata.kind='purchase_included_credit', metadata.payment_id)`.
+ *
+ * Apenas chamado pelo webhook EuPago para `report_full_9` (o caller é
+ * responsável por restringir o produto).
+ */
+export async function grantPurchaseIncludedCredit(input: {
+  leadId: string;
+  paymentId: string;
+  productCode?: string | null;
+}): Promise<{ granted: boolean }> {
+  const { data: existing, error: selectError } = await supabaseAdmin
+    .from("credit_ledger")
+    .select("id")
+    .eq("lead_id", input.leadId)
+    .eq("reason", "admin_adjust")
+    .filter("metadata->>kind", "eq", PURCHASE_INCLUDED_KIND)
+    .filter("metadata->>payment_id", "eq", input.paymentId)
+    .limit(1)
+    .maybeSingle();
+  if (selectError) {
+    throw new Error(
+      `grantPurchaseIncludedCredit select failed: ${selectError.message}`,
+    );
+  }
+  if (existing) return { granted: false };
+
+  await insertLedger({
+    lead_id: input.leadId,
+    delta: PURCHASE_INCLUDED_AMOUNT,
+    reason: "admin_adjust",
+    metadata: {
+      kind: PURCHASE_INCLUDED_KIND,
+      payment_id: input.paymentId,
+      product_code: input.productCode ?? null,
+      source: "payment_confirmed",
+      included_credits: PURCHASE_INCLUDED_AMOUNT,
+      bonus_credits: POST_PURCHASE_BETA_BONUS,
+      total_granted: POST_PURCHASE_TOTAL_GRANTED,
     } as Json,
   });
   return { granted: true };
