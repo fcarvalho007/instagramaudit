@@ -68,6 +68,7 @@ vi.mock("@/integrations/supabase/client.server", () => {
 import {
   getBalance,
   grantPostPurchaseBetaCredits,
+  grantPurchaseIncludedCredit,
 } from "../credits.server";
 
 const LEAD = "11111111-2222-3333-4444-555555555555";
@@ -121,5 +122,104 @@ describe("grantPostPurchaseBetaCredits", () => {
     expect(res.granted).toBe(true);
     expect(await getBalance(LEAD)).toBe(4);
     expect(ledger).toHaveLength(2);
+  });
+});
+
+describe("grantPurchaseIncludedCredit", () => {
+  it("grants +1 once for a fresh (lead, payment) pair", async () => {
+    const res = await grantPurchaseIncludedCredit({
+      leadId: LEAD,
+      paymentId: PAYMENT_A,
+      productCode: "report_full_9",
+    });
+    expect(res.granted).toBe(true);
+    expect(await getBalance(LEAD)).toBe(1);
+    expect(ledger).toHaveLength(1);
+    expect(ledger[0]).toMatchObject({
+      delta: 1,
+      reason: "admin_adjust",
+      metadata: {
+        kind: "purchase_included_credit",
+        payment_id: PAYMENT_A,
+        product_code: "report_full_9",
+        source: "payment_confirmed",
+      },
+    });
+  });
+
+  it("is idempotent per payment_id", async () => {
+    await grantPurchaseIncludedCredit({
+      leadId: LEAD,
+      paymentId: PAYMENT_A,
+      productCode: "report_full_9",
+    });
+    const second = await grantPurchaseIncludedCredit({
+      leadId: LEAD,
+      paymentId: PAYMENT_A,
+      productCode: "report_full_9",
+    });
+    expect(second.granted).toBe(false);
+    expect(await getBalance(LEAD)).toBe(1);
+    expect(ledger).toHaveLength(1);
+  });
+});
+
+describe("combined post-purchase grant sequence", () => {
+  it("included + bonus = 3 credits on first run; retry stays at 3", async () => {
+    const a = await grantPurchaseIncludedCredit({
+      leadId: LEAD,
+      paymentId: PAYMENT_A,
+      productCode: "report_full_9",
+    });
+    const b = await grantPostPurchaseBetaCredits({
+      leadId: LEAD,
+      paymentId: PAYMENT_A,
+      productCode: "report_full_9",
+    });
+    expect(a.granted).toBe(true);
+    expect(b.granted).toBe(true);
+    expect(await getBalance(LEAD)).toBe(3);
+    expect(ledger).toHaveLength(2);
+
+    // Webhook retry
+    const a2 = await grantPurchaseIncludedCredit({
+      leadId: LEAD,
+      paymentId: PAYMENT_A,
+      productCode: "report_full_9",
+    });
+    const b2 = await grantPostPurchaseBetaCredits({
+      leadId: LEAD,
+      paymentId: PAYMENT_A,
+      productCode: "report_full_9",
+    });
+    expect(a2.granted).toBe(false);
+    expect(b2.granted).toBe(false);
+    expect(await getBalance(LEAD)).toBe(3);
+    expect(ledger).toHaveLength(2);
+  });
+
+  it("accumulates across distinct payments (3 + 3 = 6)", async () => {
+    await grantPurchaseIncludedCredit({
+      leadId: LEAD,
+      paymentId: PAYMENT_A,
+      productCode: "report_full_9",
+    });
+    await grantPostPurchaseBetaCredits({
+      leadId: LEAD,
+      paymentId: PAYMENT_A,
+      productCode: "report_full_9",
+    });
+    await grantPurchaseIncludedCredit({
+      leadId: LEAD,
+      paymentId: PAYMENT_B,
+      productCode: "report_full_9",
+    });
+    await grantPostPurchaseBetaCredits({
+      leadId: LEAD,
+      paymentId: PAYMENT_B,
+      productCode: "report_full_9",
+    });
+    expect(await getBalance(LEAD)).toBe(6);
+    expect(ledger).toHaveLength(4);
   });
 });
