@@ -1,67 +1,48 @@
-# PR1 Window Validation — Plan
+# Refinos à sidebar do relatório
 
-Lead alvo: `7b946d45-ecb1-49dc-8702-68d85a860c47` (`fredericodigital@gmail.com`), saldo = 1 crédito, sem `report_full_9`.
+Escopo: apenas `src/components/report-redesign/v2/report-block-nav.tsx` e `src/i18n/locales/pt/report.json` (+ EN simétrico para não partir chaves). Nada toca em dados, pagamento, schema ou outras secções.
 
-Endpoint sob teste: `POST /api/analyze-public-v1` com body `{ instagram_username, window }`. O Pro-gate vive em `src/routes/api/analyze-public-v1.ts` linhas 559–577 (`isWideWindow` → `hasEntitlement('report_full_9')` → `WINDOW_REQUIRES_PRO` antes de `reserveCredit`).
+## 1. Primeira dobra (estado expandido)
+- Remover o eyebrow "EXPLORAR" acima de "Período de análise" (a `<p>` que imprime `nav.explore.title` no `ExploreSection` expandido). Os labels "Período de análise" e o botão "Adicionar concorrente" continuam a identificar a secção, ganha-se ~28 px verticais.
+- Substituir o chip "12 pub." por "12 publicações": mudar `nav.explore.period_sample` de `"{{count}} pub."` para `"{{count}} publicações"` (PT) e o equivalente EN (`"{{count}} posts"` já está bem).
 
-Perfil de teste: `frederico.m.carvalho` (perfil do APIFY_ALLOWLIST).
+## 2. Estado compact (sidebar quando se faz scroll)
+Hoje o compact corta o ProfileHeader em `gap-2 / pb-2 mb-2 / text-sm`, esconde o eyebrow, e o `ExploreSection` colapsa para dois botões `h-8` colados. Vai parecer entalado. Ajustes:
 
-## Pré-requisito (bloqueante)
+- `ProfileHeader` compact:
+  - Voltar a mostrar um eyebrow, mas curto e em uppercase: novo string `nav.eyebrow_analyzing` = "A analisar" (EN: "Analyzing"). Só aparece no estado compact (no expandido continua "Análise de perfil").
+  - Manter handle por baixo. `pb-3 mb-3` em vez de `pb-2 mb-2`, e manter a `border-b` subtil também em compact (hoje só existe no expandido) para separar do bloco de navegação.
+  - Avatar continua `size="sm"` para não comer altura.
 
-O endpoint identifica o lead pelo cookie `lead_session`. Para invocar a partir do sandbox preciso do **valor actual do cookie `lead_session`** do browser onde fizeste a QA (DevTools → Application → Cookies → copia o valor completo).
+- Lista de items em compact: subir o `py-1.5` para `py-2` no `ItemRow`/`LockedItemRow` quando compact, e aumentar `space-y-0.5` da lista para `space-y-1`. Continua mais denso que o expandido, mas deixa de parecer comprimido.
 
-Sem esse valor não posso executar PR1 a partir daqui (o sandbox não tem sessão do browser). Alternativa: corres tu os 4 fetches no DevTools e colas-me as respostas — eu faço o resto (snapshot do credit_ledger antes/depois, leitura dos events/logs, rollback).
+- `ExploreSection` compact: trocar o grid colado por dois botões com `h-9` e `gap-2`, e adicionar um pequeno eyebrow opcional só com a palavra "Explorar" em `text-eyebrow-sm` (sem maiúsculas grandes), `mb-1.5`. Mantém o resto idêntico (período + concorrente lado a lado).
 
-## Passos
+- Padding global da `<nav>` no estado compact passa de `p-3` para `p-3.5` para respirar.
 
-### 1. T0 — snapshot do estado base
-Read-only no Supabase, registo em memória:
-- `credit_balance(lead_id)` actual
-- contagem actual em `analysis_events`, `provider_call_logs`, `analysis_snapshots` para o handle `frederico.m.carvalho`
-- entitlements actuais do lead
+## 3. Cadeado a gold (premium)
+- Token já existe: `--accent-gold` (#BA7517). Aplicar com moderação:
+  - Todos os ícones `Lock` dentro do `LockedItemRow` e do `ExploreSection` (locked period chips e botão "Adicionar concorrente" no estado free) passam a usar `text-[rgb(var(--accent-gold))]` em vez de `text-content-tertiary`.
+  - Cadeado do `ProgressSummary` / `paidStatus` continua neutro (não é um lock).
+  - Não tocar nos cadeados do checkout/sticky bar (fora do escopo).
 
-### 2. Grant temporário `report_full_9`
-Via `supabase--insert`:
-```sql
-INSERT INTO lead_entitlements (lead_id, product_code, metadata)
-VALUES ('7b946d45-ecb1-49dc-8702-68d85a860c47', 'report_full_9',
-        jsonb_build_object('source','manual_pr1_validation','granted_for','PR1_window_validation'));
-```
-Sem créditos adicionados. Sem `payment_id`.
+## 4. Diagnóstico editorial — manter a sublinha útil
+Hoje a linha "7 perguntas estratégicas" aparece logo abaixo do item 06 quando está bloqueado e expandido, mas desaparece em compact e quando o user é premium.
 
-### 3. Cenários (ordem rígida)
+- Reescrever a string: `nav.diagnostic_subitems.note` → "7 itens estratégicos" (PT); manter EN equivalente ("7 strategic items").
+- Mostrar a sublinha também no estado **premium expandido** (mesmo quando os sub-itens estão escondidos) — útil como descritor. Continua escondida quando o utilizador abre a sub-lista (DiagExpanded) para não duplicar.
+- Em **compact** continua escondida (espaço crítico).
+- Estilo: `pl-9 pr-3 -mt-0.5 pb-1 text-[11px] text-content-tertiary` (igual ao actual).
 
-| # | Cenário | Body | Cookie | Esperado |
-|---|---|---|---|---|
-| A | Baseline (controlo) | `{ instagram_username:"frederico.m.carvalho" }` (sem `window`) | lead_session | sucesso, sem débito de crédito (ou débito normal Free se cache miss) |
-| B | Pro 30d 1ª chamada | `{..., window:"30d"}` | lead_session | sucesso, **-1 crédito**, novo snapshot com cache_key sufixado |
-| C | Pro 30d repeat | idem B | lead_session | cache hit, **0 créditos consumidos**, `alreadyAssociated=true` |
-| D | Free 30d sem entitlement | idem B | lead_session | depois do rollback temporário da entitlement: `WINDOW_REQUIRES_PRO`, **0 créditos consumidos** |
+## 5. Eyebrow "A ANALISAR" no topo (só em scroll)
+Já coberto pelo ponto 2 (ProfileHeader compact). Comportamento:
+- Sem scroll → header expandido com avatar grande + "Análise de perfil" + @handle (inalterado).
+- Com scroll → header compact com eyebrow "A ANALISAR" (uppercase, `text-eyebrow-sm text-content-tertiary`) e @handle por baixo em negrito.
 
-Para D faço rollback **antes** da chamada e re-confirmo saldo. Não executo 90d. Não uso `INTERNAL_API_TOKEN`.
+## Ficheiros tocados
+- `src/components/report-redesign/v2/report-block-nav.tsx` — ajustes acima.
+- `src/i18n/locales/pt/report.json` — `period_sample`, `diagnostic_subitems.note`, novo `eyebrow_analyzing`.
+- `src/i18n/locales/en/report.json` — mesmas chaves simétricas (sem mudar conteúdo já bom).
 
-### 4. Rollback final
-```sql
-DELETE FROM lead_entitlements
-WHERE lead_id='7b946d45-ecb1-49dc-8702-68d85a860c47'
-  AND product_code='report_full_9'
-  AND metadata->>'source'='manual_pr1_validation';
-```
-Garante 0 entitlements `report_full_9` no fim. Saldo de créditos final = saldo inicial − 1 (do cenário B).
-
-### 5. Relatório
-Tabela com, por cenário:
-- HTTP status + `outcome`/`errorCode` da resposta
-- delta em `credit_ledger` (linhas novas, `delta`, `reason`)
-- `analysis_events` novas (`data_source`, `outcome`, `error_code`)
-- `provider_call_logs` novos (`actor`, `posts_returned`, `actual_cost_usd`)
-- `analysis_snapshots` (`cache_key`, `created_at`)
-- veredicto PASS/FAIL por regra
-
-PR2 fica bloqueado até 4/4 PASS.
-
-## Fora de scope
-Checkout, EuPago, preços, schema, UI, lógica de pagamento, 90d, qualquer write fora de `lead_entitlements` (insert + delete simétricos).
-
-## Próximo passo
-Cola o valor do cookie `lead_session` (ou diz-me se preferes correr tu os fetches). Em build mode executo passos 1→5 numa só rajada.
+## Fora de escopo
+- Conteúdo dos blocos do relatório, lógica de créditos/entitlements, checkout, PR1 window validation (que ficou pendente do cookie), e qualquer ficheiro server-side.
