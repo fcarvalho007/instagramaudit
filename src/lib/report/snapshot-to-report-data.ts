@@ -1297,6 +1297,24 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
         if (!p || !s) return null;
         const username = typeof p.username === "string" ? p.username : null;
         if (!username) return null;
+        // Symmetry fix: when the snapshot includes the competitor's raw
+        // posts, run them through the SAME Block 1 sample helper used for
+        // the primary side. Without this, primary uses
+        // `sample.analyzedPosts.length` (pinned excluded, date outliers
+        // pruned) while competitor falls back to raw `posts.length` from
+        // `content_summary`, producing asymmetric denominators (e.g. 11
+        // vs 12). Falls back to legacy `content_summary` when the
+        // competitor `posts` array is missing (older snapshots).
+        const cPostsRaw = Array.isArray((c as Record<string, unknown>).posts)
+          ? ((c as Record<string, unknown>).posts as SnapshotPost[])
+          : [];
+        const cSample = cPostsRaw.length > 0 ? buildBlock01Sample(cPostsRaw) : null;
+        const cAnalyzed = cSample?.analyzedPosts ?? [];
+        const cPerf = cSample?.performancePosts ?? [];
+        const avg = (
+          arr: SnapshotPost[],
+          pick: (p: SnapshotPost) => number | null | undefined,
+        ) => arr.reduce((a, p) => a + num(pick(p), 0), 0) / arr.length;
         return {
           username,
           displayName:
@@ -1304,10 +1322,20 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
               ? p.display_name
               : username,
           followers: num(p.followers_count, 0),
-          postsAnalyzed: num(s.posts_analyzed, 0),
-          averageEngagementRate: num(s.average_engagement_rate, 0),
-          averageLikes: num(s.average_likes, 0),
-          averageComments: num(s.average_comments, 0),
+          postsAnalyzed:
+            cAnalyzed.length > 0 ? cAnalyzed.length : num(s.posts_analyzed, 0),
+          averageEngagementRate:
+            cPerf.length > 0
+              ? round2(avg(cPerf, (p) => p.engagement_pct))
+              : num(s.average_engagement_rate, 0),
+          averageLikes:
+            cPerf.length > 0
+              ? avg(cPerf, (p) => p.likes)
+              : num(s.average_likes, 0),
+          averageComments:
+            cPerf.length > 0
+              ? avg(cPerf, (p) => p.comments)
+              : num(s.average_comments, 0),
           estimatedPostsPerWeek: num(s.estimated_posts_per_week, 0),
           dominantFormat:
             typeof s.dominant_format === "string" ? s.dominant_format : "—",
