@@ -1035,7 +1035,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           //      frustrates users — see brunoremribeiro (May 2026).
           //   3) Empty / brand-new public account → PROFILE_PRIVATE (fallback)
           const rawPrimary = primaryRow as Record<string, unknown>;
-          const primaryPosts = Array.isArray(
+          const allPrimaryPosts = Array.isArray(
             (primaryRow as { latestPosts?: unknown }).latestPosts,
           )
             ? ((primaryRow as { latestPosts: unknown[] }).latestPosts as Record<
@@ -1043,12 +1043,32 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 unknown
               >[])
             : [];
+          // PR1 window filter: in `details` mode the actor ignores
+          // `onlyPostsNewerThan`, so we narrow `latestPosts[]` to the
+          // requested window client-side. Posts without a parseable
+          // timestamp are dropped to avoid skewing the summary.
+          const windowMs =
+            windowKind === "30d"
+              ? 30 * 24 * 60 * 60 * 1000
+              : windowKind === "90d"
+                ? 90 * 24 * 60 * 60 * 1000
+                : null;
+          const primaryPosts = windowMs
+            ? allPrimaryPosts.filter((p) => {
+                const ts = postTimestampMs(p as never);
+                return ts !== null && ts >= Date.now() - windowMs;
+              })
+            : allPrimaryPosts;
           const isPrivateFlag =
             rawPrimary?.is_private === true || rawPrimary?.private === true;
           const profilePostsCount = primaryProfile.posts_count ?? 0;
           const isProfessional = primaryProfile.is_business;
 
-          if (primaryPosts.length === 0) {
+          // The private / personal-no-feed classification only makes sense
+          // for baseline (where 0 posts means "no feed at all"). For 30d/90d,
+          // 0 posts just means "no activity in the window" — proceed with
+          // an empty summary so the profile metrics still render.
+          if (windowKind === "baseline" && allPrimaryPosts.length === 0) {
             // Personal-account heuristic: profile claims posts in its public
             // shell (`postsCount > 0`) but the scraper returned none, AND the
             // account is not flagged as business/creator → almost certainly a
