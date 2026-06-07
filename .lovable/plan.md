@@ -1,149 +1,87 @@
+## Goal
 
-# Auditoria — Modo Comparação Fase 1
+When `competitorBreakdown[0]` exists in **Pro mode (`all`)**, render Overview / Engagement / Cadence as comparison-aware cards instead of *original card + appended compare block*. No data, schema, provider, credit, payment, entitlement or Free/Public changes.
 
-## 1. Mapa actual da implementação
+## Current state (after audit)
 
-Único ponto de inserção: `src/components/report-redesign/v2/report-overview-block.tsx`.
+In `src/components/report-redesign/v2/report-overview-block.tsx`:
 
-```
-ReportOverviewBlock
-├── EditorialIdentityCard            (single-profile, sempre)
-├── MethodologyLine                  (single-profile)
-├── CompetitorOverviewCompare        ← apenas se firstCompetitor (mode=all)
-├── CompetitorBioCompare             ← apenas se firstCompetitor (mode=all)
-├── EngagementCardRefined            (single-profile)
-│   └── CompetitorEngagementCompare  ← APÊNDICE abaixo, mt-6
-├── FrequencyCard                    (single-profile)
-│   └── CompetitorCadenceCompare     ← APÊNDICE abaixo, mt-6
-├── FormatCard                       (single-profile, SEM comparação)
-└── PostComparisonBlock              (single-profile, SEM comparação)
-```
+- **Overview** — `EditorialIdentityCard` (always) + `CompetitorOverviewCompare` (grid with 6 rows: Seguidores, Posts analisados, ER, Likes, Comments, Posts/semana) + `CompetitorBioCompare`.
+- **Engagement** — `EngagementCardRefined` (single-profile) **then** `CompetitorEngagementCompare` appended below (ER + likes + comments + verdict).
+- **Cadence** — `FrequencyCard` (calendar + posts/week) **then** `CompetitorCadenceCompare` appended below (posts/week).
 
-`firstCompetitor = competitorBreakdown[0] ?? null` (linha 120). O segundo competitor é ignorado (TODO Fase 1.5).
+Result: same KPI shown twice per card, ER appears 3× across the block (Overview grid, Engagement card, Engagement compare).
 
-Primitivas em `src/components/report-redesign/v2/compare/`:
-- `CompareStatBlock` — usada por Overview, Engagement, Cadence
-- `CompareTable` — usada por Bio
-- `CompareBarPair` — **criada mas nunca consumida** (cobre o caso 2 do mockup: distribuições)
+## Target behaviour
 
-## 2. Classificação card por card (estado actual)
+| Card | No competitor | With 1 competitor |
+|---|---|---|
+| Identity Card | unchanged | unchanged (identity ≠ KPI compare) |
+| Overview compare (KPI grid) | not rendered | trimmed to **identity rows only**: Seguidores, Publicações analisadas |
+| Bio compare | not rendered | unchanged |
+| Engagement | `EngagementCardRefined` | `CompetitorEngagementCompare` **in place of** the single-profile card |
+| Cadence/Frequência | `FrequencyCard` | `CompetitorCadenceCompare` **in place of** `FrequencyCard` |
 
-| Card | Comportamento actual com competitor |
-|---|---|
-| EditorialIdentityCard | inalterado (single-profile com nº de competitors no rodapé) |
-| MethodologyLine | inalterado |
-| EngagementCardRefined | inalterado + apêndice `CompetitorEngagementCompare` abaixo |
-| FrequencyCard | inalterado + apêndice `CompetitorCadenceCompare` abaixo |
-| FormatCard | inalterado, **sem comparação** |
-| PostComparisonBlock (best vs worst) | inalterado, **sem comparação** |
-| CompetitorOverviewCompare | bloco novo intercalado entre MethodologyLine e Engagement |
-| CompetitorBioCompare | bloco novo intercalado a seguir ao anterior |
+This collapses the duplication: each metric appears once, in the comparison-aware version. The comparison block becomes the card, not a sibling below it.
 
-Padrão dominante: **append**. Resultado percebido: relatório fica ~30–40% mais longo, com leitura duplicada (KPIs do perfil → mesmos KPIs com competitor abaixo).
+The `windowAligned === false` hint already lives inside the compare blocks (subtle, single line) — preserved.
 
-## 3. Causa-raiz da percepção
+## Edits (single file)
 
-Não é bug de dados nem de cor — é **estratégia de inserção errada**. O mockup pede que o card *vire* modo-comparação; a implementação faz `Card + CompareBlock` lado-a-lado vertical.
+**`src/components/report-redesign/v2/report-overview-block.tsx`** — only conditional render orchestration changes; no new components, no signature changes.
 
-## 4. Arquitectura recomendada
+1. **Overview KPI grid** (lines 266–279) — pass a `scope="identity"` flag (or trim inline) so `CompetitorOverviewCompare` only emits Seguidores + Publicações analisadas rows. → Implemented as a new `scope?: "identity" | "all"` prop on `CompetitorOverviewCompare` defaulting to `"all"` (back-compat). In the block we pass `scope="identity"`.
 
-### 4.1 Estado partilhado: `ComparisonContext`
+2. **Engagement** (lines 370–385) — replace:
+   ```text
+   <EngagementCardRefined/>
+   {firstCompetitor ? <CompetitorEngagementCompare/> : null}
+   ```
+   with:
+   ```text
+   firstCompetitor
+     ? <CompetitorEngagementCompare/>
+     : <EngagementCardRefined/>
+   ```
 
-Um Context React mínimo no topo do `ReportShellV2`:
+3. **Cadence** (lines 389–411) — replace:
+   ```text
+   <FrequencyCard/>
+   {firstCompetitor ? <CompetitorCadenceCompare/> : null}
+   ```
+   with:
+   ```text
+   firstCompetitor
+     ? <CompetitorCadenceCompare/>
+     : <FrequencyCard/>
+   ```
 
-```ts
-interface ComparisonContextValue {
-  hasCompetitor: boolean;          // competitorBreakdown.length > 0
-  comparisonMode: boolean;         // hasCompetitor && variant !== "public_mvp"
-  competitors: CompetitorBreakdown[]; // todos
-  primary: { handle, … };
-}
-```
+**`src/components/report-redesign/v2/overview/competitor-overview-compare.tsx`** — add `scope?: "identity" | "all"` prop. When `"identity"`, `buildRows` returns only Seguidores + Publicações analisadas. Default `"all"` keeps existing callers (none today besides the block) unchanged.
 
-Vantagens vs prop-drilling:
-- cada card decide internamente se renderiza versão single ou compare
-- evita lógica gating duplicada em `report-overview-block.tsx`
-- Free/Public passa `comparisonMode=false` → zero alteração no fluxo gratuito
-- escala trivialmente para 2 competitors em Fase 1.5 (o context já entrega o array; cada card escolhe quantos consumir)
+## Out of scope (untouched)
 
-### 4.2 Decisão por card
+- `FormatCard`, `PostComparisonBlock`, `EditorialIdentityCard`, `MethodologyLine`, `CompetitorBioCompare`, `ReportCompetitors` legacy gauge.
+- Free / `free_with_engagement` / `locked` modes other than what is required to keep the conditional inside `all`/`locked` paths working — the existing rendering of Engagement/Cadence under `mode === "locked"` is unchanged structurally but inherits the new `firstCompetitor ? compare : card` switch.
+- Multi-competitor (Fase 1.5), Add Competitor flow, providers, credits, EuPago, checkout, entitlements, snapshot schema, Apify, OpenAI, DataForSEO.
+- `CompetitorEngagementCompare` / `CompetitorCadenceCompare` internals (already use `CompareStatBlock` + `vs` semantics + delta verdict).
 
-Comparação **inline-na-própria-card** (card-aware) — não secção separada, não apêndice.
+## Risks
 
-| Card | Desired comparison | Padrão visual | Fase |
-|---|---|---|---|
-| EditorialIdentityCard | dual-handle header (avatar + @handle do primary e do competitor lado-a-lado) + sub-grid de scores comparados | `CompareStatBlock` ×2 (envolvimento, frequência) | **1.1** |
-| EngagementCardRefined | substituir KPI hero por `CompareStatBlock` (ER) + sub-stats (avg likes / comments) também em compare; gráfico de benchmark ganha 2ª linha do competitor | `CompareStatBlock` + line overlay | **1.1** |
-| FrequencyCard | KPI principal (posts/sem) em `CompareStatBlock`; timeline pode permanecer single (custo de leitura > valor) | `CompareStatBlock` | **1.1** |
-| FormatCard | **transformar em paired-bars** (Reels/Carousels/Imagens) — caso clássico de distribuição | `CompareBarPair` ×3 | **1.2** |
-| EditorialIdentityCard — bloco bio | mover `CompetitorBioCompare` para dentro do card de identidade como secção colapsável "Identidade vs concorrente" | `CompareTable` | **1.2** |
-| MethodologyLine | mantém single (descreve a metodologia do perfil principal) | n/a | — |
-| PostComparisonBlock (best vs worst) | mantém single-profile em Fase 1; comparação de posts top vs top tem alto custo de implementação e dados | n/a | **2.x** |
-| Diagnóstico editorial (Q01–Q07) | mantém single — texto IA por perfil | n/a | **2.x** |
-| Benchmark gauge / Market signals | mantém single em pro_preview (já hidden) | n/a | — |
+- **`EngagementCardRefined` carries extra UI** (benchmark chart, methodology hint). Replacing it removes that visualization when a competitor exists. Mitigation: acceptable per goal ("comparison should be visually central, no duplicated metric"). If user later wants benchmark chart preserved, we add a second phase to inject it inside the compare card.
+- **`FrequencyCard` carries calendar/timeline**. Same trade-off; the calendar disappears in comparison mode. Documented; reversible in a follow-up by composing the calendar inside `CompetitorCadenceCompare`.
+- **No new files**, no new exports, no new tests required for typecheck — risk of typecheck regression is minimal.
 
-### 4.3 Eliminações resultantes
+## Validation checklist
 
-Após card-aware:
-- `CompetitorOverviewCompare` → absorvido pelo EditorialIdentityCard (deixa de existir como bloco isolado)
-- `CompetitorEngagementCompare` → absorvido pelo EngagementCardRefined
-- `CompetitorCadenceCompare` → absorvido pelo FrequencyCard
-- `CompetitorBioCompare` → secção dentro do EditorialIdentityCard
+1. `nunomarkl` (has competitor) → Engagement/Cadence show compare cards only, no duplicated single-profile card above; Overview compare grid shows only Seguidores + Publicações analisadas.
+2. `frederico.m.carvalho` (no competitor) → identical to today.
+3. Free / `free_with_engagement` modes → identical to today (no `firstCompetitor` branch triggered).
+4. 375px viewport → no horizontal overflow (compare blocks already use `grid-cols-1` mobile-first).
+5. `bun tsc --noEmit` (executed automatically) → passes.
+6. No provider calls on render (pure read from `result.data.competitorBreakdown`).
 
-→ Os 4 wrappers convertem-se em "compare-mode renderers" *dentro* dos cards originais. Isto resolve a percepção de relatório duplicado.
+## Output after build
 
-### 4.4 Recomendação inline vs secção
-
-**Híbrido enviesado para inline:**
-- Inline (dentro do card) para tudo que tem equivalente single-profile.
-- Secção separada apenas para conteúdo que **não existe** no modo single (ex.: futuro "gap analysis" Fase 2).
-
-Justificação: o utilizador lê "Engagement deste perfil" — se acima ou abaixo lhe mostras "Engagement deste perfil vs X", são duas leituras do mesmo facto. Substituir.
-
-### 4.5 Escala para 2+ competitors (Fase 1.5)
-
-`CompareStatBlock` actual aceita primary + 1 competitor. Para N competitors:
-- Variante `CompareStatBlockN` que renderiza primary + array (até 3) com mesma altura por barra
-- `CompareBarPair` evolui para `CompareBarGroup` (N+1 barras agrupadas por categoria)
-- `CompareTable` já é trivial (linhas = entradas, colunas = handles)
-
-O `ComparisonContext` já entrega `competitors[]` completo; só os cards precisam de saber quantos consumir. Fase 1 fixa em 1 via `context.competitors.slice(0, 1)`.
-
-## 5. Riscos
-
-| Risco | Mitigação |
-|---|---|
-| Cards comparison-mode crescem em altura e quebram mobile | Mobile-first: stack vertical primary→competitor; o `CompareStatBlock` já tem fallback grid-cols-1 |
-| Free/Public passa a chamar lógica compare por engano | `comparisonMode` no context é `false` quando `variant === "public_mvp"`; cards default a single |
-| AI insights por card foram escritos para single-profile | Em Fase 1.1/1.2 mantém-se o texto IA single — só a *visualização* dos números muda; texto comparativo é Fase 2 |
-| Snapshot sem `competitorBreakdown` mas com `competitor_usernames` | `hasCompetitor` baseia-se em `competitorBreakdown.length`, não em usernames — não há risco de render vazio |
-| Locked teasers podem reagir mal a comparison-mode | Apenas `mode === "all"` ou `"locked"` activam compare; teasers em `free_with_engagement` ficam isolados |
-| Adapter `snapshot-to-report-data` pode não ter todos os campos de competitor necessários para Engagement/Format | Verificar antes de Fase 1.2 — Fase 1.1 só consome o que já existe (handle, followers, postsAnalyzed, engagementRate, avgLikes, avgComments, postingFrequencyWeekly) |
-
-## 6. Plano de implementação em fases seguras
-
-### Fase 1.0 — Foundation (sem mudança visual)
-Prompt: "Cria `ComparisonContext` (Provider em ReportShellV2, hook `useComparison()`), com `hasCompetitor`, `comparisonMode`, `competitors`, `primary`. NÃO alterar nenhum card ainda. Apenas wiring + testes. Free/Public mantém `comparisonMode=false`."
-
-### Fase 1.1 — Card-aware: Engagement + Frequência + Identity scores
-Prompt: "Move comparison de KPIs principais para dentro de `EngagementCardRefined`, `FrequencyCard` e do mini-grid de scores no `EditorialIdentityCard`. Remove os 3 wrappers append (`CompetitorEngagementCompare`, `CompetitorCadenceCompare`, `CompetitorOverviewCompare`) do `report-overview-block.tsx`. Mantém `CompetitorBioCompare` por enquanto."
-
-### Fase 1.2 — FormatCard com paired bars + Bio absorvida
-Prompt: "Transforma `FormatCard` em modo comparação usando `CompareBarPair` ×3 (Reels/Carousels/Imagens). Move `CompetitorBioCompare` para uma secção colapsável dentro do `EditorialIdentityCard`. Elimina os wrappers redundantes."
-
-### Fase 1.3 — Limpeza
-Prompt: "Remove ficheiros `competitor-*-compare.tsx` que ficaram órfãos. Atualiza imports. Confirma typecheck. Re-QA visual em `nunomarkl` desktop+375px."
-
-### Fase 1.5 (futura) — Multi-competitor
-Evolui `CompareStatBlock` → `…N`, `CompareBarPair` → `…Group`. Sem alterar contracts do context.
-
-### Fase 2 (futura) — Gap analysis e IA comparativa
-Bloco novo (única secção *adicionada*, não absorvida) com gap analysis IA-gerada. Requer prompt IA dedicado.
-
-## 7. O que NÃO se toca
-
-Apify, OpenAI, DataForSEO, EuPago, checkout, credits, entitlements, schema, Free/Public report, providers, adapter de dados, lógica de Add Competitor, snapshot `nunomarkl`. Zero migrations. Zero secrets.
-
-## 8. Deliverable desta auditoria
-
-Esta auditoria é a entrega. Nada foi alterado. Próximo passo: tua decisão de aprovar Fase 1.0 isoladamente ou pedir refinamento.
+- Files changed: 2 (`report-overview-block.tsx`, `overview/competitor-overview-compare.tsx`).
+- Before/after summary in chat.
+- Confirmation that compare blocks replace, not append.

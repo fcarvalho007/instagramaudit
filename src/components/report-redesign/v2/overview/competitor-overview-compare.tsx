@@ -15,6 +15,14 @@ interface PrimarySide {
 interface Props {
   primary: PrimarySide;
   competitor: ReportCompetitorBreakdownEntry;
+  /**
+   * Limits which rows are rendered:
+   * - "all" (default): all comparable KPIs.
+   * - "identity": only identity-level rows (Seguidores, Publicações analisadas).
+   *   Use when Engagement / Cadence comparisons are rendered in their own
+   *   cards to avoid duplicating the same metric across the report.
+   */
+  scope?: "all" | "identity";
 }
 
 /**
@@ -27,8 +35,8 @@ interface Props {
  * Phase 1 — supports a single competitor (caller passes
  * `competitorBreakdown[0]`).
  */
-export function CompetitorOverviewCompare({ primary, competitor }: Props) {
-  const rows = buildRows(primary, competitor);
+export function CompetitorOverviewCompare({ primary, competitor, scope = "all" }: Props) {
+  const rows = buildRows(primary, competitor, scope);
   if (rows.length === 0) return null;
 
   return (
@@ -86,6 +94,7 @@ interface Row {
 function buildRows(
   primary: PrimarySide,
   c: ReportCompetitorBreakdownEntry,
+  scope: "all" | "identity",
 ): Row[] {
   const rows: Row[] = [];
 
@@ -110,6 +119,8 @@ function buildRows(
       competitorFormatted: fmtInt(c.postsAnalyzed),
     });
   }
+
+  if (scope === "identity") return rows;
 
   if (isPositive(primary.engagementRate) && isPositive(c.averageEngagementRate)) {
     rows.push({
