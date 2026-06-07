@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
+import { Trans } from "react-i18next";
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, UserPlus, Info, Coins, ArrowRight } from "lucide-react";
 import {
   Dialog,
   DialogContent,
