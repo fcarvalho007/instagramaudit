@@ -24,7 +24,6 @@ import {
 import { computePostAverages } from "@/lib/report/post-aggregates";
 import { buildBlock01Sample } from "@/lib/report/block01-sample";
 import { PremiumTeaserCard } from "./premium-teaser-card";
-import { FreeInitialReadingCard } from "./overview/free-initial-reading-card";
 
 const PREMIUM_TEASERS = [
   {
@@ -264,18 +263,48 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
             pinnedExcluded={sample?.pinnedPostsExcluded ?? 0}
             outliersExcluded={sample?.dateOutliersExcluded ?? 0}
           />
-          <FreeInitialReadingCard
-            engagementRate={k.engagementRate}
-            engagementBenchmark={k.engagementBenchmark}
-            postingFrequencyWeekly={k.postingFrequencyWeekly}
-            cadenceSufficient={enriched.cadence.sufficient}
+          <EditorialIdentityCard
+            scores={scores}
+            aiVerdict={enriched.aiInsightsV2?.editorialVerdict ?? null}
+            keyMetrics={{
+              engagementRate: k.engagementRate,
+              engagementBenchmark: k.engagementBenchmark,
+              engagementDeltaPct: k.engagementDeltaPct,
+            }}
             dominantFormat={k.dominantFormat}
             dominantFormatShare={k.dominantFormatShare}
+            postingFrequencyWeekly={k.postingFrequencyWeekly}
+            followers={result.data.profile.followers}
+            postsAnalyzed={k.postsAnalyzed}
+            averageLikes={avgLikes}
+            averageComments={avgComments}
+            cadenceSufficient={enriched.cadence.sufficient}
+            cadenceReliability={enriched.cadence.reliability}
+            competitorsCount={result.data.competitors.length}
+            cadenceMethod={enriched.cadence.method}
+            cadenceWindowDays={enriched.cadence.windowDays}
             hasRecurringHashtags={
               (result.data.topHashtags ?? []).some((h) => (h.uses ?? 0) >= 2)
             }
-            postsAnalyzed={k.postsAnalyzed}
-            windowDays={enriched.cadence.windowDays}
+            cadenceLabelPt={buildCadenceLabelPt({
+              weekly: enriched.cadence.sufficient
+                ? (enriched.cadence.weekly ?? null)
+                : null,
+              sufficient: enriched.cadence.sufficient,
+            })}
+            hashtagsState={classifyHashtagsState(
+              (result.data.topHashtags ?? []).map((h) => ({
+                tag: h.tag,
+                uses: h.uses,
+              })),
+            )}
+            topHashtags={pickHashtagsForVerdict(
+              (result.data.topHashtags ?? []).map((h) => ({
+                tag: h.tag,
+                uses: h.uses,
+              })),
+              2,
+            )}
           />
           <div id="engagement" className="scroll-mt-24">
             <EngagementCardRefined result={result} />
