@@ -56,7 +56,7 @@ export function CompareStatBlock({
     <>
       <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-stretch gap-3 sm:gap-4">
         <Side side={primary} accent="primary" subText={primarySub} />
-        <div className="flex items-center justify-center">
+        <div className="flex items-center justify-center sm:min-w-8 sm:px-1">
           <span
             aria-hidden="true"
             className="text-eyebrow-sm text-content-tertiary"
@@ -127,7 +127,10 @@ function Side({
       >
         @{side.handle}
       </span>
-      <span className="tabular-nums text-3xl sm:text-4xl font-semibold text-content-primary leading-tight">
+      <span
+        className="tabular-nums font-semibold text-content-primary leading-tight min-w-0 overflow-hidden whitespace-nowrap text-[clamp(1.5rem,4.2vw,2.25rem)]"
+        title={side.title ?? side.formatted}
+      >
         {side.formatted}
       </span>
       {subText ? (
