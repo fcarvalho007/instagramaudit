@@ -28,6 +28,9 @@ import { CompetitorOverviewCompare } from "./overview/competitor-overview-compar
 import { CompetitorEngagementCompare } from "./competitor-engagement-compare";
 import { CompetitorCadenceCompare } from "./competitor-cadence-compare";
 import { CompetitorBioCompare } from "./competitor-bio-compare";
+import { CompetitorFormatCompare } from "./competitor-format-compare";
+import { CompetitorWeekdayCompare } from "./competitor-weekday-compare";
+import { normaliseFormatKey } from "@/lib/report/format-keys";
 
 const PREMIUM_TEASERS = [
   {
@@ -101,14 +104,6 @@ export interface Props {
    *   (Engagement, Frequency+Format grid, Best vs Worst posts).
    */
   mode?: "all" | "free" | "free_with_engagement" | "locked";
-}
-
-function normaliseFormatKey(raw: string | null | undefined): "Reels" | "Carousels" | "Imagens" | null {
-  const s = (raw ?? "").toLowerCase();
-  if (s.startsWith("reel")) return "Reels";
-  if (s.startsWith("carro") || s.startsWith("carou")) return "Carousels";
-  if (s.startsWith("imag")) return "Imagens";
-  return null;
 }
 
 export function ReportOverviewBlock({ result, renderInsight: _renderInsight, payload, mode = "all" }: Props) {
@@ -388,13 +383,20 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
           <div className="space-y-6 md:space-y-8">
             <div id="frequencia" className="scroll-mt-24">
             {firstCompetitor ? (
-              <CompetitorCadenceCompare
-                primary={{
-                  handle: primaryHandle,
-                  postingFrequencyWeekly: k.postingFrequencyWeekly,
-                }}
-                competitor={firstCompetitor}
-              />
+              <div className="space-y-4">
+                <CompetitorCadenceCompare
+                  primary={{
+                    handle: primaryHandle,
+                    postingFrequencyWeekly: k.postingFrequencyWeekly,
+                  }}
+                  competitor={firstCompetitor}
+                />
+                <CompetitorWeekdayCompare
+                  primaryHandle={primaryHandle}
+                  payload={payload}
+                  competitor={firstCompetitor}
+                />
+              </div>
             ) : (
               <FrequencyCard
                 postsAnalyzed={k.postsAnalyzed}
@@ -409,14 +411,22 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
             )}
             </div>
             <div id="formatos" className="scroll-mt-24">
-            <FormatCard
-              postsAnalyzed={k.postsAnalyzed}
-              dominantFormat={k.dominantFormat}
-              dominantFormatShare={k.dominantFormatShare}
-              formats={formatEntries}
-              analysedPostFormats={enriched.analysedPostFormats}
-              socialinsiderRef={result.externalReferences}
-            />
+            {firstCompetitor ? (
+              <CompetitorFormatCompare
+                primaryHandle={primaryHandle}
+                formats={formatEntries}
+                competitor={firstCompetitor}
+              />
+            ) : (
+              <FormatCard
+                postsAnalyzed={k.postsAnalyzed}
+                dominantFormat={k.dominantFormat}
+                dominantFormatShare={k.dominantFormatShare}
+                formats={formatEntries}
+                analysedPostFormats={enriched.analysedPostFormats}
+                socialinsiderRef={result.externalReferences}
+              />
+            )}
             </div>
           </div>
 

@@ -44,6 +44,11 @@ export interface ReportCompetitorBreakdownEntry {
     { count?: number; share_pct?: number; avg_engagement_pct?: number }
   > | null;
   weekdayCounts?: number[];
+  /** ISO-aligned weekday counts (Mon=0 .. Sun=6). Mirrors the order
+   * used by `frequency-card.aggregateByWeekday` so comparison cards
+   * plot competitor distribution next to the primary without
+   * re-implementing the UTC->ISO remap. */
+  weekdayCountsIso?: number[];
   topHashtags?: Array<{ tag: string; count: number }>;
 }
 
@@ -396,6 +401,8 @@ export const reportData = {
       },
       // [Dom, Seg, Ter, Qua, Qui, Sex, Sáb] (UTC weekday index 0..6)
       weekdayCounts: [2, 5, 6, 7, 5, 4, 3],
+      // ISO-aligned mirror (Mon..Sun) of the UTC array above.
+      weekdayCountsIso: [5, 6, 7, 5, 4, 3, 2],
       topHashtags: [
         { tag: "marketingdigital", count: 14 },
         { tag: "estrategia", count: 9 },

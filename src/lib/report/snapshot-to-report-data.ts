@@ -28,6 +28,7 @@ import {
   type EditorialVerdictWarning,
 } from "@/lib/insights/types";
 import { pickThumbnailUrl } from "@/lib/report/pick-thumbnail";
+import { remapUtcCountsToIso } from "@/lib/report/weekday-iso";
 
 import { resolveReportTier } from "./tiers";
 import {
@@ -1371,6 +1372,17 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
                 .map((n) => num(n, 0))
                 .slice(0, 7)
             : [],
+          // ISO-aligned (Mon=0..Sun=6) copy so comparison cards can plot
+          // competitor weekday distribution next to the primary
+          // `frequency-card.aggregateByWeekday` ISO ordering without
+          // each consumer re-implementing the UTC->ISO remap.
+          weekdayCountsIso: remapUtcCountsToIso(
+            Array.isArray((c as Record<string, unknown>).weekday_counts)
+              ? ((c as Record<string, unknown>).weekday_counts as unknown[]).map(
+                  (n) => num(n, 0),
+                )
+              : [],
+          ),
           topHashtags: Array.isArray((c as Record<string, unknown>).top_hashtags)
             ? ((c as Record<string, unknown>).top_hashtags as unknown[])
                 .map((entry) => {
