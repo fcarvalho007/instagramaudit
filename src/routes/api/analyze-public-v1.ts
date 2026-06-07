@@ -34,6 +34,7 @@ import {
   computeContentSummary,
   enrichPosts,
   normalizeProfile,
+  postTimestampMs,
 } from "@/lib/analysis/normalize";
 import {
   estimateApifyCost,
@@ -258,7 +259,14 @@ async function fetchProfileWithPosts(
 }> {
   const actorInput: Record<string, unknown> = {
     directUrls: [`https://www.instagram.com/${username}/`],
-    resultsType: cfg.onlyPostsNewerThan ? "posts" : "details",
+    // PR1 fix: keep `details` mode for ALL windows. In `posts` mode the
+    // actor returns post rows (no `username`/`followersCount`), which
+    // breaks `normalizeProfile` and produced false PROFILE_NOT_FOUND for
+    // 30d/90d. Window filtering is now applied client-side over the
+    // embedded `latestPosts[]`. `onlyPostsNewerThan` is still passed
+    // through for diagnostic parity even though the actor ignores it in
+    // details mode.
+    resultsType: "details",
     // `resultsLimit` controls the size of `latestPosts[]` inside the
     // single profile row returned by the actor. It is NOT the number of
     // profiles per run (see `maxItems` below).
