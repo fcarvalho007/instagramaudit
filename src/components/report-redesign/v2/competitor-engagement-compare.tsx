@@ -1,4 +1,3 @@
-import { cn } from "@/lib/utils";
 import { CompareStatBlock } from "@/components/report-redesign/v2/compare";
 import type { ReportCompetitorBreakdownEntry } from "@/components/report/report-mock-data";
 
@@ -31,132 +30,35 @@ export function CompetitorEngagementCompare({ primary, competitor }: Props) {
     competitor.averageEngagementRate,
   );
 
-  const showLikes =
-    isPositive(primary.averageLikes) && isPositive(competitor.averageLikes);
-  const showComments =
-    isPositive(primary.averageComments) &&
-    isPositive(competitor.averageComments);
-
   return (
     <section
       aria-label="Comparação de envolvimento com concorrente"
-      className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden"
+      className="space-y-3"
     >
-      <header className="px-4 sm:px-5 md:px-6 pt-6 sm:pt-7 pb-3 space-y-1">
-        <span className="text-eyebrow-sm text-content-tertiary">
-          Envolvimento vs concorrente
-        </span>
-        <h3 className="text-base sm:text-lg font-semibold text-content-primary">
-          @{primary.handle} vs @{competitor.username}
-        </h3>
-        {!competitor.windowAligned ? (
-          <p className="text-xs text-content-tertiary">
-            Concorrente em janela baseline.
-          </p>
-        ) : null}
-      </header>
-
-      <div className="px-4 sm:px-5 md:px-6 pb-4 sm:pb-5">
-        <CompareStatBlock
-          label="Envolvimento médio"
-          primary={{
-            handle: primary.handle,
-            value: primary.engagementRate,
-            formatted: fmtPct(primary.engagementRate),
-          }}
-          competitor={{
-            handle: competitor.username,
-            value: competitor.averageEngagementRate,
-            formatted: fmtPct(competitor.averageEngagementRate),
-          }}
-          unit="pp"
-          higherIsBetter={true}
-        />
-      </div>
-
-      {(showLikes || showComments) && (
-        <div className="px-4 sm:px-5 md:px-6 pb-4 sm:pb-5 space-y-2">
-          {showLikes && (
-            <SupportRow
-              label="Likes por publicação"
-              primaryHandle={primary.handle}
-              competitorHandle={competitor.username}
-              primaryFormatted={fmtInt(Math.round(primary.averageLikes))}
-              competitorFormatted={fmtInt(Math.round(competitor.averageLikes))}
-            />
-          )}
-          {showComments && (
-            <SupportRow
-              label="Comentários por publicação"
-              primaryHandle={primary.handle}
-              competitorHandle={competitor.username}
-              primaryFormatted={fmtInt(Math.round(primary.averageComments))}
-              competitorFormatted={fmtInt(
-                Math.round(competitor.averageComments),
-              )}
-            />
-          )}
-        </div>
-      )}
-
-      <div className="px-4 sm:px-5 md:px-6 pb-6 sm:pb-7">
-        <p className="text-sm text-content-secondary leading-relaxed">
-          {verdict}
-        </p>
-      </div>
+      <CompareStatBlock
+        label="Taxa de engagement"
+        hint={
+          !competitor.windowAligned
+            ? "Concorrente em janela baseline."
+            : undefined
+        }
+        primary={{
+          handle: primary.handle,
+          value: primary.engagementRate,
+          formatted: fmtPct(primary.engagementRate),
+        }}
+        competitor={{
+          handle: competitor.username,
+          value: competitor.averageEngagementRate,
+          formatted: fmtPct(competitor.averageEngagementRate),
+        }}
+        unit="pp"
+        higherIsBetter={true}
+      />
+      <p className="text-sm text-content-secondary leading-relaxed px-1">
+        {verdict}
+      </p>
     </section>
-  );
-}
-
-function SupportRow({
-  label,
-  primaryHandle,
-  competitorHandle,
-  primaryFormatted,
-  competitorFormatted,
-}: {
-  label: string;
-  primaryHandle: string;
-  competitorHandle: string;
-  primaryFormatted: string;
-  competitorFormatted: string;
-}) {
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] items-center gap-1 sm:gap-3 rounded-lg border border-border-subtle bg-surface-primary px-3 py-2">
-      <span className="text-xs text-content-secondary">{label}</span>
-      <Pair accent="primary" handle={primaryHandle} value={primaryFormatted} />
-      <Pair
-        accent="secondary"
-        handle={competitorHandle}
-        value={competitorFormatted}
-      />
-    </div>
-  );
-}
-
-function Pair({
-  accent,
-  handle,
-  value,
-}: {
-  accent: "primary" | "secondary";
-  handle: string;
-  value: string;
-}) {
-  return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-content-primary">
-      <span
-        aria-hidden="true"
-        className={cn(
-          "size-1.5 rounded-full shrink-0",
-          accent === "primary" ? "bg-accent-primary" : "bg-compare-competitor",
-        )}
-      />
-      <span className="text-content-secondary truncate max-w-[8rem]">
-        @{handle}
-      </span>
-      <span className="tabular-nums font-medium">{value}</span>
-    </span>
   );
 }
 
@@ -178,10 +80,6 @@ function buildVerdict(primaryER: number, competitorER: number): string {
 
 function isPositive(n: number | null | undefined): n is number {
   return typeof n === "number" && Number.isFinite(n) && n > 0;
-}
-
-function fmtInt(n: number): string {
-  return n.toLocaleString("pt-PT");
 }
 
 function fmtPct(n: number): string {
