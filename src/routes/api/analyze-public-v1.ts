@@ -102,7 +102,6 @@ import {
 } from "@/lib/enrichment/types";
 import { prefetchThumbnailsAsBase64 } from "@/lib/analysis/thumbnail-cache.server";
 import { setEnrichmentStatusAtomic } from "@/lib/analysis/cache";
-import { PUBLIC_INSTAGRAM_POSTS_LIMIT } from "@/lib/analysis/constants";
 import {
   PUBLIC_WINDOW_CONFIGS,
   isPublicWindowKind,
