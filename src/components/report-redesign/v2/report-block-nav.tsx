@@ -1177,6 +1177,11 @@ function SidebarList({
                     )}
                   </div>
                   {showSubs && <DiagnosticSubList activeSub={activeSub} />}
+                  {isDiag && !compact && !diagExpanded && (
+                    <p className="pl-9 pr-3 pb-1 -mt-0.5 text-[11px] text-content-tertiary">
+                      {t("nav.diagnostic_subitems.note")}
+                    </p>
+                  )}
                 </li>
               );
             })}
