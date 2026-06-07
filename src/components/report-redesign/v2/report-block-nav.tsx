@@ -266,14 +266,18 @@ function ProfileHeader({
   const isMulti = profiles.length > 1;
   const eyebrow = isMulti
     ? t("nav.eyebrow_multi", { count: profiles.length })
-    : t("nav.eyebrow_single");
+    : compact
+      ? t("nav.eyebrow_analyzing")
+      : t("nav.eyebrow_single");
   const primary = profiles[0];
   const primaryHandle = formatHandle(primary.handle);
   return (
     <div
       className={cn(
         "px-1 transition-all duration-200",
-        compact ? "pb-2 mb-2" : "pb-3 mb-3 border-b border-border-default/60",
+        compact
+          ? "pb-3 mb-3 border-b border-border-default/60"
+          : "pb-3 mb-3 border-b border-border-default/60",
       )}
     >
       <div className={cn("flex items-center", compact ? "gap-2" : "gap-3")}>
@@ -281,9 +285,7 @@ function ProfileHeader({
           <ProfileAvatar profile={primary} size={compact ? "sm" : "md"} />
         )}
         <div className="min-w-0 flex-1">
-          {!compact && (
-            <p className="text-eyebrow-sm text-content-tertiary mb-1">{eyebrow}</p>
-          )}
+          <p className="text-eyebrow-sm text-content-tertiary mb-1">{eyebrow}</p>
           {isMulti ? (
             <div className="flex items-center">
               {profiles.map((p) => (
