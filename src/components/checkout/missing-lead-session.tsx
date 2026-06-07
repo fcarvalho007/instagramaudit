@@ -2,6 +2,7 @@ import { ArrowRight } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
+import { CheckoutPrimaryButton } from "@/components/checkout/checkout-primary-button";
 
 interface Props {
   title?: string;
@@ -32,15 +33,14 @@ export function MissingLeadSession({
         </p>
       </header>
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-        <Button
+        <CheckoutPrimaryButton
           type="button"
-          variant="primary"
           onClick={() => navigate({ to: primaryTo }).catch(() => {})}
           className="gap-2"
         >
           {primaryLabel}
           <ArrowRight className="size-4" aria-hidden="true" />
-        </Button>
+        </CheckoutPrimaryButton>
         <Button
           type="button"
           variant="ghost"

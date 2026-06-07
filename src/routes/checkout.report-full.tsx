@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -457,8 +457,8 @@ function CheckoutSteps() {
                   </>
                 ) : (
                   <>
+                    <Lock className="size-4" aria-hidden="true" />
                     Confirmar e pagar
-                    <ArrowRight className="size-4" aria-hidden="true" />
                   </>
                 )}
               </CheckoutPrimaryButton>
