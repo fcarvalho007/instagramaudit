@@ -1,133 +1,61 @@
-## Phase 2 — Distribution comparison data audit
+## Goal
 
-Scope: prepare `competitorBreakdown[0]` for paired-bar cards (Mix de formatos, Ritmo por dia da semana). Read-only audit. No provider, schema, payment, credit, entitlement, Apify or DataForSEO changes.
+Stop large-magnitude values (e.g. 1 147 836 followers vs 5 264 927) from overflowing or colliding inside the side-by-side panels of Phase 1 comparison cards, while keeping the editorial look. Surgical changes only: `CompareStatBlock`, `competitor-overview-compare`, and (lightly) the engagement/cadence call-sites. No data, schema, providers, credits, checkout, EuPago, Free/Public.
 
-## Data availability table
+## Diagnosis
 
-All fields below already arrive in the snapshot via `analyze-public-v1.ts:1158-1166` (Phase 2B persisted `posts`, `format_stats`, `weekday_counts`, `top_hashtags`). The adapter `snapshot-to-report-data.ts:1300-1357` already maps them onto `ReportCompetitorBreakdownEntry`.
+`Side` in `compare-stat-block.tsx:130` renders the value at `text-3xl sm:text-4xl` with no width guards beyond a `min-w-0` on the panel. The grid is `1fr_auto_1fr`, so when both columns get a long string like `"5 264 927"` at 36-40px, they push past their 1fr share, the panels visually collide and the centered `vs` gets squeezed. There is no compact-notation fallback — `fmtInt` in `competitor-overview-compare.tsx:177` always emits the full pt-PT integer.
 
-| Phase 2 card need | Primary source | Competitor source | Available today? | Notes |
-|---|---|---|---|---|
-| Format mix % per format | `formatBreakdown[].sharePct` | `competitor.formatStats[fmt].share_pct` | YES | Keys aligned: both produced by `normalize.ts:612-627` → `Reels` / `Carrosséis` / `Imagens` |
-| Format mix count | `formatBreakdown[].count` | `competitor.formatStats[fmt].count` | YES | Same source |
-| Dominant format label | `keyMetrics.dominantFormat` | `competitor.dominantFormat` | YES | Already on entry |
-| Dominant format share % | `keyMetrics.dominantFormatShare` | derivable: `competitor.formatStats[competitor.dominantFormat]?.share_pct` | DERIVABLE | Not stored explicitly on entry, easy adapter add |
-| Posts per week | `keyMetrics.postingFrequencyWeekly` | `competitor.estimatedPostsPerWeek` | YES | Already used by `CompetitorCadenceCompare` |
-| Weekday rhythm (7 buckets) | derived from `posts[].weekday` (UTC) → ISO Mon..Sun by `FrequencyCard` | `competitor.weekdayCounts: number[7]` | YES, but **misaligned** | See "Missing / misaligned" below |
-| Peak weekday | `FrequencyCard` derives from buckets | derivable from `weekdayCounts` | DERIVABLE | Same helper, no new data |
-| Avg engagement per format | `formatBreakdown[].avgEngagement` (when present) | `competitor.formatStats[fmt].avg_engagement_pct` | YES | Not yet exposed in `competitorBreakdown` type ergonomics but already on the record |
+Existing helper `formatCompactNumber(value, lang)` already exists in `src/lib/i18n/format.ts` (used by hero + identity card). Reuse it — no new util.
 
-## Missing / misaligned fields
+## Plan
 
-1. **Weekday index convention mismatch — must fix in adapter.**
-   - Producer (`analyze-public-v1.ts:1131-1135`) builds `weekdayCounts[p.weekday]` with `p.weekday` documented as `0=Sunday … 6=Saturday (UTC)` (`enrichPosts` types).
-   - Primary `FrequencyCard` consumes Mon..Sun-indexed buckets (line 137: `weekday: 0..6 where Mon=0..Sun=6`).
-   - Adapter currently copies `weekday_counts` verbatim (`snapshot-to-report-data.ts:1341-1345`) — paired bars would silently misalign by 1 day.
-   - **Fix:** use the existing `utcWeekdayToIso` helper (line 584) in the adapter to remap into a new field `weekdayCountsIso: number[7]` (Mon=0..Sun=6). Keep `weekdayCounts` unchanged for back-compat.
+### 1. `competitor-overview-compare.tsx` — compact formatting per metric
 
-2. **Dominant format share not on entry.**
-   - The number is trivially derivable client-side, but exposing it on the entry mirrors primary `keyMetrics.dominantFormatShare` and avoids cards re-implementing the lookup.
-   - **Fix:** add optional `dominantFormatShare?: number` populated in adapter from `formatStats[dominantFormat]?.share_pct`.
+- Replace the inline `fmtInt` for the **Seguidores** row with `formatCompactNumber(value, "pt")` (e.g. "1,1 M", "5,3 M"). Pass the raw integer as a new `rawValue`/title hint so the tooltip shows the exact number.
+- For **Likes por publicação** and **Comentários por publicação**: use compact only when `value >= 10_000`; otherwise keep `fmtInt`. Avoids "8,2 mil" where "8 246" still fits.
+- **Publicações analisadas**, **Publicações por semana**, **Envolvimento médio** → unchanged (already short).
+- Extend the `Row` shape with optional `primaryTitle` / `competitorTitle` (exact pt-PT integer) and forward them to `CompareStatBlock` via `primary.title` / `competitor.title`.
 
-3. **No data missing from snapshot.** Both gaps are adapter-only ergonomics. No schema migration, no new Apify field, no second scrape.
+### 2. `compare-types.ts` — add optional `title` field on `CompareSide`
 
-## Recommended adapter changes (smallest safe extension)
+Pure additive field used as `title=` attribute on the value `<span>`. No behavioural change for callers that omit it.
 
-File: `src/lib/report/snapshot-to-report-data.ts` (entry builder block 1300-1357).
-File: `src/components/report/report-mock-data.ts` (type only).
+### 3. `compare-stat-block.tsx` — responsive guards (the real fix)
 
-```ts
-// report-mock-data.ts — extend ReportCompetitorBreakdownEntry
-weekdayCounts?: number[];          // (existing) raw UTC Sun..Sat — keep for back-compat
-weekdayCountsIso?: number[];       // NEW: ISO Mon..Sun, aligned with FrequencyCard
-dominantFormatShare?: number;      // NEW: share_pct of dominantFormat in formatStats
-```
+Inside `Side`:
+- Add `min-w-0 overflow-hidden` to the value `<span>`.
+- Replace `text-3xl sm:text-4xl` with a fluid clamp: `text-[clamp(1.5rem,4.2vw,2.25rem)]` so 1460px desktop gets ~36px and 375px mobile gets ~24px. Keep `tabular-nums`, `font-semibold`, `leading-tight`.
+- Add `whitespace-nowrap` + `title={side.title ?? side.formatted}` so the exact value is always discoverable on hover.
+- Keep the handle `truncate max-w-full`.
 
-```ts
-// snapshot-to-report-data.ts — inside the existing entry object
-const rawWeekday = Array.isArray(c.weekday_counts)
-  ? (c.weekday_counts as unknown[]).map((n) => num(n, 0))
-  : [];
-const weekdayCountsIso =
-  rawWeekday.length === 7
-    ? Array.from({ length: 7 }, (_, isoIdx) => {
-        // isoIdx 0=Mon..6=Sun → UTC idx 1..6,0
-        const utcIdx = (isoIdx + 1) % 7;
-        return rawWeekday[utcIdx] ?? 0;
-      })
-    : [];
+On the wrapper grid:
+- Change `sm:grid-cols-[1fr_auto_1fr]` → `sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]` so 1fr columns can actually shrink (canonical CSS-grid overflow fix).
+- Bump the `vs` column to `min-w-8 px-1` so the separator has stable breathing room and never gets squeezed.
+- Keep the outer `min-w-0` on the section.
 
-// ...
-weekdayCounts: rawWeekday.slice(0, 7),
-weekdayCountsIso,
-dominantFormatShare:
-  formatStats && typeof formatStats === "object" && typeof dominantFormat === "string"
-    ? num(
-        (formatStats as Record<string, { share_pct?: number }>)[dominantFormat]
-          ?.share_pct,
-        0,
-      )
-    : 0,
-```
+### 4. Engagement / Cadence cards — no logic change
 
-Pure additive. Older snapshots fall back to empty / 0. No new provider call. No snapshot version bump required (fields are optional).
+They render percentages and "/ semana" decimals already short. They share `CompareStatBlock`, so they inherit the clamp + overflow guard for free. No edits required other than confirming the call-sites still compile.
 
-## Out of scope
+### 5. Mobile (375 px)
 
-- Provider calls, Apify, DataForSEO, OpenAI.
-- Schema / migrations / payments / credits / entitlements / EuPago / checkout.
-- Multi-competitor (Fase 1.5).
-- Primary-side `FormatCard` / `FrequencyCard` internals — only consumed read-only.
-- Free / `free_with_engagement` report.
+Existing layout already stacks vertically via `grid-cols-1 sm:grid-cols-[...]`. With the clamp lower bound at 24px and `min-w-0` on the value span, the seguidores row will read e.g. "1,1 M" / "5,3 M" with the `vs` chip centered between the stacked panels — no horizontal scroll.
 
-## Risks
+## Validation
 
-- Weekday remap **must** use the existing `utcWeekdayToIso` helper or an equivalent constant; getting it backwards inverts the chart silently. Plan to add a 4-line unit test in `snapshot-to-report-data` covering: input `[7,1,2,3,4,5,6]` (Sun=7 posts) → `weekdayCountsIso[6] === 7` (Sun is the last ISO bucket).
-- `dominantFormatShare` key lookup depends on exact format string match. The normalizer uses `Reels|Carrosséis|Imagens`; adapter must not lowercase or strip accents. Document this in a JSDoc.
-- Adding two optional fields cannot break consumers, but Phase 2 cards must guard against `weekdayCountsIso.length !== 7` and `formatStats == null` (Phase 0 / mock snapshots).
+1. Visit `/admin/report-preview/nunomarkl?variant=pro_preview` at 1460px — confirm "Seguidores" reads as "1,1 M" vs "5,3 M" (compact), `vs` is visible, no overlap.
+2. Hover the values — `title` shows the exact integer (`1 147 836`).
+3. Resize the browser preview to 375px — panels stack, no horizontal scroll, value text shrinks to ~24px.
+4. `/admin/report-preview/frederico.m.carvalho` (no competitor) — unchanged (compare cards not rendered).
+5. `/report.example` (Free/Public) — unchanged.
+6. `bun tsc --noEmit` clean.
+7. Network panel during render — no new provider/network calls.
 
-## Phase 2 implementation prompt (ready to send when approved)
+## Files to change
 
-```
-Use Plan Mode then Edit Mode.
+- `src/components/report-redesign/v2/compare/compare-types.ts` — add optional `title?: string` on `CompareSide`.
+- `src/components/report-redesign/v2/compare/compare-stat-block.tsx` — grid track `minmax(0,1fr)`, `vs` min width, fluid clamp on value, overflow guards, forward `title`.
+- `src/components/report-redesign/v2/overview/competitor-overview-compare.tsx` — use `formatCompactNumber` for Seguidores (and likes/comments when ≥10 000), pass raw pt-PT integer via `title`.
 
-Goal:
-Build the two distribution-comparison cards for Phase 2:
-1. Mix de formatos (paired bars per format)
-2. Ritmo por dia da semana (paired bars per weekday)
-
-Scope:
-- New component CompetitorFormatCompare using existing
-  CompareBarPair primitive, fed by competitorBreakdown[0].formatStats
-  vs primary formatBreakdown.
-- New component CompetitorCadenceWeekdayCompare using CompareBarPair,
-  fed by competitorBreakdown[0].weekdayCountsIso vs primary weekday
-  buckets derived in FrequencyCard's existing helper (extract to a
-  small util if needed).
-- Wrap both with the white-card + Fraunces shell pattern established
-  by CompareStatBlock variant="card" (or use it directly via a new
-  bare variant if the bar primitive ships its own shell).
-- When competitorBreakdown[0] exists in Pro mode, replace the
-  single-profile FormatCard / FrequencyCard with the compare card
-  (same pattern Fase 1 used for Engagement / Cadence). Otherwise
-  render the original cards unchanged.
-
-Pre-req adapter changes (do first, single migration-free PR):
-- Extend ReportCompetitorBreakdownEntry with optional
-  weekdayCountsIso and dominantFormatShare.
-- Populate them in snapshot-to-report-data.ts using
-  utcWeekdayToIso for weekday remap.
-- Add unit test covering the weekday remap (Sun bucket arrives last).
-
-Do not touch: providers, Apify, DataForSEO, OpenAI, schema, payments,
-credits, entitlements, checkout, Free/Public, multi-competitor.
-
-Validate:
-- nunomarkl Pro view shows compare format bars + compare weekday
-  bars instead of single-profile cards.
-- frederico.m.carvalho (no competitor) unchanged.
-- Free/Public unchanged.
-- 375px mobile no overflow.
-- bun tsc --noEmit passes.
-- Weekday remap test passes.
-```
+No edits to engagement-compare, cadence-compare, data adapter, schema, providers, or Free/Public.

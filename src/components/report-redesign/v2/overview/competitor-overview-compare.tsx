@@ -1,6 +1,7 @@
 import { CompareStatBlock } from "@/components/report-redesign/v2/compare";
 import type { CompareUnit } from "@/components/report-redesign/v2/compare";
 import type { ReportCompetitorBreakdownEntry } from "@/components/report/report-mock-data";
+import { formatCompactNumber } from "@/lib/i18n/format";
 
 interface PrimarySide {
   handle: string;
@@ -64,11 +65,13 @@ export function CompetitorOverviewCompare({ primary, competitor, scope = "all" }
               handle: primary.handle,
               value: row.primaryValue,
               formatted: row.primaryFormatted,
+              title: row.primaryTitle,
             }}
             competitor={{
               handle: competitor.username,
               value: row.competitorValue,
               formatted: row.competitorFormatted,
+              title: row.competitorTitle,
             }}
             unit={row.unit}
             higherIsBetter={true}
@@ -86,6 +89,9 @@ interface Row {
   competitorValue: number;
   primaryFormatted: string;
   competitorFormatted: string;
+  /** Optional exact-value text for native `title=` tooltip. */
+  primaryTitle?: string;
+  competitorTitle?: string;
 }
 
 function buildRows(
@@ -101,8 +107,10 @@ function buildRows(
       unit: "abs",
       primaryValue: primary.followers,
       competitorValue: c.followers,
-      primaryFormatted: fmtInt(primary.followers),
-      competitorFormatted: fmtInt(c.followers),
+      primaryFormatted: fmtCompact(primary.followers),
+      competitorFormatted: fmtCompact(c.followers),
+      primaryTitle: fmtInt(primary.followers),
+      competitorTitle: fmtInt(c.followers),
     });
   }
 
@@ -131,24 +139,32 @@ function buildRows(
   }
 
   if (isPositive(primary.averageLikes) && isPositive(c.averageLikes)) {
+    const p = Math.round(primary.averageLikes);
+    const k = Math.round(c.averageLikes);
     rows.push({
       label: "Likes por publicação",
       unit: "abs",
       primaryValue: primary.averageLikes,
       competitorValue: c.averageLikes,
-      primaryFormatted: fmtInt(Math.round(primary.averageLikes)),
-      competitorFormatted: fmtInt(Math.round(c.averageLikes)),
+      primaryFormatted: fmtIntOrCompact(p),
+      competitorFormatted: fmtIntOrCompact(k),
+      primaryTitle: fmtInt(p),
+      competitorTitle: fmtInt(k),
     });
   }
 
   if (isPositive(primary.averageComments) && isPositive(c.averageComments)) {
+    const p = Math.round(primary.averageComments);
+    const k = Math.round(c.averageComments);
     rows.push({
       label: "Comentários por publicação",
       unit: "abs",
       primaryValue: primary.averageComments,
       competitorValue: c.averageComments,
-      primaryFormatted: fmtInt(Math.round(primary.averageComments)),
-      competitorFormatted: fmtInt(Math.round(c.averageComments)),
+      primaryFormatted: fmtIntOrCompact(p),
+      competitorFormatted: fmtIntOrCompact(k),
+      primaryTitle: fmtInt(p),
+      competitorTitle: fmtInt(k),
     });
   }
 
@@ -175,6 +191,16 @@ function isPositive(n: number | null | undefined): n is number {
 
 function fmtInt(n: number): string {
   return n.toLocaleString("pt-PT");
+}
+
+/** Always compact pt-PT (e.g. "1,1 M", "5,3 M"). Use for high-magnitude metrics. */
+function fmtCompact(n: number): string {
+  return formatCompactNumber(n, "pt");
+}
+
+/** Compact only when value ≥ 10 000; otherwise the full pt-PT integer fits. */
+function fmtIntOrCompact(n: number): string {
+  return Math.abs(n) >= 10_000 ? fmtCompact(n) : fmtInt(n);
 }
 
 function fmtDecimal(n: number, digits: number): string {
