@@ -1,118 +1,87 @@
-# PR1 — Comandos browser para validação manual
 
-Lead de teste: `7b946d45-ecb1-49dc-8702-68d85a860c47` (`fredericodigital@gmail.com`).
-Handle de teste: `frederico.m.carvalho` (ajusta se preferires outro do allowlist).
-Endpoint: `POST /api/analyze-public-v1` (mesma origem do preview/published — o cookie `lead_session` viaja automaticamente com `credentials: "include"`).
+## Root cause (confirmed)
 
-Tu fazes os 4 fetch no DevTools. Eu faço todas as leituras SQL, o insert temporário de entitlement Pro, e o rollback.
+Em `src/routes/api/analyze-public-v1.ts:259-293`, o input do actor `apify/instagram-scraper` muda de forma incompatível quando há janela:
 
----
-
-## Snippet base (cola uma vez por chamada)
-
-Cada cenário só muda o `window`. Define isto antes:
-
-```js
-const HANDLE = "frederico.m.carvalho";
-
-async function analyze(windowKind) {
-  const t0 = performance.now();
-  const res = await fetch("/api/analyze-public-v1", {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      instagram_username: HANDLE,
-      competitor_usernames: [],
-      window: windowKind,
-    }),
-  });
-  const ms = Math.round(performance.now() - t0);
-  let body;
-  try { body = await res.json(); } catch { body = await res.text(); }
-  console.log("STATUS", res.status, "in", ms, "ms");
-  console.log(JSON.stringify(body, null, 2));
-  return { status: res.status, body, ms };
-}
+```ts
+resultsType: cfg.onlyPostsNewerThan ? "posts" : "details",
+...
+maxItems: 1,
 ```
 
-Cola a resposta de cada chamada (status + JSON resumido — não precisas do payload todo, basta `success`, `error_code`, `data_source` / `outcome` / `cache_key` se existirem, e `analysis_snapshot_id` se vier).
+Comportamento real do actor:
 
----
+- **`resultsType:"details"`** → cada item devolvido é um **profile object** (`username`, `followersCount`, `latestPosts[]` embebido, …). `normalizeProfile(row)` encontra `username` + `followersCount` → OK.
+- **`resultsType:"posts"`** → cada item devolvido é um **post object** (`type`, `caption`, `ownerUsername`, `timestamp`, … sem `username` nem `followersCount` no shape esperado). Combinado com `maxItems: 1`, o run devolve **no máximo 1 post** (ou 0 se nenhum post cair no `onlyPostsNewerThan`).
+  - 0 posts → `result.items[0] = undefined` → `primaryRow = null` → `normalizeProfile(null)` → null.
+  - 1 post → `normalizeProfile` falha porque `pickString(raw.username)` é null (o post tem `ownerUsername`, não `username`) → return null.
 
-## Sequência dos 4 cenários
+Em ambos os casos o pipeline cai no `if (!primaryProfile)` na linha 1004 e devolve `PROFILE_NOT_FOUND`, apesar do Apify ter respondido 200 com sucesso (o que explica o `provider_call_logs` PASS, `posts_returned=0`, e crédito reservado/libertado correctamente).
 
-### A. Baseline sem janela (Free OK)
+Não é um bug do normalizer, do cache, dos créditos ou do gate Pro. É o `actorInput` que muda de modo sem o resto do pipeline acompanhar.
 
-Pré-condição: **sem** `lead_entitlements` Pro para este lead. (Eu confirmo via SELECT antes.)
+## Comparação das duas hipóteses
 
-```js
-await analyze("baseline");
-```
+### A. Manter `resultsType:"details"` também em 30d/90d
+- O actor em modo `details` devolve o **profile** com `latestPosts[]` (até ~12 posts recentes, independentemente de `resultsLimit`).
+- Aplicar o filtro de janela **client-side** em `primaryPosts` (filtrar por `postTimestampMs > now - N days`).
+- `onlyPostsNewerThan` em `details` é, na prática, ignorado pelo actor — o limite efectivo de posts é o que vier embebido (~12).
 
-Esperado: `200`, sucesso normal Free. Consumo de 1 crédito ou cache hit, sem `WINDOW_REQUIRES_PRO`.
+**Prós:** 1 só call por handle, profile garantido, sem PROFILE_NOT_FOUND falsos, custo idêntico ao baseline, mesmo path de normalização.
+**Contras:** Para perfis muito activos, 30d/90d pode ficar limitado a ~12 posts (vs. 100/300 prometidos pelo `resultsLimit`). Janelas mais largas perdem profundidade. Em perfis com cadência baixa, 12 posts já cobrem 30d/90d e a perda é zero.
 
----
+### B. Manter `resultsType:"posts"` e fazer um segundo call em `details`
+- Call 1 (`details`, `maxItems:1`) → profile shell + latestPosts baseline.
+- Call 2 (`posts`, `maxItems: resultsLimit`, `onlyPostsNewerThan`) → posts dentro da janela.
+- Merge no pipeline: profile vem do call 1, `primaryPosts` vem do call 2.
 
-### B. Pro 30d — primeira chamada
+**Prós:** Honra `resultsLimit:100/300` real, dá profundidade total na janela, profile sempre presente.
+**Contras:** **Custo ~2× por análise Pro** (dois runs Apify por handle), mais latência (2 timeouts a somar), mais código em pipeline + logging (`provider_call_logs` duplicados), mais superfície de erro parcial (call 1 OK / call 2 falha), mais complexidade no cache_key.
 
-Pré-condição: eu insiro entitlement `report_full_9` temporário em `lead_entitlements` para este lead (com `metadata.kind = "qa_temporary"` para distinguir). Confirmo `hasEntitlement` SELECT antes de te dar luz verde.
+## Recomendação MVP
 
-```js
-await analyze("30d");
-```
+**Opção A** — manter `resultsType:"details"` sempre, remover o ternário, e filtrar `primaryPosts` por data no servidor antes de `computeContentSummary`. Trade-off aceitável para PR1 porque:
 
-Esperado: `200`, sucesso Pro com janela 30d, sem `WINDOW_REQUIRES_PRO`, e geração fresh (ou cache fresh se já existir snapshot 30d) — eu confirmo no `analysis_events` / `provider_call_logs`.
+1. Fiabilidade total: zero PROFILE_NOT_FOUND falsos.
+2. Custo Apify igual a baseline (não duplica).
+3. Permite validar A/B/C/D já no próximo turno sem novo gasto incremental.
+4. Mantém o gate Pro (`report_full_9`) e o consumo de 1 crédito como diferenciadores — o valor Pro fica em "janela analítica + insights pagos" e não em "número bruto de posts".
+5. Se mais tarde se confirmar via dados que o limite de ~12 posts é insuficiente para Pro, evolui-se para Opção B num PR posterior, com o pipeline já estável.
 
----
+## Comportamento esperado após o fix
 
-### C. Pro 30d — repetição (cache hit)
+| Cenário | Resposta esperada |
+|---|---|
+| Profile encontrado, posts ≥ 1 dentro da janela | `success:true`, posts filtrados por data, `data_source:"fresh"` ou `cache` |
+| Profile encontrado, 0 posts dentro da janela (mas tem posts mais antigos) | `success:true`, `primaryPosts=[]`, `content_summary` baseado em 0 posts, métricas de profile normais. **NÃO** devolver `PROFILE_PERSONAL_NO_FEED` neste caso — o feed existe, só não tem posts recentes. Precisa de novo error code ou de devolver sucesso com summary vazio (ver "Decisão pendente"). |
+| Profile encontrado, 0 posts em absoluto + business → personal/private | mantém `PROFILE_PERSONAL_NO_FEED` / `PROFILE_PRIVATE` (lógica linhas 1043-1064 não muda) |
+| Profile realmente inexistente (404 Apify) | `PROFILE_NOT_FOUND` (caminho legítimo, via `ApifyUpstreamError.status===404`) |
 
-Mesma cookie, mesmo entitlement ainda ativo. Logo a seguir a B:
+## Decisão pendente (antes de implementar)
 
-```js
-await analyze("30d");
-```
+A lógica actual em `linhas 1043-1064` interpreta `primaryPosts.length === 0` como "perfil sem feed" (private / personal). Com janelas, 0 posts em 30d pode ser apenas "esteve em pausa", não "sem feed". Duas vias:
 
-Esperado: `200`, `data_source: "cache"` (ou equivalente), zero novas chamadas Apify, e — se o relatório já está associado ao lead — zero crédito adicional reservado.
+- **B1** Aplicar a classificação private/personal **só** quando `window === "baseline"`. Para 30d/90d, devolver `success:true` com summary vazio + flag `no_posts_in_window`.
+- **B2** Aplicar sempre a classificação actual — mais simples, mas mostra "perfil privado" para utilizadores Pro que só estiveram inactivos 30 dias. UX errada.
 
----
+Recomendação: **B1**.
 
-### D. Free 30d após rollback do entitlement
+## Ficheiros a editar
 
-Pré-condição: eu faço rollback (`DELETE` da linha temporária inserida em B). Confirmo via SELECT que `hasEntitlement(leadId, "report_full_9") === false`.
+1. `src/routes/api/analyze-public-v1.ts`
+   - `fetchProfileWithPosts` (≈259-298): remover o ternário; `resultsType:"details"` fixo; `resultsLimit` continua a vir do config (afecta latestPosts embebido).
+   - Bloco `try { … }` (≈1029-1064): aplicar filtro `onlyPostsNewerThan` (ms) sobre `primaryPosts` quando `primaryWindowCfg !== baseline`; ajustar a classificação private/personal para correr apenas em baseline (decisão B1).
 
-```js
-await analyze("30d");
-```
+2. (Opcional) `src/lib/analysis/window-configs.ts`: actualizar o comentário em `resultsLimit` para reflectir que em modo `details` o cap real é o do actor (~12), não 100/300. Não altera comportamento.
 
-Esperado: `403`, `error_code: "WINDOW_REQUIRES_PRO"`, mensagem em PT, **sem** consumir crédito e **sem** chamada Apify (gate corre antes do `reserveCredit`).
+Nada toca em: créditos, EuPago, checkout, preços, schema, UI, `normalize.ts`, cache layer, gate Pro, snapshot persistence.
 
----
+## Prompt exacto para o próximo turno (build mode)
 
-## Verificações server-side que eu corro entre cenários
-
-Antes de A, depois de cada cenário, e no fim:
-
-1. `credit_balance(leadId)` antes/depois para ver delta de cada cenário.
-2. `credit_ledger` últimas 10 linhas para o `leadId` — confirmar que A consumiu (ou cache), B reservou+confirmou crédito, C não criou nova linha (ou só `reservation` revertida), D não criou linha nenhuma.
-3. `analysis_events` últimas 10 linhas para `handle = frederico.m.carvalho` — confirmar `outcome` e `data_source` (fresh vs cache vs blocked_credits) por cenário.
-4. `provider_call_logs` últimas 5 linhas para confirmar se houve ou não chamada Apify em cada cenário (sobretudo confirmar que C e D **não** geram nova linha).
-5. `analysis_snapshots` mais recente para `frederico.m.carvalho` — confirmar `cache_key` (sufixo `:w=30d`) em B/C.
-
-## Inserts / rollbacks que eu corro
-
-- **Antes de B**: `INSERT INTO lead_entitlements (lead_id, product_code, metadata) VALUES ('7b946d45-…', 'report_full_9', '{"kind":"qa_temporary","granted_by":"qa_pr1"}');`
-- **Depois de C, antes de D**: `DELETE FROM lead_entitlements WHERE lead_id = '7b946d45-…' AND product_code = 'report_full_9' AND metadata->>'kind' = 'qa_temporary';`
-- **No fim**: confirmar que não ficou nenhum entitlement `qa_temporary` ativo, e reportar deltas de saldo.
-
-## Restrições
-
-- Sem `INTERNAL_API_TOKEN`, sem header `x-internal-token` — o cookie `lead_session` é o único auth.
-- Sem `window: "90d"` em nenhum momento.
-- Sem expor o valor do cookie no chat.
-- Sem mexer em pagamentos, EuPago, ou nos +3 créditos do plano paralelo.
-
-## O que reporto no fim
-
-Tabela com, por cenário: `status`, `error_code` (se houver), `data_source`, `outcome`, delta `credit_balance`, nova linha em `provider_call_logs` (sim/não), `cache_key` resultante, e confirmação do gate Pro em D.
+> Em build mode, aplica o fix MVP A em `src/routes/api/analyze-public-v1.ts`:
+>
+> 1. Em `fetchProfileWithPosts`, substituir `resultsType: cfg.onlyPostsNewerThan ? "posts" : "details"` por `resultsType: "details"` fixo. Manter `resultsLimit`, `addParentData:false`, `maxItems:1`, `maxTotalChargeUsd`, e continuar a passar `onlyPostsNewerThan` no `actorInput` quando definido (o actor ignora-o em details, mas mantém-se por consistência e diagnóstico futuro).
+> 2. No bloco que extrai `primaryPosts` (≈linhas 1029-1037), aplicar filtro client-side quando `primaryWindowCfg.onlyPostsNewerThan` está definido: parsear "30 days" / "90 days" → ms, e filtrar `primaryPosts` por `postTimestampMs(post) >= Date.now() - windowMs`. Usar `postTimestampMs` já exportado de `src/lib/analysis/normalize.ts`.
+> 3. Ajustar o bloco `if (primaryPosts.length === 0)` (≈linhas 1043-1064): só correr a classificação `PROFILE_PERSONAL_NO_FEED` / `PROFILE_PRIVATE` quando `window === "baseline"`. Para 30d/90d, prosseguir o fluxo normal com `primaryPosts: []` e deixar `computeContentSummary` produzir summary vazio.
+> 4. Não tocar em créditos, EuPago, checkout, preços, schema, UI, normalize, snapshot ou cache.
+> 5. Após o edit, voltar ao Chat Mode e dar luz verde para o utilizador correr B/C/D no browser. Não executar 90d. Não usar INTERNAL_API_TOKEN.
