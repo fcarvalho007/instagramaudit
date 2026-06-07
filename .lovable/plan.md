@@ -1,159 +1,122 @@
-# QA setup — Add Competitor with entitlement (read-only plan)
+# Ativar “Análise por período” para Pro
 
-## 1. Recommended QA lead
+## Estado atual confirmado
 
-| Field | Value |
-|---|---|
-| Lead ID | `01bf861c-6a17-4b36-81b7-130ef2f143da` |
-| Email | `frederico.carvalho@digitalfc.pt` |
-| Name | Fomentar Sonhos |
-| Created | 2026-06-06 17:06:35Z |
-| Credit balance | **1** (initial_grant +2 → reserve −1 → confirm 0) |
-| Most recent snapshot | `683e4c21-60e0-4045-b43a-dfcd85fe9896` (`frederico.m.carvalho`, expires 2026-06-07 08:51:30Z — still inside 24h cache) |
-| Why this lead | Project-owner test lead, already inside `APIFY_ALLOWLIST`, fresh cache for own handle (no Apify call needed for the primary), has 1 confirmable credit, no historical `report_full_9` entitlement to confuse rollback. |
+- **Backend tem a capacidade**: `src/routes/api/admin/apify-lab.ts` já mapeia `window_kind` ∈ {baseline, 30d, 60d, 90d, 365d} para `onlyPostsNewerThan` + `resultsLimit` (12 / 100 / 200 / 300 / 1000) e dispara o actor Apify com sucesso. Foi isto que testámos antes.
+- **Pipeline público NÃO usa janela**: `src/routes/api/analyze-public-v1.ts` corre sempre com `resultsLimit: PUBLIC_INSTAGRAM_POSTS_LIMIT` (baseline). Não aceita parâmetro de janela e a chave de cache não inclui janela.
+- **UI Pro é stub**: em `src/components/report-redesign/v2/report-block-nav.tsx` L613–630, `onConfirmConsume` quando `intent.kind === "period"` apenas trackeia `beta_credit_intent_period`, fecha o dialog e **não consome crédito nem chama backend**. O texto que viste vem de `nav.explore.consume_dialog.period_coming_soon_*`.
+- **Selector inline** (`analysis-period-selector.tsx`) renderiza sempre os chips 30/60/90/365 como *locked*, mesmo quando `premiumUnlocked = true` — nunca leu o flag.
 
-## 2. Lead-session path
+## Objetivo
 
-- The `lead_session` is a signed HTTP cookie set by `POST /api/onboarding/start` → `setLeadCookie(leadId)` (`src/routes/api/onboarding/start.ts:364`).
-- It is **not** stored server-side and **not** re-issuable by SQL. To get a valid `lead_session` on the QA browser, the operator must run the onboarding flow once for this lead (or already hold the cookie). Verify with `GET /api/debug/lead-session-status` before clicking "Adicionar concorrente".
-- Production cookie domain only — preview cannot share a production-issued `lead_session`. See §6.
+- Free: continua exatamente como está (chips bloqueados → `PremiumInterestDialog`).
+- Pro (`premiumUnlocked = true` **e** `balance ≥ 1`): consegue escolher uma janela 30/60/90/365d, consome 1 crédito de forma atómica, dispara nova análise com a janela escolhida e o relatório re-renderiza com esses dados. Cache por (lead_id, handle, janela) para nunca cobrar duas vezes a mesma janela.
+- Sem alterações a `/report.example`, sem alterações a `Free`, sem novas dependências.
 
-## 3. Credit balance
+## Plano técnico
 
-- Required: **≥ 1** (Add Competitor consumes one credit reservation, same as the primary analyze flow).
-- Current: **1** ✓ — no top-up needed.
-- Do not pre-debit anything before QA.
+### 1. Backend — aceitar janela em `analyze-public-v1`
 
-## 4. Entitlement row needed
+Em `src/routes/api/analyze-public-v1.ts`:
 
-Schema: `lead_entitlements(lead_id, product_code, payment_id NULLABLE, metadata jsonb)`, unique on `(lead_id, product_code)`.
+- Adicionar campo opcional `window` ao schema Zod do body: `z.enum(["baseline","30d","60d","90d","365d"]).default("baseline")`.
+- Importar `WINDOW_CONFIGS` de `src/routes/api/admin/apify-lab.ts` (extrair para `src/lib/analysis/window-configs.ts` para evitar acoplamento admin↔público).
+- Mapear `window` → `{ resultsLimit, onlyPostsNewerThan }` e passar ao input do Apify actor; quando `window === "baseline"`, manter `PUBLIC_INSTAGRAM_POSTS_LIMIT` (comportamento atual).
+- **Gate de Pro + crédito** (só quando `window !== "baseline"`):
+  - exigir `lead_session` válido,
+  - exigir `lead_entitlements.product_code = 'report_full_9'`,
+  - reservar 1 crédito via o mesmo helper que o competitor usa (`reserveCredit` / `confirmCredit` / `releaseCredit`),
+  - falhar com `PREMIUM_REQUIRED` ou `INSUFFICIENT_CREDITS` caso contrário.
+- **Cache key** passa a incluir `window` (ex.: append `:w=30d`) para que (a) Pro 30d e Free baseline coexistam no mesmo lead e (b) repetir a mesma janela seja cache hit (sem novo débito).
+- Logar `provider_call_logs` com `metadata.window` (já temos `purpose/mode` na lab — reutilizar).
 
-Required row:
-```
-lead_id      = 01bf861c-6a17-4b36-81b7-130ef2f143da
-product_code = report_full_9
-payment_id   = NULL
-metadata     = {"source":"qa_manual","reason":"add_competitor_runtime_qa","granted_by":"<operator>","granted_at":"<ISO ts>"}
-```
+### 2. Snapshot/cadence respeitar a janela
 
-`payment_id` is nullable in the table; the typed helper `grantEntitlement` requires it, so we must insert via raw SQL, not via the helper.
+Em `src/lib/report/snapshot-to-report-data.ts`:
 
-This is the **only** row required. No `lead_payments`, no `coupon_redemptions`, no schema change.
+- Propagar `window` para `meta.windowLabel` (“Últimos 30 dias” / 60 / 90 / 365 / “amostra recente”).
+- `computeCadence` já cobre janelas; passar `now` + amostra é suficiente — só garantir que o cálculo não force baseline.
+- Ajustar `meta.viewsAvailable` e `meta.temporalLabel` para usar o label da janela.
 
-## 5. Insert + rollback recipes
+### 3. Frontend — sidebar (paid period chips)
 
-Will be executed in a later "Execute" turn. Do not run now.
+Em `src/components/report-redesign/v2/report-block-nav.tsx` `ExploreSection`:
 
-### Insert (one row)
-```sql
-INSERT INTO public.lead_entitlements
-  (lead_id, product_code, payment_id, metadata)
-VALUES
-  ('01bf861c-6a17-4b36-81b7-130ef2f143da',
-   'report_full_9',
-   NULL,
-   jsonb_build_object(
-     'source','qa_manual',
-     'reason','add_competitor_runtime_qa',
-     'granted_at', now()::text
-   ));
-```
+- Substituir a branch stub do `onConfirmConsume` (L613–630) por uma chamada real:
+  - validar `balance ≥ 1` (botão já está atrás do dialog),
+  - chamar `fetchPublicAnalysis(primaryHandle, existingCompetitors, { window: '<Nd>' })` (estender a assinatura em `src/lib/analysis/client.ts`),
+  - on success: `refreshBalance()`, `toast.success`, `navigate({ to: '/analyze/$username', search: { vs, w: 'Nd' }, replace: false })`,
+  - on failure: mostrar `errorMessage` (mesmos códigos que o branch competitor).
+- Remover o copy "coming soon" do dialog para o caso `period + hasCredit`; passa a usar título/descrição reais (`title_period`, `description_period`) que precisam ser adicionadas em `report.json` PT/EN.
+- Manter o estado "saldo 0" → empty state com botão de feedback (já existe).
 
-### Rollback (only the QA row)
-```sql
-DELETE FROM public.lead_entitlements
-WHERE lead_id      = '01bf861c-6a17-4b36-81b7-130ef2f143da'
-  AND product_code = 'report_full_9'
-  AND payment_id   IS NULL
-  AND metadata->>'source' = 'qa_manual';
-```
+### 4. Frontend — chips inline (`AnalysisPeriodSelector`)
 
-The `metadata->>'source' = 'qa_manual'` filter is the safety net: even if a real `payment_id IS NULL` entitlement is later inserted by another flow, the rollback will not touch it.
+Em `src/components/report-redesign/v2/analysis-period-selector.tsx`:
 
-## 6. Preview vs production
+- Ler `premiumUnlocked` do `usePremiumCta()`.
+- Quando `premiumUnlocked === false`: comportamento atual (popover de upsell).
+- Quando `premiumUnlocked === true`:
+  - chip da janela atualmente ativa fica destacado (compara com `meta.window`),
+  - clique num chip diferente abre o **mesmo `ConsumeCreditDialog`** (consistência com sidebar), com `intent = { kind: 'period', days }`.
+- Não alterar contrato dos chips ativos da amostra baseline.
 
-**Production (`auditprofiles.com`).** Reasons:
-- The candidate lead, its `lead_session` cookie, the fresh snapshot cache and the `APIFY_ALLOWLIST` value are all bound to the production environment. Preview has no shared session.
-- We want to validate the real `premiumUnlocked` gate in `src/routes/api/public/analysis-snapshot.$username.ts:93` against the real lead.
+### 5. Route `analyze.$username.tsx`
 
-QA window must be short (≤ 30 min) to minimise the time `report_full_9` is artificially granted.
+- Aceitar `?w=30d|60d|90d|365d` no `search`, validar com Zod, passar ao `fetchPublicAnalysis` no loader.
+- Quando `w` muda, TanStack Query reativa o loader (chave inclui `w`).
+- Default = baseline (sem `w`), preservando todas as URLs atuais.
 
-## 7. Competitor handle
+### 6. Telemetria
 
-Pick **`mariiana.ai`**:
-- Confirmed in `APIFY_ALLOWLIST` (previous validation).
-- Fresh snapshot exists from today's earlier run (snapshot `63c045bd-…`, created 2026-06-06 18:29:26Z, well inside the 24h cache).
-- Therefore Add Competitor will resolve from cache → **0 Apify calls, 0 USD spend**.
+- Renomear `beta_credit_intent_period` para evento de pedido real e adicionar `beta_credit_used_period` no sucesso, espelhando `competitor_add`.
+- Manter `premium_window_interest` para Free (não muda).
 
-Backup competitor (only if cache miss): `martimsilvai` — also allowlisted, stale snapshot from May, would trigger one real Apify scrape. Avoid unless mariiana cache somehow misses.
+### 7. i18n
 
-## 8. Rollback plan
+- PT/EN: adicionar `nav.explore.consume_dialog.title_period`, `description_period`, `cta_use_period`, `success_toast_period`.
+- Remover/arquivar `period_coming_soon_title` + `period_coming_soon_body` (ou manter como fallback para Free zero-credit).
 
-In this exact order, immediately after the QA pass:
+### 8. Testes
 
-1. Run the rollback `DELETE` from §5.
-2. Verify with the post-check query in §"Exact pre-check / post-check SQL" below (expected row count: 0).
-3. Re-run the credit ledger check: `SUM(delta)` for the lead should be 0 if the Add Competitor consumed 1 credit, or 1 if the gate short-circuited. Capture the value either way — do NOT compensate manually.
-4. Verify `provider_call_logs` count since QA T0 (should be 0 if cache hit, 1 Apify success row if cache miss on competitor).
-5. Confirm no new rows in `lead_payments` or `coupon_redemptions` since QA T0.
+- `analyze-public-v1` novo teste: `window=30d` sem entitlement → 403; com entitlement + 1 crédito → consome e devolve snapshot com `meta.window === '30d'`; segunda chamada idêntica → cache hit sem débito.
+- `report-block-nav` test: `kind: 'period'` confirma chama `fetchPublicAnalysis` com `{ window }` e refresca saldo.
+- `cadence`: garantir que janela explícita 30d não cai em `window_90d` quando há 3+ posts dentro de 30d.
 
-If anything looks unexpected at step 4 or 5, stop and report — do not run any compensating writes.
+## Diagrama de fluxo (Pro)
 
-## Exact pre-check / post-check SQL
-
-Pre-check (run before insert):
-```sql
-SELECT COUNT(*) AS existing_report_full_9
-FROM public.lead_entitlements
-WHERE product_code = 'report_full_9';   -- expect 0
-
-SELECT id, email_normalized, created_at
-FROM public.leads
-WHERE id = '01bf861c-6a17-4b36-81b7-130ef2f143da';   -- expect 1 row
-
-SELECT COALESCE(SUM(delta),0) AS balance
-FROM public.credit_ledger
-WHERE lead_id = '01bf861c-6a17-4b36-81b7-130ef2f143da';   -- expect 1
-
-SELECT id, expires_at
-FROM public.analysis_snapshots
-WHERE instagram_username = 'mariiana.ai'
-  AND expires_at > now()
-ORDER BY created_at DESC LIMIT 1;   -- expect 1 row (cache hit guaranteed)
+```text
+Pro clica chip "30d" (sidebar ou inline)
+  └─► ConsumeCreditDialog (balance ≥ 1?)
+        ├─ Não → empty state + feedback
+        └─ Sim → confirmar
+              └─► POST /api/analyze-public-v1 { handle, vs, window: "30d" }
+                    ├─ valida entitlement report_full_9
+                    ├─ reserva 1 crédito
+                    ├─ Apify run (resultsLimit:100, onlyPostsNewerThan:"30 days")
+                    ├─ confirma crédito + grava snapshot (cache key inclui w=30d)
+                    └─ devolve snapshot
+              └─► navigate({ search: { ..., w: "30d" } })
+                    └─► loader re-fetch → relatório re-renderiza com a janela
 ```
 
-Post-check (run after rollback):
-```sql
-SELECT COUNT(*) AS remaining_qa_rows
-FROM public.lead_entitlements
-WHERE lead_id = '01bf861c-6a17-4b36-81b7-130ef2f143da'
-  AND product_code = 'report_full_9';   -- expect 0
+## Fora do âmbito
 
-SELECT COUNT(*) AS new_payments
-FROM public.lead_payments
-WHERE created_at >= '<QA_T0>';   -- expect 0
+- Não tocar em `/report.example`.
+- Não mexer em pagamentos/EuPago/checkout.
+- Não alterar schema do `report_full_9` nem regras de entitlement.
+- Não alterar fluxo Free (apenas garantir que continua igual).
+- Não introduzir scraping próprio nem novos provedores.
 
-SELECT COUNT(*) AS apify_calls
-FROM public.provider_call_logs
-WHERE created_at >= '<QA_T0>'
-  AND provider = 'apify';   -- expect 0 (cache) or 1 (cache miss)
-```
+## Risco / mitigação
 
-## Safest execution prompt for the next step
+- **Custo Apify**: 60d/90d/365d são as configs mais caras. Mitigar mantendo `resultsLimit` igual ao lab e cobrando 1 crédito por janela distinta + cache por janela.
+- **Re-render do report**: garantir que `react-query` invalida cleanly ao mudar `w` (chave inclui `w`).
+- **Pedidos paralelos**: usar o mesmo guard in-flight que o competitor usa em `fetchPublicAnalysis`.
 
-> Execute the Add Competitor runtime QA in production.
->
-> Spend cap: 0 Apify calls (cache-only via competitor `mariiana.ai`); accept up to 1 Apify scrape only if `mariiana.ai` snapshot is no longer cached.
-> No OpenAI, no DataForSEO, no payment, no coupon, no schema change.
->
-> 1. Record `T_QA0 = now()`.
-> 2. Run the four pre-check queries in §"Exact pre-check / post-check SQL" and confirm all expected counts.
-> 3. INSERT the single `lead_entitlements` row from §5 (QA marker metadata).
-> 4. Operator opens the production report as lead `01bf861c-6a17-4b36-81b7-130ef2f143da` with a valid `lead_session` cookie. If the cookie is missing, complete `POST /api/onboarding/start` once for this lead. Confirm via `GET /api/debug/lead-session-status`.
-> 5. Click "Adicionar concorrente" → enter `mariiana.ai` → submit.
-> 6. Capture: UI state (loading → resolved), `premiumUnlocked` resolution path, credit_ledger delta, provider_call_logs delta, any error toast.
-> 7. Run the rollback DELETE from §5.
-> 8. Run the three post-check queries and report deltas.
-> 9. Verdict: PASS / FAIL with what was observed in step 6 and any non-zero unexpected deltas in step 8.
+## Critério de aceitação
 
-Awaiting approval to switch to build mode and execute steps 1–9.
+- Free continua a ver chips locked + popover de upsell, sem regressões.
+- Pro com 1+ crédito consegue escolher 30d, vê a barra de progresso → relatório com `meta.windowLabel = "Últimos 30 dias"`, cadence e séries temporais com dados reais dessa janela.
+- Saldo decrementa só na primeira vez que essa janela é pedida para esse handle/competitors; repetir é cache hit, sem débito.
+- Sem chamadas Apify quando o utilizador está em Free.
