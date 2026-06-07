@@ -28,6 +28,7 @@ import {
   type EditorialVerdictWarning,
 } from "@/lib/insights/types";
 import { pickThumbnailUrl } from "@/lib/report/pick-thumbnail";
+import { remapUtcCountsToIso } from "@/lib/report/weekday-iso";
 
 import { resolveReportTier } from "./tiers";
 import {
