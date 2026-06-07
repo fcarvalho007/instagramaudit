@@ -22,6 +22,9 @@
   --accent-luminous:   0 180 216;    /* #00B4D8 cyan                      */
   --accent-secondary:  0 119 182;
   --accent-tertiary:   0 119 182;
+  /* Comparison-scoped accent — distinguishes competitor from primary in
+     Profile vs Competitor blocks. Not used outside compare components. */
+  --compare-competitor: 118 100 228;  /* #7664E4 soft indigo */
   --accent-soft:     144 224 239;    /* #90E0EF aqua (chip bg / ring)     */
   --accent-soft-pale: 202 240 248;   /* #CAF0F8 aqua-pale (selected bg)   */
   --accent-gold:     186 117  23;    /* #BA7517 amber alert (rare)        */

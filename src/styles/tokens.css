@@ -15,6 +15,10 @@
     --accent-violet-luminous: 140 126 244;
     --accent-violet-deep: 85 62 186;
 
+    /* Comparison-scoped accent — distinguishes competitor from primary in
+       Profile vs Competitor blocks. Not used outside compare components. */
+    --compare-competitor: 118 100 228;  /* #7664E4 soft indigo */
+
     /* === COLORS — Chart series ===
      * Semantic tokens for the temporal chart series. Blue family only.
      * Never hardcode hex in report components — always consume these tokens.

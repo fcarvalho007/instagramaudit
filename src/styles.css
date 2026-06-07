@@ -49,6 +49,10 @@
   --color-accent-violet-luminous: rgb(var(--accent-violet-luminous));
   --color-accent-violet-deep: rgb(var(--accent-violet-deep));
 
+  /* Comparison-scoped competitor accent (Phase 1 Profile vs Competitor).
+     Generates bg/text/border-compare-competitor utilities. */
+  --color-compare-competitor: rgb(var(--compare-competitor));
+
   /* === Tinted backgrounds (icon containers, light mode) === */
   --color-tint-primary: rgb(var(--tint-primary, var(--surface-elevated)));
   --color-tint-success: rgb(var(--tint-success, var(--surface-elevated)));
