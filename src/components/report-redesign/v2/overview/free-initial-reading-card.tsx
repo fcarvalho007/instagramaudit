@@ -8,6 +8,8 @@ export interface FreeInitialReadingCardProps {
   dominantFormat: string | null;
   dominantFormatShare: number;
   hasRecurringHashtags: boolean;
+  postsAnalyzed: number;
+  windowDays?: number | null;
 }
 
 function formatPct(n: number): string {
@@ -33,6 +35,8 @@ export function FreeInitialReadingCard({
   dominantFormat,
   dominantFormatShare,
   hasRecurringHashtags,
+  postsAnalyzed,
+  windowDays,
 }: FreeInitialReadingCardProps) {
   const benchmarkAvailable = engagementBenchmark > 0;
   const engagementDefined = engagementRate > 0 && benchmarkAvailable;
@@ -43,18 +47,44 @@ export function FreeInitialReadingCard({
     dominantFormat.length > 0 &&
     dominantFormatShare > 0;
 
-  const engagementOk = engagementDefined && engagementRate >= engagementBenchmark;
+  // Tri-state band: ±10% of benchmark counts as "em linha".
+  const engagementDelta = engagementDefined
+    ? (engagementRate - engagementBenchmark) / engagementBenchmark
+    : 0;
+  const engagementBand: "above" | "inline" | "below" | "unknown" =
+    !engagementDefined
+      ? "unknown"
+      : engagementDelta >= 0.1
+        ? "above"
+        : engagementDelta <= -0.1
+          ? "below"
+          : "inline";
+  const engagementAbove = engagementBand === "above";
+  const engagementBelow = engagementBand === "below";
+  const engagementInline = engagementBand === "inline";
   const cadenceOk = cadenceDefined && postingFrequencyWeekly >= 3;
   const formatOverdependent = formatDefined && dominantFormatShare >= 70;
   const formatDiversified =
-    formatDefined && dominantFormatShare > 0 && dominantFormatShare < 60;
+    formatDefined &&
+    postsAnalyzed >= 8 &&
+    dominantFormatShare > 0 &&
+    dominantFormatShare < 60;
+
+  const smallSample = postsAnalyzed > 0 && postsAnalyzed < 4;
 
   let verdict = "Leitura preliminar do perfil";
-  if (cadenceDefined && engagementDefined) {
-    if (cadenceOk && engagementOk) verdict = "Perfil consistente, envolvimento alinhado";
-    else if (cadenceOk && !engagementOk) verdict = "Cadência forte, sinal fraco";
-    else if (!cadenceOk && engagementOk) verdict = "Boa resposta, ritmo irregular";
-    else verdict = "Perfil pouco activo, envolvimento baixo";
+  if (!smallSample && cadenceDefined && engagementDefined) {
+    if (cadenceOk && engagementInline)
+      verdict = "Perfil consistente, envolvimento alinhado";
+    else if (cadenceOk && engagementAbove)
+      verdict = "Cadência forte, envolvimento acima do benchmark";
+    else if (cadenceOk && engagementBelow)
+      verdict = "Cadência forte, sinal fraco";
+    else if (!cadenceOk && engagementAbove)
+      verdict = "Envolvimento acima do benchmark, ritmo irregular";
+    else if (!cadenceOk && engagementInline)
+      verdict = "Envolvimento em linha, ritmo irregular";
+    else verdict = "Cadência e envolvimento abaixo do esperado nesta amostra";
   }
 
   // Explanatory paragraph (deterministic template).
@@ -67,9 +97,14 @@ export function FreeInitialReadingCard({
     paragraphParts.push("Este perfil tem uma cadência ainda pouco clara");
   }
   if (engagementDefined) {
-    const dir = engagementOk ? "acima" : "abaixo";
+    const dir =
+      engagementBand === "above"
+        ? "acima do"
+        : engagementBand === "below"
+          ? "abaixo do"
+          : "em linha com o";
     paragraphParts.push(
-      `com uma taxa de envolvimento de ${formatPct(engagementRate)}, ${dir} do benchmark de ${formatPct(engagementBenchmark)}`,
+      `com uma taxa de envolvimento de ${formatPct(engagementRate)}, ${dir} benchmark de ${formatPct(engagementBenchmark)}`,
     );
   } else if (engagementRate > 0) {
     paragraphParts.push(
@@ -83,16 +118,39 @@ export function FreeInitialReadingCard({
 
   // Positive / limiting signals.
   const positives: string[] = [];
-  if (cadenceOk) positives.push("Ritmo de publicação consistente");
-  if (engagementOk) positives.push("Envolvimento acima do benchmark");
-  if (formatDiversified) positives.push("Mistura equilibrada de formatos");
-  if (hasRecurringHashtags) positives.push("Uso recorrente de hashtags próprias");
-
   const limits: string[] = [];
-  if (cadenceDefined && !cadenceOk) limits.push("Ritmo irregular ou pouco frequente");
-  if (engagementDefined && !engagementOk) limits.push("Envolvimento abaixo do benchmark");
-  if (formatOverdependent) limits.push("Dependência excessiva de um formato");
-  if (!hasRecurringHashtags) limits.push("Sem hashtags recorrentes identificáveis");
+
+  if (smallSample) {
+    // Small sample: keep only unambiguous signals.
+    if (cadenceOk && postingFrequencyWeekly >= 5)
+      positives.push("Ritmo de publicação consistente");
+    if (hasRecurringHashtags)
+      positives.push("Uso recorrente de hashtags na amostra");
+    if (formatOverdependent)
+      limits.push("Dependência excessiva de um formato");
+  } else {
+    if (cadenceOk) positives.push("Ritmo de publicação consistente");
+    if (engagementAbove) positives.push("Envolvimento acima do benchmark");
+    if (formatDiversified) positives.push("Mistura equilibrada de formatos");
+    if (hasRecurringHashtags)
+      positives.push("Uso recorrente de hashtags na amostra");
+
+    if (cadenceDefined && !cadenceOk)
+      limits.push("Frequência abaixo de 3 posts por semana nesta amostra");
+    if (engagementBelow) limits.push("Envolvimento abaixo do benchmark");
+    if (formatOverdependent)
+      limits.push("Dependência excessiva de um formato");
+    if (!hasRecurringHashtags)
+      limits.push("Sem assinatura de hashtags clara nesta amostra");
+  }
+
+  const hasWindow = typeof windowDays === "number" && windowDays > 0;
+  const sampleNote =
+    postsAnalyzed > 0
+      ? hasWindow
+        ? `Com base em ${postsAnalyzed} publicações dos últimos ${windowDays} dias.`
+        : `Com base em ${postsAnalyzed} publicações da amostra recente.`
+      : null;
 
   return (
     <section
@@ -156,6 +214,9 @@ export function FreeInitialReadingCard({
           emptyLabel="Sem sinais negativos claros nesta amostra."
         />
       </div>
+      {sampleNote ? (
+        <p className="mt-4 text-xs text-content-tertiary">{sampleNote}</p>
+      ) : null}
     </section>
   );
 }

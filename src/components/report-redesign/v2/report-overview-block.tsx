@@ -274,6 +274,8 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
             hasRecurringHashtags={
               (result.data.topHashtags ?? []).some((h) => (h.uses ?? 0) >= 2)
             }
+            postsAnalyzed={k.postsAnalyzed}
+            windowDays={enriched.cadence.windowDays}
           />
           <div id="engagement" className="scroll-mt-24">
             <EngagementCardRefined result={result} />
