@@ -102,7 +102,14 @@ import {
 } from "@/lib/enrichment/types";
 import { prefetchThumbnailsAsBase64 } from "@/lib/analysis/thumbnail-cache.server";
 import { setEnrichmentStatusAtomic } from "@/lib/analysis/cache";
-import { PUBLIC_INSTAGRAM_POSTS_LIMIT } from "@/lib/analysis/constants";
+import {
+  PUBLIC_WINDOW_CONFIGS,
+  isPublicWindowKind,
+  isWideWindow,
+  type PublicWindowConfig,
+  type PublicWindowKind,
+} from "@/lib/analysis/window-configs";
+import { hasEntitlement } from "@/lib/payments/entitlements.server";
 
 // Unified Apify actor — returns profile details with `latestPosts[]` embedded
 // in a single call per handle. Replaces the previous two-actor split.
@@ -121,6 +128,13 @@ const PayloadSchema = z.object({
     .max(MAX_COMPETITORS)
     .optional()
     .default([]),
+  // PR 1: public window for the PRIMARY profile only. Defaults to
+  // "baseline" so existing Free callers stay byte-compatible.
+  // 60d / 365d are Lab-only and intentionally excluded from this surface.
+  window: z
+    .enum(["baseline", "30d", "90d"])
+    .optional()
+    .default("baseline"),
 });
 
 const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
@@ -150,6 +164,8 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
     "Precisamos do teu nome e email para gerar o relatório.",
   INSUFFICIENT_CREDITS:
     "Já usaste os teus 2 relatórios gratuitos.",
+  WINDOW_REQUIRES_PRO:
+    "A análise por período (30d/90d) está disponível no plano Pro.",
 };
 
 const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
@@ -167,6 +183,7 @@ const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
   CACHE_ONLY_NO_DATA: 503,
   ONBOARDING_REQUIRED: 402,
   INSUFFICIENT_CREDITS: 402,
+  WINDOW_REQUIRES_PRO: 403,
 };
 
 /**
@@ -233,37 +250,45 @@ function competitorFailure(
  */
 async function fetchProfileWithPosts(
   username: string,
+  cfg: PublicWindowConfig = PUBLIC_WINDOW_CONFIGS.baseline,
 ): Promise<{
   row: Record<string, unknown> | null;
   runId: string | null;
   actualCostUsd: number | null;
 }> {
+  const actorInput: Record<string, unknown> = {
+    directUrls: [`https://www.instagram.com/${username}/`],
+    resultsType: cfg.onlyPostsNewerThan ? "posts" : "details",
+    // `resultsLimit` controls the size of `latestPosts[]` inside the
+    // single profile row returned by the actor. It is NOT the number of
+    // profiles per run (see `maxItems` below).
+    resultsLimit: cfg.resultsLimit,
+    addParentData: false,
+  };
+  if (cfg.onlyPostsNewerThan) {
+    actorInput.onlyPostsNewerThan = cfg.onlyPostsNewerThan;
+  }
   const result = await runActorWithMetadata<Record<string, unknown>>(
     UNIFIED_ACTOR,
+    actorInput,
     {
-      directUrls: [`https://www.instagram.com/${username}/`],
-      resultsType: "details",
-      // `resultsLimit` controls the size of `latestPosts[]` inside the
-      // single profile row returned by the actor. It is NOT the number of
-      // profiles per run (see `maxItems` below).
-      resultsLimit: PUBLIC_INSTAGRAM_POSTS_LIMIT,
-      addParentData: false,
-    },
-    {
-      timeoutMs: 60_000,
-      apifyTimeoutSecs: 55,
+      timeoutMs: cfg.timeoutMs,
+      apifyTimeoutSecs: cfg.apifyTimeoutSecs,
       // Cost guards for the smoke-test phase.
       //
       // Apify input contract (do not confuse the two limits):
       //   - `directUrls`: 1 URL  → 1 Instagram profile per run.
       //   - `maxItems: 1`        → at most 1 profile ROW returned per run.
-      //   - `resultsLimit: 12`   → up to 12 POSTS inside that profile's
-      //                            `latestPosts[]` array.
+      //   - `resultsLimit: N`    → up to N POSTS inside that profile's
+      //                            `latestPosts[]` array. Baseline uses
+      //                            PUBLIC_INSTAGRAM_POSTS_LIMIT; wide
+      //                            windows (30d/90d) bump this and add
+      //                            `onlyPostsNewerThan`.
       // This call therefore returns ONE profile with UP TO 12 recent
       // posts — never 12 profiles. `maxTotalChargeUsd` is a hard USD cap
       // per call as a final safety net.
       maxItems: 1,
-      maxTotalChargeUsd: 0.10,
+      maxTotalChargeUsd: cfg.maxTotalChargeUsd,
     },
   );
   return {
@@ -278,14 +303,17 @@ async function fetchProfileWithPosts(
  * handle (success, http_error, timeout, config_error, network_error). Never
  * throws — returns the row, the originating error if any, and the new log id.
  */
-async function fetchProfileWithPostsLogged(username: string): Promise<{
+async function fetchProfileWithPostsLogged(
+  username: string,
+  cfg: PublicWindowConfig = PUBLIC_WINDOW_CONFIGS.baseline,
+): Promise<{
   row: Record<string, unknown> | null;
   error: unknown | null;
   providerCallLogId: string | null;
 }> {
   const startedAt = Date.now();
   try {
-    const { row, runId, actualCostUsd } = await fetchProfileWithPosts(username);
+    const { row, runId, actualCostUsd } = await fetchProfileWithPosts(username, cfg);
     const posts = Array.isArray((row as { latestPosts?: unknown })?.latestPosts)
       ? ((row as { latestPosts: unknown[] }).latestPosts.length as number)
       : 0;
@@ -437,6 +465,10 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           return failure("INVALID_USERNAME");
         }
         const primary = parsed.data.instagram_username;
+        const windowKind: PublicWindowKind = isPublicWindowKind(parsed.data.window)
+          ? parsed.data.window
+          : "baseline";
+        const primaryWindowCfg = PUBLIC_WINDOW_CONFIGS[windowKind];
 
         // Dedup competitors: lowercase comparison, drop primary, drop dupes,
         // cap at MAX_COMPETITORS. Original casing preserved for display.
@@ -479,7 +511,10 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         const isInternalBypass =
           !!internalToken && authHeader === `Bearer ${internalToken}`;
 
-        const cacheKey = buildCacheKey(primary, competitors);
+        // Cache key includes the window suffix ONLY for wide windows. For
+        // baseline this is byte-identical to the legacy key, so existing
+        // Free snapshots remain valid and reachable.
+        const cacheKey = buildCacheKey(primary, competitors, windowKind);
 
         // ── Credit gate (Fase 2) ───────────────────────────────────────
         // Política:
@@ -521,6 +556,25 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             return failure("ONBOARDING_REQUIRED");
           }
           alreadyAssociated = await leadOwnsReport(leadId, cacheKey);
+          // ── Pro gate for wide windows (30d/90d) ─────────────────
+          // Wide windows require the `report_full_9` entitlement. We
+          // check BEFORE reserving credit so a Free lead is never
+          // charged for a window they cannot use.
+          if (isWideWindow(windowKind)) {
+            const isPro = await hasEntitlement(leadId, "report_full_9");
+            if (!isPro) {
+              await logEvent({
+                handle: primary,
+                competitorHandles: competitors,
+                cacheKey,
+                dataSource: "none",
+                outcome: "blocked_credits",
+                errorCode: "WINDOW_REQUIRES_PRO",
+                estimatedCostUsd: 0,
+              });
+              return failure("WINDOW_REQUIRES_PRO");
+            }
+          }
           // Cache fresh + relatório já atribuído a este lead → 0 créditos.
           const skipReserve = cacheFreshHit && alreadyAssociated;
           if (!skipReserve) {
@@ -915,7 +969,11 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           // results (status + duration + posts returned) are written to
           // `provider_call_logs` so the admin sees the real Apify ledger.
           const providerCallIds: string[] = [];
-          const callPrimary = fetchProfileWithPostsLogged(primary).then(
+          // PR 1: PRIMARY uses the window-specific config (baseline / 30d /
+          // 90d). Competitors stay on baseline by design — we are not
+          // refetching competitors per window in this phase to keep cost,
+          // cache and complexity bounded.
+          const callPrimary = fetchProfileWithPostsLogged(primary, primaryWindowCfg).then(
             (r) => {
               if (r.providerCallLogId) providerCallIds.push(r.providerCallLogId);
               if (r.error) throw r.error;

@@ -166,7 +166,8 @@ export type PublicAnalysisErrorCode =
   | "NETWORK_ERROR"
   | "CACHE_ONLY_NO_DATA"
   | "ONBOARDING_REQUIRED"
-  | "INSUFFICIENT_CREDITS";
+  | "INSUFFICIENT_CREDITS"
+  | "WINDOW_REQUIRES_PRO";
 
 export interface PublicAnalysisFailure {
   success: false;

@@ -17,6 +17,10 @@ import {
   REPORT_RETENTION_MS,
 } from "@/lib/report/retention";
 import { persistThumbnailsInPayload } from "@/lib/report-snapshots/persist-thumbnails.server";
+import {
+  windowCacheSuffix,
+  type PublicWindowKind,
+} from "@/lib/analysis/window-configs";
 
 /**
  * Cache TTL — janela de reutilização "fresca" (24h). Acima disto, o
@@ -45,10 +49,14 @@ const CACHE_KEY_VERSION = "v1";
 export function buildCacheKey(
   primary: string,
   competitors: string[],
+  window?: PublicWindowKind,
 ): string {
   const p = primary.toLowerCase();
   const c = [...competitors].map((s) => s.toLowerCase()).sort();
-  return `${CACHE_KEY_VERSION}:${p}|${c.join(",")}`;
+  // Baseline window produces an empty suffix → byte-identical to the
+  // pre-window cache key. Wide windows append `:w=30d` / `:w=90d` so
+  // Free baseline snapshots and Pro window snapshots never collide.
+  return `${CACHE_KEY_VERSION}:${p}|${c.join(",")}${windowCacheSuffix(window)}`;
 }
 
 /**
