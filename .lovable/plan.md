@@ -1,112 +1,133 @@
-## Goal
+## Phase 2 — Distribution comparison data audit
 
-Refine the visual design of Phase 1 comparison cards (Overview, Engagement, Cadence) to match the approved mockup: tinted side panels (blue vs indigo), large editorial number, per-side deterministic text below each value, plain `vs` separator, white outer card with Fraunces title. Padrão 2 (paired bars) explicitly out of scope.
+Scope: prepare `competitorBreakdown[0]` for paired-bar cards (Mix de formatos, Ritmo por dia da semana). Read-only audit. No provider, schema, payment, credit, entitlement, Apify or DataForSEO changes.
 
-## Mockup deltas (vs current)
+## Data availability table
 
-| Element | Current | Mockup |
-|---|---|---|
-| Outer card | `bg-surface-secondary` + `rounded-xl` + small padding, eyebrow-only header | White `bg-surface-primary` + `rounded-2xl` + `shadow-card`, Fraunces H3 title, generous padding |
-| Side panels | White card + 1px subtle border + small number `text-2xl` | Tinted bg (blue 50 / indigo 50), 1.5px accent border (blue / indigo), large number `text-3xl sm:text-4xl` |
-| Handle | Dot + truncated handle in muted grey | Handle in accent color (`text-accent-primary` / `text-compare-competitor`), small |
-| Centered delta chip | Coloured pill below the pair (`+12 %`, `−0,42 pp`) | Removed. Replaced by per-side text inline under each value: primary side gets directional text ("↓ abaixo do concorrente"), competitor side gets relational text ("4,8× o teu valor") |
-| `vs` separator | Pill with border | Plain uppercase eyebrow text, no border |
-| Table headers (Padrão 3) | Eyebrow + dot | Eyebrow underlined with accent color (blue/indigo) |
+All fields below already arrive in the snapshot via `analyze-public-v1.ts:1158-1166` (Phase 2B persisted `posts`, `format_stats`, `weekday_counts`, `top_hashtags`). The adapter `snapshot-to-report-data.ts:1300-1357` already maps them onto `ReportCompetitorBreakdownEntry`.
 
-## Edits
+| Phase 2 card need | Primary source | Competitor source | Available today? | Notes |
+|---|---|---|---|---|
+| Format mix % per format | `formatBreakdown[].sharePct` | `competitor.formatStats[fmt].share_pct` | YES | Keys aligned: both produced by `normalize.ts:612-627` → `Reels` / `Carrosséis` / `Imagens` |
+| Format mix count | `formatBreakdown[].count` | `competitor.formatStats[fmt].count` | YES | Same source |
+| Dominant format label | `keyMetrics.dominantFormat` | `competitor.dominantFormat` | YES | Already on entry |
+| Dominant format share % | `keyMetrics.dominantFormatShare` | derivable: `competitor.formatStats[competitor.dominantFormat]?.share_pct` | DERIVABLE | Not stored explicitly on entry, easy adapter add |
+| Posts per week | `keyMetrics.postingFrequencyWeekly` | `competitor.estimatedPostsPerWeek` | YES | Already used by `CompetitorCadenceCompare` |
+| Weekday rhythm (7 buckets) | derived from `posts[].weekday` (UTC) → ISO Mon..Sun by `FrequencyCard` | `competitor.weekdayCounts: number[7]` | YES, but **misaligned** | See "Missing / misaligned" below |
+| Peak weekday | `FrequencyCard` derives from buckets | derivable from `weekdayCounts` | DERIVABLE | Same helper, no new data |
+| Avg engagement per format | `formatBreakdown[].avgEngagement` (when present) | `competitor.formatStats[fmt].avg_engagement_pct` | YES | Not yet exposed in `competitorBreakdown` type ergonomics but already on the record |
 
-### 1. `src/components/report-redesign/v2/compare/compare-stat-block.tsx` — refactor side panels + delta
+## Missing / misaligned fields
 
-- Side panel: switch from `bg-surface-primary border-border-subtle` to:
-  - primary → `bg-accent-primary/8 border border-accent-primary/30` (or `bg-[hsl(var(--accent-primary)/0.06)]` if tokens require explicit form)
-  - competitor → `bg-compare-competitor/8 border border-compare-competitor/30`
-- Handle: `text-xs font-medium` colored `text-accent-primary` / `text-compare-competitor`.
-- Value: `text-3xl sm:text-4xl font-semibold tabular-nums`.
-- Add `subText?: string` field to each `CompareSide` (rendered as small `text-xs text-content-secondary` row under the value, with arrow `↓`/`↑`/`=` symbol prefix when caller supplies tone).
-- Replace centered delta chip with: caller-provided `primary.subText` / `competitor.subText`. **Fallback**: when neither is provided, compute deterministic two-sided text via `buildDeltaPair()` (new helper) using existing `buildDelta`.
-- Center column: `<span>vs</span>` with `text-eyebrow-sm text-content-tertiary` (no border, no bg).
-- Padding/spacing: outer `p-5 sm:p-6`, panel `px-4 py-4 sm:py-5`, `gap-4`.
+1. **Weekday index convention mismatch — must fix in adapter.**
+   - Producer (`analyze-public-v1.ts:1131-1135`) builds `weekdayCounts[p.weekday]` with `p.weekday` documented as `0=Sunday … 6=Saturday (UTC)` (`enrichPosts` types).
+   - Primary `FrequencyCard` consumes Mon..Sun-indexed buckets (line 137: `weekday: 0..6 where Mon=0..Sun=6`).
+   - Adapter currently copies `weekday_counts` verbatim (`snapshot-to-report-data.ts:1341-1345`) — paired bars would silently misalign by 1 day.
+   - **Fix:** use the existing `utcWeekdayToIso` helper (line 584) in the adapter to remap into a new field `weekdayCountsIso: number[7]` (Mon=0..Sun=6). Keep `weekdayCounts` unchanged for back-compat.
 
-### 2. `src/components/report-redesign/v2/compare/compare-delta.ts` — add helper
+2. **Dominant format share not on entry.**
+   - The number is trivially derivable client-side, but exposing it on the entry mirrors primary `keyMetrics.dominantFormatShare` and avoids cards re-implementing the lookup.
+   - **Fix:** add optional `dominantFormatShare?: number` populated in adapter from `formatStats[dominantFormat]?.share_pct`.
 
-Export `buildDeltaPair(primary, competitor, unit, higherIsBetter)` → `{ primarySubText, competitorSubText, tone }`. Reuses `buildDelta` for the numeric calc; produces pt-PT text:
+3. **No data missing from snapshot.** Both gaps are adapter-only ergonomics. No schema migration, no new Apify field, no second scrape.
 
-- Primary side text rule:
-  - `ratio ≥ 1.05` → `"↑ acima do concorrente"`
-  - `ratio ≤ 0.95` → `"↓ abaixo do concorrente"`
-  - else → `"≈ em linha com o concorrente"`
-- Competitor side text rule:
-  - `ratio < 0.95` → `${(1/ratio).toFixed(1)}× o teu valor` (e.g. `4,8× o teu valor`)
-  - `ratio > 1.05` → `${ratio.toFixed(1)}× menos que tu`
-  - else → `"em linha com o teu valor"`
-- For `unit === "pp"` use absolute pp diff text: `"+0,38 pp acima"` / `"−0,38 pp abaixo"` on the appropriate side.
-- Zero/edge cases: degrade to neutral phrasing, never throw.
+## Recommended adapter changes (smallest safe extension)
 
-Existing `buildDelta` keeps its current signature and callers (tests stay green).
+File: `src/lib/report/snapshot-to-report-data.ts` (entry builder block 1300-1357).
+File: `src/components/report/report-mock-data.ts` (type only).
 
-### 3. `src/components/report-redesign/v2/compare/compare-types.ts` — extend `CompareSide`
-
-Add optional `subText?: string`. No breaking change.
-
-### 4. Outer comparison cards — Fraunces title + white shell
-
-Apply consistent shell to the three Phase 1 comparison sections (they currently have ad-hoc shells):
-
-- `src/components/report-redesign/v2/overview/competitor-overview-compare.tsx`
-- `src/components/report-redesign/v2/competitor-engagement-compare.tsx`
-- `src/components/report-redesign/v2/competitor-cadence-compare.tsx`
-
-Shell pattern:
-```text
-<section class="rounded-2xl border border-border-default bg-surface-primary shadow-card p-5 sm:p-6">
-  <header class="space-y-1 mb-5">
-    <span class="text-eyebrow-sm text-content-tertiary">{eyebrow}</span>
-    <h3 class="font-serif text-xl sm:text-2xl text-content-primary">{title}</h3>
-    {hint && <p class="text-xs text-content-tertiary">{hint}</p>}
-  </header>
-  {/* CompareStatBlock(s) without their own outer chrome */}
-</section>
+```ts
+// report-mock-data.ts — extend ReportCompetitorBreakdownEntry
+weekdayCounts?: number[];          // (existing) raw UTC Sun..Sat — keep for back-compat
+weekdayCountsIso?: number[];       // NEW: ISO Mon..Sun, aligned with FrequencyCard
+dominantFormatShare?: number;      // NEW: share_pct of dominantFormat in formatStats
 ```
 
-`CompetitorCadenceCompare` currently has no outer chrome (just the inner `CompareStatBlock` + p verdict). Add the white card shell so it matches the mockup's "card de relatório premium" feel.
+```ts
+// snapshot-to-report-data.ts — inside the existing entry object
+const rawWeekday = Array.isArray(c.weekday_counts)
+  ? (c.weekday_counts as unknown[]).map((n) => num(n, 0))
+  : [];
+const weekdayCountsIso =
+  rawWeekday.length === 7
+    ? Array.from({ length: 7 }, (_, isoIdx) => {
+        // isoIdx 0=Mon..6=Sun → UTC idx 1..6,0
+        const utcIdx = (isoIdx + 1) % 7;
+        return rawWeekday[utcIdx] ?? 0;
+      })
+    : [];
 
-For `CompetitorEngagementCompare`, drop the legacy `SupportRow` rows (Likes/Comments) — they duplicate the headline metric. Keep only: title + 1 `CompareStatBlock` (ER) + verdict line. (Likes/comments comparison already lives in the Overview identity grid; removing here eliminates duplication and matches mockup's single-metric pattern.)
+// ...
+weekdayCounts: rawWeekday.slice(0, 7),
+weekdayCountsIso,
+dominantFormatShare:
+  formatStats && typeof formatStats === "object" && typeof dominantFormat === "string"
+    ? num(
+        (formatStats as Record<string, { share_pct?: number }>)[dominantFormat]
+          ?.share_pct,
+        0,
+      )
+    : 0,
+```
 
-For `CompetitorOverviewCompare`: title becomes "Identidade vs concorrente"; the inner grid keeps 2 `CompareStatBlock` cards (Seguidores, Publicações analisadas) under `scope="identity"`.
+Pure additive. Older snapshots fall back to empty / 0. No new provider call. No snapshot version bump required (fields are optional).
 
-To prevent double-shell when `CompareStatBlock` is used inside a parent shell, add `variant?: "card" | "bare"` to `CompareStatBlock`. `"card"` (default) keeps today's wrapping for back-compat; `"bare"` drops the outer `<section>` + border/bg/padding and renders only the header + grid + per-side subtext. The three Phase 1 cards pass `variant="bare"` since they sit inside the new white shell.
+## Out of scope
 
-### 5. `compare-table.tsx` — header underline accents (Padrão 3)
-
-- Desktop `<thead>`: replace dot with `border-b-2` accent under each column header text (blue under primary handle, indigo under competitor handle). Implement via wrapping the handle text in a `<span class="inline-block pb-1.5 border-b-2 border-accent-primary">` / `border-compare-competitor`.
-- Mobile cells: unchanged (already legible).
-
-This affects `CompetitorBioCompare` (the only consumer). No data changes.
-
-## Out of scope (untouched)
-
-- Data shape, schema, providers, credits, payments, checkout, entitlements, Add Competitor, Free/Public report, `ReportCompetitors` legacy gauge.
-- Padrão 2 (paired bars) — Format Mix card not implemented this phase.
-- `EngagementCardRefined`, `FrequencyCard`, `EditorialIdentityCard`, `MethodologyLine`, `FormatCard`, `PostComparisonBlock`.
-- Tests under `compare/__tests__` continue to pass (`buildDelta` signature unchanged; `CompareStatBlock` default visual behavior preserved when no `subText`/`variant` passed).
+- Provider calls, Apify, DataForSEO, OpenAI.
+- Schema / migrations / payments / credits / entitlements / EuPago / checkout.
+- Multi-competitor (Fase 1.5).
+- Primary-side `FormatCard` / `FrequencyCard` internals — only consumed read-only.
+- Free / `free_with_engagement` report.
 
 ## Risks
 
-- **Two delta systems coexist** (chip fallback for legacy callers, per-side text for new Phase 1 cards). Mitigated by `variant`/`subText` being optional. Documented in JSDoc.
-- **Accent color tokens** — `bg-accent-primary/8` requires Tailwind to support alpha modifier on CSS variable token. Verified at build time; if it fails, fall back to explicit utility classes in `tokens-light.css` (`.bg-compare-primary-tint`, `.bg-compare-competitor-tint`).
-- Removing Likes/Comments support rows from `CompetitorEngagementCompare` is a perceived data loss — but they already exist in Overview identity card scope (Likes/Comments are part of `competitorBreakdown`). Documented in PR summary.
+- Weekday remap **must** use the existing `utcWeekdayToIso` helper or an equivalent constant; getting it backwards inverts the chart silently. Plan to add a 4-line unit test in `snapshot-to-report-data` covering: input `[7,1,2,3,4,5,6]` (Sun=7 posts) → `weekdayCountsIso[6] === 7` (Sun is the last ISO bucket).
+- `dominantFormatShare` key lookup depends on exact format string match. The normalizer uses `Reels|Carrosséis|Imagens`; adapter must not lowercase or strip accents. Document this in a JSDoc.
+- Adding two optional fields cannot break consumers, but Phase 2 cards must guard against `weekdayCountsIso.length !== 7` and `formatStats == null` (Phase 0 / mock snapshots).
 
-## Validation
+## Phase 2 implementation prompt (ready to send when approved)
 
-1. `nunomarkl` (Pro + competitor): Overview/Engagement/Cadence cards have white shell, Fraunces H3, tinted side panels, large number, per-side text, plain `vs`, no centered chip.
-2. `frederico.m.carvalho` (no competitor): unchanged.
-3. Free / `free_with_engagement`: unchanged.
-4. Bio compare (`Padrão 3`) shows underline accents under column headers.
-5. 375px viewport: panels stack vertically with `vs` centered above competitor side; no horizontal overflow.
-6. `bun tsc --noEmit` passes; existing compare tests pass.
-7. Existing `CompareStatBlock` consumers without `variant`/`subText` render identically.
+```
+Use Plan Mode then Edit Mode.
 
-## Output after build
+Goal:
+Build the two distribution-comparison cards for Phase 2:
+1. Mix de formatos (paired bars per format)
+2. Ritmo por dia da semana (paired bars per weekday)
 
-- Files changed: 6 (`compare-stat-block.tsx`, `compare-delta.ts`, `compare-types.ts`, `competitor-overview-compare.tsx`, `competitor-engagement-compare.tsx`, `competitor-cadence-compare.tsx`, `compare-table.tsx`).
-- Before/after visual summary with mobile note.
+Scope:
+- New component CompetitorFormatCompare using existing
+  CompareBarPair primitive, fed by competitorBreakdown[0].formatStats
+  vs primary formatBreakdown.
+- New component CompetitorCadenceWeekdayCompare using CompareBarPair,
+  fed by competitorBreakdown[0].weekdayCountsIso vs primary weekday
+  buckets derived in FrequencyCard's existing helper (extract to a
+  small util if needed).
+- Wrap both with the white-card + Fraunces shell pattern established
+  by CompareStatBlock variant="card" (or use it directly via a new
+  bare variant if the bar primitive ships its own shell).
+- When competitorBreakdown[0] exists in Pro mode, replace the
+  single-profile FormatCard / FrequencyCard with the compare card
+  (same pattern Fase 1 used for Engagement / Cadence). Otherwise
+  render the original cards unchanged.
+
+Pre-req adapter changes (do first, single migration-free PR):
+- Extend ReportCompetitorBreakdownEntry with optional
+  weekdayCountsIso and dominantFormatShare.
+- Populate them in snapshot-to-report-data.ts using
+  utcWeekdayToIso for weekday remap.
+- Add unit test covering the weekday remap (Sun bucket arrives last).
+
+Do not touch: providers, Apify, DataForSEO, OpenAI, schema, payments,
+credits, entitlements, checkout, Free/Public, multi-competitor.
+
+Validate:
+- nunomarkl Pro view shows compare format bars + compare weekday
+  bars instead of single-profile cards.
+- frederico.m.carvalho (no competitor) unchanged.
+- Free/Public unchanged.
+- 375px mobile no overflow.
+- bun tsc --noEmit passes.
+- Weekday remap test passes.
+```
