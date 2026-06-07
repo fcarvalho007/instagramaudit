@@ -266,14 +266,18 @@ function ProfileHeader({
   const isMulti = profiles.length > 1;
   const eyebrow = isMulti
     ? t("nav.eyebrow_multi", { count: profiles.length })
-    : t("nav.eyebrow_single");
+    : compact
+      ? t("nav.eyebrow_analyzing")
+      : t("nav.eyebrow_single");
   const primary = profiles[0];
   const primaryHandle = formatHandle(primary.handle);
   return (
     <div
       className={cn(
         "px-1 transition-all duration-200",
-        compact ? "pb-2 mb-2" : "pb-3 mb-3 border-b border-border-default/60",
+        compact
+          ? "pb-3 mb-3 border-b border-border-default/60"
+          : "pb-3 mb-3 border-b border-border-default/60",
       )}
     >
       <div className={cn("flex items-center", compact ? "gap-2" : "gap-3")}>
@@ -281,9 +285,7 @@ function ProfileHeader({
           <ProfileAvatar profile={primary} size={compact ? "sm" : "md"} />
         )}
         <div className="min-w-0 flex-1">
-          {!compact && (
-            <p className="text-eyebrow-sm text-content-tertiary mb-1">{eyebrow}</p>
-          )}
+          <p className="text-eyebrow-sm text-content-tertiary mb-1">{eyebrow}</p>
           {isMulti ? (
             <div className="flex items-center">
               {profiles.map((p) => (
@@ -381,7 +383,7 @@ function ItemRow({
       className={cn(
         "group relative w-full flex items-center gap-3",
         "rounded-lg pl-3 pr-2.5 text-left",
-        compact ? "py-1.5" : "py-2",
+        compact ? "py-2" : "py-2",
         "transition-colors duration-150",
         "focus-visible:outline-none focus-visible:ring-2",
         "focus-visible:ring-[rgb(var(--accent-primary))] focus-visible:ring-offset-1",
@@ -451,7 +453,7 @@ function LockedItemRow({
       className={cn(
         "group relative w-full flex items-center gap-3",
         "rounded-lg pl-3 pr-2.5 text-left",
-        compact ? "py-1.5" : "py-2",
+        compact ? "py-2" : "py-2",
         "transition-colors duration-150",
         isActive
           ? "bg-surface-muted/70 text-content-secondary"
@@ -467,7 +469,7 @@ function LockedItemRow({
         )}
       />
       <Lock
-        className="size-3 text-content-tertiary"
+        className="size-3 text-[rgb(var(--accent-gold))]"
         aria-hidden="true"
       />
       <span className={cn(
@@ -781,13 +783,17 @@ function ExploreSection({
       handlePremiumAccessClick("sidebar_period");
     };
     return (
-      <section className="grid grid-cols-2 gap-1.5 px-1">
+      <section className="space-y-1.5 px-1">
+        <p className="text-eyebrow-sm text-content-tertiary">
+          {t("nav.explore.title")}
+        </p>
+        <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
           onClick={onPeriodCompact}
           aria-label={t("nav.explore.period_label")}
           className={cn(
-            "inline-flex items-center justify-center gap-1.5 h-8 rounded-md border text-[11px] font-medium transition-colors",
+            "inline-flex items-center justify-center gap-1.5 h-9 rounded-md border text-[11px] font-medium transition-colors",
             "border-border-default bg-white text-content-secondary",
             "hover:border-border-strong hover:text-content-primary",
           )}
@@ -795,7 +801,7 @@ function ExploreSection({
           <Calendar className="size-3" aria-hidden="true" />
           <span>{t("nav.explore.period_label")}</span>
           {!premiumUnlocked && (
-            <Lock className="size-2.5 text-content-tertiary" aria-hidden="true" />
+            <Lock className="size-2.5 text-[rgb(var(--accent-gold))]" aria-hidden="true" />
           )}
         </button>
         <button
@@ -805,7 +811,7 @@ function ExploreSection({
           aria-label={t("nav.explore.add_competitor_aria")}
           title={atMax ? t("nav.explore.competitor_limit_reached") : undefined}
           className={cn(
-            "inline-flex items-center justify-center gap-1.5 h-8 rounded-md border text-[11px] font-medium transition-colors",
+            "inline-flex items-center justify-center gap-1.5 h-9 rounded-md border text-[11px] font-medium transition-colors",
             "border-border-default bg-white text-content-secondary",
             atMax
               ? "opacity-50 cursor-not-allowed"
@@ -815,9 +821,10 @@ function ExploreSection({
           <UserPlus className="size-3" aria-hidden="true" />
           <span>{t("nav.explore.add_competitor_short", { defaultValue: "Concorrente" })}</span>
           {!premiumUnlocked && (
-            <Lock className="size-2.5 text-content-tertiary" aria-hidden="true" />
+            <Lock className="size-2.5 text-[rgb(var(--accent-gold))]" aria-hidden="true" />
           )}
         </button>
+        </div>
         {premiumUnlocked ? (
           <ConsumeCreditDialog
             open={dialogOpen}
@@ -838,10 +845,6 @@ function ExploreSection({
 
   return (
     <section className="space-y-2">
-      <p className="px-2 text-eyebrow-sm text-content-tertiary">
-        {t("nav.explore.title")}
-      </p>
-
       {/* Period */}
       <div className="px-2 space-y-1">
         <div className="flex items-baseline justify-between gap-2">
@@ -849,7 +852,7 @@ function ExploreSection({
             {t("nav.explore.period_label")}
           </span>
           {!premiumUnlocked ? (
-            <Lock className="size-3 text-content-tertiary" aria-hidden="true" />
+            <Lock className="size-3 text-[rgb(var(--accent-gold))]" aria-hidden="true" />
           ) : observedDays > 0 ? (
             <span className="text-[11px] text-content-tertiary tabular-nums">
               {t("nav.explore.period_observed", { days: observedDays })}
@@ -890,7 +893,7 @@ function ExploreSection({
               title={!premiumUnlocked ? t("nav.explore.period_locked_hint") : undefined}
             >
               {!premiumUnlocked && (
-                <Lock className="size-2.5" aria-hidden="true" />
+                <Lock className="size-2.5 text-[rgb(var(--accent-gold))]" aria-hidden="true" />
               )}
               {`${days}d`}
             </button>
@@ -926,7 +929,7 @@ function ExploreSection({
           {premiumUnlocked ? (
             <UserPlus className="size-3.5" aria-hidden="true" />
           ) : (
-            <Lock className="size-3" aria-hidden="true" />
+            <Lock className="size-3 text-[rgb(var(--accent-gold))]" aria-hidden="true" />
           )}
           <span>{t("nav.explore.add_competitor")}</span>
         </button>
@@ -1174,6 +1177,11 @@ function SidebarList({
                     )}
                   </div>
                   {showSubs && <DiagnosticSubList activeSub={activeSub} />}
+                  {isDiag && !compact && !diagExpanded && (
+                    <p className="pl-9 pr-3 pb-1 -mt-0.5 text-[11px] text-content-tertiary">
+                      {t("nav.diagnostic_subitems.note")}
+                    </p>
+                  )}
                 </li>
               );
             })}
@@ -1317,7 +1325,7 @@ export function ReportBlockSidebar({
         "bg-white",
         "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_18px_40px_-24px_rgba(15,23,42,0.12)]",
         "transition-all duration-200",
-        compact ? "p-3" : "p-3 xl:p-4",
+        compact ? "p-3.5" : "p-3 xl:p-4",
       )}
     >
       {compact && (

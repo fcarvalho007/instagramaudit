@@ -578,6 +578,7 @@
     "avatar_alt": "Avatar de {{handle}}",
     "eyebrow_single": "Análise de perfil",
     "eyebrow_multi": "A comparar {{count}} perfis",
+    "eyebrow_analyzing": "A analisar",
     "access": {
       "badge_free": "Grátis",
       "badge_premium": "Premium",
@@ -608,7 +609,7 @@
       "title": "Explorar",
       "period_label": "Período de análise",
       "period_observed": "{{days}} dias observados",
-      "period_sample": "{{count}} pub.",
+      "period_sample": "{{count}} publicações",
       "competitors_label": "Concorrentes",
       "add_competitor": "Adicionar concorrente",
       "add_competitor_aria": "Adicionar concorrente para comparação",
@@ -678,7 +679,7 @@
       "trust": "Pagamento único. Sem subscrição."
     },
     "diagnostic_subitems": {
-      "note": "7 perguntas estratégicas",
+      "note": "7 itens estratégicos",
       "conteudo": "Conteúdo",
       "funil": "Funil",
       "hashtags": "Hashtags",
