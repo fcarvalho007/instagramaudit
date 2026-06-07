@@ -383,13 +383,20 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
           <div className="space-y-6 md:space-y-8">
             <div id="frequencia" className="scroll-mt-24">
             {firstCompetitor ? (
-              <CompetitorCadenceCompare
-                primary={{
-                  handle: primaryHandle,
-                  postingFrequencyWeekly: k.postingFrequencyWeekly,
-                }}
-                competitor={firstCompetitor}
-              />
+              <div className="space-y-4">
+                <CompetitorCadenceCompare
+                  primary={{
+                    handle: primaryHandle,
+                    postingFrequencyWeekly: k.postingFrequencyWeekly,
+                  }}
+                  competitor={firstCompetitor}
+                />
+                <CompetitorWeekdayCompare
+                  primaryHandle={primaryHandle}
+                  payload={payload}
+                  competitor={firstCompetitor}
+                />
+              </div>
             ) : (
               <FrequencyCard
                 postsAnalyzed={k.postsAnalyzed}
@@ -404,14 +411,22 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
             )}
             </div>
             <div id="formatos" className="scroll-mt-24">
-            <FormatCard
-              postsAnalyzed={k.postsAnalyzed}
-              dominantFormat={k.dominantFormat}
-              dominantFormatShare={k.dominantFormatShare}
-              formats={formatEntries}
-              analysedPostFormats={enriched.analysedPostFormats}
-              socialinsiderRef={result.externalReferences}
-            />
+            {firstCompetitor ? (
+              <CompetitorFormatCompare
+                primaryHandle={primaryHandle}
+                formats={formatEntries}
+                competitor={firstCompetitor}
+              />
+            ) : (
+              <FormatCard
+                postsAnalyzed={k.postsAnalyzed}
+                dominantFormat={k.dominantFormat}
+                dominantFormatShare={k.dominantFormatShare}
+                formats={formatEntries}
+                analysedPostFormats={enriched.analysedPostFormats}
+                socialinsiderRef={result.externalReferences}
+              />
+            )}
             </div>
           </div>
 
