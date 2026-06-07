@@ -24,7 +24,6 @@ import {
 import { computePostAverages } from "@/lib/report/post-aggregates";
 import { buildBlock01Sample } from "@/lib/report/block01-sample";
 import { PremiumTeaserCard } from "./premium-teaser-card";
-import { FreeInitialReadingCard } from "./overview/free-initial-reading-card";
 
 const PREMIUM_TEASERS = [
   {
