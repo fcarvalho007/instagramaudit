@@ -16,6 +16,14 @@ export interface CompareSide {
   value: number;
   /** Pre-formatted, user-facing string (pt-PT, with units). */
   formatted: string;
+  /**
+   * Optional per-side deterministic text shown under the value
+   * (e.g. "↓ abaixo do concorrente", "4,8× o teu valor").
+   *
+   * When both sides omit it, `CompareStatBlock` falls back to its
+   * legacy centered delta chip for back-compat.
+   */
+  subText?: string;
 }
 
 export interface CompareBarCategory {

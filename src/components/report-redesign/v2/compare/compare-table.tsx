@@ -114,15 +114,15 @@ function Th({
 }) {
   return (
     <th scope="col" className="py-2 pr-3 font-normal text-content-secondary">
-      <span className="inline-flex items-center gap-1.5">
-        <span
-          aria-hidden="true"
-          className={cn(
-            "size-1.5 rounded-full",
-            accent === "primary" ? "bg-accent-primary" : "bg-compare-competitor",
-          )}
-        />
-        <span className="truncate">{children}</span>
+      <span
+        className={cn(
+          "inline-block pb-1.5 border-b-2 truncate max-w-full",
+          accent === "primary"
+            ? "border-accent-primary text-accent-primary"
+            : "border-compare-competitor text-compare-competitor",
+        )}
+      >
+        {children}
       </span>
     </th>
   );

@@ -38,11 +38,11 @@ export function CompetitorCadenceCompare({ primary, competitor }: Props) {
       className="space-y-3"
     >
       <CompareStatBlock
-        label="Publicações por semana"
+        label="Cadência semanal"
         hint={
           !competitor.windowAligned
-            ? "Concorrente em janela baseline."
-            : undefined
+            ? "Concorrente em janela baseline · publicações por semana"
+            : "Publicações por semana"
         }
         primary={{
           handle: primary.handle,

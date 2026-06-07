@@ -42,15 +42,12 @@ export function CompetitorOverviewCompare({ primary, competitor, scope = "all" }
   return (
     <section
       aria-label="Comparação com concorrente"
-      className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden"
+      className="space-y-4"
     >
-      <header className="px-4 sm:px-5 md:px-6 pt-6 sm:pt-7 pb-3 space-y-1">
+      <header className="space-y-1">
         <span className="text-eyebrow-sm text-content-tertiary">
-          Comparação com concorrente
+          Identidade vs concorrente
         </span>
-        <h3 className="text-base sm:text-lg font-semibold text-content-primary">
-          @{primary.handle} vs @{competitor.username}
-        </h3>
         {!competitor.windowAligned ? (
           <p className="text-xs text-content-tertiary">
             Concorrente em janela baseline.
@@ -58,7 +55,7 @@ export function CompetitorOverviewCompare({ primary, competitor, scope = "all" }
         ) : null}
       </header>
 
-      <div className="px-4 sm:px-5 md:px-6 pb-6 sm:pb-7 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
         {rows.map((row) => (
           <CompareStatBlock
             key={row.label}
