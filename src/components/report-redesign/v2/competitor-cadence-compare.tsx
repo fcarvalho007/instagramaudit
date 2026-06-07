@@ -43,7 +43,6 @@ export function CompetitorCadenceCompare({ primary, competitor }: Props) {
           !competitor.windowAligned
             ? "Concorrente em janela baseline · publicações por semana"
             : "Publicações por semana"
-            : undefined
         }
         primary={{
           handle: primary.handle,
