@@ -970,7 +970,11 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           // results (status + duration + posts returned) are written to
           // `provider_call_logs` so the admin sees the real Apify ledger.
           const providerCallIds: string[] = [];
-          const callPrimary = fetchProfileWithPostsLogged(primary).then(
+          // PR 1: PRIMARY uses the window-specific config (baseline / 30d /
+          // 90d). Competitors stay on baseline by design — we are not
+          // refetching competitors per window in this phase to keep cost,
+          // cache and complexity bounded.
+          const callPrimary = fetchProfileWithPostsLogged(primary, primaryWindowCfg).then(
             (r) => {
               if (r.providerCallLogId) providerCallIds.push(r.providerCallLogId);
               if (r.error) throw r.error;
