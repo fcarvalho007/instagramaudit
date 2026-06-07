@@ -45,7 +45,7 @@ describe("Premium CTA — unified labels", () => {
     // The sidebar already used this key; we assert it stays canonical
     // so future copy changes have to update both places at once.
     expect(resolve(ptReport, "nav.access.cta")).toBe(
-      "Desbloquear relatório completo",
+      "Desbloquear relatório",
     );
     expect(resolve(enReport, "nav.access.cta")).toBe("Unlock full report");
   });
