@@ -54,7 +54,7 @@ export function CompareStatBlock({
 
   const body = (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-stretch gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-3 sm:gap-4">
         <Side side={primary} accent="primary" subText={primarySub} />
         <div className="flex items-center justify-center sm:min-w-8 sm:px-1">
           <span
