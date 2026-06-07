@@ -27,6 +27,7 @@ import { PremiumTeaserCard } from "./premium-teaser-card";
 import { CompetitorOverviewCompare } from "./overview/competitor-overview-compare";
 import { CompetitorEngagementCompare } from "./competitor-engagement-compare";
 import { CompetitorCadenceCompare } from "./competitor-cadence-compare";
+import { CompetitorBioCompare } from "./competitor-bio-compare";
 
 const PREMIUM_TEASERS = [
   {
@@ -273,6 +274,16 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
             averageComments: avgComments,
             postingFrequencyWeekly: k.postingFrequencyWeekly,
           }}
+          competitor={firstCompetitor}
+        />
+      ) : null}
+
+      {mode === "all" && firstCompetitor ? (
+        <CompetitorBioCompare
+          primaryHandle={primaryHandle}
+          primaryBio={enriched.profile.bio}
+          primaryExternalUrls={enriched.profile.externalUrls}
+          primaryVerified={Boolean(result.data.profile.verified)}
           competitor={firstCompetitor}
         />
       ) : null}
