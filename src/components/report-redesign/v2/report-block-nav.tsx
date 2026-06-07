@@ -383,7 +383,7 @@ function ItemRow({
       className={cn(
         "group relative w-full flex items-center gap-3",
         "rounded-lg pl-3 pr-2.5 text-left",
-        compact ? "py-1.5" : "py-2",
+        compact ? "py-2" : "py-2",
         "transition-colors duration-150",
         "focus-visible:outline-none focus-visible:ring-2",
         "focus-visible:ring-[rgb(var(--accent-primary))] focus-visible:ring-offset-1",
@@ -453,7 +453,7 @@ function LockedItemRow({
       className={cn(
         "group relative w-full flex items-center gap-3",
         "rounded-lg pl-3 pr-2.5 text-left",
-        compact ? "py-1.5" : "py-2",
+        compact ? "py-2" : "py-2",
         "transition-colors duration-150",
         isActive
           ? "bg-surface-muted/70 text-content-secondary"
@@ -469,7 +469,7 @@ function LockedItemRow({
         )}
       />
       <Lock
-        className="size-3 text-content-tertiary"
+        className="size-3 text-[rgb(var(--accent-gold))]"
         aria-hidden="true"
       />
       <span className={cn(
