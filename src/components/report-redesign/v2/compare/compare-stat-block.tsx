@@ -83,11 +83,13 @@ export function CompareStatBlock({
 
   return (
     <section
-      className="rounded-xl border border-border-default bg-surface-secondary p-4 sm:p-5"
+      className="rounded-2xl border border-border-default bg-surface-primary shadow-card p-5 sm:p-6"
       aria-label={`${label}: comparação com concorrente`}
     >
-      <header className="flex flex-col gap-0.5 mb-4">
-        <span className="text-eyebrow-sm text-content-tertiary">{label}</span>
+      <header className="flex flex-col gap-1 mb-5">
+        <h3 className="font-serif text-xl sm:text-2xl text-content-primary leading-snug">
+          {label}
+        </h3>
         {hint ? (
           <span className="text-xs text-content-tertiary">{hint}</span>
         ) : null}
