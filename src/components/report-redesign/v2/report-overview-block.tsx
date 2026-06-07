@@ -275,6 +275,7 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
             postingFrequencyWeekly: k.postingFrequencyWeekly,
           }}
           competitor={firstCompetitor}
+          scope="identity"
         />
       ) : null}
 
@@ -368,46 +369,44 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
         <>
           {/* Zona C — Card de Taxa de Envolvimento (lock boundary) */}
           <div id="engagement" className="scroll-mt-24">
-            <EngagementCardRefined result={result} />
             {firstCompetitor ? (
-              <div className="mt-6 md:mt-8">
-                <CompetitorEngagementCompare
-                  primary={{
-                    handle: primaryHandle,
-                    engagementRate: k.engagementRate,
-                    averageLikes: avgLikes,
-                    averageComments: avgComments,
-                  }}
-                  competitor={firstCompetitor}
-                />
-              </div>
-            ) : null}
+              <CompetitorEngagementCompare
+                primary={{
+                  handle: primaryHandle,
+                  engagementRate: k.engagementRate,
+                  averageLikes: avgLikes,
+                  averageComments: avgComments,
+                }}
+                competitor={firstCompetitor}
+              />
+            ) : (
+              <EngagementCardRefined result={result} />
+            )}
           </div>
 
           {/* Zona D — Frequência + Tipo de conteúdo (stack vertical) */}
           <div className="space-y-6 md:space-y-8">
             <div id="frequencia" className="scroll-mt-24">
-            <FrequencyCard
-              postsAnalyzed={k.postsAnalyzed}
-              windowDays={result.coverage.windowDays}
-              postingFrequencyWeekly={k.postingFrequencyWeekly}
-              calendarDays={enriched.postingTimeline}
-              cadenceSufficient={enriched.cadence.sufficient}
-              cadenceSampleSize={enriched.cadence.sampleSize}
-              cadenceWindowDays={enriched.cadence.windowDays}
-              socialinsiderRef={result.externalReferences}
-            />
             {firstCompetitor ? (
-              <div className="mt-6 md:mt-8">
-                <CompetitorCadenceCompare
-                  primary={{
-                    handle: primaryHandle,
-                    postingFrequencyWeekly: k.postingFrequencyWeekly,
-                  }}
-                  competitor={firstCompetitor}
-                />
-              </div>
-            ) : null}
+              <CompetitorCadenceCompare
+                primary={{
+                  handle: primaryHandle,
+                  postingFrequencyWeekly: k.postingFrequencyWeekly,
+                }}
+                competitor={firstCompetitor}
+              />
+            ) : (
+              <FrequencyCard
+                postsAnalyzed={k.postsAnalyzed}
+                windowDays={result.coverage.windowDays}
+                postingFrequencyWeekly={k.postingFrequencyWeekly}
+                calendarDays={enriched.postingTimeline}
+                cadenceSufficient={enriched.cadence.sufficient}
+                cadenceSampleSize={enriched.cadence.sampleSize}
+                cadenceWindowDays={enriched.cadence.windowDays}
+                socialinsiderRef={result.externalReferences}
+              />
+            )}
             </div>
             <div id="formatos" className="scroll-mt-24">
             <FormatCard
