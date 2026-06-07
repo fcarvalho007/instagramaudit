@@ -1281,6 +1281,44 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
         ]
       : [];
 
+  // Phase 0 — per-competitor deterministic breakdown used by the new
+  // "Profile vs Competitor" primitives. Independent from the legacy
+  // `competitors` array above (which still feeds the horizontal gauge).
+  // Only `success: true` entries are mapped; failed competitors stay
+  // hidden so cards can decide to omit the comparison entirely.
+  const competitorBreakdown: ReportData["competitorBreakdown"] =
+    rawCompetitors
+      .map((raw) => {
+        if (!raw || typeof raw !== "object") return null;
+        const c = raw as Record<string, unknown>;
+        if (c.success !== true) return null;
+        const p = (c.profile ?? null) as Record<string, unknown> | null;
+        const s = (c.content_summary ?? null) as Record<string, unknown> | null;
+        if (!p || !s) return null;
+        const username = typeof p.username === "string" ? p.username : null;
+        if (!username) return null;
+        return {
+          username,
+          displayName:
+            typeof p.display_name === "string" && p.display_name.length > 0
+              ? p.display_name
+              : username,
+          followers: num(p.followers_count, 0),
+          postsAnalyzed: num(s.posts_analyzed, 0),
+          averageEngagementRate: num(s.average_engagement_rate, 0),
+          averageLikes: num(s.average_likes, 0),
+          averageComments: num(s.average_comments, 0),
+          estimatedPostsPerWeek: num(s.estimated_posts_per_week, 0),
+          dominantFormat:
+            typeof s.dominant_format === "string" ? s.dominant_format : "—",
+          // Today competitors are always fetched in baseline — see
+          // analyze-public-v1.ts (lines 980–983). Window alignment is a
+          // future enhancement; cards label the comparison transparently.
+          windowAligned: false,
+        };
+      })
+      .filter((v): v is NonNullable<typeof v> => v !== null);
+
   // ----------------------------------------------------------------------
   // AI insights — map persisted `ai_insights_v1` (when present) into the
   // locked `ReportData.aiInsights` shape `{ number, label, text }`. The
@@ -1651,6 +1689,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     temporalSeries,
     formatBreakdown,
     competitors,
+    competitorBreakdown,
     topPosts,
     postingHeatmap,
     topHashtags,
