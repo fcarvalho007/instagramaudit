@@ -783,13 +783,17 @@ function ExploreSection({
       handlePremiumAccessClick("sidebar_period");
     };
     return (
-      <section className="grid grid-cols-2 gap-1.5 px-1">
+      <section className="space-y-1.5 px-1">
+        <p className="text-eyebrow-sm text-content-tertiary">
+          {t("nav.explore.title")}
+        </p>
+        <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
           onClick={onPeriodCompact}
           aria-label={t("nav.explore.period_label")}
           className={cn(
-            "inline-flex items-center justify-center gap-1.5 h-8 rounded-md border text-[11px] font-medium transition-colors",
+            "inline-flex items-center justify-center gap-1.5 h-9 rounded-md border text-[11px] font-medium transition-colors",
             "border-border-default bg-white text-content-secondary",
             "hover:border-border-strong hover:text-content-primary",
           )}
@@ -797,7 +801,7 @@ function ExploreSection({
           <Calendar className="size-3" aria-hidden="true" />
           <span>{t("nav.explore.period_label")}</span>
           {!premiumUnlocked && (
-            <Lock className="size-2.5 text-content-tertiary" aria-hidden="true" />
+            <Lock className="size-2.5 text-[rgb(var(--accent-gold))]" aria-hidden="true" />
           )}
         </button>
         <button
@@ -807,7 +811,7 @@ function ExploreSection({
           aria-label={t("nav.explore.add_competitor_aria")}
           title={atMax ? t("nav.explore.competitor_limit_reached") : undefined}
           className={cn(
-            "inline-flex items-center justify-center gap-1.5 h-8 rounded-md border text-[11px] font-medium transition-colors",
+            "inline-flex items-center justify-center gap-1.5 h-9 rounded-md border text-[11px] font-medium transition-colors",
             "border-border-default bg-white text-content-secondary",
             atMax
               ? "opacity-50 cursor-not-allowed"
@@ -817,9 +821,10 @@ function ExploreSection({
           <UserPlus className="size-3" aria-hidden="true" />
           <span>{t("nav.explore.add_competitor_short", { defaultValue: "Concorrente" })}</span>
           {!premiumUnlocked && (
-            <Lock className="size-2.5 text-content-tertiary" aria-hidden="true" />
+            <Lock className="size-2.5 text-[rgb(var(--accent-gold))]" aria-hidden="true" />
           )}
         </button>
+        </div>
         {premiumUnlocked ? (
           <ConsumeCreditDialog
             open={dialogOpen}
@@ -840,10 +845,6 @@ function ExploreSection({
 
   return (
     <section className="space-y-2">
-      <p className="px-2 text-eyebrow-sm text-content-tertiary">
-        {t("nav.explore.title")}
-      </p>
-
       {/* Period */}
       <div className="px-2 space-y-1">
         <div className="flex items-baseline justify-between gap-2">
@@ -851,7 +852,7 @@ function ExploreSection({
             {t("nav.explore.period_label")}
           </span>
           {!premiumUnlocked ? (
-            <Lock className="size-3 text-content-tertiary" aria-hidden="true" />
+            <Lock className="size-3 text-[rgb(var(--accent-gold))]" aria-hidden="true" />
           ) : observedDays > 0 ? (
             <span className="text-[11px] text-content-tertiary tabular-nums">
               {t("nav.explore.period_observed", { days: observedDays })}
