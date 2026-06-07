@@ -119,7 +119,7 @@ function Th({
           aria-hidden="true"
           className={cn(
             "size-1.5 rounded-full",
-            accent === "primary" ? "bg-accent-primary" : "bg-accent-secondary",
+            accent === "primary" ? "bg-accent-primary" : "bg-compare-competitor",
           )}
         />
         <span className="truncate">{children}</span>
@@ -144,7 +144,7 @@ function MobileCell({
           aria-hidden="true"
           className={cn(
             "size-1.5 rounded-full",
-            accent === "primary" ? "bg-accent-primary" : "bg-accent-secondary",
+            accent === "primary" ? "bg-accent-primary" : "bg-compare-competitor",
           )}
         />
         @{handle}

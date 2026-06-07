@@ -1,58 +1,62 @@
-# QA Audit — Phase 1 Competitor Comparison (Pro Report)
+# Fix — Competitor colour distinction (scoped, no global theme change)
 
-Chat-only audit. No code edits, no schema/payments/credits/entitlements touched. No new provider calls (rendering only — Apify/OpenAI/DataForSEO are not triggered by mounting these components).
+## Root cause
+In `src/styles/tokens-light.css`, `--accent-secondary: 0 119 182` is identical to `--accent-primary: 0 119 182` (both ocean blue). Compare components use `bg-accent-secondary` for the competitor dot, so primary and competitor render the same blue.
 
-## Scope under test
+## Strategy
+Introduce a **comparison-scoped** token + utility class. Do NOT touch `--accent-secondary` (used in chart-impressions, glass aurora, etc.).
 
-Files exercised by the audit:
-- `src/components/report-redesign/v2/overview/competitor-overview-compare.tsx`
-- `src/components/report-redesign/v2/competitor-engagement-compare.tsx`
-- `src/components/report-redesign/v2/competitor-cadence-compare.tsx`
-- `src/components/report-redesign/v2/report-overview-block.tsx` (insertion points)
-- `src/components/report-redesign/v2/compare/*` (primitives)
+## Changes
 
-Out of scope (must remain untouched): checkout, EuPago, credits, entitlements, schema, Add Competitor consume flow, `ReportCompetitors` legacy gauge, `/report.example`.
+### 1. New token — `src/styles/tokens-light.css`
+Add inside `:root, [data-theme="light"]`:
+```css
+--compare-competitor: 118 100 228;  /* #7664E4 soft indigo */
+```
 
-## Test matrix
+Mirror in `src/styles/tokens.css` (dark theme) with same RGB so the class works in both themes.
 
-Run each scenario against `auditprofiles.com` (lead `01bf861c...`, already on Pro window via existing data; no new credit spend needed — use cached 30d if available, otherwise baseline-only is enough since the compare components key off `competitorBreakdown`, not window).
+### 2. New utility — `src/styles.css`
+```css
+@utility bg-compare-competitor {
+  background-color: rgb(var(--compare-competitor));
+}
+@utility text-compare-competitor {
+  color: rgb(var(--compare-competitor));
+}
+@utility border-compare-competitor {
+  border-color: rgb(var(--compare-competitor));
+}
+```
+(only the variants actually used in compare components — likely just `bg-`).
 
-| # | Scenario | Route / state | Expected |
-|---|----------|---------------|----------|
-| 1 | Pro, 0 competitors | `/analyze/<u>` Pro view, `competitorBreakdown=[]` | Overview / Engagement / Cadence cards render identically to pre-Phase-1; no compare block, no empty container |
-| 2 | Pro, 1 competitor | same, `competitorBreakdown.length===1` | 3 compare blocks render (Overview, Engagement, Cadence). Primary left/blue, competitor right/secondary. Values match `competitorBreakdown[0]` numbers |
-| 3 | Pro, 2 competitors | same, `length===2` | Only `competitorBreakdown[0]` used. Second competitor not rendered in Phase 1 blocks. No layout break |
-| 4 | Free / Public | unauth or `mode!=="all"` | Zero compare UI. Locked teaser cards unchanged |
-| 5 | Mobile 375px | viewport 375 | No horizontal overflow. Rows stack `grid-cols-1 → sm:grid-cols-[1fr_auto_1fr]`. Numeric values readable as text |
-| 6 | Window alignment | competitor `windowAligned===false` | Neutral hint "Concorrente em amostra recente/baseline." visible |
-| 7 | Missing metric | row value null/0 | Row hidden, no invented zero, no empty block rendered |
-| 8 | No provider calls on render | DevTools Network during scenarios 1–5 | Zero requests to apify.com, openai.com, dataforseo.com triggered by render. Only cached report fetch + static assets |
+### 3. Swap class in 5 files
+Replace `bg-accent-secondary` → `bg-compare-competitor` in:
+- `src/components/report-redesign/v2/compare/compare-stat-block.tsx` (1 hit, line 100)
+- `src/components/report-redesign/v2/compare/compare-table.tsx` (2 hits, lines 122, 147)
+- `src/components/report-redesign/v2/compare/compare-bar-pair.tsx` (2 hits, lines 113, 140) + update comment line 22
+- `src/components/report-redesign/v2/competitor-engagement-compare.tsx` (1 hit, line 152)
 
-## How I'll run it
+Primary side keeps `bg-accent-primary` (blue). No changes to text labels, handles or layout — `@username` text already carries the meaning textually, so colour is redundant signalling (✓ a11y).
 
-I'll drive the browser tool against the **published** site (`auditprofiles.com`) since the QA entitlement context lives on that lead. For each scenario I'll:
+### 4. `competitor-overview-compare.tsx` & `competitor-cadence-compare.tsx` & `competitor-bio-compare.tsx`
+No direct colour classes — they delegate to `CompareStatBlock`. Covered by step 3 swap. No edits.
 
-1. `view_preview` / `navigate_to_url` to the analyze route.
-2. `set_viewport_size` 1280 then 375.
-3. `screenshot` the relevant cards.
-4. `list_network_requests` filtered to non-self origins to confirm no provider calls.
-5. Cross-check rendered numbers vs `competitorBreakdown[0]` payload from the report fetch response.
+## Out of scope (unchanged)
+- `--accent-secondary` token, all chart series, glass aurora, AI insight boxes, sticky bars, buttons, checkout, landing, Free/Public report, `ReportCompetitors` legacy gauge, data, providers, schema, payments, credits, entitlements, Add Competitor flow.
 
-For scenarios 2 and 3, if the current production lead has 0 or 1 competitor saved, I'll ask you before adding any — adding a competitor goes through the consume flow, which is out of scope.
+## Validation checklist
+1. Primary dots/bars = blue `#0077B6` (light) / `#3772E5` (dark).
+2. Competitor dots/bars = indigo `#7664E4` in both themes.
+3. Free/Public render path (`mode !== "all"` and `mode !== "locked"`) — no compare blocks render → no visual diff.
+4. Report without competitor (`competitorBreakdown=[]`) — components return `null` → no visual diff.
+5. Mobile 375px — pure colour swap, no layout impact.
+6. Typecheck — only string class names changed, no type surface modified.
+7. Grep `bg-compare-competitor` only inside `report-redesign/v2/compare/` and the 4 Phase 1 competitor components.
+8. Each competitor pair already shows `@handle` as text next to the dot → colour is not the sole carrier.
 
-## Deliverable
-
-A single report containing:
-
-- **PASS/FAIL table** keyed to the 8 rows above.
-- **Verified cards / screenshots** per scenario (desktop + 375px where relevant).
-- **Bugs found** (if any) with file + repro.
-- **Provider-call audit**: explicit confirmation of zero Apify/OpenAI/DataForSEO requests during render.
-- **Untouched-surfaces confirmation**: checkout, EuPago, credits, entitlements, schema, Add Competitor flow, legacy `ReportCompetitors`, `/report.example`, Free/Public locked teasers.
-- **Go/No-go for Phase 2** (data extension to Format Mix / Hashtags / Captions / Comments).
-
-## Questions before I start
-
-1. The production lead `01bf861c...` — how many competitors does it currently have saved? If 0 or 1, do I have permission to read-only inspect, or should I ask you to add a second one via the normal UI before I screenshot scenario 3?
-2. Run against `auditprofiles.com` (published) or the Lovable preview? Phase 1 code is in both, but published matches the lead/session you've been validating.
-3. The temporary QA entitlement `7ae71c27...` (`metadata.source = 'manual_pr1_validation'`) on lead `01bf861c...` — leave in place for the duration of this audit and roll back after, or roll back first and run audit against a non-entitled session?
+## Deliverables in build mode
+- Files changed: 2 token files, 1 styles file, 4 component files.
+- Token used: `--compare-competitor: 118 100 228` → utility `bg-compare-competitor`.
+- Confirmation `--accent-secondary` is unchanged (grep diff).
+- Before: both sides ocean blue. After: primary ocean blue, competitor soft indigo.

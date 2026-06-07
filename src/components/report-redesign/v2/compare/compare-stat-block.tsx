@@ -97,7 +97,7 @@ function Side({
           aria-hidden="true"
           className={cn(
             "size-1.5 rounded-full shrink-0",
-            accent === "primary" ? "bg-accent-primary" : "bg-accent-secondary",
+            accent === "primary" ? "bg-accent-primary" : "bg-compare-competitor",
           )}
         />
         <span className="truncate">@{side.handle}</span>

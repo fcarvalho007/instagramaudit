@@ -110,7 +110,7 @@ function LegendDot({
         aria-hidden="true"
         className={cn(
           "size-2 rounded-full",
-          accent === "primary" ? "bg-accent-primary" : "bg-accent-secondary",
+          accent === "primary" ? "bg-accent-primary" : "bg-compare-competitor",
         )}
       />
       <span className="truncate max-w-[10rem]">{label}</span>
@@ -137,7 +137,7 @@ function Bar({
         <div
           className={cn(
             "absolute inset-y-0 left-0 rounded-full",
-            accent === "primary" ? "bg-accent-primary" : "bg-accent-secondary",
+            accent === "primary" ? "bg-accent-primary" : "bg-compare-competitor",
           )}
           style={{ width: `${pct}%` }}
         />

@@ -149,7 +149,7 @@ function Pair({
         aria-hidden="true"
         className={cn(
           "size-1.5 rounded-full shrink-0",
-          accent === "primary" ? "bg-accent-primary" : "bg-accent-secondary",
+          accent === "primary" ? "bg-accent-primary" : "bg-compare-competitor",
         )}
       />
       <span className="text-content-secondary truncate max-w-[8rem]">
