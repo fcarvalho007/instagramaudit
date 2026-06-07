@@ -1,164 +1,111 @@
-## Auditoria — Free/Public vs Pro/Paid
+## PR1 — Pro analysis `window` backend validation
 
-Apenas leitura. Nada foi alterado em código, BD, preview ou produção. Nenhum provider externo foi chamado.
+### Status: PARTIAL — static review PASS, live HTTP scenarios BLOCKED
 
-### Como mapeiam as 7 secções comerciais às componentes reais
+I'm in plan mode, so I cannot issue the live `/api/analyze-public-v1` POSTs that scenarios 1–5 require (any of them would burn Apify credits and mutate `credit_ledger` / `analysis_snapshots`). I did execute the read-only checks (code inspection + DB introspection). Live HTTP requires either (a) switching to build mode, or (b) the operator running the curl commands manually with the test cookie.
 
-A `block-config.ts` define **dois** conjuntos:
+There is also a **hard blocker** before scenarios 2/3/5 can run: no lead currently has the `report_full_9` entitlement, so the Pro path cannot be exercised.
 
-- `BLOCKS` (interno, 6 blocos do shell) — usado por `ReportBlockSection` / sidebar de admin.
-- `COMMERCIAL_SECTIONS` (público, 7 secções) — usado pela sidebar comercial.
+---
 
-A correspondência real (verificada em `report-shell-v2.tsx` + `report-overview-block.tsx` + `report-diagnostic-block.tsx`) é:
+### 1. Static code review (read-only, done now)
 
-| # | Secção comercial | Anchor `id` | Onde é renderizada | Quando |
+Files inspected:
+
+- `src/routes/api/analyze-public-v1.ts` (1582 lines)
+- `src/lib/analysis/window-configs.ts`
+- `src/lib/analysis/cache.ts` (`buildCacheKey`, lines 49–60)
+
+Findings — all PASS:
+
+| Check | Location | Result |
+|---|---|---|
+| `window` Zod field, optional, validated via `isPublicWindowKind` (allows only `baseline`/`30d`/`90d`) | L131–134, L468–471 | PASS |
+| Cache key suffix `:w=30d` / `:w=90d` only for wide windows; baseline → empty suffix → byte-identical to legacy key | `cache.ts` L59 + `window-configs.ts` `windowCacheSuffix` | PASS |
+| Pro gate (`hasEntitlement(lead, 'report_full_9')`) runs **before** `reserveCredit` for wide windows; returns `WINDOW_REQUIRES_PRO` (HTTP 403) when missing | L559–577 | PASS — Free cannot be charged |
+| Baseline path still calls `reserveCredit` exactly as before; `skipReserve` short-circuit still applies on cache+lead-owned | L578–612 | PASS — Free flow unchanged |
+| PRIMARY uses `primaryWindowCfg` (window-specific Apify params); competitors stay on baseline | L972–1000 | PASS — matches PR1 scope |
+| `INTERNAL_API_TOKEN` bypass skips the Pro gate (`if (!isInternalBypass)` wrapper at L544) — internal smoke calls work, but they also skip the entitlement check | L505–512, L544 | NOTE (see Risks) |
+
+No schema / pricing / EuPago / report-rendering changes detected in PR1 diff surface.
+
+### 2. DB state (read-only, done now)
+
+```text
+analysis_snapshots where cache_key like '%:w=%' → 0 rows
+analysis_snapshots for frederico.m.carvalho     → 1 row, key "v1:frederico.m.carvalho|" (baseline)
+credit_ledger last 10                            → only baseline reserves; no wide-window activity
+lead_entitlements report_full_9                  → 0 rows for both fred* leads
+```
+
+Interpretation: PR1 code is deployed but has **never been exercised live**. Clean slate for validation.
+
+### 3. Live HTTP scenarios — cannot execute in plan mode
+
+I cannot run scenarios 1–5 here. Scenario 2 specifically requires a lead with `report_full_9` that does not yet exist in the DB.
+
+Pre-flight required (one of the two operator leads, e.g. `7b946d45-…fredericodigital@gmail.com`):
+
+```sql
+-- Grant Pro entitlement (manual, since checkout/EuPago is out of scope)
+INSERT INTO lead_entitlements (lead_id, product_code, metadata)
+VALUES ('<lead_uuid>', 'report_full_9', '{"source":"manual_pr1_validation"}');
+
+-- Top up credits to at least 2 (for scenarios 2 + 5)
+INSERT INTO credit_ledger (lead_id, delta, reason, metadata)
+VALUES ('<lead_uuid>', 2, 'manual_topup', '{"source":"pr1_validation"}');
+```
+
+Then, with the corresponding `lead_session` cookie attached, run scenarios 1→4 (skip 5 unless the 90d budget is acceptable). Expected post-conditions, mapped to DB queries to report back:
+
+```sql
+-- T0 = timestamp just before scenario 1
+\set T0 '2026-06-07 08:30:00+00'
+
+-- Cache keys observed
+SELECT cache_key, created_at FROM analysis_snapshots
+ WHERE instagram_username='frederico.m.carvalho'
+   AND created_at >= :'T0' ORDER BY created_at DESC;
+
+-- Credit deltas
+SELECT created_at, delta, reason, handle, cache_key
+  FROM credit_ledger WHERE lead_id='<lead>' AND created_at >= :'T0' ORDER BY 1;
+
+-- Outcomes / error codes
+SELECT created_at, handle, cache_key, outcome, error_code, data_source
+  FROM analysis_events WHERE created_at >= :'T0' ORDER BY 1;
+
+-- Apify spend
+SELECT created_at, handle, status, posts_returned, estimated_cost_usd
+  FROM provider_call_logs WHERE created_at >= :'T0' ORDER BY 1;
+
+-- Enrichment fan-out
+SELECT created_at, status, handle, enrichment_type
+  FROM enrichment_jobs WHERE created_at >= :'T0' ORDER BY 1;
+```
+
+Expected outcomes table (re-stated for the operator):
+
+| # | Call | Expected key | Expected ledger | Expected error_code |
 |---|---|---|---|---|
-| 01 | Visão geral | (top do bloco overview) | `ReportOverviewBlock` (Editorial Identity + MethodologyLine) | sempre |
-| 02 | Engagement | `#engagement` | `EngagementCardRefined` dentro do overview | Free: `mode="free_with_engagement"` · Pro: `mode="all"` |
-| 03 | Frequência editorial | `#frequencia` | `FrequencyCard` no overview (`mode="all"`) | só Pro |
-| 04 | Mix de formatos | `#formatos` | `FormatCard` no overview (`mode="all"`) | só Pro |
-| 05 | Publicações-chave | `#publicacoes-chave` | `PostComparisonBlock` no overview (`mode="all"`) | só Pro |
-| 06 | Diagnóstico editorial | `#diagnostico-editorial` | `ReportDiagnosticBlock` (shell block "diagnostico") | só Pro (`premiumUnlocked && blockDiagnosis !== "hidden"`) |
-| 07 | Prioridades de acção | `#prioridades` | mesma `ReportDiagnosticBlock` | só Pro |
+| 1 | no `window` | `v1:frederico.m.carvalho\|` | reserve+confirm OR `skipReserve` (alreadyAssociated) | none |
+| 2 | `window:"30d"`, Pro, 1st | `v1:frederico.m.carvalho\|mariiana.ai:w=30d` | −1 reserve + 0 confirm | none |
+| 3 | `window:"30d"`, Pro, repeat | same key | `skipReserve` (no new rows) | none |
+| 4 | `window:"30d"`, Free | n/a | no rows | `WINDOW_REQUIRES_PRO` (HTTP 403) |
+| 5 | `window:"90d"`, Pro | `…:w=90d` | −1 reserve + 0 confirm | none |
 
-Em Free, em vez das secções 03–07 surge a lista `PREMIUM_TEASERS` (5 `PremiumTeaserCard`s), uma por anchor.
+### 4. Risks / regression notes
 
----
+- **Pro gate is bypassed by `INTERNAL_API_TOKEN`** (L544 wraps the entire credit + entitlement block in `if (!isInternalBypass)`). This is intentional for admin smoke calls but means scenario 4 must be tested **without** the bearer token, or it will appear to pass for the wrong reason.
+- **Cache-key migration**: zero pre-existing `:w=*` snapshots, so no risk of collision with legacy entries. Baseline key shape unchanged → existing Free snapshots remain reachable. PASS.
+- **Competitor handling**: competitors deliberately stay on baseline regardless of `window`. If a future PR wants competitor windowing, both `fetchProfileWithPostsLogged(handle)` calls at L983 and the cache-key participation will need to change — not in PR1 scope.
+- **No schema migration in PR1** — confirmed by the absence of any new column referenced from `analysis_snapshots`/`credit_ledger`/`analysis_events` write paths.
 
-### 1. Free body — PASS/FAIL
+### 5. Recommendation
 
-| Critério | Estado | Evidência |
-|---|---|---|
-| Antes de Engagement renderiza apenas Identity + MethodologyLine | **PASS** | `ReportOverviewBlock`, ramo `mode === "free_with_engagement"` (linhas 258–267) |
-| Só 01 e 02 desbloqueadas | **PASS** | `mode="free_with_engagement"` renderiza Identity + Methodology + `FreeInitialReadingCard` + Engagement; restantes blocos só montam se `premiumUnlocked` |
-| 5 teaser cards renderizadas após Engagement | **PASS** | `PREMIUM_TEASERS.map(...)` em `report-overview-block.tsx` linhas 285–297; ordem 03→07 |
-| Teasers visíveis no corpo (não só sidebar) | **PASS** | Cards são `<section id="...">` empilhadas no `<main>` |
-| Skeletons section-specific | **PASS** | `previewVariant: frequency \| format \| publications \| diagnostic \| priorities` em `premium-teaser-card.tsx`; 5 funções `*Preview` distintas |
-| Não expõem dados pagos | **PASS** | Componentes não recebem `result`/`payload`; só copy estático + skeleton SVG-like; `FreeInitialReadingCard` é 100% determinístico (verificado em auditoria anterior) |
-
----
-
-### 2. Sticky bar — PASS/FAIL
-
-| Critério | Estado | Evidência |
-|---|---|---|
-| Mounted apenas para Free/Public | **PASS** | `report-shell-v2.tsx` linhas 408–410: `{lockBoundary === "engagement" && !premiumUnlocked && <StickyUnlockBar />}` |
-| Aparece ao chegar ao 1º teaser | **PASS** | `useStickyUnlockTrigger` observa `#frequencia` com `rootMargin: "0px 0px -10% 0px"`; `passedFree` só vira true ao intersectar |
-| Permanece visível enquanto se passa pelos teasers | **PASS** | Estado `passedFree` é sticky (`setPassedFree(true)`), não reseta |
-| Esconde quando aparece a CTA final | **PASS / intencional** | `finalCtaVisible` segue `#lead-magnet-card`; barra esconde quando esse card entra em viewport. Esta secção só renderiza em estado B (`unlocked && !premiumUnlocked`). No fluxo onboarding-first actual `unlocked` é forçado a `true` desde o início (`analyze.$username.tsx:397`), por isso essa CTA aparece e a barra recolhe correctamente |
-| Não aparece logo no topo | **PASS** | Visibility = `passedFree && !finalCtaVisible && !dismissed` — fica oculta até intersectar `#frequencia` |
-| Não aparece em Pro | **PASS** | Gate de montagem no shell exige `!premiumUnlocked` |
-| Preço dinâmico | **PASS** | `priceLabel = PUBLIC_PRODUCTS.report_full_9.priceLabel` (linha 191), não hardcoded |
-| Abre fluxo unlock existente | **PASS** | `handleUnlock = () => handlePremiumAccessClick("sticky_unlock_bar")` via `usePremiumCta` |
-
-Notas:
-- Dismiss persiste em `sessionStorage` (`sticky_unlock_bar:dismissed`) — comportamento por sessão, ok.
-- O hook tem retry de 20×250ms para anchors montados tarde — apropriado para o load assíncrono.
-
----
-
-### 3. Sidebar — PASS/FAIL
-
-| Critério | Estado | Evidência |
-|---|---|---|
-| Free: "2 of 7 accessible" | **PASS** | `buildCommercialSidebarItems(false)` marca tier="free" como `accessible` e tier="pro" como `locked`; `ProgressSummary` usa `i.access === "accessible"` |
-| Free: 01 e 02 disponíveis | **PASS** | `COMMERCIAL_SECTIONS[0..1]` têm `tier: "free"` |
-| Free: 03–07 locked/premium | **PASS** | `COMMERCIAL_SECTIONS[2..6]` têm `tier: "pro"`; `commercialToSidebarItem` move-os para grupo "premium" |
-| Click em item locked → scroll ou unlock | **PARTIAL** | O comportamento exacto do click depende de `LockedItemRow.onClick` — handler é passado pelo container. Visível no extracto: `LockedItemRow` recebe `onClick` mas a implementação não foi inspeccionada nesta passagem. Recomendado verificar se chama `scrollToBlock(item.block.id)` (anchor existe — todas as teasers têm `id={anchorId}`) **ou** `handlePremiumAccessClick("sidebar_locked")`. Ambas são aceitáveis; consistência é o que falta confirmar |
-| Pro: "report complete / premium active" | **PASS** | `paidStatus = isCommercial && premiumUnlocked ? { totalSections: items.length } : null` (linha 1304/1385); `ProfileHeader` mostra ícone ✓ + "premium active" |
-| Pro: 7 secções disponíveis | **PASS** | `commercialToSidebarItem(s, true)` → todos `accessible`, todos em grupo "incluido" |
-| Pro: sem labels locked nas desbloqueadas | **PASS** | `accessBadge: AccessBadge = s.tier === "free" ? "free" : "premium"` continua a marcar como `premium`, mas `access` é `"accessible"` — `ItemRow` (não `LockedItemRow`) é usado |
-
----
-
-### 4. Pro body — PASS/FAIL
-
-| Critério | Estado | Evidência |
-|---|---|---|
-| Renderiza todas as 7 secções | **PASS** | Pro entra no ramo `mode="all"` do overview → 01+02+03+04+05; bloco diagnostico (06+07) entra porque `premiumUnlocked && blockDiagnosis !== "hidden"` (em `public_mvp` é `"full"`) |
-| Sem `PremiumTeaserCard` | **PASS** | Teasers só renderizam no ramo `free_with_engagement` (linhas 285–297). Em `mode="all"` esse bloco não é instanciado |
-| Sem `StickyUnlockBar` | **PASS** | Mount gated por `!premiumUnlocked` |
-| Pending placeholders em Pro | **PASS** | `ReportDiagnosticBlock`: `showPaidPlaceholders = premiumUnlocked \|\| pro_preview \|\| internal_lab` (linhas 96–97); slots `visual_cover`, `caption_semantic`, `insights_v2` montam `EnrichmentPlaceholderCard` em `pending`/`error` |
-| `premiumUnlocked` real (não preview) | **PASS** | `analyze.$username.tsx` linhas 402–415: `getMyReportEntitlement()` → server fn que lê `lead_entitlements` para `report_full_9`. Fail-closed (`false` por defeito); só vira `true` se servidor confirmar |
-
-⚠️ Nota: em produção `/analyze/$username` passa **sempre** `variant="public_mvp"`, mesmo para Pro. Isto é deliberado e funciona porque as 7 secções comerciais mapeiam para blocos cujos `featureKey`s estão `"full"` em `public_mvp` (`blockOverview`, `blockDiagnosis`) ou são renderizadas dentro do overview (não dependem de feature flag). Os blocos `blockPerformance`/`blockContent`/`blockSearch`/`blockBenchmark` continuam `"hidden"` em `public_mvp` — mas esses são lab-only e **não** fazem parte das 7 comerciais, por isso é o comportamento desejado.
-
----
-
-### 5. Variant/access — mismatch?
-
-| Variant | Onde é usado | Sticky/teaser logic OK? |
-|---|---|---|
-| `public_mvp` | `/analyze/$username` (todos os utilizadores, Free e Pro) | **SIM** — gating depende de `premiumUnlocked`, não de variant |
-| `pro_preview` | apenas `admin.report-lab` e `admin_.report-preview.$username` (admin) | n/a — admin preview |
-| `internal_lab` | apenas admin lab | n/a |
-| `premiumUnlocked` | derivado server-side em `getMyReportEntitlement` | **SIM** — fail-closed, sem dependências de URL/cookie/UI |
-| `free_with_engagement` | string para `mode` em `ReportOverviewBlock` | **SIM** — disparado apenas quando `lockBoundary === "engagement" && !premiumUnlocked` |
-
-**Nenhum mismatch detectado** onde um Pro user seja tratado como Free. O único ponto a vigiar é que a sidebar comercial usa `premiumUnlocked` (prop), enquanto o body usa o mesmo prop — ambos vêm do mesmo `useState` na rota. ✅
-
----
-
-### 6. Production readiness
-
-| Item | Hash actual em produção | Status |
-|---|---|---|
-| `index-*.js` | `index-DbQlUHEe.js` (990 583 B) | actual |
-| `report-shell-v2-*.js` | `report-shell-v2-D3tTAVDN.js` (289 397 B) | actual |
-
-Fingerprints encontradas em produção:
-- ✅ `"Leitura inicial"` (FreeInitialReadingCard)
-- ✅ `"free_with_engagement"`, `"premiumUnlocked"`
-- ✅ Eyebrows 03–07: FREQUÊNCIA EDITORIAL · MIX DE FORMATOS · PUBLICAÇÕES-CHAVE · DIAGNÓSTICO EDITORIAL · PRIORIDADES DE ACÇÃO
-- ✅ Sticky bar: `"Faltam-te"`, `"5 secções premium"`, `"Desbloquear relatório"`, `bg-[#03045E]`, source `"sticky_unlock_bar"`
-- ✅ Modal redesign: `"Adicionar e comparar"`, `"competitor_beta_note"` (presentes no `index-*.js` principal)
-- ❌ Limit-guard explícito: `"Apenas 1 concorrente"` / `"atCompetitorLimit"` / `"Limite de concorrente"` — 0 hits. Limite vive apenas como `COMPETITOR_MAX = 2` + `disabled` no botão (linha 491 / 906 de `report-block-nav.tsx`), sem copy dedicado.
-
-**Produção está actualizada** com tudo o que esta auditoria audita. Runtime validation **pode prosseguir em produção** sem republicar (usar handle em cache do Apify para não disparar provider — ex.: `frederico.m.carvalho` se snapshot fresco existir).
-
----
-
-### Mismatches / pontos a confirmar (não-bloqueantes)
-
-1. **Click em sidebar item locked** — comportamento do `onClick` do `LockedItemRow` não foi exaustivamente inspeccionado nesta auditoria. Deve scroll para anchor da teaser card OU abrir unlock; ambas existem na codebase. Confirmar consistência.
-2. **Limit guard de concorrente** — não há copy dedicado (`atCompetitorLimit` / "Apenas 1 concorrente"). O guard é silencioso (botão `disabled` ao atingir 2). Pode merecer micro-copy explicativo, mas é tarefa separada e não foi pedida aqui.
-3. **`pro_preview` variant** — definido com `blockPerformance/Content/Search/Benchmark = "hidden"`. Idêntico a `public_mvp`. Existe só para o lab admin. Sem impacto no fluxo público.
-
----
-
-### Ficheiros que mexeria se algum fix fosse aprovado
-
-- `src/components/report-redesign/v2/report-shell-v2.tsx` — orquestrador
-- `src/components/report-redesign/v2/report-overview-block.tsx` — split free/pro
-- `src/components/report-redesign/v2/premium-teaser-card.tsx` — 5 teasers
-- `src/components/report-redesign/v2/sticky-unlock-bar.tsx` — sticky bar
-- `src/components/report-redesign/v2/report-block-nav.tsx` — sidebar comercial + limit guard
-- `src/components/report-redesign/v2/report-diagnostic-block.tsx` — Pro placeholders
-- `src/lib/report/report-variant.ts` + `effective-features.ts` — caso se queira separar `public_mvp` (Free) de uma nova variant `commercial_pro`
-- `src/routes/analyze.$username.tsx` — sítio onde `premiumUnlocked` é resolvido
-
----
-
-### Resultados PASS/FAIL — síntese
-
-| Área | Resultado |
-|---|---|
-| Free body | **PASS** (6/6) |
-| Sticky bar | **PASS** (8/8) |
-| Sidebar | **PASS** (6/7) — falta confirmar comportamento de click em item locked |
-| Pro body | **PASS** (5/5) |
-| Variant/access | **PASS** (sem mismatch) |
-| Produção alinhada | **PASS** (build actual, com pequena lacuna no copy do limit guard que não estava no escopo intencional) |
-
----
-
-### Prompt recomendado para futuras melhorias (NÃO implementar agora)
-
-> Confirma o comportamento do `onClick` em `LockedItemRow` (`src/components/report-redesign/v2/report-block-nav.tsx`). Quando um Free user clica numa secção locked (03–07) na sidebar:
-> a) deve fazer scroll suave até `#frequencia` / `#formatos` / `#publicacoes-chave` / `#diagnostico-editorial` / `#prioridades` (já existem como anchors das `PremiumTeaserCard`s) **e**
-> b) emitir tracking `sidebar_locked_click` com `section_id`.
-> Não abrir unlock modal nesse click (a CTA do teaser card já trata disso). Sem mudanças em pricing, entitlements, checkout, schema ou geração de relatório.
-
-### Sem implementação
-
-Esta auditoria é apenas de leitura. Nada foi alterado.
+- **Do NOT advance to PR2 yet** until scenarios 1–4 are executed live and the five SQL queries above are pasted back for confirmation.
+- Static review alone is not enough — the credit refund path on failure (Pro 30d that errors mid-flight) is the most likely PR1 regression and only shows up in a real Apify call.
+- Next step requested from operator (or a switch to build mode):
+  1. Grant `report_full_9` + 2 credits to the test lead via the two `INSERT`s above.
+  2. Run scenarios 1 → 2 → 3 → 4 (skip 5 unless 90d budget approved).
+  3. Paste back the five SELECT results so I can score PASS/FAIL per scenario and either green-light PR2 or open a PR1 fix.
