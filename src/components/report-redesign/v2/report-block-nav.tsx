@@ -893,7 +893,7 @@ function ExploreSection({
               title={!premiumUnlocked ? t("nav.explore.period_locked_hint") : undefined}
             >
               {!premiumUnlocked && (
-                <Lock className="size-2.5" aria-hidden="true" />
+                <Lock className="size-2.5 text-[rgb(var(--accent-gold))]" aria-hidden="true" />
               )}
               {`${days}d`}
             </button>
@@ -929,7 +929,7 @@ function ExploreSection({
           {premiumUnlocked ? (
             <UserPlus className="size-3.5" aria-hidden="true" />
           ) : (
-            <Lock className="size-3" aria-hidden="true" />
+            <Lock className="size-3 text-[rgb(var(--accent-gold))]" aria-hidden="true" />
           )}
           <span>{t("nav.explore.add_competitor")}</span>
         </button>
