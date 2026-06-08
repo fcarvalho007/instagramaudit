@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { CompareBarPair } from "@/components/report-redesign/v2/compare";
+import { CompareBarPair, CompareCardShell } from "@/components/report-redesign/v2/compare";
 import type { CompareBarCategory } from "@/components/report-redesign/v2/compare/compare-types";
 import type { ReportCompetitorBreakdownEntry } from "@/components/report/report-mock-data";
 import type { SnapshotPayload, SnapshotPost } from "@/lib/report/snapshot-to-report-data";
@@ -7,6 +7,9 @@ import { remapUtcCountsToIso } from "@/lib/report/weekday-iso";
 
 interface Props {
   primaryHandle: string;
+  primaryAvatarUrl?: string | null;
+  primaryFullName?: string | null;
+  primaryVerified?: boolean;
   /** Raw snapshot payload — used to derive the primary weekday counts
    * from the same `weekday` field competitors are aggregated from
    * (analyze-public-v1.ts: `enrichPosts(...).posts[i].weekday`). */
@@ -36,7 +39,14 @@ const WEEKDAY_LABELS: Array<{ short: string; long: string }> = [
  * Returns null (parent renders nothing extra) when neither side has
  * usable data.
  */
-export function CompetitorWeekdayCompare({ primaryHandle, payload, competitor }: Props) {
+export function CompetitorWeekdayCompare({
+  primaryHandle,
+  primaryAvatarUrl,
+  primaryFullName,
+  primaryVerified,
+  payload,
+  competitor,
+}: Props) {
   const primaryIso = useMemo(() => derivePrimaryIso(payload?.posts), [payload?.posts]);
   const competitorIso = useMemo(
     () => normaliseIso(competitor.weekdayCountsIso),
@@ -62,20 +72,24 @@ export function CompetitorWeekdayCompare({ primaryHandle, payload, competitor }:
   );
 
   return (
-    <section
-      className="rounded-2xl border border-border-default bg-surface-primary shadow-card p-5 sm:p-6"
-      aria-label="Ritmo por dia da semana: comparação com concorrente"
+    <CompareCardShell
+      title="Ritmo por dia da semana"
+      subtitle="Publicações por dia (Seg–Dom)"
+      windowAligned={competitor.windowAligned}
+      primary={{
+        handle: primaryHandle,
+        avatarUrl: primaryAvatarUrl ?? null,
+        isVerified: Boolean(primaryVerified),
+        displayName: primaryFullName ?? null,
+      }}
+      competitor={{
+        handle: competitor.username,
+        avatarUrl: competitor.avatarUrl ?? null,
+        isVerified: competitor.isVerified,
+        displayName: competitor.displayName,
+      }}
+      footer={insight ?? undefined}
     >
-      <header className="flex flex-col gap-2 mb-4">
-        <h3 className="font-serif text-xl sm:text-2xl text-content-primary leading-snug">
-          Ritmo por dia da semana
-        </h3>
-        {!competitor.windowAligned ? (
-          <span className="inline-flex w-fit items-center rounded-full border border-border-subtle bg-surface-muted px-2.5 py-0.5 text-xs text-content-tertiary">
-            Concorrente em janela baseline.
-          </span>
-        ) : null}
-      </header>
       <CompareBarPair
         variant="bare"
         label="Ritmo por dia da semana"
@@ -84,12 +98,7 @@ export function CompetitorWeekdayCompare({ primaryHandle, payload, competitor }:
         categories={categories}
         unit="abs"
       />
-      {insight ? (
-        <p className="mt-4 rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-content-secondary leading-relaxed">
-          {insight}
-        </p>
-      ) : null}
-    </section>
+    </CompareCardShell>
   );
 }
 

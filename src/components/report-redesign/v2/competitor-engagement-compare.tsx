@@ -1,8 +1,11 @@
-import { CompareStatBlock } from "@/components/report-redesign/v2/compare";
+import { CompareCardShell, CompareStatBlock } from "@/components/report-redesign/v2/compare";
 import type { ReportCompetitorBreakdownEntry } from "@/components/report/report-mock-data";
 
 interface PrimarySide {
   handle: string;
+  avatarUrl?: string | null;
+  fullName?: string | null;
+  verified?: boolean;
   engagementRate: number;
   averageLikes: number;
   averageComments: number;
@@ -31,17 +34,27 @@ export function CompetitorEngagementCompare({ primary, competitor }: Props) {
   );
 
   return (
-    <section
-      aria-label="Comparação de envolvimento com concorrente"
-      className="space-y-3"
+    <CompareCardShell
+      title="Taxa de engagement"
+      subtitle="Envolvimento médio por publicação"
+      windowAligned={competitor.windowAligned}
+      primary={{
+        handle: primary.handle,
+        avatarUrl: primary.avatarUrl ?? null,
+        isVerified: Boolean(primary.verified),
+        displayName: primary.fullName ?? null,
+      }}
+      competitor={{
+        handle: competitor.username,
+        avatarUrl: competitor.avatarUrl ?? null,
+        isVerified: competitor.isVerified,
+        displayName: competitor.displayName,
+      }}
+      footer={verdict}
     >
       <CompareStatBlock
+        variant="bare"
         label="Taxa de engagement"
-        hint={
-          !competitor.windowAligned
-            ? "Concorrente em janela baseline."
-            : undefined
-        }
         primary={{
           handle: primary.handle,
           value: primary.engagementRate,
@@ -55,10 +68,7 @@ export function CompetitorEngagementCompare({ primary, competitor }: Props) {
         unit="pp"
         higherIsBetter={true}
       />
-      <p className="text-sm text-content-secondary leading-relaxed px-1">
-        {verdict}
-      </p>
-    </section>
+    </CompareCardShell>
   );
 }
 

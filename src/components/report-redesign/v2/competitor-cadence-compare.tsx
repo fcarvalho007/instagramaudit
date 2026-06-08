@@ -1,8 +1,11 @@
-import { CompareStatBlock } from "@/components/report-redesign/v2/compare";
+import { CompareCardShell, CompareStatBlock } from "@/components/report-redesign/v2/compare";
 import type { ReportCompetitorBreakdownEntry } from "@/components/report/report-mock-data";
 
 interface PrimarySide {
   handle: string;
+  avatarUrl?: string | null;
+  fullName?: string | null;
+  verified?: boolean;
   postingFrequencyWeekly: number;
 }
 
@@ -33,17 +36,27 @@ export function CompetitorCadenceCompare({ primary, competitor }: Props) {
   );
 
   return (
-    <section
-      aria-label="Comparação de cadência com concorrente"
-      className="space-y-3"
+    <CompareCardShell
+      title="Cadência semanal"
+      subtitle="Publicações por semana"
+      windowAligned={competitor.windowAligned}
+      primary={{
+        handle: primary.handle,
+        avatarUrl: primary.avatarUrl ?? null,
+        isVerified: Boolean(primary.verified),
+        displayName: primary.fullName ?? null,
+      }}
+      competitor={{
+        handle: competitor.username,
+        avatarUrl: competitor.avatarUrl ?? null,
+        isVerified: competitor.isVerified,
+        displayName: competitor.displayName,
+      }}
+      footer={verdict}
     >
       <CompareStatBlock
+        variant="bare"
         label="Cadência semanal"
-        hint={
-          !competitor.windowAligned
-            ? "Concorrente em janela baseline · publicações por semana"
-            : "Publicações por semana"
-        }
         primary={{
           handle: primary.handle,
           value: primary.postingFrequencyWeekly,
@@ -57,10 +70,7 @@ export function CompetitorCadenceCompare({ primary, competitor }: Props) {
         unit="abs"
         higherIsBetter={true}
       />
-      <p className="text-sm text-content-secondary leading-relaxed px-1">
-        {verdict}
-      </p>
-    </section>
+    </CompareCardShell>
   );
 }
 
