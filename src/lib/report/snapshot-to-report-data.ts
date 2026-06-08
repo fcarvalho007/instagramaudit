@@ -1509,6 +1509,37 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     ? "Ordenadas por envolvimento na amostra recolhida."
     : `Ordenadas por envolvimento. Janela observada: ${windowDays} dias.`;
 
+  // PR2 — when the snapshot was generated with a wide public window
+  // (30d / 90d), override the baseline-derived copy so the report says
+  // "Últimos 30 dias" / "Últimos 90 dias" instead of "últimas N publicações".
+  // Baseline (or legacy snapshots without the field) keep the existing copy
+  // byte-for-byte.
+  const rawWindow = payload.analysis_window;
+  const analysisWindow: "baseline" | "30d" | "90d" =
+    rawWindow === "30d" || rawWindow === "90d" ? rawWindow : "baseline";
+  let windowLabelFinal = windowLabel;
+  let windowShortLabelFinal = windowShortLabel;
+  let kpiSubtitleFinal = kpiSubtitle;
+  let sampleCaptionFinal = sampleCaption;
+  let temporalLabelFinal = temporalLabel;
+  let topPostsSubtitleFinal = topPostsSubtitle;
+  if (analysisWindow !== "baseline") {
+    const days = analysisWindow === "30d" ? 30 : 90;
+    const empty = keyMetrics.postsAnalyzed === 0;
+    windowLabelFinal = `últimos ${days} dias`;
+    windowShortLabelFinal = `${days} dias`;
+    kpiSubtitleFinal = empty
+      ? `sem publicações nos últimos ${days} dias`
+      : `${keyMetrics.postsAnalyzed} publicações nos últimos ${days} dias`;
+    sampleCaptionFinal = empty
+      ? `Sem publicações nos últimos ${days} dias.`
+      : `Análise baseada nas ${keyMetrics.postsAnalyzed} publicações dos últimos ${days} dias.`;
+    temporalLabelFinal = `Evolução temporal · últimos ${days} dias`;
+    topPostsSubtitleFinal = empty
+      ? `Sem publicações nos últimos ${days} dias.`
+      : `Ordenadas por envolvimento. Janela observada: últimos ${days} dias.`;
+  }
+
   // Views are only populated for Reels; if every post has 0 views, hide the
   // series in the temporal chart.
   const viewsAvailable = posts.some(
