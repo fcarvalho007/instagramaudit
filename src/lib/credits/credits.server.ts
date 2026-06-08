@@ -52,6 +52,7 @@ interface LedgerInsert {
   cache_key?: string | null;
   analysis_snapshot_id?: string | null;
   reservation_id?: string | null;
+  analysis_event_id?: string | null;
   metadata?: Json;
 }
 
@@ -64,10 +65,35 @@ async function insertLedger(row: LedgerInsert): Promise<void> {
     cache_key: row.cache_key ?? null,
     analysis_snapshot_id: row.analysis_snapshot_id ?? null,
     reservation_id: row.reservation_id ?? null,
+    analysis_event_id: row.analysis_event_id ?? null,
     metadata: (row.metadata ?? {}) as Json,
   });
   if (error) {
     throw new Error(`credit_ledger insert failed: ${error.message}`);
+  }
+}
+
+/**
+ * Back-fills `analysis_event_id` on the matching `reserve` row so the full
+ * reserve→confirm/release chain becomes joinable via a single column.
+ * Best-effort: a failure here is logged but never throws (credit lifecycle
+ * already succeeded by the time we get here).
+ */
+async function backfillReserveEventId(
+  reservationId: string,
+  analysisEventId: string,
+): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("credit_ledger")
+    .update({ analysis_event_id: analysisEventId })
+    .eq("reservation_id", reservationId)
+    .eq("reason", "reserve")
+    .is("analysis_event_id", null);
+  if (error) {
+    console.error(
+      "[credits] backfillReserveEventId failed",
+      JSON.stringify({ reservationId, analysisEventId, message: error.message }),
+    );
   }
 }
 
@@ -270,6 +296,7 @@ export async function confirmReservation(input: {
   reservationId: string;
   leadId: string;
   analysisSnapshotId?: string | null;
+  analysisEventId?: string | null;
 }): Promise<void> {
   await insertLedger({
     lead_id: input.leadId,
@@ -277,7 +304,11 @@ export async function confirmReservation(input: {
     reason: "confirm",
     reservation_id: input.reservationId,
     analysis_snapshot_id: input.analysisSnapshotId ?? null,
+    analysis_event_id: input.analysisEventId ?? null,
   });
+  if (input.analysisEventId) {
+    await backfillReserveEventId(input.reservationId, input.analysisEventId);
+  }
 }
 
 /**
@@ -289,12 +320,17 @@ export async function releaseReservation(input: {
   reservationId: string;
   leadId: string;
   reason?: string;
+  analysisEventId?: string | null;
 }): Promise<void> {
   await insertLedger({
     lead_id: input.leadId,
     delta: 1,
     reason: "release",
     reservation_id: input.reservationId,
+    analysis_event_id: input.analysisEventId ?? null,
       metadata: (input.reason ? { release_reason: input.reason } : {}) as Json,
   });
+  if (input.analysisEventId) {
+    await backfillReserveEventId(input.reservationId, input.analysisEventId);
+  }
 }
