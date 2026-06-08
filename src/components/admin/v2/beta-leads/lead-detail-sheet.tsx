@@ -2332,3 +2332,231 @@ function LeadHistoryTimeline({
     </div>
   );
 }
+
+// ── LeadCreditsTab ───────────────────────────────────────────────
+
+interface LedgerEntry {
+  id: string;
+  delta: number;
+  reason: string;
+  handle: string | null;
+  cache_key: string | null;
+  analysis_snapshot_id: string | null;
+  reservation_id: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+}
+
+interface AnalysisEventEntry {
+  id: string;
+  handle: string;
+  analysis_window: string | null;
+  cache_key: string | null;
+  data_source: string | null;
+  outcome: string | null;
+  analysis_snapshot_id: string | null;
+  estimated_cost_usd: number | null;
+  competitor_handles: string[];
+  created_at: string;
+}
+
+interface CreditActivityResponse {
+  success: boolean;
+  balance: number;
+  summary: { granted: number; confirmed: number; reserved: number; released: number };
+  ledger: LedgerEntry[];
+  events: AnalysisEventEntry[];
+}
+
+function LeadCreditsTab({ leadId, active }: { leadId: string; active: boolean }) {
+  const { data, isLoading, error } = useQuery<CreditActivityResponse>({
+    queryKey: ["admin", "lead-credit-activity", leadId],
+    enabled: active && !!leadId,
+    queryFn: async () => {
+      const res = await adminFetch(`/api/admin/lead-credit-activity/${leadId}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    },
+    staleTime: 10_000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="px-6 py-10 text-[13px] text-admin-text-tertiary">
+        A carregar créditos…
+      </div>
+    );
+  }
+  if (error || !data?.success) {
+    return (
+      <div className="px-6 py-10 text-[13px] text-admin-danger-500">
+        Falhou a carregar créditos.
+      </div>
+    );
+  }
+
+  const { balance, summary, ledger, events } = data;
+
+  return (
+    <div className="px-6 py-6 space-y-7">
+      {/* Saldo */}
+      <section>
+        <h3 className="admin-section-title mb-3">Saldo actual</h3>
+        <div className="flex items-baseline gap-3">
+          <span className="text-[32px] font-semibold tabular-nums leading-none text-admin-text-primary">
+            {balance}
+          </span>
+          <span className="text-[12px] text-admin-text-tertiary">
+            granted {summary.granted} · usados {summary.confirmed} · reservados {summary.reserved}
+            {summary.released > 0 ? ` · libertados ${summary.released}` : ""}
+          </span>
+        </div>
+      </section>
+
+      {/* Movimentos */}
+      <section>
+        <h3 className="admin-section-title mb-3">Movimentos ({ledger.length})</h3>
+        {ledger.length === 0 ? (
+          <p className="text-[12px] text-admin-text-tertiary">Sem movimentos.</p>
+        ) : (
+          <div className="overflow-x-auto rounded-md border border-admin-border">
+            <table className="w-full border-collapse text-left text-[12px]">
+              <thead>
+                <tr className="text-admin-text-tertiary">
+                  <th className="admin-eyebrow px-3 py-2 font-normal">Δ</th>
+                  <th className="admin-eyebrow px-3 py-2 font-normal">Razão</th>
+                  <th className="admin-eyebrow px-3 py-2 font-normal">Tipo</th>
+                  <th className="admin-eyebrow px-3 py-2 font-normal">Handle</th>
+                  <th className="admin-eyebrow px-3 py-2 font-normal">Snapshot</th>
+                  <th className="admin-eyebrow px-3 py-2 font-normal">Quando</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ledger.map((e) => {
+                  const win = deriveWindow(null, e.cache_key);
+                  const isPeriod = !!e.cache_key && /:w=\d+d$/i.test(e.cache_key);
+                  const reasonVariant: AdminAccent =
+                    e.reason === "initial_grant"
+                      ? "info"
+                      : e.reason === "reserve"
+                        ? "signal"
+                        : e.reason === "confirm"
+                          ? "revenue"
+                          : e.reason === "release"
+                            ? "neutral"
+                            : "neutral";
+                  const deltaColor =
+                    e.delta < 0
+                      ? "text-admin-danger-500"
+                      : e.delta > 0
+                        ? "text-admin-revenue-700"
+                        : "text-admin-text-tertiary";
+                  return (
+                    <tr key={e.id} className="border-t border-admin-border">
+                      <td className={`px-3 py-2 tabular-nums font-semibold ${deltaColor}`}>
+                        {e.delta > 0 ? `+${e.delta}` : e.delta}
+                      </td>
+                      <td className="px-3 py-2">
+                        <AdminBadge variant={reasonVariant}>{e.reason}</AdminBadge>
+                      </td>
+                      <td className="px-3 py-2">
+                        {isPeriod ? (
+                          <AdminBadge variant={windowBadgeVariant(win)}>
+                            período · {windowLabel(win)}
+                          </AdminBadge>
+                        ) : e.reason === "initial_grant" ? (
+                          <span className="text-[12px] text-admin-text-tertiary">grant</span>
+                        ) : (
+                          <AdminBadge variant="neutral">baseline</AdminBadge>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-admin-text-secondary">
+                        {e.handle ? `@${e.handle}` : "—"}
+                      </td>
+                      <td className="px-3 py-2 admin-code text-admin-text-secondary">
+                        {e.analysis_snapshot_id ? e.analysis_snapshot_id.slice(0, 8) : "—"}
+                      </td>
+                      <td className="px-3 py-2 admin-code text-admin-text-tertiary tabular-nums">
+                        {new Date(e.created_at).toLocaleString("pt-PT", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {/* Análises recentes */}
+      <section>
+        <h3 className="admin-section-title mb-3">Análises recentes ({events.length})</h3>
+        {events.length === 0 ? (
+          <p className="text-[12px] text-admin-text-tertiary">Sem análises registadas para os handles deste lead.</p>
+        ) : (
+          <div className="overflow-x-auto rounded-md border border-admin-border">
+            <table className="w-full border-collapse text-left text-[12px]">
+              <thead>
+                <tr className="text-admin-text-tertiary">
+                  <th className="admin-eyebrow px-3 py-2 font-normal">Handle</th>
+                  <th className="admin-eyebrow px-3 py-2 font-normal">Janela</th>
+                  <th className="admin-eyebrow px-3 py-2 font-normal">Origem</th>
+                  <th className="admin-eyebrow px-3 py-2 font-normal">Outcome</th>
+                  <th className="admin-eyebrow px-3 py-2 font-normal">Snapshot</th>
+                  <th className="admin-eyebrow px-3 py-2 font-normal">Custo</th>
+                  <th className="admin-eyebrow px-3 py-2 font-normal">Quando</th>
+                </tr>
+              </thead>
+              <tbody>
+                {events.map((ev) => {
+                  const win = deriveWindow(ev.analysis_window, ev.cache_key);
+                  return (
+                    <tr key={ev.id} className="border-t border-admin-border">
+                      <td className="px-3 py-2 text-admin-text-secondary">@{ev.handle}</td>
+                      <td className="px-3 py-2">
+                        <AdminBadge variant={windowBadgeVariant(win)}>
+                          {windowLabel(win)}
+                        </AdminBadge>
+                      </td>
+                      <td className="px-3 py-2">
+                        {ev.data_source ? (
+                          <AdminBadge variant={dataSourceBadgeVariant(ev.data_source)}>
+                            {ev.data_source}
+                          </AdminBadge>
+                        ) : (
+                          <span className="text-admin-text-tertiary">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-admin-text-secondary">{ev.outcome ?? "—"}</td>
+                      <td className="px-3 py-2 admin-code text-admin-text-secondary">
+                        {ev.analysis_snapshot_id ? ev.analysis_snapshot_id.slice(0, 8) : "—"}
+                      </td>
+                      <td className="px-3 py-2 admin-code text-admin-text-secondary tabular-nums">
+                        {ev.estimated_cost_usd != null
+                          ? `$${ev.estimated_cost_usd.toFixed(3)}`
+                          : "—"}
+                      </td>
+                      <td className="px-3 py-2 admin-code text-admin-text-tertiary tabular-nums">
+                        {new Date(ev.created_at).toLocaleString("pt-PT", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
