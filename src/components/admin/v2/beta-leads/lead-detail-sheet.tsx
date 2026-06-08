@@ -2375,6 +2375,51 @@ interface CreditActivityResponse {
   events: AnalysisEventEntry[];
 }
 
+/**
+ * Maps a ledger row to a single human-readable kind chip. Distinguishes:
+ *  - Crédito inicial (initial_grant)
+ *  - Bónus beta (admin_adjust + metadata.kind=post_purchase_beta_bonus)
+ *  - Smoke test top-up (admin_adjust + metadata.kind=smoke_*)
+ *  - Ajuste manual (other admin_adjust)
+ *  - Análise período 30d/90d (reserve with :w= suffix)
+ *  - Análise baseline (plain reserve)
+ *  - Confirmado (confirm)
+ *  - Estorno (release)
+ * TODO: distinguish competitor-only reserves when backend stops bundling them.
+ */
+function ledgerKind(
+  e: LedgerEntry,
+  win: ReturnType<typeof deriveWindow>,
+  isPeriod: boolean,
+): { label: string; variant: AdminAccent } {
+  if (e.reason === "initial_grant") {
+    return { label: "Crédito inicial", variant: "info" };
+  }
+  if (e.reason === "admin_adjust") {
+    const kind =
+      typeof e.metadata?.kind === "string" ? (e.metadata.kind as string) : "";
+    if (kind === "post_purchase_beta_bonus") {
+      return { label: "Bónus beta", variant: "signal" };
+    }
+    if (kind.startsWith("smoke_")) {
+      return { label: "Top-up de teste", variant: "neutral" };
+    }
+    return { label: "Ajuste manual", variant: "neutral" };
+  }
+  if (e.reason === "reserve") {
+    if (isPeriod) {
+      return {
+        label: `Análise · ${windowLabel(win)}`,
+        variant: windowBadgeVariant(win),
+      };
+    }
+    return { label: "Análise baseline", variant: "neutral" };
+  }
+  if (e.reason === "confirm") return { label: "Confirmado", variant: "revenue" };
+  if (e.reason === "release") return { label: "Estorno", variant: "neutral" };
+  return { label: e.reason, variant: "neutral" };
+}
+
 function LeadCreditsTab({ leadId, active }: { leadId: string; active: boolean }) {
   const { data, isLoading, error } = useQuery<CreditActivityResponse>({
     queryKey: ["admin", "lead-credit-activity", leadId],
