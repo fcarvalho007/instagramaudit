@@ -1,84 +1,99 @@
-# PR2 — Persist & render selected analysis window
+## Goal
 
-Goal: snapshot/report carry the actual selected window (baseline / 30d / 90d) so the report can honestly say "Últimos 30 dias". No UI selector changes, no provider/payments/credits/entitlement changes.
+Add a **Comparison Hero** at the very top of the Pro Overview block so that, whenever the report has a `firstCompetitor`, it opens as a side-by-side "Profile A vs Profile B" duel — primary in blue, competitor in indigo/purple — before any single-profile cards render.
 
-## 1. `analysis_events` — read-only, do not extend schema
+Read-only and presentation-only. No providers, credits, schema, entitlements, Free/Public flows or PDF pipeline touched.
 
-`analysis_events` has no JSON metadata column. Per the constraint, I'm **stopping at this step before editing** and proposing the smallest safe approach:
+## Where it mounts
 
-- **Recommended (this PR, zero schema change):** rely on existing signals.
-  - `analysis_events.cache_key LIKE '%:w=30d'` / `'%:w=90d'` already disambiguates wide vs baseline (validated in PR1).
-  - `analysis_events.analysis_snapshot_id` joins to `analysis_snapshots.normalized_payload.analysis_window` (added in this PR).
-  - Admin BI can already segment by window via these two paths without a new column.
-- **Deferred to PR3 (first-class admin BI):** add `analysis_events.analysis_window TEXT` + index. Out of PR2 scope; explicitly forbidden by your constraint unless you say otherwise.
+`src/components/report-redesign/v2/report-overview-block.tsx`, inside the `mode === "all"` branch, **as the first child of the returned `<div>`**, gated by `firstCompetitor`.
 
-If you want the column added now, say so and I'll insert a migration; otherwise PR2 ships without touching `analysis_events`.
+When the hero renders, suppress the existing single-profile `EditorialIdentityCard` + `MethodologyLine` block that currently opens the report in compare mode — they re-introduce the "single-profile + appended compare cards" feeling the user wants gone. The downstream sibling cards (`CompetitorOverviewCompare scope="identity"`, `CompetitorBioCompare`, engagement/cadence/format compares) all remain — they are the per-metric deep-dives the hero summarises.
 
-## 2. Files changed (assuming no `analysis_events` column)
+In `mode === "free"` and `mode === "free_with_engagement"` (Free/Public + lead-capture): unchanged. Hero never renders there.
+
+In `mode === "locked"`: unchanged.
+
+## New component
+
+`src/components/report-redesign/v2/overview/comparison-hero.tsx`
+
+Editorial duel layout:
+
+```text
+┌──────────────────────────────────────────────────────────────┐
+│  COMPARAÇÃO PRO · janela: últimos 30 dias                    │
+│                                                              │
+│  ┌─────────┐                              ┌─────────┐        │
+│  │ avatar  │  @primary           VS       │ avatar  │        │
+│  │  blue   │  Nome próprio                │ indigo  │        │
+│  │  ring   │                              │  ring   │        │
+│  └─────────┘                              └─────────┘        │
+│                                                              │
+│  Seguidores              1,1 M    ·    523 k                 │
+│  Envolvimento médio       2,84%   ·    1,92%                 │
+│  Publicações / semana      4,2    ·     6,1                  │
+│  Formato dominante       Reels    ·   Carousels              │
+│  Score editorial            82    ·      71                  │
+└──────────────────────────────────────────────────────────────┘
+```
+
+Style commitments:
+- Fraunces title ("Perfil vs Concorrente"), Inter for handles, labels, numbers (tabular-nums).
+- White card surface, generous padding (`p-8 md:p-12`), `rounded-2xl`, soft border (`border-border-default`), subtle shadow — heavier than a standard card.
+- Avatars: 72–88 px circular, with a 2 px coloured ring (primary = `--accent-primary` blue `#3772E5`, competitor = `--accent-secondary` indigo `#7664E4`). Reuse the avatar pattern from `report-hero-v2.tsx` (img + fallback initials + verified check overlay).
+- "VS" treatment: Fraunces, large (`text-4xl md:text-5xl`), `text-content-tertiary`, centred between the two identity blocks; subtle horizontal divider line behind it on `md:` and up.
+- Metric rows: 5 rows, each a 3-column grid `[label | primary value | competitor value]`. Winner side highlighted with the side's accent colour (only when the metric has a clear "higher is better" + meaningful delta — followers, ER, posts/week, score). Format row shows both names, no winner.
+- Responsive: on mobile, identity blocks stack with "VS" between them; metric rows become two-column with the label as an eyebrow above the value pair.
+- Window/baseline hint chip ("Concorrente em janela baseline") when `competitor.windowAligned === false` — same copy already used by `CompetitorOverviewCompare`.
+
+## Metrics shown (5)
+
+| # | Label                | Primary source                                | Competitor source                              | Higher-is-better |
+|---|----------------------|-----------------------------------------------|------------------------------------------------|------------------|
+| 1 | Seguidores           | `result.data.profile.followers`               | `firstCompetitor.followers`                    | yes              |
+| 2 | Envolvimento médio   | `keyMetrics.engagementRate` (%)               | `firstCompetitor.averageEngagementRate`        | yes              |
+| 3 | Publicações por semana | `keyMetrics.postingFrequencyWeekly`         | `firstCompetitor.estimatedPostsPerWeek`        | yes              |
+| 4 | Formato dominante    | `keyMetrics.dominantFormat`                   | `firstCompetitor.dominantFormat`               | n/a (label only) |
+| 5 | Score editorial      | `computeEnvolvimento(...)` (already in block) | hidden if competitor score not computable      | yes              |
+
+Score row: render only when both sides have a finite score; the score for the competitor is computed inline from `(averageEngagementRate, engagementBenchmark)` reusing `computeEnvolvimento` from `overview/score-utils.ts`. If only the primary has it, drop the row entirely (no asymmetric display).
+
+Each row uses the same row guard as `CompetitorOverviewCompare` (skip when either side is `<= 0` for numeric KPIs) to avoid misleading "0 vs X" rows.
+
+## Data plumbing
+
+1. **Competitor avatar** — confirmed present in snapshot (`competitors[].profile.avatar_url`). Today `ReportCompetitorBreakdownEntry` doesn't expose it. Add `avatarUrl: string | null` to the type in `src/components/report/report-mock-data.ts` and map it in `src/lib/report/snapshot-to-report-data.ts` (one line in the `competitorBreakdown.map`). Mock entries get `avatarUrl: null`. Backwards-compatible.
+2. **Primary avatar** — already available as `result.enriched.profile.avatarUrl`.
+3. **Primary display name / verified** — `result.data.profile.fullName`, `result.data.profile.verified`.
+4. **Competitor display name / verified** — already on `ReportCompetitorBreakdownEntry`.
+
+No new server fields, no migration, no provider call.
+
+## Files changed
 
 | File | Change |
 |---|---|
-| `src/routes/api/analyze-public-v1.ts` | At base-snapshot build, add `analysis_window: windowKind` and `analysis_window_label: PUBLIC_WINDOW_CONFIGS[windowKind].label` into `baseNormalizedPayload`. ~6-line addition, no other logic touched. |
-| `src/lib/report/snapshot-to-report-data.ts` | Extend `SnapshotPayload` with `analysis_window?: PublicWindowKind \| null`, `analysis_window_label?: string \| null`. Compute `windowKindResolved` and override `windowLabel` / `windowShortLabel` / `kpiSubtitle` / `sampleCaption` / `temporalLabel` when `windowKindResolved !== "baseline"`. Add `meta.analysisWindow` + `meta.windowLabel` (already exists) + `meta.temporalLabel` (already exists). |
-| `src/components/report/report-mock-data.ts` | Add optional `analysisWindow?: "baseline" \| "30d" \| "90d" \| undefined` to the `meta` type. Default undefined → baseline behaviour byte-compatible. |
-| `src/lib/report/__tests__/snapshot-window.test.ts` | NEW unit test. Fixtures for `analysis_window: "baseline"` (legacy & explicit), `"30d"`, `"90d"`. Asserts `meta.windowLabel`, `meta.windowShortLabel`, `meta.kpiSubtitle`, `meta.sampleCaption`, `meta.temporalLabel` use "Últimos 30 dias" / "Últimos 90 dias" when wide. |
-| `supabase/migrations/<ts>_backfill_30d_snapshot_window.sql` | One-off backfill: `UPDATE analysis_snapshots SET normalized_payload = jsonb_set(jsonb_set(normalized_payload, '{analysis_window}', '"30d"'), '{analysis_window_label}', '"Últimos 30 dias"') WHERE id = '3f8b1dcf-618f-43d6-ada3-4841d2b04620' AND cache_key = 'v1:frederico.m.carvalho\|:w=30d' AND (normalized_payload ? 'analysis_window') = false;` Guarded by id + cache_key + idempotency. No other snapshot touched. |
+| `src/components/report-redesign/v2/overview/comparison-hero.tsx` | NEW. Pure presentational component. |
+| `src/components/report-redesign/v2/report-overview-block.tsx` | Mount `<ComparisonHero …/>` at the top of the `mode === "all"` branch; gate the existing `EditorialIdentityCard` + first `MethodologyLine` block behind `!firstCompetitor` so the single-profile opener only renders in solo mode. All other compare cards untouched. |
+| `src/lib/report/snapshot-to-report-data.ts` | Add `avatarUrl: typeof p.avatar_url === "string" ? p.avatar_url : null` inside the `competitorBreakdown.map`. |
+| `src/components/report/report-mock-data.ts` | Add `avatarUrl: string \| null` to `ReportCompetitorBreakdownEntry`; set `avatarUrl: null` on the mock entries to keep `/report/example` valid. |
 
-## 3. Exact fields added
+## Validation
 
-**`analysis_snapshots.normalized_payload`** (new keys):
+1. `bun run typecheck` clean.
+2. Visit `/admin/report-preview/nunomarkl?variant=pro_preview` — hero renders as the first block, identity card no longer appears above it, 5 metric rows show, indigo + blue rings on avatars, "VS" centred.
+3. Visit `/admin/report-preview/frederico.m.carvalho` (no competitor) — hero does NOT render; original Editorial Identity Card opens the report unchanged.
+4. `/report/example` — unaffected (mock has competitors, but `result` shape comes from the adapter; preview route renders `ReportPage` mock, not the v2 shell, so hero doesn't apply there. Verify nothing breaks visually.)
+5. 375 px viewport — no horizontal overflow; identity blocks stack with "VS" between them.
+6. Network tab — zero new requests during render.
+7. PDF print route (`/report/print/:snapshotId`) — confirm hero either renders cleanly or is hidden via `print:hidden` if it overlaps page-break logic. Default: render; tighten only if visual QA shows breakage.
 
-```text
-analysis_window:        "baseline" | "30d" | "90d"
-analysis_window_label:  "Últimas publicações" | "Últimos 30 dias" | "Últimos 90 dias"
-```
+## What is NOT touched
 
-Baseline snapshots written from now on will carry `"baseline"` explicitly. Legacy baseline snapshots (no key present) are treated as `"baseline"` by the adapter — byte-compatible.
-
-**`ReportData.meta`** (new key):
-
-```text
-analysisWindow?: "baseline" | "30d" | "90d" | undefined
-```
-
-Existing `meta.windowLabel`, `meta.windowShortLabel`, `meta.kpiSubtitle`, `meta.sampleCaption`, `meta.temporalLabel` are unchanged in name; their **values** are overridden when `analysisWindow` is wide:
-
-| meta field | baseline (today) | 30d (new) | 90d (new) |
-|---|---|---|---|
-| `windowLabel` | `últimas N publicações` / `últimos N dias` (derived) | `últimos 30 dias` | `últimos 90 dias` |
-| `windowShortLabel` | `N publicações` / `N dias` | `30 dias` | `90 dias` |
-| `kpiSubtitle` | `N publicações nos últimos M dias` | `N publicações nos últimos 30 dias` | `N publicações nos últimos 90 dias` |
-| `sampleCaption` | `Análise baseada nas últimas N publicações recolhidas.` | `Análise baseada nas N publicações dos últimos 30 dias.` | `Análise baseada nas N publicações dos últimos 90 dias.` |
-| `temporalLabel` | `Evolução temporal · …` (derived) | `Evolução temporal · últimos 30 dias` | `Evolução temporal · últimos 90 dias` |
-| `analysisWindow` | `undefined` | `"30d"` | `"90d"` |
-
-Empty-window message (Task 6) lives next to `sampleCaption`:
-
-- If `analysisWindow` is `"30d"` and `keyMetrics.postsAnalyzed === 0` → `sampleCaption = "Sem publicações nos últimos 30 dias."`
-- If `analysisWindow` is `"90d"` and `keyMetrics.postsAnalyzed === 0` → `sampleCaption = "Sem publicações nos últimos 90 dias."`
-- Baseline 0-posts continues to early-return at the analyze route with `PROFILE_PRIVATE` / `PROFILE_PERSONAL_NO_FEED` (unchanged).
-- Profile is NOT flagged as private/personal in 30d/90d empty-feed (analyze route already special-cases this — confirmed at `analyze-public-v1.ts:1067-1071`).
-
-## 4. Not touched (explicit allowlist of skips)
-
-- No changes to: `analysis-period-selector.tsx`, sidebar, premium-cta-context, premium dialogs, lead capture.
-- No call to Apify / OpenAI / DataForSEO from any path added by this PR.
-- No changes to: `credits.server.ts`, `lead-reports.server.ts`, `entitlements.server.ts`, `eupago`, `checkout`, `payments`, `pricing_plans`.
-- No changes to: PR1 backend gate (`WINDOW_REQUIRES_PRO`, `reserveCredit`, `hasEntitlement`, cache key suffix).
-- No changes to: Phase 1 / Phase 2 competitor comparison components.
-- No changes to: Free / Public report rendering — adapter override only fires when `analysis_window` is `"30d"` / `"90d"`; legacy baseline snapshots and any free report keep current copy byte-for-byte.
-- No new column on `analysis_events` (see §1).
-
-## 5. Validation checklist
-
-1. **Baseline byte-compat** — existing baseline snapshot for `frederico.m.carvalho` (`683e4c21-…`) renders identical `meta.windowLabel` / `meta.sampleCaption` as before. Snapshot test on adapter output for a fixture with no `analysis_window` key.
-2. **30d snapshot** — `3f8b1dcf-…` (after backfill) renders `meta.windowLabel === "últimos 30 dias"`, `meta.sampleCaption === "Análise baseada nas 12 publicações dos últimos 30 dias."`, `meta.analysisWindow === "30d"`.
-3. **Snapshot payload** — `SELECT normalized_payload->>'analysis_window' FROM analysis_snapshots WHERE id='3f8b1dcf-…'` returns `'30d'`.
-4. **Zero provider calls** — pure adapter + DB backfill; verified by code review (no Apify/OpenAI/DataForSEO import added).
-5. **Zero `credit_ledger` rows** — no credit code paths touched.
-6. **Typecheck** — `meta.analysisWindow` typed optional; `SnapshotPayload.analysis_window` typed optional; build passes.
-7. **Unit test** — `src/lib/report/__tests__/snapshot-window.test.ts` covers baseline-legacy, baseline-explicit, 30d, 90d, 30d-empty-feed, 90d-empty-feed.
-
-## 6. Open question
-
-**Add `analysis_events.analysis_window TEXT` now (one migration, indexed) or defer to PR3?** Default of this plan is defer. Reply "add column" if you want it in PR2 — I'll extend the plan with the migration + a one-line write at `recordAnalysisEvent` and update tests.
+- Providers (Apify / OpenAI / DataForSEO).
+- `credits.server.ts`, `entitlements.server.ts`, `eupago-webhook.ts`, checkout, pricing, payments.
+- Snapshot schema, migrations, `analysis_events`, RLS.
+- Free / Public report flow, lead-capture flow, lock gate.
+- `analyze-public-v1.ts`, `analysis-period-selector.tsx`, PR1 window gate, PR2 window labels.
+- `EditorialIdentityCard`, `CompetitorOverviewCompare`, engagement/cadence/format/bio/weekday compares (all kept as-is; hero is additive + replaces only the solo opener in compare mode).
