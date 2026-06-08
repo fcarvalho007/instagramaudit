@@ -60,6 +60,16 @@ export interface ReportCompetitorBreakdownEntry {
    * re-implementing the UTC->ISO remap. */
   weekdayCountsIso?: number[];
   topHashtags?: Array<{ tag: string; count: number }>;
+  /**
+   * Adapter-derived empty-state flags so comparison cards can
+   * distinguish "real zero" from "missing in snapshot" and pick the
+   * right visual treatment. All optional — older mock entries default
+   * to `undefined` which legacy components treat as "has data".
+   */
+  hasPosts?: boolean;
+  hasFormatStats?: boolean;
+  hasWeekdayData?: boolean;
+  avatarMissing?: boolean;
 }
 
 // Deterministic temporal series — 30 daily data points with realistic shape
@@ -425,6 +435,10 @@ export const reportData = {
         { tag: "socialmedia", count: 6 },
         { tag: "growth", count: 4 },
       ],
+      hasPosts: false,
+      hasFormatStats: true,
+      hasWeekdayData: true,
+      avatarMissing: true,
     },
   ] as ReportCompetitorBreakdownEntry[],
 

@@ -539,6 +539,115 @@ function num(v: unknown, fallback = 0): number {
   return v;
 }
 
+/**
+ * Resolve a competitor avatar URL from any of the field names the
+ * snapshot may carry. Returns the first non-empty string, otherwise
+ * null. Order: persisted storage URL → IG signed CDN URL → IG hd → IG lo.
+ */
+function pickAvatarUrl(p: Record<string, unknown> | null): string | null {
+  if (!p) return null;
+  const candidates = [
+    p.avatar_storage_url,
+    p.avatar_url,
+    p.profile_pic_url_hd,
+    p.profile_pic_url,
+  ];
+  for (const v of candidates) {
+    if (typeof v === "string" && v.length > 0) return v;
+  }
+  return null;
+}
+
+/**
+ * Fallback FormatStats derived from a competitor's `posts[]` array when
+ * the snapshot did not persist `format_stats` (pre-Phase-2 snapshots).
+ * Returns null when no posts are available so the component can pick
+ * the "missing in snapshot" empty state instead of showing 0 % bars.
+ */
+function deriveFormatStatsFromPosts(
+  posts: SnapshotPost[],
+): Record<
+  string,
+  { count?: number; share_pct?: number; avg_engagement_pct?: number }
+> | null {
+  if (!Array.isArray(posts) || posts.length === 0) return null;
+  const counts = new Map<string, number>();
+  for (const p of posts) {
+    const raw =
+      (p as unknown as { format?: unknown }).format ??
+      (p as unknown as { type?: unknown }).type ??
+      null;
+    const key = typeof raw === "string" && raw.length > 0 ? raw : null;
+    if (!key) continue;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  if (counts.size === 0) return null;
+  const total = Array.from(counts.values()).reduce((s, n) => s + n, 0);
+  const out: Record<string, { count?: number; share_pct?: number }> = {};
+  for (const [k, n] of counts) {
+    out[k] = { count: n, share_pct: total > 0 ? (n / total) * 100 : 0 };
+  }
+  return out;
+}
+
+/**
+ * Fallback UTC weekday-counts (Sun=0..Sat=6) derived from a competitor's
+ * `posts[]` array — mirrors the aggregation done server-side in
+ * analyze-public-v1.ts when `weekday_counts` is missing. Returns a
+ * length-7 array of zeros when no usable weekday is found.
+ */
+function deriveUtcWeekdayCountsFromPosts(posts: SnapshotPost[]): number[] {
+  const out = [0, 0, 0, 0, 0, 0, 0];
+  if (!Array.isArray(posts) || posts.length === 0) return out;
+  for (const p of posts) {
+    const w = (p as unknown as { weekday?: unknown }).weekday;
+    if (typeof w === "number" && Number.isFinite(w) && w >= 0 && w <= 6) {
+      out[w] += 1;
+    }
+  }
+  return out;
+}
+
+/**
+ * True when a competitor entry has usable format-mix data — either
+ * persisted `format_stats` with ≥1 non-zero share, or a `posts[]`
+ * array we can derive it from.
+ */
+function hasFormatStatsPresent(
+  c: Record<string, unknown>,
+  posts: SnapshotPost[],
+): boolean {
+  const raw = c.format_stats;
+  if (raw && typeof raw === "object") {
+    for (const v of Object.values(raw as Record<string, unknown>)) {
+      if (!v || typeof v !== "object") continue;
+      const share = (v as { share_pct?: unknown }).share_pct;
+      if (typeof share === "number" && Number.isFinite(share) && share > 0) {
+        return true;
+      }
+    }
+  }
+  return deriveFormatStatsFromPosts(posts) !== null;
+}
+
+/**
+ * True when a competitor entry has usable weekday data — either
+ * persisted `weekday_counts` with at least one non-zero bucket, or
+ * a `posts[]` array with at least one valid `weekday`.
+ */
+function hasWeekdayDataPresent(
+  c: Record<string, unknown>,
+  posts: SnapshotPost[],
+): boolean {
+  const raw = c.weekday_counts;
+  if (Array.isArray(raw)) {
+    for (const v of raw) {
+      if (typeof v === "number" && Number.isFinite(v) && v > 0) return true;
+    }
+  }
+  return deriveUtcWeekdayCountsFromPosts(posts).some((n) => n > 0);
+}
+
 function round2(v: number): number {
   return Number(v.toFixed(2));
 }
@@ -1348,9 +1457,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
           dominantFormat:
             typeof s.dominant_format === "string" ? s.dominant_format : "—",
           avatarUrl:
-            typeof p.avatar_url === "string" && p.avatar_url.length > 0
-              ? (p.avatar_url as string)
-              : null,
+            pickAvatarUrl(p),
           // Today competitors are always fetched in baseline — see
           // analyze-public-v1.ts (lines 980–983). Window alignment is a
           // future enhancement; cards label the comparison transparently.
@@ -1377,12 +1484,12 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
                   string,
                   { count?: number; share_pct?: number; avg_engagement_pct?: number }
                 >)
-              : null,
+              : deriveFormatStatsFromPosts(cPostsRaw),
           weekdayCounts: Array.isArray((c as Record<string, unknown>).weekday_counts)
             ? ((c as Record<string, unknown>).weekday_counts as unknown[])
                 .map((n) => num(n, 0))
                 .slice(0, 7)
-            : [],
+            : deriveUtcWeekdayCountsFromPosts(cPostsRaw),
           // ISO-aligned (Mon=0..Sun=6) copy so comparison cards can plot
           // competitor weekday distribution next to the primary
           // `frequency-card.aggregateByWeekday` ISO ordering without
@@ -1392,7 +1499,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
               ? ((c as Record<string, unknown>).weekday_counts as unknown[]).map(
                   (n) => num(n, 0),
                 )
-              : [],
+              : deriveUtcWeekdayCountsFromPosts(cPostsRaw),
           ),
           topHashtags: Array.isArray((c as Record<string, unknown>).top_hashtags)
             ? ((c as Record<string, unknown>).top_hashtags as unknown[])
@@ -1405,6 +1512,12 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
                 })
                 .filter((v): v is { tag: string; count: number } => v !== null)
             : [],
+          // Adapter-derived empty-state flags. Components use them to pick
+          // between "real zero" and "missing in snapshot" visual states.
+          hasPosts: cPostsRaw.length > 0,
+          hasFormatStats: hasFormatStatsPresent(c, cPostsRaw),
+          hasWeekdayData: hasWeekdayDataPresent(c, cPostsRaw),
+          avatarMissing: pickAvatarUrl(p) === null,
         };
       })
       .filter((v): v is NonNullable<typeof v> => v !== null);

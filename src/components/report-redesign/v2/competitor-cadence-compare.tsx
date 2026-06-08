@@ -106,6 +106,11 @@ export function CompetitorCadenceCompare({
           ) : null}
           {competitorStrip.length > 0 ? (
             <SampleStrip side="competitor" handle={competitor.username} posts={competitorStrip} />
+          ) : competitor.hasPosts === false ? (
+            <MissingStrip
+              handle={competitor.username}
+              message="Sem amostra recente do concorrente nesta análise."
+            />
           ) : null}
         </div>
       ) : null}
@@ -114,8 +119,30 @@ export function CompetitorCadenceCompare({
         {sampleN > 0
           ? `Amostra: últimas ${sampleN} publicações disponíveis.`
           : "Amostra com base nas últimas publicações disponíveis."}
+        {competitor.hasPosts === true && competitorStrip.length === 0
+          ? " Miniaturas do concorrente indisponíveis (links de CDN expirados)."
+          : ""}
       </p>
     </CompareCardShell>
+  );
+}
+
+function MissingStrip({
+  handle,
+  message,
+}: {
+  handle: string;
+  message: string;
+}) {
+  return (
+    <div
+      className="flex flex-col gap-2 rounded-lg border border-dashed border-border-default/70 bg-surface-muted/40 p-4 text-center"
+      role="note"
+      aria-label={`Amostra recente de @${handle} indisponível`}
+    >
+      <span className="text-eyebrow-sm text-compare-competitor">@{handle}</span>
+      <p className="text-sm text-content-secondary">{message}</p>
+    </div>
   );
 }
 

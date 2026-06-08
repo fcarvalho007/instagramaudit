@@ -55,13 +55,17 @@ export function CompetitorFormatCompare({
 
   const primaryTotal = primaryEntries.reduce((s, e) => s + e.share, 0);
   const competitorTotal = competitorEntries.reduce((s, e) => s + e.share, 0);
-  if (primaryTotal <= 0 && competitorTotal <= 0) return null;
+  // Adapter flag wins over numerical inspection so we can distinguish
+  // "real zero" from "missing in snapshot". Default true keeps the
+  // legacy mock entry behaviour intact when the flag is absent.
+  const competitorHasStats = competitor.hasFormatStats !== false;
+  if (primaryTotal <= 0 && (competitorTotal <= 0 || !competitorHasStats)) {
+    return null;
+  }
 
-  const insight = buildDonutInsight(
-    primaryEntries,
-    competitorEntries,
-    competitor.windowAligned,
-  );
+  const insight = competitorHasStats
+    ? buildDonutInsight(primaryEntries, competitorEntries, competitor.windowAligned)
+    : null;
 
   return (
     <CompareCardShell
@@ -88,13 +92,35 @@ export function CompetitorFormatCompare({
           entries={primaryEntries}
           side="primary"
         />
-        <DonutSide
-          handle={competitor.username}
-          entries={competitorEntries}
-          side="competitor"
-        />
+        {competitorHasStats ? (
+          <DonutSide
+            handle={competitor.username}
+            entries={competitorEntries}
+            side="competitor"
+          />
+        ) : (
+          <MissingSide handle={competitor.username} />
+        )}
       </div>
     </CompareCardShell>
+  );
+}
+
+function MissingSide({ handle }: { handle: string }) {
+  return (
+    <div
+      className="flex min-h-[220px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border-default/70 bg-surface-muted/40 p-6 text-center"
+      role="note"
+      aria-label={`Mix de formatos de @${handle} indisponível`}
+    >
+      <span className="text-eyebrow-sm text-content-tertiary">@{handle}</span>
+      <p className="text-sm font-medium text-content-secondary">
+        Dados do concorrente indisponíveis nesta amostra.
+      </p>
+      <p className="text-xs text-content-tertiary">
+        Mix de formatos requer publicações analisadas no concorrente.
+      </p>
+    </div>
   );
 }
 
