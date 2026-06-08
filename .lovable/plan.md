@@ -1,82 +1,112 @@
-# Veredito MVP — Relatório Instagram Profile vs Competitor
+# Auditoria GTM — Admin AuditProfiles
 
 ## TL;DR
-**MVP-ready com 1 bloqueador trivial.** Publicar assim que `/report/example` for sanitizado ou gated. Os 9 cards principais funcionam, têm empty states robustos e não dependem de AI nem de URLs do IG CDN para renderizar.
+**Support Readiness: 52/100.** O admin é tecnicamente completo (toda a informação existe) mas exige que o agente de suporte navegue entre 3-4 secções desconexas e, em 2 perguntas críticas, recorra a SQL. **2 bloqueadores antes de lançamento público**, 7 limitações aceitáveis para beta.
 
-**Recomendação: PUBLICAR após checklist abaixo.** AI fica para v2. LinkedIn/TikTok ficam em research, fora do MVP.
+**Recomendação:** Resolver B1 + B2 antes de abrir a utilizadores reais pagantes. Tudo o resto pode entrar em beta com onboarding mínimo do suporte.
 
 ---
 
-## 1. Cards MVP-ready (publicar como estão)
+## 1. Matriz PASS/FAIL por secção × 10 perguntas
 
-| Card | Razão |
-|---|---|
-| **Comparison Hero** | Dados determinísticos, fallback de avatar com iniciais, sem mock |
-| **Top Posts** | `aiInsightText` opcional, subtitle dinâmico evita falsa janela "30 dias" |
-| **Caption Diagnostics** | AI opcional, extração de temas determinística |
-| **Bio Conversion Path** | Qualitativo, sem risco de crash |
+| Secção \ Pergunta | Q1 Pagou? | Q2 Produto? | Q3 Entitlement? | Q4 Saldo? | Q5 Ledger? | Q6 Janela? | Q7 Cache/fresh? | Q8 Custo Apify? | Q9 Emails? | Q10 Jornada<2min? |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **Lead Detail Sheet** | 🟡 | 🟡 | ❌ | ✅ | ✅ | ✅ | ✅ | 🟡 | 🟡 | 🟡 |
+| **Receita / Payments** | ✅ | ✅ | 🟡 agreg | – | – | – | – | – | – | ❌ |
+| **Report Drawer** | – | 🟡 | – | – | – | ✅ | ✅ | ✅ | ✅ | 🟡 |
+| **Sistema / Costs** | – | – | – | – | – | – | – | ✅ | – | ❌ |
+| **Email Lab** | – | – | – | – | – | – | – | – | 🟡 agreg | ❌ |
+| **Automações** | – | – | – | – | – | – | – | – | 🟡 agreg | ❌ |
+| **/admin/clientes + /leads** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Visão Geral** | – | – | – | – | – | – | – | – | – | ❌ KPI only |
 
-## 2. Cards aceitáveis com limitações conhecidas
+Legenda: ✅ PASS · 🟡 PARTIAL · ❌ FAIL · – N/A
 
-| Card | Limitação | Mitigação atual |
+## 2. Score: **52/100**
+
+| Componente | Peso | Score | Pond. |
+|---|---|---|---|
+| Saldo + ledger de créditos (Q4/Q5) | 15% | 95 | 14.3 |
+| Janela + cache badge (Q6/Q7) | 10% | 90 | 9.0 |
+| Custo Apify por relatório (Q8) | 10% | 80 | 8.0 |
+| Status de pagamento por lead (Q1/Q2) | 15% | 45 | 6.8 |
+| Entitlement por lead (Q3) | 15% | 0 | 0.0 |
+| Log de emails completo (Q9) | 15% | 55 | 8.3 |
+| Drilldown único <2min (Q10) | 20% | 30 | 6.0 |
+| **Total** | **100%** | | **52** |
+
+## 3. Bloqueadores antes do lançamento público
+
+### 🚨 B1 — Status de entitlement por lead invisível
+Após o webhook EuPago criar `lead_entitlements`, nada na UI confirma se ficou granted. `lead-credit-activity.$id.ts` não dá join à tabela; `leads-kanban.ts` também não. Resultado: se um cliente paga e o webhook falha, o suporte só descobre via SQL.
+**Impacto:** alto — diretamente ligado a reclamações de "paguei e não tenho acesso".
+
+### 🚨 B2 — Pagamento não vinculado ao lead no drilldown
+Lead Sheet mostra `total_paid_cents` (apenas successful). Não mostra `lead_payments.status` (pending / paid / failed), nem o URL de checkout EuPago, nem o motivo da falha. Tudo isso existe em `/admin/receita` mas sem link bidirecional.
+**Impacto:** alto — "tentei pagar e não consigo" obriga a procurar manualmente na tabela global.
+
+### ⚠️ B3 (recomendado, não crítico) — Falhas de email silenciosas por lead
+Timeline do lead só mostra emails com `product_events` row. Emails que falharam antes de escrever (kill-switch, dedupe, provider error) só aparecem no ReportDrawer do relatório específico. Não há vista consolidada "3 tentativas, 2 falharam".
+
+### ⚠️ B4 (UX, não crítico) — Sem navegação cruzada
+- Receita payment row → Lead Sheet: ❌
+- Lead Sheet → ReportDrawer (do relatório específico): ❌
+- Lead Sheet → Provider call em Sistema: ❌
+
+## 4. Limitações aceitáveis para beta
+
+| # | Lacuna | Razão |
 |---|---|---|
-| **Engagement Benchmark** | Strings PT hardcoded; sem benchmark → render `null` | OK para PT-only MVP |
-| **Cadence Evidence Strip** | Só 1º concorrente; thumbnails antigas podem 403 | Mensagem explícita "CDN expirado"; persist-thumbnails ativo para snapshots novos |
-| **Weekday Comparison** | Snapshots pre-Fase 2 sem `weekday_counts` | `hasWeekdayData === false` mostra aside neutro |
-| **Format Mix Donut** | Idem (snapshots antigos) | `MissingSide` graceful |
-| **Competitor Breakdown** | Apenas 1 concorrente exposto, restos silenciosamente ignorados | Não crasha; factualmente incompleto |
+| A1 | Credits tab mostra `estimated_cost_usd`, não `actual` | Volume beta baixo; actual está no ReportDrawer |
+| A2 | Email Lab "Enviar teste" desativado | Read-only reference, não workflow de suporte |
+| A3 | Provider logs em Sistema são globais, não por lead | Investigação Apify passa por ReportDrawer |
+| A4 | Automações = agregado, não per-lead | Funil interno, não cara-a-cara com cliente |
+| A5 | Visão Geral sem drilldown | É dashboard de KPI |
+| A6 | `email_template_overrides` não tem log per-lead | Funcionalidade ainda não anunciada |
+| A7 | ActionLog do ReportDrawer só em memória | Volume beta tolera re-open |
 
-## 3. Cards a esconder se data missing
-Já está implementado — todos retornam `null` ou renderizam empty state neutro:
-- Engagement benchmark (`benchmarkSeries.length === 0`)
-- Cadence (frequência ≤ 0 ambos os lados)
-- Weekday (zero data ambos)
-- Format mix (sem stats ambos)
-- AI callouts (`?? null`)
+## 5. Prompts exatos de melhoria (se decidires implementar)
 
-## 4. Refinamentos a adiar (post-MVP backlog)
-- Layout multi-competitor (Fase 1.5) — TODOs em 5 cards
-- i18n das strings PT no engagement chart
-- AI editorialVerdict pipeline (schema pronto)
-- Backfill `weekday_counts` / `format_stats` em snapshots antigos
-- Re-run de persist-thumbnails em snapshots cacheados antigos
-- Null guard adicional no `competitor-bio-compare`
+### Para B1 (entitlement visibility) — **bloqueador**
+```
+Adicionar ao Lead Detail Sheet, no header KPI strip, uma chip "Entitlement: granted/pending/none" lendo `lead_entitlements` filtrado por `lead_id`. Estender `lead-credit-activity.$id.ts` (ou criar `lead-entitlements.$id.ts`) para devolver { product_code, granted_at, source_payment_id, status }. Render no Resumo tab como linha "Acesso concedido: <produto> em <data> · pagamento <link>".
 
-## 5. Bloqueadores antes de publicar
+Não alterar schema. Não alterar webhook EuPago. Apenas leitura + UI.
+```
 
-### 🚨 Único bloqueador real
-**`/report/example` expõe `AI_INSIGHTS_MOCK` com copy hardcoded sobre `@frederico.marketing`.**
-- 8 `AIInsightBox` com texto específico ("Pico em 22 Abr (1200+)", "55% abaixo do benchmark"…)
-- Rota é `noindex,nofollow` mas o URL é partilhável e parece análise real
-- **Fix (10 min)**: gate atrás de auth de admin OU substituir copy por placeholder genérico ("Exemplo ilustrativo — perfil fictício")
+### Para B2 (per-lead payments) — **bloqueador**
+```
+Adicionar tab "Pagamentos" no Lead Detail Sheet OU secção no Resumo, listando lead_payments filtrados por lead_id com colunas: data, produto, valor, status (paid/pending/failed), checkout URL (EuPago), motivo de falha. Endpoint novo: lead-payments.$id.ts. Linkar cada row para a global Receita view.
 
-### Não-bloqueadores (avisar mas publicar)
-- Multi-competitor: silenciosamente mostra só o 1º. Comunicar no copy do produto que MVP suporta **1 concorrente visível**.
-- Snapshots antigos sem thumbnails persistidas: fallback funciona, mensagem honesta.
+Adicionar deep-link na tabela Receita: "Abrir lead →" que abre o Lead Detail Sheet daquele lead_id.
 
-## 6. AI interpretation → **adiar para v2**
-Todos os cards funcionam sem AI. Schema (`aiInsightsV2.editorialVerdict`, `sections.*`) já existe e tolera `null` em todo o lado. Ligar OpenAI pipeline é uma melhoria de profundidade narrativa, não um requisito de leitura.
+Não alterar schema. Não alterar EuPago. Apenas leitura + UI.
+```
 
-## 7. LinkedIn / TikTok → **manter separados**
-Os planos já entregues (`.lovable/plan.md`) são research/economics, não código. MVP é Instagram. Não misturar.
+### Para B3 (email completeness) — recomendado pós-MVP
+```
+Adicionar tab "Emails" no Lead Detail Sheet listando todas as tentativas: success (product_events), failed (provider_call_logs com provider='resend|brevo' e status='error'), skipped (heurística: action='email_*' sem product_events posterior). Mostrar reason, timestamp, template_key, manual vs automatic trigger.
 
----
+Não alterar schema. Apenas leitura + UI.
+```
 
-## Checklist final pré-publish
+### Para B4 (cross-navigation) — recomendado pós-MVP
+```
+1) Receita payments-section: cada row tem botão "Ver lead →" que abre Lead Detail Sheet.
+2) Lead Sheet → Relatórios tab: cada row tem botão "Abrir drawer" que abre ReportDrawer do report_request_id.
+3) Lead Sheet → Créditos tab: cada analysis_event tem "Abrir custos" que abre ReportDrawer.
 
-- [ ] **BLOQUEADOR**: gate `/report/example` atrás de admin OU substituir `AI_INSIGHTS_MOCK` por copy genérica ("Exemplo ilustrativo")
-- [ ] Smoke test em 3 perfis (1 com competitor válido, 1 sem competitor, 1 com snapshot antigo sem `weekday_counts`)
-- [ ] Confirmar no preview que cards vazios não aparecem (ou aparecem com empty state explícito)
-- [ ] Confirmar que avatar do concorrente carrega de Storage (snapshot novo) e que fallback de iniciais funciona (snapshot velho)
-- [ ] Confirmar mensagem "miniaturas CDN expiradas" em snapshot antigo
-- [ ] Verificar que `/report.example` continua `noindex,nofollow` no `<head>`
-- [ ] Comunicar no copy/onboarding: **"MVP suporta 1 concorrente visível por relatório"**
-- [ ] Anunciar honestamente que AI insights chegam em v2
+Apenas UI; nenhum endpoint novo necessário (ids já presentes).
+```
 
-## Post-MVP backlog (priorizado)
-1. Multi-competitor layout (Fase 1.5) — desbloqueia 5 cards
-2. AI insights pipeline (OpenAI → `aiInsightsV2.editorialVerdict`)
-3. Backfill job para snapshots antigos (weekday_counts, format_stats, thumbnail_storage_url)
-4. i18n EN para landing + report
-5. Refinamento de `competitor-bio-compare` quando ambos os bios estão vazios
-6. Centralizar limite de concorrentes em módulo partilhado
+## 6. Verdict final
+
+**NÃO LANÇAR a utilizadores pagantes reais antes de B1 + B2.** Sem entitlement e payment status per-lead visíveis, o primeiro caso de "paguei e não tenho acesso" exige um engenheiro com acesso à DB — não escala para suporte de primeira linha.
+
+**OK lançar em modo beta privado** (admin + utilizadores convidados) já agora, com o briefing de suporte abaixo.
+
+### Briefing de suporte mínimo (beta)
+- "Está esperado abrir 2-3 separadores: Lead Sheet (resumo + créditos) + Receita (procurar email do lead) + Report Drawer (custos + emails do relatório específico)."
+- "Para confirmar entitlement: SQL `select * from lead_entitlements where lead_id = '<id>'` — ainda não está em UI."
+- "Para email falhado sem evento: abrir o ReportDrawer do relatório correspondente."
+- "Jornada típica leva 3-5 minutos (não 2)."
