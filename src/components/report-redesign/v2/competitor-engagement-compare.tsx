@@ -133,7 +133,7 @@ function BenchmarkRail({
   return (
     <div className="pt-1" role="img" aria-label={ariaLabel}>
       {/* Axis labels */}
-      <div className="flex items-center justify-between text-[11px] text-content-tertiary mb-1.5">
+      <div className="flex items-center justify-between text-xs text-content-tertiary mb-1.5">
         <span>0 %</span>
         <span className="font-medium text-content-secondary">{refLabel} · {fmtPct(benchmark)}</span>
         <span>{fmtPct(rangeMax)}</span>

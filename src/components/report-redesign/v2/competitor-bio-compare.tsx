@@ -55,8 +55,8 @@ export function CompetitorBioCompare({
 
   return (
     <CompareCardShell
-      title="Bio e pontos de saída"
-      subtitle="Sinais qualitativos do perfil"
+      title="Caminho de conversão fora do Instagram"
+      subtitle="Bio, verificação e pontos de saída"
       windowAligned={competitor.windowAligned}
       primary={{
         handle: primaryHandle,
