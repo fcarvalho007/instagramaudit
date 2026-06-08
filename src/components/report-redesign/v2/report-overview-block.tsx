@@ -286,6 +286,9 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
             verified: Boolean(result.data.profile.verified),
             followers: result.data.profile.followers,
             postsAnalyzed: k.postsAnalyzed,
+            postsInSample:
+              (sample?.analyzedPosts.length ?? 0) +
+              (sample?.pinnedPostsExcluded ?? 0),
             engagementRate: k.engagementRate,
             averageLikes: avgLikes,
             averageComments: avgComments,
