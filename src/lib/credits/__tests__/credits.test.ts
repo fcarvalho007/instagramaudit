@@ -7,11 +7,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * initial_grant) so `grantInitialCredits` idempotency can be asserted.
  */
 interface LedgerRow {
+  id: number;
   lead_id: string;
   delta: number;
   reason: string;
   cache_key: string | null;
   reservation_id: string | null;
+  analysis_event_id: string | null;
 }
 
 const ledger: LedgerRow[] = [];
@@ -44,11 +46,13 @@ function insert(payload: Partial<LedgerRow> & { lead_id: string; delta: number; 
     }
   }
   ledger.push({
+    id: ledger.length + 1,
     lead_id: payload.lead_id,
     delta: payload.delta,
     reason: payload.reason,
     cache_key: payload.cache_key ?? null,
     reservation_id: payload.reservation_id ?? null,
+    analysis_event_id: (payload as { analysis_event_id?: string | null }).analysis_event_id ?? null,
   });
   return { error: null };
 }
@@ -62,6 +66,27 @@ vi.mock("@/integrations/supabase/client.server", () => {
           return Promise.resolve({ error: res.error });
         }
         return Promise.resolve({ error: null });
+      },
+      update: (patch: Partial<LedgerRow>) => {
+        const filters: Array<(r: LedgerRow) => boolean> = [];
+        const builder = {
+          eq: (col: keyof LedgerRow, val: unknown) => {
+            filters.push((r) => r[col] === val);
+            return builder;
+          },
+          is: (col: keyof LedgerRow, val: unknown) => {
+            filters.push((r) => r[col] === val);
+            return Promise.resolve({ error: null }).then(() => {
+              for (const r of ledger) {
+                if (filters.every((f) => f(r))) {
+                  Object.assign(r, patch);
+                }
+              }
+              return { error: null };
+            });
+          },
+        };
+        return builder;
       },
     }),
     rpc: (_name: string, args: { p_lead_id: string }) =>
