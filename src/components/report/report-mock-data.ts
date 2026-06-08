@@ -435,6 +435,10 @@ export const reportData = {
         { tag: "socialmedia", count: 6 },
         { tag: "growth", count: 4 },
       ],
+      hasPosts: false,
+      hasFormatStats: true,
+      hasWeekdayData: true,
+      avatarMissing: true,
     },
   ] as ReportCompetitorBreakdownEntry[],
 
