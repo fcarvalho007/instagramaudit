@@ -80,4 +80,65 @@ describe("persistThumbnailsInPayload", () => {
     const payload = mkPayload(IG);
     await expect(persistThumbnailsInPayload("key", payload)).resolves.toBeDefined();
   });
+
+  it("persists competitor avatar and post thumbnails on success", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(
+        async () =>
+          new Response(new Uint8Array([1, 2, 3]), {
+            status: 200,
+            headers: { "content-type": "image/jpeg" },
+          }),
+      ),
+    );
+    const payload: Record<string, unknown> = {
+      posts: [],
+      profile: { avatar_url: null },
+      competitors: [
+        {
+          success: true,
+          profile: { username: "rival", avatar_url: IG },
+          posts: [
+            { shortcode: "p1", thumbnail_url: IG },
+            { shortcode: "p2", thumbnail_url: IG },
+          ],
+        },
+      ],
+    };
+    const s = await persistThumbnailsInPayload("key", payload);
+    expect(s.competitors_avatar_ok).toBe(1);
+    expect(s.competitors_attempted).toBe(2);
+    expect(s.competitors_stored).toBe(2);
+    const comp = (payload.competitors as Record<string, unknown>[])[0];
+    const cProfile = comp.profile as Record<string, unknown>;
+    expect(cProfile.avatar_storage_url).toBe("https://storage.test/x.jpg");
+    expect(cProfile.avatar_url).toBe(IG);
+    const cPosts = comp.posts as Record<string, unknown>[];
+    expect(cPosts[0].thumbnail_storage_url).toBe("https://storage.test/x.jpg");
+    expect(cPosts[1].thumbnail_storage_url).toBe("https://storage.test/x.jpg");
+  });
+
+  it("competitor avatar failure is recorded without throwing", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(null, { status: 403 })),
+    );
+    const payload: Record<string, unknown> = {
+      posts: [],
+      profile: { avatar_url: null },
+      competitors: [
+        {
+          success: true,
+          profile: { username: "rival", avatar_url: IG },
+          posts: [],
+        },
+      ],
+    };
+    const s = await persistThumbnailsInPayload("key", payload);
+    expect(s.competitors_avatar_fail).toBe(1);
+    const cProfile = (payload.competitors as Record<string, unknown>[])[0]
+      .profile as Record<string, unknown>;
+    expect(cProfile.avatar_storage_url).toBeNull();
+  });
 });

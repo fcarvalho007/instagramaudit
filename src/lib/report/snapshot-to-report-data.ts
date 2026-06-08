@@ -1696,10 +1696,17 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     return trimmed.length > 0 ? trimmed : null;
   })();
   const enrichedAvatarUrl = (() => {
-    const raw = payload.profile?.avatar_url;
-    if (typeof raw !== "string") return null;
-    const trimmed = raw.trim();
-    return trimmed.length > 0 ? trimmed : null;
+    const prof = payload.profile as
+      | (Record<string, unknown> & { avatar_storage_url?: unknown })
+      | undefined;
+    const candidates = [prof?.avatar_storage_url, prof?.avatar_url];
+    for (const v of candidates) {
+      if (typeof v === "string") {
+        const trimmed = v.trim();
+        if (trimmed.length > 0) return trimmed;
+      }
+    }
+    return null;
   })();
   const enrichedProfileUrl = `https://www.instagram.com/${profile.username}/`;
 

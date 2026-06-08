@@ -1171,7 +1171,6 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                   coauthors: _c,
                   tagged_users: _t,
                   location_name: _l,
-                  thumbnail_storage_url: _s,
                   ...rest
                 } = p;
                 return rest;

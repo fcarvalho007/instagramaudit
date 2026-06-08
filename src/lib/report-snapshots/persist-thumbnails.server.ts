@@ -154,6 +154,10 @@ export interface PersistSummary {
   failed_upload: number;
   failed_other: number;
   avatar: "ok" | "fail" | "none";
+  competitors_attempted?: number;
+  competitors_stored?: number;
+  competitors_avatar_ok?: number;
+  competitors_avatar_fail?: number;
 }
 
 function emptySummary(): PersistSummary {
@@ -166,6 +170,10 @@ function emptySummary(): PersistSummary {
     failed_upload: 0,
     failed_other: 0,
     avatar: "none",
+    competitors_attempted: 0,
+    competitors_stored: 0,
+    competitors_avatar_ok: 0,
+    competitors_avatar_fail: 0,
   };
 }
 
@@ -244,6 +252,74 @@ export async function persistThumbnailsInPayload(
     const result = await persistOne(profile.avatar_url as string, path);
     profile.avatar_storage_url = result.publicUrl;
     summary.avatar = result.publicUrl ? "ok" : "fail";
+  }
+
+  // ───── Competitors (best-effort, aditivo) ─────
+  // Persistimos avatar + até 12 thumbnails por concorrente. Mantém
+  // `avatar_url` / `thumbnail_url` originais intactos. Falhas individuais
+  // ficam `null` e o componente cai no fallback.
+  const competitorsRaw = (payload as { competitors?: unknown }).competitors;
+  if (Array.isArray(competitorsRaw)) {
+    for (let i = 0; i < competitorsRaw.length; i++) {
+      const entry = competitorsRaw[i] as Record<string, unknown> | null;
+      if (!entry || typeof entry !== "object") continue;
+      if (entry.success !== true) continue;
+      const cProfile = entry.profile as Record<string, unknown> | undefined;
+      const username =
+        cProfile && typeof cProfile.username === "string" && cProfile.username
+          ? safeKeySegment(cProfile.username)
+          : `idx-${i}`;
+      const cFolder = `${folder}/competitors/${username}`;
+
+      // Avatar
+      if (cProfile && isIgCdnUrl(cProfile.avatar_url)) {
+        const result = await persistOne(
+          cProfile.avatar_url as string,
+          `${cFolder}/avatar`,
+        );
+        cProfile.avatar_storage_url = result.publicUrl;
+        if (result.publicUrl) {
+          summary.competitors_avatar_ok =
+            (summary.competitors_avatar_ok ?? 0) + 1;
+        } else {
+          summary.competitors_avatar_fail =
+            (summary.competitors_avatar_fail ?? 0) + 1;
+        }
+      }
+
+      // Posts (top 12)
+      const cPostsRaw = entry.posts;
+      const cPosts = Array.isArray(cPostsRaw)
+        ? (cPostsRaw as Record<string, unknown>[]).slice(0, 12)
+        : [];
+      const cTargets = cPosts
+        .map((p, idx) => ({ post: p, idx }))
+        .filter(({ post }) => isIgCdnUrl(post.thumbnail_url));
+      summary.competitors_attempted =
+        (summary.competitors_attempted ?? 0) + cTargets.length;
+      await mapWithConcurrency(
+        cTargets,
+        async ({ post, idx }) => {
+          const key =
+            typeof post.shortcode === "string" && post.shortcode
+              ? post.shortcode
+              : typeof post.id === "string"
+                ? post.id
+                : `idx-${idx}`;
+          const result = await persistOne(
+            post.thumbnail_url as string,
+            `${cFolder}/${safeKeySegment(key)}`,
+          );
+          post.thumbnail_storage_url = result.publicUrl;
+          if (result.publicUrl) {
+            summary.competitors_stored =
+              (summary.competitors_stored ?? 0) + 1;
+          }
+          return result.publicUrl;
+        },
+        CONCURRENCY,
+      );
+    }
   }
 
   return summary;
