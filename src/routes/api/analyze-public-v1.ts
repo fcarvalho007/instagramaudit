@@ -655,6 +655,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 leadId,
                 reservationId: r.reservationId,
                 analysisSnapshotId: snapshotForConfirm,
+                analysisEventId: lastEventId,
               });
               // Persiste associação lead↔relatório para que futuras
               // aberturas do mesmo cache_key pelo mesmo lead sejam
@@ -670,6 +671,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 leadId,
                 reservationId: r.reservationId,
                 reason: "auto_release",
+                analysisEventId: lastEventId,
               });
             }
           } catch (e) {
