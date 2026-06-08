@@ -186,17 +186,20 @@ function DrawerHeader({ detail }: { detail: MockReportDetail }) {
               {ev.data_source}
             </AdminBadge>
           ) : null}
-          <AdminBadge
-            variant={ev.competitor_handles.length > 0 ? "info" : "neutral"}
+          <span
             title={
               ev.competitor_handles.length > 0
                 ? ev.competitor_handles.map((h) => `@${h}`).join(", ")
                 : "sem concorrentes"
             }
           >
-            {ev.competitor_handles.length} concorrente
-            {ev.competitor_handles.length === 1 ? "" : "s"}
-          </AdminBadge>
+            <AdminBadge
+              variant={ev.competitor_handles.length > 0 ? "info" : "neutral"}
+            >
+              {ev.competitor_handles.length} concorrente
+              {ev.competitor_handles.length === 1 ? "" : "s"}
+            </AdminBadge>
+          </span>
         </div>
       ) : null}
       <div className="mt-4 flex flex-wrap items-center gap-3 text-[12px] text-admin-text-secondary">
