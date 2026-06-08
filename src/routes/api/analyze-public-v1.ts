@@ -406,6 +406,10 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           | "30d"
           | "90d"
           | null = null;
+        // Tracks the most recent analysis_event id emitted by logEvent so
+        // confirmReservation / releaseReservation can link the ledger row
+        // to the event deterministically (no time-window joins).
+        let lastEventId: string | null = null;
         const logEvent = async (overrides: {
           handle: string;
           competitorHandles?: string[];
@@ -458,6 +462,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             console.error("[analyze-public-v1] logEvent failed", err);
             return null;
           }
+          // unreachable — kept above
         };
 
         let raw: unknown;
