@@ -67,16 +67,16 @@ export function CompareBarPair({
         className="min-w-0"
         aria-label={`${label}: comparação com concorrente`}
       >
-        <div className="space-y-5 sm:space-y-6">
+        <div className="space-y-6 sm:space-y-7">
           {categories.map((c) => (
             <div
               key={c.key}
-              className="grid grid-cols-1 sm:grid-cols-[6rem_1fr] gap-2 sm:gap-5 items-start"
+              className="grid grid-cols-1 sm:grid-cols-[7rem_1fr] gap-3 sm:gap-6 items-start"
             >
-              <span className="block text-sm sm:text-base font-semibold text-content-primary truncate sm:pt-1.5">
+              <span className="block text-sm sm:text-base font-medium text-content-primary truncate sm:pt-2">
                 {c.label}
               </span>
-              <div className="space-y-2 sm:space-y-2.5">
+              <div className="space-y-2.5 sm:space-y-3">
                 <BareBar
                   value={c.primary}
                   max={maxValue}
@@ -118,7 +118,7 @@ export function CompareBarPair({
       className="rounded-xl border border-border-default bg-surface-secondary p-4 sm:p-5"
       aria-label={`${label}: comparação com concorrente`}
     >
-      <header className="flex flex-col gap-0.5">
+      <header className="flex flex-col gap-1">
         <span className="text-eyebrow-sm text-content-tertiary">{label}</span>
         {hint ? (
           <span className="text-xs text-content-tertiary">{hint}</span>
@@ -130,13 +130,13 @@ export function CompareBarPair({
         competitorHandle={competitorHandle}
       />
 
-      <div className="mt-3 space-y-3">
+      <div className="mt-4 space-y-3.5">
         {categories.map((c) => (
-          <div key={c.key} className="grid grid-cols-1 sm:grid-cols-[8rem_1fr] gap-2 sm:gap-4 items-center">
-            <span className="text-xs sm:text-sm text-content-secondary truncate">
+          <div key={c.key} className="grid grid-cols-1 sm:grid-cols-[7rem_1fr] gap-2 sm:gap-4 items-center">
+            <span className="text-sm text-content-secondary truncate">
               {c.label}
             </span>
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Bar
                 value={c.primary}
                 max={maxValue}
@@ -210,7 +210,7 @@ function Bar({
   const pct = Math.min(100, (safeValue / max) * 100);
   return (
     <div className="flex items-center gap-2">
-      <div className="relative h-2 flex-1 rounded-full bg-surface-muted overflow-hidden">
+      <div className="relative h-2.5 flex-1 rounded-full bg-surface-muted overflow-hidden">
         <div
           className={cn(
             "absolute inset-y-0 left-0 rounded-full",
@@ -219,7 +219,7 @@ function Bar({
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className="tabular-nums text-xs text-content-primary w-14 text-right shrink-0">
+      <span className="tabular-nums text-sm font-medium text-content-primary w-16 text-right shrink-0">
         {formatted}
       </span>
     </div>
@@ -258,7 +258,7 @@ function BareBar({
 
   return (
     <div
-      className="flex items-center gap-2 sm:gap-2.5"
+      className="flex items-center gap-2.5 sm:gap-3"
       aria-label={`@${handle}: ${isZero && zeroLabel ? zeroLabel : formatted}`}
     >
       {/* leading identity dot (always) + avatar thumbnail on sm+ */}
@@ -271,10 +271,10 @@ function BareBar({
             avatarUrl={avatarUrl}
             name={handle}
             side={accent === "primary" ? "primary" : "competitor"}
-            sizeClass="size-5"
+            sizeClass="size-6"
           />
         ) : (
-          <span className={cn("size-2.5 rounded-full", accentBg)} />
+          <span className={cn("size-3 rounded-full", accentBg)} />
         )}
       </span>
       <span
@@ -283,7 +283,7 @@ function BareBar({
       />
       <div
         className={cn(
-          "relative h-3 sm:h-3.5 flex-1 rounded-full overflow-hidden",
+          "relative h-3.5 sm:h-4 flex-1 rounded-full overflow-hidden",
           isZero
             ? "bg-surface-muted border border-dashed border-border-subtle"
             : "bg-surface-muted",
@@ -302,7 +302,7 @@ function BareBar({
           "tabular-nums text-right shrink-0",
           isZero
             ? "text-xs text-content-tertiary w-20 sm:w-24"
-            : "font-semibold text-content-primary text-sm sm:text-base w-14 sm:w-16",
+            : "font-semibold text-content-primary text-sm sm:text-base w-14 sm:w-20",
         )}
       >
         {isZero && zeroLabel ? zeroLabel : formatted}
