@@ -1789,16 +1789,17 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
 
   const data: ReportData = {
     meta: {
-      windowLabel,
-      windowShortLabel,
-      kpiSubtitle,
+      windowLabel: windowLabelFinal,
+      windowShortLabel: windowShortLabelFinal,
+      kpiSubtitle: kpiSubtitleFinal,
       isAdminPreview: input.isAdminPreview ?? true,
-      sampleCaption,
-      temporalLabel,
-      topPostsSubtitle,
+      sampleCaption: sampleCaptionFinal,
+      temporalLabel: temporalLabelFinal,
+      topPostsSubtitle: topPostsSubtitleFinal,
       benchmarkStatus,
       benchmarkDatasetVersion: input.benchmark?.datasetVersion,
       viewsAvailable,
+      analysisWindow,
     },
     profile: profileWithWindow,
     keyMetrics,
