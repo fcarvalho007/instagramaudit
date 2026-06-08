@@ -110,6 +110,7 @@ import { Route as ApiAdminBetaFunnelRouteImport } from './routes/api/admin/beta-
 import { Route as ApiAdminAutomationFlowRouteImport } from './routes/api/admin/automation-flow'
 import { Route as ApiAdminApifyLabRouteImport } from './routes/api/admin/apify-lab'
 import { Route as ApiAdminApifyBackfillActualCostRouteImport } from './routes/api/admin/apify-backfill-actual-cost'
+import { Route as ApiAdminAnalysisWindowCountsRouteImport } from './routes/api/admin/analysis-window-counts'
 import { Route as ApiAdminAnalysisCostBreakdownRouteImport } from './routes/api/admin/analysis-cost-breakdown'
 import { Route as AdminReportPreviewUsernameRouteImport } from './routes/admin_.report-preview.$username'
 import { Route as AdminSistemaCockpitLegadoRouteImport } from './routes/admin.sistema.cockpit-legado'
@@ -687,6 +688,12 @@ const ApiAdminApifyBackfillActualCostRoute =
     path: '/api/admin/apify-backfill-actual-cost',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAdminAnalysisWindowCountsRoute =
+  ApiAdminAnalysisWindowCountsRouteImport.update({
+    id: '/api/admin/analysis-window-counts',
+    path: '/api/admin/analysis-window-counts',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminAnalysisCostBreakdownRoute =
   ApiAdminAnalysisCostBreakdownRouteImport.update({
     id: '/api/admin/analysis-cost-breakdown',
@@ -1047,6 +1054,7 @@ export interface FileRoutesByFullPath {
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
+  '/api/admin/analysis-window-counts': typeof ApiAdminAnalysisWindowCountsRoute
   '/api/admin/apify-backfill-actual-cost': typeof ApiAdminApifyBackfillActualCostRoute
   '/api/admin/apify-lab': typeof ApiAdminApifyLabRoute
   '/api/admin/automation-flow': typeof ApiAdminAutomationFlowRoute
@@ -1201,6 +1209,7 @@ export interface FileRoutesByTo {
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
   '/admin/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
+  '/api/admin/analysis-window-counts': typeof ApiAdminAnalysisWindowCountsRoute
   '/api/admin/apify-backfill-actual-cost': typeof ApiAdminApifyBackfillActualCostRoute
   '/api/admin/apify-lab': typeof ApiAdminApifyLabRoute
   '/api/admin/automation-flow': typeof ApiAdminAutomationFlowRoute
@@ -1358,6 +1367,7 @@ export interface FileRoutesById {
   '/admin/sistema/cockpit-legado': typeof AdminSistemaCockpitLegadoRoute
   '/admin_/report-preview/$username': typeof AdminReportPreviewUsernameRoute
   '/api/admin/analysis-cost-breakdown': typeof ApiAdminAnalysisCostBreakdownRoute
+  '/api/admin/analysis-window-counts': typeof ApiAdminAnalysisWindowCountsRoute
   '/api/admin/apify-backfill-actual-cost': typeof ApiAdminApifyBackfillActualCostRoute
   '/api/admin/apify-lab': typeof ApiAdminApifyLabRoute
   '/api/admin/automation-flow': typeof ApiAdminAutomationFlowRoute
@@ -1516,6 +1526,7 @@ export interface FileRouteTypes {
     | '/admin/sistema/cockpit-legado'
     | '/admin/report-preview/$username'
     | '/api/admin/analysis-cost-breakdown'
+    | '/api/admin/analysis-window-counts'
     | '/api/admin/apify-backfill-actual-cost'
     | '/api/admin/apify-lab'
     | '/api/admin/automation-flow'
@@ -1670,6 +1681,7 @@ export interface FileRouteTypes {
     | '/admin/sistema/cockpit-legado'
     | '/admin/report-preview/$username'
     | '/api/admin/analysis-cost-breakdown'
+    | '/api/admin/analysis-window-counts'
     | '/api/admin/apify-backfill-actual-cost'
     | '/api/admin/apify-lab'
     | '/api/admin/automation-flow'
@@ -1826,6 +1838,7 @@ export interface FileRouteTypes {
     | '/admin/sistema/cockpit-legado'
     | '/admin_/report-preview/$username'
     | '/api/admin/analysis-cost-breakdown'
+    | '/api/admin/analysis-window-counts'
     | '/api/admin/apify-backfill-actual-cost'
     | '/api/admin/apify-lab'
     | '/api/admin/automation-flow'
@@ -1961,6 +1974,7 @@ export interface RootRouteChildren {
   AdminReportLabFullPreviewHandleRoute: typeof AdminReportLabFullPreviewHandleRoute
   AdminReportPreviewUsernameRoute: typeof AdminReportPreviewUsernameRoute
   ApiAdminAnalysisCostBreakdownRoute: typeof ApiAdminAnalysisCostBreakdownRoute
+  ApiAdminAnalysisWindowCountsRoute: typeof ApiAdminAnalysisWindowCountsRoute
   ApiAdminApifyBackfillActualCostRoute: typeof ApiAdminApifyBackfillActualCostRoute
   ApiAdminApifyLabRoute: typeof ApiAdminApifyLabRoute
   ApiAdminAutomationFlowRoute: typeof ApiAdminAutomationFlowRoute
@@ -2759,6 +2773,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminApifyBackfillActualCostRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/analysis-window-counts': {
+      id: '/api/admin/analysis-window-counts'
+      path: '/api/admin/analysis-window-counts'
+      fullPath: '/api/admin/analysis-window-counts'
+      preLoaderRoute: typeof ApiAdminAnalysisWindowCountsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/analysis-cost-breakdown': {
       id: '/api/admin/analysis-cost-breakdown'
       path: '/api/admin/analysis-cost-breakdown'
@@ -3397,6 +3418,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminReportLabFullPreviewHandleRoute: AdminReportLabFullPreviewHandleRoute,
   AdminReportPreviewUsernameRoute: AdminReportPreviewUsernameRoute,
   ApiAdminAnalysisCostBreakdownRoute: ApiAdminAnalysisCostBreakdownRoute,
+  ApiAdminAnalysisWindowCountsRoute: ApiAdminAnalysisWindowCountsRoute,
   ApiAdminApifyBackfillActualCostRoute: ApiAdminApifyBackfillActualCostRoute,
   ApiAdminApifyLabRoute: ApiAdminApifyLabRoute,
   ApiAdminAutomationFlowRoute: ApiAdminAutomationFlowRoute,
