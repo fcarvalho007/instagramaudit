@@ -1032,6 +1032,11 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
               suggestedStep={displayedSuggestion}
             />
           </TabsContent>
+
+          {/* ── Tab: Créditos & análises ─────────────── */}
+          <TabsContent value="credits" className="flex-1 overflow-y-auto mt-0">
+            <LeadCreditsTab leadId={lead.id} active={activeTab === "credits"} />
+          </TabsContent>
         </Tabs>
       </DialogContent>
     </Dialog>
