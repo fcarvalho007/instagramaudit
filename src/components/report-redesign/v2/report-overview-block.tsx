@@ -281,6 +281,9 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
         <CompetitorOverviewCompare
           primary={{
             handle: primaryHandle,
+            avatarUrl: enriched.profile.avatarUrl,
+            fullName: result.data.profile.fullName ?? null,
+            verified: Boolean(result.data.profile.verified),
             followers: result.data.profile.followers,
             postsAnalyzed: k.postsAnalyzed,
             engagementRate: k.engagementRate,
@@ -296,6 +299,8 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
       {mode === "all" && firstCompetitor ? (
         <CompetitorBioCompare
           primaryHandle={primaryHandle}
+          primaryAvatarUrl={enriched.profile.avatarUrl}
+          primaryFullName={result.data.profile.fullName ?? null}
           primaryBio={enriched.profile.bio}
           primaryExternalUrls={enriched.profile.externalUrls}
           primaryVerified={Boolean(result.data.profile.verified)}
@@ -387,6 +392,9 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
               <CompetitorEngagementCompare
                 primary={{
                   handle: primaryHandle,
+                  avatarUrl: enriched.profile.avatarUrl,
+                  fullName: result.data.profile.fullName ?? null,
+                  verified: Boolean(result.data.profile.verified),
                   engagementRate: k.engagementRate,
                   averageLikes: avgLikes,
                   averageComments: avgComments,
@@ -406,12 +414,18 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
                 <CompetitorCadenceCompare
                   primary={{
                     handle: primaryHandle,
+                    avatarUrl: enriched.profile.avatarUrl,
+                    fullName: result.data.profile.fullName ?? null,
+                    verified: Boolean(result.data.profile.verified),
                     postingFrequencyWeekly: k.postingFrequencyWeekly,
                   }}
                   competitor={firstCompetitor}
                 />
                 <CompetitorWeekdayCompare
                   primaryHandle={primaryHandle}
+                  primaryAvatarUrl={enriched.profile.avatarUrl}
+                  primaryFullName={result.data.profile.fullName ?? null}
+                  primaryVerified={Boolean(result.data.profile.verified)}
                   payload={payload}
                   competitor={firstCompetitor}
                 />
@@ -433,6 +447,9 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
             {firstCompetitor ? (
               <CompetitorFormatCompare
                 primaryHandle={primaryHandle}
+                primaryAvatarUrl={enriched.profile.avatarUrl}
+                primaryFullName={result.data.profile.fullName ?? null}
+                primaryVerified={Boolean(result.data.profile.verified)}
                 formats={formatEntries}
                 competitor={firstCompetitor}
               />
