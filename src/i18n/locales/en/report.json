@@ -658,7 +658,11 @@
         "period_coming_soon_title": "Custom window in preparation",
         "period_coming_soon_body": "Per-period analysis (30d/90d) isn't available in this beta yet. You'll be notified when it ships — no credit cost.",
         "period_action_title": "Generate analysis for the last {{days}} days?",
-        "period_action_body": "This will use 1 Pro credit and generate a fresh analysis scoped to the last {{days}} days. Repeating the same window later uses cache and consumes no extra credit."
+        "period_action_body": "This may use 1 credit if the window isn't cached yet. If it has already been generated, it will be reused at no extra cost.",
+        "period_success_toast_cache": "Analysis reused — no extra credit used.",
+        "period_success_toast_fresh": "New analysis generated. 1 credit used.",
+        "period_success_toast_neutral": "Period analysis loaded.",
+        "period_error_requires_pro": "This window requires active Pro access."
       }
     },
     "status": {

@@ -667,7 +667,14 @@ function ExploreSection({
               },
             }).catch(() => {});
             await refreshBalance();
-            toast.success(t("nav.explore.consume_dialog.success_toast"));
+            const ds = (result as { data_source?: string }).data_source;
+            const toastKey =
+              ds === "cache"
+                ? "nav.explore.consume_dialog.period_success_toast_cache"
+                : ds === "fresh"
+                  ? "nav.explore.consume_dialog.period_success_toast_fresh"
+                  : "nav.explore.consume_dialog.period_success_toast_neutral";
+            toast.success(t(toastKey));
             setDialogOpen(false);
             // Update URL with `w=` so the route loader re-fetches the
             // window-scoped snapshot. The second analyze call from the
@@ -695,13 +702,19 @@ function ExploreSection({
               },
             }).catch(() => {});
             await refreshBalance();
-            setErrorMessage(
-              t("nav.explore.consume_dialog.error_generic_with_code", {
-                code: result.error_code,
-                defaultValue:
-                  result.message ?? t("nav.explore.consume_dialog.error_generic"),
-              }),
-            );
+            if (result.error_code === "WINDOW_REQUIRES_PRO") {
+              setErrorMessage(
+                t("nav.explore.consume_dialog.period_error_requires_pro"),
+              );
+            } else {
+              setErrorMessage(
+                t("nav.explore.consume_dialog.error_generic_with_code", {
+                  code: result.error_code,
+                  defaultValue:
+                    result.message ?? t("nav.explore.consume_dialog.error_generic"),
+                }),
+              );
+            }
           }
         } catch {
           await refreshBalance();
