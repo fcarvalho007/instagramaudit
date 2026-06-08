@@ -1,7 +1,9 @@
 import { CompareCardShell } from "@/components/report-redesign/v2/compare";
+import { CompareAvatar } from "@/components/report-redesign/v2/compare/compare-handle-row";
 import type { FormatEntry } from "@/components/report-redesign/v2/overview/format-card";
 import type { ReportCompetitorBreakdownEntry } from "@/components/report/report-mock-data";
 import { normaliseFormatKey, type CanonicalFormatKey } from "@/lib/report/format-keys";
+import { cn } from "@/lib/utils";
 
 interface Props {
   primaryHandle: string;
@@ -67,6 +69,13 @@ export function CompetitorFormatCompare({
     ? buildDonutInsight(primaryEntries, competitorEntries, competitor.windowAligned)
     : null;
 
+  const primaryPostsAnalyzed = formats.reduce(
+    (s, f) => s + (typeof f.count === "number" && Number.isFinite(f.count) ? f.count : 0),
+    0,
+  );
+  const competitorPostsAnalyzed =
+    typeof competitor.postsAnalyzed === "number" ? competitor.postsAnalyzed : 0;
+
   return (
     <CompareCardShell
       title="Mix de formatos"
@@ -86,41 +95,69 @@ export function CompetitorFormatCompare({
       }}
       footer={insight ?? undefined}
     >
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
         <DonutSide
-          handle={primaryHandle}
-          entries={primaryEntries}
           side="primary"
+          handle={primaryHandle}
+          displayName={primaryFullName ?? null}
+          avatarUrl={primaryAvatarUrl ?? null}
+          verified={Boolean(primaryVerified)}
+          entries={primaryEntries}
+          postsAnalyzed={primaryPostsAnalyzed}
         />
         {competitorHasStats ? (
           <DonutSide
-            handle={competitor.username}
-            entries={competitorEntries}
             side="competitor"
+            handle={competitor.username}
+            displayName={competitor.displayName}
+            avatarUrl={competitor.avatarUrl ?? null}
+            verified={Boolean(competitor.isVerified)}
+            entries={competitorEntries}
+            postsAnalyzed={competitorPostsAnalyzed}
           />
         ) : (
-          <MissingSide handle={competitor.username} />
+          <MissingSide
+            handle={competitor.username}
+            displayName={competitor.displayName}
+            avatarUrl={competitor.avatarUrl ?? null}
+            verified={Boolean(competitor.isVerified)}
+          />
         )}
       </div>
     </CompareCardShell>
   );
 }
 
-function MissingSide({ handle }: { handle: string }) {
+function MissingSide({
+  handle,
+  displayName,
+  avatarUrl,
+  verified,
+}: {
+  handle: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  verified: boolean;
+}) {
   return (
-    <div
-      className="flex min-h-[220px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border-default/70 bg-surface-muted/40 p-6 text-center"
-      role="note"
-      aria-label={`Mix de formatos de @${handle} indisponível`}
-    >
-      <span className="text-eyebrow-sm text-content-tertiary">@{handle}</span>
-      <p className="text-sm font-medium text-content-secondary">
-        Dados do concorrente indisponíveis nesta amostra.
-      </p>
-      <p className="text-xs text-content-tertiary">
-        Mix de formatos requer publicações analisadas no concorrente.
-      </p>
-    </div>
+    <PanelFrame side="competitor">
+      <PanelHeader
+        side="competitor"
+        handle={handle}
+        displayName={displayName}
+        avatarUrl={avatarUrl}
+        verified={verified}
+      />
+      <div
+        role="note"
+        aria-label={`Mix de formatos de @${handle} indisponível`}
+        className="mt-6 flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border-default/70 bg-surface-muted/40 px-4 py-10 text-center"
+      >
+        <p className="text-sm font-medium text-content-secondary leading-relaxed">
+          Sem dados de formatos disponíveis para o concorrente nesta amostra.
+        </p>
+      </div>
+    </PanelFrame>
   );
 }
 
@@ -145,7 +182,23 @@ const SIDE_COLORS: Record<Side, Record<CanonicalFormatKey, string>> = {
   },
 };
 
-function DonutSide({ handle, entries, side }: { handle: string; entries: Entry[]; side: Side }) {
+function DonutSide({
+  side,
+  handle,
+  displayName,
+  avatarUrl,
+  verified,
+  entries,
+  postsAnalyzed,
+}: {
+  side: Side;
+  handle: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  verified: boolean;
+  entries: Entry[];
+  postsAnalyzed: number;
+}) {
   const total = entries.reduce((s, e) => s + e.share, 0);
   const dominant = pickDominant(entries);
   const ariaParts = entries
@@ -153,58 +206,143 @@ function DonutSide({ handle, entries, side }: { handle: string; entries: Entry[]
     .map((e) => `${e.label} ${fmtPct(e.share)}`)
     .join(", ");
   return (
-    <div className="flex flex-col items-center gap-4">
-      <div
-        role="img"
-        aria-label={`Mix de formatos de @${handle}: ${ariaParts || "sem dados"}.`}
-        className="relative"
-      >
-        <Donut entries={entries} side={side} />
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-          {dominant ? (
-            <>
-              <span className="text-sm text-content-secondary">{dominant.label}</span>
-              <span
-                className="font-semibold text-xl tabular-nums"
-                style={{ color: SIDE_COLORS[side][dominant.key] }}
-              >
-                {fmtPct(dominant.share)}
-              </span>
-            </>
-          ) : (
-            <span className="text-sm text-content-tertiary">Sem dados</span>
-          )}
+    <PanelFrame side={side}>
+      <PanelHeader
+        side={side}
+        handle={handle}
+        displayName={displayName}
+        avatarUrl={avatarUrl}
+        verified={verified}
+      />
+      <div className="mt-5 flex flex-col items-center gap-4">
+        <div
+          role="img"
+          aria-label={`Mix de formatos de @${handle}: ${ariaParts || "sem dados"}.`}
+          className="relative"
+        >
+          <Donut entries={entries} side={side} />
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+            {dominant ? (
+              <>
+                <span className="text-xs sm:text-sm text-content-secondary">
+                  {dominant.label}
+                </span>
+                <span
+                  className="font-semibold text-2xl sm:text-3xl tabular-nums tracking-tight"
+                  style={{ color: SIDE_COLORS[side][dominant.key] }}
+                >
+                  {fmtPct(dominant.share)}
+                </span>
+              </>
+            ) : (
+              <span className="text-sm text-content-tertiary">Sem dados</span>
+            )}
+          </div>
         </div>
+        {postsAnalyzed > 0 ? (
+          <span className="inline-flex items-center rounded-full border border-border-subtle bg-surface-muted/60 px-2.5 py-1 text-xs text-content-tertiary tabular-nums">
+            {postsAnalyzed} {postsAnalyzed === 1 ? "publicação" : "publicações"} na amostra
+          </span>
+        ) : null}
       </div>
-      <div className="text-eyebrow-sm text-content-tertiary">@{handle}</div>
-      <ul className="w-full max-w-[200px] space-y-1.5">
+      <ul className="mt-5 w-full space-y-2 border-t border-border-default/60 pt-4">
         {entries.map((e) => {
           const zero = e.share <= 0 || total <= 0;
           return (
             <li
               key={e.key}
-              className={`flex items-center justify-between text-sm ${zero ? "text-content-tertiary" : "text-content-secondary"}`}
+              className={cn(
+                "flex items-center justify-between text-sm",
+                zero ? "text-content-tertiary" : "text-content-secondary",
+              )}
             >
               <span className="flex items-center gap-2">
                 <span
                   aria-hidden
-                  className="inline-block size-2.5 rounded-full"
-                  style={{ background: SIDE_COLORS[side][e.key] }}
+                  className={cn(
+                    "inline-block size-3 rounded-full",
+                    zero ? "ring-1 ring-border-default" : "",
+                  )}
+                  style={{ background: zero ? "transparent" : SIDE_COLORS[side][e.key] }}
                 />
                 {e.label}
               </span>
-              <span className="font-semibold tabular-nums">{fmtPct(e.share)}</span>
+              <span className="font-semibold tabular-nums">
+                {zero ? "—" : fmtPct(e.share)}
+              </span>
             </li>
           );
         })}
       </ul>
+    </PanelFrame>
+  );
+}
+
+function PanelFrame({
+  side,
+  children,
+}: {
+  side: Side;
+  children: React.ReactNode;
+}) {
+  const topBar = side === "primary" ? "bg-accent-primary" : "bg-compare-competitor";
+  return (
+    <div
+      className={cn(
+        "relative flex flex-col overflow-hidden rounded-2xl border border-border-default/70 bg-white p-5 sm:p-6",
+        "shadow-[0_1px_2px_-1px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.08)]",
+      )}
+    >
+      <span aria-hidden="true" className={cn("absolute inset-x-0 top-0 h-[3px]", topBar)} />
+      {children}
+    </div>
+  );
+}
+
+function PanelHeader({
+  side,
+  handle,
+  displayName,
+  avatarUrl,
+  verified,
+}: {
+  side: Side;
+  handle: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  verified: boolean;
+}) {
+  const eyebrow = side === "primary" ? "Perfil" : "Concorrente";
+  const eyebrowColor =
+    side === "primary" ? "text-accent-primary" : "text-compare-competitor";
+  return (
+    <div className="flex flex-col gap-2 min-w-0">
+      <span className={cn("text-eyebrow-sm", eyebrowColor)}>{eyebrow}</span>
+      <div className="flex items-center gap-3 min-w-0">
+        <CompareAvatar
+          avatarUrl={avatarUrl}
+          name={displayName || handle}
+          verified={verified}
+          side={side}
+          sizeClass="size-10"
+          showRing
+        />
+        <div className="min-w-0">
+          <p className="font-sans text-base font-semibold text-content-primary truncate">
+            @{handle}
+          </p>
+          {displayName ? (
+            <p className="text-xs text-content-secondary truncate">{displayName}</p>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
 
 function Donut({ entries, side }: { entries: Entry[]; side: Side }) {
-  const SIZE = 160;
-  const R = 70;
+  const SIZE = 200;
+  const R = 86;
   const C = 2 * Math.PI * R;
   const total = entries.reduce((s, e) => s + e.share, 0);
   const slices = entries.filter((e) => e.share > 0);
@@ -213,7 +351,12 @@ function Donut({ entries, side }: { entries: Entry[]; side: Side }) {
 
   let offsetDeg = 0;
   return (
-    <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className="block size-40 sm:size-44">
+    <svg
+      width={SIZE}
+      height={SIZE}
+      viewBox={`0 0 ${SIZE} ${SIZE}`}
+      className="block size-44 sm:size-48 md:size-52"
+    >
       <circle
         cx={SIZE / 2}
         cy={SIZE / 2}
@@ -221,7 +364,7 @@ function Donut({ entries, side }: { entries: Entry[]; side: Side }) {
         fill="none"
         stroke="var(--border-default)"
         strokeOpacity={0.35}
-        strokeWidth={22}
+        strokeWidth={28}
       />
       {total > 0 &&
         slices.map((e) => {
@@ -239,7 +382,7 @@ function Donut({ entries, side }: { entries: Entry[]; side: Side }) {
               r={R}
               fill="none"
               stroke={SIDE_COLORS[side][e.key]}
-              strokeWidth={22}
+              strokeWidth={28}
               strokeLinecap="butt"
               strokeDasharray={dasharray}
               transform={`rotate(${rotate} ${SIZE / 2} ${SIZE / 2})`}
@@ -304,7 +447,9 @@ function buildDonutInsight(
   const pTotal = primary.reduce((s, e) => s + e.share, 0);
   const cTotal = competitor.reduce((s, e) => s + e.share, 0);
   if (windowAligned === false) return null;
-  if (pTotal < 90 || cTotal < 90) return null;
+  if (pTotal < 90 || cTotal < 90) {
+    return "Amostra demasiado pequena para uma leitura estável do mix de formatos.";
+  }
 
   const hhi = (xs: Entry[]) => xs.reduce((s, e) => s + (e.share / 100) ** 2, 0);
   const pHhi = hhi(primary);
