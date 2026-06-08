@@ -50,8 +50,11 @@ describe("snapshotToReportData — analysis_window meta (PR2)", () => {
   it("baseline-legacy (no key) → no window override, analysisWindow=baseline", () => {
     const { data } = snapshotToReportData({ payload: basePayload() });
     expect(data.meta.analysisWindow).toBe("baseline");
-    expect(data.meta.windowLabel).not.toMatch(/últimos 30 dias|últimos 90 dias/);
-    expect(data.meta.sampleCaption ?? "").not.toMatch(/Sem publicações/);
+    // Baseline uses cadence-derived copy ("últimas N publicações recolhidas"),
+    // never the wide-window override pattern ("dos últimos N dias.") nor the
+    // deterministic empty-window line.
+    expect(data.meta.sampleCaption ?? "").not.toMatch(/dos últimos \d+ dias\.$/);
+    expect(data.meta.sampleCaption ?? "").not.toMatch(/^Sem publicações/);
   });
 
   it("baseline-explicit → byte-compat with legacy", () => {
