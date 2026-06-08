@@ -113,7 +113,6 @@ export function CompetitorFormatCompare({
           verified={Boolean(primaryVerified)}
           entries={primaryEntries}
           postsAnalyzed={primaryPostsAnalyzed}
-          competitorHasStats={true}
         />
         {competitorHasStats ? (
           <DonutSide
@@ -124,7 +123,6 @@ export function CompetitorFormatCompare({
             verified={Boolean(competitor.isVerified)}
             entries={competitorEntries}
             postsAnalyzed={competitorPostsAnalyzed}
-            competitorHasStats={true}
           />
         ) : (
           <MissingSide
