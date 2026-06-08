@@ -137,7 +137,7 @@ function DonutSide({ handle, entries, side }: { handle: string; entries: Entry[]
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
           {dominant ? (
             <>
-              <span className="text-xs text-content-secondary">{dominant.label}</span>
+              <span className="text-sm text-content-secondary">{dominant.label}</span>
               <span
                 className="font-semibold text-xl tabular-nums"
                 style={{ color: SIDE_COLORS[side][dominant.key] }}
@@ -146,7 +146,7 @@ function DonutSide({ handle, entries, side }: { handle: string; entries: Entry[]
               </span>
             </>
           ) : (
-            <span className="text-xs text-content-tertiary">Sem dados</span>
+            <span className="text-sm text-content-tertiary">Sem dados</span>
           )}
         </div>
       </div>
@@ -157,7 +157,7 @@ function DonutSide({ handle, entries, side }: { handle: string; entries: Entry[]
           return (
             <li
               key={e.key}
-              className={`flex items-center justify-between text-xs ${zero ? "text-content-tertiary" : "text-content-secondary"}`}
+              className={`flex items-center justify-between text-sm ${zero ? "text-content-tertiary" : "text-content-secondary"}`}
             >
               <span className="flex items-center gap-2">
                 <span

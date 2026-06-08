@@ -1,6 +1,9 @@
 import { useState } from "react";
-import { Image as ImageIcon } from "lucide-react";
-import { CompareCardShell, CompareStatBlock } from "@/components/report-redesign/v2/compare";
+import {
+  CompareCardShell,
+  CompareStatBlock,
+  CompareThumbPlaceholder,
+} from "@/components/report-redesign/v2/compare";
 import type { ReportCompetitorBreakdownEntry } from "@/components/report/report-mock-data";
 import { pickThumbnailUrl } from "@/lib/report/pick-thumbnail";
 import { cn } from "@/lib/utils";
@@ -107,7 +110,7 @@ export function CompetitorCadenceCompare({
         </div>
       ) : null}
 
-      <p className="mt-4 text-xs text-content-tertiary">
+      <p className="mt-4 text-sm text-content-tertiary">
         {sampleN > 0
           ? `Amostra: últimas ${sampleN} publicações disponíveis.`
           : "Amostra com base nas últimas publicações disponíveis."}
@@ -236,12 +239,7 @@ function Thumb({
       className="size-full object-cover"
     />
   ) : (
-    <span
-      aria-hidden="true"
-      className="absolute inset-0 flex items-center justify-center"
-    >
-      <ImageIcon className="size-4 text-content-tertiary/60" />
-    </span>
+    <CompareThumbPlaceholder className="absolute inset-0 size-full rounded-none" />
   );
   if (post.permalink) {
     return (

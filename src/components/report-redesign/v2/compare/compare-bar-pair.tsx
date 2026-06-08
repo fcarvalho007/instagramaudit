@@ -167,7 +167,7 @@ function Legend({
   competitorHandle: string;
 }) {
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-content-secondary">
+    <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-content-secondary">
       <LegendDot accent="primary" label={`@${primaryHandle}`} />
       <LegendDot accent="secondary" label={`@${competitorHandle}`} />
     </div>

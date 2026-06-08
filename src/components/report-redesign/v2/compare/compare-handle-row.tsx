@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check } from "lucide-react";
+import { Check, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface CompareHandleSide {
@@ -196,6 +196,32 @@ export function CompareAvatar(props: {
       verifiedSizeClass="size-2.5"
       verifiedIconClass="size-1.5"
     />
+  );
+}
+
+// ─── Shared thumbnail placeholder ──────────────────────────────────
+
+/**
+ * Square placeholder used wherever a post thumbnail is missing — keeps
+ * fallback visuals consistent across compare cards.
+ */
+export function CompareThumbPlaceholder({
+  className,
+  iconClassName,
+}: {
+  className?: string;
+  iconClassName?: string;
+}) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "inline-flex aspect-square items-center justify-center rounded-md bg-surface-muted",
+        className,
+      )}
+    >
+      <ImageIcon className={cn("size-4 text-content-tertiary/60", iconClassName)} />
+    </span>
   );
 }
 

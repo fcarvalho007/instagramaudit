@@ -227,7 +227,7 @@ function SideBenchmarkLine({
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-2">
         <span aria-hidden="true" className={cn("size-2 rounded-full", accentDot)} />
-        <span className="text-xs text-content-tertiary tabular-nums">
+        <span className="text-sm text-content-tertiary tabular-nums">
           {arrow} {sign}{deltaPct} % vs referência{refSuffix}
         </span>
       </div>
