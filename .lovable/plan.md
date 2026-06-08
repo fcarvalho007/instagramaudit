@@ -1,79 +1,114 @@
 
-# QA editorial — Profile vs Competitor
-
-Auditoria estática (browser admin bloqueado em "A verificar sessão…"). Validei cada item por leitura do código que renderiza `/admin/report-preview/nunomarkl?variant=pro_preview&draft=false` em modo `all` com `firstCompetitor`.
-
----
+# Auditoria Pro 30d/90d — pós-PR1 + PR2
 
 ## 1. PASS / FAIL
 
 | # | Critério | Verdict | Evidência |
 |---|---|---|---|
-| 1 | Abre claramente em comparison mode | **PASS** | `report-overview-block.tsx:212` — quando `firstCompetitor` existe, renderiza `ComparisonHero` em vez de `EditorialIdentityCard` |
-| 2 | Primeiro card sem 100/100 antigo | **PASS** | `comparison-hero.tsx` não tem qualquer score 0–100; mostra duelo + 4 métricas + verdict editorial |
-| 3a | Fraunces só em títulos/separadores | **PASS** | `font-serif` em hero verdict (l. 90), shell title (`compare-card-shell.tsx:67`), divisor "vs" (`compare-handle-row.tsx:71,171`). Nenhum uso em body/labels |
-| 3b | Inter em labels/body/métricas | **PASS** | `font-sans` em handles (`compare-handle-row.tsx:150`, `comparison-hero.tsx:147`); métricas com `tabular-nums` Inter (`comparison-hero.tsx:164`, `competitor-engagement-compare.tsx:230`) |
-| 3c | Sem labels abaixo de 12px | **FAIL** | `comparison-hero.tsx:62` usa `text-[11px]` no chip "Concorrente em janela baseline". CompareCardShell já usa `text-xs` no mesmo chip (`compare-card-shell.tsx:78`) — inconsistência |
-| 4 | Cor primary azul / competitor indigo | **PASS** | Token `--compare-competitor: #7664E4` confirmado em `tokens-light.css:27`. Aplicado consistentemente: hero (`comparison-hero.tsx:127-129`), pills (`compare-handle-row.tsx:91-94`), engagement markers (`competitor-engagement-compare.tsx:169-170,186`), format donuts (`competitor-format-compare.tsx:109-120`), cadence strips (`competitor-cadence-compare.tsx:199`), bio panel (`competitor-bio-compare.tsx:103-106`) |
-| 5 | Avatares + fallback iniciais limpos | **PASS** | `Avatar` (`compare-handle-row.tsx:228-311`): `onError` → setFailed, gradient tint side-coloured, verified check, anel opcional. Usado por shell, hero e identity cards |
-| 6 | "Publicações na amostra" + caveat | **PASS** | Linha no hero (`comparison-hero.tsx:209-215`); rodapé metodológico abaixo do hero (l. 96-103) `Comparação com base nas últimas N publicações disponíveis.`; cadence card também escreve "Amostra: últimas N publicações disponíveis." (`competitor-cadence-compare.tsx:113-117`) |
-| 7a | Engagement profile vs competitor | **PASS** | `CompetitorEngagementCompare` mostra par primário/concorrente com `CompareStatBlock` + delta pp |
-| 7b | Engagement explica relação à escala | **PASS** | `BenchmarkRail` (l. 113-166) com tick de referência e zona "strong"; `SideBenchmarkLine` por lado (l. 202-237) com `↗ +X % vs referência Micro` + classificação `Abaixo/Em linha/Acima/Muito acima da referência do escalão`; verdict combina ambos (l. 268-295) |
-| 8a | Mix de formatos forte | **PASS** | Donuts side-by-side 160-176px com cores por slice tonalmente derivadas do accent do lado (`competitor-format-compare.tsx:109-120`), centro com formato dominante + %, legenda completa, fallback "Sem dados" + insight HHI determinístico |
-| 8b | Ritmo por dia da semana forte | **PASS** | `CompareBarPair` paired bars, insight de pico determinístico (`competitor-weekday-compare.tsx:137-155`); shell unificado |
-| 9 | 375px sem overflow | **PASS** | Hero: `md:grid-cols-[1fr_auto_1fr]` colapsa em mobile; handles com `truncate max-w-[16rem]`/`max-w-[8rem]`; donut 160px cabe em 375-48; format legend `max-w-[200px]` |
-| 10 | Sem duplicação single-profile | **PASS** | Guardas `(mode === "all" && !firstCompetitor)` nas linhas 231, 278; competitor cards substituem `EngagementCardRefined`, `FrequencyCard`, `FormatCard` via ternário (l. 382-470). Nenhum branch renderiza ambos |
-| 11 | Sem provider calls no render | **PASS** | Todos os 5 ficheiros compare são puros (`useMemo`, sem `useQuery`/`useEffect`/fetch). Dados vêm de `result`/`payload` já carregados |
-| 12 | Free/Public inalterado | **PASS** | Branches `mode === "free"` (l. 231, 278) e `mode === "free_with_engagement"` (l. 302-376) intactos; `EditorialIdentityCard`, `MethodologyLine`, `PremiumTeaserCard` continuam montados |
+| 1a | 30d/90d clicáveis para Pro | **FAIL** | `analysis-period-selector.tsx:107` — chip premium tem `aria-disabled="true"` hardcoded; abre Popover de lock independentemente do `entitlement`. Não existe ramo Pro. |
+| 1b | 30d/90d ainda locked para Free | **PASS** (por acidente) | Mesmo caminho que (1a) — locked para todos, logo Free vê locked. |
+| 2a | Aviso "1 crédito será consumido" no clique Pro | **FAIL** | `consume-credit-dialog.tsx:88-94` — para `intent.kind === "period"` mostra título `period_coming_soon_title` ("Janela personalizada em preparação") e body `period_coming_soon_body` ("ainda não está disponível nesta versão beta… sem custo de crédito"). |
+| 2b | Modal explica nova análise | **FAIL** | Mesmo motivo — copy é "em preparação", não "nova análise". |
+| 2c | Saldo de créditos mostrado | **PARTIAL** | Bloco de saldo existe (`consume-credit-dialog.tsx:228-237`) mas só renderiza no caso `period` informativo; sem CTA não é actionable. |
+| 2d | Saldo 0 bloqueia antes da chamada | **N/A** | Não há chamada para bloquear — não existe path Pro. |
+| 3a | Frontend envia `window: "30d"\|"90d"` | **FAIL** | Nenhum call site no codebase. `rg "window:\s*[\"']30d"` em `src/` retorna 0 ocorrências fora de testes/i18n. `ConsumeCreditDialog` para `period` renderiza `null` no slot do Confirm (`consume-credit-dialog.tsx:254` `isPeriod ? null`). |
+| 3b | Backend usa cache key correta | **PASS** (validado em PR1) | `src/lib/analysis/cache.ts:57` — sufixo `:w=30d`/`:w=90d` aplicado. Bloqueado: ninguém invoca. |
+| 3c | Primeira geração consome 1 crédito | **PASS backend / inalcançável UI** | Validado em `analyze-public-v1-credit-gate.test.ts`. Sem path UI. |
+| 3d | Repetição usa cache, 0 créditos | **PASS backend / inalcançável UI** | Idem. |
+| 4a | Título/sample muda para "Últimos 30/90 dias" | **PASS (snapshot-side)** | `snapshot-to-report-data.ts:1517-1546` — override completo de `windowLabel`/`kpiSubtitle`/`sampleCaption`/`temporalLabel`/`topPostsSubtitle` quando `analysis_window !== "baseline"`. Coberto por `snapshot-window.test.ts`. |
+| 4b | Captions não implicam baseline em janela seleccionada | **PASS** | Mesmo bloco acima — overrides byte-a-byte; baseline preservado em fallback. |
+| 5a | Janela visível/derivável em admin | **FAIL** | `rg "analysis_window"` em `src/components/admin/v2/` e `src/routes/admin.*` retorna 0 ocorrências. O campo é gravado em `analysis_events.analysis_window` (RPC `record_analysis_event` aceita `p_analysis_window`, `lib/analysis/events.ts:82`) mas nenhuma tabela/coluna admin o mostra. Toda a copy "janela" em `admin.relatorios` refere-se ao filtro temporal de período, não ao window da análise. |
+| 5b | Créditos por análise visíveis/trace | **PARTIAL** | `credit_ledger` existe (tabela com 10 colunas) mas não tem FK para `analysis_events`. Reconstrução requer join por `lead_id` + `created_at` window — inferencial, não determinístico. Ledger não está exposto em admin lead detail (confirmado em auditoria anterior). |
+| 5c | analysis_events + credit_ledger + provider_call_logs reconstroem jornada | **PARTIAL** | Possível por handle+timestamp em SQL ad-hoc. Sem timeline admin nem `analysis_event_id` no ledger, não há UI que o faça. |
 
-**Resultado:** 11 PASS · 1 FAIL (cosmético, micro-patch trivial).
-
----
-
-## 2. Problemas visuais por severidade
-
-### MEDIUM
-- **`text-[11px]` no chip baseline do hero** — `src/components/report-redesign/v2/overview/comparison-hero.tsx:62`. Viola regra core ≥ 12px e é inconsistente com o mesmo chip já normalizado em `compare-card-shell.tsx:78` (`text-xs`). Patch: trocar `text-[11px]` por `text-xs`.
-
-### LOW
-- **`font-display` em `displayName` do `LargeIdentity`** — `src/components/report-redesign/v2/compare/compare-handle-row.tsx:154`. `font-display` mapeia a Fraunces; a regra core diz "Fraunces: H1/H2 editorial only". `displayName` é dado de utilizador, não título editorial. Não usado pelo hero (que tem o seu próprio `IdentityCard` em Inter), mas presente no shell em `size="lg"` — actualmente não invocado em nenhum compare card. Sugestão: trocar para `font-sans` por defesa, ou marcar como "intencional editorial only no Comparison Hero".
-- **Iniciais do fallback em `text-[0.72em]`** — `compare-handle-row.tsx:289`. Em pill `size-7` com parent `text-sm` resulta em ~10px. Aceitável por serem 1-2 caracteres decorativos, mas tecnicamente abaixo do mínimo. Sem acção recomendada.
-- **`BenchmarkRail` em 375px**: quando ambos os ER ficam perto do benchmark, os labels `@handle` podem colidir visualmente (ambos com `max-w-[8rem]` absolute `-translate-x-1/2`). Sem overflow horizontal real, mas pode haver sobreposição de texto. Sem acção urgente; tolerância aceitável para o snapshot `nunomarkl`.
-
-### NONE (validados)
-- Single-profile `FormatCard` / `FrequencyCard` / `EditorialIdentityCard` não renderizam quando `firstCompetitor` existe.
-- Insight do donut só aparece quando ambos os lados têm ≥90% de share aggregado e janela alinhada — degrada limpo.
-- `CompareThumbPlaceholder` usado em strips de cadência quando thumb falha.
+**Resultado:** 3 PASS · 2 PARTIAL · 8 FAIL · 1 N/A. Os FAIL concentram-se todos na camada de UI Pro — backend está sólido.
 
 ---
 
-## 3. Componente/ficheiro por issue
+## 2. Blockers exactos
 
-| Issue | Ficheiro | Linha |
-|---|---|---|
-| Chip baseline `text-[11px]` | `src/components/report-redesign/v2/overview/comparison-hero.tsx` | 62 |
-| `font-display` em displayName | `src/components/report-redesign/v2/compare/compare-handle-row.tsx` | 154 |
-| Iniciais `text-[0.72em]` | `src/components/report-redesign/v2/compare/compare-handle-row.tsx` | 289 |
-| BenchmarkRail label collision mobile | `src/components/report-redesign/v2/competitor-engagement-compare.tsx` | 185-198 |
+1. **`AnalysisPeriodSelector` é presentational-only** — `src/components/report-redesign/v2/analysis-period-selector.tsx:104-156`. Não recebe `entitlement`/`isPro`, não tem branch `if (isPro)`, não chama `onSelectPeriod`. Todo o clique vai para `PremiumInterestDialog` via `handlePremiumAccessClick`.
+2. **`ConsumeCreditDialog` para `period` está em modo "coming soon"** — `consume-credit-dialog.tsx:88-94, 228-237, 254`. Footer omite o Confirm; copy nega o consumo de crédito.
+3. **Não existe handler `onConfirm({ kind: "period", days })` em lado nenhum** — `rg "kind:\s*\"period\""` mostra apenas as definições de tipo e a renderização do modal informativo; não há call site real.
+4. **Sem cliente HTTP para `/api/analyze-public-v1` com `window`** — qualquer uso actual omite `window`, defaultando a baseline.
+5. **Admin sem coluna/badge `analysis_window`** — `reports-table-section`, `lead-detail-sheet`, `system cost queries` ignoram o campo. Operação não consegue distinguir snapshots baseline de 30d/90d sem entrar em `analysis_snapshots.normalized_payload`.
+6. **`credit_ledger` sem `analysis_event_id`** — schema não liga ledger a evento; auditoria de "este crédito pagou esta análise" é inferencial.
 
 ---
 
-## 4. GO / NO-GO
+## 3. Precisamos de PR3 para a UX do Pro period selector?
 
-**GO para Fase 3** — com 1 micro-patch trivial antes (≤ 3 linhas):
+**Sim — bloqueante para lançamento.** Sem PR3, a entitlement Pro não tem efeito visível no relatório: o utilizador paga, vê os mesmos chips locked, e a única acção possível é o popover de "Custom window in preparation". O backend (PR1 + PR2) está disponível mas inalcançável.
 
-```diff
-- // comparison-hero.tsx:62
-- <span className="inline-flex items-center rounded-full border border-border-default px-2.5 py-0.5 text-[11px] font-medium text-content-secondary">
-+ <span className="inline-flex w-fit shrink-0 items-center rounded-full border border-border-subtle bg-surface-muted px-2.5 py-1 text-xs text-content-tertiary">
-    Concorrente em janela baseline
-  </span>
+PR3 deve cobrir, em ordem:
+
+### PR3.A — Pro UI activation (frontend-only, sem schema)
+**Ficheiros:**
+- `src/components/report-redesign/v2/analysis-period-selector.tsx`
+- `src/components/report-redesign/v2/consume-credit-dialog.tsx`
+- (consumer wrapper) — provavelmente `report-block-nav.tsx` ou parent que monta o selector + dialog
+
+**Mudanças mínimas:**
+1. `AnalysisPeriodSelector` aceita props novas: `{ isPro: boolean; currentWindow: "baseline"|"30d"|"90d"; onSelectPeriod: (days: 30|90) => void }`. Quando `isPro && PREMIUM_WINDOWS.includes(days)`, renderiza chip clicável activo (mesmo visual do `active_sample` quando `currentWindow === ${days}d`), não Popover de lock.
+2. Restringir `PREMIUM_WINDOWS` ao set realmente suportado pelo backend: `[30, 90]`. `60` e `365` continuam locked-only (não suportados em `analyze-public-v1`).
+3. `ConsumeCreditDialog` para `intent.kind === "period"` passa a usar copy real:
+   - `title`: "Gerar análise dos últimos {{days}} dias"
+   - `body`: "Vai consumir 1 crédito Pro e gerar uma nova análise com a janela selecionada. Análises repetidas com a mesma janela usam cache e não consomem créditos."
+   - mostrar saldo (já existe), badge "1 crédito" e CTA Confirm
+   - `hasCredit === false` → empty state já existente (`empty_title`/`empty_body`/`empty_cta`)
+4. Wrapper monta handler `onConfirm({ kind: "period", days })` que chama `/api/analyze-public-v1` com `{ handle, window: "${days}d" }`, mostra toast/loading e re-fetcha o snapshot.
+
+**Validação:** unit tests em `analysis-period-selector` (Pro vs Free), e2e manual em `?variant=pro_preview` com 30d → 1 crédito → re-clique 30d → 0 créditos.
+
+### PR3.B — Admin visibility (`analysis_window`)
+**Ficheiros:**
+- `src/components/admin/v2/relatorios/reports-table-section.tsx`
+- `src/components/admin/v2/visao-geral/*` (KPI tiles)
+- `src/routes/admin.relatorios.tsx` (server fns que querem `analysis_events`)
+
+**Mudanças:**
+1. Adicionar coluna "Janela" na reports table com badge `baseline`/`30d`/`90d` (cores neutras, accent para non-baseline).
+2. KPI tile em `/admin/sistema` ou `/admin/visao-geral`: "Análises por janela (baseline / 30d / 90d)" agregado a partir de `analysis_events.analysis_window`.
+3. Server fn admin que devolve eventos passa a expôr `analysis_window` no select.
+
+### PR3.C — Lead journey (`analysis_event_id` no ledger)
+**Migration:**
+```sql
+ALTER TABLE public.credit_ledger
+  ADD COLUMN analysis_event_id uuid REFERENCES public.analysis_events(id);
+CREATE INDEX idx_credit_ledger_analysis_event_id ON public.credit_ledger(analysis_event_id);
 ```
+**Backfill:** opcional — heurística por `lead_id + created_at ±5s` para histórico beta.
+**App code:** no caller que insere `credit_ledger` no `analyze-public-v1`, passar `analysis_event_id` na mesma transacção (o evento já é criado antes do debit).
+**Admin:** lead detail sheet ganha tab "Créditos" + "Análises" cross-linked por este FK.
 
-Esta mudança alinha o chip do hero com o chip do `CompareCardShell` (mesmo token, mesma tipografia, mesmo padding) e fecha o último ponto de inconsistência editorial. Tudo o resto está sólido.
+PR3.A é a única **bloqueante de lançamento Pro**. PR3.B e PR3.C podem ir num release seguinte mas devem entrar antes de abrir Pro a utilizadores externos.
 
 ---
 
-## 5. Limitação desta auditoria
+## 4. Validação 90d antes de PR3.A?
 
-A rota `/admin/report-preview/...` está protegida e o browser do sandbox não tem sessão. Validação ocular real (contraste em ecrã, "feel" tipográfico, sobreposição efectiva do BenchmarkRail em 375px com este snapshot específico) requer login no preview. A auditoria acima é por leitura de código — cobre 11/12 critérios com alta confiança, o ponto 9 (375px) é inferido por análise de classes Tailwind.
+**Sim, runtime smoke test do 90d antes de PR3.A.** Recomendado porque:
+- PR1 só validou 30d em runtime real.
+- 90d usa `resultsLimit: 300` (vs 150 em 30d) → maior tempo de execução Apify e custo por run.
+- Risco de timeout ou cap (`APIFY_DAILY_CAP_USD`, `APIFY_HARD_CAP_USD`) atingido se múltiplas análises Pro 90d arrancarem em sequência.
+
+Smoke test mínimo (sem UI, via curl direto):
+```
+POST /api/analyze-public-v1
+{ "handle": "<test_handle>", "window": "90d" }
+```
+Confirmar: duração < timeout, custo registado, cache key `:w=90d`, snapshot persiste com `analysis_window: "90d"`. Repetir para validar cache hit.
+
+---
+
+## 5. Plano de implementação consolidado
+
+Se aprovado, executar em build mode na seguinte ordem:
+
+1. **Smoke test 90d** (não-código; apenas validar runtime) — gate antes de tocar UI.
+2. **PR3.A** — Pro UI activation (selector + dialog + handler). Sem schema. Publishable atrás de feature flag se quiser canary.
+3. **PR3.B** — Admin window visibility (badge + KPI tile). Sem schema.
+4. **PR3.C** — Migration `credit_ledger.analysis_event_id` + backfill + lead journey UI.
+
+Sem PR3.A não há "Pro 30d/90d" para o utilizador final, mesmo que entitlements e backend estejam prontos.
