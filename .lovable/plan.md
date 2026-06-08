@@ -1,88 +1,93 @@
-# Mix de formatos — donut comparison redesign
+# Bio e pontos de saída — editorial panels redesign
 
-Scope: `src/components/report-redesign/v2/competitor-format-compare.tsx` only. No new deps, no schema, no provider calls, no Free/Public changes, single-profile FormatCard untouched.
+Scope: `src/components/report-redesign/v2/competitor-bio-compare.tsx` only. No data/schema/provider changes. Single-profile path untouched.
 
-## 1. Layout
+## Layout
 
-Inside the existing `CompareCardShell`, drop `CompareBarPair` and render a two-column donut block:
+Inside the existing `CompareCardShell`, replace `CompareTable` with two side-by-side **profile panels** + a compact **comparison summary strip** below.
 
 ```text
-┌─────────────────────────┬─────────────────────────┐
-│   PRIMARY donut         │   COMPETITOR donut      │
-│   @handle (azul)        │   @handle (indigo)      │
-│   ● Reels   52 %        │   ● Reels   38 %        │
-│   ● Carrosséis 30 %     │   ● Carrosséis 44 %     │
-│   ● Imagens 18 %        │   ● Imagens 18 %        │
-│   Centro: "Reels 52%"   │   Centro: "Carrosséis…" │
-└─────────────────────────┴─────────────────────────┘
-Footer insight (deterministic)
+┌──────────────────────────────┬──────────────────────────────┐
+│  @primary (azul)             │  @competitor (indigo)        │
+│  ────────────────────        │  ────────────────────        │
+│  ● Link na bio       Sim     │  ● Link na bio       Sim     │
+│  ● Nº de links       2       │  ● Nº de links       4       │
+│  ● Conta verificada  Não     │  ● Conta verificada  Sim     │
+│  ● Bio preenchida    Sim     │  ● Bio preenchida    Sim     │
+└──────────────────────────────┴──────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  3 pontos de saída a mais no concorrente · Verificação +1   │
+└─────────────────────────────────────────────────────────────┘
+Footer (editorial verdict, full sentence)
 ```
 
-- Desktop: `grid-cols-2 gap-8`.
-- Mobile (<sm): `grid-cols-1 gap-6`, donuts stacked. Donut size `w-40 h-40` desktop / `w-36 h-36` mobile.
-- No secondary paired bars — the legend rows already carry the per-format %.
+- Grid: `grid-cols-1 gap-4 md:grid-cols-2 md:gap-6`. Panels stack on mobile.
+- Each panel: `rounded-lg border border-default bg-surface-muted/40 p-5`, with side-tinted top accent (1px) and side-tinted `@handle` eyebrow.
+- Each row: `flex items-center justify-between text-sm`, generous `py-2` spacing, a leading **icon** (lucide) carrying the meaning so colour is never the only channel.
 
-## 2. Donut implementation (pure SVG, no library)
+## Row rendering (4 rows per panel)
 
-`<Donut entries={[{key,label,share,colorVar}]} dominant={…} accent="primary"|"competitor" />`:
+| Field | Icon | Value style |
+|---|---|---|
+| Link na bio | `Link2` | "Sim" / "Não" |
+| Nº de links | `ListOrdered` | number (Inter SemiBold, tabular-nums) |
+| Conta verificada | `BadgeCheck` | "Sim" / "Não" |
+| Bio preenchida | `FileText` | "Sim" / "Não" |
 
-- 160×160 viewBox, `r=70`, `strokeWidth=22`, `cx=cy=80`.
-- One `<circle>` per slice using `stroke-dasharray` + `stroke-dashoffset`, starting at -90°.
-- Track ring underneath at `--border-default` alpha for empty/total guidance.
-- Centre `<text>`: dominant label (Inter SemiBold) + share % (tabular-nums) on two lines via `<tspan dy>`.
-- Rounded caps, 1px gap via 2° gap per slice (subtract from dasharray).
+**Signal logic (deterministic, label always present alongside the colour):**
+- `value-positive` (green tone, `--signal-positive`): bio preenchida = Sim, verificada = Sim, ≥1 link.
+- `value-neutral` (`content-secondary`): default for non-comparative values.
+- `value-attention` (amber `--signal-attention`): bio vazia, sem links, não verificada.
+- Never red — these are friction signals, not failures.
+- Each value renders `<Icon /> <span>label</span>` so screen readers + monochrome read fine.
 
-## 3. Palettes (tokens only, no hardcoded hex)
+Use small chip-style background only when signalled (`bg-signal-attention/10`, `bg-signal-positive/10`), text always carries the word — no colour-only encoding.
 
-Primary (azul-led):
-- Reels → `--accent-primary` (#3772E5)
-- Carrosséis → `color-mix(in oklab, var(--accent-primary) 65%, white)`
-- Imagens → `color-mix(in oklab, var(--accent-primary) 35%, white)`
+## Comparison summary strip
 
-Competitor (indigo-led):
-- Reels → `--accent-secondary` (#7664E4)
-- Carrosséis → `color-mix(... secondary 65% ...)`
-- Imagens → `color-mix(... secondary 35% ...)`
+A single horizontal row of up to 3 micro-deltas (only those with a real gap), separated by `·`:
 
-Slice colour is by **format key**, shade family by side, so legends read consistently.
+- Links: `"+N pontos de saída no concorrente"` / `"+N pontos de saída neste perfil"` when diff ≠ 0.
+- Verificação: `"Verificação só no concorrente"` / `"Verificação só neste perfil"` when they differ.
+- Bio: `"Concorrente sem bio preenchida"` / `"Este perfil sem bio preenchida"` when they differ.
 
-## 4. Legend rows
+Empty → strip hides. `text-xs text-content-secondary` on a thin `border-t border-default pt-3`.
 
-Below each donut: vertical list of 3 rows, each `● <swatch> Label … 00 %` (Inter, tabular-nums). Grey out (text-content-tertiary) rows with share = 0.
+## Editorial verdict (footer)
 
-## 5. Centre label
+`buildEditorialVerdict({ primaryLinks, competitorLinks, primaryVerified, competitorVerified, primaryHasBio, competitorHasBio })`:
 
-Dominant = entry with max share. Render:
-- line 1: label (text-sm, content-secondary)
-- line 2: `fmtPct(share)` (text-xl Inter SemiBold, tabular-nums, side-tinted)
+Scoring (deterministic):
+- `score = links + (verified ? 1 : 0) + (hasBio ? 1 : 0)` for each side.
+- Diff = `compScore - primaryScore`.
 
-If two formats are tied within 1pp → show `"Misto"` + total of the two (avoid false dominance).
+Cases (EU-PT, first match wins):
+1. `competitorLinks - primaryLinks >= 2` → **"O concorrente apresenta mais pontos de saída."**
+2. `primaryLinks - competitorLinks >= 2` → **"Este perfil tem menos fricção na bio, com mais pontos de saída."**
+3. `diff >= 2` → **"O concorrente projeta uma bio mais completa e credível."**
+4. `diff <= -2` → **"Este perfil tem uma bio mais completa que o concorrente."**
+5. `|diff| <= 1` AND `|linksDiff| <= 1` → **"Ambos têm uma base semelhante na bio."**
+6. fallback → keep current "sinais de bio semelhantes." line.
 
-## 6. Deterministic footer insight
+## Typography & a11y
 
-Replace `buildFormatInsight` with `buildDonutInsight(primaryEntries, competitorEntries)`:
+- Row labels: `text-sm text-content-secondary`.
+- Values: `text-sm font-semibold tabular-nums` for numbers; `text-sm font-medium` for Sim/Não.
+- Panel header: `.text-eyebrow-sm` with side-tinted colour (`--accent-primary` / `--accent-secondary`).
+- Verdict footer reuses `CompareCardShell` footer slot (no styling change).
+- Each value cell `aria-label` includes the label + value (e.g. "Bio preenchida: Sim").
 
-1. **Sample-too-small guard**: if `competitor.windowAligned === false` OR sum on either side < 90 (rounding tolerance) → return `null`.
-2. Compute **HHI** per side: `sum(share²)/10000` (range 0–1).
-   - concentrated if HHI ≥ 0.55 (≈ one format > 70%).
-   - diversified if HHI ≤ 0.40.
-3. Cases (first match wins, EU-PT):
-   - Both concentrated, different dominants → "Ambos concentram-se num formato distinto: tu em **Reels**, o concorrente em **Carrosséis**."
-   - Primary concentrated, competitor diversified → "Estás concentrado em **{X}** ({n}%); o concorrente distribui-se mais entre formatos."
-   - Competitor concentrated, primary diversified → "O concorrente aposta sobretudo em **{X}** ({n}%); a tua presença é mais equilibrada."
-   - Both diversified → "Ambos mantêm um mix equilibrado entre Reels, Carrosséis e Imagens."
-   - Same dominant, gap ≥ 10pp → existing "investe mais em …" line (kept).
-   - Otherwise → `null` (não inventar padrão).
+## Constraints
 
-## 7. Accessibility / polish
+- No tokens added; reuse existing `--signal-positive`, `--signal-attention`, `--accent-primary`, `--accent-secondary`, `--border-default`, `--surface-muted`.
+- No new packages.
+- `CompareTable` import removed; `CompareCardShell` kept.
+- Single-profile bio card untouched.
 
-- Each donut wrapped in `<div role="img" aria-label="Mix de formatos de @handle: Reels 52%, Carrosséis 30%, Imagens 18%.">`.
-- Numbers: `Intl.NumberFormat("pt-PT", { maximumFractionDigits: 1 })`.
-- No font-mono. Inter SemiBold + tabular-nums per public-UI rule.
+## Validation
 
-## 8. Validation
-
-- `/admin/report-preview/nunomarkl?variant=pro_preview&draft=false` → twin donuts render, centre label correct, legend % matches old paired bars.
-- 375px → donuts stack, no horizontal scroll.
-- Force competitor `formatStats = {}` → component returns `null` (parent falls back to single-profile FormatCard, current behaviour).
-- HHI guard: when competitor sample is tiny (`windowAligned=false`), footer hides instead of overclaiming.
+- `/admin/report-preview/nunomarkl?variant=pro_preview&draft=false` — panels render side-by-side, deltas strip shows real diffs.
+- Both sides identical → strip hides, verdict = "base semelhante".
+- 375px mobile — panels stack, no row overflow.
+- Screen-reader pass: each row reads "<label>: <value>".
+- Colour-blind sim: meaning still conveyed by icon + word.
