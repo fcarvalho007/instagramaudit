@@ -116,6 +116,13 @@ export const Route = createFileRoute("/api/admin/report-detail/$id")({
 
         // Pull the analysis_events row for this snapshot (prefer success),
         // then join to its provider_call_logs row. Read-only — no schema.
+        type ProviderCall = {
+          provider: string;
+          status: string;
+          estimated_cost_usd: number | null;
+          actual_cost_usd: number | null;
+          apify_run_id: string | null;
+        };
         let analysisEvent: {
           id: string;
           handle: string;
@@ -128,13 +135,7 @@ export const Route = createFileRoute("/api/admin/report-detail/$id")({
           duration_ms: number | null;
           competitor_handles: string[];
           snapshot_id: string | null;
-          provider_call: {
-            provider: string;
-            status: string;
-            estimated_cost_usd: number | null;
-            actual_cost_usd: number | null;
-            apify_run_id: string | null;
-          } | null;
+          provider_call: ProviderCall | null;
         } | null = null;
 
         if (r.analysis_snapshot_id) {
@@ -151,11 +152,7 @@ export const Route = createFileRoute("/api/admin/report-detail/$id")({
           const ev = rows.find((e) => e.outcome === "success") ?? rows[0] ?? null;
 
           if (ev) {
-            let providerCall: typeof analysisEvent extends infer T
-              ? T extends { provider_call: infer P }
-                ? P
-                : never
-              : never = null as never;
+            let providerCall: ProviderCall | null = null;
             if (ev.provider_call_log_id) {
               const { data: pcl } = await supabaseAdmin
                 .from("provider_call_logs")
