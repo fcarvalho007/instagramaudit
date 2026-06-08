@@ -1,67 +1,181 @@
-# QA Audit — Pro 30d/90d analysis flow (post PR3.A)
+# 90d Pro analysis — safest runtime smoke plan
 
-Static code audit only — no live calls were issued. Manual browser steps are listed at the end for the user to run.
+No execution. Code/DB read-only. Includes browser snippet, before/after SQL, and rollback. Requires one explicit approval to grant a temporary `report_full_9` entitlement (the database currently has zero Pro leads).
 
-## PASS/FAIL table
+## 1. Test lead
 
-| # | Check | Result | Evidence |
-|---|---|---|---|
-| 1.1 | 30d chip clickable for Pro | PASS | `report-block-nav.tsx:969-994` chip renders `onPeriodPaidClick(days)` when `premiumUnlocked`. |
-| 1.2 | Click opens `ConsumeCreditDialog` | PASS | `report-block-nav.tsx:861-863` → `openConsumeDialog({kind:"period",days})`; dialog mounted at L1072/L923. |
-| 1.3 | Dialog clearly explains "may consume 1 credit if not cached" | PASS | `consume-credit-dialog.tsx:87-92` uses `period_action_body`; pt-PT string `src/i18n/locales/pt/report.json:661` = "Esta análise pode consumir 1 crédito se ainda não existir em cache…". |
-| 1.4 | Confirm sends `POST /api/analyze-public-v1` with `window:"30d"` | PASS | `report-block-nav.tsx:640-645` calls `fetchPublicAnalysis(..., {window: windowKind})`; `client.ts:35-49` posts `{instagram_username, competitor_usernames, window}`. |
-| 1.5 | Navigates to `?w=30d` after success | PASS | `report-block-nav.tsx:683-691` `navigate({ search: prev => ({...prev, w: windowKind}) })`. |
-| 1.6 | Correct toast for cache vs fresh | PASS | `report-block-nav.tsx:670-677` reads `result.data_source` → `period_success_toast_cache` / `_fresh` / `_neutral`. |
-| 1.7 | Refreshes credit balance | PASS | `refreshBalance()` called at L669 (success) and L704/L720 (failure paths). |
-| 2.1 | Pro w/ 0 credits — dialog opens | PASS | Same `openConsumeDialog` path; dialog mounts regardless of balance. |
-| 2.2 | Confirm CTA blocked at 0 credits | PASS | `consume-credit-dialog.tsx:82` `hasCredit = balance >= 1`; L276/296 renders `empty_cta` button instead of confirm CTA — no `onConfirm` invocation possible. |
-| 2.3 | Empty state explains lack of credits | PASS | L157-170 swap title/body to `empty_title`/`empty_body` when `!hasCredit`. |
-| 2.4 | No backend analyze call on empty state | PASS | Empty CTA only calls `onOpenChange(false)` + `onEmptyFeedback?.()` (L298-304). No `fetchPublicAnalysis` reachable. |
-| 3.1 | Free user — 30d/90d show locked/upsell | PASS | L973-994 chip uses `onPeriodLockedClick` when `!premiumUnlocked` → `handlePremiumAccessClick("sidebar_period", …)`. Lock icon rendered L989-991. |
-| 3.2 | No analyze call for Free | PASS | `ConsumeCreditDialog` only mounted when `premiumUnlocked` (L922, L1071). Free path never reaches `fetchPublicAnalysis`. |
-| 3.3 | No credit reservation attempted (Free) | PASS | Server-side defence: `analyze-public-v1.ts:585-599` rejects wide window with `WINDOW_REQUIRES_PRO` **before** `reserveCredit` (L602). |
-| 4.1 | Repeat 30d uses cache, cache toast | PASS | Server returns `data_source:"cache"` for fresh hit; toast maps via L670-677. |
-| 4.2 | No new credit ledger entry on cache repeat | PASS | `analyze-public-v1.ts:601` `skipReserve = cacheFreshHit && alreadyAssociated` → `reserveCredit` not called for same lead+cache_key. |
-| 4.3 | No new `provider_call_logs` entry on cache hit | PASS (by design) | Cache branch returns the existing snapshot without invoking the provider runner. (Confirm via admin diagnostics during manual run.) |
-| 5.1 | 90d wired identically to 30d | PASS | `report-block-nav.tsx:622` `windowKind = days === 90 ? "90d" : "30d"`. Same chip map (`PREMIUM_WINDOWS`), same handler, same dialog. |
-| 5.2 | 90d request body would send `window:"90d"` | PASS | Same `fetchPublicAnalysis(..., {window:"90d"})` path → `client.ts:47`. |
-| 6 | No changes to checkout / EuPago / pricing / schema / Free-Public / competitor comparison UI | PASS (scope) | PR3.A touches only sidebar nav + dialog wiring + analyze client params. None of the protected modules referenced. |
+- **Lead ID**: `01bf861c-6a17-4b36-81b7-130ef2f143da`
+- **Email**: `frederico.carvalho@digitalfc.pt`
+- **Why this lead**: it is the only lead in the DB that already owns the existing 90d snapshot for `frederico.m.carvalho` (row in `lead_reports` for `v1:frederico.m.carvalho|:w=90d`). The snapshot is fresh (expires `2026-06-09 16:01:49+00`). This makes the smoke a **guaranteed cache hit** with **zero provider cost**.
 
-Overall: **all checks PASS in code**. Three items (4.1, 4.3, and a live 90d) still need a manual confirm in browser.
+## 2. Required entitlement state
 
-## Files & lines audited
+- Lead currently has **no** `report_full_9` entitlement (verified: `lead_entitlements` returns 0 rows for this lead).
+- The wide-window Pro gate (`analyze-public-v1.ts:585-599`) runs **before** the cache short-circuit, so without entitlement the request returns `WINDOW_REQUIRES_PRO` and never enters the cache branch.
+- **Action required (separate approval)**: insert one row temporarily, then revoke.
 
-- `src/components/report-redesign/v2/report-block-nav.tsx` — 598-844 (dialog state, onConfirm, period handlers), 861-863, 922-935, 969-994, 1071-1084.
-- `src/components/report-redesign/v2/consume-credit-dialog.tsx` — full file (82, 87-101, 157-170, 240-260, 276-305).
-- `src/lib/analysis/client.ts` — full file (window param forwarding, in-flight guard).
-- `src/routes/api/analyze-public-v1.ts` — 560-635 (Pro gate, lead lookup, skipReserve, INSUFFICIENT_CREDITS), 994-1067 (window-scoped enrichment selection).
-- `src/i18n/locales/pt/report.json:661` and `en/report.json:661` — Pro-friendly `period_action_body` copy.
+Approval-only INSERT (do NOT run until user approves):
 
-## Manual test steps (for the user)
+```sql
+INSERT INTO public.lead_entitlements (lead_id, product_code, granted_at, metadata)
+VALUES (
+  '01bf861c-6a17-4b36-81b7-130ef2f143da',
+  'report_full_9',
+  now(),
+  jsonb_build_object('source','manual_smoke_90d','note','temporary; revoke after test')
+);
+```
 
-Run on the preview at `/analyze/nunomarkl` (Pro test profile). Open DevTools → Network, filter for `analyze-public-v1`.
+## 3. Required credit balance
 
-1. **Pro + credits, fresh 30d**
-   - Click `30d` chip → dialog opens with title "Análise dos últimos 30 dias" and body containing "pode consumir 1 crédito".
-   - Click confirm → expect 1 POST to `/api/analyze-public-v1` with body `window:"30d"`, response `data_source:"fresh"`, toast = `…toast_fresh`, URL becomes `?w=30d`, sidebar balance decrements by 1.
-2. **Cache repeat 30d**
-   - Reload page, click `30d` again → expect POST `window:"30d"`, response `data_source:"cache"`, toast = `…toast_cache`, balance unchanged. Verify in admin no new row in `credit_ledger` / `provider_call_logs` for this lead+cache_key.
-3. **Pro + 0 credits**
-   - Use a Pro lead with `balance = 0`. Click `30d` → dialog title = "Sem créditos" body, only "Enviar feedback" CTA visible, no confirm. No request fired.
-4. **Free user**
-   - Open the report as a Free lead. `30d` chip shows lock icon. Click → upsell dialog, no `analyze-public-v1` call.
-5. **90d (read-only)**
-   - DO NOT confirm yet. Click `90d`, inspect dialog (should say "90 dias"). Cancel. Verify no network request.
-   - If approved, confirm once and check `data_source` + balance behaviour identical to 30d.
+- Current balance: **0** (`SELECT public.credit_balance('01bf861c-...')`).
+- **No top-up needed**. Cache-fresh + already-associated → `skipReserve = true` (server: `analyze-public-v1.ts:601`). The reservation step is bypassed entirely, so balance 0 is fine and is also the strongest proof that no credit was charged.
 
-## Risks before publishing
+## 4. Handle to test
 
-- **Cost risk (low)**: 90d has not been smoke-tested live. Enrichment runs the 90-day Apify scrape and is more expensive than 30d. Surface the cost in admin diagnostics after the first live run.
-- **Double-fetch risk (mitigated)**: After confirm we both fetch and navigate to `?w=30d`; the loader's second fetch is a guaranteed cache hit (server enforces `skipReserve` via `cacheFreshHit && alreadyAssociated`). Inflight guard in `client.ts:15` collapses StrictMode duplicates.
-- **Empty state copy**: The `empty_cta` opens a feedback flow, not a purchase flow. Acceptable for beta — re-evaluate after public launch.
-- **Toast key fallback**: If a future server change drops `data_source`, copy falls through to `period_success_toast_neutral`. No regression, just less specific UX.
-- **Lock chip a11y**: Locked chips use `aria-disabled="true"` but remain clickable (intentional, opens upsell). Confirm SR users get the upsell, not silence.
+- Primary: `frederico.m.carvalho`
+- Competitors: `[]` (must be empty — the existing 90d cache_key has no competitor segment).
 
-## 90d separate live smoke test before public launch?
+## 5. Expected cache_key
 
-**Yes — recommended.** 30d and 90d share UI/client/server code paths, so functional risk is low, but 90d hits a different Apify config (larger sample, higher cost) and has not been exercised. One live confirm on `nunomarkl` is enough to validate provider cost, latency, and resulting snapshot before opening 90d to public Pro users.
+- `v1:frederico.m.carvalho|:w=90d`
+- Built by `buildCacheKey('frederico.m.carvalho', [], '90d')` in `src/lib/analysis/cache.ts:49-60`.
+
+## 6. Expected `credit_ledger` behaviour
+
+- **No new row.** `skipReserve` path means `reserveCredit` is not called.
+- Balance after test must remain `0`.
+- Verification: `SELECT count(*)` filtered to this lead + `created_at > <test_start>` must equal `0`.
+
+## 7. Expected `provider_call_logs` behaviour
+
+- **No new row.** Cache fresh hit returns the existing snapshot without invoking Apify, DataForSEO, or OpenAI.
+- Verification: `SELECT count(*)` filtered to `handle='frederico.m.carvalho' AND created_at > <test_start>` must equal `0`.
+
+## 8. Rollback / cleanup
+
+Run immediately after the smoke (or if the test is aborted):
+
+```sql
+DELETE FROM public.lead_entitlements
+WHERE lead_id = '01bf861c-6a17-4b36-81b7-130ef2f143da'
+  AND product_code = 'report_full_9'
+  AND metadata->>'source' = 'manual_smoke_90d';
+```
+
+Confirm cleanup:
+
+```sql
+SELECT count(*) FROM public.lead_entitlements
+WHERE lead_id = '01bf861c-6a17-4b36-81b7-130ef2f143da'
+  AND product_code = 'report_full_9';
+-- expected: 0
+```
+
+No other tables need cleanup (no ledger row, no provider log, no new snapshot — the cache row already exists and is untouched apart from a possible `updated_at` bump on hit).
+
+## 9. Browser console snippet
+
+Run while logged in as `frederico.carvalho@digitalfc.pt` (cookie `lead_session` must be present) on any page of the app, after the entitlement has been granted.
+
+```js
+// Pro 90d smoke — guaranteed cache hit for an already-owned snapshot.
+// Expected: { success: true, data_source: "cache", ... }
+await fetch("/api/analyze-public-v1", {
+  method: "POST",
+  credentials: "include",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    instagram_username: "frederico.m.carvalho",
+    competitor_usernames: [],
+    window: "90d",
+  }),
+}).then(r => r.json()).then(console.log);
+```
+
+Pass criteria in the response:
+- `success === true`
+- `data_source === "cache"`
+- No 401/403/`WINDOW_REQUIRES_PRO`/`INSUFFICIENT_CREDITS`.
+
+## 10. SQL read-only queries
+
+### Before the test (record a baseline)
+
+```sql
+-- Baseline ledger and provider counts for this lead/handle.
+SELECT now() AS test_start;
+
+SELECT public.credit_balance('01bf861c-6a17-4b36-81b7-130ef2f143da') AS balance_before;
+
+SELECT count(*) AS ledger_rows_before
+FROM public.credit_ledger
+WHERE lead_id = '01bf861c-6a17-4b36-81b7-130ef2f143da';
+
+SELECT count(*) AS provider_rows_before
+FROM public.provider_call_logs
+WHERE handle = 'frederico.m.carvalho';
+
+SELECT id, cache_key, updated_at, expires_at
+FROM public.analysis_snapshots
+WHERE cache_key = 'v1:frederico.m.carvalho|:w=90d';
+
+SELECT count(*) AS owns_report
+FROM public.lead_reports
+WHERE lead_id = '01bf861c-6a17-4b36-81b7-130ef2f143da'
+  AND cache_key = 'v1:frederico.m.carvalho|:w=90d';
+-- expected: 1
+```
+
+### After the test (must match these expectations)
+
+```sql
+-- balance unchanged
+SELECT public.credit_balance('01bf861c-6a17-4b36-81b7-130ef2f143da') AS balance_after;
+-- expected: same as balance_before (0)
+
+-- no new ledger row
+SELECT id, delta, reason, cache_key, created_at
+FROM public.credit_ledger
+WHERE lead_id = '01bf861c-6a17-4b36-81b7-130ef2f143da'
+  AND created_at > '<test_start>'::timestamptz;
+-- expected: 0 rows
+
+-- no new provider call
+SELECT id, provider, status, posts_returned, estimated_cost_usd, created_at
+FROM public.provider_call_logs
+WHERE handle = 'frederico.m.carvalho'
+  AND created_at > '<test_start>'::timestamptz;
+-- expected: 0 rows
+
+-- snapshot row unchanged (id same; updated_at may bump but expires_at unchanged)
+SELECT id, updated_at, expires_at
+FROM public.analysis_snapshots
+WHERE cache_key = 'v1:frederico.m.carvalho|:w=90d';
+
+-- analysis_events should show data_source='cache' for the new event
+SELECT data_source, outcome, analysis_window, created_at
+FROM public.analysis_events
+WHERE handle = 'frederico.m.carvalho'
+  AND created_at > '<test_start>'::timestamptz
+ORDER BY created_at DESC;
+-- expected: 1 row, data_source='cache', outcome='success', analysis_window='90d'
+```
+
+## Approval checklist (tick before executing)
+
+1. [ ] Approve the temporary INSERT into `lead_entitlements` for lead `01bf861c-...` (section 2).
+2. [ ] Confirm test lead, handle, and empty competitor list (sections 1, 4).
+3. [ ] Capture the `Before` SQL output and note `test_start` timestamp (section 10).
+4. [ ] Run the browser snippet (section 9) once, logged in as that lead.
+5. [ ] Capture the `After` SQL output and verify all expectations (section 10).
+6. [ ] Run the rollback DELETE (section 8) and confirm 0 remaining entitlement rows.
+7. [ ] Only after all checks pass, decide whether to open 90d to public Pro users.
+
+## Why this is the safest possible 90d test
+
+- Uses an existing fresh, lead-owned 90d snapshot → the server's `skipReserve = cacheFreshHit && alreadyAssociated` branch fires.
+- Provider runners are not entered on cache-fresh hits → no Apify / DataForSEO / OpenAI cost.
+- Credit ledger is not written → financial side-effects are zero.
+- The only mutation is one temporary `lead_entitlements` row, fully reversible by the rollback in section 8.
+- A live, uncached 90d call (different handle or no existing snapshot) is **not part of this plan** and would require a separate approval because it would hit Apify.
