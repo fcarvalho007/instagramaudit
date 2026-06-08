@@ -19,6 +19,13 @@ interface Props {
    *   top-level Comparison Hero.
    */
   size?: "sm" | "lg";
+  /**
+   * Visual prominence override for the `sm` size. "strong" raises the
+   * pill text and avatar — used by the Phase 2 hero compare cards
+   * (Format Mix / Weekday Rhythm) so their identity row reads louder
+   * than the standard compare cards.
+   */
+  prominence?: "default" | "strong";
   className?: string;
 }
 
@@ -33,6 +40,7 @@ export function CompareHandleRow({
   primary,
   competitor,
   size = "sm",
+  prominence = "default",
   className,
 }: Props) {
   if (size === "lg") {
@@ -51,15 +59,25 @@ export function CompareHandleRow({
   }
 
   return (
-    <div className={cn("flex flex-wrap items-center gap-2", className)}>
-      <Pill side="primary" data={primary} />
+    <div
+      className={cn(
+        "flex flex-wrap items-center",
+        prominence === "strong" ? "gap-3" : "gap-2",
+        className,
+      )}
+    >
+      <Pill side="primary" data={primary} prominence={prominence} />
       <span
         aria-hidden="true"
-        className="text-eyebrow-sm text-content-tertiary"
+        className={cn(
+          prominence === "strong"
+            ? "font-serif text-xl sm:text-2xl text-content-tertiary tracking-tight"
+            : "text-eyebrow-sm text-content-tertiary",
+        )}
       >
         vs
       </span>
-      <Pill side="competitor" data={competitor} />
+      <Pill side="competitor" data={competitor} prominence={prominence} />
     </div>
   );
 }
@@ -69,18 +87,24 @@ export function CompareHandleRow({
 function Pill({
   side,
   data,
+  prominence = "default",
 }: {
   side: "primary" | "competitor";
   data: CompareHandleSide;
+  prominence?: "default" | "strong";
 }) {
   const accent =
     side === "primary"
       ? "border-accent-primary/30 bg-accent-primary/8 text-accent-primary"
       : "border-compare-competitor/30 bg-compare-competitor/8 text-compare-competitor";
+  const strong = prominence === "strong";
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-semibold min-w-0",
+        "inline-flex items-center rounded-full border font-semibold min-w-0",
+        strong
+          ? "gap-2.5 px-3.5 py-1.5 text-sm sm:text-base"
+          : "gap-2 px-3 py-1 text-sm",
         accent,
       )}
     >
@@ -89,12 +113,14 @@ function Pill({
         name={data.handle}
         verified={Boolean(data.isVerified)}
         side={side}
-        sizeClass="size-6"
+        sizeClass={strong ? "size-8" : "size-6"}
         showRing={false}
-        verifiedSizeClass="size-3"
-        verifiedIconClass="size-2"
+        verifiedSizeClass={strong ? "size-3.5" : "size-3"}
+        verifiedIconClass={strong ? "size-2.5" : "size-2"}
       />
-      <span className="truncate max-w-[12rem]">@{data.handle}</span>
+      <span className={cn("truncate", strong ? "max-w-[14rem]" : "max-w-[12rem]")}>
+        @{data.handle}
+      </span>
     </span>
   );
 }
@@ -155,6 +181,28 @@ function VsDivider() {
 }
 
 // ─── Shared avatar ─────────────────────────────────────────────────
+
+export function CompareAvatar(props: {
+  avatarUrl: string | null;
+  name: string;
+  verified?: boolean;
+  side: "primary" | "competitor";
+  sizeClass?: string;
+  showRing?: boolean;
+}) {
+  return (
+    <Avatar
+      avatarUrl={props.avatarUrl}
+      name={props.name}
+      verified={Boolean(props.verified)}
+      side={props.side}
+      sizeClass={props.sizeClass ?? "size-4"}
+      showRing={Boolean(props.showRing)}
+      verifiedSizeClass="size-2.5"
+      verifiedIconClass="size-1.5"
+    />
+  );
+}
 
 function Avatar({
   avatarUrl,
