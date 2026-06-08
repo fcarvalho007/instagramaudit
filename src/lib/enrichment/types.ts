@@ -7,7 +7,8 @@ export type EnrichmentType =
   | "insights_v1"
   | "insights_v2"
   | "visual_cover"
-  | "caption_semantic";
+  | "caption_semantic"
+  | "comparison_readings";
 
 export type EnrichmentStatus =
   | "pending"
@@ -32,6 +33,7 @@ export function buildInitialEnrichmentStatus(): EnrichmentStatusMap {
     insights_v2: "pending",
     visual_cover: "pending",
     caption_semantic: "pending",
+    comparison_readings: "pending",
     comments: "pending",
   };
 }
@@ -68,6 +70,7 @@ export const ENRICHMENT_PRIORITY: Record<EnrichmentType, number> = {
   insights_v2: 21,
   visual_cover: 30,
   caption_semantic: 31,
+  comparison_readings: 40,
 };
 
 /** All enrichment types in priority order. */
@@ -77,6 +80,7 @@ export const ALL_ENRICHMENT_TYPES: EnrichmentType[] = [
   "insights_v2",
   "visual_cover",
   "caption_semantic",
+  "comparison_readings",
 ];
 
 /**
@@ -107,6 +111,7 @@ export const PAID_ENRICHMENT_TYPES: EnrichmentType[] = [
   "insights_v2",
   "visual_cover",
   "caption_semantic",
+  "comparison_readings",
 ];
 
 /**
