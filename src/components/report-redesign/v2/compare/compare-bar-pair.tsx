@@ -13,6 +13,16 @@ interface CompareBarPairProps {
   unit: CompareUnit;
   /** Optional hint shown under the label. */
   hint?: string;
+  /**
+   * Visual shell variant:
+   * - "card" (default): self-contained section with surface-secondary
+   *   shell + eyebrow + hint. Use as a standalone sub-block.
+   * - "bare": no outer shell, no eyebrow, no hint — the parent already
+   *   provides the editorial card chrome (Fraunces title, hint chip).
+   *   Per-row layout switches to "label above, bars below" at every
+   *   breakpoint so it matches the approved comparison reference.
+   */
+  variant?: "card" | "bare";
 }
 
 /**
@@ -30,11 +40,51 @@ export function CompareBarPair({
   categories,
   unit,
   hint,
+  variant = "card",
 }: CompareBarPairProps) {
   const maxValue = Math.max(
     1,
     ...categories.flatMap((c) => [c.primary, c.competitor]),
   );
+
+  if (variant === "bare") {
+    return (
+      <div
+        className="min-w-0"
+        aria-label={`${label}: comparação com concorrente`}
+      >
+        <Legend
+          primaryHandle={primaryHandle}
+          competitorHandle={competitorHandle}
+        />
+        <div className="mt-3 space-y-4">
+          {categories.map((c) => (
+            <div key={c.key} className="space-y-1.5">
+              <span className="block text-xs sm:text-sm text-content-secondary truncate">
+                {c.label}
+              </span>
+              <div className="space-y-1.5">
+                <Bar
+                  value={c.primary}
+                  max={maxValue}
+                  accent="primary"
+                  formatted={c.primaryFormatted ?? formatValue(c.primary, unit)}
+                />
+                <Bar
+                  value={c.competitor}
+                  max={maxValue}
+                  accent="secondary"
+                  formatted={
+                    c.competitorFormatted ?? formatValue(c.competitor, unit)
+                  }
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <section
