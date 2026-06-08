@@ -32,6 +32,11 @@ import { CompetitorFormatCompare } from "./competitor-format-compare";
 import { CompetitorWeekdayCompare } from "./competitor-weekday-compare";
 import { normaliseFormatKey } from "@/lib/report/format-keys";
 import { pickThumbnailUrl } from "@/lib/report/pick-thumbnail";
+import { useComparisonReadings } from "./leitura-ia/use-comparison-readings";
+import {
+  LeituraIaBox,
+  LeituraIaExecutiveSummary,
+} from "./leitura-ia/leitura-ia-box";
 
 function tierLabelFromFollowers(n: number | null | undefined): string | null {
   if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) return null;
@@ -119,6 +124,9 @@ export interface Props {
 export function ReportOverviewBlock({ result, renderInsight: _renderInsight, payload, mode = "all" }: Props) {
   const k = result.data.keyMetrics;
   const enriched = result.enriched;
+
+  // Optional AI editorial readings (cached server-side; null when missing).
+  const aiReadings = useComparisonReadings(payload);
 
   // TODO: multi-competitor layout (Fase 1.5). Today we render only the first
   // entry; the remaining competitors stay in the legacy gauge.
