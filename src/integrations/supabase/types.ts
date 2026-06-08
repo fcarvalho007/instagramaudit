@@ -439,6 +439,7 @@ export type Database = {
       }
       credit_ledger: {
         Row: {
+          analysis_event_id: string | null
           analysis_snapshot_id: string | null
           cache_key: string | null
           created_at: string
@@ -451,6 +452,7 @@ export type Database = {
           reservation_id: string | null
         }
         Insert: {
+          analysis_event_id?: string | null
           analysis_snapshot_id?: string | null
           cache_key?: string | null
           created_at?: string
@@ -463,6 +465,7 @@ export type Database = {
           reservation_id?: string | null
         }
         Update: {
+          analysis_event_id?: string | null
           analysis_snapshot_id?: string | null
           cache_key?: string | null
           created_at?: string
@@ -474,7 +477,15 @@ export type Database = {
           reason?: string
           reservation_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "credit_ledger_analysis_event_id_fkey"
+            columns: ["analysis_event_id"]
+            isOneToOne: false
+            referencedRelation: "analysis_events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_template_history: {
         Row: {
