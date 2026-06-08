@@ -415,6 +415,9 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
             ) : (
               <EngagementCardRefined result={result} />
             )}
+            {firstCompetitor && aiReadings ? (
+              <LeituraIaBox reading={aiReadings.byCard.engagement ?? null} />
+            ) : null}
           </div>
 
           {/* Zona D — Frequência + Tipo de conteúdo (stack vertical) */}
@@ -465,6 +468,12 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
                 socialinsiderRef={result.externalReferences}
               />
             )}
+            {firstCompetitor && aiReadings ? (
+              <div className="space-y-3 mt-2">
+                <LeituraIaBox reading={aiReadings.byCard.cadence ?? null} />
+                <LeituraIaBox reading={aiReadings.byCard.weekday_rhythm ?? null} />
+              </div>
+            ) : null}
             </div>
             <div id="formatos" className="scroll-mt-24">
             {firstCompetitor ? (
@@ -486,6 +495,9 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
                 socialinsiderRef={result.externalReferences}
               />
             )}
+            {firstCompetitor && aiReadings ? (
+              <LeituraIaBox reading={aiReadings.byCard.format_mix ?? null} />
+            ) : null}
             </div>
           </div>
 
@@ -501,6 +513,9 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
             cadenceWindowDays={enriched.cadence.windowDays}
             sampleSize={sample?.performancePosts.length ?? 0}
           />
+          {firstCompetitor && aiReadings ? (
+            <LeituraIaBox reading={aiReadings.byCard.top_posts ?? null} />
+          ) : null}
           </div>
         </>
       )}
