@@ -1223,6 +1223,12 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             // caption_length, is_pinned). Older snapshots have no version
             // and consumers must treat absence as v1 (legacy).
             schema_version: 2 as const,
+            // PR2 — persist the selected public window so the report adapter
+            // can render honest "Últimos 30/90 dias" copy and the empty-feed
+            // case for wide windows. Baseline is written explicitly; legacy
+            // baseline snapshots (no key) are treated as baseline downstream.
+            analysis_window: windowKind,
+            analysis_window_label: primaryWindowCfg.label,
             profile: primaryProfile,
             content_summary: primarySummary,
             competitors: competitorResults,
