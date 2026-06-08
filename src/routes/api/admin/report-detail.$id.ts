@@ -114,6 +114,93 @@ export const Route = createFileRoute("/api/admin/report-detail/$id")({
             0,
           );
 
+        // Pull the analysis_events row for this snapshot (prefer success),
+        // then join to its provider_call_logs row. Read-only — no schema.
+        type ProviderCall = {
+          provider: string;
+          status: string;
+          estimated_cost_usd: number | null;
+          actual_cost_usd: number | null;
+          apify_run_id: string | null;
+        };
+        let analysisEvent: {
+          id: string;
+          handle: string;
+          analysis_window: string | null;
+          cache_key: string | null;
+          data_source: string | null;
+          outcome: string | null;
+          estimated_cost_usd: number | null;
+          posts_returned: number | null;
+          duration_ms: number | null;
+          competitor_handles: string[];
+          snapshot_id: string | null;
+          provider_call: ProviderCall | null;
+        } | null = null;
+
+        if (r.analysis_snapshot_id) {
+          const { data: evRows } = await supabaseAdmin
+            .from("analysis_events")
+            .select(
+              "id, handle, analysis_window, cache_key, data_source, outcome, estimated_cost_usd, posts_returned, duration_ms, competitor_handles, analysis_snapshot_id, provider_call_log_id, created_at",
+            )
+            .eq("analysis_snapshot_id", r.analysis_snapshot_id)
+            .order("created_at", { ascending: false })
+            .limit(10);
+
+          const rows = evRows ?? [];
+          const ev = rows.find((e) => e.outcome === "success") ?? rows[0] ?? null;
+
+          if (ev) {
+            let providerCall: ProviderCall | null = null;
+            if (ev.provider_call_log_id) {
+              const { data: pcl } = await supabaseAdmin
+                .from("provider_call_logs")
+                .select(
+                  "provider, status, estimated_cost_usd, actual_cost_usd, apify_run_id",
+                )
+                .eq("id", ev.provider_call_log_id)
+                .maybeSingle();
+              if (pcl) {
+                providerCall = {
+                  provider: pcl.provider,
+                  status: pcl.status,
+                  estimated_cost_usd:
+                    pcl.estimated_cost_usd == null
+                      ? null
+                      : Number(pcl.estimated_cost_usd),
+                  actual_cost_usd:
+                    pcl.actual_cost_usd == null
+                      ? null
+                      : Number(pcl.actual_cost_usd),
+                  apify_run_id: pcl.apify_run_id ?? null,
+                };
+              }
+            }
+            analysisEvent = {
+              id: ev.id,
+              handle: ev.handle,
+              analysis_window: ev.analysis_window ?? null,
+              cache_key: ev.cache_key ?? null,
+              data_source: ev.data_source ?? null,
+              outcome: ev.outcome ?? null,
+              estimated_cost_usd:
+                ev.estimated_cost_usd == null
+                  ? null
+                  : Number(ev.estimated_cost_usd),
+              posts_returned: ev.posts_returned ?? null,
+              duration_ms: ev.duration_ms ?? null,
+              competitor_handles: Array.isArray(ev.competitor_handles)
+                ? (ev.competitor_handles as unknown[]).filter(
+                    (x): x is string => typeof x === "string",
+                  )
+                : [],
+              snapshot_id: ev.analysis_snapshot_id ?? null,
+              provider_call: providerCall,
+            };
+          }
+        }
+
         const phases = [
           {
             name: "Pedido",
@@ -211,6 +298,7 @@ export const Route = createFileRoute("/api/admin/report-detail/$id")({
             request_source: r.request_source,
             is_free_request: r.is_free_request,
           },
+          analysisEvent,
         };
 
         return jsonResponse({ success: true, detail });

@@ -1007,6 +1007,31 @@ export interface MockReportDetail {
   errorStack?: string;
   errorResponse?: { status: number; body: string };
   snapshotPreview: Record<string, unknown>;
+  /**
+   * Optional real-data block sourced from `analysis_events` +
+   * `provider_call_logs`. Populated by `/api/admin/report-detail/:id`
+   * when the report has a snapshot; absent for mock-only rows.
+   */
+  analysisEvent?: {
+    id: string;
+    handle: string;
+    analysis_window: string | null;
+    cache_key: string | null;
+    data_source: string | null;
+    outcome: string | null;
+    estimated_cost_usd: number | null;
+    posts_returned: number | null;
+    duration_ms: number | null;
+    competitor_handles: string[];
+    snapshot_id: string | null;
+    provider_call: {
+      provider: string;
+      status: string;
+      estimated_cost_usd: number | null;
+      actual_cost_usd: number | null;
+      apify_run_id: string | null;
+    } | null;
+  } | null;
 }
 
 function inferEmail(customer: string): string {

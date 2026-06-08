@@ -2375,6 +2375,51 @@ interface CreditActivityResponse {
   events: AnalysisEventEntry[];
 }
 
+/**
+ * Maps a ledger row to a single human-readable kind chip. Distinguishes:
+ *  - Crédito inicial (initial_grant)
+ *  - Bónus beta (admin_adjust + metadata.kind=post_purchase_beta_bonus)
+ *  - Smoke test top-up (admin_adjust + metadata.kind=smoke_*)
+ *  - Ajuste manual (other admin_adjust)
+ *  - Análise período 30d/90d (reserve with :w= suffix)
+ *  - Análise baseline (plain reserve)
+ *  - Confirmado (confirm)
+ *  - Estorno (release)
+ * TODO: distinguish competitor-only reserves when backend stops bundling them.
+ */
+function ledgerKind(
+  e: LedgerEntry,
+  win: ReturnType<typeof deriveWindow>,
+  isPeriod: boolean,
+): { label: string; variant: AdminAccent } {
+  if (e.reason === "initial_grant") {
+    return { label: "Crédito inicial", variant: "info" };
+  }
+  if (e.reason === "admin_adjust") {
+    const kind =
+      typeof e.metadata?.kind === "string" ? (e.metadata.kind as string) : "";
+    if (kind === "post_purchase_beta_bonus") {
+      return { label: "Bónus beta", variant: "signal" };
+    }
+    if (kind.startsWith("smoke_")) {
+      return { label: "Top-up de teste", variant: "neutral" };
+    }
+    return { label: "Ajuste manual", variant: "neutral" };
+  }
+  if (e.reason === "reserve") {
+    if (isPeriod) {
+      return {
+        label: `Análise · ${windowLabel(win)}`,
+        variant: windowBadgeVariant(win),
+      };
+    }
+    return { label: "Análise baseline", variant: "neutral" };
+  }
+  if (e.reason === "confirm") return { label: "Confirmado", variant: "revenue" };
+  if (e.reason === "release") return { label: "Estorno", variant: "neutral" };
+  return { label: e.reason, variant: "neutral" };
+}
+
 function LeadCreditsTab({ leadId, active }: { leadId: string; active: boolean }) {
   const { data, isLoading, error } = useQuery<CreditActivityResponse>({
     queryKey: ["admin", "lead-credit-activity", leadId],
@@ -2431,7 +2476,6 @@ function LeadCreditsTab({ leadId, active }: { leadId: string; active: boolean })
               <thead>
                 <tr className="text-admin-text-tertiary">
                   <th className="admin-eyebrow px-3 py-2 font-normal">Δ</th>
-                  <th className="admin-eyebrow px-3 py-2 font-normal">Razão</th>
                   <th className="admin-eyebrow px-3 py-2 font-normal">Tipo</th>
                   <th className="admin-eyebrow px-3 py-2 font-normal">Handle</th>
                   <th className="admin-eyebrow px-3 py-2 font-normal">Snapshot</th>
@@ -2442,16 +2486,7 @@ function LeadCreditsTab({ leadId, active }: { leadId: string; active: boolean })
                 {ledger.map((e) => {
                   const win = deriveWindow(null, e.cache_key);
                   const isPeriod = !!e.cache_key && /:w=\d+d$/i.test(e.cache_key);
-                  const reasonVariant: AdminAccent =
-                    e.reason === "initial_grant"
-                      ? "info"
-                      : e.reason === "reserve"
-                        ? "signal"
-                        : e.reason === "confirm"
-                          ? "revenue"
-                          : e.reason === "release"
-                            ? "neutral"
-                            : "neutral";
+                  const kind = ledgerKind(e, win, isPeriod);
                   const deltaColor =
                     e.delta < 0
                       ? "text-admin-danger-500"
@@ -2464,18 +2499,7 @@ function LeadCreditsTab({ leadId, active }: { leadId: string; active: boolean })
                         {e.delta > 0 ? `+${e.delta}` : e.delta}
                       </td>
                       <td className="px-3 py-2">
-                        <AdminBadge variant={reasonVariant}>{e.reason}</AdminBadge>
-                      </td>
-                      <td className="px-3 py-2">
-                        {isPeriod ? (
-                          <AdminBadge variant={windowBadgeVariant(win)}>
-                            período · {windowLabel(win)}
-                          </AdminBadge>
-                        ) : e.reason === "initial_grant" ? (
-                          <span className="text-[12px] text-admin-text-tertiary">grant</span>
-                        ) : (
-                          <AdminBadge variant="neutral">baseline</AdminBadge>
-                        )}
+                        <AdminBadge variant={kind.variant}>{kind.label}</AdminBadge>
                       </td>
                       <td className="px-3 py-2 text-admin-text-secondary">
                         {e.handle ? `@${e.handle}` : "—"}
