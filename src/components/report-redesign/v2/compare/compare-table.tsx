@@ -55,14 +55,14 @@ export function CompareTable({
             >
               <th
                 scope="row"
-                className="py-2.5 pr-3 align-top text-xs text-content-secondary font-normal"
+                className="py-3 pr-3 align-top text-sm text-content-secondary font-normal"
               >
                 {row.label}
               </th>
-              <td className="py-2.5 pr-3 align-top text-content-primary">
+              <td className="py-3 pr-3 align-top text-sm sm:text-base font-semibold tabular-nums text-content-primary">
                 {row.primary}
               </td>
-              <td className="py-2.5 align-top text-content-primary">
+              <td className="py-3 align-top text-sm sm:text-base font-semibold tabular-nums text-content-primary">
                 {row.competitor}
               </td>
             </tr>
