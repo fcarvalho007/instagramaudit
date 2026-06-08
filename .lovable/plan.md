@@ -1,45 +1,82 @@
-# Persistir avatars e thumbnails de concorrentes em Storage
+# Veredito MVP — Relatório Instagram Profile vs Competitor
 
-Reaproveitar a infra atual (`persistThumbnailsInPayload` + bucket `post-thumbnails`) para o lado do concorrente. Aditivo, best-effort, sem schema, sem provider calls, sem mexer em pricing/checkout.
+## TL;DR
+**MVP-ready com 1 bloqueador trivial.** Publicar assim que `/report/example` for sanitizado ou gated. Os 9 cards principais funcionam, têm empty states robustos e não dependem de AI nem de URLs do IG CDN para renderizar.
 
-## Mudanças
+**Recomendação: PUBLICAR após checklist abaixo.** AI fica para v2. LinkedIn/TikTok ficam em research, fora do MVP.
 
-### 1. `src/lib/report-snapshots/persist-thumbnails.server.ts`
-Após persistir o primário (posts + avatar), iterar `payload.competitors[]`:
+---
 
-- Para cada entrada com `success === true` e `profile.avatar_url` que seja IG CDN: chamar `persistOne(...)` com path `competitors/{safeUsername || idx}/avatar` e escrever resultado em `profile.avatar_storage_url`. Aditivo — nunca remover `avatar_url`.
-- Para os primeiros **12** posts em `competitor.posts[]` com `thumbnail_url` IG CDN: persistir em `competitors/{safeUsername || idx}/{shortcode|id|idx}` e escrever `post.thumbnail_storage_url`. Mesma helper `persistOne`, mesmo `mapWithConcurrency` (CONCURRENCY=4 partilhado por concorrente).
-- Estender `PersistSummary` com `competitors_attempted`, `competitors_stored`, `competitors_avatar_ok`, `competitors_avatar_fail` (campos opcionais para não partir testes existentes; preencher sempre que houver concorrentes). Logging adicional em `cache.ts` para visibilidade.
-- Continuar best-effort: cada falha individual fica `null` e o componente cai no fallback.
+## 1. Cards MVP-ready (publicar como estão)
 
-### 2. `src/routes/api/analyze-public-v1.ts` (linhas ~1168-1178)
-Remover `thumbnail_storage_url: _s` do destructure que sanitiza posts de concorrente. Os outros campos (`coauthors`, `tagged_users`, `location_name`) continuam strip por opção editorial. Resultado: `thumbnail_storage_url` (escrito mais à frente em `storeSnapshot` → `persistThumbnailsInPayload`) sobrevive no payload guardado.
+| Card | Razão |
+|---|---|
+| **Comparison Hero** | Dados determinísticos, fallback de avatar com iniciais, sem mock |
+| **Top Posts** | `aiInsightText` opcional, subtitle dinâmico evita falsa janela "30 dias" |
+| **Caption Diagnostics** | AI opcional, extração de temas determinística |
+| **Bio Conversion Path** | Qualitativo, sem risco de crash |
 
-### 3. `src/lib/report/snapshot-to-report-data.ts`
-- **Primário** (linhas ~1698-1703): `enrichedAvatarUrl` passa a tentar `payload.profile.avatar_storage_url` antes de `avatar_url`. Pequena mudança defensiva.
-- **Competitor avatars**: `pickAvatarUrl` (linha 547) já tenta `avatar_storage_url` primeiro — nenhuma mudança.
-- **Competitor post thumbnails**: já passam por `pickThumbnailUrl` nos componentes (top-post compare etc.), que prefere `thumbnail_storage_url`. O passthrough `c.posts as unknown[]` no `competitorBreakdown` (linha 1477-1479) preserva o campo automaticamente.
+## 2. Cards aceitáveis com limitações conhecidas
 
-### 4. Fallback (sem alterações de UI)
-Ordem garantida pela `pickAvatarUrl` / `pickThumbnailUrl` existentes:
-- Avatar: `avatar_storage_url` → `avatar_url` → iniciais
-- Thumbnail: `thumbnail_storage_url` → `thumbnail_url` / `display_url` → placeholder
+| Card | Limitação | Mitigação atual |
+|---|---|---|
+| **Engagement Benchmark** | Strings PT hardcoded; sem benchmark → render `null` | OK para PT-only MVP |
+| **Cadence Evidence Strip** | Só 1º concorrente; thumbnails antigas podem 403 | Mensagem explícita "CDN expirado"; persist-thumbnails ativo para snapshots novos |
+| **Weekday Comparison** | Snapshots pre-Fase 2 sem `weekday_counts` | `hasWeekdayData === false` mostra aside neutro |
+| **Format Mix Donut** | Idem (snapshots antigos) | `MissingSide` graceful |
+| **Competitor Breakdown** | Apenas 1 concorrente exposto, restos silenciosamente ignorados | Não crasha; factualmente incompleto |
 
-### 5. Testes
-- Atualizar `src/lib/report-snapshots/__tests__/persist-thumbnails.test.ts` com 1 cenário extra: payload com `competitors[]` (1 com avatar IG + 2 posts) verifica que `avatar_storage_url` e `thumbnail_storage_url` são escritos quando o mock devolve OK, e ficam `null` em 403 sem partir.
-- Sem teste novo de integração — o caminho `storeSnapshot` é o mesmo.
+## 3. Cards a esconder se data missing
+Já está implementado — todos retornam `null` ou renderizam empty state neutro:
+- Engagement benchmark (`benchmarkSeries.length === 0`)
+- Cadence (frequência ≤ 0 ambos os lados)
+- Weekday (zero data ambos)
+- Format mix (sem stats ambos)
+- AI callouts (`?? null`)
 
-## Não-objectivos (explícitos)
-- Sem chamadas a Apify nem ao IG durante a implementação (validação por unit test).
-- Sem schema/migração.
-- Sem mexer em créditos, checkout, EuPago, entitlements, Free/Public.
-- Sem redesign de componentes — apenas wiring de dados.
-- Posts além dos 12 primeiros do concorrente: não persistir (limite explícito para manter custo previsível).
+## 4. Refinamentos a adiar (post-MVP backlog)
+- Layout multi-competitor (Fase 1.5) — TODOs em 5 cards
+- i18n das strings PT no engagement chart
+- AI editorialVerdict pipeline (schema pronto)
+- Backfill `weekday_counts` / `format_stats` em snapshots antigos
+- Re-run de persist-thumbnails em snapshots cacheados antigos
+- Null guard adicional no `competitor-bio-compare`
 
-## Validação
-- `bun run typecheck` passa.
-- Snapshots primários: comportamento inalterado (mesmas chaves, mesmos limites).
-- `competitorBreakdown[i].avatarUrl` resolve para URL do bucket quando disponível.
-- `competitor.posts[j].thumbnail_storage_url` sobrevive ao snapshot quando o upload teve sucesso.
-- Falha de storage não rebenta a resposta; falls back para CDN e iniciais.
-- Sem reintrodução de 0% enganador — empty states atuais preservados.
+## 5. Bloqueadores antes de publicar
+
+### 🚨 Único bloqueador real
+**`/report/example` expõe `AI_INSIGHTS_MOCK` com copy hardcoded sobre `@frederico.marketing`.**
+- 8 `AIInsightBox` com texto específico ("Pico em 22 Abr (1200+)", "55% abaixo do benchmark"…)
+- Rota é `noindex,nofollow` mas o URL é partilhável e parece análise real
+- **Fix (10 min)**: gate atrás de auth de admin OU substituir copy por placeholder genérico ("Exemplo ilustrativo — perfil fictício")
+
+### Não-bloqueadores (avisar mas publicar)
+- Multi-competitor: silenciosamente mostra só o 1º. Comunicar no copy do produto que MVP suporta **1 concorrente visível**.
+- Snapshots antigos sem thumbnails persistidas: fallback funciona, mensagem honesta.
+
+## 6. AI interpretation → **adiar para v2**
+Todos os cards funcionam sem AI. Schema (`aiInsightsV2.editorialVerdict`, `sections.*`) já existe e tolera `null` em todo o lado. Ligar OpenAI pipeline é uma melhoria de profundidade narrativa, não um requisito de leitura.
+
+## 7. LinkedIn / TikTok → **manter separados**
+Os planos já entregues (`.lovable/plan.md`) são research/economics, não código. MVP é Instagram. Não misturar.
+
+---
+
+## Checklist final pré-publish
+
+- [ ] **BLOQUEADOR**: gate `/report/example` atrás de admin OU substituir `AI_INSIGHTS_MOCK` por copy genérica ("Exemplo ilustrativo")
+- [ ] Smoke test em 3 perfis (1 com competitor válido, 1 sem competitor, 1 com snapshot antigo sem `weekday_counts`)
+- [ ] Confirmar no preview que cards vazios não aparecem (ou aparecem com empty state explícito)
+- [ ] Confirmar que avatar do concorrente carrega de Storage (snapshot novo) e que fallback de iniciais funciona (snapshot velho)
+- [ ] Confirmar mensagem "miniaturas CDN expiradas" em snapshot antigo
+- [ ] Verificar que `/report.example` continua `noindex,nofollow` no `<head>`
+- [ ] Comunicar no copy/onboarding: **"MVP suporta 1 concorrente visível por relatório"**
+- [ ] Anunciar honestamente que AI insights chegam em v2
+
+## Post-MVP backlog (priorizado)
+1. Multi-competitor layout (Fase 1.5) — desbloqueia 5 cards
+2. AI insights pipeline (OpenAI → `aiInsightsV2.editorialVerdict`)
+3. Backfill job para snapshots antigos (weekday_counts, format_stats, thumbnail_storage_url)
+4. i18n EN para landing + report
+5. Refinamento de `competitor-bio-compare` quando ambos os bios estão vazios
+6. Centralizar limite de concorrentes em módulo partilhado
