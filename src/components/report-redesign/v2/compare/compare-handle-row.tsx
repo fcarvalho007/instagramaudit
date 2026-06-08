@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check } from "lucide-react";
+import { Check, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface CompareHandleSide {
