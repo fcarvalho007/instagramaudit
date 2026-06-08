@@ -2349,6 +2349,7 @@ interface LedgerEntry {
   handle: string | null;
   cache_key: string | null;
   analysis_snapshot_id: string | null;
+  analysis_event_id: string | null;
   reservation_id: string | null;
   metadata: Record<string, unknown> | null;
   created_at: string;
