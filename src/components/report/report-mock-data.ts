@@ -151,6 +151,10 @@ export const reportData = {
       | undefined,
     benchmarkDatasetVersion: undefined as string | undefined,
     viewsAvailable: undefined as boolean | undefined,
+    // PR2 — persisted public analysis window for the snapshot the report
+    // was derived from. Undefined for the editorial mock and legacy
+    // baseline snapshots; populated by the real-data adapter only.
+    analysisWindow: undefined as "baseline" | "30d" | "90d" | undefined,
   },
   profile: {
     username: "frederico.marketing",

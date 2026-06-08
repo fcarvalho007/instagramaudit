@@ -1,87 +1,84 @@
-## Phase 2 Visual Refinement — Mix de formatos + Ritmo por dia da semana
+# PR2 — Persist & render selected analysis window
 
-### Gap
+Goal: snapshot/report carry the actual selected window (baseline / 30d / 90d) so the report can honestly say "Últimos 30 dias". No UI selector changes, no provider/payments/credits/entitlement changes.
 
-Current Phase 2 renders `CompareBarPair` directly. That primitive is a small `surface-secondary` block with a tertiary eyebrow label and an 8rem left column for the category name — fine as a sub-block, wrong as a top-level report card. The approved reference shows:
+## 1. `analysis_events` — read-only, do not extend schema
 
-- White editorial card shell (`rounded-2xl border bg-surface-primary shadow-card p-5 sm:p-6`)
-- Fraunces title (`font-serif text-xl sm:text-2xl`)
-- Per row: small category label ABOVE the two stacked bars, not to the left
-- Two bars per row (primary blue, competitor indigo) with right-aligned % / count
-- Deterministic insight footer in a tinted box, only when the gap is meaningful
-- Neutral hint chip "Concorrente em janela baseline." when applicable
+`analysis_events` has no JSON metadata column. Per the constraint, I'm **stopping at this step before editing** and proposing the smallest safe approach:
 
-This matches the engagement card refinement (CompareStatBlock has `variant="card" | "bare"`) — same pattern.
+- **Recommended (this PR, zero schema change):** rely on existing signals.
+  - `analysis_events.cache_key LIKE '%:w=30d'` / `'%:w=90d'` already disambiguates wide vs baseline (validated in PR1).
+  - `analysis_events.analysis_snapshot_id` joins to `analysis_snapshots.normalized_payload.analysis_window` (added in this PR).
+  - Admin BI can already segment by window via these two paths without a new column.
+- **Deferred to PR3 (first-class admin BI):** add `analysis_events.analysis_window TEXT` + index. Out of PR2 scope; explicitly forbidden by your constraint unless you say otherwise.
 
-### Files to edit
+If you want the column added now, say so and I'll insert a migration; otherwise PR2 ships without touching `analysis_events`.
 
-#### 1. `src/components/report-redesign/v2/compare/compare-bar-pair.tsx`
+## 2. Files changed (assuming no `analysis_events` column)
 
-Add a `variant?: "card" | "bare"` prop (default `"card"`, back-compat).
+| File | Change |
+|---|---|
+| `src/routes/api/analyze-public-v1.ts` | At base-snapshot build, add `analysis_window: windowKind` and `analysis_window_label: PUBLIC_WINDOW_CONFIGS[windowKind].label` into `baseNormalizedPayload`. ~6-line addition, no other logic touched. |
+| `src/lib/report/snapshot-to-report-data.ts` | Extend `SnapshotPayload` with `analysis_window?: PublicWindowKind \| null`, `analysis_window_label?: string \| null`. Compute `windowKindResolved` and override `windowLabel` / `windowShortLabel` / `kpiSubtitle` / `sampleCaption` / `temporalLabel` when `windowKindResolved !== "baseline"`. Add `meta.analysisWindow` + `meta.windowLabel` (already exists) + `meta.temporalLabel` (already exists). |
+| `src/components/report/report-mock-data.ts` | Add optional `analysisWindow?: "baseline" \| "30d" \| "90d" \| undefined` to the `meta` type. Default undefined → baseline behaviour byte-compatible. |
+| `src/lib/report/__tests__/snapshot-window.test.ts` | NEW unit test. Fixtures for `analysis_window: "baseline"` (legacy & explicit), `"30d"`, `"90d"`. Asserts `meta.windowLabel`, `meta.windowShortLabel`, `meta.kpiSubtitle`, `meta.sampleCaption`, `meta.temporalLabel` use "Últimos 30 dias" / "Últimos 90 dias" when wide. |
+| `supabase/migrations/<ts>_backfill_30d_snapshot_window.sql` | One-off backfill: `UPDATE analysis_snapshots SET normalized_payload = jsonb_set(jsonb_set(normalized_payload, '{analysis_window}', '"30d"'), '{analysis_window_label}', '"Últimos 30 dias"') WHERE id = '3f8b1dcf-618f-43d6-ada3-4841d2b04620' AND cache_key = 'v1:frederico.m.carvalho\|:w=30d' AND (normalized_payload ? 'analysis_window') = false;` Guarded by id + cache_key + idempotency. No other snapshot touched. |
 
-- `"card"` — current behaviour untouched (any other call site keeps working).
-- `"bare"` — strip the outer `<section>` shell, eyebrow, and hint line (parent renders Fraunces title + hint). Keep the legend + bars. Switch the per-row layout to "label above, bars below" (single column always) so labels sit above bars at every breakpoint, matching the reference. Bars stay 8px tall, right-aligned numeric value w-14 tabular-nums.
+## 3. Exact fields added
 
-No change to math, sorting, accents, or the legend dots.
-
-#### 2. `src/components/report-redesign/v2/competitor-format-compare.tsx`
-
-Replace the bare `<CompareBarPair>` return with the editorial card shell:
+**`analysis_snapshots.normalized_payload`** (new keys):
 
 ```text
-<section class="rounded-2xl border border-border-default bg-surface-primary shadow-card p-5 sm:p-6">
-  <header>
-    <h3 class="font-serif text-xl sm:text-2xl ...">Mix de formatos</h3>
-    {windowAligned === false ? <chip>Concorrente em janela baseline.</chip> : null}
-  </header>
-  <CompareBarPair variant="bare" ... />
-  <InsightFooter />   {/* only when deterministic + meaningful */}
-</section>
+analysis_window:        "baseline" | "30d" | "90d"
+analysis_window_label:  "Últimas publicações" | "Últimos 30 dias" | "Últimos 90 dias"
 ```
 
-`InsightFooter` is a small local helper inside the file (no new primitive). Logic:
-- Compute the absolute gap on the **dominant primary format** (the category with the highest primary share).
-- If `|primary - competitor| < 10 pp` → no footer (don't invent an insight).
-- Else render in pt-PT, exactly one of:
-  - `"O concorrente investe muito mais em ${formatLabel} — ${comp}% contra os teus ${prim}%. Pode explicar parte da diferença de envolvimento."` when competitor > primary by ≥10 pp on its own dominant format.
-  - `"Este perfil investe mais em ${formatLabel} (${prim}% vs ${comp}%)."` when primary > competitor by ≥10 pp on the primary dominant.
-- No "x%" type comparisons, no engagement claims when ER unknown, no superlatives.
+Baseline snapshots written from now on will carry `"baseline"` explicitly. Legacy baseline snapshots (no key present) are treated as `"baseline"` by the adapter — byte-compatible.
 
-Footer styling: `rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-content-secondary leading-relaxed mt-4`.
+**`ReportData.meta`** (new key):
 
-#### 3. `src/components/report-redesign/v2/competitor-weekday-compare.tsx`
+```text
+analysisWindow?: "baseline" | "30d" | "90d" | undefined
+```
 
-Same shell refactor:
+Existing `meta.windowLabel`, `meta.windowShortLabel`, `meta.kpiSubtitle`, `meta.sampleCaption`, `meta.temporalLabel` are unchanged in name; their **values** are overridden when `analysisWindow` is wide:
 
-- Wrap in the editorial card shell with Fraunces title `"Ritmo por dia da semana"`.
-- Use `variant="bare"` on `CompareBarPair`.
-- Move the baseline hint to the card header as a chip (instead of into `CompareBarPair`'s hint slot).
-- Add a deterministic insight footer:
-  - Find each side's peak weekday by ISO index.
-  - If both peaks fall on the same day → `"Os dois perfis concentram publicações em ${day}."`
-  - Else → `"Tu publicas mais em ${primaryPeak}; o concorrente em ${competitorPeak}."`
-  - Skip the footer entirely when `totalPrimary < 3 || totalCompetitor < 3` (sample too small to claim a pattern).
+| meta field | baseline (today) | 30d (new) | 90d (new) |
+|---|---|---|---|
+| `windowLabel` | `últimas N publicações` / `últimos N dias` (derived) | `últimos 30 dias` | `últimos 90 dias` |
+| `windowShortLabel` | `N publicações` / `N dias` | `30 dias` | `90 dias` |
+| `kpiSubtitle` | `N publicações nos últimos M dias` | `N publicações nos últimos 30 dias` | `N publicações nos últimos 90 dias` |
+| `sampleCaption` | `Análise baseada nas últimas N publicações recolhidas.` | `Análise baseada nas N publicações dos últimos 30 dias.` | `Análise baseada nas N publicações dos últimos 90 dias.` |
+| `temporalLabel` | `Evolução temporal · …` (derived) | `Evolução temporal · últimos 30 dias` | `Evolução temporal · últimos 90 dias` |
+| `analysisWindow` | `undefined` | `"30d"` | `"90d"` |
 
-#### 4. Tiny shared piece (optional)
+Empty-window message (Task 6) lives next to `sampleCaption`:
 
-A small `<HintChip>` component is repeated twice. Since it's 4 lines, I'll inline it in both wrappers rather than create a new file — keeps surface area minimal.
+- If `analysisWindow` is `"30d"` and `keyMetrics.postsAnalyzed === 0` → `sampleCaption = "Sem publicações nos últimos 30 dias."`
+- If `analysisWindow` is `"90d"` and `keyMetrics.postsAnalyzed === 0` → `sampleCaption = "Sem publicações nos últimos 90 dias."`
+- Baseline 0-posts continues to early-return at the analyze route with `PROFILE_PRIVATE` / `PROFILE_PERSONAL_NO_FEED` (unchanged).
+- Profile is NOT flagged as private/personal in 30d/90d empty-feed (analyze route already special-cases this — confirmed at `analyze-public-v1.ts:1067-1071`).
 
-### Files NOT touched
+## 4. Not touched (explicit allowlist of skips)
 
-- `report-overview-block.tsx` — wiring already correct from Phase 2 v1.
-- `snapshot-to-report-data.ts` / `weekday-iso.ts` / `format-keys.ts` — data path unchanged.
-- `report-mock-data.ts` — no shape change.
-- Single-profile branches (`FormatCard`, `FrequencyCard`) — untouched.
-- Free / Public / no-competitor paths — untouched.
-- Engagement / cadence Phase 1 compare components — untouched.
-- Apify, OpenAI, DataForSEO, schema, credits, payments, entitlements, checkout, Add Competitor flow, PR1 backend — out of scope.
+- No changes to: `analysis-period-selector.tsx`, sidebar, premium-cta-context, premium dialogs, lead capture.
+- No call to Apify / OpenAI / DataForSEO from any path added by this PR.
+- No changes to: `credits.server.ts`, `lead-reports.server.ts`, `entitlements.server.ts`, `eupago`, `checkout`, `payments`, `pricing_plans`.
+- No changes to: PR1 backend gate (`WINDOW_REQUIRES_PRO`, `reserveCredit`, `hasEntitlement`, cache key suffix).
+- No changes to: Phase 1 / Phase 2 competitor comparison components.
+- No changes to: Free / Public report rendering — adapter override only fires when `analysis_window` is `"30d"` / `"90d"`; legacy baseline snapshots and any free report keep current copy byte-for-byte.
+- No new column on `analysis_events` (see §1).
 
-### Validation
+## 5. Validation checklist
 
-1. `bun tsc --noEmit` passes.
-2. Vitest: existing `weekday-iso.test.ts` still passes.
-3. Visual: `/admin/report-preview/nunomarkl?variant=pro_preview` → Mix de formatos + Ritmo cards now render in the white editorial shell with Fraunces titles, label-above-bars rows, blue/indigo paired bars, and the deterministic insight footer (when the threshold is crossed).
-4. `frederico.m.carvalho` (no competitor) → still original `FormatCard` + `FrequencyCard`.
-5. Free/Public report → unchanged (the swap lives inside `mode === "all" || mode === "locked"` with `firstCompetitor` ternary).
-6. 375px viewport → single-column rows, no horizontal scroll (the new bare layout removes the desktop 8rem fixed column entirely).
-7. No new fetches at render — components read from already-derived `formatEntries`, `payload.posts`, and `competitor.*`.
+1. **Baseline byte-compat** — existing baseline snapshot for `frederico.m.carvalho` (`683e4c21-…`) renders identical `meta.windowLabel` / `meta.sampleCaption` as before. Snapshot test on adapter output for a fixture with no `analysis_window` key.
+2. **30d snapshot** — `3f8b1dcf-…` (after backfill) renders `meta.windowLabel === "últimos 30 dias"`, `meta.sampleCaption === "Análise baseada nas 12 publicações dos últimos 30 dias."`, `meta.analysisWindow === "30d"`.
+3. **Snapshot payload** — `SELECT normalized_payload->>'analysis_window' FROM analysis_snapshots WHERE id='3f8b1dcf-…'` returns `'30d'`.
+4. **Zero provider calls** — pure adapter + DB backfill; verified by code review (no Apify/OpenAI/DataForSEO import added).
+5. **Zero `credit_ledger` rows** — no credit code paths touched.
+6. **Typecheck** — `meta.analysisWindow` typed optional; `SnapshotPayload.analysis_window` typed optional; build passes.
+7. **Unit test** — `src/lib/report/__tests__/snapshot-window.test.ts` covers baseline-legacy, baseline-explicit, 30d, 90d, 30d-empty-feed, 90d-empty-feed.
+
+## 6. Open question
+
+**Add `analysis_events.analysis_window TEXT` now (one migration, indexed) or defer to PR3?** Default of this plan is defer. Reply "add column" if you want it in PR2 — I'll extend the plan with the migration + a one-line write at `recordAnalysisEvent` and update tests.
