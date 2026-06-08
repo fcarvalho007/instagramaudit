@@ -1,140 +1,255 @@
-# Auditoria — Completude de Dados do Concorrente em `nunomarkl`
+# Avaliação — Suporte a LinkedIn como segunda rede e reutilização de cards
 
-> Plan mode. Nenhum ficheiro alterado. Nenhum provider chamado. Nenhuma escrita em DB.
+> Plan mode. Sem alterações de código, sem chamadas a providers.
 
 ## TL;DR
 
-O snapshot atual de `nunomarkl` (`8a9b80ff…`, 2026-05-27) tem 2 concorrentes (`manzarra`, `corpodormente`) mas **cada entrada de concorrente só persistiu 3 chaves**: `success`, `profile`, `content_summary`. Faltam totalmente: `posts[]`, `format_stats`, `weekday_counts`, `top_hashtags`. É um **snapshot velho, anterior ao Phase 2B** — o pipeline atual em `analyze-public-v1.ts:1151–1186` produz esses campos.
+LinkedIn é tecnicamente viável com a combinação dos actores Apify recomendados, mas o **codebase atual é Instagram-only end-to-end** — não existe campo `platform`/`network` no data model, e formato (Reels/Carrosséis/Imagens), fórmula de engagement, tiers de benchmark, vocabulário de CTA, "link na bio" e construção de permalink estão *hardcoded*. Reutilizar os cards atuais sem refactor é impossível; reutilizar via **uma camada de adaptador + variantes de card LinkedIn-específicas** é realista.
 
-Adicionalmente, o `report_snapshot` correspondente (`9d74e329…`) foi gravado com `competitor_usernames: []` — está órfão do bloco de concorrentes, provavelmente baked antes da etapa de competidores concluir.
+**Complexidade estimada:** **Alta** para um MVP credível (3–5 semanas de trabalho). Não é "swap de actor".
 
-**Re-correr "Add Competitor"** repara: format_stats, weekday_counts, top_hashtags, posts[], hashtags, e regenera o report_snapshot.
-
-**NÃO repara via re-run** (são gaps de pipeline, não de snapshot velho):
-- `thumbnail_storage_url` em posts de concorrente — é **explicitamente removido** em `analyze-public-v1.ts:1174`.
-- `avatar_storage_url` de concorrente — pipeline não faz upload de avatars de concorrente para o bucket.
-
-A boa notícia: as componentes de UI já tratam estes casos como "Dados indisponíveis" (não como zero) graças ao trabalho da auditoria anterior — `hasFormatStats`, `hasWeekdayData`, `isPositive(...)` gates, `MissingSide`, fallback de iniciais no avatar.
+**Recomendação:** adoptar os dois actores `apimaestro` (detail + posts) — sem cookies, baratos (~$5/1000) e cobrem perfil + posts. Adiar `harvestapi/linkedin-profile-search` para fase 2 (lead-gen) porque é caso de uso diferente.
 
 ---
 
-## Identidade do snapshot
+## 1. Recomendação de actores
 
-| Campo | Valor |
-|---|---|
-| `analysis_snapshots.id` | `8a9b80ff-15dc-45d4-b40d-b22e588c488b` |
-| `created_at` | 2026-05-27 10:55 UTC |
-| `competitor_usernames` | `["manzarra", "corpodormente"]` |
-| Posts primários | 12 (com caption, hashtags, engagement, mas **sem `thumbnail_storage_url`**) |
-| Concorrentes | 2 (ambos `success: true`) |
-| `report_snapshot.id` | `9d74e329-627b-4fb3-b2c8-85ddf2dde6dd` |
-| `report_snapshot.competitor_usernames` | `[]` (órfão) |
-
----
-
-## Tabela de completude — Competitor #1 (`manzarra`)
-
-| Campo | Raw payload | Mapeado em breakdown | Card que usa | Razão de falha |
+| Actor | Categoria | Usar para MVP? | Custo | Risco |
 |---|---|---|---|---|
-| `username` | ✓ | ✓ | Headers | — |
-| `display_name` | ✓ | ✓ | Headers | — |
-| `avatar_url` (CDN assinado) | ✓ | ✓ | Avatares | Vai expirar → fallback de iniciais |
-| `avatar_storage_url` | ✗ | n/a | — | **Pipeline não persiste avatar de concorrente** |
-| `followers_count` | ✓ | ✓ | Hero, overview | — |
-| `posts_analyzed` | ✓ (via content_summary) | ✓ | Cadence, engagement | — |
-| `average_engagement_rate` | ✓ | ✓ | Engagement | — |
-| `average_likes` / `comments` | ✓ | ✓ | Engagement | — |
-| `dominant_format` | ✓ | ✓ | Overview | — |
-| `estimated_posts_per_week` | ✓ | ✓ | Cadence (stat) | — |
-| `posts[]` | ✗ | `hasPosts: false`, `[]` | Cadence strip, Format derive | **Snapshot velho** (pré Phase 2B) |
-| `format_stats` | ✗ | `hasFormatStats: false`, `null` | Mix de formatos | **Snapshot velho** |
-| `weekday_counts` | ✗ | `hasWeekdayData: false`, zeros | Ritmo por dia | **Snapshot velho** |
-| `top_hashtags` | ✗ | `[]` | Hashtags compare | **Snapshot velho** |
-| `thumbnail_storage_url` (posts concorrente) | ✗ | n/a | Cadence thumbs | **Stripped por design** em `analyze-public-v1.ts:1174` |
+| `apimaestro/linkedin-profile-detail` | Profile details (identidade, about, experiência, educação, followers, picture) | ✅ **Sim** — substituto natural do "profile" do IG actor | $5 / 1k perfis | Baixo — no-cookies |
+| `apimaestro/linkedin-profile-posts` | Lista de posts com texto, reactions (multi-tipo), comments, reposts, media, articles, documents | ✅ **Sim** — equivalente a `latestPosts[]` do IG | $5 / 1k posts (~$0.06 por análise de 12 posts) | Baixo — no-cookies |
+| `harvestapi/linkedin-profile-search` | Search massivo / lead-gen com filtros (cargo, empresa, localização) | ❌ **Não** para MVP — caso de uso diferente (descoberta, não auditoria) | $0.10/page + $0.004–0.01/perfil | Baixo |
+| `apify/linkedin-comments-scraper` ou similar | Comentários raw por post | ⏸ **Fase 2** — só se quisermos `comment_intelligence` em LI | Por confirmar | Médio |
+
+**Razão da escolha:** ambos os actores `apimaestro` são **no-cookies** (sem risco de ban de conta), schema documentado, pricing transparente, e juntos cobrem o equivalente ao output unificado do actor `apify/instagram-scraper` que usamos hoje.
+
+> Comparado com o IG (que faz 1 actor → tudo num call), LinkedIn precisa **2 calls por perfil** (`detail` + `posts`). Custo por análise (perfil + 12 posts) é ~$0.06–0.07, na mesma ordem de grandeza do IG.
 
 ---
 
-## Causa raiz por card
+## 2. Mapa de campos: LinkedIn vs Instagram
 
-| Card | Estado visível | Causa raiz | Re-run resolve? |
+| Conceito | Instagram (actual) | LinkedIn (apimaestro) | Mapeável? |
 |---|---|---|---|
-| Taxa de engagement | ✅ Renderiza dados reais | `content_summary` presente | n/a |
-| Cadência semanal (stat) | ✅ Renderiza | `estimated_posts_per_week` presente | n/a |
-| Cadência semanal (thumbnails) | ⚠️ Tira-só-iniciais / "Miniaturas indisponíveis" | `posts[]` ausente (snapshot velho) **+** `thumbnail_storage_url` strip (design) | **Parcial**: re-run traz posts e captions, mas thumbs continuam a expirar porque pipeline não guarda storage URL para concorrente |
-| Mix de formatos | ⚠️ `MissingSide` "Sem dados de formatos" | `format_stats` ausente + `posts[]` ausente | ✅ Sim |
-| Ritmo por dia | ⚠️ Aside "Sem dados suficientes do concorrente" | `weekday_counts` ausente + `posts[]` ausente | ✅ Sim |
-| Hashtags concorrente | ⚠️ Vazio | `top_hashtags` ausente | ✅ Sim |
-| Avatares concorrente | ⚠️ Iniciais coloridas após expiry | Só CDN assinado, sem `avatar_storage_url` | ❌ Não — gap de pipeline |
-| Bloco competidores no report_snapshot | ✗ Inexistente (`competitor_usernames: []`) | Report baked antes de competitor scrape concluir / via flow antigo | ✅ Sim (re-run completo) |
+| Identity | username, full_name, profile_pic_url, is_verified | publicIdentifier, firstName+lastName, profile_picture, premium/verified | ✅ |
+| Bio / About | biography (string) | summary (string) | ✅ |
+| Followers | followers_count | followerCount + connectionsCount (dois números) | ⚠️ Decidir qual usar (followers é o análogo) |
+| Posts list | latestPosts[] | posts[] (paginado) | ✅ |
+| Post text | caption | text | ✅ |
+| Engagement reactions | likes (1 contagem) | total_reactions + breakdown (like, support, love, insight, celebrate, funny, curious) | ⚠️ Adapter — somar ou expor breakdown |
+| Comments count | comments_count | comments | ✅ |
+| Reposts | n/a | reposts | ➕ Novo sinal LinkedIn |
+| Media | thumbnail_url, video_views | media[] (type, url, thumbnail) | ✅ |
+| Post types | Reels / Carrossel / Imagem | regular text / image / video / document (PDF) / article / quote / reshared / poll / newsletter | ❌ Taxonomia nova |
+| Permalink | `instagram.com/p/{shortcode}` | `linkedin.com/posts/{urn}` | ⚠️ Construtor novo |
+| Hashtags | derivado da caption | derivado do text — mesma extração regex | ✅ (convenção diferente: 3 max vs 3–5) |
+| External link | external_urls[] / "link na bio" | website (campo único) | ⚠️ Conceito diferente — "link na bio" não existe |
+| Cadence | data dos posts → posts/week | igual | ✅ |
+| Bio link | obrigatório no IG (único link) | LinkedIn tem multi-secções de contacto | ❌ Card "integração" precisa variante |
+| Industry/Category | category (string IG) | industryName (taxonomia LinkedIn) | ⚠️ Relabel |
+| Experience/Education | n/a | experience[], education[] | ➕ Novo bloco LinkedIn |
 
 ---
 
-## Zero vs Missing — comportamento atual
+## 3. Matriz de reutilização de cards
 
-| Caso | Render | Verdict |
+| Card actual | Verdict | Razão |
 |---|---|---|
-| `averageEngagementRate === 0` (zero real) | Card `null` (oculto) | ✅ Correto |
-| `estimatedPostsPerWeek === 0` (zero real) | Card `null` (oculto) | ✅ Correto |
-| `weekdayCounts = [0…0]` derivado de posts ausentes | Aside "Sem dados" | ✅ Correto (graças à flag `hasWeekdayData`) |
-| `formatStats === null` ausente | `MissingSide` panel | ✅ Correto (graças à flag `hasFormatStats`) |
-| `posts_analyzed` divergente entre lados | Usa o valor de cada lado, sufixo "Dados do concorrente indisponíveis" quando assimétrico | ✅ Correto (post-auditoria anterior) |
+| FormatCard (Mix de formatos) | 🆕 **Nova variante** | Taxonomia (Reels/Carrossel/Imagem) hardcoded em 7+ ficheiros + benchmarks IG-calibrados |
+| FrequencyCard (cadência) | 🔁 **Relabel** + recalibrar benchmark | Engine `cadence.ts` é date math puro; números de referência (postsPerMonth) são IG |
+| EngagementCardRefined | 🆕 **Nova variante** | Fórmula `(likes+comments)/followers` é IG; LinkedIn precisa somar reactions multi-tipo + reposts |
+| HashtagDiagnosticsCard | 🔁 **Relabel** | Extração reusa; range 3–5 → ~3 para LinkedIn |
+| CaptionDiagnosticsCard | 🆕 **Nova variante** | CTAs e vocabulário IG ("link na bio", "guarda") não existem em LinkedIn |
+| ComparisonHero | 🔁 **Relabel** | Labels mudam; estrutura intacta |
+| ReportHeroV2 | 🔁 **Relabel** + recalibrar tiers | Conceito de tiers OK; thresholds IG-calibrados |
+| OverviewBlock | 🆕 **Nova variante** | Orquestra sub-cards IG-específicos |
+| Block02 Q07 Integração (link na bio) | 🆕 **Nova variante** ou **drop** | "Link na bio" não é conceito LinkedIn |
+| Block02 Q05 Caption / Funil | 🆕 **Nova variante** | Termos de funnel IG ≠ LinkedIn |
+| Top Posts / Post Comparison | 🔁 **Adapter** | Conceito reusa; permalink + `video_views` precisam adapter |
+| LeituraIaBox | ✅ **As-is** | Wrapper de texto IA puro |
+| VisualCoverAnalysisCard | ✅ **As-is** (se thumbs existirem) | Funciona com qualquer imagem |
+| CommentIntelligence | 🔁 **Adapter** | Estrutura semelhante; precisa novo scraper |
+| StrategicContextCard | 🆕 **Nova variante** | `INSTAGRAM_BENCHMARK_CONTEXT` precisa par `LINKEDIN_*` |
+| BenchmarkEvidenceCard | 🆕 **Nova variante** | Fontes diferentes (LinkedIn Business, etc.) |
+| Competitor compare cards (todos) | 🔁 **Semi-coupled** | Mesma lógica, dados diferentes |
+| ScoreCard / ScoreGrid | 🔁 **Recalibrar pesos** | Pesos IG-calibrados |
+| EditorialIdentityCard | 🔁 **Relabel** + adapter | Category → industryName |
 
-**Conclusão:** o tratamento "zero vs missing" já foi corrigido na pass anterior. Não há regressão — o que vê na rota é o estado *correto* perante um snapshot velho.
+**Reusáveis as-is:** 2 cards (LeituraIA, VisualCover).
+**Relabel/adapter:** ~8 cards.
+**Nova variante:** ~9 cards.
 
 ---
 
-## Cards seguros para MVP
+## 4. Data model agnóstico proposto
 
-Todos os cards de comparação são seguros para MVP — degradam-se com mensagens explícitas. O que precisa de ação **operacional** (não de código):
+Adicionar campo `network: "instagram" | "linkedin"` no topo de `PublicAnalysisProfile` e `SnapshotPayload`, e introduzir tipos plataforma-agnósticos:
 
-1. **Re-correr análise completa de `nunomarkl` com os mesmos concorrentes** para gerar snapshot novo com `posts[]`, `format_stats`, `weekday_counts`, `top_hashtags` e regenerar o `report_snapshot` com `competitor_usernames` populado.
+```ts
+type Network = "instagram" | "linkedin";
 
-E precisa de ação **de pipeline** (separada, plano próprio):
+interface Profile {
+  network: Network;
+  handle: string;          // username (IG) | publicIdentifier (LI)
+  displayName: string;
+  avatarUrl: string;
+  bio: string;             // biography | summary
+  followers: number;       // IG followers | LI followerCount
+  connections?: number;    // LI only
+  industry?: string;       // category (IG) | industryName (LI)
+  isVerified?: boolean;
+  externalUrls: string[];  // IG external_urls | LI [website]
+  experience?: Experience[]; // LI only
+  education?: Education[];   // LI only
+}
 
-2. Persistir `avatar_storage_url` para concorrentes (igual ao perfil principal).
-3. Persistir `thumbnail_storage_url` para posts de concorrente (remover o strip em `analyze-public-v1.ts:1174` para este campo apenas, ou fazer upload deliberado).
+interface ContentItem {
+  network: Network;
+  id: string;
+  permalink: string;       // built per-network
+  text: string;            // caption | text
+  format: FormatKey;       // network-specific union
+  takenAt: string;
+  thumbnail?: string;
+  engagement: EngagementMetrics;
+  hashtags: string[];
+  mentions: string[];
+  links: string[];
+  reposts?: number;        // LI
+  articleRef?: { title: string; url: string }; // LI
+  documentRef?: { url: string; pages: number }; // LI
+  videoViews?: number;     // IG Reels | LI video
+  videoDuration?: number;
+}
 
----
+interface EngagementMetrics {
+  network: Network;
+  reactionsTotal: number;        // likes (IG) | sum(reactions) (LI)
+  reactionsBreakdown?: Record<string, number>; // LI multi-type
+  commentsTotal: number;
+  reposts?: number;              // LI
+  engagementRate: number;        // network-specific formula
+}
 
-## Prompt exato para corrigir tratamento de dados em falta (futuro)
+interface FormatDistribution {
+  network: Network;
+  counts: Record<string, number>; // keys depend on network
+  dominant: string;
+}
 
-> Já implementado na auditoria anterior. Não há novo trabalho de UI necessário.
-> Se quiseres reforçar, eis o prompt-tipo para uma próxima ronda:
+interface Cadence { /* date-math, agnostic */ }
 
+interface BioOutboundLinks { /* multi-link list, agnostic */ }
+
+interface NarrativeInsights { /* IA output, agnostic */ }
 ```
-Goal: persistir storage para avatars e thumbnails de concorrente.
 
-Tasks:
-1. Em analyze-public-v1.ts, após buscar cada concorrente, fazer upload do
-   avatar e dos thumbnails dos posts para o bucket `post-thumbnails`
-   (mesmo helper usado para o perfil primário).
-2. Remover ou condicionar o strip de `thumbnail_storage_url` na linha 1174
-   para manter o campo nos posts de concorrente.
-3. Adicionar `avatar_storage_url` no profile do concorrente e mapear em
-   snapshot-to-report-data.ts.
-4. Manter compatibilidade com snapshots velhos: `pickAvatarUrl()` continua
-   a fazer fallback para `avatar_url` (CDN) se storage estiver vazio.
-5. Não alterar UI: as componentes já consomem o campo se existir.
-6. Sem novos providers, sem novos actors Apify, sem alterar schema.
+Format taxonomy por rede:
 
-Validation:
-- Novo snapshot de nunomarkl tem `competitors[0].profile.avatar_storage_url`
-  populado e `posts[].thumbnail_storage_url` populado.
-- Re-render do report após 24h continua a mostrar avatares e thumbnails
-  (CDN URLs já expiraram, storage URLs persistem).
-- Typecheck passa, snapshots velhos continuam a renderizar com fallback.
+```ts
+type InstagramFormat = "Reels" | "Carrosséis" | "Imagens";
+type LinkedInFormat = "Text" | "Image" | "Video" | "Document" | "Article" | "Poll" | "Newsletter" | "Repost";
+type FormatKey = InstagramFormat | LinkedInFormat;
 ```
 
 ---
 
-## Ação imediata recomendada
+## 5. Premissas Instagram-only confirmadas
 
-1. **Re-correr** o "Add Competitor" / análise completa de `nunomarkl` com `manzarra` e `corpodormente` — repara 6 dos 8 cards afetados sem qualquer código.
-2. Verificar visualmente em `/admin/report-preview/nunomarkl?variant=pro_preview&draft=false` que após o novo snapshot:
-   - Mix de formatos mostra donut do concorrente,
-   - Ritmo por dia tem 7 barras do concorrente,
-   - Hashtags comparativas aparecem,
-   - report_snapshot.competitor_usernames está populado.
-3. Avatares e thumbnails de concorrente continuarão a expirar — abrir plano separado para o ponto 2/3 acima quando for prioritário.
+(file:line condensado — relatório completo no audit)
 
-> Aguardar aprovação ou pedido específico para avançar com qualquer alteração de código.
+1. **Format taxonomy** — `Reels/Carrosséis/Imagens` em `benchmark/types.ts:8`, `format-keys.ts`, `format-card.tsx`, `reference-data.ts`, `snapshot-to-report-data.ts`.
+2. **Bio link** — `external_urls` e `instagram.com/{user}` em `snapshot-to-report-data.ts:1706`, `block02-diagnostic.ts:895–911`.
+3. **Hashtag range 3–5** — `instagram-caption-context.ts` (IG-sourced).
+4. **Tiers** — nano/micro/mid/macro/mega calibrados com ER IG (5.6%→0.35%) em `reference-data.ts:38–42`.
+5. **Permalinks** — `instagram.com/p/{shortcode}` hardcoded em `snapshot-to-report-data.ts:874, 1746, 1818`.
+6. **Engagement formula** — `(likes+comments)/followers` em `normalize.ts computeContentSummary()`.
+7. **video_views** — só Reels; copy "Reels ajudam descoberta" em `benchmark-context.ts:265`.
+8. **CTA vocabulary** — "link na bio", "guarda", "partilha" em `block02-diagnostic.ts:300, 402`.
+9. **Network label** — string `"instagram"` em 10+ sítios; **não existe** campo `platform/network`.
+
+---
+
+## 6. MVP LinkedIn proposto
+
+### Fase 0 — Foundation (1 semana)
+- Adicionar `network: Network` em todos os snapshots / payloads / DB rows.
+- Migration: `analysis_snapshots` já tem `network`; verificar e backfill se necessário.
+- Criar `LinkedInFormatKey` + variant types.
+- Provider abstraction: `providers/linkedin-apimaestro.ts` ao lado de `apify-client.ts`.
+
+### Fase 1 — Free LinkedIn report (1.5 semana)
+- Apify integration: `apimaestro/linkedin-profile-detail` + `apimaestro/linkedin-profile-posts`.
+- Normalizer LinkedIn → `Profile` + `ContentItem[]`.
+- Cards: **ReportHeroV2 (relabel)**, **FrequencyCard (relabel + LI benchmark)**, **EngagementCardRefined (nova variante)**, **FormatCard (nova variante, LI taxonomy)**, **HashtagDiagnosticsCard (relabel, max 3)**.
+- Sem competitor.
+
+### Fase 2 — Paid LinkedIn report (1.5 semana)
+- Editorial diagnostic block (nova variante LinkedIn — sem "link na bio", com "repost rate" e "comment-to-impression" signals).
+- Strategic context card (novo `LINKEDIN_BENCHMARK_CONTEXT`).
+- `caption_semantic` AI enrichment com prompt LinkedIn-aware.
+- `insights_v2` com namespace LI.
+- Top Posts com permalink LinkedIn.
+
+### Fase 3 — Competitor comparison (1 semana)
+- Compare cards (semi-coupled) com dados LinkedIn.
+- `comparison_readings` AI com prompt LinkedIn.
+
+### Fase 4 — Opcional
+- `harvestapi/linkedin-profile-search` para descoberta de concorrentes ("competitors at same industry/seniority").
+- LinkedIn comment scraper para `comment_intelligence`.
+
+---
+
+## 7. Complexidade & esforço
+
+| Tipo de trabalho | Esforço |
+|---|---|
+| Adicionar `network` discriminator em toda a stack | **Alto** — toca em 20+ ficheiros tipados |
+| Novo provider (Apify LI x2 actors) | **Médio** — pipeline já existe para Apify |
+| Novo normalizer LinkedIn | **Médio** — schema bem documentado |
+| Novas variantes de card (~9) | **Alto** — duplicação ou abstração por `network` |
+| Nova reference data + benchmarks | **Médio** — precisa de fontes (Hootsuite, Socialinsider LinkedIn) |
+| Novo prompt AI por rede | **Médio** — duplicar `INSTAGRAM_CAPTION_CONTEXT` |
+| UI router/picker (escolher rede no analyze flow) | **Baixo** |
+| **Total MVP credível** | **~3–5 semanas** |
+
+---
+
+## 8. Riscos
+
+| Risco | Severidade | Notas |
+|---|---|---|
+| **Volatilidade do actor LinkedIn** | Médio | LinkedIn é mais hostil a scraping que Instagram; actors no-cookies têm risco de quebra periódica |
+| **Custo por análise** | Baixo | 2 calls × $0.005 = $0.01–0.07 por perfil + posts. Similar ao IG |
+| **Reference data LinkedIn** | Médio | Benchmarks públicos LinkedIn são menos abundantes que IG (Socialinsider tem dados, Hootsuite, Hootsuite/Sprout). Precisamos seed novo |
+| **Falta de "link na bio"** | Médio | Q07 (integração) tem que ser repensado para LinkedIn ou removido |
+| **Reactions multi-tipo** | Baixo | Mais sinal disponível que IG; oportunidade editorial |
+| **Connections cap (30k)** | Baixo | Para perfis pessoais; company pages não têm cap |
+| **Legal/ToS** | Médio | LinkedIn ToS proíbe scraping; actors comerciais Apify operam em zona cinzenta. Risco reputacional se publicado |
+| **AI prompt drift** | Baixo | Mitigável com `INSTAGRAM_*` vs `LINKEDIN_*` context modules |
+| **Tier benchmarks** | Médio | Followers ≠ connections; tiers precisam recalibrar |
+
+---
+
+## 9. Próximas fases de implementação
+
+1. **Decision gate** (não-código): confirmar viabilidade de negócio + apetite para legal/ToS.
+2. **Spike técnico (3 dias)**: corrida real dos 2 actors com 3 perfis de teste, mapear schema vs assumido, validar custo real.
+3. **Fase 0 — Foundation** (1 semana): `network` discriminator + types + DB.
+4. **Fase 1 — Free LI report** (1.5 semana).
+5. **Fase 2 — Paid LI report** (1.5 semana).
+6. **Fase 3 — Competitor comparison LI** (1 semana).
+7. **Fase 4 — Discovery/lead-gen** (opcional, separado).
+
+---
+
+## Resposta resumida às perguntas
+
+- **Pode AuditProfiles suportar LinkedIn?** Tecnicamente sim, com 2 actores no-cookies da `apimaestro`.
+- **Cards atuais reutilizam-se?** Apenas ~2 as-is (LeituraIA, VisualCover). ~8 relabel/adapter, ~9 precisam variante nova.
+- **Bloqueio principal:** ausência de discriminator `network` no data model + acoplamento profundo a taxonomia, benchmarks e vocabulário Instagram.
+- **MVP realista:** 3–5 semanas de trabalho dedicado para um free + paid LinkedIn report com competitor comparison.
+- **Recomendação imediata:** se for prioridade estratégica, começar pela Fase 0 (foundation). Se for "exploração", fazer só o spike técnico primeiro.
+
+> Sem código alterado. Aguardo decisão antes de qualquer implementação.
