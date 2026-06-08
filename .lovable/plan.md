@@ -1,103 +1,99 @@
-## Current state vs requirements
 
-Most of this work was already shipped in a prior turn. Verified in code:
+## Goal
 
-| Requirement | Status | Where |
-|---|---|---|
-| Reports table — Janela / Origem / Concorrentes / Snapshot / Criado columns | **Already done** | `src/components/admin/v2/relatorios/reports-table-section.tsx` (uses `deriveWindow`, `windowBadgeVariant`) |
-| Lead detail — Saldo actual, summary, ledger timeline (delta / reason / handle / snapshot id / created_at), period vs grant chip | **Already done** | `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` "Créditos" tab |
-| Lead detail — recent analysis events for the lead's handles | **Already done** | same file, "Análises recentes" sub-section |
-| `deriveWindow` / `windowBadgeVariant` / `windowLabel` helpers | **Already done** | `src/lib/admin/analysis-window.ts` |
-| `/api/admin/lead-credit-activity/:id` read endpoint | **Already done** | `src/routes/api/admin/lead-credit-activity.$id.ts` |
+When the competitor side of a snapshot lacks Phase 2 fields (older snapshots) or has expired CDN URLs, the comparison cards currently render **misleading 0% donuts, empty weekday bars, and broken avatars**. Fix this in the adapter + components — no schema changes, no provider calls, no backend changes.
 
-Validation already satisfied:
-- Reports table makes snapshot `3f8b1dcf…` identifiable as `30d` and baseline rows as `baseline`.
-- Owner lead `01bf861c…` shows balance, ledger and recent events without raw SQL.
+## Scope (files only)
 
-## What is still missing
+1. `src/components/report/report-mock-data.ts` — type widening
+2. `src/lib/report/snapshot-to-report-data.ts` — robust field reads
+3. `src/components/report-redesign/v2/competitor-format-compare.tsx`
+4. `src/components/report-redesign/v2/competitor-weekday-compare.tsx`
+5. `src/components/report-redesign/v2/competitor-cadence-compare.tsx`
+6. `src/components/report-redesign/v2/overview/comparison-hero.tsx`
 
-Only requirement **#3 (Analysis detail / report drawer)** is partial. `src/components/admin/v2/report-drawer.tsx` renders `MockReportDetail` plus `costs`/`events` but never shows:
+No changes to: backend, providers, schema, credits, EuPago, checkout, entitlements, Free/Public, or the legacy `ReportCompetitors` component.
 
-- analysis window (baseline / 30d / 90d)
-- cache_key
-- data source (cache / fresh / blocked)
-- short snapshot id
-- competitor handles
-- per-run estimated / actual cost in a way tied to the analysis_event
+## Changes
 
-And ledger labelling in the lead sheet doesn't yet distinguish two extra kinds the user asked for: **purchase included** and **beta bonus** (both currently appear as plain `reserve` / `admin_adjust`).
+### 1) Adapter — robust competitor field reads (no new payload fields)
 
-No schema change is needed — every field already lives in `analysis_events`, `provider_call_logs`, and `credit_ledger.metadata`.
+In `snapshot-to-report-data.ts` (~lines 1296–1410), widen the source reads using ONLY fields that already exist in `analysis_snapshots.normalized_payload`:
 
-## Plan (read model + UI only)
+- `avatarUrl` ← first non-empty of: `profile.avatar_storage_url`, `profile.avatar_url`, `profile.profile_pic_url_hd`, `profile.profile_pic_url`.
+- For each competitor post mapped into `posts[]`, keep existing fields and also expose: `thumbUrl` (resolved via `pickThumbnailUrl({thumbnail_storage_url, thumbnail_url, display_url})`), `permalink`, `takenAt`, `weekday`, `format`, `likes`, `comments`, `engagementPct`, `caption` — only when each field is present on the raw post.
+- Recompute `weekdayCounts`/`weekdayCountsIso` from `competitors[i].posts[*].weekday` when `weekday_counts` is missing but `posts[]` is present (silent legacy upgrade — no fake data).
+- Recompute `formatStats` from `competitors[i].posts[*].format` the same way (count + share_pct) when `format_stats` is missing but `posts[]` is present.
+- Add boolean flags so components can render correct empty states:
+  - `hasPosts` (boolean) — true iff `posts[]` has ≥1 entry after mapping.
+  - `hasFormatStats` (boolean) — true iff `formatStats` is present with ≥1 non-zero share.
+  - `hasWeekdayData` (boolean) — true iff `weekdayCountsIso` sum > 0.
+  - `avatarMissing` (boolean) — true iff none of the avatar URL candidates exist (different from "URL exists but image fails to load" — that case is detected client-side).
 
-### 1. Extend `/api/admin/report-detail/:id` (read-only)
+These are derived from existing data; no payload changes.
 
-`src/routes/api/admin/report-detail.$id.ts` — add a new `analysisEvent` block to the response when the report has a snapshot:
+### 2) Type widening — `ReportCompetitorBreakdownEntry`
+
+In `report-mock-data.ts`, add the new optional flags + `posts[]` becomes a typed array (still `unknown[]`-compatible to avoid downstream churn):
 
 ```ts
-analysisEvent: {
-  id, analysis_window, cache_key, data_source, outcome,
-  estimated_cost_usd, posts_returned, duration_ms,
-  competitor_handles: string[],
-  snapshot_id: string | null,
-  provider_call: { provider, status, estimated_cost_usd, actual_cost_usd, apify_run_id } | null
-}
+hasPosts?: boolean;
+hasFormatStats?: boolean;
+hasWeekdayData?: boolean;
+avatarMissing?: boolean;
 ```
 
-Logic: look up the latest `analysis_events` row by `analysis_snapshot_id` (prefer `outcome='success'`), then join to `provider_call_logs` by `provider_call_log_id`. Read-only, no writes.
+Update the mock entry to set `hasPosts: false, hasFormatStats: true, hasWeekdayData: true` so `/report.example` keeps current visuals.
 
-### 2. Update `MockReportDetail` type and drawer (UI)
+### 3) `competitor-format-compare.tsx` — neutral state when competitor stats missing
 
-`src/lib/admin/mock-data.ts` — extend the type with an optional `analysisEvent` matching the API shape (kept optional so mock data still works).
+- If `competitor.hasFormatStats === false`:
+  - Render the **primary donut** as usual.
+  - On the competitor side, swap the donut + 0% list for a centered neutral block: icon + caption **"Dados do concorrente indisponíveis nesta amostra."** + sub-line "Mix de formatos requer publicações analisadas no concorrente."
+- If `competitor.hasFormatStats === true` but every share is `0` → keep current "Sem dados" centered label (real zero is rare but possible).
+- Do not change the primary side rendering or the card insight footer (skip insight when competitor is in neutral state — `buildDonutInsight` already returns null in that case).
 
-`src/components/admin/v2/report-drawer.tsx`:
+### 4) `competitor-weekday-compare.tsx` — neutral state when weekday missing
 
-- **DrawerHeader**: add a row of badges right of `StatusBadge` — Janela (uses `windowBadgeVariant`), Origem (`AdminBadge` info=cache / signal=fresh / danger=blocked / neutral=other), Concorrentes (chip with count + tooltip listing handles).
-- New **AnalysisEventCard** section between `PhasesGrid` and `CostsTable`:
-  - Handle (`@frederico.m.carvalho`)
-  - Janela badge
-  - `cache_key` in `admin-code`
-  - Data source badge
-  - Provider status (`apify · success`)
-  - Estimated / actual cost (tabular-nums)
-  - Snapshot id (first 8 chars, `admin-code`)
-  - Competitor handles (inline chips, "—" if empty)
-- Gracefully render nothing when `analysisEvent` is null (mock-only rows).
+- If `competitor.hasWeekdayData === false` and primary has data:
+  - Render primary as a single-side bar chart inside the same `CompareCardShell` slot, with a neutral footer note **"Ritmo do concorrente indisponível nesta amostra."**
+  - Skip insight.
+- If both sides are zero → keep current `return null`.
 
-### 3. Ledger label refinement (lead detail)
+### 5) `competitor-cadence-compare.tsx` — clearer sample strip empty state
 
-`src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` — in the ledger row mapper, derive a single `ledgerKind` chip with these labels:
+- Keep `extractRecentPosts` using existing `pickThumbnailUrl` helper (already prefers storage URL → thumbnail → display).
+- When `competitorStrip.length === 0` AND `competitor.hasPosts === false`, render a single competitor-side neutral block: **"Sem amostra recente do concorrente nesta análise."** (do not render empty placeholders pretending posts exist).
+- When `competitorStrip.length === 0` AND `competitor.hasPosts === true` (posts exist but every thumb URL is null/expired), render the placeholder strip with the existing methodology note: "Miniaturas indisponíveis (links de CDN expirados)."
 
-- `initial_grant` → "Crédito inicial" (info)
-- `admin_adjust` + `metadata.kind='post_purchase_beta_bonus'` → "Bónus beta" (signal)
-- `admin_adjust` + other → "Ajuste manual" (neutral)
-- `reserve` + cache_key suffix `:w=30d|:w=90d` → "Análise período · 30d/90d" (uses `windowBadgeVariant`)
-- `reserve` + plain baseline → "Análise baseline" (neutral)
-- `confirm` → "Confirmado" (revenue)
-- `release` → "Estorno" (neutral)
-- (Competitor-only purchases are bundled in primary today, so no separate chip yet — leave a `// TODO` for when that changes.)
+### 6) `comparison-hero.tsx` — avatar fallback + methodology copy
 
-To support this, `/api/admin/lead-credit-activity/:id` must include `metadata.kind` in the returned ledger rows. Verify it does; if not, expand the SELECT to include `metadata`.
+- `CompareAvatar` already falls back to initials gradient on `onError` — no change needed there.
+- Add a defensive `avatarMissing` check in `IdentityCard`: when `avatarUrl == null`, render initials directly (skip the `<img>` mount that would briefly flicker).
+- Methodology footnote: when `competitor.hasPosts === false`, append **"Algumas comparações detalhadas (mix, ritmo, miniaturas) requerem análise mais recente do concorrente."**
 
-### Files touched
+## Empty-state taxonomy (single source of truth for components)
 
-- `src/routes/api/admin/report-detail.$id.ts` (extend response)
-- `src/lib/admin/mock-data.ts` (extend type, optional field)
-- `src/components/admin/v2/report-drawer.tsx` (header badges + new card)
-- `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` (label refinement)
-- `src/routes/api/admin/lead-credit-activity.$id.ts` (include `metadata` if missing)
+| State | Trigger | Render |
+|---|---|---|
+| Real zero data | adapter flag is true but values are all 0 | "Sem dados" inside chart |
+| Missing in snapshot | `hasFormatStats === false`, `hasWeekdayData === false`, `hasPosts === false` | Neutral block "Dados do concorrente indisponíveis nesta amostra." |
+| Blocked/expired image | `<img onError>` fires | Initials gradient (avatar) or `CompareThumbPlaceholder` (thumb) |
+| Sample too small | `posts < 3` (already implemented in insights) | Insight returns null |
 
-### Out of scope
+## Validation (manual after edits)
 
-- No schema change.
-- No edits to `analyze-public-v1`, providers, credits backend, EuPago, checkout.
-- No customer-facing report changes.
-- No new writes; all four endpoints stay read-only.
+1. `nunomarkl` preview: Mix de formatos shows primary donut + neutral block on competitor (no 0% bars).
+2. Ritmo por dia shows primary bars + neutral footer (no 0 bars on competitor side).
+3. Cadência: competitor strip shows neutral message (not 5 empty placeholder squares).
+4. Hero avatar for `@manzarra` shows "M" initials in competitor-color gradient instead of broken circle.
+5. `/report.example` mock still renders fully populated comparison (mock entry has `hasFormatStats: true, hasWeekdayData: true`).
+6. 375px width: no horizontal overflow on any of the 4 cards (neutral blocks are full-width).
+7. Typecheck passes.
 
-### Validation after build
+## Out of scope
 
-- Open Relatórios → click the 30d row for `frederico.m.carvalho` → drawer shows Janela `30d`, Origem `cache/fresh`, cache_key suffix `:w=30d`, snapshot `8d8d735c…`, Apify provider row with cost.
-- Open Relatórios → click the most recent baseline row → drawer shows Janela `baseline`, no `:w=` suffix.
-- Open lead `01bf861c…` → ledger now shows distinct chips: Crédito inicial / Análise baseline / Análise período · 30d / Confirmado.
-- Typecheck passes (`MockReportDetail.analysisEvent` is optional → no churn at mock call sites).
+- No re-fetching of competitor (would require providers).
+- No backend persistence changes (no `avatar_storage_url` mirroring yet — that's a future prompt).
+- No changes to legacy `ReportCompetitors` horizontal-gauge component.
+
