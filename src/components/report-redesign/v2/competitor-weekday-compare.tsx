@@ -54,19 +54,42 @@ export function CompetitorWeekdayCompare({ primaryHandle, payload, competitor }:
     competitor: competitorIso[i] ?? 0,
   }));
 
-  const hint = !competitor.windowAligned
-    ? "Concorrente em janela baseline · publicações por dia da semana"
-    : "Publicações por dia da semana";
+  const insight = buildWeekdayInsight(
+    primaryIso,
+    competitorIso,
+    totalPrimary,
+    totalCompetitor,
+  );
 
   return (
-    <CompareBarPair
-      label="Ritmo por dia da semana"
-      primaryHandle={primaryHandle}
-      competitorHandle={competitor.username}
-      categories={categories}
-      unit="abs"
-      hint={hint}
-    />
+    <section
+      className="rounded-2xl border border-border-default bg-surface-primary shadow-card p-5 sm:p-6"
+      aria-label="Ritmo por dia da semana: comparação com concorrente"
+    >
+      <header className="flex flex-col gap-2 mb-4">
+        <h3 className="font-serif text-xl sm:text-2xl text-content-primary leading-snug">
+          Ritmo por dia da semana
+        </h3>
+        {!competitor.windowAligned ? (
+          <span className="inline-flex w-fit items-center rounded-full border border-border-subtle bg-surface-muted px-2.5 py-0.5 text-xs text-content-tertiary">
+            Concorrente em janela baseline.
+          </span>
+        ) : null}
+      </header>
+      <CompareBarPair
+        variant="bare"
+        label="Ritmo por dia da semana"
+        primaryHandle={primaryHandle}
+        competitorHandle={competitor.username}
+        categories={categories}
+        unit="abs"
+      />
+      {insight ? (
+        <p className="mt-4 rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-content-secondary leading-relaxed">
+          {insight}
+        </p>
+      ) : null}
+    </section>
   );
 }
 
@@ -92,4 +115,38 @@ function normaliseIso(raw: number[] | null | undefined): number[] {
     out[i] = typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0;
   }
   return out;
+}
+
+/**
+ * Deterministic peak-day insight. Skips when either side has fewer than
+ * 3 posts in the window — too small to claim a pattern.
+ */
+function buildWeekdayInsight(
+  primaryIso: number[],
+  competitorIso: number[],
+  totalPrimary: number,
+  totalCompetitor: number,
+): string | null {
+  if (totalPrimary < 3 || totalCompetitor < 3) return null;
+  const pIdx = peakIndex(primaryIso);
+  const cIdx = peakIndex(competitorIso);
+  if (pIdx === -1 || cIdx === -1) return null;
+  const pDay = WEEKDAY_LABELS[pIdx].long;
+  const cDay = WEEKDAY_LABELS[cIdx].long;
+  if (pIdx === cIdx) {
+    return `Os dois perfis concentram publicações em ${pDay.toLowerCase()}.`;
+  }
+  return `Tu publicas mais em ${pDay.toLowerCase()}; o concorrente em ${cDay.toLowerCase()}.`;
+}
+
+function peakIndex(arr: number[]): number {
+  let best = -1;
+  let bestVal = 0;
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i] > bestVal) {
+      bestVal = arr[i];
+      best = i;
+    }
+  }
+  return best;
 }
