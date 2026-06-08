@@ -49,6 +49,7 @@ import { generateCaptionSemanticAnalysis } from "@/lib/report/caption-semantic-a
 import { buildInsightsCtx } from "@/lib/insights/build-context";
 import { computeBenchmarkPositioning } from "@/lib/benchmark/engine";
 import { loadBenchmarkReferences } from "@/lib/benchmark/reference-data.server";
+import { generateComparisonReadingsForSnapshot } from "@/lib/comparison-readings/generate.server";
 
 const LOG = "[enrichment]";
 
@@ -98,8 +99,35 @@ export async function runEnrichment(
       return runVisualCover(ctx, analysisEventId);
     case "caption_semantic":
       return runCaptionSemantic(ctx, analysisEventId);
+    case "comparison_readings":
+      return runComparisonReadings(ctx);
     default:
       return { ok: false, payloadPatch: null, error: `unknown type: ${type}` };
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* Comparison readings (AI editorial readings, Profile vs Competitor)        */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+async function runComparisonReadings(
+  ctx: SnapshotContext,
+): Promise<EnrichmentResult> {
+  try {
+    const usable = ctx.competitors.filter(
+      (c) => c && (c as { success?: boolean }).success !== false,
+    );
+    if (usable.length === 0) {
+      console.info(`${LOG} comparison_readings: no usable competitor — skipping`);
+      return { ok: true, payloadPatch: null };
+    }
+    return await generateComparisonReadingsForSnapshot(
+      ctx.previousPayload as Record<string, unknown>,
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`${LOG} comparison_readings threw`, msg);
+    return { ok: false, payloadPatch: null, error: msg };
   }
 }
 

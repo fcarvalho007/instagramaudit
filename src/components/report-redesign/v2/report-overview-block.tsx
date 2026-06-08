@@ -32,6 +32,11 @@ import { CompetitorFormatCompare } from "./competitor-format-compare";
 import { CompetitorWeekdayCompare } from "./competitor-weekday-compare";
 import { normaliseFormatKey } from "@/lib/report/format-keys";
 import { pickThumbnailUrl } from "@/lib/report/pick-thumbnail";
+import { useComparisonReadings } from "./leitura-ia/use-comparison-readings";
+import {
+  LeituraIaBox,
+  LeituraIaExecutiveSummary,
+} from "./leitura-ia/leitura-ia-box";
 
 function tierLabelFromFollowers(n: number | null | undefined): string | null {
   if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) return null;
@@ -119,6 +124,9 @@ export interface Props {
 export function ReportOverviewBlock({ result, renderInsight: _renderInsight, payload, mode = "all" }: Props) {
   const k = result.data.keyMetrics;
   const enriched = result.enriched;
+
+  // Optional AI editorial readings (cached server-side; null when missing).
+  const aiReadings = useComparisonReadings(payload);
 
   // TODO: multi-competitor layout (Fase 1.5). Today we render only the first
   // entry; the remaining competitors stay in the legacy gauge.
@@ -228,6 +236,13 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
         />
       ) : null}
 
+      {mode === "all" && firstCompetitor && aiReadings ? (
+        <>
+          <LeituraIaExecutiveSummary global={aiReadings.global} />
+          <LeituraIaBox reading={aiReadings.byCard.overview ?? null} />
+        </>
+      ) : null}
+
       {((mode === "all" && !firstCompetitor) || mode === "free") && (
         /* Zona B — Editorial Identity Card (replaces 6-card grid) */
         <EditorialIdentityCard
@@ -297,6 +312,9 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
           primaryVerified={Boolean(result.data.profile.verified)}
           competitor={firstCompetitor}
         />
+      ) : null}
+      {mode === "all" && firstCompetitor && aiReadings ? (
+        <LeituraIaBox reading={aiReadings.byCard.bio_conversion ?? null} />
       ) : null}
 
       {mode === "free_with_engagement" && (
@@ -397,6 +415,9 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
             ) : (
               <EngagementCardRefined result={result} />
             )}
+            {firstCompetitor && aiReadings ? (
+              <LeituraIaBox reading={aiReadings.byCard.engagement ?? null} />
+            ) : null}
           </div>
 
           {/* Zona D — Frequência + Tipo de conteúdo (stack vertical) */}
@@ -447,6 +468,12 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
                 socialinsiderRef={result.externalReferences}
               />
             )}
+            {firstCompetitor && aiReadings ? (
+              <div className="space-y-3 mt-2">
+                <LeituraIaBox reading={aiReadings.byCard.cadence ?? null} />
+                <LeituraIaBox reading={aiReadings.byCard.weekday_rhythm ?? null} />
+              </div>
+            ) : null}
             </div>
             <div id="formatos" className="scroll-mt-24">
             {firstCompetitor ? (
@@ -468,6 +495,9 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
                 socialinsiderRef={result.externalReferences}
               />
             )}
+            {firstCompetitor && aiReadings ? (
+              <LeituraIaBox reading={aiReadings.byCard.format_mix ?? null} />
+            ) : null}
             </div>
           </div>
 
@@ -483,6 +513,9 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
             cadenceWindowDays={enriched.cadence.windowDays}
             sampleSize={sample?.performancePosts.length ?? 0}
           />
+          {firstCompetitor && aiReadings ? (
+            <LeituraIaBox reading={aiReadings.byCard.top_posts ?? null} />
+          ) : null}
           </div>
         </>
       )}
