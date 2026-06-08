@@ -1403,6 +1403,12 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
                 })
                 .filter((v): v is { tag: string; count: number } => v !== null)
             : [],
+          // Adapter-derived empty-state flags. Components use them to pick
+          // between "real zero" and "missing in snapshot" visual states.
+          hasPosts: cPostsRaw.length > 0,
+          hasFormatStats: hasFormatStatsPresent(c, cPostsRaw),
+          hasWeekdayData: hasWeekdayDataPresent(c, cPostsRaw),
+          avatarMissing: pickAvatarUrl(p) === null,
         };
       })
       .filter((v): v is NonNullable<typeof v> => v !== null);
