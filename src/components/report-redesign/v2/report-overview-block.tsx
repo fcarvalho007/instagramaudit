@@ -381,6 +381,8 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
                   averageComments: avgComments,
                 }}
                 competitor={firstCompetitor}
+                benchmark={k.engagementBenchmark}
+                scaleLabel={tierLabelFromFollowers(result.data.profile.followers)}
               />
             ) : (
               <EngagementCardRefined result={result} />
