@@ -571,12 +571,13 @@ function CommercialStatusSelect({
 /** Statuses that allow triggering a fresh report generation. */
 const GENERATABLE_STATUSES = ["approved", "pending_review", "failed"] as const;
 
-type TabKey = "resumo" | "relatorio" | "feedback" | "comunicacao" | "historico";
+type TabKey = "resumo" | "relatorio" | "feedback" | "comunicacao" | "historico" | "credits";
 
 const TABS: ReadonlyArray<{ key: TabKey; label: string }> = [
   { key: "resumo", label: "Resumo" },
   { key: "relatorio", label: "Relatórios" },
   { key: "feedback", label: "Feedback" },
+  { key: "credits", label: "Créditos" },
   { key: "historico", label: "Histórico" },
 ];
 

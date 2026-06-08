@@ -145,6 +145,7 @@ import { Route as ApiAdminProfilesListRouteImport } from './routes/api/admin/pro
 import { Route as ApiAdminProfilesIntentOpportunitiesRouteImport } from './routes/api/admin/profiles.intent-opportunities'
 import { Route as ApiAdminLeadsKanbanIdRouteImport } from './routes/api/admin/leads-kanban.$id'
 import { Route as ApiAdminLeadTimelineIdRouteImport } from './routes/api/admin/lead-timeline.$id'
+import { Route as ApiAdminLeadCreditActivityIdRouteImport } from './routes/api/admin/lead-credit-activity.$id'
 import { Route as ApiAdminKnowledgeSuggestionsRouteImport } from './routes/api/admin/knowledge.suggestions'
 import { Route as ApiAdminKnowledgeSourcesRouteImport } from './routes/api/admin/knowledge.sources'
 import { Route as ApiAdminKnowledgeOverviewRouteImport } from './routes/api/admin/knowledge.overview'
@@ -886,6 +887,12 @@ const ApiAdminLeadTimelineIdRoute = ApiAdminLeadTimelineIdRouteImport.update({
   path: '/api/admin/lead-timeline/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminLeadCreditActivityIdRoute =
+  ApiAdminLeadCreditActivityIdRouteImport.update({
+    id: '/api/admin/lead-credit-activity/$id',
+    path: '/api/admin/lead-credit-activity/$id',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminKnowledgeSuggestionsRoute =
   ApiAdminKnowledgeSuggestionsRouteImport.update({
     id: '/api/admin/knowledge/suggestions',
@@ -1102,6 +1109,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/knowledge/overview': typeof ApiAdminKnowledgeOverviewRoute
   '/api/admin/knowledge/sources': typeof ApiAdminKnowledgeSourcesRoute
   '/api/admin/knowledge/suggestions': typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
+  '/api/admin/lead-credit-activity/$id': typeof ApiAdminLeadCreditActivityIdRoute
   '/api/admin/lead-timeline/$id': typeof ApiAdminLeadTimelineIdRoute
   '/api/admin/leads-kanban/$id': typeof ApiAdminLeadsKanbanIdRoute
   '/api/admin/profiles/intent-opportunities': typeof ApiAdminProfilesIntentOpportunitiesRoute
@@ -1255,6 +1263,7 @@ export interface FileRoutesByTo {
   '/api/admin/knowledge/overview': typeof ApiAdminKnowledgeOverviewRoute
   '/api/admin/knowledge/sources': typeof ApiAdminKnowledgeSourcesRoute
   '/api/admin/knowledge/suggestions': typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
+  '/api/admin/lead-credit-activity/$id': typeof ApiAdminLeadCreditActivityIdRoute
   '/api/admin/lead-timeline/$id': typeof ApiAdminLeadTimelineIdRoute
   '/api/admin/leads-kanban/$id': typeof ApiAdminLeadsKanbanIdRoute
   '/api/admin/profiles/intent-opportunities': typeof ApiAdminProfilesIntentOpportunitiesRoute
@@ -1411,6 +1420,7 @@ export interface FileRoutesById {
   '/api/admin/knowledge/overview': typeof ApiAdminKnowledgeOverviewRoute
   '/api/admin/knowledge/sources': typeof ApiAdminKnowledgeSourcesRoute
   '/api/admin/knowledge/suggestions': typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
+  '/api/admin/lead-credit-activity/$id': typeof ApiAdminLeadCreditActivityIdRoute
   '/api/admin/lead-timeline/$id': typeof ApiAdminLeadTimelineIdRoute
   '/api/admin/leads-kanban/$id': typeof ApiAdminLeadsKanbanIdRoute
   '/api/admin/profiles/intent-opportunities': typeof ApiAdminProfilesIntentOpportunitiesRoute
@@ -1568,6 +1578,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/overview'
     | '/api/admin/knowledge/sources'
     | '/api/admin/knowledge/suggestions'
+    | '/api/admin/lead-credit-activity/$id'
     | '/api/admin/lead-timeline/$id'
     | '/api/admin/leads-kanban/$id'
     | '/api/admin/profiles/intent-opportunities'
@@ -1721,6 +1732,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/overview'
     | '/api/admin/knowledge/sources'
     | '/api/admin/knowledge/suggestions'
+    | '/api/admin/lead-credit-activity/$id'
     | '/api/admin/lead-timeline/$id'
     | '/api/admin/leads-kanban/$id'
     | '/api/admin/profiles/intent-opportunities'
@@ -1876,6 +1888,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/overview'
     | '/api/admin/knowledge/sources'
     | '/api/admin/knowledge/suggestions'
+    | '/api/admin/lead-credit-activity/$id'
     | '/api/admin/lead-timeline/$id'
     | '/api/admin/leads-kanban/$id'
     | '/api/admin/profiles/intent-opportunities'
@@ -2006,6 +2019,7 @@ export interface RootRouteChildren {
   ApiAdminKnowledgeOverviewRoute: typeof ApiAdminKnowledgeOverviewRoute
   ApiAdminKnowledgeSourcesRoute: typeof ApiAdminKnowledgeSourcesRoute
   ApiAdminKnowledgeSuggestionsRoute: typeof ApiAdminKnowledgeSuggestionsRouteWithChildren
+  ApiAdminLeadCreditActivityIdRoute: typeof ApiAdminLeadCreditActivityIdRoute
   ApiAdminLeadTimelineIdRoute: typeof ApiAdminLeadTimelineIdRoute
   ApiAdminProfilesIntentOpportunitiesRoute: typeof ApiAdminProfilesIntentOpportunitiesRoute
   ApiAdminProfilesListRoute: typeof ApiAdminProfilesListRoute
@@ -2990,6 +3004,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminLeadTimelineIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/lead-credit-activity/$id': {
+      id: '/api/admin/lead-credit-activity/$id'
+      path: '/api/admin/lead-credit-activity/$id'
+      fullPath: '/api/admin/lead-credit-activity/$id'
+      preLoaderRoute: typeof ApiAdminLeadCreditActivityIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/knowledge/suggestions': {
       id: '/api/admin/knowledge/suggestions'
       path: '/api/admin/knowledge/suggestions'
@@ -3437,6 +3458,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminKnowledgeSourcesRoute: ApiAdminKnowledgeSourcesRoute,
   ApiAdminKnowledgeSuggestionsRoute:
     ApiAdminKnowledgeSuggestionsRouteWithChildren,
+  ApiAdminLeadCreditActivityIdRoute: ApiAdminLeadCreditActivityIdRoute,
   ApiAdminLeadTimelineIdRoute: ApiAdminLeadTimelineIdRoute,
   ApiAdminProfilesIntentOpportunitiesRoute:
     ApiAdminProfilesIntentOpportunitiesRoute,
