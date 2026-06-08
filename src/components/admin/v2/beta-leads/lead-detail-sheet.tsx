@@ -2431,7 +2431,6 @@ function LeadCreditsTab({ leadId, active }: { leadId: string; active: boolean })
               <thead>
                 <tr className="text-admin-text-tertiary">
                   <th className="admin-eyebrow px-3 py-2 font-normal">Δ</th>
-                  <th className="admin-eyebrow px-3 py-2 font-normal">Razão</th>
                   <th className="admin-eyebrow px-3 py-2 font-normal">Tipo</th>
                   <th className="admin-eyebrow px-3 py-2 font-normal">Handle</th>
                   <th className="admin-eyebrow px-3 py-2 font-normal">Snapshot</th>
@@ -2442,16 +2441,7 @@ function LeadCreditsTab({ leadId, active }: { leadId: string; active: boolean })
                 {ledger.map((e) => {
                   const win = deriveWindow(null, e.cache_key);
                   const isPeriod = !!e.cache_key && /:w=\d+d$/i.test(e.cache_key);
-                  const reasonVariant: AdminAccent =
-                    e.reason === "initial_grant"
-                      ? "info"
-                      : e.reason === "reserve"
-                        ? "signal"
-                        : e.reason === "confirm"
-                          ? "revenue"
-                          : e.reason === "release"
-                            ? "neutral"
-                            : "neutral";
+                  const kind = ledgerKind(e, win, isPeriod);
                   const deltaColor =
                     e.delta < 0
                       ? "text-admin-danger-500"
@@ -2464,18 +2454,7 @@ function LeadCreditsTab({ leadId, active }: { leadId: string; active: boolean })
                         {e.delta > 0 ? `+${e.delta}` : e.delta}
                       </td>
                       <td className="px-3 py-2">
-                        <AdminBadge variant={reasonVariant}>{e.reason}</AdminBadge>
-                      </td>
-                      <td className="px-3 py-2">
-                        {isPeriod ? (
-                          <AdminBadge variant={windowBadgeVariant(win)}>
-                            período · {windowLabel(win)}
-                          </AdminBadge>
-                        ) : e.reason === "initial_grant" ? (
-                          <span className="text-[12px] text-admin-text-tertiary">grant</span>
-                        ) : (
-                          <AdminBadge variant="neutral">baseline</AdminBadge>
-                        )}
+                        <AdminBadge variant={kind.variant}>{kind.label}</AdminBadge>
                       </td>
                       <td className="px-3 py-2 text-admin-text-secondary">
                         {e.handle ? `@${e.handle}` : "—"}
