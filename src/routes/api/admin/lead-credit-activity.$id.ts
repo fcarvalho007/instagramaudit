@@ -44,7 +44,7 @@ export const Route = createFileRoute("/api/admin/lead-credit-activity/$id")({
         const { data: ledger, error: ledgerErr } = await supabaseAdmin
           .from("credit_ledger")
           .select(
-            "id, delta, reason, handle, cache_key, analysis_snapshot_id, reservation_id, metadata, created_at",
+            "id, delta, reason, handle, cache_key, analysis_snapshot_id, analysis_event_id, reservation_id, metadata, created_at",
           )
           .eq("lead_id", leadId)
           .order("created_at", { ascending: false })

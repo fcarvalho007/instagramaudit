@@ -1,87 +1,145 @@
-# Admin visibility for analysis windows — PR scope
+# Link `credit_ledger` to `analysis_events` — schema + lifecycle plan
 
-Tasks 1 and 2 are already shipped (see "Already in place" below). This PR adds the two remaining surfaces: an overview card on `/admin/visao-geral` and a window badge in the `/admin/sistema` cost breakdown. No schema changes, no credit logic changes, no provider calls.
+## Answers to the questions
 
-## Already in place (no changes)
+1. **Should `credit_ledger` get `analysis_event_id`?** Yes — nullable, FK to `analysis_events(id)` `ON DELETE SET NULL`. It is the only deterministic join between billing and analytics.
+2. **When does the analysis_event exist vs reserve/confirm?** Today the order is `reserveCredit` → analysis runs → `recordAnalysisEvent` (returns `eventId`) → `confirmReservation`/`releaseReservation`. So the event id is **not** known at reserve time; it is known at confirm/release time.
+3. **Reservation, success, or both?** Link **both**: write the new `analysis_event_id` on the confirm/release row, and **back-update** the matching reserve row (`UPDATE credit_ledger SET analysis_event_id = $1 WHERE reservation_id = $2 AND analysis_event_id IS NULL`). A single ledger-scan per `reservation_id` then yields the event without time-window joins.
+4. **What happens on release/refund?** Same shape — the release row carries `analysis_event_id` (the event that caused the release, even when `outcome != success`). For `duplicate` reservations (the request that lost the race), we link them to the analysis_event of the duplicate request only when an event was emitted for it; otherwise leave NULL.
+5. **Backfill?** Best-effort, recorded with confidence in `metadata.backfill_confidence`. High-confidence only: exact `(lead_id, cache_key)` match between ledger row and analysis_events within ±5 minutes. Anything weaker stays NULL.
+6. **Which admin UI consumes the link?** `/admin/clientes` lead detail recent activity (already lists ledger + events; switch to the FK), `/admin/relatorios` drawer (show ledger rows tied to the event), `/admin/sistema` cost breakdown row (badge "Charged 1 credit" linked to ledger), and the lead credit activity endpoint `lead-credit-activity.$id.ts`.
 
-- **Task 1 — Reports table**: `reports-table-section.tsx:170/199` renders the window via `<AdminBadge variant={windowBadgeVariant(win)}>{windowLabel(win)}</AdminBadge>`. `windowBadgeVariant` returns `neutral` for baseline (no accent) and `info`/`revenue` for 30d/90d (subtle accent). Existing filters/layout untouched.
-- **Task 2 — Lead detail**: `beta-leads/lead-detail-sheet.tsx:2487/2548` already shows recent analyses with handle, window badge, snapshot id, created_at, data_source, and an "Análise · {win}" label. Window is derived via `deriveWindow(ev.analysis_window, ev.cache_key)`. No invented FK linkage.
+## Recommended schema migration (single migration, single PR)
 
-## Task 3 — Overview card "Análises por janela"
+```sql
+ALTER TABLE public.credit_ledger
+  ADD COLUMN analysis_event_id uuid NULL
+  REFERENCES public.analysis_events(id) ON DELETE SET NULL;
 
-### New server route
+CREATE INDEX idx_credit_ledger_analysis_event
+  ON public.credit_ledger (analysis_event_id)
+  WHERE analysis_event_id IS NOT NULL;
+```
 
-`src/routes/api/admin/analysis-window-counts.ts`
-- `GET ?period=7d|30d|90d` (default `30d`). Admin-only via `requireAdminSession`.
-- Single query against `analysis_events`:
-  ```sql
-  SELECT analysis_window, cache_key, count(*)
-  FROM analysis_events
-  WHERE created_at >= now() - interval '<period>'
-  GROUP BY analysis_window, cache_key  -- aggregated in JS via deriveWindow
-  ```
-  Implementation will fetch `analysis_window, cache_key` for the period (capped, e.g. `limit 5000`) and reduce client-side using the existing `deriveWindow` helper so baseline rows that pre-date the column still bucket correctly via the `:w=…` cache_key suffix.
-- Response: `{ period: "30d", total: number, baseline: number, "30d": number, "90d": number, other: number, generated_at: string }`.
+No new GRANT needed (existing table grants cover the new column). No RLS change. No CHECK constraint, no trigger.
 
-### New component
+## Affected functions / files
 
-`src/components/admin/v2/visao-geral/analysis-window-card.tsx`
-- Renders a single admin card (matches existing `KPICard` / `CostSummaryCard` visual system) with three primary stats (Baseline / 30 dias / 90 dias) and a small `other` footnote only when > 0.
-- Each stat uses the same accent as the badges (`neutral`, `info`, `revenue`) for instant visual parity with the reports table.
-- Loading: `<SectionSkeleton rows={1} rowHeight={120} />`. Error: `<SectionError />`. Empty (total=0): subtle "Sem análises nesta janela." message — does not crash the page.
+| File | Change |
+| --- | --- |
+| `src/lib/credits/credits.server.ts` | Add optional `analysisEventId` to `confirmReservation` / `releaseReservation` inputs. Inside each, (a) include `analysis_event_id` in the new ledger insert and (b) issue an UPDATE on the prior `reserve` row by `reservation_id` to set the same `analysis_event_id` when NULL. |
+| `src/routes/api/analyze-public-v1.ts` | `finalizeCredit()` already has access to the analysis_event id flow indirectly via `logEvent` — capture the returned `eventId` from the *terminal* `logEvent` call (success/cache/stale/failure) into a local `lastEventId` and pass it to `confirmReservation`/`releaseReservation`. No reorder of the lifecycle. |
+| `src/lib/analysis/events.ts` | No change. Already returns `eventId`. |
+| `src/routes/api/admin/lead-credit-activity.$id.ts` | Select `analysis_event_id` and expose it; UI can render an "Evento" link / chip. |
+| `src/routes/api/admin/report-detail.$id.ts` | Include ledger rows joined by `analysis_event_id` for the event-centric drawer. |
+| `src/components/admin/v2/beta-leads/lead-detail-sheet.tsx` | When rendering ledger rows, show the event link when `analysis_event_id` is present (replacing today's heuristic by handle+time). |
+| `src/lib/credits/__tests__/credits.test.ts` | Add tests covering the back-update + confirm-with-event-id + release-with-event-id. |
 
-### Wiring
+Out of scope for this PR (documented but not implemented yet):
+- Changing `record_analysis_event` RPC signature.
+- Reordering the analyze pipeline so reserve happens *after* the event id.
+- Migrating `reservation_id` to FK on anything.
+- Reservation expiry / TTL.
 
-`src/routes/admin.visao-geral.tsx`
-- Import `<AnalysisWindowCard />` and add it as a new row directly under `<OverviewKpiRow />` (single column on mobile, full-width on desktop). No other layout shifts.
+## Event lifecycle (target)
 
-## Task 4 — Window badge in cost breakdown
+```text
+Request → cache+entitlement gate → reserveCredit (-1, reason=reserve, reservation_id=R, event_id=NULL)
+                                       │
+                                       ▼
+                               run analysis (cache/fresh/stale/fail)
+                                       │
+                                       ▼
+                             logEvent(...) → eventId=E (analysis_events row)
+                                       │
+                                       ▼
+              ┌──────────── success / cache / stale ────────────┐
+              │                                                  │
+              ▼                                                  ▼
+   confirmReservation({ R, E, snapshotId })          releaseReservation({ R, E, reason })
+     INSERT  delta=0,  reason=confirm,  event_id=E    INSERT delta=+1, reason=release, event_id=E
+     UPDATE  reserve row (R) SET event_id=E           UPDATE reserve row (R) SET event_id=E
+              │                                                  │
+              ▼                                                  ▼
+       balance unchanged                                 balance restored
+```
 
-### Server change
+Failure paths inside `finalizeCredit` keep their current behaviour: any throw still produces a release; we just attach the most recent `lastEventId` (may be null for very early `invalid_input` before any event was logged — in that case ledger stays unlinked, which is correct).
 
-`src/routes/api/admin/analysis-cost-breakdown.ts`
-- Extend the `analysis_events` select to include `analysis_window, cache_key` (lines 73).
-- Add both to `AnalysisBreakdown` type and push them into each result row (lines 28-54, 195-221).
+## Rollback plan
 
-### Client change
-
-`src/components/admin/v2/sistema/analysis-cost-breakdown.tsx`
-- Extend the local `AnalysisBreakdown` interface with `analysis_window: string | null; cache_key: string | null`.
-- Import `deriveWindow`, `windowBadgeVariant`, `windowLabel` from `@/lib/admin/analysis-window` and `AdminBadge`.
-- In `AnalysisRow` (line 170 area), render a small badge next to `@{a.handle}`:
-  `<AdminBadge variant={windowBadgeVariant(win)} size="sm">{windowLabel(win)}</AdminBadge>`
-  where `win = deriveWindow(a.analysis_window, a.cache_key)`. Baseline keeps the neutral variant so existing rows read identically.
-
-## Out of scope
-
-- No new column in `analysis_events`, `provider_call_logs`, or `analysis_snapshots`.
-- No change to `credit_ledger`, reservation, or any pricing logic.
-- No new provider runners or backfill.
-- No edits to `/report.example`, checkout, EuPago, Free/Public report, or competitor comparison UI.
-- No retroactive write to `analysis_window` for old events (we rely on the existing cache_key fallback inside `deriveWindow`).
-
-## Validation
-
-1. `bun run build` / typecheck pass (covered automatically).
-2. `/admin/visao-geral` loads with the new card under the KPI row; counts sum to the total for the selected period.
-3. `/admin/sistema` cost breakdown shows a `baseline` / `30d` / `90d` badge per row; baseline rows remain visually quiet.
-4. `/admin/relatorios` and lead detail unchanged (regression check).
-5. Manual SQL sanity (read-only) on Cloud:
+1. Revert the application PR (no behaviour change without it; ledger column simply becomes unused).
+2. The schema migration is additive — to fully roll back run:
    ```sql
-   SELECT
-     coalesce(analysis_window,
-       case when cache_key ~ ':w=30d$' then '30d'
-            when cache_key ~ ':w=90d$' then '90d'
-            else 'baseline' end) AS win,
-     count(*)
-   FROM analysis_events
-   WHERE created_at >= now() - interval '30 days'
-   GROUP BY 1;
+   DROP INDEX IF EXISTS public.idx_credit_ledger_analysis_event;
+   ALTER TABLE public.credit_ledger DROP COLUMN IF EXISTS analysis_event_id;
    ```
-   Numbers should match the new card.
+   No data loss for `credit_ledger` core columns. Historical link data is lost (acceptable — derived data).
+3. Forward-compat: leaving the column NULL is safe; old code ignores it.
 
-## Risks / mitigations
+## Backfill strategy (separate, opt-in script)
 
-- **Wrong bucketing for legacy rows**: mitigated by reusing `deriveWindow` (cache_key fallback already in production).
-- **Card empty during fresh installs**: handled by an explicit empty state instead of a NaN.
-- **Performance**: limit of 5000 rows per period query is well below `analysis_events` typical volume; if it grows, switch the endpoint to a server-side aggregate using the same SQL above.
+Recorded under `metadata.backfill = { source, confidence, run_at }`. Never overwrite existing non-NULL links. Run in two passes against rows where `analysis_event_id IS NULL`:
+
+**Pass A — high confidence (auto, idempotent):** match by `reservation_id`. After the app PR ships, every new confirm/release is linked AND back-fills the reserve row. For historical rows, group ledger rows by `reservation_id`; if any sibling carries an `analysis_event_id` (e.g. confirm written after the PR), copy it to siblings. This catches anything written during the deploy gap.
+
+**Pass B — best-effort historical (manual approval):**
+```sql
+WITH candidates AS (
+  SELECT l.id AS ledger_id, e.id AS event_id
+  FROM public.credit_ledger l
+  JOIN public.leads ld ON ld.id = l.lead_id
+  JOIN public.analysis_events e
+    ON lower(e.handle) = lower(l.handle)
+   AND e.cache_key   = l.cache_key
+   AND e.created_at BETWEEN l.created_at - interval '5 minutes'
+                        AND l.created_at + interval '5 minutes'
+  WHERE l.analysis_event_id IS NULL
+    AND l.cache_key IS NOT NULL
+    AND l.reason IN ('reserve','confirm','release')
+)
+-- Inspect first; only UPDATE rows with exactly one candidate per ledger_id.
+UPDATE public.credit_ledger l
+SET analysis_event_id = c.event_id,
+    metadata = l.metadata || jsonb_build_object(
+      'backfill', jsonb_build_object(
+        'source','script_v1','confidence','exact_cache_key_5min','run_at', now()))
+FROM candidates c
+WHERE c.ledger_id = l.id
+  AND (SELECT count(*) FROM candidates c2 WHERE c2.ledger_id = c.ledger_id) = 1;
+```
+
+Anything ambiguous (multiple events) stays NULL. No fuzzy / time-only matches. Admin UI must continue to handle `analysis_event_id IS NULL` gracefully.
+
+## Test plan
+
+1. Unit (`credits.test.ts`):
+   - `confirmReservation({ analysisEventId })` writes confirm row with the id AND back-updates the reserve row.
+   - `releaseReservation({ analysisEventId })` same shape for release.
+   - Calling confirm/release without `analysisEventId` keeps current behaviour (NULL on both rows) — backward compatible.
+   - Concurrent reserve+release sequence: only one reservation row gets the event_id; the compensating release row gets none.
+2. Integration (`analyze-public-v1-credit-gate.test.ts` + a new case):
+   - Fresh-success path → confirm row + reserve row both reference the analysis_event.
+   - Cache-hit (already associated, `skipReserve`) → no ledger row touched, no link needed.
+   - Cache-hit (new lead, `skipReserve=false`) → confirm row + reserve row linked.
+   - Provider-error path → release row + reserve row both linked.
+   - `WINDOW_REQUIRES_PRO` / `INSUFFICIENT_CREDITS` → no reserve happens, so nothing to link (assert column stays NULL on the `blocked_credits` event).
+   - `duplicate` reservation outcome → no new ledger rows; assert no orphan link is created.
+3. Manual read-only SQL after deploy:
+   ```sql
+   SELECT reason, count(*) FILTER (WHERE analysis_event_id IS NOT NULL) AS linked,
+          count(*) AS total
+   FROM public.credit_ledger
+   WHERE created_at >= now() - interval '7 days'
+   GROUP BY reason;
+   ```
+   Expect `reserve`/`confirm`/`release` linkage ≥ 95% post-deploy; `initial_grant`/`admin_adjust` remain NULL (no event by design).
+
+## What to NOT implement yet
+
+- No FK between `credit_ledger.reservation_id` and a new `credit_reservations` table.
+- No reordering of reserve→event (would change the entire credit gate; unnecessary for this link).
+- No exposure of `analysis_event_id` in any public API or PDF.
+- No backfill of `initial_grant`, `admin_adjust`, `purchase_included_credit`, or `post_purchase_beta_bonus` rows (they have no analysis_event by definition).
+- No schema change to `analysis_events` (the link is one-directional: ledger → event).
+- No change to checkout, EuPago, pricing, Free/Public report, competitor comparison UI.

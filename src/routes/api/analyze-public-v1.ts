@@ -406,6 +406,10 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           | "30d"
           | "90d"
           | null = null;
+        // Tracks the most recent analysis_event id emitted by logEvent so
+        // confirmReservation / releaseReservation can link the ledger row
+        // to the event deterministically (no time-window joins).
+        let lastEventId: string | null = null;
         const logEvent = async (overrides: {
           handle: string;
           competitorHandles?: string[];
@@ -452,6 +456,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 outcome: overrides.outcome,
               });
             }
+            if (eventId) lastEventId = eventId;
             return eventId;
           } catch (err) {
             // Logging must never crash the public response.
@@ -650,6 +655,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 leadId,
                 reservationId: r.reservationId,
                 analysisSnapshotId: snapshotForConfirm,
+                analysisEventId: lastEventId,
               });
               // Persiste associação lead↔relatório para que futuras
               // aberturas do mesmo cache_key pelo mesmo lead sejam
@@ -665,6 +671,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 leadId,
                 reservationId: r.reservationId,
                 reason: "auto_release",
+                analysisEventId: lastEventId,
               });
             }
           } catch (e) {
