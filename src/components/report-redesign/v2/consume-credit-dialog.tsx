@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Trans } from "react-i18next";
 import { useEffect, useState } from "react";
-import { Loader2, UserPlus, Info, Coins, ArrowRight } from "lucide-react";
+import { Loader2, UserPlus, Info, Coins, ArrowRight, CalendarClock } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -86,14 +86,22 @@ export function ConsumeCreditDialog({
     isCompetitor && existingCompetitors.length >= competitorMax;
   const description =
     isPeriod
-      ? t("nav.explore.consume_dialog.period_coming_soon_body")
+      ? t("nav.explore.consume_dialog.period_action_body", {
+          days: intent.kind === "period" ? intent.days : 30,
+          defaultValue:
+            "Vai consumir 1 crédito Pro e gerar uma análise nova com a janela dos últimos {{days}} dias. Repetir a mesma janela depois usa cache e não consome créditos.",
+        })
       : t("nav.explore.consume_dialog.description_competitor");
   const title =
     isPeriod
-      ? t("nav.explore.consume_dialog.period_coming_soon_title")
+      ? t("nav.explore.consume_dialog.period_action_title", {
+          days: intent.kind === "period" ? intent.days : 30,
+          defaultValue: "Gerar análise dos últimos {{days}} dias?",
+        })
       : t("nav.explore.consume_dialog.title_competitor");
-  const confirmCta =
-    t("nav.explore.consume_dialog.cta_use_competitor");
+  const confirmCta = isPeriod
+    ? t("nav.explore.consume_dialog.cta_use_period")
+    : t("nav.explore.consume_dialog.cta_use_competitor");
 
   // Competitor handle validation (only used when isCompetitor + hasCredit).
   const normalized = normalizeInstagramHandle(competitorInput);
@@ -140,6 +148,13 @@ export function ConsumeCreditDialog({
               className="mb-1 flex size-10 items-center justify-center rounded-lg bg-accent-primary/10 text-accent-primary"
             >
               <UserPlus className="size-5" />
+            </div>
+          ) : hasCredit && isPeriod ? (
+            <div
+              aria-hidden="true"
+              className="mb-1 flex size-10 items-center justify-center rounded-lg bg-accent-primary/10 text-accent-primary"
+            >
+              <CalendarClock className="size-5" />
             </div>
           ) : null}
           <DialogTitle>
@@ -226,14 +241,25 @@ export function ConsumeCreditDialog({
         ) : null}
 
         {hasCredit && isPeriod ? (
-          <div className="rounded-md border border-border-default bg-surface-muted px-3 py-2 text-xs text-content-secondary">
-            <p>
-              {t("nav.explore.consume_dialog.balance_label")}:{" "}
-              <span className="font-semibold text-content-primary tabular-nums">
-                {balance}
+          <>
+            <div className="h-px bg-border-default" />
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <Coins className="size-5 text-signal-success" aria-hidden="true" />
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-content-primary">
+                    {t("nav.explore.consume_dialog.credit_use_label")}
+                  </span>
+                  <span className="text-xs text-content-tertiary">
+                    {t("nav.explore.consume_dialog.credit_available_hint", { count: balance })}
+                  </span>
+                </div>
+              </div>
+              <span className="rounded-full bg-surface-muted px-2.5 py-1 text-eyebrow-sm text-content-secondary tabular-nums">
+                {t("nav.explore.consume_dialog.balance_label")}: {balance}
               </span>
-            </p>
-          </div>
+            </div>
+          </>
         ) : null}
 
         {errorMessage ? (
@@ -251,25 +277,25 @@ export function ConsumeCreditDialog({
             {t("nav.explore.consume_dialog.cta_cancel")}
           </Button>
           {atCompetitorLimit ? null : hasCredit ? (
-            isPeriod ? null : (
-              <Button
-                onClick={handleConfirmClick}
-                disabled={submitting || !competitorReady}
-                className="gap-2"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                    {t("nav.explore.consume_dialog.submitting")}
-                  </>
-                ) : (
-                  <>
-                    {confirmCta}
-                    <ArrowRight className="size-4" aria-hidden="true" />
-                  </>
-                )}
-              </Button>
-            )
+            <Button
+              onClick={handleConfirmClick}
+              disabled={
+                submitting || (isCompetitor && !competitorReady)
+              }
+              className="gap-2"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  {t("nav.explore.consume_dialog.submitting")}
+                </>
+              ) : (
+                <>
+                  {confirmCta}
+                  <ArrowRight className="size-4" aria-hidden="true" />
+                </>
+              )}
+            </Button>
           ) : (
             <Button
               onClick={() => {
