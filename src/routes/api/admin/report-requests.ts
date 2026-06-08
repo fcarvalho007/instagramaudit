@@ -145,6 +145,46 @@ export const Route = createFileRoute("/api/admin/report-requests")({
           }
         }
 
+        // 3) Carrega analysis_events ligados a estes snapshots (window/data_source/cost).
+        type EventRow = {
+          analysis_snapshot_id: string | null;
+          analysis_window: string | null;
+          cache_key: string | null;
+          data_source: string | null;
+          outcome: string | null;
+          competitor_handles: unknown;
+          estimated_cost_usd: number | null;
+          provider_call_log_id: string | null;
+          created_at: string;
+        };
+        const eventBySnapshot = new Map<string, EventRow>();
+        if (snapshotIds.length > 0) {
+          const { data: evRaw, error: evErr } = await supabaseAdmin
+            .from("analysis_events")
+            .select(
+              "analysis_snapshot_id, analysis_window, cache_key, data_source, outcome, competitor_handles, estimated_cost_usd, provider_call_log_id, created_at",
+            )
+            .in("analysis_snapshot_id", snapshotIds)
+            .order("created_at", { ascending: false });
+          if (evErr) {
+            console.error("[admin/report-requests] events query failed", evErr);
+          } else {
+            for (const e of (evRaw ?? []) as EventRow[]) {
+              if (!e.analysis_snapshot_id) continue;
+              const cur = eventBySnapshot.get(e.analysis_snapshot_id);
+              // Preferir success mais recente; caso contrário o mais recente.
+              if (!cur) {
+                eventBySnapshot.set(e.analysis_snapshot_id, e);
+              } else if (
+                cur.outcome !== "success" &&
+                e.outcome === "success"
+              ) {
+                eventBySnapshot.set(e.analysis_snapshot_id, e);
+              }
+            }
+          }
+        }
+
         type Kind = "snapshot" | "request";
         type Row = {
           id: string;
@@ -163,10 +203,35 @@ export const Route = createFileRoute("/api/admin/report-requests")({
           pdf_generated_at: string | null;
           analysis_snapshot_id: string | null;
           lead: LeadJoin | null;
+          analysis_window: string | null;
+          cache_key: string | null;
+          data_source: string | null;
+          competitor_count: number;
+          competitor_handles: string[];
+          snapshot_short: string;
+          estimated_cost_usd: number | null;
         };
 
         const merged: Row[] = snapshots.map((s) => {
           const req = requestBySnapshot.get(s.id);
+          const ev = eventBySnapshot.get(s.id) ?? null;
+          const competitorHandlesArr = Array.isArray(ev?.competitor_handles)
+            ? (ev!.competitor_handles as unknown[]).filter(
+                (x): x is string => typeof x === "string",
+              )
+            : [];
+          const eventExtras = {
+            analysis_window: ev?.analysis_window ?? null,
+            cache_key: ev?.cache_key ?? null,
+            data_source: ev?.data_source ?? null,
+            competitor_count: competitorHandlesArr.length,
+            competitor_handles: competitorHandlesArr,
+            snapshot_short: s.id.slice(0, 8),
+            estimated_cost_usd:
+              typeof ev?.estimated_cost_usd === "number"
+                ? ev!.estimated_cost_usd
+                : null,
+          };
           if (req) {
             const leadValue = Array.isArray(req.lead) ? req.lead[0] ?? null : req.lead;
             return {
@@ -197,6 +262,7 @@ export const Route = createFileRoute("/api/admin/report-requests")({
                     company: leadValue.company,
                   }
                 : null,
+              ...eventExtras,
             };
           }
           // Análise sem unlock (sem email).
@@ -217,6 +283,7 @@ export const Route = createFileRoute("/api/admin/report-requests")({
             pdf_generated_at: null,
             analysis_snapshot_id: s.id,
             lead: null,
+            ...eventExtras,
           };
         });
 
