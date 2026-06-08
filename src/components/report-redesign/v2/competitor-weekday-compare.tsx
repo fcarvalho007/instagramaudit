@@ -55,7 +55,10 @@ export function CompetitorWeekdayCompare({
 
   const totalPrimary = primaryIso.reduce((s, n) => s + n, 0);
   const totalCompetitor = competitorIso.reduce((s, n) => s + n, 0);
-  if (totalPrimary === 0 && totalCompetitor === 0) return null;
+  const competitorHasData = competitor.hasWeekdayData !== false;
+  if (totalPrimary === 0 && (totalCompetitor === 0 || !competitorHasData)) {
+    return null;
+  }
 
   const categories: CompareBarCategory[] = WEEKDAY_LABELS.map((d, i) => ({
     key: d.long,
@@ -64,12 +67,12 @@ export function CompetitorWeekdayCompare({
     competitor: competitorIso[i] ?? 0,
   }));
 
-  const insight = buildWeekdayInsight(
-    primaryIso,
-    competitorIso,
-    totalPrimary,
-    totalCompetitor,
-  );
+  const insight = competitorHasData
+    ? buildWeekdayInsight(primaryIso, competitorIso, totalPrimary, totalCompetitor)
+    : null;
+  const missingNote = !competitorHasData
+    ? "Ritmo do concorrente indisponível nesta amostra."
+    : null;
 
   return (
     <CompareCardShell
@@ -88,7 +91,7 @@ export function CompetitorWeekdayCompare({
         isVerified: competitor.isVerified,
         displayName: competitor.displayName,
       }}
-      footer={insight ?? undefined}
+      footer={insight ?? missingNote ?? undefined}
     >
       <CompareBarPair
         variant="bare"
@@ -97,9 +100,9 @@ export function CompetitorWeekdayCompare({
         competitorHandle={competitor.username}
         primaryAvatarUrl={primaryAvatarUrl ?? null}
         competitorAvatarUrl={competitor.avatarUrl ?? null}
-        categories={categories}
+        categories={competitorHasData ? categories : categories.map((c) => ({ ...c, competitor: 0 }))}
         unit="abs"
-        zeroLabel="Sem publicações"
+        zeroLabel={competitorHasData ? "Sem publicações" : "—"}
         highlightWinner
       />
     </CompareCardShell>
