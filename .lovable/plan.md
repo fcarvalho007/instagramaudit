@@ -1,103 +1,108 @@
-# Plan — Engagement compare card with scale benchmark
+# Plan — Cadence comparison card: sample strip + stronger evidence
 
 ## Audit
 
-- `CompetitorEngagementCompare` (`src/components/report-redesign/v2/competitor-engagement-compare.tsx`) today renders only `CompareStatBlock` (ER primary vs competitor) + a one-line verdict. Benchmark is not passed in.
-- The scale/tier benchmark is already computed upstream as `result.data.keyMetrics.engagementBenchmark` (used by `EditorialIdentityCard`, scores, and `EngagementCardRefined`). It's a single tier-reference ER (%) for the primary's follower bucket.
-- Helper `envolvimentoSubtitle(er, bench)` and `computeEnvolvimento(er, bench)` in `overview/score-utils.ts` already produce deterministic "+X% vs benchmark" copy and ratios. Will reuse the same ratio thresholds.
-- The full `report-engagement-benchmark-chart.tsx` is heavy (tier rows, sources, premium slot). Per the task, embed a **compact benchmark rail**, not the full chart.
-- Mount point: `report-overview-block.tsx` line 373. Single competitor only (Phase 1). No multi-competitor change.
+- Component: `src/components/report-redesign/v2/competitor-cadence-compare.tsx` — today renders only `CompareStatBlock` (primary `postingFrequencyWeekly` vs `competitor.estimatedPostsPerWeek`) + a one-line footer verdict.
+- Primary thumbnails available in-page: `payload.posts` → already passed into `buildBlock01Sample(payload?.posts)` in `report-overview-block.tsx` (`sample.analyzedPosts`, SnapshotPost). Each post carries `thumbnail_storage_url`, `thumbnail_url`, `taken_at_timestamp`, `permalink`. Use existing `pickThumbnailUrl()` from `src/lib/report/pick-thumbnail.ts`.
+- Competitor thumbnails available in-page: `firstCompetitor.posts: unknown[]` (Phase 2B persisted per-post detail) — defensive parse. Same field names possible: `thumbnail_url` / `thumbnail_storage_url` / `taken_at_timestamp` / `permalink`. Older snapshots (or the mock) may have an empty array → strip simply not rendered.
+- Constraint: no new fetches, no provider calls, no schema/backend changes — we only render what's already in the snapshot.
 
 ## What changes
 
-### 1. Pass benchmark into the card
-- `report-overview-block.tsx` (mount): pass `engagementBenchmark: k.engagementBenchmark` and `followersScaleLabel: result.data.meta?.followersTierLabel ?? null` (fallback null) to `CompetitorEngagementCompare`.
-  - If `meta.followersTierLabel` doesn't exist, derive a label from `result.data.profile.followers` via a local helper (Nano/Micro/Mid/Macro/Mega — same buckets the benchmark chart already uses). Cheap, deterministic.
+### 1. Pass primary recent posts into the card
+In `report-overview-block.tsx`, derive a small `primaryRecentPosts` array from `sample.analyzedPosts` (sort by `taken_at_timestamp` desc, take 5, map to `{ thumbUrl, permalink, takenAt }`). Pass it as a new optional prop on `CompetitorCadenceCompare`.
 
-### 2. Extend `CompetitorEngagementCompare` props
-- New optional `benchmark?: number` (tier ER %) and `scaleLabel?: string | null`.
-- If `benchmark` ≤ 0 or missing → render the **current minimal layout** (graceful fallback, no rail, no scale verdicts). No overclaiming.
-
-### 3. Compact benchmark rail (new, inline in same file)
-Single horizontal track, mobile-first.
-
-```
-0%                  benchmark              strong (2×)
-├──────●──────────────┼─────────────────●──────────────┤
-        @primary                    @competitor
-```
-
-- Range: `0` → `max(benchmark × 2, primaryER, competitorER) × 1.05` (a bit of headroom so markers never clip).
-- Reference tick at `benchmark` with label *"Referência {scaleLabel}"* (e.g. *"Referência Micro"*). When no scaleLabel: just *"Referência"*.
-- Soft band from `benchmark` to `benchmark × 2` styled as the "strong" zone using `bg-signal-success/8`.
-- Two markers as small dots/pins: primary in `--accent-primary`, competitor in `--compare-competitor`. Each marker has a thin vertical tick + tiny label below with `@handle` (truncated, `text-[11px]` only if needed — keep `text-xs` floor).
-- Track height `h-2 rounded-full bg-surface-muted` with internal absolute-positioned band + markers. No SVG needed.
-- Accessible: `role="img" aria-label="Posição no escalão: @primary X,XX%, @concorrente Y,YY%, referência Z,ZZ%"`.
-
-### 4. Per-side benchmark verdict chips
-Below each side's value in the existing `CompareStatBlock` is not flexible enough → render the rail + a 2-column grid below the stat block:
-
-```
-@primary                          @competitor
-3,40 % envolvimento               5,10 %
-↗ +28 % vs referência Micro       ↗ +96 % vs referência Micro
-Acima da referência               Acima da referência
+### 2. Extend `CompetitorCadenceCompare` props
+```ts
+interface SamplePost {
+  thumbUrl: string | null;
+  permalink: string | null;
+  takenAt: number | null; // unix seconds
+}
+interface Props {
+  primary: PrimarySide;
+  competitor: ReportCompetitorBreakdownEntry;
+  primaryRecentPosts?: SamplePost[];      // NEW
+  /** When true (default), parse competitor.posts in-card to extract a strip. */
+  showSampleStrips?: boolean;             // default true
+}
 ```
 
-Deterministic classification per side (`er / benchmark`):
-- `< 0.7` → *"Abaixo da referência do escalão"* (signal-warning tone)
-- `≥ 0.7 && < 0.95` → *"Ligeiramente abaixo da referência"* (content-secondary)
-- `≥ 0.95 && ≤ 1.15` → *"Em linha com a referência"* (content-secondary)
-- `> 1.15 && ≤ 2` → *"Acima da referência do escalão"* (signal-success tone)
-- `> 2` → *"Muito acima da referência do escalão"* (signal-success tone)
+### 3. Competitor strip extraction (in-card, defensive)
+Helper `extractRecentPosts(competitor.posts, max = 5)`:
+- Accept items that are non-null objects.
+- Pick `thumbUrl = pickThumbnailUrl(item)`; `permalink = item.permalink || item.shortcode_url || null`; `takenAt = number(item.taken_at_timestamp || item.takenAt || item.taken_at) || null`.
+- Sort by `takenAt` desc, fallback to input order when missing.
+- Slice `max`.
 
-Numeric delta `(er - bench)/bench` shown as `±XX %` (Inter, tabular-nums, `text-xs text-content-tertiary`), using arrows `↗` / `↘` / `→`.
-
-### 5. Footer verdict (combined)
-Replace the one-line `footer={verdict}` with a 2-clause deterministic sentence:
+### 4. Sample strip UI (per side)
+Render below the existing stat block, only on sides that have ≥ 1 post:
 
 ```
-{strongerSide} lidera o envolvimento médio ({delta}× ou +X pp).
-{readingClause} para o escalão.
+Layout (md+):                       Layout (≤sm):
+┌───────────┬───────────┐           ┌───────────┐
+│  primary  │ competitor│           │  primary  │
+│  strip    │   strip   │           ├───────────┤
+└───────────┴───────────┘           │ competitor│
+                                    └───────────┘
 ```
 
-`readingClause` derives from the stronger side's benchmark ratio bucket above. Examples:
-- *"Este perfil lidera o envolvimento médio (+0,4 pp). Acima da referência do escalão Micro."*
-- *"O concorrente gera 1,8× mais envolvimento médio. Muito acima da referência do escalão."*
-- Tie (ratio 0.95–1.05): *"Os dois perfis estão em linha no envolvimento. Em linha com a referência do escalão Micro."*
+Each strip:
+- Eyebrow: `@handle` in side color (`text-accent-primary` for primary, `text-compare-competitor` for competitor) + `text-eyebrow-sm`.
+- Horizontal row of 3–5 square thumbnails (`aspect-square w-16 sm:w-20 rounded-lg overflow-hidden`).
+- Per-thumbnail border tinted by side: `border border-accent-primary/15` (primary) / `border border-compare-competitor/15` (competitor).
+- Render as `<a href={permalink} target="_blank" rel="noreferrer">` when `permalink` exists; otherwise plain `<div>`.
+- Inside: `<img loading="lazy" decoding="async" onError={...}>` with the picked URL.
+- **Fallback path (no broken-image icon ever):** local `state = "ok" | "failed"`; if no `thumbUrl` or `onError` fires → render a clean placeholder `<div class="size-full bg-surface-muted flex items-center justify-center"><ImageIcon class="size-4 text-content-tertiary/60" /></div>`. Use lucide `Image` icon.
+- Mobile rule: side strips stack vertically; thumbnails stay in a single row of ≤5 with `flex gap-2` — no horizontal scroller. Force `aspect-square w-[18%]` at `<sm` to fit 5 across 375px minus padding.
+- Accessibility: `alt=""` for decorative thumbnails (cadence evidence, not editorial); strip wrapper labelled `aria-label="Amostra recente de @handle"`.
 
-When benchmark is missing: footer keeps current copy only ("Os dois perfis estão em linha…" / "Este perfil está acima…" / "O concorrente gera Nx mais…").
+### 5. Methodology line
+Single line below the strips, `text-xs text-content-tertiary`:
+- *"Amostra: últimas {N} publicações disponíveis."* where `N = max(primaryStripCount, competitorStripCount, 0)` capped at 12. If both strips empty, falls back to *"Amostra com base nas últimas publicações disponíveis."*.
 
-### 6. Color convention preserved
-- Primary marker / label / chip → `text-accent-primary` (blue `#3772E5`).
-- Competitor marker / label / chip → `text-compare-competitor` (existing indigo token used across all compare cards).
-- Reference tick / band → neutral (`border-content-tertiary` + `bg-signal-success/8`).
+### 6. Deterministic insight (replaces the current footer line)
+Keep `footer={...}` on `CompareCardShell`. Pure helper `buildCadenceInsight(p, c, sampleSizes)`:
 
-### 7. Mobile (≤375px)
-- Rail keeps full width minus padding; marker labels stack as `text-xs truncate max-w-[7rem]`.
-- Per-side block grid stays 2-col (compact) — both columns each ~50%; numeric value `text-2xl` instead of `text-3xl` on `sm:` only.
-- No horizontal scrolling.
+- Define `weekly = postingFrequencyWeekly`, `cWeekly = estimatedPostsPerWeek`.
+- **Sample-too-small guard:** if `min(primaryStripCount, competitorStripCount) < 3` AND both posts arrays are empty → render the existing one-line verdict (current behaviour, no scale claim).
+- Otherwise:
+  - `ratio = weekly / cWeekly`
+  - `weeklyDelta = (weekly - cWeekly)`
+  - Bucket:
+    - `0.9 ≤ ratio ≤ 1.1` → *"Os dois perfis publicam com ritmo semelhante (≈ {avg} pub./semana)."*
+    - `1.1 < ratio ≤ 1.5` → *"Este perfil publica mais ({weekly} vs {cWeekly} pub./semana)."*
+    - `ratio > 1.5` → *"Este perfil publica com uma cadência claramente superior ({weekly} vs {cWeekly} pub./semana)."*
+    - `0.66 ≤ ratio < 0.9` → competitor mirror of `1.1 < … ≤ 1.5`.
+    - `ratio < 0.66` → competitor mirror of `> 1.5`.
+- Numbers formatted via existing `fmtDecimal(n, 1)`.
+
+### 7. Color convention
+Keep entire card on the existing convention: primary blue (`accent-primary`), competitor indigo (`compare-competitor`). Borders/eyebrows/badges use side-tinted variants; numeric values inherit current `CompareStatBlock` styling (no change there).
+
+### 8. No regressions
+- `FrequencyCard` (no-competitor branch) untouched.
+- Free/Public modes untouched (this card only mounts in `all`/`locked` with a competitor).
+- No new dependencies. No network requests. No fetches.
 
 ## Files touched
 
-1. `src/components/report-redesign/v2/competitor-engagement-compare.tsx` — extend props (`benchmark`, `scaleLabel`), add `BenchmarkRail` and `SideBenchmarkLine` sub-components in same file, deterministic verdict helpers, graceful fallback when benchmark missing.
-2. `src/components/report-redesign/v2/report-overview-block.tsx` — pass `engagementBenchmark` and a derived `scaleLabel` to the card at line 373. Add tiny `tierLabelFromFollowers(followers)` helper inside the same file (or co-locate in `overview/score-utils.ts` if it cleanly belongs there).
-
-No other files change. `EngagementCardRefined` (single-profile) is untouched. Free/Public unaffected (this card only mounts in `all`/`locked` with a competitor).
+1. `src/components/report-redesign/v2/competitor-cadence-compare.tsx` — extend props, add `extractRecentPosts`, `SampleStrip`, `Thumb`, `buildCadenceInsight`. Reuse `pickThumbnailUrl`. Import `Image` from `lucide-react`.
+2. `src/components/report-redesign/v2/report-overview-block.tsx` — at the cadence mount site, derive `primaryRecentPosts` from `sample?.analyzedPosts` and pass it. No other call-site changes.
 
 ## Constraints respected
 
-- No AI, no provider calls, no schema/backend changes.
-- Reuses existing `engagementBenchmark` (already in `keyMetrics`).
-- Graceful fallback when benchmark is missing → no rail, no scale verdicts, no overclaiming.
-- Tokens only (`accent-primary`, `compare-competitor`, `signal-success`, `content-*`, `surface-muted`, `border-default`).
-- Inter SemiBold tabular-nums for numbers; Fraunces stays on titles only.
-- Min font size `text-xs` (12px) respected.
+- No AI, no provider calls, no schema/backend changes, no new fetches.
+- Only existing snapshot fields used (`payload.posts` for primary, `competitor.posts` for competitor).
+- Broken / blocked thumbnails fall back to a clean media placeholder (no broken-image icon).
+- Tokens only — `accent-primary`, `compare-competitor`, `surface-muted`, `content-*`, `border-default`.
+- Public-UI font rule respected (Inter for numbers/labels, no JetBrains Mono, no Fraunces on body copy).
+- Mobile: side strips stack; thumbnails ≤5 in a row without horizontal scroll.
 
 ## Validation
 
-- `/admin/report-preview/nunomarkl?variant=pro_preview&draft=false` — Engagement card shows: ER values per side, "+X% vs referência {tier}" per side, benchmark rail with both markers, combined footer naming who leads + scale reading.
-- Profile with missing tier benchmark (`engagementBenchmark <= 0`) — falls back to current minimal layout (no rail, no scale copy).
-- 375px — rail and side blocks fit without horizontal scroll; handles truncate cleanly.
-- `/admin/report-preview/frederico.m.carvalho` (no competitor) — unchanged, still `EngagementCardRefined`.
-- Colors: primary blue marker/chip, competitor indigo marker/chip; reference tick neutral.
+- `/admin/report-preview/nunomarkl?variant=pro_preview&draft=false` — cadence card shows the existing stat block, two side strips (when thumbnails exist), the methodology line, and the deterministic insight in the footer.
+- Force a thumbnail `404` (DevTools block) — placeholder renders, never a broken-image icon.
+- Snapshot with empty `competitor.posts` — only the primary strip shows; methodology line still renders; insight uses sample-too-small guard if `primary` strip also empty.
+- 375px — strips stack, all 5 thumbnails fit in a row, no horizontal scroll.
+- `/admin/report-preview/frederico.m.carvalho` (no competitor) — unchanged (still `FrequencyCard`).
