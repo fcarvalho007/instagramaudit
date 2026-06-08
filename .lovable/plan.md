@@ -1,90 +1,82 @@
-# Plan — Editorial "Ritmo por dia da semana" comparison
+# Plan — Editorial "Mix de formatos" comparison
 
-Scope: presentation-only rewrite of `src/components/report-redesign/v2/competitor-weekday-compare.tsx`. The shared `CompareBarPair` primitive stays as-is (used by other cards); this card switches to a bespoke paired-bar chart so we can control thickness, contrast, spacing, and per-side peak chips without affecting siblings.
-
-No backend, no provider calls, no schema changes, no other components touched. Callsite (`report-overview-block.tsx`) and Props contract unchanged.
+Scope: presentation-only rewrite of `src/components/report-redesign/v2/competitor-format-compare.tsx`. No backend, no chart libraries, no provider calls, no adapter changes, no other components touched. Props contract and callsite unchanged.
 
 ## Visual structure
 
 ```text
-┌──────────────────────────────────────────────────────────────┐
-│ CompareCardShell                                             │
-│   title: Ritmo por dia da semana                             │
-│   subtitle: Distribuição de publicações por dia (Seg–Dom)    │
-│                                                              │
-│   [Per-side chips row]                                       │
-│   ● PERFIL  Dia mais forte: Terça (32 %)                     │
-│   ● CONCORRENTE  Dia mais forte: Sexta (28 %)                │
-│                                                              │
-│   Seg  ████░░░░░░  3   ▏▏▏▏▏▏    1                           │
-│   Ter  ████████░░  6 ★ ▏▏▏▏▏▏    1                           │
-│   Qua  ██░░░░░░░░  2   ▏▏▏▏▏▏▏▏  2                           │
-│   Qui  ███░░░░░░░  3   ▏▏▏▏▏▏▏▏▏ 3 ★                         │
-│   ...                                                        │
-│                                                              │
-│   Com base nas publicações analisadas nesta amostra.         │
-│                                                              │
-│   footer: deterministic insight                              │
-└──────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│ Mix de formatos                                                │
+│ Distribuição de Reels, Carrosséis e Imagens                    │
+│                                                                │
+│ ┌──────────────────────────┐  ┌──────────────────────────┐     │
+│ │ ● PERFIL                 │  │ ● CONCORRENTE            │     │
+│ │ ◐ @handle                │  │ ◐ @handle                │     │
+│ │                          │  │                          │     │
+│ │      ╭───────╮           │  │      ╭───────╮           │     │
+│ │    ╭─╯       ╰─╮         │  │    ╭─╯       ╰─╮         │     │
+│ │    │   Reels  │          │  │    │  Carro.  │          │     │
+│ │    │   62 %   │          │  │    │  48 %    │          │     │
+│ │    ╰─╮       ╭─╯         │  │    ╰─╮       ╭─╯         │     │
+│ │      ╰───────╯           │  │      ╰───────╯           │     │
+│ │                          │  │                          │     │
+│ │ N publicações na amostra │  │ N publicações na amostra │     │
+│ │                          │  │                          │     │
+│ │ ● Reels        62 %      │  │ ● Reels        24 %      │     │
+│ │ ● Carrosséis   28 %      │  │ ● Carrosséis   48 %      │     │
+│ │ ● Imagens      10 %      │  │ ● Imagens      28 %      │     │
+│ └──────────────────────────┘  └──────────────────────────┘     │
+│                                                                │
+│ footer: deterministic insight                                  │
+└────────────────────────────────────────────────────────────────┘
 ```
 
-When competitor weekday data is missing → render the seven rows with the primary side only and a single neutral block (not seven fake zeros) for the competitor column:
+When competitor format stats are missing, the right panel becomes a single elegant empty state (same outer frame as the data panel, side accent bar in indigo) with the copy:
 
-```text
-Seg  ████░░░░░░  3
-Ter  ████████░░  6 ★
-...                  ┌────────────────────────────────────┐
-                     │ Sem dados suficientes do            │
-                     │ concorrente para comparar o ritmo   │
-                     │ semanal.                            │
-                     └────────────────────────────────────┘
-```
+**"Sem dados de formatos disponíveis para o concorrente nesta amostra."**
 
 ## Behaviour
 
-### 1. Missing vs real-zero competitor data
-- Compute `competitorHasData = competitor.hasWeekdayData !== false && competitorIso.reduce(...) > 0`.
-- When `competitorHasData === false`: do NOT render competitor bars at all (no 7 fake zero rows). Instead show a single neutral side panel beside (md) or below (mobile) the primary chart with the copy: **"Sem dados suficientes do concorrente para comparar o ritmo semanal."**
-- Real zero (competitor has weekday data but a given day is 0) still renders a thin track + "0" — that's truthful.
+### 1. Data integrity (no misleading 0 %)
+- Keep `competitorHasStats = competitor.hasFormatStats !== false`. When false → render `MissingSide` (right panel), never a 0 % donut.
+- When `competitorHasStats === true` but a real category share is 0, render legend row as `—` instead of `0 %` to avoid implying precision; the donut still draws only positive slices (already does).
 
-### 2. Both sides have data → paired bars per weekday
-- Custom bespoke chart inside this card only. Each weekday row is a 3-column grid: `[day label] [bar pair] [counts]`.
-- Bar pair: two stacked horizontal bars (primary on top, competitor on bottom).
-  - Track: `bg-surface-muted` height `h-3` (was `h-1.5` ish in shared primitive). Stronger contrast.
-  - Fill primary: `bg-accent-primary` (blue), competitor: `bg-compare-competitor` (indigo). Width = `(value / maxAcrossBoth) * 100%`.
-  - Each side gets a star/dot marker on its own peak day cell (small `★` inline next to the count).
-- Row gap: `gap-y-3 sm:gap-y-4` for breathing room.
+### 2. Side panels — framed and cinematic
+- Each side wrapped in a `rounded-2xl border border-border-default/70 bg-white p-5 sm:p-6 relative overflow-hidden` panel with a 3 px side-tinted top bar (blue / indigo) — matches the hero panel language.
+- Panel header: `● eyebrow (PERFIL / CONCORRENTE)` + avatar (size-10) + `@handle` row (single line, truncate).
+- Below the donut: small chip `N publicações na amostra` using `competitor.postsAnalyzed` / `primary.postsAnalyzed` (passed via existing `formats` aggregate isn't enough — we need the primary `postsAnalyzed`). To avoid Props churn we'll derive primary total from `formats[].count` when available; for competitor we use `competitor.postsAnalyzed` (already on the entry).
+- Legend: same 3 rows, larger swatches (size-3), bigger labels (`text-sm`), values tabular-nums semibold. Zero rows render as `—` and `text-content-tertiary`.
 
-### 3. Per-side peak chips (above chart)
-- Two chips, one per side, each showing `● PERFIL · Dia mais forte: {day} ({share}%)`. Blue dot for primary, indigo dot for competitor. Only render when that side has ≥3 posts and a real peak. Hidden otherwise.
+### 3. Donut redesign
+- Size bump: `size-44 sm:size-48 md:size-52` (≈176/192/208 px). SVG `viewBox` updated; radius `r=78`, `strokeWidth=28` for a thicker, more visible ring.
+- Gap between slices kept at 2°.
+- Centre label: dominant `label` (smaller) + `share %` (Inter SemiBold, `text-2xl sm:text-3xl`, side-tinted). When dominant is "Misto" keep current behaviour.
+- Hover/focus: no behaviour added (presentation only).
 
-### 4. Deterministic insight (footer of CompareCardShell)
-Ladder (kept from existing `buildWeekdayInsight`, expanded):
-1. Either side has fewer than 3 posts → fallback: "Amostra pequena para concluir um padrão semanal estável."
-2. Same peak day → "Os dois perfis concentram publicações em {dia} — {pShare}% no teu lado, {cShare}% no concorrente."
-3. Different peak days → "Tu concentras {pShare}% em {dia}; o concorrente concentra {cShare}% em {dia2}."
-4. Same peak day but one side ≥1.5x more concentrated (share) → "Tu/O concorrente concentra mais o ritmo nesse dia ({pShare}% vs {cShare}%)."
-- When competitor data missing → footer becomes: "Sem dados suficientes do concorrente — leitura limitada ao perfil." (single line, no fake comparison).
+### 4. Palettes
+- Primary family = blue (`--accent-primary`) with 65%/35% white mix steps (kept).
+- Competitor family = indigo (`--accent-secondary`) with 65%/35% white mix steps (kept).
+- Missing/zero segment = `border-default` neutral (already used as donut track).
 
-### 5. Sample note
-- Small line under the chart, above CompareCardShell footer: `text-sm text-content-secondary` — **"Com base nas {N} publicações analisadas nesta amostra."** where N = `totalPrimary` (or sum across sides when both have data).
+### 5. Deterministic insight (kept, expanded)
+- Reuse `buildDonutInsight`. Add a sample-too-small fallback: if either side total share < 90 → return `"Amostra demasiado pequena para uma leitura estável do mix de formatos."` instead of `null`, so the footer is never empty when both have data.
+- All existing branches preserved (concentrated/distinct, concentrated/diversified, diversified/diversified, same-dominant gap ≥10pp).
 
-### 6. Mobile
-- 3-col row grid: `grid-cols-[2.25rem_1fr_3.25rem]` (label / bars / counts). No horizontal overflow.
-- Day label uses short `Seg`/`Ter`/... (already in `WEEKDAY_LABELS`); counts column right-aligned, `text-xs sm:text-sm` tabular-nums, never wraps.
-- Peak chips wrap to two rows when needed.
+### 6. Spacing
+- Card body uses `grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6` — equal panels, less wasted space than before because the panel itself fills the column.
+- Sample note line under each panel removes the awkward floating space currently below the donut.
 
-### 7. Editorial polish
-- `CompareCardShell` already provides large title/subtitle. We slightly bump subtitle copy to "Distribuição de publicações por dia (Seg–Dom)".
-- Card body uses `mt-1 space-y-5` for clearer rhythm.
+### 7. Mobile (375px)
+- Panels stack; donut size capped at `size-44` (176 px) on mobile to leave breathing room.
+- Legend full-width; no horizontal overflow.
 
 ## Out of scope
-- Shared `CompareBarPair` primitive (still used by other cards) — untouched.
-- `compare-card-shell.tsx`, adapter, snapshot pipeline, providers, schema, credits, Free/Public, other competitor cards.
+- `CompareCardShell`, adapter, snapshot pipeline, provider/backend, schema, credits, Free/Public, other competitor cards.
+- Not adding a chart library; SVG donut stays hand-rolled.
 
 ## Validation
-- `nunomarkl` preview (competitor lacks weekday data) — primary chart renders fully, neutral "Sem dados suficientes…" panel appears in place of competitor bars. No 7 fake zero rows.
-- A profile/competitor with real weekday data on both sides — paired bars render, each side's peak day has a star and chip.
-- 375px viewport — no horizontal overflow; labels and counts readable.
-- Sample note visible; deterministic insight in footer matches the chart.
+- `nunomarkl` preview: primary donut clearly visible at large size with thick ring and side-tinted centre label; competitor side shows the elegant "Sem dados de formatos disponíveis para o concorrente nesta amostra." panel (since `hasFormatStats === false`).
+- A profile with both sides populated: two strong donuts side by side, legends and chips rendered, deterministic insight in footer.
+- No 0 % printed when a category is truly zero — rendered as `—`.
+- 375px viewport: panels stack, no horizontal overflow, legend readable.
 - Typecheck passes.
