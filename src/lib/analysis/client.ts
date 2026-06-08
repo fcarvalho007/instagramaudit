@@ -17,6 +17,7 @@ const inflight = new Map<string, Promise<PublicAnalysisResponse>>();
 export async function fetchPublicAnalysis(
   username: string,
   competitorUsernames: string[] = [],
+  options: { window?: "baseline" | "30d" | "90d" } = {},
 ): Promise<PublicAnalysisResponse> {
   const cleaned = username.trim().replace(/^@/, "");
   const competitors = competitorUsernames
@@ -24,7 +25,8 @@ export async function fetchPublicAnalysis(
     .filter((c) => c.length > 0)
     .slice(0, 2);
 
-  const key = `${cleaned.toLowerCase()}|${competitors.map((c) => c.toLowerCase()).join(",")}`;
+  const windowKind = options.window ?? "baseline";
+  const key = `${cleaned.toLowerCase()}|${competitors.map((c) => c.toLowerCase()).join(",")}|${windowKind}`;
   const existing = inflight.get(key);
   if (existing) return existing;
 
@@ -42,6 +44,7 @@ export async function fetchPublicAnalysis(
       body: JSON.stringify({
         instagram_username: cleaned,
         competitor_usernames: competitors,
+        window: windowKind,
       }),
     });
 
