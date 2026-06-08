@@ -64,36 +64,24 @@ export function CompareCardShell({
       <header className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4">
         <div className="min-w-0">
           <h3
-            className={cn(
-              "font-serif text-content-primary leading-snug tracking-tight",
-              anchor
-                ? "text-2xl sm:text-3xl md:text-[2.25rem]"
-                : "text-2xl sm:text-3xl",
-            )}
+            className="font-serif text-content-primary leading-tight tracking-tight text-2xl sm:text-3xl"
           >
             {title}
           </h3>
           {subtitle ? (
-            <p
-              className={cn(
-                "text-content-secondary",
-                anchor
-                  ? "mt-2 text-sm sm:text-base font-medium"
-                  : "mt-1.5 text-sm sm:text-base",
-              )}
-            >
+            <p className="mt-2 text-sm sm:text-base text-content-secondary">
               {subtitle}
             </p>
           ) : null}
         </div>
         {!windowAligned ? (
           <span className="inline-flex w-fit shrink-0 items-center rounded-full border border-border-subtle bg-surface-muted px-2.5 py-1 text-xs text-content-tertiary">
-            Concorrente em janela baseline
+            Concorrente em janela de referência
           </span>
         ) : null}
       </header>
 
-      <div className={cn(anchor ? "mt-6" : "mt-5")}>
+      <div className="mt-5">
         <CompareHandleRow
           primary={primary}
           competitor={competitor}
@@ -101,22 +89,13 @@ export function CompareCardShell({
         />
       </div>
 
-      <div
-        className={cn(
-          anchor
-            ? "mt-10 sm:mt-12"
-            : "mt-8 sm:mt-10",
-        )}
-      >
+      <div className="mt-7 sm:mt-9">
         {children}
       </div>
 
       {footer ? (
         <div
-          className={cn(
-            "rounded-xl border border-border-subtle bg-surface-muted px-5 py-4",
-            anchor ? "mt-10" : "mt-8",
-          )}
+          className="mt-7 sm:mt-9 rounded-xl border border-border-subtle bg-surface-muted px-5 py-4 sm:px-6 sm:py-5"
         >
           <p className="text-eyebrow-sm text-content-tertiary mb-1.5">
             {footerEyebrow}

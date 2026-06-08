@@ -111,7 +111,7 @@ function Side({
   return (
     <div
       className={cn(
-        "flex flex-col gap-2 rounded-xl border px-4 py-5 sm:px-5 sm:py-6 min-w-0",
+        "flex flex-col gap-2 rounded-xl border px-5 py-6 sm:px-6 sm:py-7 min-w-0",
         accent === "primary"
           ? "border-accent-primary/30 bg-accent-primary/8"
           : "border-compare-competitor/30 bg-compare-competitor/8",

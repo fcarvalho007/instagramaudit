@@ -219,7 +219,7 @@ function Bar({
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className="tabular-nums text-sm font-medium text-content-primary w-16 text-right shrink-0">
+      <span className="tabular-nums text-sm font-medium text-content-primary w-20 text-right shrink-0">
         {formatted}
       </span>
     </div>
@@ -283,7 +283,7 @@ function BareBar({
       />
       <div
         className={cn(
-          "relative h-3.5 sm:h-4 flex-1 rounded-full overflow-hidden",
+          "relative h-3 sm:h-4 flex-1 rounded-full overflow-hidden",
           isZero
             ? "bg-surface-muted border border-dashed border-border-subtle"
             : "bg-surface-muted",
@@ -302,7 +302,7 @@ function BareBar({
           "tabular-nums text-right shrink-0",
           isZero
             ? "text-xs text-content-tertiary w-20 sm:w-24"
-            : "font-semibold text-content-primary text-sm sm:text-base w-14 sm:w-20",
+            : "font-semibold text-content-primary text-sm sm:text-base w-16 sm:w-24",
         )}
       >
         {isZero && zeroLabel ? zeroLabel : formatted}

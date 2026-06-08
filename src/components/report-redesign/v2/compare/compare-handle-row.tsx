@@ -40,7 +40,7 @@ export function CompareHandleRow({
   primary,
   competitor,
   size = "sm",
-  prominence: _prominence = "strong",
+  prominence = "strong",
   className,
 }: Props) {
   if (size === "lg") {
@@ -65,14 +65,14 @@ export function CompareHandleRow({
         className,
       )}
     >
-      <Pill side="primary" data={primary} />
+      <Pill side="primary" data={primary} prominence={prominence} />
       <span
         aria-hidden="true"
         className="font-serif text-xl sm:text-2xl text-content-tertiary tracking-tight"
       >
         vs
       </span>
-      <Pill side="competitor" data={competitor} />
+      <Pill side="competitor" data={competitor} prominence={prominence} />
     </div>
   );
 }
@@ -82,18 +82,24 @@ export function CompareHandleRow({
 function Pill({
   side,
   data,
+  prominence,
 }: {
   side: "primary" | "competitor";
   data: CompareHandleSide;
+  prominence: "default" | "strong";
 }) {
   const accent =
     side === "primary"
       ? "border-accent-primary/30 bg-accent-primary/8 text-accent-primary"
       : "border-compare-competitor/30 bg-compare-competitor/8 text-compare-competitor";
+  const strong = prominence === "strong";
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border font-semibold min-w-0 gap-2.5 px-3.5 py-1.5 text-sm sm:text-base",
+        "inline-flex items-center rounded-full border font-semibold min-w-0",
+        strong
+          ? "gap-2.5 px-3.5 py-2 text-sm sm:text-base"
+          : "gap-2 px-3 py-1.5 text-sm",
         accent,
       )}
     >
@@ -102,12 +108,12 @@ function Pill({
         name={data.handle}
         verified={Boolean(data.isVerified)}
         side={side}
-        sizeClass="size-8"
+        sizeClass={strong ? "size-9" : "size-7"}
         showRing={false}
         verifiedSizeClass="size-3.5"
         verifiedIconClass="size-2.5"
       />
-      <span className="truncate max-w-[14rem]">
+      <span className="truncate max-w-[16rem]">
         @{data.handle}
       </span>
     </span>
