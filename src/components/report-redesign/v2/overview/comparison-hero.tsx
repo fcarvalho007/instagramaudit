@@ -110,6 +110,11 @@ export function ComparisonHero({ primary, competitor, windowLabel }: Props) {
           {sampleN > 0
             ? `Comparação com base nas últimas ${sampleN} publicações disponíveis.`
             : "Comparação com base nas publicações disponíveis."}
+          {sampleAsymmetric(primary, competitor) ? (
+            <span className="text-content-tertiary">
+              {" "}Dados do concorrente indisponíveis nesta amostra.
+            </span>
+          ) : null}
           {competitor.windowAligned === false ? (
             <span className="text-content-tertiary"> Concorrente em janela de referência.</span>
           ) : null}
