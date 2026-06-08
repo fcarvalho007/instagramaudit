@@ -147,10 +147,12 @@ function buildWeekdayInsight(
   if (pIdx === -1 || cIdx === -1) return null;
   const pDay = WEEKDAY_LABELS[pIdx].long;
   const cDay = WEEKDAY_LABELS[cIdx].long;
+  const pShare = Math.round((primaryIso[pIdx] / totalPrimary) * 100);
+  const cShare = Math.round((competitorIso[cIdx] / totalCompetitor) * 100);
   if (pIdx === cIdx) {
-    return `Os dois perfis concentram publicações em ${pDay.toLowerCase()}.`;
+    return `Os dois perfis concentram publicações em ${pDay.toLowerCase()} — ${pShare} % no teu lado, ${cShare} % no concorrente.`;
   }
-  return `Tu publicas mais em ${pDay.toLowerCase()}; o concorrente em ${cDay.toLowerCase()}.`;
+  return `Tu concentras ${pShare} % das publicações em ${pDay.toLowerCase()}; o concorrente concentra ${cShare} % em ${cDay.toLowerCase()}.`;
 }
 
 function peakIndex(arr: number[]): number {
