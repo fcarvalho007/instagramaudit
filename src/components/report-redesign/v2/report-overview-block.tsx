@@ -31,6 +31,7 @@ import { CompetitorBioCompare } from "./competitor-bio-compare";
 import { CompetitorFormatCompare } from "./competitor-format-compare";
 import { CompetitorWeekdayCompare } from "./competitor-weekday-compare";
 import { normaliseFormatKey } from "@/lib/report/format-keys";
+import { pickThumbnailUrl } from "@/lib/report/pick-thumbnail";
 
 function tierLabelFromFollowers(n: number | null | undefined): string | null {
   if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) return null;
@@ -412,6 +413,18 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
                     postingFrequencyWeekly: k.postingFrequencyWeekly,
                   }}
                   competitor={firstCompetitor}
+                  primaryRecentPosts={(sample?.analyzedPosts ?? [])
+                    .slice()
+                    .sort((a, b) => (b.taken_at ?? 0) - (a.taken_at ?? 0))
+                    .slice(0, 5)
+                    .map((p) => ({
+                      thumbUrl: pickThumbnailUrl({
+                        thumbnail_storage_url: p.thumbnail_storage_url ?? null,
+                        thumbnail_url: p.thumbnail_url ?? null,
+                      }),
+                      permalink: p.permalink ?? null,
+                      takenAt: p.taken_at ?? null,
+                    }))}
                 />
                 <CompetitorWeekdayCompare
                   primaryHandle={primaryHandle}
