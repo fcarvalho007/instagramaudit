@@ -456,13 +456,13 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 outcome: overrides.outcome,
               });
             }
+            if (eventId) lastEventId = eventId;
             return eventId;
           } catch (err) {
             // Logging must never crash the public response.
             console.error("[analyze-public-v1] logEvent failed", err);
             return null;
           }
-          // unreachable — kept above
         };
 
         let raw: unknown;
