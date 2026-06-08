@@ -23,6 +23,8 @@ export type AnalysisOutcome =
 
 export type AnalysisDataSource = "fresh" | "cache" | "stale" | "none";
 
+export type AnalysisWindowKind = "baseline" | "30d" | "90d";
+
 export interface RecordAnalysisEventInput {
   network?: string;
   handle: string;
@@ -41,6 +43,8 @@ export interface RecordAnalysisEventInput {
   userAgentFamily?: string | null;
   displayName?: string | null;
   followersLastSeen?: number | null;
+  /** Selected analysis window persisted alongside the event. */
+  analysisWindow?: AnalysisWindowKind | null;
 }
 
 /**
@@ -75,6 +79,7 @@ export async function recordAnalysisEvent(
       p_user_agent_family: input.userAgentFamily ?? null,
       p_display_name: input.displayName ?? null,
       p_followers_last_seen: input.followersLastSeen ?? null,
+      p_analysis_window: input.analysisWindow ?? null,
     } as unknown as Parameters<
       typeof supabaseAdmin.rpc<"record_analysis_event">
     >[1];
