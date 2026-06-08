@@ -75,6 +75,7 @@ export function CompetitorWeekdayCompare({
     <CompareCardShell
       title="Ritmo por dia da semana"
       subtitle="Publicações por dia (Seg–Dom)"
+      density="hero"
       windowAligned={competitor.windowAligned}
       primary={{
         handle: primaryHandle,
@@ -95,8 +96,12 @@ export function CompetitorWeekdayCompare({
         label="Ritmo por dia da semana"
         primaryHandle={primaryHandle}
         competitorHandle={competitor.username}
+        primaryAvatarUrl={primaryAvatarUrl ?? null}
+        competitorAvatarUrl={competitor.avatarUrl ?? null}
         categories={categories}
         unit="abs"
+        zeroLabel="Sem publicações"
+        highlightWinner
       />
     </CompareCardShell>
   );
