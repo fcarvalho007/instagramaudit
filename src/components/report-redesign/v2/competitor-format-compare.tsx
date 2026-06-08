@@ -1,4 +1,7 @@
-import { CompareCardShell } from "@/components/report-redesign/v2/compare";
+import {
+  CompareCardShell,
+  CompareMissingDataNote,
+} from "@/components/report-redesign/v2/compare";
 import { CompareAvatar } from "@/components/report-redesign/v2/compare/compare-handle-row";
 import type { FormatEntry } from "@/components/report-redesign/v2/overview/format-card";
 import type { ReportCompetitorBreakdownEntry } from "@/components/report/report-mock-data";
@@ -76,6 +79,12 @@ export function CompetitorFormatCompare({
   const competitorPostsAnalyzed =
     typeof competitor.postsAnalyzed === "number" ? competitor.postsAnalyzed : 0;
 
+  const sampleN = competitorHasStats
+    ? primaryPostsAnalyzed > 0 && competitorPostsAnalyzed > 0
+      ? Math.min(primaryPostsAnalyzed, competitorPostsAnalyzed)
+      : Math.max(primaryPostsAnalyzed, competitorPostsAnalyzed)
+    : primaryPostsAnalyzed;
+
   return (
     <CompareCardShell
       title="Mix de formatos"
@@ -124,6 +133,11 @@ export function CompetitorFormatCompare({
           />
         )}
       </div>
+      <CompareMissingDataNote
+        className="mt-4"
+        sampleN={sampleN > 0 ? sampleN : null}
+        competitorMissing={!competitorHasStats}
+      />
     </CompareCardShell>
   );
 }
@@ -251,6 +265,11 @@ function DonutSide({
           return (
             <li
               key={e.key}
+              title={
+                zero && total > 0
+                  ? `0 publicações neste formato na amostra`
+                  : undefined
+              }
               className={cn(
                 "flex items-center justify-between text-sm",
                 zero ? "text-content-tertiary" : "text-content-secondary",

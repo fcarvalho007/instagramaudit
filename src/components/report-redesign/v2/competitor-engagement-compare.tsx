@@ -10,6 +10,9 @@ interface PrimarySide {
   engagementRate: number;
   averageLikes: number;
   averageComments: number;
+  /** Posts in the primary's eligible sample. Optional — when present,
+   *  used by the methodology line at the bottom of the card. */
+  postsAnalyzed?: number;
 }
 
 interface Props {
@@ -104,7 +107,32 @@ export function CompetitorEngagementCompare({ primary, competitor, benchmark, sc
           </div>
         </div>
       ) : null}
+      <MethodologyLine primary={primary} competitor={competitor} />
     </CompareCardShell>
+  );
+}
+
+function MethodologyLine({
+  primary,
+  competitor,
+}: {
+  primary: PrimarySide;
+  competitor: ReportCompetitorBreakdownEntry;
+}) {
+  const p = isPositive(primary.postsAnalyzed) ? (primary.postsAnalyzed as number) : 0;
+  const c = isPositive(competitor.postsAnalyzed) ? (competitor.postsAnalyzed as number) : 0;
+  const parts: string[] = [];
+  if (p > 0) parts.push(`${p} publicações (@${primary.handle})`);
+  if (c > 0) parts.push(`${c} publicações (@${competitor.username})`);
+  const competitorMissing = c === 0;
+  const sentences: string[] = [];
+  if (parts.length > 0) sentences.push(`Amostra: ${parts.join(" · ")}.`);
+  if (competitorMissing) {
+    sentences.push("Dados do concorrente indisponíveis nesta amostra.");
+  }
+  if (sentences.length === 0) return null;
+  return (
+    <p className="mt-5 text-sm text-content-secondary">{sentences.join(" ")}</p>
   );
 }
 

@@ -5,6 +5,7 @@ export { CompareCardShell } from "./compare-card-shell";
 export { CompareHandleRow } from "./compare-handle-row";
 export { CompareAvatar } from "./compare-handle-row";
 export { CompareThumbPlaceholder } from "./compare-handle-row";
+export { CompareMissingDataNote } from "./compare-missing-data-note";
 export type { CompareHandleSide } from "./compare-handle-row";
 export { buildDelta, buildDeltaPair } from "./compare-delta";
 export type {

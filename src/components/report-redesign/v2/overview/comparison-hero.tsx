@@ -110,6 +110,11 @@ export function ComparisonHero({ primary, competitor, windowLabel }: Props) {
           {sampleN > 0
             ? `Comparação com base nas últimas ${sampleN} publicações disponíveis.`
             : "Comparação com base nas publicações disponíveis."}
+          {sampleAsymmetric(primary, competitor) ? (
+            <span className="text-content-tertiary">
+              {" "}Dados do concorrente indisponíveis nesta amostra.
+            </span>
+          ) : null}
           {competitor.windowAligned === false ? (
             <span className="text-content-tertiary"> Concorrente em janela de referência.</span>
           ) : null}
@@ -326,6 +331,17 @@ function methodologySampleSize(
   const b = isPos(c.postsAnalyzed) ? c.postsAnalyzed : 0;
   if (a > 0 && b > 0) return Math.min(a, b);
   return Math.max(a, b);
+}
+
+/** True when only one side has a positive sample size — the methodology
+ *  number reflects a single profile, so we must say so explicitly. */
+function sampleAsymmetric(
+  p: PrimarySide,
+  c: ReportCompetitorBreakdownEntry,
+): boolean {
+  const a = isPos(p.postsAnalyzed) ? p.postsAnalyzed : 0;
+  const b = isPos(c.postsAnalyzed) ? c.postsAnalyzed : 0;
+  return (a > 0) !== (b > 0);
 }
 
 function pickWinner(a: number, b: number): Side {

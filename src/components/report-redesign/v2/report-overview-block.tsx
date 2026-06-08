@@ -407,6 +407,7 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
                   engagementRate: k.engagementRate,
                   averageLikes: avgLikes,
                   averageComments: avgComments,
+                  postsAnalyzed: k.postsAnalyzed,
                 }}
                 competitor={firstCompetitor}
                 benchmark={k.engagementBenchmark}

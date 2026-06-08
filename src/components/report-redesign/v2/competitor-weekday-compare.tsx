@@ -1,5 +1,8 @@
 import { useMemo } from "react";
-import { CompareCardShell } from "@/components/report-redesign/v2/compare";
+import {
+  CompareCardShell,
+  CompareMissingDataNote,
+} from "@/components/report-redesign/v2/compare";
 import type { ReportCompetitorBreakdownEntry } from "@/components/report/report-mock-data";
 import type { SnapshotPayload, SnapshotPost } from "@/lib/report/snapshot-to-report-data";
 import { remapUtcCountsToIso } from "@/lib/report/weekday-iso";
@@ -55,8 +58,8 @@ export function CompetitorWeekdayCompare({
 
   const totalPrimary = primaryIso.reduce((s, n) => s + n, 0);
   const totalCompetitor = competitorIso.reduce((s, n) => s + n, 0);
-  const competitorHasData =
-    competitor.hasWeekdayData !== false && totalCompetitor > 0;
+  const competitorFieldMissing = competitor.hasWeekdayData === false;
+  const competitorHasData = !competitorFieldMissing && totalCompetitor > 0;
   if (totalPrimary === 0 && !competitorHasData) return null;
 
   const pPeak = peakIndex(primaryIso);
@@ -72,6 +75,12 @@ export function CompetitorWeekdayCompare({
     : "Sem dados suficientes do concorrente — leitura limitada ao perfil.";
 
   const sampleN = competitorHasData ? totalPrimary + totalCompetitor : totalPrimary;
+
+  const missingCopy = competitorFieldMissing
+    ? "Sem dados suficientes do concorrente para comparar o ritmo semanal."
+    : !competitorHasData
+      ? "Sem publicações do concorrente nesta janela."
+      : null;
 
   return (
     <CompareCardShell
@@ -193,18 +202,16 @@ export function CompetitorWeekdayCompare({
                 Concorrente
               </span>
               <p className="text-sm text-content-secondary leading-relaxed">
-                Sem dados suficientes do concorrente para comparar o ritmo
-                semanal.
+                {missingCopy}
               </p>
             </aside>
           ) : null}
         </div>
 
-        <p className="text-sm text-content-secondary">
-          {sampleN > 0
-            ? `Com base nas ${sampleN} publicações analisadas nesta amostra.`
-            : "Com base nas publicações analisadas nesta amostra."}
-        </p>
+        <CompareMissingDataNote
+          sampleN={sampleN > 0 ? sampleN : null}
+          competitorMissing={!competitorHasData}
+        />
       </div>
     </CompareCardShell>
   );
