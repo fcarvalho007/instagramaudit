@@ -265,6 +265,11 @@ function DonutSide({
           return (
             <li
               key={e.key}
+              title={
+                zero && total > 0
+                  ? `0 publicações neste formato na amostra`
+                  : undefined
+              }
               className={cn(
                 "flex items-center justify-between text-sm",
                 zero ? "text-content-tertiary" : "text-content-secondary",
