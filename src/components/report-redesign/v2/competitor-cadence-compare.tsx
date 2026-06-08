@@ -49,19 +49,30 @@ export function CompetitorCadenceCompare({
   if (!isPositive(primary.postingFrequencyWeekly)) return null;
   if (!isPositive(competitor.estimatedPostsPerWeek)) return null;
 
-  const primaryStrip = (primaryRecentPosts ?? []).slice(0, 5);
+  const MAX = 5;
+  const primaryStrip = (primaryRecentPosts ?? []).slice(0, MAX);
   const competitorStrip = showSampleStrips
-    ? extractRecentPosts(competitor.posts, 5)
+    ? extractRecentPosts(competitor.posts, MAX)
     : [];
-  const sampleN = Math.min(
-    Math.max(primaryStrip.length, competitorStrip.length, 0),
-    12,
-  );
+  // Count only real thumbnails (placeholders don't count as evidence)
+  const primaryThumbs = primaryStrip.filter((p) => Boolean(p.thumbUrl)).length;
+  const competitorThumbs = competitorStrip.filter((p) => Boolean(p.thumbUrl)).length;
+
+  let sampleN = 0;
+  if (primaryThumbs > 0 && competitorThumbs > 0) {
+    sampleN = Math.min(primaryThumbs, competitorThumbs);
+  } else {
+    sampleN = Math.max(primaryThumbs, competitorThumbs);
+  }
+
   const insight = buildCadenceInsight(
     primary.postingFrequencyWeekly,
     competitor.estimatedPostsPerWeek,
-    { primary: primaryStrip.length, competitor: competitorStrip.length },
+    { primary: primaryThumbs, competitor: competitorThumbs },
   );
+
+  const competitorBlocked =
+    competitor.hasPosts === true && competitorThumbs === 0;
 
   return (
     <CompareCardShell
@@ -99,50 +110,37 @@ export function CompetitorCadenceCompare({
         higherIsBetter={true}
       />
 
-      {(primaryStrip.length > 0 || competitorStrip.length > 0) ? (
-        <div className="mt-5 sm:mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-          {primaryStrip.length > 0 ? (
-            <SampleStrip side="primary" handle={primary.handle} posts={primaryStrip} />
-          ) : null}
-          {competitorStrip.length > 0 ? (
-            <SampleStrip side="competitor" handle={competitor.username} posts={competitorStrip} />
-          ) : competitor.hasPosts === false ? (
-            <MissingStrip
-              handle={competitor.username}
-              message="Sem amostra recente do concorrente nesta análise."
-            />
-          ) : null}
+      <div className="mt-5 sm:mt-6 flex flex-col gap-2">
+        <span className="text-eyebrow-sm text-content-tertiary">
+          Amostra recente
+        </span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+          <SampleStrip
+            side="primary"
+            handle={primary.handle}
+            posts={primaryStrip}
+            slots={MAX}
+            realCount={primaryThumbs}
+          />
+          <SampleStrip
+            side="competitor"
+            handle={competitor.username}
+            posts={competitorStrip}
+            slots={MAX}
+            realCount={competitorThumbs}
+          />
         </div>
-      ) : null}
+      </div>
 
-      <p className="mt-4 text-sm text-content-tertiary">
+      <p className="mt-4 text-sm text-content-secondary">
         {sampleN > 0
           ? `Amostra: últimas ${sampleN} publicações disponíveis.`
-          : "Amostra com base nas últimas publicações disponíveis."}
-        {competitor.hasPosts === true && competitorStrip.length === 0
+          : "Amostra recente indisponível nesta análise."}
+        {competitorBlocked
           ? " Miniaturas do concorrente indisponíveis (links de CDN expirados)."
           : ""}
       </p>
     </CompareCardShell>
-  );
-}
-
-function MissingStrip({
-  handle,
-  message,
-}: {
-  handle: string;
-  message: string;
-}) {
-  return (
-    <div
-      className="flex flex-col gap-2 rounded-lg border border-dashed border-border-default/70 bg-surface-muted/40 p-4 text-center"
-      role="note"
-      aria-label={`Amostra recente de @${handle} indisponível`}
-    >
-      <span className="text-eyebrow-sm text-compare-competitor">@{handle}</span>
-      <p className="text-sm text-content-secondary">{message}</p>
-    </div>
   );
 }
 
@@ -217,24 +215,48 @@ function SampleStrip({
   side,
   handle,
   posts,
+  slots,
+  realCount,
 }: {
   side: "primary" | "competitor";
   handle: string;
   posts: CadenceSamplePost[];
+  slots: number;
+  realCount: number;
 }) {
   const eyebrowColor =
     side === "primary" ? "text-accent-primary" : "text-compare-competitor";
+  // Always render exactly `slots` tiles — fill missing with placeholders
+  const tiles: (CadenceSamplePost | null)[] = [];
+  for (let i = 0; i < slots; i++) {
+    tiles.push(posts[i] ?? null);
+  }
+  const allPlaceholders = realCount === 0;
   return (
     <div
-      className="flex flex-col gap-2"
+      className="flex flex-col gap-2 min-w-0"
       aria-label={`Amostra recente de @${handle}`}
     >
-      <span className={cn("text-eyebrow-sm", eyebrowColor)}>@{handle}</span>
-      <div className="flex gap-2">
-        {posts.map((p, i) => (
-          <Thumb key={`${p.permalink ?? i}`} side={side} post={p} />
+      <div className="flex items-baseline justify-between gap-3">
+        <span className={cn("text-eyebrow-sm truncate", eyebrowColor)}>
+          @{handle}
+        </span>
+        <span className="text-xs text-content-tertiary shrink-0">
+          {allPlaceholders
+            ? "Sem amostra disponível"
+            : `${realCount} ${realCount === 1 ? "mais recente" : "mais recentes"}`}
+        </span>
+      </div>
+      <div className="grid grid-cols-5 gap-2 sm:gap-2.5">
+        {tiles.map((p, i) => (
+          <Thumb key={`${p?.permalink ?? i}`} side={side} post={p} />
         ))}
       </div>
+      {allPlaceholders ? (
+        <p className="text-xs text-content-tertiary">
+          Miniaturas indisponíveis nesta amostra.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -244,7 +266,7 @@ function Thumb({
   post,
 }: {
   side: "primary" | "competitor";
-  post: CadenceSamplePost;
+  post: CadenceSamplePost | null;
 }) {
   const [failed, setFailed] = useState(false);
   const borderClass =
@@ -252,13 +274,13 @@ function Thumb({
       ? "border-accent-primary/20"
       : "border-compare-competitor/20";
   const wrapper = cn(
-    "relative aspect-square w-[18%] sm:w-20 rounded-lg overflow-hidden border bg-surface-muted shrink-0",
+    "relative aspect-square w-full rounded-lg overflow-hidden border bg-surface-muted",
     borderClass,
   );
-  const showImg = Boolean(post.thumbUrl) && !failed;
+  const showImg = Boolean(post?.thumbUrl) && !failed;
   const content = showImg ? (
     <img
-      src={post.thumbUrl as string}
+      src={post!.thumbUrl as string}
       alt=""
       loading="lazy"
       decoding="async"
@@ -268,13 +290,13 @@ function Thumb({
   ) : (
     <CompareThumbPlaceholder className="absolute inset-0 size-full rounded-none" />
   );
-  if (post.permalink) {
+  if (post?.permalink && showImg) {
     return (
       <a
         href={post.permalink}
         target="_blank"
         rel="noreferrer"
-        className={wrapper}
+        className={cn(wrapper, "transition-shadow hover:shadow-[0_2px_8px_-2px_rgba(15,23,42,0.18)]")}
       >
         {content}
       </a>

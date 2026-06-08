@@ -1,74 +1,52 @@
-# Plan — Editorial Comparison Hero (Profile vs Competitor)
+# Plan — Refine Cadência semanal (competitor) card
 
-Scope: presentation-only redesign of `src/components/report-redesign/v2/overview/comparison-hero.tsx`. No backend, no adapter changes, no other components touched. Single-profile path (EditorialIdentityCard) remains untouched and continues to render when no competitor exists.
+Scope: presentation-only edits to `src/components/report-redesign/v2/competitor-cadence-compare.tsx`. No backend, no provider calls, no adapter changes, no other components touched. Callsite (`report-overview-block.tsx`) and props contract unchanged.
 
-## File touched
+## Goals
+Make the sample/evidence visual and intentional even when thumbnails are missing, strengthen the methodology line, and keep the deterministic cadence reading.
 
-- `src/components/report-redesign/v2/overview/comparison-hero.tsx` — full visual rewrite, same Props contract, same callsite.
+## Changes
 
-## New visual structure
+### 1. Dual evidence strip — always rendered
+- Render the strip block whenever the card itself renders (it already requires both cadence values). Two columns side-by-side: primary (blue eyebrow) and competitor (indigo eyebrow).
+- Each side shows up to 5 tiles. When no real thumbs exist for that side, fill 5 intentional placeholder tiles (`CompareThumbPlaceholder`) instead of hiding the side.
+- A small "Miniaturas indisponíveis nesta amostra." caption appears under any side whose tiles are all placeholders. The card never looks broken or half-rendered.
+- Remove the separate `MissingStrip` block — placeholders carry the message inline so both sides keep equal visual weight.
 
-```text
-┌────────────────────────────────────────────────────────────┐
-│ EYEBROW: Comparação Pro · {windowLabel} · [janela baseline]│
-│                                                            │
-│ ┌──────────────────┐   ┌────┐   ┌──────────────────┐       │
-│ │ PERFIL (blue)    │   │ VS │   │ CONCORRENTE      │       │
-│ │ ◐ avatar 80–96px │   │    │   │ ◐ avatar (purple)│       │
-│ │ @handle ✓        │   │    │   │ @handle ✓        │       │
-│ │ Nome             │   │    │   │ Nome             │       │
-│ │ ────────────     │   │    │   │ ────────────     │       │
-│ │ Seguidores  XXk  │   │    │   │ Seguidores  XXk  │       │
-│ │ Publicações N    │   │    │   │ Publicações N    │       │
-│ │ Envolvimento %   │   │    │   │ Envolvimento %   │       │
-│ │ Cadência /sem    │   │    │   │ Cadência /sem    │       │
-│ └──────────────────┘   └────┘   └──────────────────┘       │
-│                                                            │
-│ ▸ Editorial verdict (Fraunces, large, deterministic)       │
-│                                                            │
-│ Methodology line (impossible to miss — own block, not xs)  │
-└────────────────────────────────────────────────────────────┘
-```
+### 2. Stronger thumbnail row
+- Bump tile size: `aspect-square w-full` inside a `grid grid-cols-5 gap-2 sm:gap-2.5`. Mobile wraps inside the card (5 cols stay readable at 375px because each tile is small but uniform). No horizontal scroll.
+- Tile chrome: rounded-lg, side-tinted hairline border, soft shadow on hover when there's a permalink.
+- Side header: eyebrow + `@handle` on one line, plus a small monochrome count "5 mais recentes" / "Sem amostra disponível" on the right.
 
-### Panel design (cinematic)
-- Larger panels: rounded-2xl, white surface, subtle top accent bar in side color (blue left, indigo right) — 3px height, full width of card, identity signal.
-- Avatar bumped to `size-20 sm:size-24` with side-tinted ring (`ring-2 ring-accent-primary/30` / `ring-compare-competitor/30`) and soft outer glow shadow tuned to the side accent. Fallback path: `CompareAvatar` already renders gradient initials when `avatarUrl == null` — no broken circle.
-- Identity block centered on mobile, left-aligned on md+. Verified check inline with handle.
-- Metric rows: keep the four existing rows (Seguidores, Publicações na amostra, Envolvimento médio, Publicações por semana) but render as a 2x2 stat grid (label eyebrow above, value in Inter SemiBold tabular-nums text-xl/2xl). Winner side highlighted with side accent color + small "▲" caret; non-winner stays content-primary. Sample row never highlighted.
-- Remove any score field. No editorial score appears in this card.
-
-### VS divider
-- Desktop: vertical hairline column with a circular badge centered (size-14, white bg, border-default, Fraunces "VS" 2xl, tracking-tight, content-primary). Soft shadow.
-- Mobile: horizontal — badge centered between stacked panels, hairline line behind it.
-
-### Methodology line (impossible to miss)
-- Dedicated block above the verdict, full-width pill: `bg-surface-muted/60 border border-border-subtle rounded-xl px-4 py-2.5`, text-sm (not text-xs), content-secondary, with a small info dot icon.
+### 3. Methodology line — clearer & deterministic
+- Use the smaller of the two real-thumb counts when both have real thumbs; otherwise the larger; otherwise fall back to the strip cap (5).
 - Copy:
-  - Always: `Comparação com base nas últimas {N} publicações disponíveis.`
-  - When `competitor.windowAligned === false`: append `Concorrente em janela de referência.`
-  - When `competitor.hasPosts === false`: append note about reduced detail (kept from current code).
+  - With real thumbs: `Amostra: últimas {N} publicações disponíveis.`
+  - Both sides placeholder-only: `Amostra recente indisponível nesta análise.` + the per-side caption already shown above.
+  - When competitor has posts but thumbs are blocked (existing `competitor.hasPosts === true && competitorStrip.length === 0`): append the existing "Miniaturas do concorrente indisponíveis (links de CDN expirados)." note.
+- Render as a single `text-sm text-content-secondary` line under the strip (slight bump from current `text-content-tertiary` for readability).
 
-### Editorial verdict
-- Below methodology line. Fraunces, text-xl sm:text-2xl, content-primary, leading-snug, with side-accent `▸` glyph.
-- Deterministic ladder (kept from current `buildHeroVerdict`):
-  1. scale vs response (competitor bigger + primary higher ER, or inverse)
-  2. engagement advantage (either side >10% delta)
-  3. cadence advantage (either side >25% delta)
-  4. fallback: "Os dois perfis apresentam dimensão e envolvimento comparáveis."
-- No AI is called.
+### 4. Visual hierarchy
+- Keep `CompareCardShell` title/subtitle ("Cadência semanal" / "Publicações por semana") — already large.
+- Keep `CompareStatBlock variant="bare"` for the two big weekly values (blue / indigo), `higherIsBetter`.
+- Add a small section eyebrow above the strip grid: "Amostra recente" (Inter uppercase).
 
-### Mobile (375px)
-- Grid collapses to single column: panel → VS badge → panel. Gaps tightened. Avatar size-16 on mobile. Stat grid stays 2-col inside each panel. No element exceeds card padding; all numbers use `tabular-nums` and `truncate` on handle/name.
+### 5. Deterministic interpretation
+- Keep `buildCadenceInsight` as is — already returns the correct ladder (similar / slight / clear advantage either side).
+- Add a "sample too small" guard: when BOTH real-thumb counts are 0 AND the ratio is between 0.9 and 1.1, prefer the cautious "Os dois perfis têm uma cadência semelhante." (already covered, just re-verify with a comment).
+- Passed to `CompareCardShell` `footer` as today.
 
-## Out of scope (untouched)
-- `report-overview-block.tsx` callsite, props contract.
-- `EditorialIdentityCard` single-profile path (renders unchanged when no competitor).
-- All downstream competitor compare cards (bio, engagement, cadence, format, weekday).
-- Adapter, backend, providers, schema, credits, Free/Public.
+### 6. Mobile
+- 5-col grid wraps within the card; no element exceeds the card padding.
+- Side labels truncate; no horizontal page overflow.
 
-## Validation checklist
-- `/admin/report-preview/nunomarkl?variant=pro_preview&draft=false` — hero reads as a true duel from first glance; methodology line obvious; verdict editorial; winners highlighted; avatars present (real or gradient initials, never broken).
-- `/admin/report-preview/frederico.m.carvalho` (no competitor) — EditorialIdentityCard still renders; ComparisonHero not mounted.
-- 375px viewport — panels stack with VS badge between; no horizontal overflow; no clipped text.
-- No duplicate identity stats appear below the hero (existing block already gated by `mode === 'all' && !firstCompetitor`).
+## Out of scope
+- `CompareCardShell`, `CompareStatBlock`, `CompareThumbPlaceholder` internals.
+- `report-overview-block.tsx`, adapter, snapshot fetching, backend, providers, schema, credits.
+
+## Validation
+- `nunomarkl` preview: dual strip visible. Real primary thumbs when present. Competitor side renders 5 placeholder tiles with "Miniaturas indisponíveis nesta amostra." caption — looks intentional, not broken.
+- Profile with real thumbs on both sides: real tiles render, methodology line shows correct N.
+- 375px mobile: strip wraps inside card, no horizontal overflow.
+- Cadence reading still names who publishes more and avoids overclaiming when both samples are empty.
 - Typecheck passes.
