@@ -1,99 +1,95 @@
 ## Goal
 
-Add a **Comparison Hero** at the very top of the Pro Overview block so that, whenever the report has a `firstCompetitor`, it opens as a side-by-side "Profile A vs Profile B" duel — primary in blue, competitor in indigo/purple — before any single-profile cards render.
+Make every Pro comparison card share **one shell + one grammar** so the report reads as a coherent "comparison mode" instead of single-profile cards plus appended compare blocks.
 
-Read-only and presentation-only. No providers, credits, schema, entitlements, Free/Public flows or PDF pipeline touched.
+Presentation-only. No data, providers, payments, schema, entitlements or Free/Public touched.
 
-## Where it mounts
+## Today's inconsistencies (audit)
 
-`src/components/report-redesign/v2/report-overview-block.tsx`, inside the `mode === "all"` branch, **as the first child of the returned `<div>`**, gated by `firstCompetitor`.
+| Card | Shell | Title | Handle treatment | Baseline chip | Insight footer |
+|---|---|---|---|---|---|
+| Overview identity (`CompetitorOverviewCompare`) | none (eyebrow only) | none | none | inline text | none |
+| Engagement (`CompetitorEngagementCompare`) | `CompareStatBlock variant="card"` (white + Fraunces inside) | Fraunces "Taxa de engagement" | inline pill per side | inline `hint` text | plain `<p>` **outside** the card |
+| Cadence (`CompetitorCadenceCompare`) | same as engagement | "Cadência semanal" | same | same | same |
+| Format (`CompetitorFormatCompare`) | own white card | Fraunces "Mix de formatos" | legend dot + handle | pill chip | muted panel inside card |
+| Weekday (`CompetitorWeekdayCompare`) | own white card | Fraunces "Ritmo por dia da semana" | legend dot | pill chip | muted panel inside card |
+| Bio (`CompetitorBioCompare`) | `CompareTable` (smaller surface-secondary shell) | eyebrow only (no Fraunces) | table column header underline | none | tiny caption |
 
-When the hero renders, suppress the existing single-profile `EditorialIdentityCard` + `MethodologyLine` block that currently opens the report in compare mode — they re-introduce the "single-profile + appended compare cards" feeling the user wants gone. The downstream sibling cards (`CompetitorOverviewCompare scope="identity"`, `CompetitorBioCompare`, engagement/cadence/format compares) all remain — they are the per-metric deep-dives the hero summarises.
+Result: six visually different shells, three different title styles, three handle treatments, three footer treatments.
 
-In `mode === "free"` and `mode === "free_with_engagement"` (Free/Public + lead-capture): unchanged. Hero never renders there.
+## Shared compare-card rules (to apply to all six)
 
-In `mode === "locked"`: unchanged.
+1. **Shell** — white surface, `rounded-2xl border border-border-default shadow-card`, padding `p-6 sm:p-8`. Same shell on every compare card.
+2. **Title** — Fraunces H3 (`font-serif text-xl sm:text-2xl text-content-primary leading-snug`). Always present.
+3. **Subtitle line** (optional) — small Inter text under the title for the metric framing (e.g. "Publicações por semana").
+4. **Identity row** — directly under the title: two side-by-side handle pills, primary blue (`#3772E5`) and competitor indigo (`#7664E4`), each with a 24 px avatar when available. Same component on every card so left/right ownership reads instantly.
+5. **Baseline hint chip** — pill (`Concorrente em janela baseline`) anchored top-right on `md:` and wrapping under the title on mobile. One placement, every card.
+6. **Body** — variant-specific (stat block, bar pair, table) rendered in `bare` mode (no inner shell), so the parent shell is the only visible chrome.
+7. **Footer insight** — single shared panel: `rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-content-secondary leading-relaxed`. Always inside the shell, always at the bottom. Hidden when no deterministic insight.
+8. **Typography**
+   - Metric values: Inter SemiBold tabular-nums.
+   - On single-stat cards (engagement, cadence) the primary number scales up to `clamp(2rem, 5vw, 3rem)` — visibly larger than the surrounding body.
+   - Labels: Inter normal, `text-sm text-content-secondary`. Eyebrows: `.text-eyebrow-sm`.
+9. **Spacing rhythm** — title → identity row: `mt-4`. Identity row → body: `mt-6 md:mt-8`. Body → footer: `mt-6`.
+10. **Replacement, not addition** — every compare card already replaces its solo sibling in `report-overview-block.tsx` when `firstCompetitor` exists; this PR preserves that gating and audits there is no duplicate solo card rendered alongside.
 
-## New component
+## New primitives
 
-`src/components/report-redesign/v2/overview/comparison-hero.tsx`
+| File | Role |
+|---|---|
+| `src/components/report-redesign/v2/compare/compare-card-shell.tsx` | The shared shell. Props: `title`, `subtitle?`, `windowAligned`, `primary: {handle, avatarUrl?}`, `competitor: {handle, avatarUrl?, isVerified?}`, `footer?: ReactNode`, `children`, `id?`, `aria-label`. Owns the white card, Fraunces title, handle row, baseline chip placement, footer panel. |
+| `src/components/report-redesign/v2/compare/compare-handle-row.tsx` | Two-pill identity strip used by the shell. Pill = small avatar (or coloured circle fallback) + `@handle` in the side's accent colour. Reused by `ComparisonHero` for visual harmony. |
 
-Editorial duel layout:
-
-```text
-┌──────────────────────────────────────────────────────────────┐
-│  COMPARAÇÃO PRO · janela: últimos 30 dias                    │
-│                                                              │
-│  ┌─────────┐                              ┌─────────┐        │
-│  │ avatar  │  @primary           VS       │ avatar  │        │
-│  │  blue   │  Nome próprio                │ indigo  │        │
-│  │  ring   │                              │  ring   │        │
-│  └─────────┘                              └─────────┘        │
-│                                                              │
-│  Seguidores              1,1 M    ·    523 k                 │
-│  Envolvimento médio       2,84%   ·    1,92%                 │
-│  Publicações / semana      4,2    ·     6,1                  │
-│  Formato dominante       Reels    ·   Carousels              │
-│  Score editorial            82    ·      71                  │
-└──────────────────────────────────────────────────────────────┘
-```
-
-Style commitments:
-- Fraunces title ("Perfil vs Concorrente"), Inter for handles, labels, numbers (tabular-nums).
-- White card surface, generous padding (`p-8 md:p-12`), `rounded-2xl`, soft border (`border-border-default`), subtle shadow — heavier than a standard card.
-- Avatars: 72–88 px circular, with a 2 px coloured ring (primary = `--accent-primary` blue `#3772E5`, competitor = `--accent-secondary` indigo `#7664E4`). Reuse the avatar pattern from `report-hero-v2.tsx` (img + fallback initials + verified check overlay).
-- "VS" treatment: Fraunces, large (`text-4xl md:text-5xl`), `text-content-tertiary`, centred between the two identity blocks; subtle horizontal divider line behind it on `md:` and up.
-- Metric rows: 5 rows, each a 3-column grid `[label | primary value | competitor value]`. Winner side highlighted with the side's accent colour (only when the metric has a clear "higher is better" + meaningful delta — followers, ER, posts/week, score). Format row shows both names, no winner.
-- Responsive: on mobile, identity blocks stack with "VS" between them; metric rows become two-column with the label as an eyebrow above the value pair.
-- Window/baseline hint chip ("Concorrente em janela baseline") when `competitor.windowAligned === false` — same copy already used by `CompetitorOverviewCompare`.
-
-## Metrics shown (5)
-
-| # | Label                | Primary source                                | Competitor source                              | Higher-is-better |
-|---|----------------------|-----------------------------------------------|------------------------------------------------|------------------|
-| 1 | Seguidores           | `result.data.profile.followers`               | `firstCompetitor.followers`                    | yes              |
-| 2 | Envolvimento médio   | `keyMetrics.engagementRate` (%)               | `firstCompetitor.averageEngagementRate`        | yes              |
-| 3 | Publicações por semana | `keyMetrics.postingFrequencyWeekly`         | `firstCompetitor.estimatedPostsPerWeek`        | yes              |
-| 4 | Formato dominante    | `keyMetrics.dominantFormat`                   | `firstCompetitor.dominantFormat`               | n/a (label only) |
-| 5 | Score editorial      | `computeEnvolvimento(...)` (already in block) | hidden if competitor score not computable      | yes              |
-
-Score row: render only when both sides have a finite score; the score for the competitor is computed inline from `(averageEngagementRate, engagementBenchmark)` reusing `computeEnvolvimento` from `overview/score-utils.ts`. If only the primary has it, drop the row entirely (no asymmetric display).
-
-Each row uses the same row guard as `CompetitorOverviewCompare` (skip when either side is `<= 0` for numeric KPIs) to avoid misleading "0 vs X" rows.
-
-## Data plumbing
-
-1. **Competitor avatar** — confirmed present in snapshot (`competitors[].profile.avatar_url`). Today `ReportCompetitorBreakdownEntry` doesn't expose it. Add `avatarUrl: string | null` to the type in `src/components/report/report-mock-data.ts` and map it in `src/lib/report/snapshot-to-report-data.ts` (one line in the `competitorBreakdown.map`). Mock entries get `avatarUrl: null`. Backwards-compatible.
-2. **Primary avatar** — already available as `result.enriched.profile.avatarUrl`.
-3. **Primary display name / verified** — `result.data.profile.fullName`, `result.data.profile.verified`.
-4. **Competitor display name / verified** — already on `ReportCompetitorBreakdownEntry`.
-
-No new server fields, no migration, no provider call.
-
-## Files changed
+## Updated components
 
 | File | Change |
 |---|---|
-| `src/components/report-redesign/v2/overview/comparison-hero.tsx` | NEW. Pure presentational component. |
-| `src/components/report-redesign/v2/report-overview-block.tsx` | Mount `<ComparisonHero …/>` at the top of the `mode === "all"` branch; gate the existing `EditorialIdentityCard` + first `MethodologyLine` block behind `!firstCompetitor` so the single-profile opener only renders in solo mode. All other compare cards untouched. |
-| `src/lib/report/snapshot-to-report-data.ts` | Add `avatarUrl: typeof p.avatar_url === "string" ? p.avatar_url : null` inside the `competitorBreakdown.map`. |
-| `src/components/report/report-mock-data.ts` | Add `avatarUrl: string \| null` to `ReportCompetitorBreakdownEntry`; set `avatarUrl: null` on the mock entries to keep `/report/example` valid. |
+| `src/components/report-redesign/v2/overview/competitor-overview-compare.tsx` | Wrap the row grid in `<CompareCardShell title="Identidade" …/>`. Identity row appears once (not per row). Each row stays as `CompareStatBlock variant="bare"`. Drop the local `<header>` block. |
+| `src/components/report-redesign/v2/competitor-engagement-compare.tsx` | Replace `CompareStatBlock variant="card"` + outer `<p>` with `<CompareCardShell title="Taxa de engagement" footer={verdict}> <CompareStatBlock variant="bare" …/> </CompareCardShell>`. |
+| `src/components/report-redesign/v2/competitor-cadence-compare.tsx` | Same pattern as engagement (`title="Cadência semanal"`). |
+| `src/components/report-redesign/v2/competitor-format-compare.tsx` | Replace ad-hoc `<section>` + `<header>` + footer with `<CompareCardShell title="Mix de formatos" footer={insight}> <CompareBarPair variant="bare" …/> </CompareCardShell>`. Drop the local baseline chip. |
+| `src/components/report-redesign/v2/competitor-weekday-compare.tsx` | Same pattern as format (`title="Ritmo por dia da semana"`). |
+| `src/components/report-redesign/v2/competitor-bio-compare.tsx` | Wrap `<CompareTable variant="bare" …/>` in `<CompareCardShell title="Bio e pontos de saída" footer={insight}>`. Adds Fraunces title parity with the other cards. |
+| `src/components/report-redesign/v2/compare/compare-table.tsx` | Add `variant?: "card" \| "bare"` (default "card" for back-compat); `bare` renders only the table + mobile cards, no outer shell, no eyebrow. |
+| `src/components/report-redesign/v2/compare/index.ts` | Export `CompareCardShell`, `CompareHandleRow`. |
+| `src/components/report-redesign/v2/overview/comparison-hero.tsx` | Replace inline identity blocks with `<CompareHandleRow size="lg" …/>` so the hero and downstream compare cards share the exact same handle treatment. Keeps the bigger duel layout; just unifies the handle pills. |
+
+## Identity row spec
+
+```text
+[ ●avatar  @primary ]      [ ●avatar  @competitor ]
+   blue pill, blue text       indigo pill, indigo text
+```
+
+- Avatar: 24 px circular, with a 1.5 px ring in the side's accent colour. Fallback initials when missing.
+- Pill: `inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-semibold`, border + background tinted at 8% of the accent, text in the accent colour.
+- Verified check overlay reuses the existing avatar pattern from `report-hero-v2.tsx` (small green check, ring-2 white).
+- Mobile: pills wrap onto two lines if needed; never truncate the handle.
+
+## What stays unchanged
+
+- All single-profile cards (`EditorialIdentityCard`, `EngagementCardRefined`, `FrequencyCard`, `FormatCard`) — they already render only when `!firstCompetitor`; no shared shell needed.
+- `CompareStatBlock`, `CompareBarPair` — internals unchanged; only `bare` variant is consumed by the refactored cards. `card` variant kept for back-compat but no longer used by the six compare cards.
+- `analyze-public-v1.ts`, snapshot adapter, mock data, providers, credits, entitlements, payments.
+- PR1 window gate, PR2 window labels, lock gate, Free/Public flow.
+- Design tokens (`src/styles/tokens-light.css`) — primitives use existing accent/surface tokens; no new tokens introduced.
+- PDF print pipeline.
+
+## Files changed
+
+- New: `compare/compare-card-shell.tsx`, `compare/compare-handle-row.tsx`
+- Edited: 6 compare cards + `compare/compare-table.tsx` + `compare/index.ts` + `overview/comparison-hero.tsx`
+
+Total: 2 new files, 9 edited files.
 
 ## Validation
 
-1. `bun run typecheck` clean.
-2. Visit `/admin/report-preview/nunomarkl?variant=pro_preview` — hero renders as the first block, identity card no longer appears above it, 5 metric rows show, indigo + blue rings on avatars, "VS" centred.
-3. Visit `/admin/report-preview/frederico.m.carvalho` (no competitor) — hero does NOT render; original Editorial Identity Card opens the report unchanged.
-4. `/report/example` — unaffected (mock has competitors, but `result` shape comes from the adapter; preview route renders `ReportPage` mock, not the v2 shell, so hero doesn't apply there. Verify nothing breaks visually.)
-5. 375 px viewport — no horizontal overflow; identity blocks stack with "VS" between them.
-6. Network tab — zero new requests during render.
-7. PDF print route (`/report/print/:snapshotId`) — confirm hero either renders cleanly or is hidden via `print:hidden` if it overlaps page-break logic. Default: render; tighten only if visual QA shows breakage.
-
-## What is NOT touched
-
-- Providers (Apify / OpenAI / DataForSEO).
-- `credits.server.ts`, `entitlements.server.ts`, `eupago-webhook.ts`, checkout, pricing, payments.
-- Snapshot schema, migrations, `analysis_events`, RLS.
-- Free / Public report flow, lead-capture flow, lock gate.
-- `analyze-public-v1.ts`, `analysis-period-selector.tsx`, PR1 window gate, PR2 window labels.
-- `EditorialIdentityCard`, `CompetitorOverviewCompare`, engagement/cadence/format/bio/weekday compares (all kept as-is; hero is additive + replaces only the solo opener in compare mode).
+1. `bunx tsc --noEmit` clean.
+2. Visit `/admin/report-preview/nunomarkl?variant=pro_preview`:
+   - All six compare cards have identical shell, identical title style, identical handle row, identical baseline chip placement, identical footer panel.
+   - Engagement and cadence single-number values render visibly larger than before.
+   - No duplicate single-profile card is rendered next to any compare card.
+3. Visit `/admin/report-preview/frederico.m.carvalho` (no competitor): solo report unchanged — `EditorialIdentityCard`, `EngagementCardRefined`, `FrequencyCard`, `FormatCard` still render as before.
+4. 375 px viewport: no horizontal overflow; handle pills wrap, baseline chip wraps under title.
+5. `/report/example` mock route: still renders.
+6. Network: zero new requests.

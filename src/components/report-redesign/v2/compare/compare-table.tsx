@@ -9,6 +9,14 @@ interface CompareTableProps {
   rows: CompareTableRow[];
   /** Optional caption shown under the table for context / limitations. */
   caption?: string;
+  /**
+   * Visual shell variant:
+   * - "card" (default): self-contained `surface-secondary` shell with
+   *   eyebrow header. Back-compat.
+   * - "bare": no outer shell, no eyebrow, no caption. The parent
+   *   `CompareCardShell` provides chrome, title, handle row and footer.
+   */
+  variant?: "card" | "bare";
 }
 
 /**
@@ -24,18 +32,12 @@ export function CompareTable({
   competitorHandle,
   rows,
   caption,
+  variant = "card",
 }: CompareTableProps) {
-  return (
-    <section
-      className="rounded-xl border border-border-default bg-surface-secondary p-4 sm:p-5"
-      aria-label={`${label}: comparação com concorrente`}
-    >
-      <header className="flex flex-col gap-0.5">
-        <span className="text-eyebrow-sm text-content-tertiary">{label}</span>
-      </header>
-
+  const body = (
+    <>
       {/* Desktop: real table */}
-      <table className="mt-3 hidden sm:table w-full text-sm">
+      <table className="hidden sm:table w-full text-sm">
         <thead>
           <tr className="text-left text-eyebrow-sm text-content-tertiary border-b border-border-subtle">
             <th scope="col" className="py-2 pr-3 w-1/3 font-normal">
@@ -49,9 +51,7 @@ export function CompareTable({
           {rows.map((row, i) => (
             <tr
               key={row.label}
-              className={cn(
-                i > 0 && "border-t border-border-subtle/60",
-              )}
+              className={cn(i > 0 && "border-t border-border-subtle/60")}
             >
               <th
                 scope="row"
@@ -71,7 +71,7 @@ export function CompareTable({
       </table>
 
       {/* Mobile: stacked cards per row */}
-      <ul className="mt-3 space-y-3 sm:hidden">
+      <ul className="space-y-3 sm:hidden">
         {rows.map((row) => (
           <li
             key={row.label}
@@ -95,7 +95,22 @@ export function CompareTable({
           </li>
         ))}
       </ul>
+    </>
+  );
 
+  if (variant === "bare") {
+    return <div className="min-w-0">{body}</div>;
+  }
+
+  return (
+    <section
+      className="rounded-xl border border-border-default bg-surface-secondary p-4 sm:p-5"
+      aria-label={`${label}: comparação com concorrente`}
+    >
+      <header className="flex flex-col gap-0.5">
+        <span className="text-eyebrow-sm text-content-tertiary">{label}</span>
+      </header>
+      <div className="mt-3">{body}</div>
       {caption ? (
         <p className="mt-3 text-xs text-content-tertiary leading-relaxed">
           {caption}

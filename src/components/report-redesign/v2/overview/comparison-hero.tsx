@@ -1,10 +1,8 @@
-import { useState } from "react";
-import { Check } from "lucide-react";
-
 import type { ReportCompetitorBreakdownEntry } from "@/components/report/report-mock-data";
 import { formatCompactNumber } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
 import { computeEnvolvimento } from "./score-utils";
+import { CompareHandleRow } from "@/components/report-redesign/v2/compare";
 
 interface PrimarySide {
   handle: string;
@@ -66,21 +64,21 @@ export function ComparisonHero({ primary, competitor, windowLabel }: Props) {
       </header>
 
       {/* Duel identity row */}
-      <div className="mt-6 md:mt-8 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-6 md:gap-8">
-        <IdentityBlock
-          side="primary"
-          handle={primary.handle}
-          fullName={primary.fullName}
-          avatarUrl={primary.avatarUrl}
-          verified={primary.verified}
-        />
-        <VsDivider />
-        <IdentityBlock
-          side="competitor"
-          handle={competitor.username}
-          fullName={competitor.displayName}
-          avatarUrl={competitor.avatarUrl}
-          verified={competitor.isVerified}
+      <div className="mt-6 md:mt-8">
+        <CompareHandleRow
+          size="lg"
+          primary={{
+            handle: primary.handle,
+            avatarUrl: primary.avatarUrl,
+            isVerified: primary.verified,
+            displayName: primary.fullName,
+          }}
+          competitor={{
+            handle: competitor.username,
+            avatarUrl: competitor.avatarUrl,
+            isVerified: competitor.isVerified,
+            displayName: competitor.displayName,
+          }}
         />
       </div>
 
@@ -93,127 +91,6 @@ export function ComparisonHero({ primary, competitor, windowLabel }: Props) {
         </div>
       ) : null}
     </section>
-  );
-}
-
-// ─── Identity block ────────────────────────────────────────────────
-
-function IdentityBlock({
-  side,
-  handle,
-  fullName,
-  avatarUrl,
-  verified,
-}: {
-  side: "primary" | "competitor";
-  handle: string;
-  fullName: string | null;
-  avatarUrl: string | null;
-  verified: boolean;
-}) {
-  const ringColor =
-    side === "primary" ? "ring-[#3772E5]" : "ring-[#7664E4]";
-  const accentText =
-    side === "primary" ? "text-[#3772E5]" : "text-[#7664E4]";
-  const eyebrowLabel = side === "primary" ? "Perfil" : "Concorrente";
-
-  return (
-    <div className="flex flex-col items-center md:items-start gap-3 min-w-0">
-      <span className={cn("text-eyebrow-sm", accentText)}>{eyebrowLabel}</span>
-      <div className="flex items-center gap-4 min-w-0">
-        <Avatar
-          avatarUrl={avatarUrl}
-          name={fullName || handle}
-          verified={verified}
-          ringClass={ringColor}
-        />
-        <div className="min-w-0">
-          <p className="font-sans text-base sm:text-lg font-semibold text-content-primary truncate">
-            @{handle}
-          </p>
-          {fullName ? (
-            <p className="font-display text-lg sm:text-xl text-content-secondary tracking-tight truncate">
-              {fullName}
-            </p>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Avatar({
-  avatarUrl,
-  name,
-  verified,
-  ringClass,
-}: {
-  avatarUrl: string | null;
-  name: string;
-  verified: boolean;
-  ringClass: string;
-}) {
-  const [failed, setFailed] = useState(false);
-  const initials = name
-    .replace(/^@/, "")
-    .split(/[\s.]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase() ?? "")
-    .join("");
-
-  const show = Boolean(avatarUrl) && !failed;
-  return (
-    <div className="relative shrink-0">
-      {show ? (
-        <img
-          src={avatarUrl as string}
-          alt={name}
-          loading="eager"
-          decoding="async"
-          onError={() => setFailed(true)}
-          className={cn(
-            "size-16 sm:size-20 rounded-full object-cover bg-surface-muted ring-2 ring-offset-2 ring-offset-white",
-            ringClass,
-          )}
-        />
-      ) : (
-        <div
-          aria-hidden="true"
-          className={cn(
-            "size-16 sm:size-20 rounded-full flex items-center justify-center bg-surface-muted",
-            "font-display text-xl font-semibold text-content-tertiary",
-            "ring-2 ring-offset-2 ring-offset-white",
-            ringClass,
-          )}
-        >
-          {initials}
-        </div>
-      )}
-      {verified ? (
-        <span
-          aria-label="Verificado"
-          title="Verificado"
-          className="absolute -bottom-0.5 -right-0.5 inline-flex items-center justify-center rounded-full bg-signal-success text-white ring-2 ring-white size-5"
-        >
-          <Check className="size-3" strokeWidth={3.5} aria-hidden="true" />
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
-function VsDivider() {
-  return (
-    <div className="relative flex items-center justify-center md:px-4">
-      <span
-        aria-hidden="true"
-        className="hidden md:block absolute inset-x-0 top-1/2 h-px bg-border-default/60"
-      />
-      <span className="relative font-display text-3xl sm:text-4xl md:text-5xl font-medium text-content-tertiary bg-white px-3 md:px-4 tracking-tight">
-        vs
-      </span>
-    </div>
   );
 }
 
@@ -255,8 +132,8 @@ function ValueCell({
 }) {
   const color = highlighted
     ? side === "primary"
-      ? "text-[#3772E5]"
-      : "text-[#7664E4]"
+      ? "text-accent-primary"
+      : "text-compare-competitor"
     : "text-content-primary";
   return (
     <span

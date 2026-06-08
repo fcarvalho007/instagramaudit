@@ -1,10 +1,13 @@
-import { CompareStatBlock } from "@/components/report-redesign/v2/compare";
+import { CompareCardShell, CompareStatBlock } from "@/components/report-redesign/v2/compare";
 import type { CompareUnit } from "@/components/report-redesign/v2/compare";
 import type { ReportCompetitorBreakdownEntry } from "@/components/report/report-mock-data";
 import { formatCompactNumber } from "@/lib/i18n/format";
 
 interface PrimarySide {
   handle: string;
+  avatarUrl?: string | null;
+  fullName?: string | null;
+  verified?: boolean;
   followers: number;
   postsAnalyzed: number;
   engagementRate: number;
@@ -41,25 +44,28 @@ export function CompetitorOverviewCompare({ primary, competitor, scope = "all" }
   if (rows.length === 0) return null;
 
   return (
-    <section
-      aria-label="Comparação com concorrente"
-      className="space-y-4"
+    <CompareCardShell
+      title="Identidade"
+      subtitle="Métricas-base lado a lado"
+      windowAligned={competitor.windowAligned}
+      primary={{
+        handle: primary.handle,
+        avatarUrl: primary.avatarUrl ?? null,
+        isVerified: Boolean(primary.verified),
+        displayName: primary.fullName ?? null,
+      }}
+      competitor={{
+        handle: competitor.username,
+        avatarUrl: competitor.avatarUrl ?? null,
+        isVerified: competitor.isVerified,
+        displayName: competitor.displayName,
+      }}
     >
-      <header className="space-y-1">
-        <span className="text-eyebrow-sm text-content-tertiary">
-          Identidade vs concorrente
-        </span>
-        {!competitor.windowAligned ? (
-          <p className="text-xs text-content-tertiary">
-            Concorrente em janela baseline.
-          </p>
-        ) : null}
-      </header>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
         {rows.map((row) => (
           <CompareStatBlock
             key={row.label}
+            variant="bare"
             label={row.label}
             primary={{
               handle: primary.handle,
@@ -78,7 +84,7 @@ export function CompetitorOverviewCompare({ primary, competitor, scope = "all" }
           />
         ))}
       </div>
-    </section>
+    </CompareCardShell>
   );
 }
 

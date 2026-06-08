@@ -1,9 +1,11 @@
-import { CompareTable } from "@/components/report-redesign/v2/compare";
+import { CompareCardShell, CompareTable } from "@/components/report-redesign/v2/compare";
 import type { CompareTableRow } from "@/components/report-redesign/v2/compare";
 import type { ReportCompetitorBreakdownEntry } from "@/components/report/report-mock-data";
 
 interface Props {
   primaryHandle: string;
+  primaryAvatarUrl?: string | null;
+  primaryFullName?: string | null;
   primaryBio: string | null;
   primaryExternalUrls: string[];
   primaryVerified: boolean;
@@ -23,6 +25,8 @@ interface Props {
  */
 export function CompetitorBioCompare({
   primaryHandle,
+  primaryAvatarUrl,
+  primaryFullName,
   primaryBio,
   primaryExternalUrls,
   primaryVerified,
@@ -74,13 +78,32 @@ export function CompetitorBioCompare({
   const caption = buildInsight(primaryLinkCount, competitorLinkCount);
 
   return (
-    <CompareTable
-      label="Bio e pontos de saída"
-      primaryHandle={primaryHandle}
-      competitorHandle={competitor.username}
-      rows={rows}
-      caption={caption}
-    />
+    <CompareCardShell
+      title="Bio e pontos de saída"
+      subtitle="Sinais qualitativos do perfil"
+      windowAligned={competitor.windowAligned}
+      primary={{
+        handle: primaryHandle,
+        avatarUrl: primaryAvatarUrl ?? null,
+        isVerified: primaryVerified,
+        displayName: primaryFullName ?? null,
+      }}
+      competitor={{
+        handle: competitor.username,
+        avatarUrl: competitor.avatarUrl ?? null,
+        isVerified: competitor.isVerified,
+        displayName: competitor.displayName,
+      }}
+      footer={caption}
+    >
+      <CompareTable
+        variant="bare"
+        label="Bio e pontos de saída"
+        primaryHandle={primaryHandle}
+        competitorHandle={competitor.username}
+        rows={rows}
+      />
+    </CompareCardShell>
   );
 }
 

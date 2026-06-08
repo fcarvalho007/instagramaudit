@@ -1,4 +1,4 @@
-import { CompareBarPair } from "@/components/report-redesign/v2/compare";
+import { CompareBarPair, CompareCardShell } from "@/components/report-redesign/v2/compare";
 import type { CompareBarCategory } from "@/components/report-redesign/v2/compare/compare-types";
 import type { FormatEntry } from "@/components/report-redesign/v2/overview/format-card";
 import type { ReportCompetitorBreakdownEntry } from "@/components/report/report-mock-data";
@@ -6,6 +6,9 @@ import { normaliseFormatKey, type CanonicalFormatKey } from "@/lib/report/format
 
 interface Props {
   primaryHandle: string;
+  primaryAvatarUrl?: string | null;
+  primaryFullName?: string | null;
+  primaryVerified?: boolean;
   /** Already-computed primary format entries (Reels / Carousels / Imagens). */
   formats: FormatEntry[];
   // TODO: multi-competitor layout (Fase 1.5) — today only the first
@@ -29,7 +32,14 @@ const CATEGORY_ORDER: Array<{ key: CanonicalFormatKey; label: string }> = [
  * Renders nothing — letting the parent fall back to the single-profile
  * FormatCard — when the competitor has no usable format_stats.
  */
-export function CompetitorFormatCompare({ primaryHandle, formats, competitor }: Props) {
+export function CompetitorFormatCompare({
+  primaryHandle,
+  primaryAvatarUrl,
+  primaryFullName,
+  primaryVerified,
+  formats,
+  competitor,
+}: Props) {
   const competitorShares = buildCompetitorShares(competitor.formatStats);
   const primaryShares = buildPrimaryShares(formats);
 
@@ -51,20 +61,24 @@ export function CompetitorFormatCompare({ primaryHandle, formats, competitor }: 
   const insight = buildFormatInsight(categories);
 
   return (
-    <section
-      className="rounded-2xl border border-border-default bg-surface-primary shadow-card p-5 sm:p-6"
-      aria-label="Mix de formatos: comparação com concorrente"
+    <CompareCardShell
+      title="Mix de formatos"
+      subtitle="Distribuição de Reels, Carrosséis e Imagens"
+      windowAligned={competitor.windowAligned}
+      primary={{
+        handle: primaryHandle,
+        avatarUrl: primaryAvatarUrl ?? null,
+        isVerified: Boolean(primaryVerified),
+        displayName: primaryFullName ?? null,
+      }}
+      competitor={{
+        handle: competitor.username,
+        avatarUrl: competitor.avatarUrl ?? null,
+        isVerified: competitor.isVerified,
+        displayName: competitor.displayName,
+      }}
+      footer={insight ?? undefined}
     >
-      <header className="flex flex-col gap-2 mb-4">
-        <h3 className="font-serif text-xl sm:text-2xl text-content-primary leading-snug">
-          Mix de formatos
-        </h3>
-        {!competitor.windowAligned ? (
-          <span className="inline-flex w-fit items-center rounded-full border border-border-subtle bg-surface-muted px-2.5 py-0.5 text-xs text-content-tertiary">
-            Concorrente em janela baseline.
-          </span>
-        ) : null}
-      </header>
       <CompareBarPair
         variant="bare"
         label="Mix de formatos"
@@ -73,12 +87,7 @@ export function CompetitorFormatCompare({ primaryHandle, formats, competitor }: 
         categories={categories}
         unit="percent"
       />
-      {insight ? (
-        <p className="mt-4 rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-content-secondary leading-relaxed">
-          {insight}
-        </p>
-      ) : null}
-    </section>
+    </CompareCardShell>
   );
 }
 
