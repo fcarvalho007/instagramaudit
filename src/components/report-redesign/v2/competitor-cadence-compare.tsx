@@ -3,6 +3,7 @@ import {
   CompareCardShell,
   CompareStatBlock,
   CompareThumbPlaceholder,
+  CompareMissingDataNote,
 } from "@/components/report-redesign/v2/compare";
 import type { ReportCompetitorBreakdownEntry } from "@/components/report/report-mock-data";
 import { pickThumbnailUrl } from "@/lib/report/pick-thumbnail";
@@ -73,6 +74,7 @@ export function CompetitorCadenceCompare({
 
   const competitorBlocked =
     competitor.hasPosts === true && competitorThumbs === 0;
+  const competitorPostsMissing = competitor.hasPosts === false;
 
   return (
     <CompareCardShell
@@ -132,14 +134,16 @@ export function CompetitorCadenceCompare({
         </div>
       </div>
 
-      <p className="mt-4 text-sm text-content-secondary">
-        {sampleN > 0
-          ? `Amostra: últimas ${sampleN} publicações disponíveis.`
-          : "Amostra recente indisponível nesta análise."}
-        {competitorBlocked
-          ? " Miniaturas do concorrente indisponíveis (links de CDN expirados)."
-          : ""}
-      </p>
+      <CompareMissingDataNote
+        className="mt-4"
+        sampleN={sampleN > 0 ? sampleN : null}
+        competitorMissing={competitorPostsMissing}
+        qualifier={
+          competitorBlocked
+            ? "Miniaturas do concorrente indisponíveis (links de CDN expirados)."
+            : null
+        }
+      />
     </CompareCardShell>
   );
 }
