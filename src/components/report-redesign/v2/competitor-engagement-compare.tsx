@@ -1,4 +1,8 @@
-import { CompareCardShell, CompareStatBlock } from "@/components/report-redesign/v2/compare";
+import {
+  CompareCardShell,
+  CompareStatBlock,
+  CompareMissingDataNote,
+} from "@/components/report-redesign/v2/compare";
 import type { ReportCompetitorBreakdownEntry } from "@/components/report/report-mock-data";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +14,9 @@ interface PrimarySide {
   engagementRate: number;
   averageLikes: number;
   averageComments: number;
+  /** Posts in the primary's eligible sample. Optional — when present,
+   *  used by the methodology line at the bottom of the card. */
+  postsAnalyzed?: number;
 }
 
 interface Props {
@@ -104,7 +111,31 @@ export function CompetitorEngagementCompare({ primary, competitor, benchmark, sc
           </div>
         </div>
       ) : null}
+      <MethodologyLine primary={primary} competitor={competitor} />
     </CompareCardShell>
+  );
+}
+
+function MethodologyLine({
+  primary,
+  competitor,
+}: {
+  primary: PrimarySide;
+  competitor: ReportCompetitorBreakdownEntry;
+}) {
+  const p = isPositive(primary.postsAnalyzed) ? (primary.postsAnalyzed as number) : 0;
+  const c = isPositive(competitor.postsAnalyzed) ? (competitor.postsAnalyzed as number) : 0;
+  const parts: string[] = [];
+  if (p > 0) parts.push(`${p} publicações (@${primary.handle})`);
+  if (c > 0) parts.push(`${c} publicações (@${competitor.username})`);
+  const competitorMissing = c === 0;
+  if (parts.length === 0 && !competitorMissing) return null;
+  return (
+    <CompareMissingDataNote
+      className="mt-5"
+      qualifier={parts.length > 0 ? `Amostra: ${parts.join(" · ")}.` : null}
+      competitorMissing={competitorMissing}
+    />
   );
 }
 
