@@ -656,7 +656,9 @@
         "error_generic": "Couldn't add the competitor. Please try again shortly.",
         "error_generic_with_code": "Couldn't add the competitor ({{code}}).",
         "period_coming_soon_title": "Custom window in preparation",
-        "period_coming_soon_body": "Per-period analysis (30d/90d) isn't available in this beta yet. You'll be notified when it ships — no credit cost."
+        "period_coming_soon_body": "Per-period analysis (30d/90d) isn't available in this beta yet. You'll be notified when it ships — no credit cost.",
+        "period_action_title": "Generate analysis for the last {{days}} days?",
+        "period_action_body": "This will use 1 Pro credit and generate a fresh analysis scoped to the last {{days}} days. Repeating the same window later uses cache and consumes no extra credit."
       }
     },
     "status": {
