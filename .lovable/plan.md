@@ -1,61 +1,85 @@
-# Avaliação das fases anteriores
 
-Auditei `src/components/report-redesign/v2/compare/*` e os 6 cards de comparação (`ComparisonHero`, `CompetitorBioCompare`, `CompetitorEngagementCompare`, `CompetitorCadenceCompare`, `CompetitorWeekdayCompare`, `CompetitorFormatCompare`).
+# Premium Editorial Pass — Profile vs Competitor Cards
 
-## O que já está concluído (preview, ainda por publicar)
+Scope: only the compare UI under `src/components/report-redesign/v2/compare/*` and the 6 competitor cards that consume it. No data/provider/schema/credits/checkout changes. Free/Public report untouched.
 
-- **Tipografia unificada do shell** — `text-2xl sm:text-3xl` em todos os cards, subtítulo `text-sm sm:text-base`, chip "Concorrente em janela de referência", footer eyebrow `Leitura`.
-- **Ritmo de espaçamento** — `p-6 sm:p-8` (anchor `p-7 sm:p-9`), `mt-5`, `mt-7 sm:mt-9`, footer `sm:px-6 sm:py-5`.
-- **Handle row com `prominence`** — wiring real, `strong` (avatar `size-9`, `py-2 text-sm sm:text-base`) e `default` aplicados. `vs` em serif `text-xl sm:text-2xl`.
-- **CompareBarPair** — coluna de valores `w-16 sm:w-24`, barra `h-3 sm:h-4`, anel do vencedor mantido.
-- **CompareStatBlock** — padding `px-5 py-6 sm:px-6 sm:py-7`, valor `text-3xl sm:text-4xl tabular-nums`.
-- **CompareTable** — `py-3`, labels e valores `text-sm`/`text-sm sm:text-base` semibold tabular.
-- **Sem `font-mono`** em UI pública dos cards de comparação. Avatar fallback com iniciais em gradiente intacto.
+## Goal
+Make every comparison card feel like one cinematic editorial system: same chrome, same typography rhythm, same identity treatment, same insight footer — so the Pro report reads as one premium artefact, not 6 stitched panels.
 
-## O que ficou em falta da plan original
+---
 
-1. **CompareThumbPlaceholder partilhado (item 4 da plan anterior)** — não foi criado nem exportado. `competitor-cadence-compare.tsx` continua com `Thumb` inline (linha 212 + `ImageIcon` 243). Falta-lhe consistência com futuros usos.
-2. **Resíduos de `text-xs` em labels/secondary** que deviam ser `text-sm` segundo a regra editorial:
-   - `compare-table.tsx:157` — `<dt>` de meta-linhas ainda `text-xs`.
-   - `compare-bar-pair.tsx:170` — legenda de categorias `text-xs`.
-   - `competitor-format-compare.tsx:140,149,160` — labels e linhas da lista de formatos `text-xs`.
-   - `competitor-engagement-compare.tsx:160,230` — escala/legenda do barómetro `text-xs`.
-   - `competitor-bio-compare.tsx:85` — nota de rodapé do painel `text-xs`.
-   - `competitor-cadence-compare.tsx:110` — caption final `text-xs`.
-   - Aceitável manter `text-xs`: chip de baseline (`compare-card-shell.tsx:78`), hints decorativos (`compare-stat-block.tsx:94,160`, `compare-bar-pair.tsx:124,304`), nota de tabela (`compare-table.tsx:115`).
+## 1. Shared primitives (compare/*)
 
-## Plan: encerrar a iteração editorial
+### `compare-card-shell.tsx`
+- Lock card chrome: `rounded-2xl border-border-default bg-surface-primary shadow-card`, padding `p-6 sm:p-8` (anchor variant keeps `p-7 sm:p-9` + 3px left accent rule). No other density tiers.
+- Title: Fraunces `text-2xl sm:text-3xl`, `tracking-tight`, `leading-tight`. Always present.
+- Subtitle: Inter `text-sm sm:text-base text-content-secondary`, `mt-2`. Standard format → `{description} · últimas {n} publicações` (n = min sample of both sides; helper added inside shell or computed in caller).
+- Baseline chip: rename in place to "Concorrente em janela de referência" (already done) — keep `text-xs`, `rounded-full`, `surface-muted`.
+- Spacing rhythm: header → handle row (`mt-5`) → body (`mt-7 sm:mt-9`) → footer (`mt-7 sm:mt-9`). No card may deviate.
+- Footer (`Leitura`): `rounded-xl border-border-subtle bg-surface-muted`, eyebrow `text-eyebrow-sm`, body `text-sm sm:text-base leading-relaxed`. Always one short editorial sentence — never raw metric.
 
-### A. Criar e adotar `CompareThumbPlaceholder`
-- Em `compare-handle-row.tsx`, exportar `CompareThumbPlaceholder` (`bg-surface-muted`, `rounded-md`, `aspect-square`, `<ImageIcon className="size-4 text-content-tertiary/60" />` centrado, prop opcional `className` para sobrepor tamanho).
-- Exportar no `compare/index.ts`.
-- Em `competitor-cadence-compare.tsx`, substituir o branch de fallback do `Thumb` interno (e a inicial `aria-hidden` cinza) para usar `CompareThumbPlaceholder` — mantém visual idêntico mas centraliza.
+### `compare-handle-row.tsx`
+- Single source of truth for identity: avatar (CompareAvatar) + handle + display name + meta line. All 6 cards use it (hero today uses a custom identity block — keep custom layout only for the hero verdict but ensure avatar / fallback / colors come from the same `CompareAvatar` primitive).
+- Avatar fallback: when `avatarUrl` missing OR `<img>` errors → premium initials circle (2 chars max, Inter SemiBold, tabular not needed), tinted with side accent at low alpha. Never render a broken `<img>`. Add `onError` → state flip to initials.
+- Primary side = `--accent-primary` (#3772E5). Competitor side = `--compare-competitor` (indigo/purple). Dot + colored ring around avatar so color is reinforced by shape, not the only signal.
+- Handles always rendered as text (`@handle`), Inter SemiBold `text-sm`, with display name `text-xs text-content-secondary` underneath.
 
-### B. Subir labels secundárias para `text-sm`
-Apenas trocas de className, sem mudança de layout/lógica:
-- `compare-table.tsx:157` → `text-sm text-content-secondary`.
-- `compare-bar-pair.tsx:170` → `text-sm text-content-secondary` (legenda inferior).
-- `competitor-format-compare.tsx:140,149,160` → `text-sm` mantendo cor.
-- `competitor-engagement-compare.tsx:230` → `text-sm tabular-nums`. (Linha 160 é régua interna do barómetro de 16 px — manter `text-xs` como exceção de micro-label de chart.)
-- `competitor-bio-compare.tsx:85` → `text-sm text-content-secondary`.
-- `competitor-cadence-compare.tsx:110` → `text-sm text-content-tertiary`.
+### `compare-stat-block.tsx`
+- Side panel: numeric value `text-3xl sm:text-4xl font-semibold tabular-nums`, eyebrow handle `text-eyebrow-sm` in side accent, subText `text-sm leading-snug`. No `text-[11px]`, no `text-xs` for primary signal.
+- `vs` separator: Fraunces `text-xl sm:text-2xl text-content-tertiary` — already correct, lock it.
+- Zero-data side: render `Sem dados` chip (`surface-muted` pill, `text-sm`) instead of the numeric value when `value === null/0` and competitor has no sample. Prevents misleading 100 vs 0 bars.
 
-### C. Validação rápida (sem código)
-- `/admin/report-preview/nunomarkl?variant=pro_preview&draft=false` em preview: confirmar que todos os cards têm o mesmo peso tipográfico em labels secundárias e que o placeholder de thumbnail do "Cadência" mantém aspecto.
-- 375 px: cards continuam sem overflow horizontal.
-- Verificar que nada do report Free/Public, single-profile, Add Competitor ou backend foi tocado.
+### `compare-bar-pair.tsx`
+- Legend `text-sm` (already done), bars min 8px height, rounded full. Color = side accent. Zero values render as muted track + `Sem dados` micro-label on that side (no full/empty visual asymmetry).
 
-## Ficheiros tocados (B+C edits)
-- `src/components/report-redesign/v2/compare/compare-handle-row.tsx`
-- `src/components/report-redesign/v2/compare/index.ts`
-- `src/components/report-redesign/v2/compare/compare-table.tsx`
-- `src/components/report-redesign/v2/compare/compare-bar-pair.tsx`
-- `src/components/report-redesign/v2/competitor-cadence-compare.tsx`
-- `src/components/report-redesign/v2/competitor-format-compare.tsx`
-- `src/components/report-redesign/v2/competitor-engagement-compare.tsx`
-- `src/components/report-redesign/v2/competitor-bio-compare.tsx`
+### `compare-table.tsx`
+- All cell text `text-sm sm:text-base`. Row labels `text-content-secondary`, values `font-semibold tabular-nums text-content-primary`. Mobile stacked variant uses same scale.
 
-Sem novas dependências, sem schema, sem provider calls, sem alterações no Free/Public ou no Add Competitor.
+---
 
-## Nota de deploy
-O preview já contém as fases 1–3, 5–7 da iteração anterior. Para o domínio `auditprofiles.com` refletir tudo (incluindo este fecho), é preciso **Publicar/Update** após aplicar este plano.
+## 2. Per-card application
+
+For each of the 6 cards, wire to the shell with the standard subtitle and a 1-sentence Leitura:
+
+1. **Hero (combined verdict)** — replace inline identity blocks with `CompareHandleRow` (or extract a `CompareHeroIdentityRow` that uses `CompareAvatar` under the hood) so avatar/fallback behaviour matches everywhere. Verdict copy stays Fraunces `text-lg sm:text-xl`.
+2. **Bio e pontos de saída** — rename title to "Caminho de conversão fora do Instagram". Use `CompareTable` bare. Add neutral Leitura when both sides have identical links.
+3. **Taxa de engagement** — `CompareStatBlock` bare. Subtitle: `Envolvimento médio · últimas {n} publicações`. Side subText leads with scale reading ("Saudável para escala Micro"); delta secondary.
+4. **Cadência semanal** — `CompareStatBlock` bare with `pub./semana` unit. Subtitle includes sample window. Thumbnails caption uses `CompareThumbPlaceholder` (already wired) when no analyzedPosts.
+5. **Ritmo semanal por dia** — `CompareBarPair` bare across weekday axis. Zero days = muted track + `Sem dados` chip.
+6. **Mix de formatos** — replace inline `CompareBarPair`-only view with two side-by-side donuts (reuse `FormatCard` donut SVG + shared legend); `CompareBarPair` becomes optional detail row below. Zero shares render muted segment + `Sem dados`.
+
+---
+
+## 3. Typography & color guardrails (audit pass)
+
+Across all compare files:
+- Remove every `text-[11px]`, `text-[10px]`, residual `text-xs` on primary signals (labels, values, subText). Allowed `text-xs` only on: meta chips (baseline), micro hints inside chips, table caption.
+- No `font-mono` / JetBrains Mono in public UI (constraint already in memory).
+- No `text-white`/`bg-black`/raw hex. Only semantic tokens + `--accent-primary` / `--compare-competitor`.
+- All numeric values: `tabular-nums font-semibold`. Never wrap; truncate with `title=` tooltip.
+
+---
+
+## 4. Validation
+
+- Visit `/admin/report-preview/nunomarkl?variant=pro_preview&draft=false`:
+  - Same card chrome, padding, header rhythm across all 6 cards.
+  - Subtitle present everywhere in standard format.
+  - All handles rendered as text; avatars render or initials-fallback (force one broken URL via DevTools to verify).
+  - Primary = blue, competitor = indigo/purple, with ring + dot reinforcement.
+  - No `100 vs 0` bars; zero-data renders as `Sem dados` chip.
+  - All Leitura footers present, one editorial sentence.
+- 375px viewport: zero horizontal scroll; values never overflow.
+- Network panel: no provider calls triggered by these renders (pure presentation).
+
+---
+
+## Implementation phases (small safe patches)
+
+1. **Phase A — Shell + Handle primitives**: lock chrome, subtitle helper, avatar fallback with `onError`, ring/dot reinforcement. Single edit batch in `compare-card-shell.tsx` + `compare-handle-row.tsx`.
+2. **Phase B — Stat/Bar/Table guardrails**: zero-data `Sem dados` rendering, font-size sweep, tabular-nums lock. Edits in `compare-stat-block.tsx`, `compare-bar-pair.tsx`, `compare-table.tsx`.
+3. **Phase C — Per-card wiring**: standardize subtitle + Leitura on each of the 6 competitor cards; hero identity migrates to shared avatar primitive.
+4. **Phase D — Format mix donuts**: side-by-side donuts reusing `FormatCard` SVG.
+5. **Phase E — QA pass**: visual audit at desktop + 375px, broken-avatar test, confirm no provider calls.
+
+Each phase is independently publishable; no schema, provider, credits, checkout, EuPago, entitlement, or Free/Public report changes.
