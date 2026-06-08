@@ -520,6 +520,38 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
             <LeituraIaBox reading={aiReadings.byCard.top_posts ?? null} />
           ) : null}
           </div>
+
+          {firstCompetitor ? (
+            <CompetitorTopPostCompare
+              primaryHandle={primaryHandle}
+              primaryAvatarUrl={enriched.profile.avatarUrl}
+              primaryFullName={result.data.profile.fullName ?? null}
+              primaryVerified={Boolean(result.data.profile.verified)}
+              primaryTopPost={result.enriched.topPosts[0] ?? null}
+              competitor={firstCompetitor}
+            />
+          ) : null}
+
+          {firstCompetitor ? (
+            <CompetitorEditorialDiagnostic
+              primaryHandle={primaryHandle}
+              primaryAvatarUrl={enriched.profile.avatarUrl}
+              primaryFullName={result.data.profile.fullName ?? null}
+              primaryVerified={Boolean(result.data.profile.verified)}
+              primary={{
+                engagementRate: k.engagementRate,
+                postingFrequencyWeekly: k.postingFrequencyWeekly,
+                dominantFormat: k.dominantFormat,
+                formatBreakdown: result.data.formatBreakdown.map((f) => ({
+                  format: f.format,
+                  sharePct: f.sharePct,
+                })),
+                bio: enriched.profile.bio,
+                externalUrls: enriched.profile.externalUrls,
+              }}
+              competitor={firstCompetitor}
+            />
+          ) : null}
         </>
       )}
     </div>
