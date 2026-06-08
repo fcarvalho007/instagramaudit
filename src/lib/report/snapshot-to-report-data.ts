@@ -124,6 +124,12 @@ export interface SnapshotPayload {
   posts?: SnapshotPost[] | null;
   competitors?: unknown[] | null;
   /**
+   * PR2 — persisted public analysis window. Absent on legacy baseline
+   * snapshots; the adapter treats absent + "baseline" identically.
+   */
+  analysis_window?: "baseline" | "30d" | "90d" | null;
+  analysis_window_label?: string | null;
+  /**
    * Optional AI insights block written by the analyze route when the OpenAI
    * insights flow is allowed for this handle. Loose typing on purpose —
    * the adapter validates each item before mapping it into ReportData.
