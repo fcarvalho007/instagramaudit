@@ -1,8 +1,4 @@
-import {
-  CompareCardShell,
-  CompareStatBlock,
-  CompareMissingDataNote,
-} from "@/components/report-redesign/v2/compare";
+import { CompareCardShell, CompareStatBlock } from "@/components/report-redesign/v2/compare";
 import type { ReportCompetitorBreakdownEntry } from "@/components/report/report-mock-data";
 import { cn } from "@/lib/utils";
 
@@ -129,13 +125,14 @@ function MethodologyLine({
   if (p > 0) parts.push(`${p} publicações (@${primary.handle})`);
   if (c > 0) parts.push(`${c} publicações (@${competitor.username})`);
   const competitorMissing = c === 0;
-  if (parts.length === 0 && !competitorMissing) return null;
+  const sentences: string[] = [];
+  if (parts.length > 0) sentences.push(`Amostra: ${parts.join(" · ")}.`);
+  if (competitorMissing) {
+    sentences.push("Dados do concorrente indisponíveis nesta amostra.");
+  }
+  if (sentences.length === 0) return null;
   return (
-    <CompareMissingDataNote
-      className="mt-5"
-      qualifier={parts.length > 0 ? `Amostra: ${parts.join(" · ")}.` : null}
-      competitorMissing={competitorMissing}
-    />
+    <p className="mt-5 text-sm text-content-secondary">{sentences.join(" ")}</p>
   );
 }
 
