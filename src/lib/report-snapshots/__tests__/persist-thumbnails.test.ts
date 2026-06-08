@@ -84,11 +84,12 @@ describe("persistThumbnailsInPayload", () => {
   it("persists competitor avatar and post thumbnails on success", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(new Uint8Array([1, 2, 3]), {
-          status: 200,
-          headers: { "content-type": "image/jpeg" },
-        }),
+      vi.fn().mockImplementation(
+        async () =>
+          new Response(new Uint8Array([1, 2, 3]), {
+            status: 200,
+            headers: { "content-type": "image/jpeg" },
+          }),
       ),
     );
     const payload: Record<string, unknown> = {
