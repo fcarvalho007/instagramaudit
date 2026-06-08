@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { CompareBarCategory, CompareUnit } from "./compare-types";
+import { CompareAvatar } from "./compare-handle-row";
 
 interface CompareBarPairProps {
   /** Eyebrow / label above the comparison (e.g. "Distribuição de formato"). */
@@ -7,12 +8,21 @@ interface CompareBarPairProps {
   /** Display names for the legend. */
   primaryHandle: string;
   competitorHandle: string;
+  /** Optional thumbnails rendered at the leading edge of each bar
+   *  (bare variant, sm+ only). Falls back to the colored dot when absent. */
+  primaryAvatarUrl?: string | null;
+  competitorAvatarUrl?: string | null;
   /** Ordered list of categories, each with raw values for both profiles. */
   categories: CompareBarCategory[];
   /** Drives the default formatted label suffix when not provided per row. */
   unit: CompareUnit;
   /** Optional hint shown under the label. */
   hint?: string;
+  /** Text shown in place of "0 %" / "0" when a side has no value (bare). */
+  zeroLabel?: string;
+  /** When true (bare only), the higher of the two bars in each row gets a
+   *  soft 1-px ring in its accent color. Ties: no cue. */
+  highlightWinner?: boolean;
   /**
    * Visual shell variant:
    * - "card" (default): self-contained section with surface-secondary
@@ -37,9 +47,13 @@ export function CompareBarPair({
   label,
   primaryHandle,
   competitorHandle,
+  primaryAvatarUrl = null,
+  competitorAvatarUrl = null,
   categories,
   unit,
   hint,
+  zeroLabel,
+  highlightWinner = false,
   variant = "card",
 }: CompareBarPairProps) {
   const maxValue = Math.max(
@@ -53,29 +67,42 @@ export function CompareBarPair({
         className="min-w-0"
         aria-label={`${label}: comparação com concorrente`}
       >
-        <Legend
-          primaryHandle={primaryHandle}
-          competitorHandle={competitorHandle}
-        />
-        <div className="mt-3 space-y-4">
+        <div className="space-y-5 sm:space-y-6">
           {categories.map((c) => (
-            <div key={c.key} className="space-y-1.5">
-              <span className="block text-xs sm:text-sm text-content-secondary truncate">
+            <div
+              key={c.key}
+              className="grid grid-cols-1 sm:grid-cols-[6rem_1fr] gap-2 sm:gap-5 items-start"
+            >
+              <span className="block text-sm sm:text-base font-semibold text-content-primary truncate sm:pt-1.5">
                 {c.label}
               </span>
-              <div className="space-y-1.5">
-                <Bar
+              <div className="space-y-2 sm:space-y-2.5">
+                <BareBar
                   value={c.primary}
                   max={maxValue}
                   accent="primary"
+                  handle={primaryHandle}
+                  avatarUrl={primaryAvatarUrl}
                   formatted={c.primaryFormatted ?? formatValue(c.primary, unit)}
+                  zeroLabel={zeroLabel}
+                  isWinner={
+                    highlightWinner && c.primary > 0 && c.primary > c.competitor
+                  }
                 />
-                <Bar
+                <BareBar
                   value={c.competitor}
                   max={maxValue}
                   accent="secondary"
+                  handle={competitorHandle}
+                  avatarUrl={competitorAvatarUrl}
                   formatted={
                     c.competitorFormatted ?? formatValue(c.competitor, unit)
+                  }
+                  zeroLabel={zeroLabel}
+                  isWinner={
+                    highlightWinner &&
+                    c.competitor > 0 &&
+                    c.competitor > c.primary
                   }
                 />
               </div>
