@@ -236,6 +236,13 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
         />
       ) : null}
 
+      {mode === "all" && firstCompetitor && aiReadings ? (
+        <>
+          <LeituraIaExecutiveSummary global={aiReadings.global} />
+          <LeituraIaBox reading={aiReadings.byCard.overview ?? null} />
+        </>
+      ) : null}
+
       {((mode === "all" && !firstCompetitor) || mode === "free") && (
         /* Zona B — Editorial Identity Card (replaces 6-card grid) */
         <EditorialIdentityCard
@@ -305,6 +312,9 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
           primaryVerified={Boolean(result.data.profile.verified)}
           competitor={firstCompetitor}
         />
+      ) : null}
+      {mode === "all" && firstCompetitor && aiReadings ? (
+        <LeituraIaBox reading={aiReadings.byCard.bio_conversion ?? null} />
       ) : null}
 
       {mode === "free_with_engagement" && (
