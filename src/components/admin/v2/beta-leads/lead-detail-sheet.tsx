@@ -2480,6 +2480,7 @@ function LeadCreditsTab({ leadId, active }: { leadId: string; active: boolean })
                   <th className="admin-eyebrow px-3 py-2 font-normal">Tipo</th>
                   <th className="admin-eyebrow px-3 py-2 font-normal">Handle</th>
                   <th className="admin-eyebrow px-3 py-2 font-normal">Snapshot</th>
+                  <th className="admin-eyebrow px-3 py-2 font-normal">Evento</th>
                   <th className="admin-eyebrow px-3 py-2 font-normal">Quando</th>
                 </tr>
               </thead>
@@ -2507,6 +2508,9 @@ function LeadCreditsTab({ leadId, active }: { leadId: string; active: boolean })
                       </td>
                       <td className="px-3 py-2 admin-code text-admin-text-secondary">
                         {e.analysis_snapshot_id ? e.analysis_snapshot_id.slice(0, 8) : "—"}
+                      </td>
+                      <td className="px-3 py-2 admin-code text-admin-text-secondary" title={e.analysis_event_id ?? undefined}>
+                        {e.analysis_event_id ? e.analysis_event_id.slice(0, 8) : "—"}
                       </td>
                       <td className="px-3 py-2 admin-code text-admin-text-tertiary tabular-nums">
                         {new Date(e.created_at).toLocaleString("pt-PT", {
