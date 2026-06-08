@@ -1,193 +1,67 @@
-## Cached AI Editorial Readings — implementação
+# QA Audit — Pro 30d/90d analysis flow (post PR3.A)
 
-Implementação da arquitetura já aprovada. Server-only, single-shot, cache por snapshot+comparação+modelo, UI opcional abaixo das métricas determinísticas.
+Static code audit only — no live calls were issued. Manual browser steps are listed at the end for the user to run.
 
----
+## PASS/FAIL table
 
-### 1. Storage (sem schema nova)
+| # | Check | Result | Evidence |
+|---|---|---|---|
+| 1.1 | 30d chip clickable for Pro | PASS | `report-block-nav.tsx:969-994` chip renders `onPeriodPaidClick(days)` when `premiumUnlocked`. |
+| 1.2 | Click opens `ConsumeCreditDialog` | PASS | `report-block-nav.tsx:861-863` → `openConsumeDialog({kind:"period",days})`; dialog mounted at L1072/L923. |
+| 1.3 | Dialog clearly explains "may consume 1 credit if not cached" | PASS | `consume-credit-dialog.tsx:87-92` uses `period_action_body`; pt-PT string `src/i18n/locales/pt/report.json:661` = "Esta análise pode consumir 1 crédito se ainda não existir em cache…". |
+| 1.4 | Confirm sends `POST /api/analyze-public-v1` with `window:"30d"` | PASS | `report-block-nav.tsx:640-645` calls `fetchPublicAnalysis(..., {window: windowKind})`; `client.ts:35-49` posts `{instagram_username, competitor_usernames, window}`. |
+| 1.5 | Navigates to `?w=30d` after success | PASS | `report-block-nav.tsx:683-691` `navigate({ search: prev => ({...prev, w: windowKind}) })`. |
+| 1.6 | Correct toast for cache vs fresh | PASS | `report-block-nav.tsx:670-677` reads `result.data_source` → `period_success_toast_cache` / `_fresh` / `_neutral`. |
+| 1.7 | Refreshes credit balance | PASS | `refreshBalance()` called at L669 (success) and L704/L720 (failure paths). |
+| 2.1 | Pro w/ 0 credits — dialog opens | PASS | Same `openConsumeDialog` path; dialog mounts regardless of balance. |
+| 2.2 | Confirm CTA blocked at 0 credits | PASS | `consume-credit-dialog.tsx:82` `hasCredit = balance >= 1`; L276/296 renders `empty_cta` button instead of confirm CTA — no `onConfirm` invocation possible. |
+| 2.3 | Empty state explains lack of credits | PASS | L157-170 swap title/body to `empty_title`/`empty_body` when `!hasCredit`. |
+| 2.4 | No backend analyze call on empty state | PASS | Empty CTA only calls `onOpenChange(false)` + `onEmptyFeedback?.()` (L298-304). No `fetchPublicAnalysis` reachable. |
+| 3.1 | Free user — 30d/90d show locked/upsell | PASS | L973-994 chip uses `onPeriodLockedClick` when `!premiumUnlocked` → `handlePremiumAccessClick("sidebar_period", …)`. Lock icon rendered L989-991. |
+| 3.2 | No analyze call for Free | PASS | `ConsumeCreditDialog` only mounted when `premiumUnlocked` (L922, L1071). Free path never reaches `fetchPublicAnalysis`. |
+| 3.3 | No credit reservation attempted (Free) | PASS | Server-side defence: `analyze-public-v1.ts:585-599` rejects wide window with `WINDOW_REQUIRES_PRO` **before** `reserveCredit` (L602). |
+| 4.1 | Repeat 30d uses cache, cache toast | PASS | Server returns `data_source:"cache"` for fresh hit; toast maps via L670-677. |
+| 4.2 | No new credit ledger entry on cache repeat | PASS | `analyze-public-v1.ts:601` `skipReserve = cacheFreshHit && alreadyAssociated` → `reserveCredit` not called for same lead+cache_key. |
+| 4.3 | No new `provider_call_logs` entry on cache hit | PASS (by design) | Cache branch returns the existing snapshot without invoking the provider runner. (Confirm via admin diagnostics during manual run.) |
+| 5.1 | 90d wired identically to 30d | PASS | `report-block-nav.tsx:622` `windowKind = days === 90 ? "90d" : "30d"`. Same chip map (`PREMIUM_WINDOWS`), same handler, same dialog. |
+| 5.2 | 90d request body would send `window:"90d"` | PASS | Same `fetchPublicAnalysis(..., {window:"90d"})` path → `client.ts:47`. |
+| 6 | No changes to checkout / EuPago / pricing / schema / Free-Public / competitor comparison UI | PASS (scope) | PR3.A touches only sidebar nav + dialog wiring + analyze client params. None of the protected modules referenced. |
 
-Reuso da infra existente `enrichment_jobs` + `normalized_payload`, sem nova tabela (a arquitetura admite "enrichment_jobs result payload" como opção; é a que minimiza superfície e respeita "não mudar schema sem aprovação").
+Overall: **all checks PASS in code**. Three items (4.1, 4.3, and a live 90d) still need a manual confirm in browser.
 
-- Novo `EnrichmentType = "comparison_readings"` em `src/lib/enrichment/types.ts`.
-- Adicionado a `PAID_ENRICHMENT_TYPES` (corre só em Pro; o enqueue paid já está condicionado a entitlement).
-- Resultado escrito em `normalized_payload.ai_comparison_readings_v1` com a forma:
+## Files & lines audited
 
-```ts
-{
-  version: "1",
-  model: "google/gemini-3-flash-preview",
-  prompt_version: "v1",
-  evidence_hash: string,            // sha256 do evidence pack
-  competitor_handle: string,        // primeiro concorrente (MVP: 1)
-  window: string,                   // ex "30d"
-  generated_at: string,             // ISO
-  readings: ComparisonAIReadings,   // ver §3
-  status: "ready" | "failed",
-  error?: string,
-}
-```
+- `src/components/report-redesign/v2/report-block-nav.tsx` — 598-844 (dialog state, onConfirm, period handlers), 861-863, 922-935, 969-994, 1071-1084.
+- `src/components/report-redesign/v2/consume-credit-dialog.tsx` — full file (82, 87-101, 157-170, 240-260, 276-305).
+- `src/lib/analysis/client.ts` — full file (window param forwarding, in-flight guard).
+- `src/routes/api/analyze-public-v1.ts` — 560-635 (Pro gate, lead lookup, skipReserve, INSUFFICIENT_CREDITS), 994-1067 (window-scoped enrichment selection).
+- `src/i18n/locales/pt/report.json:661` and `en/report.json:661` — Pro-friendly `period_action_body` copy.
 
-Idempotência: o runner skipa se `evidence_hash` no payload bate com o recomputado, ou se `model`/`prompt_version` não mudaram. Reanálise não recalcula → custo controlado.
+## Manual test steps (for the user)
 
----
+Run on the preview at `/analyze/nunomarkl` (Pro test profile). Open DevTools → Network, filter for `analyze-public-v1`.
 
-### 2. Files to add
+1. **Pro + credits, fresh 30d**
+   - Click `30d` chip → dialog opens with title "Análise dos últimos 30 dias" and body containing "pode consumir 1 crédito".
+   - Click confirm → expect 1 POST to `/api/analyze-public-v1` with body `window:"30d"`, response `data_source:"fresh"`, toast = `…toast_fresh`, URL becomes `?w=30d`, sidebar balance decrements by 1.
+2. **Cache repeat 30d**
+   - Reload page, click `30d` again → expect POST `window:"30d"`, response `data_source:"cache"`, toast = `…toast_cache`, balance unchanged. Verify in admin no new row in `credit_ledger` / `provider_call_logs` for this lead+cache_key.
+3. **Pro + 0 credits**
+   - Use a Pro lead with `balance = 0`. Click `30d` → dialog title = "Sem créditos" body, only "Enviar feedback" CTA visible, no confirm. No request fired.
+4. **Free user**
+   - Open the report as a Free lead. `30d` chip shows lock icon. Click → upsell dialog, no `analyze-public-v1` call.
+5. **90d (read-only)**
+   - DO NOT confirm yet. Click `90d`, inspect dialog (should say "90 dias"). Cancel. Verify no network request.
+   - If approved, confirm once and check `data_source` + balance behaviour identical to 30d.
 
-```text
-src/lib/comparison-readings/
-  types.ts                       // Zod schema + types
-  build-evidence.ts              // pure: snapshot → evidence pack (testável)
-  build-evidence.test.ts
-  prompt.ts                      // system + user templates (v1)
-  generate.server.ts             // calls Lovable AI Gateway, validates output
-  validate.ts                    // post-hoc: cada evidence_point existe no pack
-```
+## Risks before publishing
 
-```text
-src/components/report-redesign/v2/leitura-ia/
-  leitura-ia-box.tsx             // <LeituraIaBox cardId reading /> — render only
-  use-comparison-readings.ts     // pure selector from snapshot payload
-```
+- **Cost risk (low)**: 90d has not been smoke-tested live. Enrichment runs the 90-day Apify scrape and is more expensive than 30d. Surface the cost in admin diagnostics after the first live run.
+- **Double-fetch risk (mitigated)**: After confirm we both fetch and navigate to `?w=30d`; the loader's second fetch is a guaranteed cache hit (server enforces `skipReserve` via `cacheFreshHit && alreadyAssociated`). Inflight guard in `client.ts:15` collapses StrictMode duplicates.
+- **Empty state copy**: The `empty_cta` opens a feedback flow, not a purchase flow. Acceptable for beta — re-evaluate after public launch.
+- **Toast key fallback**: If a future server change drops `data_source`, copy falls through to `period_success_toast_neutral`. No regression, just less specific UX.
+- **Lock chip a11y**: Locked chips use `aria-disabled="true"` but remain clickable (intentional, opens upsell). Confirm SR users get the upsell, not silence.
 
-### 3. JSON schema (Zod, estrito)
+## 90d separate live smoke test before public launch?
 
-```ts
-const CardId = z.enum([
-  "overview","engagement","cadence","weekday_rhythm",
-  "format_mix","bio_conversion","top_posts",
-]);
-
-const EvidencePoint = z.object({
-  label: z.string().min(1).max(60),
-  field: z.string().min(1).max(60),     // chave canónica do evidence pack
-  primary_value: z.union([z.string(), z.number(), z.null()]),
-  competitor_value: z.union([z.string(), z.number(), z.null()]),
-});
-
-const CardReading = z.object({
-  card_id: CardId,
-  headline: z.string().min(1).max(90),
-  key_reading: z.string().min(1).max(420),
-  evidence_points: z.array(EvidencePoint).min(0).max(4),
-  recommendation: z.string().max(220).nullable(),
-  confidence: z.enum(["low","medium","high"]),
-  caveats: z.array(z.string().max(140)).max(4),
-});
-
-export const ComparisonAIReadingsSchema = z.object({
-  version: z.literal("1"),
-  language: z.literal("pt-PT"),
-  global_summary: z.object({
-    headline: z.string().min(1).max(110),
-    key_reading: z.string().min(1).max(360),
-    confidence: z.enum(["low","medium","high"]),
-  }),
-  cards: z.array(CardReading).min(1).max(7),
-});
-```
-
-### 4. Evidence pack (input do modelo)
-
-`buildComparisonEvidence(payload, competitorIndex=0, window)` — função pura, sem I/O. Extrai do `normalized_payload` campos já existentes (profile, summary, format_stats, weekday counts, top hashtags/mentions, recentPosts truncados, deltas). Nada novo do Apify. Hash determinístico com `sha256(JSON.stringify(stableSort(pack)))`.
-
-Campos PII proibidos pelo construtor: emails, telefones, thumbnail URLs, follower lists.
-
-### 5. Generation (server-only)
-
-`generateComparisonReadings.server.ts`:
-- Recebe `{ snapshotId, competitorHandle, window }`.
-- Lê snapshot via `supabaseAdmin`.
-- Constrói evidence pack + hash.
-- Short-circuit: se `normalized_payload.ai_comparison_readings_v1.evidence_hash === hash` e `model`/`prompt_version` iguais → return cached.
-- Gate: precisa de ≥1 competitor com `success:true` e Pro entitlement (verificado a montante pelo enqueue).
-- AI SDK via Lovable Gateway helper já existente (`src/lib/ai-gateway.server.ts` se existir; senão criar usando padrão do `ai-sdk-lovable-gateway`).
-- `generateObject` / `Output.object(ComparisonAIReadingsSchema)` com `google/gemini-3-flash-preview`, `temperature: 0.4`, `maxOutputTokens: 1400`.
-- Validação pós-hoc (`validate.ts`): cada `evidence_points[].field` tem de existir no pack; `primary_value`/`competitor_value` têm de bater com pack (≤1% tolerância numérica). Se falhar → status `failed`, payload guarda erro.
-- Log custo em `provider_call_logs` (provider=`lovable-ai`, actor=`comparison-readings`, source_context=`enrichment`).
-- Patch escrito via runner standard (`payloadPatch: { ai_comparison_readings_v1: {...} }`).
-
-### 6. Runner integration
-
-Em `run-enrichment.server.ts`:
-- Novo handler `runComparisonReadings(ctx, snapshot)` no switch dispatch.
-- Skipa quando `ctx.competitors` vazio ou nenhum tem dados → status `skipped` com motivo `no_competitors`.
-- Adicionado a `ALL_ENRICHMENT_TYPES` + `PAID_ENRICHMENT_TYPES`.
-- `ENRICHMENT_PRIORITY.comparison_readings = 40` (corre depois das métricas determinísticas estarem prontas).
-- `buildInitialEnrichmentStatus` / `buildFreeEnrichmentStatus` atualizados (Free marca como `skipped_free`).
-
-### 7. Prompt (v1)
-
-System (PT-PT):
-```
-És um analista editorial de Instagram. Escreves em português europeu, tom credível e prático.
-Recebes um EVIDENCE PACK comparativo entre PERFIL e CONCORRENTE.
-Regras absolutas:
-- Usa APENAS valores presentes no EVIDENCE PACK. Nunca inventes números, datas ou factos.
-- Cada card tem 0–4 evidence_points; field/value vêm literalmente do pack.
-- Se faltar dado de um lado: confidence="low", recommendation=null, adiciona um caveat
-  explicando "dados insuficientes do concorrente" ou "amostra demasiado pequena".
-- Nunca comentes thumbnails, identidades, ou conteúdo não presente.
-- Sem superlativos não suportados ("o melhor", "explosivo", etc.).
-- Devolve estritamente o schema JSON pedido. Sem markdown.
-```
-
-User: `EVIDENCE_PACK:\n<json>\nGera ComparisonAIReadings v1 para os cards aplicáveis.`
-
-### 8. UI
-
-- `useComparisonReadings(payload)` — selector puro, devolve `{ global, byCard }` ou `null` quando ausente/malformado (try/catch + zod safeParse).
-- `<LeituraIaBox cardId="engagement" />` — caixa opcional dentro de cada `CompareCardShell` via prop `aiReading?: ReactNode`. Render:
-  - eyebrow `● LEITURA IA` (accent-primary),
-  - headline Inter SemiBold,
-  - key_reading texto secundário,
-  - chip de confidence,
-  - linha de caveats em `text-content-tertiary`,
-  - `Sugestão:` quando `recommendation` existe.
-- `<ExecutiveSummary global={...} />` opcional no topo da secção comparativa.
-- Quando `null`/`pending`/malformado → não renderiza nada (card determinístico fica idêntico).
-- Skeleton só quando `enrichment_status.comparison_readings === "running"`.
-
-### 9. Files to edit
-
-- `src/lib/enrichment/types.ts` — novo tipo + priority + arrays.
-- `src/lib/enrichment/run-enrichment.server.ts` — dispatch + handler.
-- `src/lib/enrichment/enqueue-paid.server.ts` — enqueue só se houver competitor.
-- `src/components/report-redesign/v2/compare/compare-card-shell.tsx` — prop opcional `aiReading`.
-- Cada um dos 6 cards (`competitor-overview-compare`, `competitor-engagement-compare`, `competitor-cadence-compare`, `competitor-weekday-compare`, `competitor-format-compare`, `competitor-bio-compare`) — lê reading via hook e passa ao shell.
-- Local apropriado no shell do report Pro — render `<ExecutiveSummary />`.
-
-### 10. Validation guarantees
-
-- Zod `safeParse` em todo o consumo → JSON malformado é silenciosamente ignorado.
-- UI degrada para determinístico (já o faz quando `aiReading={null}`).
-- Sem chamadas AI no cliente; nenhum `useEffect` que dispara generate.
-- Refresh da página apenas lê `normalized_payload` já persistido.
-- Free/Public report nunca toca este código (gate em `PAID_ENRICHMENT_TYPES` + entitlement check no enqueue).
-- Sem alterações em checkout, EuPago, credits, ou Free path.
-
-### 11. Test plan
-
-- Unit: `build-evidence.test.ts` (campos esperados, sem PII, hash estável).
-- Unit: `validate.test.ts` (rejeita evidence_point com field inexistente; rejeita mismatch numérico >1%).
-- Unit: hook `useComparisonReadings` devolve null para payload vazio/malformado.
-- Smoke: `run-enrichment.server.ts` skipa quando sem competitor.
-- Typecheck via build automático.
-
-### 12. Fora de scope (não tocar)
-
-- `/report.example` (continua mockup).
-- Free / Public report.
-- Checkout, EuPago, créditos, payments, subscriptions.
-- Apify calls.
-- Migrations SQL (não há tabela nova nesta fase).
-- Streaming, chat-com-report, edição manual de leituras, multi-idioma.
-
-### 13. Riscos
-
-| Risco | Mitigação |
-| --- | --- |
-| Modelo devolve JSON malformado | Zod safeParse + status `failed`; UI esconde caixa. |
-| Hallucination numérica | Validador post-hoc compara cada evidence_point ao pack. |
-| Custo descontrolado | Single-shot + hash idempotente + gate Pro + log em `provider_call_logs`. |
-| Quebra do report determinístico | `aiReading` é prop opcional; ausência → render igual ao atual. |
-| Mudança do payload Apify | `buildComparisonEvidence` é o único acoplamento; coberto por teste. |
+**Yes — recommended.** 30d and 90d share UI/client/server code paths, so functional risk is low, but 90d hits a different Apify config (larger sample, higher cost) and has not been exercised. One live confirm on `nunomarkl` is enough to validate provider cost, latency, and resulting snapshot before opening 90d to public Pro users.
