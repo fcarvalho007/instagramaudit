@@ -59,7 +59,7 @@ export function ComparisonHero({ primary, competitor, windowLabel }: Props) {
           </span>
         ) : null}
         {!competitor.windowAligned ? (
-          <span className="inline-flex items-center rounded-full border border-border-default px-2.5 py-0.5 text-[11px] font-medium text-content-secondary">
+          <span className="inline-flex w-fit shrink-0 items-center rounded-full border border-border-subtle bg-surface-muted px-2.5 py-1 text-xs text-content-tertiary">
             Concorrente em janela baseline
           </span>
         ) : null}
