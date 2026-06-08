@@ -88,15 +88,12 @@ export function ConsumeCreditDialog({
     isPeriod
       ? t("nav.explore.consume_dialog.period_action_body", {
           days: intent.kind === "period" ? intent.days : 30,
-          defaultValue:
-            "Vai consumir 1 crédito Pro e gerar uma análise nova com a janela dos últimos {{days}} dias. Repetir a mesma janela depois usa cache e não consome créditos.",
         })
       : t("nav.explore.consume_dialog.description_competitor");
   const title =
     isPeriod
       ? t("nav.explore.consume_dialog.period_action_title", {
           days: intent.kind === "period" ? intent.days : 30,
-          defaultValue: "Gerar análise dos últimos {{days}} dias?",
         })
       : t("nav.explore.consume_dialog.title_competitor");
   const confirmCta = isPeriod
