@@ -1348,9 +1348,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
           dominantFormat:
             typeof s.dominant_format === "string" ? s.dominant_format : "—",
           avatarUrl:
-            typeof p.avatar_url === "string" && p.avatar_url.length > 0
-              ? (p.avatar_url as string)
-              : null,
+            pickAvatarUrl(p),
           // Today competitors are always fetched in baseline — see
           // analyze-public-v1.ts (lines 980–983). Window alignment is a
           // future enhancement; cards label the comparison transparently.
@@ -1377,12 +1375,12 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
                   string,
                   { count?: number; share_pct?: number; avg_engagement_pct?: number }
                 >)
-              : null,
+              : deriveFormatStatsFromPosts(cPostsRaw),
           weekdayCounts: Array.isArray((c as Record<string, unknown>).weekday_counts)
             ? ((c as Record<string, unknown>).weekday_counts as unknown[])
                 .map((n) => num(n, 0))
                 .slice(0, 7)
-            : [],
+            : deriveUtcWeekdayCountsFromPosts(cPostsRaw),
           // ISO-aligned (Mon=0..Sun=6) copy so comparison cards can plot
           // competitor weekday distribution next to the primary
           // `frequency-card.aggregateByWeekday` ISO ordering without
@@ -1392,7 +1390,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
               ? ((c as Record<string, unknown>).weekday_counts as unknown[]).map(
                   (n) => num(n, 0),
                 )
-              : [],
+              : deriveUtcWeekdayCountsFromPosts(cPostsRaw),
           ),
           topHashtags: Array.isArray((c as Record<string, unknown>).top_hashtags)
             ? ((c as Record<string, unknown>).top_hashtags as unknown[])
