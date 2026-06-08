@@ -1346,6 +1346,10 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
           estimatedPostsPerWeek: num(s.estimated_posts_per_week, 0),
           dominantFormat:
             typeof s.dominant_format === "string" ? s.dominant_format : "—",
+          avatarUrl:
+            typeof p.avatar_url === "string" && p.avatar_url.length > 0
+              ? (p.avatar_url as string)
+              : null,
           // Today competitors are always fetched in baseline — see
           // analyze-public-v1.ts (lines 980–983). Window alignment is a
           // future enhancement; cards label the comparison transparently.
