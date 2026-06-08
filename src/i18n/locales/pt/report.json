@@ -656,7 +656,9 @@
         "error_generic": "Não foi possível adicionar o concorrente. Tentar novamente dentro de instantes.",
         "error_generic_with_code": "Não foi possível adicionar o concorrente ({{code}}).",
         "period_coming_soon_title": "Janela personalizada em preparação",
-        "period_coming_soon_body": "A análise por período (30d/90d) ainda não está disponível nesta versão beta. Vais ser notificado quando ficar pronta — sem custo de crédito."
+        "period_coming_soon_body": "A análise por período (30d/90d) ainda não está disponível nesta versão beta. Vais ser notificado quando ficar pronta — sem custo de crédito.",
+        "period_action_title": "Gerar análise dos últimos {{days}} dias?",
+        "period_action_body": "Vai consumir 1 crédito Pro e gerar uma análise nova com a janela dos últimos {{days}} dias. Repetir a mesma janela depois usa cache e não consome créditos."
       }
     },
     "status": {

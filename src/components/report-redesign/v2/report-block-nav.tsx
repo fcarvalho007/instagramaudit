@@ -618,16 +618,97 @@ function ExploreSection({
       // regista intenção (NÃO consome crédito) e fecha o dialog. UI já
       // mostra "em preparação".
       if (nextIntent.kind === "period") {
+        const days = nextIntent.days;
+        const windowKind: "30d" | "90d" = days === 90 ? "90d" : "30d";
+        if (!primaryHandle) {
+          setErrorMessage(t("nav.explore.consume_dialog.error_generic"));
+          return;
+        }
+        if (submitting) return;
+        setSubmitting(true);
+        setErrorMessage(null);
         trackEvent({
           data: {
             eventType: "beta_credit_intent_period",
             metadata: {
               action_type: "period_analysis",
-              days: nextIntent.days,
+              days,
+              window: windowKind,
             },
           },
         }).catch(() => {});
-        setDialogOpen(false);
+        try {
+          const result = await fetchPublicAnalysis(
+            primaryHandle,
+            existingCompetitors,
+            { window: windowKind },
+          );
+          if (result.success) {
+            trackEvent({
+              data: {
+                eventType: "beta_credit_used_period",
+                metadata: {
+                  action_type: "period_analysis",
+                  days,
+                  window: windowKind,
+                  credit_amount: 1,
+                },
+              },
+            }).catch(() => {});
+            trackEvent({
+              data: {
+                eventType: "beta_credit_used",
+                metadata: {
+                  action_type: "period_analysis",
+                  days,
+                  window: windowKind,
+                  credit_amount: 1,
+                },
+              },
+            }).catch(() => {});
+            await refreshBalance();
+            toast.success(t("nav.explore.consume_dialog.success_toast"));
+            setDialogOpen(false);
+            // Update URL with `w=` so the route loader re-fetches the
+            // window-scoped snapshot. The second analyze call from the
+            // loader is a guaranteed cache hit (same cache_key) and
+            // does NOT consume an additional credit.
+            navigate({
+              to: "/analyze/$username",
+              params: { username: primaryHandle },
+              search: (prev: Record<string, unknown>) => ({
+                ...prev,
+                w: windowKind,
+              }),
+              replace: false,
+            }).catch(() => {});
+          } else {
+            trackEvent({
+              data: {
+                eventType: "beta_credit_use_failed",
+                metadata: {
+                  action_type: "period_analysis",
+                  days,
+                  window: windowKind,
+                  error_code: result.error_code,
+                },
+              },
+            }).catch(() => {});
+            await refreshBalance();
+            setErrorMessage(
+              t("nav.explore.consume_dialog.error_generic_with_code", {
+                code: result.error_code,
+                defaultValue:
+                  result.message ?? t("nav.explore.consume_dialog.error_generic"),
+              }),
+            );
+          }
+        } catch {
+          await refreshBalance();
+          setErrorMessage(t("nav.explore.consume_dialog.error_generic"));
+        } finally {
+          setSubmitting(false);
+        }
         return;
       }
 
