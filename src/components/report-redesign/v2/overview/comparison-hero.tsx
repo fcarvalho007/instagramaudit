@@ -29,11 +29,12 @@ interface MetricRow {
   primary: string;
   competitor: string;
   winner: Side;
+  highlightable?: boolean;
 }
 
 /**
- * Pro-only Comparison Hero — opens the report in side-by-side duel mode
- * whenever a first competitor exists. Presentation-only, deterministic.
+ * Pro-only Comparison Hero — editorial duel between primary profile and
+ * first competitor. Presentation-only, deterministic, no AI.
  */
 export function ComparisonHero({ primary, competitor, windowLabel }: Props) {
   const rows = buildRows(primary, competitor);
@@ -66,14 +67,18 @@ export function ComparisonHero({ primary, competitor, windowLabel }: Props) {
       </header>
 
       {/* Duel identity cards */}
-      <div className="mt-6 md:mt-8 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-5 md:gap-8 items-stretch">
+      <div className="relative mt-6 md:mt-10 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 md:gap-6 items-stretch">
         <IdentityCard
           side="primary"
           handle={primary.handle}
           displayName={primary.fullName}
           avatarUrl={primary.avatarUrl}
           verified={primary.verified}
-          rows={rows.map((r) => ({ label: r.label, value: r.primary, highlighted: r.winner === "primary" }))}
+          rows={rows.map((r) => ({
+            label: r.label,
+            value: r.primary,
+            highlighted: r.highlightable !== false && r.winner === "primary",
+          }))}
         />
         <VsDivider />
         <IdentityCard
@@ -82,27 +87,44 @@ export function ComparisonHero({ primary, competitor, windowLabel }: Props) {
           displayName={competitor.displayName}
           avatarUrl={competitor.avatarUrl ?? null}
           verified={Boolean(competitor.isVerified)}
-          rows={rows.map((r) => ({ label: r.label, value: r.competitor, highlighted: r.winner === "competitor" }))}
+          rows={rows.map((r) => ({
+            label: r.label,
+            value: r.competitor,
+            highlighted: r.highlightable !== false && r.winner === "competitor",
+          }))}
         />
       </div>
 
+      {/* Methodology line — impossible to miss */}
+      <div
+        className={cn(
+          "mt-8 md:mt-10 flex items-start gap-2.5 rounded-xl border border-border-subtle",
+          "bg-surface-muted/60 px-4 py-3 text-sm text-content-secondary",
+        )}
+      >
+        <span
+          aria-hidden="true"
+          className="mt-1.5 inline-block size-1.5 shrink-0 rounded-full bg-accent-primary"
+        />
+        <p className="leading-relaxed">
+          {sampleN > 0
+            ? `Comparação com base nas últimas ${sampleN} publicações disponíveis.`
+            : "Comparação com base nas publicações disponíveis."}
+          {competitor.windowAligned === false ? (
+            <span className="text-content-tertiary"> Concorrente em janela de referência.</span>
+          ) : null}
+          {competitor.hasPosts === false ? (
+            <span className="text-content-tertiary">
+              {" "}Algumas comparações detalhadas (mix, ritmo, miniaturas) requerem análise mais recente do concorrente.
+            </span>
+          ) : null}
+        </p>
+      </div>
+
       {/* Editorial verdict */}
-      <p className="mt-8 md:mt-10 font-serif text-lg sm:text-xl text-content-primary leading-snug">
+      <p className="mt-5 md:mt-6 font-serif text-xl sm:text-2xl text-content-primary leading-snug">
         <span aria-hidden="true" className="text-accent-primary mr-2">▸</span>
         {verdict}
-      </p>
-
-      {/* Methodology footnote */}
-      <p className="mt-3 text-xs text-content-tertiary">
-        {sampleN > 0
-          ? `Comparação com base nas últimas ${sampleN} publicações disponíveis.`
-          : "Comparação com base nas publicações disponíveis."}
-        {competitor.windowAligned === false
-          ? " Concorrente em janela baseline."
-          : ""}
-        {competitor.hasPosts === false
-          ? " Algumas comparações detalhadas (mix, ritmo, miniaturas) requerem análise mais recente do concorrente."
-          : ""}
       </p>
     </section>
   );
@@ -126,28 +148,38 @@ function IdentityCard({
   rows: { label: string; value: string; highlighted: boolean }[];
 }) {
   const eyebrowText = side === "primary" ? "Perfil" : "Concorrente";
-  const eyebrowColor =
-    side === "primary" ? "text-accent-primary" : "text-compare-competitor";
-  const highlightColor =
-    side === "primary" ? "text-accent-primary" : "text-compare-competitor";
+  const isPrimary = side === "primary";
+  const eyebrowColor = isPrimary ? "text-accent-primary" : "text-compare-competitor";
+  const highlightColor = isPrimary ? "text-accent-primary" : "text-compare-competitor";
+  const topBarColor = isPrimary ? "bg-accent-primary" : "bg-compare-competitor";
+  const caret = "▲";
+
   return (
     <div
       className={cn(
-        "flex flex-col rounded-2xl border border-border-default/70 bg-white p-5 sm:p-6",
+        "relative flex flex-col overflow-hidden rounded-2xl border border-border-default/70 bg-white",
+        "p-5 sm:p-6",
+        "shadow-[0_1px_2px_-1px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.08)]",
       )}
     >
-      <span className={cn("text-eyebrow-sm", eyebrowColor)}>{eyebrowText}</span>
-      <div className="mt-3 flex items-center gap-3 min-w-0">
+      {/* Side accent bar */}
+      <span aria-hidden="true" className={cn("absolute inset-x-0 top-0 h-[3px]", topBarColor)} />
+
+      <div className="flex items-center justify-between gap-3">
+        <span className={cn("text-eyebrow-sm", eyebrowColor)}>{eyebrowText}</span>
+      </div>
+
+      <div className="mt-4 flex items-center gap-4 min-w-0">
         <CompareAvatar
           avatarUrl={avatarUrl}
           name={displayName || handle}
           verified={verified}
           side={side}
-          sizeClass="size-12 sm:size-14"
+          sizeClass="size-16 sm:size-20"
           showRing
         />
-        <div className="min-w-0">
-          <p className="font-sans text-base sm:text-lg font-semibold text-content-primary truncate">
+        <div className="min-w-0 flex-1">
+          <p className="font-sans text-lg sm:text-xl font-semibold text-content-primary truncate">
             @{handle}
           </p>
           {displayName ? (
@@ -157,17 +189,25 @@ function IdentityCard({
           ) : null}
         </div>
       </div>
+
       {rows.length > 0 ? (
-        <dl className="mt-5 grid grid-cols-1 gap-3 border-t border-border-default/60 pt-4">
+        <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4 border-t border-border-default/60 pt-5">
           {rows.map((r) => (
-            <div key={r.label} className="flex items-baseline justify-between gap-3">
-              <dt className="text-eyebrow-sm text-content-tertiary">{r.label}</dt>
+            <div key={r.label} className="flex flex-col gap-1 min-w-0">
+              <dt className="text-eyebrow-sm text-content-tertiary truncate">{r.label}</dt>
               <dd
                 className={cn(
-                  "font-sans tabular-nums tracking-tight text-base sm:text-lg",
-                  r.highlighted ? cn("font-semibold", highlightColor) : "font-medium text-content-primary",
+                  "font-sans tabular-nums tracking-tight text-xl sm:text-2xl",
+                  r.highlighted
+                    ? cn("font-semibold", highlightColor)
+                    : "font-semibold text-content-primary",
                 )}
               >
+                {r.highlighted ? (
+                  <span aria-hidden="true" className={cn("mr-1 text-xs align-middle", highlightColor)}>
+                    {caret}
+                  </span>
+                ) : null}
                 {r.value}
               </dd>
             </div>
@@ -180,13 +220,21 @@ function IdentityCard({
 
 function VsDivider() {
   return (
-    <div className="relative flex items-center justify-center md:px-2">
+    <div className="relative flex items-center justify-center py-1 md:py-0 md:px-1">
+      {/* Connector line: horizontal on mobile, vertical on desktop */}
       <span
         aria-hidden="true"
-        className="hidden md:block absolute inset-y-0 left-1/2 w-px bg-border-default/60"
+        className="absolute inset-x-0 top-1/2 h-px bg-border-default/60 md:inset-x-auto md:inset-y-0 md:left-1/2 md:top-auto md:h-auto md:w-px"
       />
-      <span className="relative font-serif text-3xl sm:text-4xl text-content-tertiary bg-white px-3 tracking-tight">
-        vs
+      <span
+        className={cn(
+          "relative inline-flex size-12 sm:size-14 items-center justify-center rounded-full",
+          "border border-border-default bg-white",
+          "font-serif text-lg sm:text-xl font-semibold tracking-tight text-content-primary",
+          "shadow-[0_2px_8px_-2px_rgba(15,23,42,0.12)]",
+        )}
+      >
+        VS
       </span>
     </div>
   );
@@ -214,6 +262,7 @@ function buildRows(p: PrimarySide, c: ReportCompetitorBreakdownEntry): MetricRow
       primary: fmtInt(pSample),
       competitor: fmtInt(cSample),
       winner: null,
+      highlightable: false,
     });
   }
 
