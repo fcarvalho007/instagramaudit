@@ -1331,6 +1331,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
           followers: num(p.followers_count, 0),
           postsAnalyzed:
             cAnalyzed.length > 0 ? cAnalyzed.length : num(s.posts_analyzed, 0),
+          postsAnalyzedFromLegacyFallback: cAnalyzed.length === 0,
           averageEngagementRate:
             cPerf.length > 0
               ? round2(avg(cPerf, (p) => p.engagement_pct))

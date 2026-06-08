@@ -43,6 +43,15 @@ export function CompetitorOverviewCompare({ primary, competitor, scope = "all" }
   const rows = buildRows(primary, competitor, scope);
   if (rows.length === 0) return null;
 
+  const postsLegacy = competitor.postsAnalyzedFromLegacyFallback === true;
+  const postsDelta = Math.abs(
+    (primary.postsAnalyzed ?? 0) - (competitor.postsAnalyzed ?? 0),
+  );
+  const postsTooltip =
+    postsLegacy || (postsDelta > 0 && postsDelta <= 2)
+      ? "Pinned posts são excluídos do lado principal. Em snapshots de concorrente mais antigos podem ainda contar, o que pode justificar uma diferença de 1 a 2 publicações."
+      : undefined;
+
   return (
     <CompareCardShell
       title="Identidade"
@@ -78,7 +87,10 @@ export function CompetitorOverviewCompare({ primary, competitor, scope = "all" }
               handle: competitor.username,
               value: row.competitorValue,
               formatted: row.competitorFormatted,
-              title: row.competitorTitle,
+              title:
+                row.label === "Publicações analisadas" && postsTooltip
+                  ? postsTooltip
+                  : row.competitorTitle,
             }}
             unit={row.unit}
             higherIsBetter={true}
