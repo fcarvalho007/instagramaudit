@@ -658,7 +658,11 @@
         "period_coming_soon_title": "Janela personalizada em preparação",
         "period_coming_soon_body": "A análise por período (30d/90d) ainda não está disponível nesta versão beta. Vais ser notificado quando ficar pronta — sem custo de crédito.",
         "period_action_title": "Gerar análise dos últimos {{days}} dias?",
-        "period_action_body": "Vai consumir 1 crédito Pro e gerar uma análise nova com a janela dos últimos {{days}} dias. Repetir a mesma janela depois usa cache e não consome créditos."
+        "period_action_body": "Esta análise pode consumir 1 crédito se ainda não existir em cache. Se esta janela já tiver sido gerada, será reutilizada sem novo custo.",
+        "period_success_toast_cache": "Análise reutilizada sem novo consumo.",
+        "period_success_toast_fresh": "Nova análise gerada. 1 crédito consumido.",
+        "period_success_toast_neutral": "Análise por período carregada.",
+        "period_error_requires_pro": "Esta janela exige acesso Pro activo."
       }
     },
     "status": {
