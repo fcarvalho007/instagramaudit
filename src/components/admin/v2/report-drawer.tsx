@@ -50,6 +50,12 @@ import {
   resendReportEmail,
   retryReportFull,
 } from "@/lib/admin/report-actions";
+import {
+  deriveWindow,
+  windowBadgeVariant,
+  windowLabel,
+  dataSourceBadgeVariant,
+} from "@/lib/admin/analysis-window";
 
 interface ReportDrawerProps {
   open: boolean;
@@ -130,6 +136,9 @@ function DrawerBody({
       <DrawerHeader detail={detail} />
       <div className="flex flex-col gap-7 px-6 py-6">
         <PhasesGrid phases={detail.phases} />
+        {detail.analysisEvent ? (
+          <AnalysisEventCard event={detail.analysisEvent} />
+        ) : null}
         <CostsTable costs={detail.costs} status={detail.status} />
         <EventsTimeline events={detail.events} />
         <ActionsBar
@@ -144,6 +153,10 @@ function DrawerBody({
 }
 
 function DrawerHeader({ detail }: { detail: MockReportDetail }) {
+  const ev = detail.analysisEvent ?? null;
+  const win = ev
+    ? deriveWindow(ev.analysis_window, ev.cache_key)
+    : null;
   return (
     <header className="border-b border-admin-border px-6 pb-5 pt-6">
       <div className="flex items-start justify-between gap-3">
@@ -163,6 +176,29 @@ function DrawerHeader({ detail }: { detail: MockReportDetail }) {
         </div>
         <StatusBadge status={detail.status} />
       </div>
+      {ev && win ? (
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <AdminBadge variant={windowBadgeVariant(win)}>
+            janela · {windowLabel(win)}
+          </AdminBadge>
+          {ev.data_source ? (
+            <AdminBadge variant={dataSourceBadgeVariant(ev.data_source)}>
+              {ev.data_source}
+            </AdminBadge>
+          ) : null}
+          <AdminBadge
+            variant={ev.competitor_handles.length > 0 ? "info" : "neutral"}
+            title={
+              ev.competitor_handles.length > 0
+                ? ev.competitor_handles.map((h) => `@${h}`).join(", ")
+                : "sem concorrentes"
+            }
+          >
+            {ev.competitor_handles.length} concorrente
+            {ev.competitor_handles.length === 1 ? "" : "s"}
+          </AdminBadge>
+        </div>
+      ) : null}
       <div className="mt-4 flex flex-wrap items-center gap-3 text-[12px] text-admin-text-secondary">
         <Meta label="Iniciado">{detail.startedAtLabel}</Meta>
         {detail.deliveredAtLabel ? (
