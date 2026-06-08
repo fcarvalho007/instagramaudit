@@ -226,6 +226,91 @@ function Bar({
   );
 }
 
+function BareBar({
+  value,
+  max,
+  accent,
+  handle,
+  avatarUrl,
+  formatted,
+  zeroLabel,
+  isWinner,
+}: {
+  value: number;
+  max: number;
+  accent: "primary" | "secondary";
+  handle: string;
+  avatarUrl: string | null;
+  formatted: string;
+  zeroLabel?: string;
+  isWinner?: boolean;
+}) {
+  const safeValue = Number.isFinite(value) && value > 0 ? value : 0;
+  const pct = Math.min(100, (safeValue / max) * 100);
+  const isZero = safeValue === 0;
+  const accentBg =
+    accent === "primary" ? "bg-accent-primary" : "bg-compare-competitor";
+  const ringClass = isWinner
+    ? accent === "primary"
+      ? "shadow-[0_0_0_1px_color-mix(in_oklab,var(--accent-primary)_30%,transparent)]"
+      : "shadow-[0_0_0_1px_color-mix(in_oklab,var(--compare-competitor)_30%,transparent)]"
+    : "";
+
+  return (
+    <div
+      className="flex items-center gap-2 sm:gap-2.5"
+      aria-label={`@${handle}: ${isZero && zeroLabel ? zeroLabel : formatted}`}
+    >
+      {/* leading identity dot (always) + avatar thumbnail on sm+ */}
+      <span
+        aria-hidden="true"
+        className="hidden sm:inline-flex shrink-0"
+      >
+        {avatarUrl ? (
+          <CompareAvatar
+            avatarUrl={avatarUrl}
+            name={handle}
+            side={accent === "primary" ? "primary" : "competitor"}
+            sizeClass="size-5"
+          />
+        ) : (
+          <span className={cn("size-2.5 rounded-full", accentBg)} />
+        )}
+      </span>
+      <span
+        aria-hidden="true"
+        className={cn("sm:hidden size-2 rounded-full shrink-0", accentBg)}
+      />
+      <div
+        className={cn(
+          "relative h-3 sm:h-3.5 flex-1 rounded-full overflow-hidden",
+          isZero
+            ? "bg-surface-muted border border-dashed border-border-subtle"
+            : "bg-surface-muted",
+          ringClass,
+        )}
+      >
+        {!isZero ? (
+          <div
+            className={cn("absolute inset-y-0 left-0 rounded-full", accentBg)}
+            style={{ width: `${pct}%` }}
+          />
+        ) : null}
+      </div>
+      <span
+        className={cn(
+          "tabular-nums text-right shrink-0",
+          isZero
+            ? "text-xs text-content-tertiary w-20 sm:w-24"
+            : "font-semibold text-content-primary text-sm sm:text-base w-14 sm:w-16",
+        )}
+      >
+        {isZero && zeroLabel ? zeroLabel : formatted}
+      </span>
+    </div>
+  );
+}
+
 function formatValue(value: number, unit: CompareUnit): string {
   if (!Number.isFinite(value)) return "—";
   switch (unit) {
