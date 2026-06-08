@@ -16,6 +16,12 @@ import { AdminSectionHeader } from "../admin-section-header";
 import { FilterPills, type FilterOption } from "../filter-pills";
 import { ReportDrawer } from "../report-drawer";
 import { adminFetch } from "@/lib/admin/fetch";
+import {
+  dataSourceBadgeVariant,
+  deriveWindow,
+  windowBadgeVariant,
+  windowLabel,
+} from "@/lib/admin/analysis-window";
 
 type ReportFilter = "all" | "delivered" | "in_progress" | "failed";
 
@@ -31,6 +37,13 @@ interface ReportRow {
   created_at: string;
   email_sent_at: string | null;
   lead: { id: string; name: string | null; email: string | null } | null;
+  analysis_window: string | null;
+  cache_key: string | null;
+  data_source: string | null;
+  competitor_count: number;
+  competitor_handles: string[];
+  snapshot_short: string;
+  estimated_cost_usd: number | null;
 }
 
 interface ListApi {
@@ -131,7 +144,10 @@ export function ReportsTableSection({ period }: { period: AdminPeriod }) {
               <tr className="text-admin-text-tertiary">
                 <Th>Quem pediu</Th>
                 <Th>Perfil analisado</Th>
-                <Th>Rede</Th>
+                <Th>Janela</Th>
+                <Th>Origem</Th>
+                <Th>Concorrentes</Th>
+                <Th>Snapshot</Th>
                 <Th>Início</Th>
                 <Th align="right">Acções</Th>
               </tr>
@@ -139,18 +155,20 @@ export function ReportsTableSection({ period }: { period: AdminPeriod }) {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-[12px] text-admin-text-tertiary">
+                  <td colSpan={8} className="px-6 py-8 text-center text-[12px] text-admin-text-tertiary">
                     A carregar…
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-[12px] text-admin-text-tertiary">
+                  <td colSpan={8} className="px-6 py-8 text-center text-[12px] text-admin-text-tertiary">
                     Sem relatórios para este filtro.
                   </td>
                 </tr>
               ) : (
-                rows.map((r) => (
+                rows.map((r) => {
+                  const win = deriveWindow(r.analysis_window, r.cache_key);
+                  return (
                   <tr
                     key={r.id}
                     className="border-t border-admin-border transition-colors hover:bg-[var(--color-admin-surface-muted)]"
@@ -172,13 +190,33 @@ export function ReportsTableSection({ period }: { period: AdminPeriod }) {
                       )}
                     </td>
                     <td className="px-6 py-3.5 align-top text-[13px] text-admin-text-primary">
-                      @{r.instagram_username}
+                      <span className="inline-flex items-center gap-1.5">
+                        <Instagram size={13} strokeWidth={1.75} className="text-admin-text-tertiary" />
+                        @{r.instagram_username}
+                      </span>
                     </td>
                     <td className="px-6 py-3.5 align-top">
-                      <span className="inline-flex items-center gap-1.5 text-[12px] text-admin-text-secondary">
-                        <Instagram size={13} strokeWidth={1.75} />
-                        Instagram
-                      </span>
+                      <AdminBadge variant={windowBadgeVariant(win)}>
+                        {windowLabel(win)}
+                      </AdminBadge>
+                    </td>
+                    <td className="px-6 py-3.5 align-top">
+                      {r.data_source ? (
+                        <AdminBadge variant={dataSourceBadgeVariant(r.data_source)}>
+                          {r.data_source}
+                        </AdminBadge>
+                      ) : (
+                        <span className="text-[12px] text-admin-text-tertiary">—</span>
+                      )}
+                    </td>
+                    <td
+                      className="px-6 py-3.5 align-top text-[12px] text-admin-text-secondary"
+                      title={r.competitor_handles.map((h) => `@${h}`).join(", ")}
+                    >
+                      {r.competitor_count > 0 ? `${r.competitor_count}` : "—"}
+                    </td>
+                    <td className="px-6 py-3.5 align-top admin-code text-admin-text-secondary">
+                      {r.snapshot_short || "—"}
                     </td>
                     <td className="px-6 py-3.5 align-top admin-code text-admin-text-secondary">
                       {formatDate(r.created_at)}
@@ -216,7 +254,8 @@ export function ReportsTableSection({ period }: { period: AdminPeriod }) {
                       </div>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
