@@ -333,6 +333,17 @@ function methodologySampleSize(
   return Math.max(a, b);
 }
 
+/** True when only one side has a positive sample size — the methodology
+ *  number reflects a single profile, so we must say so explicitly. */
+function sampleAsymmetric(
+  p: PrimarySide,
+  c: ReportCompetitorBreakdownEntry,
+): boolean {
+  const a = isPos(p.postsAnalyzed) ? p.postsAnalyzed : 0;
+  const b = isPos(c.postsAnalyzed) ? c.postsAnalyzed : 0;
+  return (a > 0) !== (b > 0);
+}
+
 function pickWinner(a: number, b: number): Side {
   if (a === b) return null;
   return a > b ? "primary" : "competitor";
