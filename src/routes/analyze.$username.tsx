@@ -28,6 +28,8 @@ import {
 interface AnalyzeSearch {
   vs?: string;
   previewLoading?: number;
+  /** Pro-only public window. Defaults to baseline. */
+  w?: "30d" | "90d";
 }
 
 // Module-level dedup: sobrevive a re-mounts dentro do mesmo SPA load,
@@ -85,6 +87,7 @@ export const Route = createFileRoute("/analyze/$username")({
   validateSearch: (search: Record<string, unknown>): AnalyzeSearch => ({
     vs: typeof search.vs === "string" ? search.vs : undefined,
     previewLoading: Number(search.previewLoading) === 1 ? 1 : undefined,
+    w: search.w === "30d" || search.w === "90d" ? search.w : undefined,
   }),
   head: ({ params }) => {
     const handle = params.username.replace(/^@/, "");
@@ -163,7 +166,7 @@ type LoadState =
 
 function AnalyzePage() {
   const { username } = Route.useParams();
-  const { vs, previewLoading } = Route.useSearch();
+  const { vs, previewLoading, w } = Route.useSearch();
   const cleaned = normalizeInstagramHandle(username);
   const { t: tAnalyze } = useTranslation("analyze");
   const { t: tErrors } = useTranslation("errors");
@@ -206,6 +209,7 @@ function AnalyzePage() {
   }, [vs]);
 
   const competitorsKey = competitors.join(",");
+  const windowKind: "baseline" | "30d" | "90d" = w ?? "baseline";
 
   const [state, setState] = useState<LoadState>({ status: "loading" });
   // Fase 3: se o backend devolver ONBOARDING_REQUIRED (cookie em falta /
@@ -243,7 +247,9 @@ function AnalyzePage() {
     };
 
     // Step 1 — trigger the public analyze pipeline.
-    const analysis = await fetchPublicAnalysis(cleaned, competitors);
+    const analysis = await fetchPublicAnalysis(cleaned, competitors, {
+      window: windowKind,
+    });
     if (!analysis.success) {
       if (analysis.error_code === "ONBOARDING_REQUIRED") {
         if (justOnboardedRef.current) {
@@ -314,7 +320,7 @@ function AnalyzePage() {
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cleaned, competitorsKey, tErrors, resolveErrorMessage]);
+  }, [cleaned, competitorsKey, windowKind, tErrors, resolveErrorMessage]);
 
   useEffect(() => {
     if (forceLoader) return;
