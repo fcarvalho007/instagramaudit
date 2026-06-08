@@ -100,6 +100,9 @@ export function ComparisonHero({ primary, competitor, windowLabel }: Props) {
         {competitor.windowAligned === false
           ? " Concorrente em janela baseline."
           : ""}
+        {competitor.hasPosts === false
+          ? " Algumas comparações detalhadas (mix, ritmo, miniaturas) requerem análise mais recente do concorrente."
+          : ""}
       </p>
     </section>
   );
