@@ -398,6 +398,14 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         // ms and any failure is swallowed locally so the public response is
         // never blocked by analytics issues.
         const providerCallsStartedAt = new Date();
+        // Updated once the request payload is parsed so every subsequent
+        // logEvent call automatically tags the analysis_event with the
+        // selected window. Pre-parse events (invalid_input) stay null.
+        let currentAnalysisWindow:
+          | "baseline"
+          | "30d"
+          | "90d"
+          | null = null;
         const logEvent = async (overrides: {
           handle: string;
           competitorHandles?: string[];
@@ -412,11 +420,16 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           estimatedCostUsd?: number | null;
           displayName?: string | null;
           followersLastSeen?: number | null;
+          analysisWindow?: "baseline" | "30d" | "90d" | null;
         }): Promise<string | null> => {
           try {
             const requestIpHash = await ipHashPromise;
             const eventId = await recordAnalysisEvent({
               ...overrides,
+              analysisWindow:
+                overrides.analysisWindow !== undefined
+                  ? overrides.analysisWindow
+                  : currentAnalysisWindow,
               durationMs: Date.now() - startedAt,
               requestIpHash,
               userAgentFamily,
