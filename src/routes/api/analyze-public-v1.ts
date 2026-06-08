@@ -489,6 +489,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         const windowKind: PublicWindowKind = isPublicWindowKind(parsed.data.window)
           ? parsed.data.window
           : "baseline";
+        currentAnalysisWindow = windowKind;
         const primaryWindowCfg = PUBLIC_WINDOW_CONFIGS[windowKind];
 
         // Dedup competitors: lowercase comparison, drop primary, drop dupes,
