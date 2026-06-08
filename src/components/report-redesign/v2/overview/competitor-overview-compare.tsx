@@ -10,6 +10,12 @@ interface PrimarySide {
   verified?: boolean;
   followers: number;
   postsAnalyzed: number;
+  /**
+   * Raw sample size including pinned posts. Used only when the competitor
+   * is on the legacy fallback path (no per-competitor raw posts) so the
+   * comparison row is symmetric (both sides include pinned).
+   */
+  postsInSample?: number;
   engagementRate: number;
   averageLikes: number;
   averageComments: number;
@@ -48,9 +54,12 @@ export function CompetitorOverviewCompare({ primary, competitor, scope = "all" }
     (primary.postsAnalyzed ?? 0) - (competitor.postsAnalyzed ?? 0),
   );
   const postsTooltip =
-    postsLegacy || (postsDelta > 0 && postsDelta <= 2)
+    !postsLegacy && postsDelta > 0 && postsDelta <= 2
       ? "Pinned posts são excluídos do lado principal. Em snapshots de concorrente mais antigos podem ainda contar, o que pode justificar uma diferença de 1 a 2 publicações."
       : undefined;
+  const sampleRowLabel = postsLegacy
+    ? "Publicações na amostra"
+    : "Publicações analisadas";
 
   return (
     <CompareCardShell
@@ -88,7 +97,7 @@ export function CompetitorOverviewCompare({ primary, competitor, scope = "all" }
               value: row.competitorValue,
               formatted: row.competitorFormatted,
               title:
-                row.label === "Publicações analisadas" && postsTooltip
+                row.label === sampleRowLabel && postsTooltip
                   ? postsTooltip
                   : row.competitorTitle,
             }}
@@ -97,6 +106,11 @@ export function CompetitorOverviewCompare({ primary, competitor, scope = "all" }
           />
         ))}
       </div>
+      {postsLegacy ? (
+        <p className="text-content-tertiary text-xs mt-4">
+          Amostra legada: algumas métricas excluem publicações fixadas.
+        </p>
+      ) : null}
     </CompareCardShell>
   );
 }
@@ -134,12 +148,16 @@ function buildRows(
   }
 
   if (isPositive(primary.postsAnalyzed) && isPositive(c.postsAnalyzed)) {
+    const legacy = c.postsAnalyzedFromLegacyFallback === true;
+    const primaryVal = legacy
+      ? primary.postsInSample ?? primary.postsAnalyzed
+      : primary.postsAnalyzed;
     rows.push({
-      label: "Publicações analisadas",
+      label: legacy ? "Publicações na amostra" : "Publicações analisadas",
       unit: "abs",
-      primaryValue: primary.postsAnalyzed,
+      primaryValue: primaryVal,
       competitorValue: c.postsAnalyzed,
-      primaryFormatted: fmtInt(primary.postsAnalyzed),
+      primaryFormatted: fmtInt(primaryVal),
       competitorFormatted: fmtInt(c.postsAnalyzed),
     });
   }
