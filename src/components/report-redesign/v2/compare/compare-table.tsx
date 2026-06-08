@@ -154,7 +154,7 @@ function MobileCell({
 }) {
   return (
     <div className="flex items-baseline gap-2">
-      <dt className="flex items-center gap-1.5 text-xs text-content-secondary shrink-0">
+      <dt className="flex items-center gap-1.5 text-sm text-content-secondary shrink-0">
         <span
           aria-hidden="true"
           className={cn(

@@ -82,7 +82,7 @@ export function CompetitorBioCompare({
           />
         </div>
         {deltas.length > 0 ? (
-          <p className="border-t border-default pt-3 text-xs text-content-secondary">
+          <p className="border-t border-default pt-3 text-sm text-content-secondary">
             {deltas.join(" · ")}
           </p>
         ) : null}
