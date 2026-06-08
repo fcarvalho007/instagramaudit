@@ -32,6 +32,8 @@ interface AnalysisBreakdown {
   data_source: string;
   outcome: string;
   snapshot_id: string | null;
+  analysis_window: string | null;
+  cache_key: string | null;
   calls: ProviderCallRow[];
   totals: {
     estimated_usd: number;
@@ -70,7 +72,7 @@ export const Route = createFileRoute("/api/admin/analysis-cost-breakdown")({
         // Get recent fresh analysis events
         const { data: events, error: evErr } = await supabaseAdmin
           .from("analysis_events")
-          .select("id, handle, created_at, data_source, outcome, analysis_snapshot_id")
+          .select("id, handle, created_at, data_source, outcome, analysis_snapshot_id, analysis_window, cache_key")
           .eq("data_source", "fresh")
           .order("created_at", { ascending: false })
           .limit(limit);
@@ -199,6 +201,8 @@ export const Route = createFileRoute("/api/admin/analysis-cost-breakdown")({
             data_source: ev.data_source,
             outcome: ev.outcome,
             snapshot_id: ev.analysis_snapshot_id,
+            analysis_window: ev.analysis_window ?? null,
+            cache_key: ev.cache_key ?? null,
             calls,
             totals: {
               estimated_usd: estimatedTotal,

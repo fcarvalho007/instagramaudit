@@ -1,181 +1,87 @@
-# 90d Pro analysis — safest runtime smoke plan
+# Admin visibility for analysis windows — PR scope
 
-No execution. Code/DB read-only. Includes browser snippet, before/after SQL, and rollback. Requires one explicit approval to grant a temporary `report_full_9` entitlement (the database currently has zero Pro leads).
+Tasks 1 and 2 are already shipped (see "Already in place" below). This PR adds the two remaining surfaces: an overview card on `/admin/visao-geral` and a window badge in the `/admin/sistema` cost breakdown. No schema changes, no credit logic changes, no provider calls.
 
-## 1. Test lead
+## Already in place (no changes)
 
-- **Lead ID**: `01bf861c-6a17-4b36-81b7-130ef2f143da`
-- **Email**: `frederico.carvalho@digitalfc.pt`
-- **Why this lead**: it is the only lead in the DB that already owns the existing 90d snapshot for `frederico.m.carvalho` (row in `lead_reports` for `v1:frederico.m.carvalho|:w=90d`). The snapshot is fresh (expires `2026-06-09 16:01:49+00`). This makes the smoke a **guaranteed cache hit** with **zero provider cost**.
+- **Task 1 — Reports table**: `reports-table-section.tsx:170/199` renders the window via `<AdminBadge variant={windowBadgeVariant(win)}>{windowLabel(win)}</AdminBadge>`. `windowBadgeVariant` returns `neutral` for baseline (no accent) and `info`/`revenue` for 30d/90d (subtle accent). Existing filters/layout untouched.
+- **Task 2 — Lead detail**: `beta-leads/lead-detail-sheet.tsx:2487/2548` already shows recent analyses with handle, window badge, snapshot id, created_at, data_source, and an "Análise · {win}" label. Window is derived via `deriveWindow(ev.analysis_window, ev.cache_key)`. No invented FK linkage.
 
-## 2. Required entitlement state
+## Task 3 — Overview card "Análises por janela"
 
-- Lead currently has **no** `report_full_9` entitlement (verified: `lead_entitlements` returns 0 rows for this lead).
-- The wide-window Pro gate (`analyze-public-v1.ts:585-599`) runs **before** the cache short-circuit, so without entitlement the request returns `WINDOW_REQUIRES_PRO` and never enters the cache branch.
-- **Action required (separate approval)**: insert one row temporarily, then revoke.
+### New server route
 
-Approval-only INSERT (do NOT run until user approves):
+`src/routes/api/admin/analysis-window-counts.ts`
+- `GET ?period=7d|30d|90d` (default `30d`). Admin-only via `requireAdminSession`.
+- Single query against `analysis_events`:
+  ```sql
+  SELECT analysis_window, cache_key, count(*)
+  FROM analysis_events
+  WHERE created_at >= now() - interval '<period>'
+  GROUP BY analysis_window, cache_key  -- aggregated in JS via deriveWindow
+  ```
+  Implementation will fetch `analysis_window, cache_key` for the period (capped, e.g. `limit 5000`) and reduce client-side using the existing `deriveWindow` helper so baseline rows that pre-date the column still bucket correctly via the `:w=…` cache_key suffix.
+- Response: `{ period: "30d", total: number, baseline: number, "30d": number, "90d": number, other: number, generated_at: string }`.
 
-```sql
-INSERT INTO public.lead_entitlements (lead_id, product_code, granted_at, metadata)
-VALUES (
-  '01bf861c-6a17-4b36-81b7-130ef2f143da',
-  'report_full_9',
-  now(),
-  jsonb_build_object('source','manual_smoke_90d','note','temporary; revoke after test')
-);
-```
+### New component
 
-## 3. Required credit balance
+`src/components/admin/v2/visao-geral/analysis-window-card.tsx`
+- Renders a single admin card (matches existing `KPICard` / `CostSummaryCard` visual system) with three primary stats (Baseline / 30 dias / 90 dias) and a small `other` footnote only when > 0.
+- Each stat uses the same accent as the badges (`neutral`, `info`, `revenue`) for instant visual parity with the reports table.
+- Loading: `<SectionSkeleton rows={1} rowHeight={120} />`. Error: `<SectionError />`. Empty (total=0): subtle "Sem análises nesta janela." message — does not crash the page.
 
-- Current balance: **0** (`SELECT public.credit_balance('01bf861c-...')`).
-- **No top-up needed**. Cache-fresh + already-associated → `skipReserve = true` (server: `analyze-public-v1.ts:601`). The reservation step is bypassed entirely, so balance 0 is fine and is also the strongest proof that no credit was charged.
+### Wiring
 
-## 4. Handle to test
+`src/routes/admin.visao-geral.tsx`
+- Import `<AnalysisWindowCard />` and add it as a new row directly under `<OverviewKpiRow />` (single column on mobile, full-width on desktop). No other layout shifts.
 
-- Primary: `frederico.m.carvalho`
-- Competitors: `[]` (must be empty — the existing 90d cache_key has no competitor segment).
+## Task 4 — Window badge in cost breakdown
 
-## 5. Expected cache_key
+### Server change
 
-- `v1:frederico.m.carvalho|:w=90d`
-- Built by `buildCacheKey('frederico.m.carvalho', [], '90d')` in `src/lib/analysis/cache.ts:49-60`.
+`src/routes/api/admin/analysis-cost-breakdown.ts`
+- Extend the `analysis_events` select to include `analysis_window, cache_key` (lines 73).
+- Add both to `AnalysisBreakdown` type and push them into each result row (lines 28-54, 195-221).
 
-## 6. Expected `credit_ledger` behaviour
+### Client change
 
-- **No new row.** `skipReserve` path means `reserveCredit` is not called.
-- Balance after test must remain `0`.
-- Verification: `SELECT count(*)` filtered to this lead + `created_at > <test_start>` must equal `0`.
+`src/components/admin/v2/sistema/analysis-cost-breakdown.tsx`
+- Extend the local `AnalysisBreakdown` interface with `analysis_window: string | null; cache_key: string | null`.
+- Import `deriveWindow`, `windowBadgeVariant`, `windowLabel` from `@/lib/admin/analysis-window` and `AdminBadge`.
+- In `AnalysisRow` (line 170 area), render a small badge next to `@{a.handle}`:
+  `<AdminBadge variant={windowBadgeVariant(win)} size="sm">{windowLabel(win)}</AdminBadge>`
+  where `win = deriveWindow(a.analysis_window, a.cache_key)`. Baseline keeps the neutral variant so existing rows read identically.
 
-## 7. Expected `provider_call_logs` behaviour
+## Out of scope
 
-- **No new row.** Cache fresh hit returns the existing snapshot without invoking Apify, DataForSEO, or OpenAI.
-- Verification: `SELECT count(*)` filtered to `handle='frederico.m.carvalho' AND created_at > <test_start>` must equal `0`.
+- No new column in `analysis_events`, `provider_call_logs`, or `analysis_snapshots`.
+- No change to `credit_ledger`, reservation, or any pricing logic.
+- No new provider runners or backfill.
+- No edits to `/report.example`, checkout, EuPago, Free/Public report, or competitor comparison UI.
+- No retroactive write to `analysis_window` for old events (we rely on the existing cache_key fallback inside `deriveWindow`).
 
-## 8. Rollback / cleanup
+## Validation
 
-Run immediately after the smoke (or if the test is aborted):
+1. `bun run build` / typecheck pass (covered automatically).
+2. `/admin/visao-geral` loads with the new card under the KPI row; counts sum to the total for the selected period.
+3. `/admin/sistema` cost breakdown shows a `baseline` / `30d` / `90d` badge per row; baseline rows remain visually quiet.
+4. `/admin/relatorios` and lead detail unchanged (regression check).
+5. Manual SQL sanity (read-only) on Cloud:
+   ```sql
+   SELECT
+     coalesce(analysis_window,
+       case when cache_key ~ ':w=30d$' then '30d'
+            when cache_key ~ ':w=90d$' then '90d'
+            else 'baseline' end) AS win,
+     count(*)
+   FROM analysis_events
+   WHERE created_at >= now() - interval '30 days'
+   GROUP BY 1;
+   ```
+   Numbers should match the new card.
 
-```sql
-DELETE FROM public.lead_entitlements
-WHERE lead_id = '01bf861c-6a17-4b36-81b7-130ef2f143da'
-  AND product_code = 'report_full_9'
-  AND metadata->>'source' = 'manual_smoke_90d';
-```
+## Risks / mitigations
 
-Confirm cleanup:
-
-```sql
-SELECT count(*) FROM public.lead_entitlements
-WHERE lead_id = '01bf861c-6a17-4b36-81b7-130ef2f143da'
-  AND product_code = 'report_full_9';
--- expected: 0
-```
-
-No other tables need cleanup (no ledger row, no provider log, no new snapshot — the cache row already exists and is untouched apart from a possible `updated_at` bump on hit).
-
-## 9. Browser console snippet
-
-Run while logged in as `frederico.carvalho@digitalfc.pt` (cookie `lead_session` must be present) on any page of the app, after the entitlement has been granted.
-
-```js
-// Pro 90d smoke — guaranteed cache hit for an already-owned snapshot.
-// Expected: { success: true, data_source: "cache", ... }
-await fetch("/api/analyze-public-v1", {
-  method: "POST",
-  credentials: "include",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    instagram_username: "frederico.m.carvalho",
-    competitor_usernames: [],
-    window: "90d",
-  }),
-}).then(r => r.json()).then(console.log);
-```
-
-Pass criteria in the response:
-- `success === true`
-- `data_source === "cache"`
-- No 401/403/`WINDOW_REQUIRES_PRO`/`INSUFFICIENT_CREDITS`.
-
-## 10. SQL read-only queries
-
-### Before the test (record a baseline)
-
-```sql
--- Baseline ledger and provider counts for this lead/handle.
-SELECT now() AS test_start;
-
-SELECT public.credit_balance('01bf861c-6a17-4b36-81b7-130ef2f143da') AS balance_before;
-
-SELECT count(*) AS ledger_rows_before
-FROM public.credit_ledger
-WHERE lead_id = '01bf861c-6a17-4b36-81b7-130ef2f143da';
-
-SELECT count(*) AS provider_rows_before
-FROM public.provider_call_logs
-WHERE handle = 'frederico.m.carvalho';
-
-SELECT id, cache_key, updated_at, expires_at
-FROM public.analysis_snapshots
-WHERE cache_key = 'v1:frederico.m.carvalho|:w=90d';
-
-SELECT count(*) AS owns_report
-FROM public.lead_reports
-WHERE lead_id = '01bf861c-6a17-4b36-81b7-130ef2f143da'
-  AND cache_key = 'v1:frederico.m.carvalho|:w=90d';
--- expected: 1
-```
-
-### After the test (must match these expectations)
-
-```sql
--- balance unchanged
-SELECT public.credit_balance('01bf861c-6a17-4b36-81b7-130ef2f143da') AS balance_after;
--- expected: same as balance_before (0)
-
--- no new ledger row
-SELECT id, delta, reason, cache_key, created_at
-FROM public.credit_ledger
-WHERE lead_id = '01bf861c-6a17-4b36-81b7-130ef2f143da'
-  AND created_at > '<test_start>'::timestamptz;
--- expected: 0 rows
-
--- no new provider call
-SELECT id, provider, status, posts_returned, estimated_cost_usd, created_at
-FROM public.provider_call_logs
-WHERE handle = 'frederico.m.carvalho'
-  AND created_at > '<test_start>'::timestamptz;
--- expected: 0 rows
-
--- snapshot row unchanged (id same; updated_at may bump but expires_at unchanged)
-SELECT id, updated_at, expires_at
-FROM public.analysis_snapshots
-WHERE cache_key = 'v1:frederico.m.carvalho|:w=90d';
-
--- analysis_events should show data_source='cache' for the new event
-SELECT data_source, outcome, analysis_window, created_at
-FROM public.analysis_events
-WHERE handle = 'frederico.m.carvalho'
-  AND created_at > '<test_start>'::timestamptz
-ORDER BY created_at DESC;
--- expected: 1 row, data_source='cache', outcome='success', analysis_window='90d'
-```
-
-## Approval checklist (tick before executing)
-
-1. [ ] Approve the temporary INSERT into `lead_entitlements` for lead `01bf861c-...` (section 2).
-2. [ ] Confirm test lead, handle, and empty competitor list (sections 1, 4).
-3. [ ] Capture the `Before` SQL output and note `test_start` timestamp (section 10).
-4. [ ] Run the browser snippet (section 9) once, logged in as that lead.
-5. [ ] Capture the `After` SQL output and verify all expectations (section 10).
-6. [ ] Run the rollback DELETE (section 8) and confirm 0 remaining entitlement rows.
-7. [ ] Only after all checks pass, decide whether to open 90d to public Pro users.
-
-## Why this is the safest possible 90d test
-
-- Uses an existing fresh, lead-owned 90d snapshot → the server's `skipReserve = cacheFreshHit && alreadyAssociated` branch fires.
-- Provider runners are not entered on cache-fresh hits → no Apify / DataForSEO / OpenAI cost.
-- Credit ledger is not written → financial side-effects are zero.
-- The only mutation is one temporary `lead_entitlements` row, fully reversible by the rollback in section 8.
-- A live, uncached 90d call (different handle or no existing snapshot) is **not part of this plan** and would require a separate approval because it would hit Apify.
+- **Wrong bucketing for legacy rows**: mitigated by reusing `deriveWindow` (cache_key fallback already in production).
+- **Card empty during fresh installs**: handled by an explicit empty state instead of a NaN.
+- **Performance**: limit of 5000 rows per period query is well below `analysis_events` typical volume; if it grows, switch the endpoint to a server-side aggregate using the same SQL above.

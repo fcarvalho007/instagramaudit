@@ -16,6 +16,7 @@ import { OverviewKpiRow } from "@/components/admin/v2/visao-geral/overview-kpi-r
 import { MarginAlert } from "@/components/admin/v2/visao-geral/margin-alert";
 import { AcquisitionFunnel } from "@/components/admin/v2/visao-geral/acquisition-funnel";
 import { CostSummaryCard } from "@/components/admin/v2/visao-geral/cost-summary-card";
+import { AnalysisWindowCard } from "@/components/admin/v2/visao-geral/analysis-window-card";
 import { PriorityFollowups } from "@/components/admin/v2/visao-geral/priority-followups";
 import { IntentSection } from "@/components/admin/v2/visao-geral/intent-section";
 import { getExecutionMode } from "@/lib/admin/execution-mode.functions";
@@ -123,6 +124,7 @@ function VisaoGeralPage() {
       <div className="flex flex-col gap-8">
         <ExecutionModeStrip />
         <OverviewKpiRow />
+        <AnalysisWindowCard />
         <MarginAlert />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <AcquisitionFunnel />

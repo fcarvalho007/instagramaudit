@@ -8,6 +8,12 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight, AlertTriangle, AlertCircle, Link2, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { adminFetch } from "@/lib/admin/fetch";
 import { AdminSectionHeader } from "@/components/admin/v2/admin-section-header";
+import { AdminBadge } from "@/components/admin/v2/admin-badge";
+import {
+  deriveWindow,
+  windowBadgeVariant,
+  windowLabel,
+} from "@/lib/admin/analysis-window";
 import {
   SectionSkeleton,
   SectionError,
@@ -34,6 +40,8 @@ interface AnalysisBreakdown {
   data_source: string;
   outcome: string;
   snapshot_id: string | null;
+  analysis_window: string | null;
+  cache_key: string | null;
   calls: ProviderCall[];
   totals: {
     estimated_usd: number;
@@ -151,6 +159,7 @@ function EnrichmentDots({ summary, history }: { summary: Record<string, string> 
 function AnalysisRow({ a }: { a: AnalysisBreakdown }) {
   const [open, setOpen] = useState(false);
   const t = a.totals;
+  const win = deriveWindow(a.analysis_window, a.cache_key);
 
   const commentDanger = t.comment_scraper_status === "success" && t.comment_scraper_usd > COMMENT_HARD_MAX;
   const commentWarn = t.comment_scraper_status === "error" || (t.comment_scraper_status === "success" && !t.has_actual);
@@ -167,7 +176,12 @@ function AnalysisRow({ a }: { a: AnalysisBreakdown }) {
         className="w-full grid grid-cols-[1fr_80px_30px] sm:grid-cols-[1fr_100px_80px_70px_70px_70px_70px_70px_30px] gap-1.5 sm:gap-2 items-center px-2 sm:px-3 py-2 text-left hover:bg-surface-elevated/20 transition-colors"
       >
         <div className="min-w-0">
-          <span className="text-sm font-medium text-foreground-primary truncate block">@{a.handle}</span>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-sm font-medium text-foreground-primary truncate">@{a.handle}</span>
+            <AdminBadge variant={windowBadgeVariant(win)} className="shrink-0">
+              {windowLabel(win)}
+            </AdminBadge>
+          </div>
           <div className="flex items-center gap-2 text-[12px] text-foreground-muted">
             <span>
               {new Date(a.created_at).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
