@@ -24,8 +24,10 @@ interface Props {
    * - "default" (current): used by every standard compare card.
    * - "hero": stronger title scale + identity row prominence, used by
    *   the Phase 2 distribution cards (Format Mix, Weekday Rhythm).
+   * - "anchor": strongest tier, reserved for the first comparison card
+   *   (Overview / Identity) so it reads as the section anchor.
    */
-  density?: "default" | "hero";
+  density?: "default" | "hero" | "anchor";
 }
 
 /**
@@ -48,14 +50,15 @@ export function CompareCardShell({
   className,
   density = "default",
 }: Props) {
-  const hero = density === "hero";
+  const anchor = density === "anchor";
+  const hero = density === "hero" || anchor;
   return (
     <section
       id={id}
       aria-label={ariaLabel ?? `${title}: comparação com concorrente`}
       className={cn(
         "rounded-2xl border border-border-default bg-surface-primary shadow-card",
-        "p-6 sm:p-8",
+        anchor ? "p-7 sm:p-9 border-l-[3px] border-l-[var(--accent-primary)]" : "p-6 sm:p-8",
         className,
       )}
     >
@@ -64,7 +67,11 @@ export function CompareCardShell({
           <h3
             className={cn(
               "font-serif text-content-primary leading-snug tracking-tight",
-              hero ? "text-2xl sm:text-3xl" : "text-xl sm:text-2xl",
+              anchor
+                ? "text-2xl sm:text-3xl md:text-[2.25rem]"
+                : hero
+                  ? "text-2xl sm:text-3xl"
+                  : "text-xl sm:text-2xl",
             )}
           >
             {title}
@@ -73,7 +80,11 @@ export function CompareCardShell({
             <p
               className={cn(
                 "text-content-secondary",
-                hero ? "mt-1.5 text-sm sm:text-base" : "mt-1 text-sm",
+                anchor
+                  ? "mt-2 text-sm sm:text-base font-medium"
+                  : hero
+                    ? "mt-1.5 text-sm sm:text-base"
+                    : "mt-1 text-sm",
               )}
             >
               {subtitle}
@@ -87,7 +98,7 @@ export function CompareCardShell({
         ) : null}
       </header>
 
-      <div className={cn(hero ? "mt-5" : "mt-4")}>
+      <div className={cn(anchor ? "mt-6" : hero ? "mt-5" : "mt-4")}>
         <CompareHandleRow
           primary={primary}
           competitor={competitor}
@@ -95,11 +106,26 @@ export function CompareCardShell({
         />
       </div>
 
-      <div className={cn(hero ? "mt-8 sm:mt-10" : "mt-6 md:mt-8")}>{children}</div>
+      <div
+        className={cn(
+          anchor
+            ? "mt-10 sm:mt-12"
+            : hero
+              ? "mt-8 sm:mt-10"
+              : "mt-6 md:mt-8",
+        )}
+      >
+        {children}
+      </div>
 
       {footer ? (
         hero ? (
-          <div className="mt-8 rounded-xl border border-border-subtle bg-surface-muted px-5 py-4">
+          <div
+            className={cn(
+              "rounded-xl border border-border-subtle bg-surface-muted px-5 py-4",
+              anchor ? "mt-10" : "mt-8",
+            )}
+          >
             <p className="text-eyebrow-sm text-content-tertiary mb-1.5">
               {footerEyebrow}
             </p>

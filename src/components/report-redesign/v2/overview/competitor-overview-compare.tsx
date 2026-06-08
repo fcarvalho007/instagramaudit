@@ -48,6 +48,7 @@ export function CompetitorOverviewCompare({ primary, competitor, scope = "all" }
       title="Identidade"
       subtitle="Métricas-base lado a lado"
       windowAligned={competitor.windowAligned}
+      density="anchor"
       primary={{
         handle: primary.handle,
         avatarUrl: primary.avatarUrl ?? null,
