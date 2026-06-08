@@ -109,7 +109,7 @@ function Pill({
         verified={Boolean(data.isVerified)}
         side={side}
         sizeClass={strong ? "size-9" : "size-7"}
-        showRing={strong}
+        showRing={false}
         verifiedSizeClass="size-3.5"
         verifiedIconClass="size-2.5"
       />
