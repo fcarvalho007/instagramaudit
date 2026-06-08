@@ -1,115 +1,103 @@
-# Plan — Editorial Comparison Hero (first card in comparison mode)
+# Plan — Engagement compare card with scale benchmark
 
-## Audit findings
+## Audit
 
-**Current first card** = `ComparisonHero` (`src/components/report-redesign/v2/overview/comparison-hero.tsx`), mounted in `report-overview-block.tsx` lines 203–219 whenever `firstCompetitor` exists. The legacy "Identidade" `CompetitorOverviewCompare` follows immediately after with `scope="identity"` (followers + posts in sample), then `CompetitorBioCompare`.
-
-**"Score editorial" row** in `ComparisonHero.buildRows()` (lines 195–207) uses:
-```
-computeEnvolvimento(engagementRate, p.engagementBenchmark)
-  = min(100, round(engagementRate / tierBenchmark * 100))
-```
-For `nunomarkl`, both sides are scored against **primary's** tier benchmark and both can saturate at 100 → reader sees "100 vs 100" with zero explanation. This is the reported confusion. The metric isn't defensible as a side-by-side score (asymmetric tier baseline, cap at 100 hides spread, no methodology copy anywhere).
-
-**Identity gaps:** the current hero shows `CompareHandleRow size="lg"` (handles + avatars) but no follower count, no sample size, no engagement next to each handle — the identity reads as a thin pill, not a card. Tabular rows below carry the data.
-
-**Avatars:** `CompareHandleRow` already has gradient-initial fallback (previous turn). No code change needed there, but we must ensure the new identity cards reuse the same fallback.
+- `CompetitorEngagementCompare` (`src/components/report-redesign/v2/competitor-engagement-compare.tsx`) today renders only `CompareStatBlock` (ER primary vs competitor) + a one-line verdict. Benchmark is not passed in.
+- The scale/tier benchmark is already computed upstream as `result.data.keyMetrics.engagementBenchmark` (used by `EditorialIdentityCard`, scores, and `EngagementCardRefined`). It's a single tier-reference ER (%) for the primary's follower bucket.
+- Helper `envolvimentoSubtitle(er, bench)` and `computeEnvolvimento(er, bench)` in `overview/score-utils.ts` already produce deterministic "+X% vs benchmark" copy and ratios. Will reuse the same ratio thresholds.
+- The full `report-engagement-benchmark-chart.tsx` is heavy (tier rows, sources, premium slot). Per the task, embed a **compact benchmark rail**, not the full chart.
+- Mount point: `report-overview-block.tsx` line 373. Single competitor only (Phase 1). No multi-competitor change.
 
 ## What changes
 
-### 1. Remove "Score editorial" row from `ComparisonHero`
-Score is asymmetric (uses primary's tier benchmark for both) and saturates at 100, so it cannot be honestly compared. No tooltip can rescue it — drop the row from `buildRows()`. No external consumer of the score in this card → no other refs to update.
+### 1. Pass benchmark into the card
+- `report-overview-block.tsx` (mount): pass `engagementBenchmark: k.engagementBenchmark` and `followersScaleLabel: result.data.meta?.followersTierLabel ?? null` (fallback null) to `CompetitorEngagementCompare`.
+  - If `meta.followersTierLabel` doesn't exist, derive a label from `result.data.profile.followers` via a local helper (Nano/Micro/Mid/Macro/Mega — same buckets the benchmark chart already uses). Cheap, deterministic.
 
-### 2. Redesign the hero into an editorial duel header (replaces lines 67–93 of `comparison-hero.tsx`)
+### 2. Extend `CompetitorEngagementCompare` props
+- New optional `benchmark?: number` (tier ER %) and `scaleLabel?: string | null`.
+- If `benchmark` ≤ 0 or missing → render the **current minimal layout** (graceful fallback, no rail, no scale verdicts). No overclaiming.
 
-Layout (desktop ≥ md):
+### 3. Compact benchmark rail (new, inline in same file)
+Single horizontal track, mobile-first.
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│ COMPARAÇÃO PRO · 90 dias · [Concorrente em janela baseline]  │
-│                                                              │
-│ ┌────────────────────┐   vs   ┌────────────────────┐         │
-│ │ [AV] @primary  ✓   │        │ [AV] @competitor ✓ │         │
-│ │ Nome completo      │        │ Nome completo      │         │
-│ │                    │        │                    │         │
-│ │ 1,2 M seguidores   │        │ 480 K seguidores   │         │
-│ │ 12 publ. amostra   │        │ 12 publ. amostra   │         │
-│ │ 3,4 % envolvimento │        │ 5,1 % envolvimento │         │
-│ │ 4,2 posts/semana   │        │ 2,8 posts/semana   │         │
-│ └────────────────────┘        └────────────────────┘         │
-│                                                              │
-│ ▸ Verdict line (editorial, deterministic)                    │
-│                                                              │
-│ Comparação com base nas últimas 12 publicações disponíveis.  │
-│ Concorrente em janela baseline. (opt.)                       │
-└──────────────────────────────────────────────────────────────┘
+0%                  benchmark              strong (2×)
+├──────●──────────────┼─────────────────●──────────────┤
+        @primary                    @competitor
 ```
 
-Mobile (<md): stacks the two identity cards vertically with a centered "vs" chip between them. Verdict + methodology stay full-width.
+- Range: `0` → `max(benchmark × 2, primaryER, competitorER) × 1.05` (a bit of headroom so markers never clip).
+- Reference tick at `benchmark` with label *"Referência {scaleLabel}"* (e.g. *"Referência Micro"*). When no scaleLabel: just *"Referência"*.
+- Soft band from `benchmark` to `benchmark × 2` styled as the "strong" zone using `bg-signal-success/8`.
+- Two markers as small dots/pins: primary in `--accent-primary`, competitor in `--compare-competitor`. Each marker has a thin vertical tick + tiny label below with `@handle` (truncated, `text-[11px]` only if needed — keep `text-xs` floor).
+- Track height `h-2 rounded-full bg-surface-muted` with internal absolute-positioned band + markers. No SVG needed.
+- Accessible: `role="img" aria-label="Posição no escalão: @primary X,XX%, @concorrente Y,YY%, referência Z,ZZ%"`.
 
-Identity card composition:
-- Avatar 56px (md) / 48px (sm) — reuse fallback gradient with initials from `CompareHandleRow` (extract a small `<CompareAvatar>` helper inside `compare/` or inline the existing logic).
-- `@handle` (font-mono → no, use Inter SemiBold per project rules) + verified badge.
-- Display name in `text-sm text-content-secondary`.
-- 4-row metric stack: Seguidores / Publicações na amostra / Envolvimento médio / Publicações por semana. Inter, `text-base sm:text-lg tabular-nums`, label in `text-eyebrow-sm text-content-tertiary` above each value.
-- Stronger side ranked by metric → value uses `text-accent-primary` (primary) or `text-compare-competitor` (competitor); weaker side stays `text-content-primary`. Same per-row "winner" logic that already exists.
+### 4. Per-side benchmark verdict chips
+Below each side's value in the existing `CompareStatBlock` is not flexible enough → render the rail + a 2-column grid below the stat block:
 
-Header strip stays as-is (eyebrow + window label + baseline pill).
+```
+@primary                          @competitor
+3,40 % envolvimento               5,10 %
+↗ +28 % vs referência Micro       ↗ +96 % vs referência Micro
+Acima da referência               Acima da referência
+```
 
-### 3. Deterministic editorial verdict (under the identity cards)
+Deterministic classification per side (`er / benchmark`):
+- `< 0.7` → *"Abaixo da referência do escalão"* (signal-warning tone)
+- `≥ 0.7 && < 0.95` → *"Ligeiramente abaixo da referência"* (content-secondary)
+- `≥ 0.95 && ≤ 1.15` → *"Em linha com a referência"* (content-secondary)
+- `> 1.15 && ≤ 2` → *"Acima da referência do escalão"* (signal-success tone)
+- `> 2` → *"Muito acima da referência do escalão"* (signal-success tone)
 
-Pure function `buildHeroVerdict(primary, competitor)` in the same file, no AI, no provider. Decision tree (first match wins):
+Numeric delta `(er - bench)/bench` shown as `±XX %` (Inter, tabular-nums, `text-xs text-content-tertiary`), using arrows `↗` / `↘` / `→`.
 
-- If `competitor.followers > 1.5×primary.followers` AND `primary.engagementRate > competitor.averageEngagementRate`:  
-  *"O concorrente tem mais escala, mas este perfil gera uma resposta proporcionalmente superior por publicação."*
-- If `primary.followers > 1.5×competitor.followers` AND `competitor.averageEngagementRate > primary.engagementRate`:  
-  *"Este perfil tem mais escala, mas o concorrente gera uma resposta proporcionalmente superior."*
-- Else if `competitor.averageEngagementRate > primary.engagementRate * 1.1`:  
-  *"O concorrente regista um envolvimento médio superior por publicação."*
-- Else if `primary.engagementRate > competitor.averageEngagementRate * 1.1`:  
-  *"Este perfil regista um envolvimento médio superior por publicação."*
-- Else if `competitor.estimatedPostsPerWeek > primary.postingFrequencyWeekly * 1.25`:  
-  *"O concorrente publica com maior frequência semanal."*
-- Else if `primary.postingFrequencyWeekly > competitor.estimatedPostsPerWeek * 1.25`:  
-  *"Este perfil publica com maior frequência semanal."*
-- Default: *"Os dois perfis apresentam dimensão e envolvimento comparáveis."*
+### 5. Footer verdict (combined)
+Replace the one-line `footer={verdict}` with a 2-clause deterministic sentence:
 
-Rendered with a `▸` lead accent, `font-serif text-lg sm:text-xl text-content-primary leading-snug`.
+```
+{strongerSide} lidera o envolvimento médio ({delta}× ou +X pp).
+{readingClause} para o escalão.
+```
 
-### 4. Explicit methodology footnote
+`readingClause` derives from the stronger side's benchmark ratio bucket above. Examples:
+- *"Este perfil lidera o envolvimento médio (+0,4 pp). Acima da referência do escalão Micro."*
+- *"O concorrente gera 1,8× mais envolvimento médio. Muito acima da referência do escalão."*
+- Tie (ratio 0.95–1.05): *"Os dois perfis estão em linha no envolvimento. Em linha com a referência do escalão Micro."*
 
-Single line below verdict, `text-xs text-content-tertiary`:
-- Base: *"Comparação com base nas últimas {N} publicações disponíveis."* where `N` = `min(primary.postsAnalyzed, competitor.postsAnalyzed)`. If unknown, fall back to "publicações disponíveis".
-- Append, only when `competitor.windowAligned === false`: *" Concorrente em janela baseline."*
+When benchmark is missing: footer keeps current copy only ("Os dois perfis estão em linha…" / "Este perfil está acima…" / "O concorrente gera Nx mais…").
 
-The window-aligned pill in the header stays for at-a-glance visibility; the footnote adds the prose explanation.
+### 6. Color convention preserved
+- Primary marker / label / chip → `text-accent-primary` (blue `#3772E5`).
+- Competitor marker / label / chip → `text-compare-competitor` (existing indigo token used across all compare cards).
+- Reference tick / band → neutral (`border-content-tertiary` + `bg-signal-success/8`).
 
-### 5. Downstream cleanup
-- Keep `CompetitorOverviewCompare` (the "Identidade" card with Seguidores + Publicações analisadas) — it's now redundant with the new hero. **Remove it from `report-overview-block.tsx`** (lines 280–300) to avoid the same numbers twice. The component file stays for `scope="all"` consumers (none today, but file is unchanged).
-- `CompetitorBioCompare` stays unchanged.
-- No-competitor path (`!firstCompetitor`) is untouched (renders `EditorialIdentityCard`).
-- Free / Public / locked modes untouched.
+### 7. Mobile (≤375px)
+- Rail keeps full width minus padding; marker labels stack as `text-xs truncate max-w-[7rem]`.
+- Per-side block grid stays 2-col (compact) — both columns each ~50%; numeric value `text-2xl` instead of `text-3xl` on `sm:` only.
+- No horizontal scrolling.
 
 ## Files touched
 
-1. `src/components/report-redesign/v2/overview/comparison-hero.tsx` — full hero rewrite per §2–4, drop Score row.
-2. `src/components/report-redesign/v2/report-overview-block.tsx` — pass `postsInSample` / `engagementRate` / `postingFrequencyWeekly` to `ComparisonHero` (already wired); **remove** the `<CompetitorOverviewCompare ... scope="identity" />` block.
-3. (optional) tiny shared `<CompareAvatar>` helper extracted inside `src/components/report-redesign/v2/compare/compare-handle-row.tsx` for reuse — only if cleaner; otherwise duplicate the 6-line fallback.
+1. `src/components/report-redesign/v2/competitor-engagement-compare.tsx` — extend props (`benchmark`, `scaleLabel`), add `BenchmarkRail` and `SideBenchmarkLine` sub-components in same file, deterministic verdict helpers, graceful fallback when benchmark missing.
+2. `src/components/report-redesign/v2/report-overview-block.tsx` — pass `engagementBenchmark` and a derived `scaleLabel` to the card at line 373. Add tiny `tierLabelFromFollowers(followers)` helper inside the same file (or co-locate in `overview/score-utils.ts` if it cleanly belongs there).
+
+No other files change. `EngagementCardRefined` (single-profile) is untouched. Free/Public unaffected (this card only mounts in `all`/`locked` with a competitor).
 
 ## Constraints respected
 
-- Deterministic logic only (verdict = decision tree).
-- No AI, no provider calls, no backend / schema changes.
-- Free/Public report untouched.
-- No-competitor flow untouched.
-- 2-font rule (Fraunces titles, Inter body), tokens only.
-- Mobile-first: identity cards stack at <md; values use `tabular-nums`; no horizontal overflow at 375px.
-- Avatars use existing gradient-initial fallback.
+- No AI, no provider calls, no schema/backend changes.
+- Reuses existing `engagementBenchmark` (already in `keyMetrics`).
+- Graceful fallback when benchmark is missing → no rail, no scale verdicts, no overclaiming.
+- Tokens only (`accent-primary`, `compare-competitor`, `signal-success`, `content-*`, `surface-muted`, `border-default`).
+- Inter SemiBold tabular-nums for numbers; Fraunces stays on titles only.
+- Min font size `text-xs` (12px) respected.
 
 ## Validation
 
-- `/admin/report-preview/nunomarkl?variant=pro_preview&draft=false` — first card opens in duel mode with two identity cards (avatars, handle, follower count, sample, engagement, cadence), deterministic verdict, methodology footnote. No "100 vs 100" score anywhere.
-- `/admin/report-preview/frederico.m.carvalho` (no competitor) — unchanged, still `EditorialIdentityCard`.
-- 375px viewport — identity cards stack cleanly, no horizontal scroll.
-- `rg "Score editorial"` returns 0 hits in the comparison hero.
-- No new network requests on render (verify in browser preview).
+- `/admin/report-preview/nunomarkl?variant=pro_preview&draft=false` — Engagement card shows: ER values per side, "+X% vs referência {tier}" per side, benchmark rail with both markers, combined footer naming who leads + scale reading.
+- Profile with missing tier benchmark (`engagementBenchmark <= 0`) — falls back to current minimal layout (no rail, no scale copy).
+- 375px — rail and side blocks fit without horizontal scroll; handles truncate cleanly.
+- `/admin/report-preview/frederico.m.carvalho` (no competitor) — unchanged, still `EngagementCardRefined`.
+- Colors: primary blue marker/chip, competitor indigo marker/chip; reference tick neutral.
