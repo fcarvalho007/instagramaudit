@@ -1,93 +1,91 @@
-# Bio e pontos de saída — editorial panels redesign
+# Compare cards — editorial visual system pass
 
-Scope: `src/components/report-redesign/v2/competitor-bio-compare.tsx` only. No data/schema/provider changes. Single-profile path untouched.
+Scope: `src/components/report-redesign/v2/compare/*` and the comparison components that consume them. No data/schema/provider changes. Single-profile and Free/Public paths untouched.
 
-## Layout
+## 1. Typography normalisation (`compare-card-shell.tsx`)
 
-Inside the existing `CompareCardShell`, replace `CompareTable` with two side-by-side **profile panels** + a compact **comparison summary strip** below.
+Lock a single editorial scale across **every** compare card (drop `density="anchor"` branching for typography — only the left rule stays):
 
-```text
-┌──────────────────────────────┬──────────────────────────────┐
-│  @primary (azul)             │  @competitor (indigo)        │
-│  ────────────────────        │  ────────────────────        │
-│  ● Link na bio       Sim     │  ● Link na bio       Sim     │
-│  ● Nº de links       2       │  ● Nº de links       4       │
-│  ● Conta verificada  Não     │  ● Conta verificada  Sim     │
-│  ● Bio preenchida    Sim     │  ● Bio preenchida    Sim     │
-└──────────────────────────────┴──────────────────────────────┘
-┌─────────────────────────────────────────────────────────────┐
-│  3 pontos de saída a mais no concorrente · Verificação +1   │
-└─────────────────────────────────────────────────────────────┘
-Footer (editorial verdict, full sentence)
-```
+- **Title** (`h3`): `font-serif text-content-primary text-2xl sm:text-3xl leading-tight tracking-tight`. Same size for hero + standard cards.
+- **Subtitle**: `mt-2 text-sm sm:text-base text-content-secondary`, never below 14px.
+- **Baseline chip**: keep current pill, but switch label to **"Concorrente em janela de referência"** for less jargony tone; keep `text-xs` (legal exception for chip).
+- **Footer eyebrow**: `.text-eyebrow-sm text-content-tertiary` — keep default `"Leitura"`, expose `footerEyebrow` (already exists).
+- **Footer body**: `text-sm sm:text-base text-content-secondary leading-relaxed`.
 
-- Grid: `grid-cols-1 gap-4 md:grid-cols-2 md:gap-6`. Panels stack on mobile.
-- Each panel: `rounded-lg border border-default bg-surface-muted/40 p-5`, with side-tinted top accent (1px) and side-tinted `@handle` eyebrow.
-- Each row: `flex items-center justify-between text-sm`, generous `py-2` spacing, a leading **icon** (lucide) carrying the meaning so colour is never the only channel.
+Anchor variant keeps the `border-l-[3px]` accent rule and slightly more padding (`p-7 sm:p-9`), but drops the larger title (`md:text-[2.25rem]`) so all cards align visually.
 
-## Row rendering (4 rows per panel)
+## 2. Spacing rhythm
 
-| Field | Icon | Value style |
-|---|---|---|
-| Link na bio | `Link2` | "Sim" / "Não" |
-| Nº de links | `ListOrdered` | number (Inter SemiBold, tabular-nums) |
-| Conta verificada | `BadgeCheck` | "Sim" / "Não" |
-| Bio preenchida | `FileText` | "Sim" / "Não" |
+Unify the shell rhythm:
+- Card padding: `p-6 sm:p-8` (anchor: `p-7 sm:p-9`).
+- Header → handle row gap: `mt-5`.
+- Handle row → body gap: `mt-7 sm:mt-9` (slightly tighter and consistent).
+- Body → footer gap: `mt-7 sm:mt-9`.
+- Footer panel padding: `px-5 py-4` → `px-5 py-4 sm:px-6 sm:py-5`.
 
-**Signal logic (deterministic, label always present alongside the colour):**
-- `value-positive` (green tone, `--signal-positive`): bio preenchida = Sim, verificada = Sim, ≥1 link.
-- `value-neutral` (`content-secondary`): default for non-comparative values.
-- `value-attention` (amber `--signal-attention`): bio vazia, sem links, não verificada.
-- Never red — these are friction signals, not failures.
-- Each value renders `<Icon /> <span>label</span>` so screen readers + monochrome read fine.
+## 3. Handle row consistency (`compare-handle-row.tsx`)
 
-Use small chip-style background only when signalled (`bg-signal-attention/10`, `bg-signal-positive/10`), text always carries the word — no colour-only encoding.
+- Wire `prominence` (currently `_prominence` ignored). When `prominence="strong"` (default in shell), the small Pill scales to:
+  - `px-3.5 py-2 text-sm sm:text-base font-semibold`
+  - Avatar `size-9`
+- When `prominence="default"`, fall back to current compact pill (`px-3 py-1.5 text-sm`, avatar `size-7`). Used by nested non-hero contexts only.
+- Handles always show `@handle` text — never colour-only. Already correct; reinforce by truncating at `max-w-[16rem]`.
+- `lg` size kept as-is for the top hero.
 
-## Comparison summary strip
+## 4. Shared media placeholder
 
-A single horizontal row of up to 3 micro-deltas (only those with a real gap), separated by `·`:
+New tiny export in `compare-handle-row.tsx`: `CompareThumbPlaceholder`. Used by cadence strip + any future thumbnail. Plain `bg-surface-muted` square with a centred `<ImageIcon />` (lucide), `text-content-tertiary`. Replaces ad-hoc placeholders in `competitor-cadence-compare.tsx` (`Thumb` failure branch already does this — just swap to shared component for consistency).
 
-- Links: `"+N pontos de saída no concorrente"` / `"+N pontos de saída neste perfil"` when diff ≠ 0.
-- Verificação: `"Verificação só no concorrente"` / `"Verificação só neste perfil"` when they differ.
-- Bio: `"Concorrente sem bio preenchida"` / `"Este perfil sem bio preenchida"` when they differ.
+Avatar fallback already renders gradient initials (good) — keep as-is.
 
-Empty → strip hides. `text-xs text-content-secondary` on a thin `border-t border-default pt-3`.
+## 5. CompareBarPair polish (`compare-bar-pair.tsx`)
 
-## Editorial verdict (footer)
+- Bare label column: `text-sm sm:text-base font-medium text-content-primary` (already correct, keep).
+- Value column: ensure minimum width fits 2-digit % without wrap: `w-16 sm:w-24` (currently `w-14 sm:w-20`). No layout change otherwise.
+- Bar height bumped to `h-3 sm:h-4` (more editorial weight); rounded-full retained.
+- Winner highlight: keep current 1-px soft ring.
 
-`buildEditorialVerdict({ primaryLinks, competitorLinks, primaryVerified, competitorVerified, primaryHasBio, competitorHasBio })`:
+## 6. CompareStatBlock polish (`compare-stat-block.tsx`)
 
-Scoring (deterministic):
-- `score = links + (verified ? 1 : 0) + (hasBio ? 1 : 0)` for each side.
-- Diff = `compScore - primaryScore`.
+- Side panel padding: `px-5 py-6 sm:px-6 sm:py-7` (slightly more generous).
+- Value: `text-3xl sm:text-4xl`, `tabular-nums`, `leading-[1.05]` (kept). Add `min-w-0` truncation via `title=` already present.
+- Sub-text: `text-sm leading-snug text-content-secondary` (kept).
+- The internal `vs` separator stays font-serif, `text-xl sm:text-2xl text-content-tertiary`.
 
-Cases (EU-PT, first match wins):
-1. `competitorLinks - primaryLinks >= 2` → **"O concorrente apresenta mais pontos de saída."**
-2. `primaryLinks - competitorLinks >= 2` → **"Este perfil tem menos fricção na bio, com mais pontos de saída."**
-3. `diff >= 2` → **"O concorrente projeta uma bio mais completa e credível."**
-4. `diff <= -2` → **"Este perfil tem uma bio mais completa que o concorrente."**
-5. `|diff| <= 1` AND `|linksDiff| <= 1` → **"Ambos têm uma base semelhante na bio."**
-6. fallback → keep current "sinais de bio semelhantes." line.
+## 7. CompareTable polish (`compare-table.tsx`)
 
-## Typography & a11y
+- Row height: `py-3` minimum (no cramped rows).
+- Labels: `text-sm text-content-secondary` (not `text-xs`).
+- Values: `text-sm sm:text-base font-semibold tabular-nums`.
+- Sticky-thin divider: `divide-y divide-border-subtle`.
 
-- Row labels: `text-sm text-content-secondary`.
-- Values: `text-sm font-semibold tabular-nums` for numbers; `text-sm font-medium` for Sim/Não.
-- Panel header: `.text-eyebrow-sm` with side-tinted colour (`--accent-primary` / `--accent-secondary`).
-- Verdict footer reuses `CompareCardShell` footer slot (no styling change).
-- Each value cell `aria-label` includes the label + value (e.g. "Bio preenchida: Sim").
+## 8. Phase 1 / Phase 2 cards — sweep
 
-## Constraints
+For each existing compare component (`competitor-engagement-compare`, `competitor-cadence-compare`, `competitor-format-compare`, `competitor-bio-compare`, `comparison-hero`, plus any others under `report-redesign/v2/`), do a lightweight pass:
 
-- No tokens added; reuse existing `--signal-positive`, `--signal-attention`, `--accent-primary`, `--accent-secondary`, `--border-default`, `--surface-muted`.
-- No new packages.
-- `CompareTable` import removed; `CompareCardShell` kept.
-- Single-profile bio card untouched.
+- Confirm they render through `CompareCardShell` with `windowAligned` and `footer` set.
+- Footer text always concise, single paragraph; eyebrow stays "Leitura" except where a card semantically needs a different word (e.g. "Metodologia" — kept as-is).
+- Numbers always `tabular-nums`; ensure no `font-mono` slipped in.
+- Mobile check: every grid drops to `grid-cols-1` ≤ sm.
 
-## Validation
+No data changes; only className/typography adjustments.
 
-- `/admin/report-preview/nunomarkl?variant=pro_preview&draft=false` — panels render side-by-side, deltas strip shows real diffs.
-- Both sides identical → strip hides, verdict = "base semelhante".
-- 375px mobile — panels stack, no row overflow.
-- Screen-reader pass: each row reads "<label>: <value>".
-- Colour-blind sim: meaning still conveyed by icon + word.
+## 9. Files touched
+
+- `src/components/report-redesign/v2/compare/compare-card-shell.tsx`
+- `src/components/report-redesign/v2/compare/compare-handle-row.tsx`
+- `src/components/report-redesign/v2/compare/compare-stat-block.tsx`
+- `src/components/report-redesign/v2/compare/compare-bar-pair.tsx`
+- `src/components/report-redesign/v2/compare/compare-table.tsx`
+- `src/components/report-redesign/v2/compare/index.ts` (export `CompareThumbPlaceholder`)
+- `src/components/report-redesign/v2/competitor-cadence-compare.tsx` (use shared placeholder)
+
+No other files. No new packages.
+
+## 10. Validation
+
+- `/admin/report-preview/nunomarkl?variant=pro_preview&draft=false` — all compare cards share title size, padding rhythm, "Leitura" footer eyebrow.
+- 375px — no horizontal overflow on any card; handles truncate, bars don't push values off-screen.
+- Force `avatarUrl` 404 → gradient initials render (already covered).
+- Force `windowAligned=false` → reference chip appears once per card.
+- Visual diff vs current preview: cards look more uniform, more generous, no metric overflows.
