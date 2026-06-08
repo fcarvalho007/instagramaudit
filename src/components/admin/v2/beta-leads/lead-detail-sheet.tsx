@@ -96,6 +96,13 @@ import {
   labelPurpose,
   labelSource,
 } from "@/lib/admin/lead-context-labels";
+import {
+  deriveWindow,
+  windowBadgeVariant,
+  windowLabel,
+  dataSourceBadgeVariant,
+} from "@/lib/admin/analysis-window";
+import type { AdminAccent } from "@/components/admin/v2/admin-tokens";
 
 // ── Types ────────────────────────────────────────────────────────
 
