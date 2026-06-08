@@ -17,6 +17,7 @@ export type Database = {
       analysis_events: {
         Row: {
           analysis_snapshot_id: string | null
+          analysis_window: string | null
           billing_event_id: string | null
           cache_key: string | null
           competitor_handles: Json
@@ -37,6 +38,7 @@ export type Database = {
         }
         Insert: {
           analysis_snapshot_id?: string | null
+          analysis_window?: string | null
           billing_event_id?: string | null
           cache_key?: string | null
           competitor_handles?: Json
@@ -57,6 +59,7 @@ export type Database = {
         }
         Update: {
           analysis_snapshot_id?: string | null
+          analysis_window?: string | null
           billing_event_id?: string | null
           cache_key?: string | null
           competitor_handles?: Json
@@ -1859,28 +1862,52 @@ export type Database = {
         Args: { p_email: string; p_user_id: string }
         Returns: undefined
       }
-      record_analysis_event: {
-        Args: {
-          p_analysis_snapshot_id: string
-          p_cache_key: string
-          p_competitor_handles: Json
-          p_data_source: string
-          p_display_name?: string
-          p_duration_ms: number
-          p_error_code: string
-          p_estimated_cost_usd: number
-          p_followers_last_seen?: number
-          p_handle: string
-          p_network: string
-          p_outcome: string
-          p_posts_returned: number
-          p_profiles_returned: number
-          p_provider_call_log_id: string
-          p_request_ip_hash: string
-          p_user_agent_family: string
-        }
-        Returns: string
-      }
+      record_analysis_event:
+        | {
+            Args: {
+              p_analysis_snapshot_id: string
+              p_cache_key: string
+              p_competitor_handles: Json
+              p_data_source: string
+              p_display_name?: string
+              p_duration_ms: number
+              p_error_code: string
+              p_estimated_cost_usd: number
+              p_followers_last_seen?: number
+              p_handle: string
+              p_network: string
+              p_outcome: string
+              p_posts_returned: number
+              p_profiles_returned: number
+              p_provider_call_log_id: string
+              p_request_ip_hash: string
+              p_user_agent_family: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_analysis_snapshot_id: string
+              p_analysis_window?: string
+              p_cache_key: string
+              p_competitor_handles: Json
+              p_data_source: string
+              p_display_name?: string
+              p_duration_ms: number
+              p_error_code: string
+              p_estimated_cost_usd: number
+              p_followers_last_seen?: number
+              p_handle: string
+              p_network: string
+              p_outcome: string
+              p_posts_returned: number
+              p_profiles_returned: number
+              p_provider_call_log_id: string
+              p_request_ip_hash: string
+              p_user_agent_family: string
+            }
+            Returns: string
+          }
       set_admin_email_session: { Args: { p_email: string }; Returns: undefined }
       set_enrichment_status: {
         Args: { p_key: string; p_snapshot_id: string; p_value: string }
