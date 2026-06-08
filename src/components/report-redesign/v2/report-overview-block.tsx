@@ -30,6 +30,8 @@ import { CompetitorCadenceCompare } from "./competitor-cadence-compare";
 import { CompetitorBioCompare } from "./competitor-bio-compare";
 import { CompetitorFormatCompare } from "./competitor-format-compare";
 import { CompetitorWeekdayCompare } from "./competitor-weekday-compare";
+import { CompetitorTopPostCompare } from "./compare/competitor-top-post-compare";
+import { CompetitorEditorialDiagnostic } from "./compare/competitor-editorial-diagnostic";
 import { normaliseFormatKey } from "@/lib/report/format-keys";
 import { pickThumbnailUrl } from "@/lib/report/pick-thumbnail";
 import { useComparisonReadings } from "./leitura-ia/use-comparison-readings";
