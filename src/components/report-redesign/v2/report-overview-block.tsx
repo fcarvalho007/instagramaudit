@@ -24,7 +24,6 @@ import {
 import { computePostAverages } from "@/lib/report/post-aggregates";
 import { buildBlock01Sample } from "@/lib/report/block01-sample";
 import { PremiumTeaserCard } from "./premium-teaser-card";
-import { CompetitorOverviewCompare } from "./overview/competitor-overview-compare";
 import { ComparisonHero } from "./overview/comparison-hero";
 import { CompetitorEngagementCompare } from "./competitor-engagement-compare";
 import { CompetitorCadenceCompare } from "./competitor-cadence-compare";
