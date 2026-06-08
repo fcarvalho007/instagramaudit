@@ -1,112 +1,99 @@
-# Auditoria GTM — Admin AuditProfiles
+# Auditoria GTM — Free Instagram Report
 
 ## TL;DR
-**Support Readiness: 52/100.** O admin é tecnicamente completo (toda a informação existe) mas exige que o agente de suporte navegue entre 3-4 secções desconexas e, em 2 perguntas críticas, recorra a SQL. **2 bloqueadores antes de lançamento público**, 7 limitações aceitáveis para beta.
+**Conversion Readiness: 71/100.** A arquitetura é sólida: onboarding é obrigatório server-side, créditos iniciais idempotentes (2), guardas de custo completas, e o caminho Free **não chama OpenAI nem DataForSEO** (zero risco de custo escondido). Os teasers premium e a sticky unlock bar existem e estão ligadas. Há **3 bloqueadores operacionais de launch** (envs Apify), **2 problemas de clareza de UX** (CTA desktop sem preço, 2 fluxos de captura coexistem) e **1 decisão de produto pendente** (`FREE_ENRICHMENT_TYPES = []` significa zero enriquecimento async no Free — intencional?).
 
-**Recomendação:** Resolver B1 + B2 antes de abrir a utilizadores reais pagantes. Tudo o resto pode entrar em beta com onboarding mínimo do suporte.
+**Recomendação:** Resolver os 3 envs e a decisão de enrichment antes de abrir tráfego público. Resto é polish pós-launch.
 
 ---
 
-## 1. Matriz PASS/FAIL por secção × 10 perguntas
+## 1. Matriz PASS/FAIL
 
-| Secção \ Pergunta | Q1 Pagou? | Q2 Produto? | Q3 Entitlement? | Q4 Saldo? | Q5 Ledger? | Q6 Janela? | Q7 Cache/fresh? | Q8 Custo Apify? | Q9 Emails? | Q10 Jornada<2min? |
-|---|---|---|---|---|---|---|---|---|---|---|
-| **Lead Detail Sheet** | 🟡 | 🟡 | ❌ | ✅ | ✅ | ✅ | ✅ | 🟡 | 🟡 | 🟡 |
-| **Receita / Payments** | ✅ | ✅ | 🟡 agreg | – | – | – | – | – | – | ❌ |
-| **Report Drawer** | – | 🟡 | – | – | – | ✅ | ✅ | ✅ | ✅ | 🟡 |
-| **Sistema / Costs** | – | – | – | – | – | – | – | ✅ | – | ❌ |
-| **Email Lab** | – | – | – | – | – | – | – | – | 🟡 agreg | ❌ |
-| **Automações** | – | – | – | – | – | – | – | – | 🟡 agreg | ❌ |
-| **/admin/clientes + /leads** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Visão Geral** | – | – | – | – | – | – | – | – | – | ❌ KPI only |
-
-Legenda: ✅ PASS · 🟡 PARTIAL · ❌ FAIL · – N/A
-
-## 2. Score: **52/100**
-
-| Componente | Peso | Score | Pond. |
+| # | Área | Status | Evidência |
 |---|---|---|---|
-| Saldo + ledger de créditos (Q4/Q5) | 15% | 95 | 14.3 |
-| Janela + cache badge (Q6/Q7) | 10% | 90 | 9.0 |
-| Custo Apify por relatório (Q8) | 10% | 80 | 8.0 |
-| Status de pagamento por lead (Q1/Q2) | 15% | 45 | 6.8 |
-| Entitlement por lead (Q3) | 15% | 0 | 0.0 |
-| Log de emails completo (Q9) | 15% | 55 | 8.3 |
-| Drilldown único <2min (Q10) | 20% | 30 | 6.0 |
-| **Total** | **100%** | | **52** |
+| 1 | Onboarding-first flow | ✅ PASS | `hero-action-bar.tsx:42` abre modal antes de navegar; server enforce em `analyze-public-v1.ts:572` (`ONBOARDING_REQUIRED 402`) |
+| 2 | `lead_session` criado antes da análise | ✅ PASS | `onboarding/start.ts` → `setLeadCookie` HttpOnly assinado com `SESSION_SECRET` |
+| 3 | Créditos iniciais (2, idempotentes) | ✅ PASS | `credits.server.ts:27` `INITIAL_GRANT=2`; partial unique index `uniq_credit_ledger_initial_grant` |
+| 4 | Consumo na 1ª análise | ✅ PASS | `reserveCredit` em `analyze-public-v1.ts:609`; `leadOwnsReport` skip em `:585` evita duplo cobro em reload |
+| 5 | Renderização do Free report | ✅ PASS | `report-shell-v2.tsx` esconde Blocks 02/03/04/06; renderiza Overview + EndOfFree |
+| 6 | Premium teasers / locked cards | ✅ PASS | 5 `PremiumTeaserCard` em `report-overview-block.tsx:52-104` (frequência, formatos, publicações-chave, diagnóstico, prioridades) |
+| 7 | Sticky unlock bar | 🟡 PARTIAL | Existe e funciona; **CTA desktop sem preço** (`sticky-unlock-bar.tsx:262` só diz "Desbloquear") |
+| 8 | Mobile 375px | ✅ PASS | `mx-3 mb-[72px]` + `safe-area-inset-bottom`; CTA mobile mostra `"Desbloquear por 9€"`; overflow-x-clip no shell |
+| 9 | Proteção de custo | 🟡 PARTIAL ENV | Guardas todas presentes (kill-switch, allowlist, IP cap, handle cap, budget). **Mas `APIFY_ENABLED` e `APIFY_TESTING_MODE` default OFF/ON respectivamente** — sem set explícito, ninguém vê relatório real |
+| 10 | Emails após render | ✅ PASS | Onboarding path **não envia email**. Path legacy (`UnlockModal`) tem dedupe em `lead-magnet-sequence.server.ts:62-90` por `(lead_id, report_request_id)` |
 
-## 3. Bloqueadores antes do lançamento público
+**Cost protection extra confirmado:** `FREE_ENRICHMENT_TYPES = []` (`enrichment/types.ts:99`) → zero chamadas DataForSEO/OpenAI no Free. Custo Free = 1 corrida Apify (cached agressivamente).
 
-### 🚨 B1 — Status de entitlement por lead invisível
-Após o webhook EuPago criar `lead_entitlements`, nada na UI confirma se ficou granted. `lead-credit-activity.$id.ts` não dá join à tabela; `leads-kanban.ts` também não. Resultado: se um cliente paga e o webhook falha, o suporte só descobre via SQL.
-**Impacto:** alto — diretamente ligado a reclamações de "paguei e não tenho acesso".
+## 2. Conversion Readiness Score: **71/100**
 
-### 🚨 B2 — Pagamento não vinculado ao lead no drilldown
-Lead Sheet mostra `total_paid_cents` (apenas successful). Não mostra `lead_payments.status` (pending / paid / failed), nem o URL de checkout EuPago, nem o motivo da falha. Tudo isso existe em `/admin/receita` mas sem link bidirecional.
-**Impacto:** alto — "tentei pagar e não consigo" obriga a procurar manualmente na tabela global.
+| Dimensão | Peso | Score | Pond. |
+|---|---|---|---|
+| Mandatory onboarding + lead capture | 15% | 95 | 14.3 |
+| Credit model idempotente | 10% | 95 | 9.5 |
+| Cost protection (código) | 10% | 95 | 9.5 |
+| **Cost protection (env config)** | **10%** | **30** | **3.0** |
+| Free report tem valor visível | 15% | 70 | 10.5 |
+| Premium teasers claros | 15% | 80 | 12.0 |
+| CTA de unlock clara | 10% | 60 | 6.0 |
+| Mobile 375px | 5% | 90 | 4.5 |
+| Email lifecycle | 10% | 80 | 8.0 |
+| **Total** | **100%** | | **71** |
 
-### ⚠️ B3 (recomendado, não crítico) — Falhas de email silenciosas por lead
-Timeline do lead só mostra emails com `product_events` row. Emails que falharam antes de escrever (kill-switch, dedupe, provider error) só aparecem no ReportDrawer do relatório específico. Não há vista consolidada "3 tentativas, 2 falharam".
+## 3. Respostas às perguntas-chave
 
-### ⚠️ B4 (UX, não crítico) — Sem navegação cruzada
-- Receita payment row → Lead Sheet: ❌
-- Lead Sheet → ReportDrawer (do relatório específico): ❌
-- Lead Sheet → Provider call em Sistema: ❌
+| Pergunta | Resposta |
+|---|---|
+| Utilizador percebe o que é grátis? | **Parcialmente.** Os 5 teasers mostram títulos claros mas o bloco Overview não diz explicitamente "isto é a tua amostra gratuita". |
+| Free entrega valor antes de pagar? | **Sim, mas dependente.** Editorial Identity + Engagement Section renderizam. Se `FREE_ENRICHMENT_TYPES=[]` for intencional, então market signals podem aparecer vazios. |
+| Premium é visível mas não confuso? | **Sim.** 5 cards distintos com eyebrow + título + preview blur + CTA por 9€. Não há blur enganador sobre conteúdo real. |
+| Há chamadas premium no Free? | **Não.** Confirmado: zero OpenAI, zero DataForSEO no caminho free. Apenas Apify (1 corrida, cached). |
+| Reload evita consumo extra? | **Sim.** `leadOwnsReport(leadId, cacheKey)` em `analyze-public-v1.ts:585` faz skip do reserve antes do credit burn. |
+| Emails enviados uma só vez? | **Sim.** Dedupe via `product_events` por `(lead_id, report_request_id)` em `lead-magnet-sequence.server.ts:62-90`. |
+| CTA para unlock é clara? | **Parcial.** Mobile diz `"Desbloquear por 9€"` (claro). Desktop só `"Desbloquear"` (preço noutro span). |
 
-## 4. Limitações aceitáveis para beta
+## 4. Problemas de clareza ao utilizador
 
-| # | Lacuna | Razão |
-|---|---|---|
-| A1 | Credits tab mostra `estimated_cost_usd`, não `actual` | Volume beta baixo; actual está no ReportDrawer |
-| A2 | Email Lab "Enviar teste" desativado | Read-only reference, não workflow de suporte |
-| A3 | Provider logs em Sistema são globais, não por lead | Investigação Apify passa por ReportDrawer |
-| A4 | Automações = agregado, não per-lead | Funil interno, não cara-a-cara com cliente |
-| A5 | Visão Geral sem drilldown | É dashboard de KPI |
-| A6 | `email_template_overrides` não tem log per-lead | Funcionalidade ainda não anunciada |
-| A7 | ActionLog do ReportDrawer só em memória | Volume beta tolera re-open |
+1. **CTA desktop sem preço no botão** — `sticky-unlock-bar.tsx:262`. Mobile resolve mas desktop fica fragmentado.
+2. **Dois fluxos de captura coexistem** — Onboarding modal (novo) + `UnlockModal` legacy (`analyze.$username.tsx:402-406`). `unlockOpen` defaulta `false` e não há trigger visível, mas o componente continua montado. Risco analítico (funis duplicados), não funcional.
+3. **`end_of_free` i18n keys** — `end-of-free-block.tsx` lê tudo de translations. Não foi possível confirmar que todas as keys do namespace `report.end_of_free.*` estão preenchidas em PT-PT. Spot-check antes de lançar.
+4. **Mensagem "2 relatórios gratuitos"** só aparece no erro `INSUFFICIENT_CREDITS` (`analyze-public-v1.ts:167`). Antes da 1ª análise, o utilizador não vê "tens 2 análises gratuitas". Falta upfront framing.
 
-## 5. Prompts exatos de melhoria (se decidires implementar)
+## 5. Riscos de custo
 
-### Para B1 (entitlement visibility) — **bloqueador**
-```
-Adicionar ao Lead Detail Sheet, no header KPI strip, uma chip "Entitlement: granted/pending/none" lendo `lead_entitlements` filtrado por `lead_id`. Estender `lead-credit-activity.$id.ts` (ou criar `lead-entitlements.$id.ts`) para devolver { product_code, granted_at, source_payment_id, status }. Render no Resumo tab como linha "Acesso concedido: <produto> em <data> · pagamento <link>".
+| # | Risco | Severidade | Mitigação |
+|---|---|---|---|
+| C1 | `APIFY_ENABLED` default OFF; sem set explícito → todos os utilizadores apanham erro `PROVIDER_DISABLED` ou stale | 🚨 BLOCKER | Confirmar `APIFY_ENABLED=true` em produção |
+| C2 | `APIFY_TESTING_MODE` default ON → só handles em `APIFY_ALLOWLIST` correm fresh | 🚨 BLOCKER | Set `APIFY_TESTING_MODE=false` em produção |
+| C3 | `APIFY_DAILY_CAP_USD` / `APIFY_HARD_CAP_USD` | ⚠️ Verificar | Confirmar valores (existem como secrets); definir alerta no admin |
+| C4 | Per-IP cap default 10/dia, per-handle 5/dia | ✅ OK | Ajustar consoante tráfego inicial |
+| C5 | OpenAI / DataForSEO no Free | ✅ ZERO | `FREE_ENRICHMENT_TYPES=[]` garante; **mas se este array for expandido sem revisão, custo Free dispara** |
 
-Não alterar schema. Não alterar webhook EuPago. Apenas leitura + UI.
-```
+## 6. Bloqueadores antes do launch público
 
-### Para B2 (per-lead payments) — **bloqueador**
-```
-Adicionar tab "Pagamentos" no Lead Detail Sheet OU secção no Resumo, listando lead_payments filtrados por lead_id com colunas: data, produto, valor, status (paid/pending/failed), checkout URL (EuPago), motivo de falha. Endpoint novo: lead-payments.$id.ts. Linkar cada row para a global Receita view.
+1. 🚨 **C1**: Confirmar `APIFY_ENABLED=true` em produção.
+2. 🚨 **C2**: Confirmar `APIFY_TESTING_MODE=false` em produção (ou tirar allowlist).
+3. ❓ **Decisão de produto**: `FREE_ENRICHMENT_TYPES=[]` é intencional? Se sim, validar que o Free report não tem secções visivelmente vazias por falta de enrichment. Se não, adicionar `visual_cover` (custo trivial) no mínimo.
+4. ⚠️ Spot-check às translation keys `report.end_of_free.*` em `src/i18n/locales/pt/report.json`.
 
-Adicionar deep-link na tabela Receita: "Abrir lead →" que abre o Lead Detail Sheet daquele lead_id.
+## 7. Correções recomendadas antes de launch
 
-Não alterar schema. Não alterar EuPago. Apenas leitura + UI.
-```
+| Prio | Fix | Esforço | Onde |
+|---|---|---|---|
+| P0 | Confirmar 2 envs Apify em produção | 2 min | Settings → Secrets |
+| P0 | Decidir + validar `FREE_ENRICHMENT_TYPES` | 15 min | `src/lib/enrichment/types.ts:99` |
+| P0 | Spot-check translation keys `report.end_of_free.*` | 5 min | `src/i18n/locales/pt/*.json` |
+| P1 | Adicionar preço ao botão desktop da sticky bar (`"Desbloquear por 9€"`) | 5 min | `sticky-unlock-bar.tsx:262` |
+| P1 | Adicionar framing upfront "Tens 2 análises gratuitas" no Overview ou no header | 15 min | `report-overview-block.tsx` ou `report-shell-v2.tsx` |
+| P2 | Remover `UnlockModal` legacy ou esconder explicitamente do DOM se não é usado | 10 min | `analyze.$username.tsx:402-406` |
+| P2 | Adicionar pequena badge "GRÁTIS · amostra editorial" no Overview Block para reforçar enquadramento | 10 min | `report-overview-block.tsx` |
 
-### Para B3 (email completeness) — recomendado pós-MVP
-```
-Adicionar tab "Emails" no Lead Detail Sheet listando todas as tentativas: success (product_events), failed (provider_call_logs com provider='resend|brevo' e status='error'), skipped (heurística: action='email_*' sem product_events posterior). Mostrar reason, timestamp, template_key, manual vs automatic trigger.
+## 8. Backlog pós-MVP
 
-Não alterar schema. Apenas leitura + UI.
-```
+- Tracking analítico unificado de funil (uma só origem: onboarding modal).
+- A/B de CTA copy ("Desbloquear por 9€" vs "Ver relatório completo (9€)" vs "Continuar diagnóstico").
+- Mostrar contador "1 de 2 análises grátis usadas" no header durante a sessão.
+- Quando saldo = 0, transformar Overview em pre-paywall com preview persistido em vez de hard block.
 
-### Para B4 (cross-navigation) — recomendado pós-MVP
-```
-1) Receita payments-section: cada row tem botão "Ver lead →" que abre Lead Detail Sheet.
-2) Lead Sheet → Relatórios tab: cada row tem botão "Abrir drawer" que abre ReportDrawer do report_request_id.
-3) Lead Sheet → Créditos tab: cada analysis_event tem "Abrir custos" que abre ReportDrawer.
+## 9. Verdict final
 
-Apenas UI; nenhum endpoint novo necessário (ids já presentes).
-```
-
-## 6. Verdict final
-
-**NÃO LANÇAR a utilizadores pagantes reais antes de B1 + B2.** Sem entitlement e payment status per-lead visíveis, o primeiro caso de "paguei e não tenho acesso" exige um engenheiro com acesso à DB — não escala para suporte de primeira linha.
-
-**OK lançar em modo beta privado** (admin + utilizadores convidados) já agora, com o briefing de suporte abaixo.
-
-### Briefing de suporte mínimo (beta)
-- "Está esperado abrir 2-3 separadores: Lead Sheet (resumo + créditos) + Receita (procurar email do lead) + Report Drawer (custos + emails do relatório específico)."
-- "Para confirmar entitlement: SQL `select * from lead_entitlements where lead_id = '<id>'` — ainda não está em UI."
-- "Para email falhado sem evento: abrir o ReportDrawer do relatório correspondente."
-- "Jornada típica leva 3-5 minutos (não 2)."
+**Lançar a beta pública após resolver os 3 P0** (2 envs Apify + decisão enrichment). Os P1 podem entrar em hotfix nas primeiras 24h após launch. A arquitetura de custo e créditos é sólida — o risco financeiro é baixo desde que as envs estejam corretas.
