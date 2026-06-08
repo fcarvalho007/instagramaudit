@@ -30,6 +30,8 @@ import { CompetitorCadenceCompare } from "./competitor-cadence-compare";
 import { CompetitorBioCompare } from "./competitor-bio-compare";
 import { CompetitorFormatCompare } from "./competitor-format-compare";
 import { CompetitorWeekdayCompare } from "./competitor-weekday-compare";
+import { CompetitorTopPostCompare } from "./compare/competitor-top-post-compare";
+import { CompetitorEditorialDiagnostic } from "./compare/competitor-editorial-diagnostic";
 import { normaliseFormatKey } from "@/lib/report/format-keys";
 import { pickThumbnailUrl } from "@/lib/report/pick-thumbnail";
 import { useComparisonReadings } from "./leitura-ia/use-comparison-readings";
@@ -518,6 +520,38 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
             <LeituraIaBox reading={aiReadings.byCard.top_posts ?? null} />
           ) : null}
           </div>
+
+          {firstCompetitor ? (
+            <CompetitorTopPostCompare
+              primaryHandle={primaryHandle}
+              primaryAvatarUrl={enriched.profile.avatarUrl}
+              primaryFullName={result.data.profile.fullName ?? null}
+              primaryVerified={Boolean(result.data.profile.verified)}
+              primaryTopPost={result.enriched.topPosts[0] ?? null}
+              competitor={firstCompetitor}
+            />
+          ) : null}
+
+          {firstCompetitor ? (
+            <CompetitorEditorialDiagnostic
+              primaryHandle={primaryHandle}
+              primaryAvatarUrl={enriched.profile.avatarUrl}
+              primaryFullName={result.data.profile.fullName ?? null}
+              primaryVerified={Boolean(result.data.profile.verified)}
+              primary={{
+                engagementRate: k.engagementRate,
+                postingFrequencyWeekly: k.postingFrequencyWeekly,
+                dominantFormat: k.dominantFormat,
+                formatBreakdown: result.data.formatBreakdown.map((f) => ({
+                  format: f.format,
+                  sharePct: f.sharePct,
+                })),
+                bio: enriched.profile.bio,
+                externalUrls: enriched.profile.externalUrls,
+              }}
+              competitor={firstCompetitor}
+            />
+          ) : null}
         </>
       )}
     </div>
