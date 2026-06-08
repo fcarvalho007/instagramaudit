@@ -184,4 +184,48 @@ describe("credits.server", () => {
     expect(r2.kind).toBe("reserved");
     expect(await getBalance(LEAD)).toBe(0);
   });
+
+  it("confirmReservation com analysisEventId liga confirm + reserve ao evento", async () => {
+    await grantInitialCredits(LEAD);
+    const r = await reserveCredit({ leadId: LEAD });
+    if (r.kind !== "reserved") throw new Error("expected reserved");
+    const eventId = "11111111-2222-3333-4444-555555555555";
+    await confirmReservation({
+      leadId: LEAD,
+      reservationId: r.reservationId,
+      analysisEventId: eventId,
+    });
+    const reserveRow = ledger.find((x) => x.reason === "reserve" && x.reservation_id === r.reservationId);
+    const confirmRow = ledger.find((x) => x.reason === "confirm" && x.reservation_id === r.reservationId);
+    expect(reserveRow?.analysis_event_id).toBe(eventId);
+    expect(confirmRow?.analysis_event_id).toBe(eventId);
+  });
+
+  it("releaseReservation com analysisEventId liga release + reserve ao evento", async () => {
+    await grantInitialCredits(LEAD);
+    const r = await reserveCredit({ leadId: LEAD });
+    if (r.kind !== "reserved") throw new Error("expected reserved");
+    const eventId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    await releaseReservation({
+      leadId: LEAD,
+      reservationId: r.reservationId,
+      analysisEventId: eventId,
+    });
+    const reserveRow = ledger.find((x) => x.reason === "reserve" && x.reservation_id === r.reservationId);
+    const releaseRow = ledger.find((x) => x.reason === "release" && x.reservation_id === r.reservationId);
+    expect(reserveRow?.analysis_event_id).toBe(eventId);
+    expect(releaseRow?.analysis_event_id).toBe(eventId);
+    expect(await getBalance(LEAD)).toBe(2);
+  });
+
+  it("confirmReservation sem analysisEventId mantém comportamento legado (NULL)", async () => {
+    await grantInitialCredits(LEAD);
+    const r = await reserveCredit({ leadId: LEAD });
+    if (r.kind !== "reserved") throw new Error("expected reserved");
+    await confirmReservation({ leadId: LEAD, reservationId: r.reservationId });
+    const reserveRow = ledger.find((x) => x.reason === "reserve" && x.reservation_id === r.reservationId);
+    const confirmRow = ledger.find((x) => x.reason === "confirm" && x.reservation_id === r.reservationId);
+    expect(reserveRow?.analysis_event_id).toBeNull();
+    expect(confirmRow?.analysis_event_id).toBeNull();
+  });
 });
