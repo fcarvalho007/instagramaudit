@@ -65,6 +65,7 @@ export function AnalysisWindowCard() {
       <AdminSectionHeader
         title="Análises por janela"
         subtitle="Distribuição das análises (snapshots + cache) nos últimos 30 dias"
+        accent="info"
       />
       {isLoading && <SectionSkeleton rows={1} rowHeight={88} />}
       {error && <SectionError error={error as Error} onRetry={() => refetch()} />}
