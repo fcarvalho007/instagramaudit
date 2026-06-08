@@ -21,11 +21,11 @@ interface Props {
   children: ReactNode;
   className?: string;
   /**
-   * - "default" (current): used by every standard compare card.
-   * - "hero": stronger title scale + identity row prominence, used by
-   *   the Phase 2 distribution cards (Format Mix, Weekday Rhythm).
-   * - "anchor": strongest tier, reserved for the first comparison card
-   *   (Overview / Identity) so it reads as the section anchor.
+   * Unified editorial density. All compare cards render at the same
+   * "hero" tier; the only difference is `anchor`, which adds a 3-px
+   * accent left rule reserved for the section-anchor identity card.
+   * The `default` value is kept for back-compat and rendered identically
+   * to `hero`.
    */
   density?: "default" | "hero" | "anchor";
 }
@@ -51,7 +51,6 @@ export function CompareCardShell({
   density = "default",
 }: Props) {
   const anchor = density === "anchor";
-  const hero = density === "hero" || anchor;
   return (
     <section
       id={id}
@@ -69,9 +68,7 @@ export function CompareCardShell({
               "font-serif text-content-primary leading-snug tracking-tight",
               anchor
                 ? "text-2xl sm:text-3xl md:text-[2.25rem]"
-                : hero
-                  ? "text-2xl sm:text-3xl"
-                  : "text-xl sm:text-2xl",
+                : "text-2xl sm:text-3xl",
             )}
           >
             {title}
@@ -82,9 +79,7 @@ export function CompareCardShell({
                 "text-content-secondary",
                 anchor
                   ? "mt-2 text-sm sm:text-base font-medium"
-                  : hero
-                    ? "mt-1.5 text-sm sm:text-base"
-                    : "mt-1 text-sm",
+                  : "mt-1.5 text-sm sm:text-base",
               )}
             >
               {subtitle}
@@ -92,17 +87,17 @@ export function CompareCardShell({
           ) : null}
         </div>
         {!windowAligned ? (
-          <span className="inline-flex w-fit shrink-0 items-center rounded-full border border-border-subtle bg-surface-muted px-2.5 py-0.5 text-xs text-content-tertiary">
+          <span className="inline-flex w-fit shrink-0 items-center rounded-full border border-border-subtle bg-surface-muted px-2.5 py-1 text-xs text-content-tertiary">
             Concorrente em janela baseline
           </span>
         ) : null}
       </header>
 
-      <div className={cn(anchor ? "mt-6" : hero ? "mt-5" : "mt-4")}>
+      <div className={cn(anchor ? "mt-6" : "mt-5")}>
         <CompareHandleRow
           primary={primary}
           competitor={competitor}
-          prominence={hero ? "strong" : "default"}
+          prominence="strong"
         />
       </div>
 
@@ -110,34 +105,26 @@ export function CompareCardShell({
         className={cn(
           anchor
             ? "mt-10 sm:mt-12"
-            : hero
-              ? "mt-8 sm:mt-10"
-              : "mt-6 md:mt-8",
+            : "mt-8 sm:mt-10",
         )}
       >
         {children}
       </div>
 
       {footer ? (
-        hero ? (
-          <div
-            className={cn(
-              "rounded-xl border border-border-subtle bg-surface-muted px-5 py-4",
-              anchor ? "mt-10" : "mt-8",
-            )}
-          >
-            <p className="text-eyebrow-sm text-content-tertiary mb-1.5">
-              {footerEyebrow}
-            </p>
-            <p className="text-sm sm:text-base text-content-secondary leading-relaxed">
-              {footer}
-            </p>
-          </div>
-        ) : (
-          <div className="mt-6 rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-content-secondary leading-relaxed">
+        <div
+          className={cn(
+            "rounded-xl border border-border-subtle bg-surface-muted px-5 py-4",
+            anchor ? "mt-10" : "mt-8",
+          )}
+        >
+          <p className="text-eyebrow-sm text-content-tertiary mb-1.5">
+            {footerEyebrow}
+          </p>
+          <p className="text-sm sm:text-base text-content-secondary leading-relaxed">
             {footer}
-          </div>
-        )
+          </p>
+        </div>
       ) : null}
     </section>
   );
