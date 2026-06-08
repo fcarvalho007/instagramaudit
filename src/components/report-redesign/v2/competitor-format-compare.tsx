@@ -48,19 +48,37 @@ export function CompetitorFormatCompare({ primaryHandle, formats, competitor }: 
 
   if (categories.length === 0) return null;
 
-  const hint = !competitor.windowAligned
-    ? "Concorrente em janela baseline · partilha por formato"
-    : "Partilha por formato";
+  const insight = buildFormatInsight(categories);
 
   return (
-    <CompareBarPair
-      label="Mix de formatos"
-      primaryHandle={primaryHandle}
-      competitorHandle={competitor.username}
-      categories={categories}
-      unit="percent"
-      hint={hint}
-    />
+    <section
+      className="rounded-2xl border border-border-default bg-surface-primary shadow-card p-5 sm:p-6"
+      aria-label="Mix de formatos: comparação com concorrente"
+    >
+      <header className="flex flex-col gap-2 mb-4">
+        <h3 className="font-serif text-xl sm:text-2xl text-content-primary leading-snug">
+          Mix de formatos
+        </h3>
+        {!competitor.windowAligned ? (
+          <span className="inline-flex w-fit items-center rounded-full border border-border-subtle bg-surface-muted px-2.5 py-0.5 text-xs text-content-tertiary">
+            Concorrente em janela baseline.
+          </span>
+        ) : null}
+      </header>
+      <CompareBarPair
+        variant="bare"
+        label="Mix de formatos"
+        primaryHandle={primaryHandle}
+        competitorHandle={competitor.username}
+        categories={categories}
+        unit="percent"
+      />
+      {insight ? (
+        <p className="mt-4 rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-content-secondary leading-relaxed">
+          {insight}
+        </p>
+      ) : null}
+    </section>
   );
 }
 
@@ -93,4 +111,32 @@ function buildCompetitorShares(
 function fmtPct(value: number): string {
   if (!Number.isFinite(value) || value <= 0) return "0 %";
   return `${value.toLocaleString("pt-PT", { maximumFractionDigits: 1 })} %`;
+}
+
+/**
+ * Deterministic, non-inventive insight. Returns null when the gap on
+ * the dominant primary format is under 10 pp — we don't claim a
+ * pattern that isn't there.
+ */
+function buildFormatInsight(categories: CompareBarCategory[]): string | null {
+  if (categories.length === 0) return null;
+  const primaryDominant = [...categories].sort((a, b) => b.primary - a.primary)[0];
+  const competitorDominant = [...categories].sort((a, b) => b.competitor - a.competitor)[0];
+  if (!primaryDominant || !competitorDominant) return null;
+
+  const gapOnCompetitorDominant = competitorDominant.competitor - competitorDominant.primary;
+  if (gapOnCompetitorDominant >= 10) {
+    return `O concorrente investe muito mais em ${competitorDominant.label} — ${fmtPct(
+      competitorDominant.competitor,
+    )} contra os teus ${fmtPct(competitorDominant.primary)}. Pode explicar parte da diferença de envolvimento.`;
+  }
+
+  const gapOnPrimaryDominant = primaryDominant.primary - primaryDominant.competitor;
+  if (gapOnPrimaryDominant >= 10) {
+    return `Este perfil investe mais em ${primaryDominant.label} (${fmtPct(
+      primaryDominant.primary,
+    )} vs ${fmtPct(primaryDominant.competitor)}).`;
+  }
+
+  return null;
 }
