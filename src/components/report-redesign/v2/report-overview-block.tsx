@@ -25,6 +25,7 @@ import { computePostAverages } from "@/lib/report/post-aggregates";
 import { buildBlock01Sample } from "@/lib/report/block01-sample";
 import { PremiumTeaserCard } from "./premium-teaser-card";
 import { CompetitorOverviewCompare } from "./overview/competitor-overview-compare";
+import { ComparisonHero } from "./overview/comparison-hero";
 import { CompetitorEngagementCompare } from "./competitor-engagement-compare";
 import { CompetitorCadenceCompare } from "./competitor-cadence-compare";
 import { CompetitorBioCompare } from "./competitor-bio-compare";
@@ -199,7 +200,25 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
   return (
     <div className="relative space-y-8 md:space-y-10">
 
-      {(mode === "all" || mode === "free") && (
+      {mode === "all" && firstCompetitor ? (
+        <ComparisonHero
+          primary={{
+            handle: primaryHandle,
+            fullName: result.data.profile.fullName ?? null,
+            avatarUrl: enriched.profile.avatarUrl,
+            verified: Boolean(result.data.profile.verified),
+            followers: result.data.profile.followers,
+            engagementRate: k.engagementRate,
+            engagementBenchmark: k.engagementBenchmark,
+            postingFrequencyWeekly: k.postingFrequencyWeekly,
+            dominantFormat: k.dominantFormat,
+          }}
+          competitor={firstCompetitor}
+          windowLabel={result.data.meta?.windowLabel ?? null}
+        />
+      ) : null}
+
+      {((mode === "all" && !firstCompetitor) || mode === "free") && (
         /* Zona B — Editorial Identity Card (replaces 6-card grid) */
         <EditorialIdentityCard
           scores={scores}
@@ -246,7 +265,7 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
         />
       )}
 
-      {(mode === "all" || mode === "free") && (
+      {((mode === "all" && !firstCompetitor) || mode === "free") && (
         /* Linha de transparência da metodologia — discreta, abaixo do
          * cartão editorial, visível tanto no modo free como no completo. */
         <MethodologyLine

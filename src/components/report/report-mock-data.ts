@@ -18,6 +18,8 @@ export interface ReportCompetitorBreakdownEntry {
   averageComments: number;
   estimatedPostsPerWeek: number;
   dominantFormat: string;
+  /** Profile avatar URL — null when missing. */
+  avatarUrl: string | null;
   /**
    * True when the competitor was fetched with the same window as the
    * primary profile. Today competitors are always baseline, so this is
@@ -387,6 +389,7 @@ export const reportData = {
       averageComments: 4,
       estimatedPostsPerWeek: 5.1,
       dominantFormat: "Reels",
+      avatarUrl: null,
       /**
        * Window flag — when the primary profile is in 30d/90d but the
        * competitor was fetched in baseline, the UI labels the
