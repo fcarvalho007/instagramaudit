@@ -33,6 +33,14 @@ export interface ReportCompetitorBreakdownEntry {
   /** Verified account flag. */
   isVerified: boolean;
   /**
+   * True when `postsAnalyzed` came from the legacy
+   * `content_summary.posts_analyzed` fallback (no `posts[]` array on the
+   * competitor snapshot). In that case, pinned posts are NOT excluded on
+   * the competitor side — which can produce a ±1/±2 denominator
+   * asymmetry vs the primary profile. UI surfaces this via a tooltip.
+   */
+  postsAnalyzedFromLegacyFallback?: boolean;
+  /**
    * Phase 2B — deterministic per-post detail persisted alongside the
    * competitor's profile/content_summary. All fields are optional /
    * may be empty so older snapshots (and the example mock) continue
