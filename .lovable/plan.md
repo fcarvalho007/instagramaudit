@@ -1,91 +1,61 @@
-# Compare cards — editorial visual system pass
+# Avaliação das fases anteriores
 
-Scope: `src/components/report-redesign/v2/compare/*` and the comparison components that consume them. No data/schema/provider changes. Single-profile and Free/Public paths untouched.
+Auditei `src/components/report-redesign/v2/compare/*` e os 6 cards de comparação (`ComparisonHero`, `CompetitorBioCompare`, `CompetitorEngagementCompare`, `CompetitorCadenceCompare`, `CompetitorWeekdayCompare`, `CompetitorFormatCompare`).
 
-## 1. Typography normalisation (`compare-card-shell.tsx`)
+## O que já está concluído (preview, ainda por publicar)
 
-Lock a single editorial scale across **every** compare card (drop `density="anchor"` branching for typography — only the left rule stays):
+- **Tipografia unificada do shell** — `text-2xl sm:text-3xl` em todos os cards, subtítulo `text-sm sm:text-base`, chip "Concorrente em janela de referência", footer eyebrow `Leitura`.
+- **Ritmo de espaçamento** — `p-6 sm:p-8` (anchor `p-7 sm:p-9`), `mt-5`, `mt-7 sm:mt-9`, footer `sm:px-6 sm:py-5`.
+- **Handle row com `prominence`** — wiring real, `strong` (avatar `size-9`, `py-2 text-sm sm:text-base`) e `default` aplicados. `vs` em serif `text-xl sm:text-2xl`.
+- **CompareBarPair** — coluna de valores `w-16 sm:w-24`, barra `h-3 sm:h-4`, anel do vencedor mantido.
+- **CompareStatBlock** — padding `px-5 py-6 sm:px-6 sm:py-7`, valor `text-3xl sm:text-4xl tabular-nums`.
+- **CompareTable** — `py-3`, labels e valores `text-sm`/`text-sm sm:text-base` semibold tabular.
+- **Sem `font-mono`** em UI pública dos cards de comparação. Avatar fallback com iniciais em gradiente intacto.
 
-- **Title** (`h3`): `font-serif text-content-primary text-2xl sm:text-3xl leading-tight tracking-tight`. Same size for hero + standard cards.
-- **Subtitle**: `mt-2 text-sm sm:text-base text-content-secondary`, never below 14px.
-- **Baseline chip**: keep current pill, but switch label to **"Concorrente em janela de referência"** for less jargony tone; keep `text-xs` (legal exception for chip).
-- **Footer eyebrow**: `.text-eyebrow-sm text-content-tertiary` — keep default `"Leitura"`, expose `footerEyebrow` (already exists).
-- **Footer body**: `text-sm sm:text-base text-content-secondary leading-relaxed`.
+## O que ficou em falta da plan original
 
-Anchor variant keeps the `border-l-[3px]` accent rule and slightly more padding (`p-7 sm:p-9`), but drops the larger title (`md:text-[2.25rem]`) so all cards align visually.
+1. **CompareThumbPlaceholder partilhado (item 4 da plan anterior)** — não foi criado nem exportado. `competitor-cadence-compare.tsx` continua com `Thumb` inline (linha 212 + `ImageIcon` 243). Falta-lhe consistência com futuros usos.
+2. **Resíduos de `text-xs` em labels/secondary** que deviam ser `text-sm` segundo a regra editorial:
+   - `compare-table.tsx:157` — `<dt>` de meta-linhas ainda `text-xs`.
+   - `compare-bar-pair.tsx:170` — legenda de categorias `text-xs`.
+   - `competitor-format-compare.tsx:140,149,160` — labels e linhas da lista de formatos `text-xs`.
+   - `competitor-engagement-compare.tsx:160,230` — escala/legenda do barómetro `text-xs`.
+   - `competitor-bio-compare.tsx:85` — nota de rodapé do painel `text-xs`.
+   - `competitor-cadence-compare.tsx:110` — caption final `text-xs`.
+   - Aceitável manter `text-xs`: chip de baseline (`compare-card-shell.tsx:78`), hints decorativos (`compare-stat-block.tsx:94,160`, `compare-bar-pair.tsx:124,304`), nota de tabela (`compare-table.tsx:115`).
 
-## 2. Spacing rhythm
+## Plan: encerrar a iteração editorial
 
-Unify the shell rhythm:
-- Card padding: `p-6 sm:p-8` (anchor: `p-7 sm:p-9`).
-- Header → handle row gap: `mt-5`.
-- Handle row → body gap: `mt-7 sm:mt-9` (slightly tighter and consistent).
-- Body → footer gap: `mt-7 sm:mt-9`.
-- Footer panel padding: `px-5 py-4` → `px-5 py-4 sm:px-6 sm:py-5`.
+### A. Criar e adotar `CompareThumbPlaceholder`
+- Em `compare-handle-row.tsx`, exportar `CompareThumbPlaceholder` (`bg-surface-muted`, `rounded-md`, `aspect-square`, `<ImageIcon className="size-4 text-content-tertiary/60" />` centrado, prop opcional `className` para sobrepor tamanho).
+- Exportar no `compare/index.ts`.
+- Em `competitor-cadence-compare.tsx`, substituir o branch de fallback do `Thumb` interno (e a inicial `aria-hidden` cinza) para usar `CompareThumbPlaceholder` — mantém visual idêntico mas centraliza.
 
-## 3. Handle row consistency (`compare-handle-row.tsx`)
+### B. Subir labels secundárias para `text-sm`
+Apenas trocas de className, sem mudança de layout/lógica:
+- `compare-table.tsx:157` → `text-sm text-content-secondary`.
+- `compare-bar-pair.tsx:170` → `text-sm text-content-secondary` (legenda inferior).
+- `competitor-format-compare.tsx:140,149,160` → `text-sm` mantendo cor.
+- `competitor-engagement-compare.tsx:230` → `text-sm tabular-nums`. (Linha 160 é régua interna do barómetro de 16 px — manter `text-xs` como exceção de micro-label de chart.)
+- `competitor-bio-compare.tsx:85` → `text-sm text-content-secondary`.
+- `competitor-cadence-compare.tsx:110` → `text-sm text-content-tertiary`.
 
-- Wire `prominence` (currently `_prominence` ignored). When `prominence="strong"` (default in shell), the small Pill scales to:
-  - `px-3.5 py-2 text-sm sm:text-base font-semibold`
-  - Avatar `size-9`
-- When `prominence="default"`, fall back to current compact pill (`px-3 py-1.5 text-sm`, avatar `size-7`). Used by nested non-hero contexts only.
-- Handles always show `@handle` text — never colour-only. Already correct; reinforce by truncating at `max-w-[16rem]`.
-- `lg` size kept as-is for the top hero.
+### C. Validação rápida (sem código)
+- `/admin/report-preview/nunomarkl?variant=pro_preview&draft=false` em preview: confirmar que todos os cards têm o mesmo peso tipográfico em labels secundárias e que o placeholder de thumbnail do "Cadência" mantém aspecto.
+- 375 px: cards continuam sem overflow horizontal.
+- Verificar que nada do report Free/Public, single-profile, Add Competitor ou backend foi tocado.
 
-## 4. Shared media placeholder
-
-New tiny export in `compare-handle-row.tsx`: `CompareThumbPlaceholder`. Used by cadence strip + any future thumbnail. Plain `bg-surface-muted` square with a centred `<ImageIcon />` (lucide), `text-content-tertiary`. Replaces ad-hoc placeholders in `competitor-cadence-compare.tsx` (`Thumb` failure branch already does this — just swap to shared component for consistency).
-
-Avatar fallback already renders gradient initials (good) — keep as-is.
-
-## 5. CompareBarPair polish (`compare-bar-pair.tsx`)
-
-- Bare label column: `text-sm sm:text-base font-medium text-content-primary` (already correct, keep).
-- Value column: ensure minimum width fits 2-digit % without wrap: `w-16 sm:w-24` (currently `w-14 sm:w-20`). No layout change otherwise.
-- Bar height bumped to `h-3 sm:h-4` (more editorial weight); rounded-full retained.
-- Winner highlight: keep current 1-px soft ring.
-
-## 6. CompareStatBlock polish (`compare-stat-block.tsx`)
-
-- Side panel padding: `px-5 py-6 sm:px-6 sm:py-7` (slightly more generous).
-- Value: `text-3xl sm:text-4xl`, `tabular-nums`, `leading-[1.05]` (kept). Add `min-w-0` truncation via `title=` already present.
-- Sub-text: `text-sm leading-snug text-content-secondary` (kept).
-- The internal `vs` separator stays font-serif, `text-xl sm:text-2xl text-content-tertiary`.
-
-## 7. CompareTable polish (`compare-table.tsx`)
-
-- Row height: `py-3` minimum (no cramped rows).
-- Labels: `text-sm text-content-secondary` (not `text-xs`).
-- Values: `text-sm sm:text-base font-semibold tabular-nums`.
-- Sticky-thin divider: `divide-y divide-border-subtle`.
-
-## 8. Phase 1 / Phase 2 cards — sweep
-
-For each existing compare component (`competitor-engagement-compare`, `competitor-cadence-compare`, `competitor-format-compare`, `competitor-bio-compare`, `comparison-hero`, plus any others under `report-redesign/v2/`), do a lightweight pass:
-
-- Confirm they render through `CompareCardShell` with `windowAligned` and `footer` set.
-- Footer text always concise, single paragraph; eyebrow stays "Leitura" except where a card semantically needs a different word (e.g. "Metodologia" — kept as-is).
-- Numbers always `tabular-nums`; ensure no `font-mono` slipped in.
-- Mobile check: every grid drops to `grid-cols-1` ≤ sm.
-
-No data changes; only className/typography adjustments.
-
-## 9. Files touched
-
-- `src/components/report-redesign/v2/compare/compare-card-shell.tsx`
+## Ficheiros tocados (B+C edits)
 - `src/components/report-redesign/v2/compare/compare-handle-row.tsx`
-- `src/components/report-redesign/v2/compare/compare-stat-block.tsx`
-- `src/components/report-redesign/v2/compare/compare-bar-pair.tsx`
+- `src/components/report-redesign/v2/compare/index.ts`
 - `src/components/report-redesign/v2/compare/compare-table.tsx`
-- `src/components/report-redesign/v2/compare/index.ts` (export `CompareThumbPlaceholder`)
-- `src/components/report-redesign/v2/competitor-cadence-compare.tsx` (use shared placeholder)
+- `src/components/report-redesign/v2/compare/compare-bar-pair.tsx`
+- `src/components/report-redesign/v2/competitor-cadence-compare.tsx`
+- `src/components/report-redesign/v2/competitor-format-compare.tsx`
+- `src/components/report-redesign/v2/competitor-engagement-compare.tsx`
+- `src/components/report-redesign/v2/competitor-bio-compare.tsx`
 
-No other files. No new packages.
+Sem novas dependências, sem schema, sem provider calls, sem alterações no Free/Public ou no Add Competitor.
 
-## 10. Validation
-
-- `/admin/report-preview/nunomarkl?variant=pro_preview&draft=false` — all compare cards share title size, padding rhythm, "Leitura" footer eyebrow.
-- 375px — no horizontal overflow on any card; handles truncate, bars don't push values off-screen.
-- Force `avatarUrl` 404 → gradient initials render (already covered).
-- Force `windowAligned=false` → reference chip appears once per card.
-- Visual diff vs current preview: cards look more uniform, more generous, no metric overflows.
+## Nota de deploy
+O preview já contém as fases 1–3, 5–7 da iteração anterior. Para o domínio `auditprofiles.com` refletir tudo (incluindo este fecho), é preciso **Publicar/Update** após aplicar este plano.
