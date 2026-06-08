@@ -615,4 +615,62 @@ describe("analyze-public-v1 · Phase 2 credit gate contract", () => {
     // Nenhuma associação criada.
     expect(state.leadReports).toHaveLength(0);
   });
+
+  // ─── PR2: analysis_window persisted on analysis_events ─────────────
+  describe("analysis_window event tagging (PR2)", () => {
+    it("baseline request → recordAnalysisEvent called with analysisWindow: 'baseline'", async () => {
+      const events = await import("@/lib/analysis/events");
+      const spy = vi.mocked(events.recordAnalysisEvent);
+      spy.mockClear();
+
+      // No cookie → ONBOARDING_REQUIRED, but still records a post-parse event.
+      const res = await postHandler({ request: buildRequest() });
+      expect(res.status).toBe(402);
+      expect(spy).toHaveBeenCalled();
+      const args = spy.mock.calls[0][0];
+      expect(args.analysisWindow).toBe("baseline");
+    });
+
+    it("30d request without Pro entitlement → WINDOW_REQUIRES_PRO event tagged '30d'", async () => {
+      await credits.grantInitialCredits(LEAD_ID);
+      const events = await import("@/lib/analysis/events");
+      const spy = vi.mocked(events.recordAnalysisEvent);
+      spy.mockClear();
+
+      const cookie = encodeLeadCookie(LEAD_ID);
+      const res = await postHandler({
+        request: buildRequest({
+          withCookie: cookie,
+          body: { instagram_username: HANDLE, window: "30d" },
+        }),
+      });
+      expect(res.status).toBe(403);
+      const body = (await res.json()) as { error_code: string };
+      expect(body.error_code).toBe("WINDOW_REQUIRES_PRO");
+
+      const blockCall = spy.mock.calls.find(
+        (c) => c[0].errorCode === "WINDOW_REQUIRES_PRO",
+      );
+      expect(blockCall).toBeDefined();
+      expect(blockCall![0].analysisWindow).toBe("30d");
+      expect(blockCall![0].outcome).toBe("blocked_credits");
+    });
+
+    it("invalid_input (pre-parse) → analysisWindow stays null", async () => {
+      const events = await import("@/lib/analysis/events");
+      const spy = vi.mocked(events.recordAnalysisEvent);
+      spy.mockClear();
+
+      const req = new Request("https://test.local/api/analyze-public-v1", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{not-json",
+      });
+      const res = await postHandler({ request: req });
+      expect(res.status).toBe(400);
+      expect(spy).toHaveBeenCalled();
+      const args = spy.mock.calls[0][0];
+      expect(args.analysisWindow ?? null).toBeNull();
+    });
+  });
 });
