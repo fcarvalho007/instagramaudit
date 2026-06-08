@@ -32,6 +32,15 @@ import { CompetitorFormatCompare } from "./competitor-format-compare";
 import { CompetitorWeekdayCompare } from "./competitor-weekday-compare";
 import { normaliseFormatKey } from "@/lib/report/format-keys";
 
+function tierLabelFromFollowers(n: number | null | undefined): string | null {
+  if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) return null;
+  if (n < 5_000) return "Nano";
+  if (n < 20_000) return "Micro";
+  if (n < 100_000) return "Mid";
+  if (n < 1_000_000) return "Macro";
+  return "Mega";
+}
+
 const PREMIUM_TEASERS = [
   {
     number: "03",
