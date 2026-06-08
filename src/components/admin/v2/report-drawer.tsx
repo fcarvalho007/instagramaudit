@@ -343,6 +343,121 @@ function CostRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+function AnalysisEventCard({
+  event,
+}: {
+  event: NonNullable<MockReportDetail["analysisEvent"]>;
+}) {
+  const win = deriveWindow(event.analysis_window, event.cache_key);
+  const fmtCost = (v: number | null) =>
+    v == null ? "—" : `$${v.toFixed(4)}`;
+  const fmtMs = (v: number | null) =>
+    v == null ? "—" : v < 1000 ? `${v} ms` : `${(v / 1000).toFixed(1)} s`;
+  return (
+    <section>
+      <h3 className="m-0 mb-3 text-[13px] font-medium text-admin-text-primary">
+        Análise &amp; evento
+      </h3>
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-md border border-admin-border bg-[var(--color-admin-surface-muted)] px-4 py-3 text-[12px]">
+        <AEField label="Handle">
+          <span className="text-admin-text-primary">@{event.handle}</span>
+        </AEField>
+        <AEField label="Janela">
+          <AdminBadge variant={windowBadgeVariant(win)}>
+            {windowLabel(win)}
+          </AdminBadge>
+        </AEField>
+        <AEField label="Origem">
+          {event.data_source ? (
+            <AdminBadge variant={dataSourceBadgeVariant(event.data_source)}>
+              {event.data_source}
+            </AdminBadge>
+          ) : (
+            <span className="text-admin-text-tertiary">—</span>
+          )}
+        </AEField>
+        <AEField label="Outcome">
+          <span className="text-admin-text-primary">{event.outcome ?? "—"}</span>
+        </AEField>
+        <AEField label="Cache key" full>
+          <span className="admin-code break-all text-admin-text-secondary">
+            {event.cache_key ?? "—"}
+          </span>
+        </AEField>
+        <AEField label="Snapshot">
+          <span className="admin-code text-admin-text-secondary">
+            {event.snapshot_id ? event.snapshot_id.slice(0, 8) : "—"}
+          </span>
+        </AEField>
+        <AEField label="Posts">
+          <span className="tabular-nums text-admin-text-primary">
+            {event.posts_returned ?? "—"}
+          </span>
+        </AEField>
+        <AEField label="Duração">
+          <span className="tabular-nums text-admin-text-primary">
+            {fmtMs(event.duration_ms)}
+          </span>
+        </AEField>
+        <AEField label="Custo estimado">
+          <span className="tabular-nums text-admin-text-primary">
+            {fmtCost(event.estimated_cost_usd)}
+          </span>
+        </AEField>
+        <AEField label="Provider" full>
+          {event.provider_call ? (
+            <span className="text-admin-text-primary">
+              {event.provider_call.provider} · {event.provider_call.status}
+              {event.provider_call.actual_cost_usd != null ? (
+                <span className="ml-1 text-admin-text-tertiary">
+                  ({fmtCost(event.provider_call.actual_cost_usd)} real)
+                </span>
+              ) : null}
+              {event.provider_call.apify_run_id ? (
+                <span className="ml-2 admin-code text-admin-text-tertiary">
+                  {event.provider_call.apify_run_id}
+                </span>
+              ) : null}
+            </span>
+          ) : (
+            <span className="text-admin-text-tertiary">—</span>
+          )}
+        </AEField>
+        <AEField label="Concorrentes" full>
+          {event.competitor_handles.length === 0 ? (
+            <span className="text-admin-text-tertiary">—</span>
+          ) : (
+            <span className="flex flex-wrap gap-1">
+              {event.competitor_handles.map((h) => (
+                <AdminBadge key={h} variant="neutral">
+                  @{h}
+                </AdminBadge>
+              ))}
+            </span>
+          )}
+        </AEField>
+      </dl>
+    </section>
+  );
+}
+
+function AEField({
+  label,
+  children,
+  full = false,
+}: {
+  label: string;
+  children: React.ReactNode;
+  full?: boolean;
+}) {
+  return (
+    <div className={full ? "col-span-2" : undefined}>
+      <dt className="admin-eyebrow text-admin-text-tertiary">{label}</dt>
+      <dd className="m-0 mt-0.5">{children}</dd>
+    </div>
+  );
+}
+
 function EventsTimeline({ events }: { events: ReportEvent[] }) {
   const toneColor: Record<ReportEvent["tone"], string> = {
     info: "var(--color-admin-leads-500)",
