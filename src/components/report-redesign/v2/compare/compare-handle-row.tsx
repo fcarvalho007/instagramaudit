@@ -40,7 +40,7 @@ export function CompareHandleRow({
   primary,
   competitor,
   size = "sm",
-  prominence = "default",
+  prominence: _prominence = "strong",
   className,
 }: Props) {
   if (size === "lg") {
@@ -61,23 +61,18 @@ export function CompareHandleRow({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center",
-        prominence === "strong" ? "gap-3" : "gap-2",
+        "flex flex-wrap items-center gap-2 sm:gap-3",
         className,
       )}
     >
-      <Pill side="primary" data={primary} prominence={prominence} />
+      <Pill side="primary" data={primary} />
       <span
         aria-hidden="true"
-        className={cn(
-          prominence === "strong"
-            ? "font-serif text-xl sm:text-2xl text-content-tertiary tracking-tight"
-            : "text-eyebrow-sm text-content-tertiary",
-        )}
+        className="font-serif text-xl sm:text-2xl text-content-tertiary tracking-tight"
       >
         vs
       </span>
-      <Pill side="competitor" data={competitor} prominence={prominence} />
+      <Pill side="competitor" data={competitor} />
     </div>
   );
 }
@@ -87,24 +82,18 @@ export function CompareHandleRow({
 function Pill({
   side,
   data,
-  prominence = "default",
 }: {
   side: "primary" | "competitor";
   data: CompareHandleSide;
-  prominence?: "default" | "strong";
 }) {
   const accent =
     side === "primary"
       ? "border-accent-primary/30 bg-accent-primary/8 text-accent-primary"
       : "border-compare-competitor/30 bg-compare-competitor/8 text-compare-competitor";
-  const strong = prominence === "strong";
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border font-semibold min-w-0",
-        strong
-          ? "gap-2.5 px-3.5 py-1.5 text-sm sm:text-base"
-          : "gap-2 px-3 py-1 text-sm",
+        "inline-flex items-center rounded-full border font-semibold min-w-0 gap-2.5 px-3.5 py-1.5 text-sm sm:text-base",
         accent,
       )}
     >
@@ -113,12 +102,12 @@ function Pill({
         name={data.handle}
         verified={Boolean(data.isVerified)}
         side={side}
-        sizeClass={strong ? "size-8" : "size-6"}
+        sizeClass="size-8"
         showRing={false}
-        verifiedSizeClass={strong ? "size-3.5" : "size-3"}
-        verifiedIconClass={strong ? "size-2.5" : "size-2"}
+        verifiedSizeClass="size-3.5"
+        verifiedIconClass="size-2.5"
       />
-      <span className={cn("truncate", strong ? "max-w-[14rem]" : "max-w-[12rem]")}>
+      <span className="truncate max-w-[14rem]">
         @{data.handle}
       </span>
     </span>
@@ -241,6 +230,11 @@ function Avatar({
 
   const show = Boolean(avatarUrl) && !failed;
 
+  const fallbackTint =
+    side === "primary"
+      ? "bg-gradient-to-br from-[color-mix(in_oklab,var(--accent-primary)_55%,white)] to-[var(--accent-primary)] text-white"
+      : "bg-gradient-to-br from-[color-mix(in_oklab,var(--compare-competitor)_55%,white)] to-[var(--compare-competitor)] text-white";
+
   return (
     <span className="relative inline-flex shrink-0">
       {show ? (
@@ -260,7 +254,8 @@ function Avatar({
         <span
           aria-hidden="true"
           className={cn(
-            "rounded-full flex items-center justify-center bg-surface-muted font-display font-semibold text-content-tertiary",
+            "rounded-full flex items-center justify-center font-sans font-semibold text-[0.72em] leading-none",
+            fallbackTint,
             sizeClass,
             ringClass,
           )}

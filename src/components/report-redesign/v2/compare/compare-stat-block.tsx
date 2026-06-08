@@ -56,10 +56,10 @@ export function CompareStatBlock({
     <>
       <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-3 sm:gap-4">
         <Side side={primary} accent="primary" subText={primarySub} />
-        <div className="flex items-center justify-center sm:min-w-8 sm:px-1">
+        <div className="flex items-center justify-center sm:min-w-10 sm:px-2">
           <span
             aria-hidden="true"
-            className="text-eyebrow-sm text-content-tertiary"
+            className="font-serif text-xl sm:text-2xl text-content-tertiary tracking-tight"
           >
             vs
           </span>
@@ -111,7 +111,7 @@ function Side({
   return (
     <div
       className={cn(
-        "flex flex-col gap-1.5 rounded-xl border px-4 py-4 sm:py-5 min-w-0",
+        "flex flex-col gap-2 rounded-xl border px-4 py-5 sm:px-5 sm:py-6 min-w-0",
         accent === "primary"
           ? "border-accent-primary/30 bg-accent-primary/8"
           : "border-compare-competitor/30 bg-compare-competitor/8",
@@ -119,7 +119,7 @@ function Side({
     >
       <span
         className={cn(
-          "text-xs font-medium truncate max-w-full",
+          "text-eyebrow-sm truncate max-w-full",
           accent === "primary"
             ? "text-accent-primary"
             : "text-compare-competitor",
@@ -128,13 +128,13 @@ function Side({
         @{side.handle}
       </span>
       <span
-        className="tabular-nums font-semibold text-content-primary leading-tight min-w-0 overflow-hidden whitespace-nowrap text-[clamp(1.5rem,4.2vw,2.25rem)]"
+        className="tabular-nums font-semibold text-content-primary leading-[1.05] min-w-0 overflow-hidden whitespace-nowrap text-3xl sm:text-4xl"
         title={side.title ?? side.formatted}
       >
         {side.formatted}
       </span>
       {subText ? (
-        <span className="text-xs text-content-secondary">{subText}</span>
+        <span className="text-sm text-content-secondary leading-snug">{subText}</span>
       ) : null}
     </div>
   );

@@ -64,7 +64,6 @@ export function CompetitorFormatCompare({
     <CompareCardShell
       title="Mix de formatos"
       subtitle="Distribuição de Reels, Carrosséis e Imagens"
-      density="hero"
       windowAligned={competitor.windowAligned}
       primary={{
         handle: primaryHandle,
