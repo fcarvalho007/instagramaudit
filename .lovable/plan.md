@@ -1,85 +1,128 @@
 
-# Premium Editorial Pass — Profile vs Competitor Cards
+# Auditoria — Ciclo de vida da análise Pro 30d/90d
 
-Scope: only the compare UI under `src/components/report-redesign/v2/compare/*` and the 6 competitor cards that consume it. No data/provider/schema/credits/checkout changes. Free/Public report untouched.
-
-## Goal
-Make every comparison card feel like one cinematic editorial system: same chrome, same typography rhythm, same identity treatment, same insight footer — so the Pro report reads as one premium artefact, not 6 stitched panels.
+Investigação read-only completa. Cada conclusão tem citação `file:line` no relatório do subagente (deep audit já anexado ao histórico desta sessão).
 
 ---
 
-## 1. Shared primitives (compare/*)
+## 1. Tabela PASS / PARTIAL / FAIL
 
-### `compare-card-shell.tsx`
-- Lock card chrome: `rounded-2xl border-border-default bg-surface-primary shadow-card`, padding `p-6 sm:p-8` (anchor variant keeps `p-7 sm:p-9` + 3px left accent rule). No other density tiers.
-- Title: Fraunces `text-2xl sm:text-3xl`, `tracking-tight`, `leading-tight`. Always present.
-- Subtitle: Inter `text-sm sm:text-base text-content-secondary`, `mt-2`. Standard format → `{description} · últimas {n} publicações` (n = min sample of both sides; helper added inside shell or computed in caller).
-- Baseline chip: rename in place to "Concorrente em janela de referência" (already done) — keep `text-xs`, `rounded-full`, `surface-muted`.
-- Spacing rhythm: header → handle row (`mt-5`) → body (`mt-7 sm:mt-9`) → footer (`mt-7 sm:mt-9`). No card may deviate.
-- Footer (`Leitura`): `rounded-xl border-border-subtle bg-surface-muted`, eyebrow `text-eyebrow-sm`, body `text-sm sm:text-base leading-relaxed`. Always one short editorial sentence — never raw metric.
-
-### `compare-handle-row.tsx`
-- Single source of truth for identity: avatar (CompareAvatar) + handle + display name + meta line. All 6 cards use it (hero today uses a custom identity block — keep custom layout only for the hero verdict but ensure avatar / fallback / colors come from the same `CompareAvatar` primitive).
-- Avatar fallback: when `avatarUrl` missing OR `<img>` errors → premium initials circle (2 chars max, Inter SemiBold, tabular not needed), tinted with side accent at low alpha. Never render a broken `<img>`. Add `onError` → state flip to initials.
-- Primary side = `--accent-primary` (#3772E5). Competitor side = `--compare-competitor` (indigo/purple). Dot + colored ring around avatar so color is reinforced by shape, not the only signal.
-- Handles always rendered as text (`@handle`), Inter SemiBold `text-sm`, with display name `text-xs text-content-secondary` underneath.
-
-### `compare-stat-block.tsx`
-- Side panel: numeric value `text-3xl sm:text-4xl font-semibold tabular-nums`, eyebrow handle `text-eyebrow-sm` in side accent, subText `text-sm leading-snug`. No `text-[11px]`, no `text-xs` for primary signal.
-- `vs` separator: Fraunces `text-xl sm:text-2xl text-content-tertiary` — already correct, lock it.
-- Zero-data side: render `Sem dados` chip (`surface-muted` pill, `text-sm`) instead of the numeric value when `value === null/0` and competitor has no sample. Prevents misleading 100 vs 0 bars.
-
-### `compare-bar-pair.tsx`
-- Legend `text-sm` (already done), bars min 8px height, rounded full. Color = side accent. Zero values render as muted track + `Sem dados` micro-label on that side (no full/empty visual asymmetry).
-
-### `compare-table.tsx`
-- All cell text `text-sm sm:text-base`. Row labels `text-content-secondary`, values `font-semibold tabular-nums text-content-primary`. Mobile stacked variant uses same scale.
-
----
-
-## 2. Per-card application
-
-For each of the 6 cards, wire to the shell with the standard subtitle and a 1-sentence Leitura:
-
-1. **Hero (combined verdict)** — replace inline identity blocks with `CompareHandleRow` (or extract a `CompareHeroIdentityRow` that uses `CompareAvatar` under the hood) so avatar/fallback behaviour matches everywhere. Verdict copy stays Fraunces `text-lg sm:text-xl`.
-2. **Bio e pontos de saída** — rename title to "Caminho de conversão fora do Instagram". Use `CompareTable` bare. Add neutral Leitura when both sides have identical links.
-3. **Taxa de engagement** — `CompareStatBlock` bare. Subtitle: `Envolvimento médio · últimas {n} publicações`. Side subText leads with scale reading ("Saudável para escala Micro"); delta secondary.
-4. **Cadência semanal** — `CompareStatBlock` bare with `pub./semana` unit. Subtitle includes sample window. Thumbnails caption uses `CompareThumbPlaceholder` (already wired) when no analyzedPosts.
-5. **Ritmo semanal por dia** — `CompareBarPair` bare across weekday axis. Zero days = muted track + `Sem dados` chip.
-6. **Mix de formatos** — replace inline `CompareBarPair`-only view with two side-by-side donuts (reuse `FormatCard` donut SVG + shared legend); `CompareBarPair` becomes optional detail row below. Zero shares render muted segment + `Sem dados`.
+| # | Área | Verificação | Verdict | Evidência |
+|---|---|---|---|---|
+| 1.1 | UI/UX | Selector ativo de 30d/90d para utilizador Pro | **FAIL** | `analysis-period-selector.tsx:37` — componente é "puramente apresentacional, MUST NOT mutate", botões só abrem upsell |
+| 1.2 | UI/UX | Modal de confirmação explícito "1 crédito vai ser consumido" para período | **FAIL** | `consume-credit-dialog.tsx:254` — para `kind:"period"` o botão Confirm é suprimido (`isPeriod ? null : Button`), copy usa keys `period_coming_soon_*` |
+| 1.3 | UI/UX | Modal diferencia cache-hit (0 cr) vs cache-miss (1 cr) | **FAIL** | Sem qualquer pré-cheque de cache no cliente; backend só decide após receber o pedido |
+| 1.4 | UI/UX | Aviso "novos dados podem ser obtidos" | **FAIL** | Não existe em lado nenhum da UI |
+| 1.5 | UI/UX | Fluxo competitor (controlo) | **PASS** | `consume-credit-dialog.tsx:209-224` — "Usar 1 crédito" + saldo + badge beta |
+| 2.1 | Créditos | 30d 1ª execução debita 1 crédito | **PASS** | `analyze-public-v1.ts:604` `reserveCredit()` → `credits.server.ts:232-238` delta=-1 |
+| 2.2 | Créditos | 30d repetição (cache hit) = 0 créditos | **PASS** | `analyze-public-v1.ts:601` `cacheFreshHit && alreadyAssociated → skipReserve=true` |
+| 2.3 | Créditos | 90d 1ª execução debita 1 crédito | **PASS** | `isWideWindow()` cobre 30d e 90d (`window-configs.ts:81-83`); mesmo caminho |
+| 2.4 | Créditos | Cache separada por janela | **PASS** | `cache.ts:49-59` `windowCacheSuffix` → `:w=30d` / `:w=90d` |
+| 2.5 | Créditos | Gate Pro antes do reserve | **PASS** | `analyze-public-v1.ts:585-598` `WINDOW_REQUIRES_PRO` retorna 403 antes de qualquer débito |
+| 3.1 | Providers | Apify só em cache miss | **PASS** | `analyze-public-v1.ts:685-714` cache hit retorna antes de `fetchProfileWithPostsLogged` (linha 998) |
+| 3.2 | Providers | Competidores ficam em baseline mesmo em pedido 30d/90d | **PASS** | `analyze-public-v1.ts:995-1006` comentário "Competitors stay on baseline by design" |
+| 3.3 | Providers | OpenAI não re-disparada por mudança de janela | **PASS** | Enrichment é assíncrono via `enrichment_jobs`/`run-enrichment.server.ts`; endpoint público não chama OpenAI |
+| 3.4 | Providers | DataForSEO não re-disparada | **PASS** | `analyze-public-v1.ts:1197-1203` "Reuse cached summary…Fresh DFS now async" |
+| 4.1 | Admin | Tabela de análises com handle + janela + timestamp | **FAIL** | `admin.relatorios.tsx` não expõe `analysis_window` em coluna alguma |
+| 4.2 | Admin | Saldo + consumo + restante por lead | **PARTIAL** | Lead detail sheet (`beta-leads/lead-detail-sheet.tsx:754-758`) mostra `credits_remaining/granted` agregado, sem drill-down do `credit_ledger` |
+| 4.3 | Admin | Tipo de análise distinguível (baseline/30d/90d/competitor) | **FAIL** | Nenhuma superfície admin mostra `analysis_window` |
+| 4.4 | Admin | Drill-down por evento: cache vs fresh, provider, custo | **PARTIAL** | `/admin/sistema` mostra últimos 20 `provider_call_logs` agregados, sem ligação ao evento nem à janela |
+| 4.5 | Admin | `analysis_events.cache_key` / `data_source` / `competitor_handles` visíveis | **FAIL** | Nenhum admin UI lê esses campos |
+| 5.1 | Modelo | `analysis_events.analysis_window` existe e é populado | **PASS** | Coluna confirmada via `information_schema`; `events.ts:82` escreve `p_analysis_window` |
+| 5.2 | Modelo | `analysis_events ↔ provider_call_logs` (FK) | **PASS** | `provider_call_logs.analysis_event_id` FK confirmado |
+| 5.3 | Modelo | `analysis_events ↔ analysis_snapshots` (FK) | **PASS** | `analysis_events.analysis_snapshot_id` confirmado |
+| 5.4 | Modelo | `credit_ledger ↔ analysis_events` link directo | **FAIL** | `credit_ledger` tem `analysis_snapshot_id`, `cache_key`, `handle`, `reservation_id`, mas **não tem `analysis_event_id`**. Link é inferencial via `(lead_id, cache_key, snapshot_id)` |
+| 5.5 | Modelo | Janela legível no snapshot | **PARTIAL** | `analysis_snapshots` não tem coluna `analysis_window`; tem de se inferir pelo sufixo `:w=30d` do `cache_key` |
+| 6.1 | Flags | Feature flag separada para 90d | **NONE** | Sem `WINDOW_90D_ENABLED`, sem chave `app_config`; 90d e 30d controlados pela mesma `isWideWindow()` + entitlement `report_full_9` |
 
 ---
 
-## 3. Typography & color guardrails (audit pass)
+## 2. Veredicto consolidado
 
-Across all compare files:
-- Remove every `text-[11px]`, `text-[10px]`, residual `text-xs` on primary signals (labels, values, subText). Allowed `text-xs` only on: meta chips (baseline), micro hints inside chips, table caption.
-- No `font-mono` / JetBrains Mono in public UI (constraint already in memory).
-- No `text-white`/`bg-black`/raw hex. Only semantic tokens + `--accent-primary` / `--compare-competitor`.
-- All numeric values: `tabular-nums font-semibold`. Never wrap; truncate with `title=` tooltip.
+### O que está sólido (backend PR1)
+- Gate Pro, separação de cache, débito/devolução de crédito por janela, gating de providers — todos validados.
+- O modelo permite reconstruir o caminho técnico (event → snapshot → provider log) excepto o salto event → credit.
 
----
-
-## 4. Validation
-
-- Visit `/admin/report-preview/nunomarkl?variant=pro_preview&draft=false`:
-  - Same card chrome, padding, header rhythm across all 6 cards.
-  - Subtitle present everywhere in standard format.
-  - All handles rendered as text; avatars render or initials-fallback (force one broken URL via DevTools to verify).
-  - Primary = blue, competitor = indigo/purple, with ring + dot reinforcement.
-  - No `100 vs 0` bars; zero-data renders as `Sem dados` chip.
-  - All Leitura footers present, one editorial sentence.
-- 375px viewport: zero horizontal scroll; values never overflow.
-- Network panel: no provider calls triggered by these renders (pure presentation).
+### O que está em falta para lançar 30d/90d ao utilizador
+1. **UI não dispara janelas Pro**. O backend está pronto mas `AnalysisPeriodSelector` é só upsell e `ConsumeCreditDialog` suprime o botão Confirm para `kind:"period"` (copy `coming_soon`). Sem desbloquear isso, nem 30d nem 90d são acessíveis pela UI.
+2. **Confirmação explícita do crédito ausente**. Não há mensagem "vai consumir 1 crédito" nem pré-cheque de cache para mostrar "0 créditos (em cache)".
+3. **Admin cego à janela**. Não há nenhuma coluna `analysis_window` em qualquer tabela admin. Impossível responder "quantos 30d foram pedidos hoje?" sem SQL ad-hoc.
+4. **Sem drill-down de créditos por evento**. Só se vê saldo agregado, não o histórico ledger por lead nem o evento que originou cada débito.
+5. **Falta FK `credit_ledger.analysis_event_id`**. Reconstrução fica frágil (depende de `cache_key + timestamp`).
 
 ---
 
-## Implementation phases (small safe patches)
+## 3. Itens em falta na visibilidade admin
 
-1. **Phase A — Shell + Handle primitives**: lock chrome, subtitle helper, avatar fallback with `onError`, ring/dot reinforcement. Single edit batch in `compare-card-shell.tsx` + `compare-handle-row.tsx`.
-2. **Phase B — Stat/Bar/Table guardrails**: zero-data `Sem dados` rendering, font-size sweep, tabular-nums lock. Edits in `compare-stat-block.tsx`, `compare-bar-pair.tsx`, `compare-table.tsx`.
-3. **Phase C — Per-card wiring**: standardize subtitle + Leitura on each of the 6 competitor cards; hero identity migrates to shared avatar primitive.
-4. **Phase D — Format mix donuts**: side-by-side donuts reusing `FormatCard` SVG.
-5. **Phase E — QA pass**: visual audit at desktop + 375px, broken-avatar test, confirm no provider calls.
+| Falta | Onde devia aparecer | Esforço |
+|---|---|---|
+| Coluna `Janela` em `/admin/relatorios` (Baseline / 30d / 90d / Competitor) | `reports-table-section.tsx` + query | S |
+| Filtro por janela em `/admin/relatorios` | mesmo | S |
+| Coluna `data_source` (fresh / cache / stale) e `cache_key` em `/admin/relatorios` | mesmo | S |
+| Drill-down ledger por lead em `lead-detail-sheet.tsx` (lista de `credit_ledger` rows com data, delta, razão, snapshot, handle) | beta-leads sheet | M |
+| Tab "Análises" no lead detail: `analysis_events` filtrados por lead (handle, janela, source, custo, snapshot) | beta-leads sheet | M |
+| KPI por janela em `/admin/sistema` (30d hoje / 90d hoje / baseline hoje) | sistema cockpit | S |
+| Coluna `analysis_window` no último-20 `provider_call_logs` (já há FK `analysis_event_id`) | `costs-detail-section.tsx` + query JOIN | S |
+| Vista "Customer journey" por lead (timeline: lead → entitlement → events com janela → ledger rows → snapshots) | nova rota `admin.lead.$id.journey` | L |
 
-Each phase is independently publishable; no schema, provider, credits, checkout, EuPago, entitlement, or Free/Public report changes.
+---
+
+## 4. Prompts recomendados (executar pela ordem)
+
+### Prompt A — Tornar `analysis_window` visível em todo o admin (sem schema)
+> Em Plan Mode primeiro. Tornar a janela de análise visível em todas as superfícies admin existentes, sem schema novo.
+> Tocar apenas:
+> - `src/lib/admin/system-queries.server.ts` (JOIN `provider_call_logs.analysis_event_id → analysis_events.analysis_window`)
+> - `src/components/admin/v2/sistema/costs-detail-section.tsx` (nova coluna "Janela")
+> - `src/components/admin/v2/relatorios/reports-table-section.tsx` (nova coluna "Janela" + filtro)
+> Sem providers, sem créditos, sem schema, sem alterar Free/Public.
+
+### Prompt B — Drill-down ledger + análises no lead sheet
+> Em Plan Mode primeiro. No `lead-detail-sheet.tsx` da beta-leads, adicionar duas tabs:
+> 1) "Créditos" — listar `credit_ledger` por `lead_id` com colunas: data, delta, reason, handle, cache_key (truncado), snapshot link.
+> 2) "Análises" — listar `analysis_events` por handle do lead com colunas: data, handle, janela, data_source, outcome, custo, snapshot link.
+> Server fns novas em `src/lib/admin/*.functions.ts` com `requireSupabaseAuth` + check admin. Sem schema novo.
+
+### Prompt C — KPIs por janela no cockpit `/admin/sistema`
+> Em Plan Mode primeiro. Adicionar 3 KPI tiles ao topo do `costs-detail-section.tsx`: "30d hoje", "90d hoje", "Baseline hoje" (count + custo estimado) com base em `analysis_events.analysis_window` + `created_at::date = today`. Sem schema.
+
+### Prompt D — UI Pro para activar 30d/90d (sem créditos a debitar até confirmação explícita)
+> Em Plan Mode primeiro. Activar selector 30d/90d para utilizadores com entitlement `report_full_9`:
+> 1) `AnalysisPeriodSelector` ganha modo "active" quando `hasProEntitlement`, click chama `onSelectWindow(days)`.
+> 2) `ConsumeCreditDialog` para `kind:"period"`: remover supressão do Confirm; copy explícita "Esta análise vai consumir 1 crédito. Se já existir uma análise recente desta janela em cache, o crédito não é cobrado." + saldo actual.
+> 3) `onConfirm` chama o endpoint `/api/analyze-public-v1` com `window=30d|90d`. Sem novos providers, sem schema.
+
+### Prompt E — Migração: `credit_ledger.analysis_event_id`
+> Em Plan Mode primeiro. Adicionar coluna `analysis_event_id uuid REFERENCES analysis_events(id)` em `credit_ledger` (nullable, para back-compat). Atualizar `reserveCredit` e `confirmReservation` em `credits.server.ts` para gravar `analysis_event_id` quando disponível. Backfill nulo para linhas antigas. Manter inferência por cache_key como fallback.
+
+### Prompt F — Vista "Customer journey" por lead (opcional, depois de B/E)
+> Em Plan Mode primeiro. Nova rota `admin/lead.$id.journey` com timeline cronológica: entitlement granted → analysis_event (com janela) → provider_call_log → credit_ledger reserve/confirm/release → snapshot. Read-only.
+
+---
+
+## 5. 90d precisa de validação runtime separada antes de lançar?
+
+**Sim — recomendado.** Backend está estruturalmente idêntico a 30d (mesma `isWideWindow`, mesmo `windowCacheSuffix`, mesma config em `window-configs.ts:62-70` com `resultsLimit:300` e `onlyPostsNewerThan:"90 days"`), mas a validação PR1 cobriu apenas 30d. Diferenças concretas que justificam um runtime check próprio:
+
+- `resultsLimit=300` para 90d (vs 100 baseline / 150 30d) → maior duração Apify, maior risco de timeout, **custo unitário ≠ 30d**.
+- Filtro `onlyPostsNewerThan:"90 days"` aplicado client-side em `analyze-public-v1.ts:1067-1068` precisa de ser confirmado em produção (em snapshot real com 90+ dias de posts).
+- `APIFY_HARD_CAP_USD` e estimativas em `provider_call_logs.estimated_cost_usd` para 90d precisam de baseline empírica para alertas de custo.
+
+Checklist mínimo de validação 90d antes de abrir ao utilizador:
+1. Primeira execução 90d num handle não cacheado → confirmar 1 crédito debitado, `analysis_window='90d'` gravado, `provider_call_logs` com custo > custo médio 30d.
+2. Repetição imediata → cache hit, 0 créditos.
+3. Janela 30d e 90d para o mesmo handle → 2 snapshots distintos com `cache_key` diferentes, ambos válidos em paralelo.
+4. Comportamento sob `APIFY_HARD_CAP_USD` atingido → degrada como 30d (mesmo erro/handling).
+5. Cleanup de snapshot expirado (`expires_at`) por janela funciona igual.
+
+---
+
+## 6. Ordem sugerida de execução
+
+1. **Prompt A** (janela visível em admin) — desbloqueia QA do PR1 sem mexer em UI utilizador.
+2. **Validação runtime 90d** conforme checklist da secção 5 (admin pode usar bypass interno ou um lead de teste com entitlement).
+3. **Prompt C** (KPIs por janela) — diagnóstico operacional.
+4. **Prompt B** (drill-down lead) — base para suporte a clientes Pro.
+5. **Prompt E** (migração FK) — torna a reconstrução robusta antes do volume crescer.
+6. **Prompt D** (UI Pro) — só depois de A+B+C+E para abrir 30d/90d com observabilidade completa.
+7. **Prompt F** (journey timeline) — quando houver volume suficiente para justificar.
