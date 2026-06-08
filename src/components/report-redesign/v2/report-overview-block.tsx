@@ -24,7 +24,6 @@ import {
 import { computePostAverages } from "@/lib/report/post-aggregates";
 import { buildBlock01Sample } from "@/lib/report/block01-sample";
 import { PremiumTeaserCard } from "./premium-teaser-card";
-import { CompetitorOverviewCompare } from "./overview/competitor-overview-compare";
 import { ComparisonHero } from "./overview/comparison-hero";
 import { CompetitorEngagementCompare } from "./competitor-engagement-compare";
 import { CompetitorCadenceCompare } from "./competitor-cadence-compare";
@@ -212,6 +211,7 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
             engagementBenchmark: k.engagementBenchmark,
             postingFrequencyWeekly: k.postingFrequencyWeekly,
             dominantFormat: k.dominantFormat,
+            postsAnalyzed: k.postsAnalyzed,
           }}
           competitor={firstCompetitor}
           windowLabel={result.data.meta?.windowLabel ?? null}
@@ -276,28 +276,6 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
           outliersExcluded={sample?.dateOutliersExcluded ?? 0}
         />
       )}
-
-      {mode === "all" && firstCompetitor ? (
-        <CompetitorOverviewCompare
-          primary={{
-            handle: primaryHandle,
-            avatarUrl: enriched.profile.avatarUrl,
-            fullName: result.data.profile.fullName ?? null,
-            verified: Boolean(result.data.profile.verified),
-            followers: result.data.profile.followers,
-            postsAnalyzed: k.postsAnalyzed,
-            postsInSample:
-              (sample?.analyzedPosts.length ?? 0) +
-              (sample?.pinnedPostsExcluded ?? 0),
-            engagementRate: k.engagementRate,
-            averageLikes: avgLikes,
-            averageComments: avgComments,
-            postingFrequencyWeekly: k.postingFrequencyWeekly,
-          }}
-          competitor={firstCompetitor}
-          scope="identity"
-        />
-      ) : null}
 
       {mode === "all" && firstCompetitor ? (
         <CompetitorBioCompare

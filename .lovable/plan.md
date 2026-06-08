@@ -1,93 +1,115 @@
-# Unified editorial visual system — Profile vs Competitor cards
+# Plan — Editorial Comparison Hero (first card in comparison mode)
 
-## TL;DR
-Six compare cards (`competitor-bio`, `competitor-overview`, `competitor-engagement`, `competitor-cadence`, `competitor-format`, `competitor-weekday`) all share the `CompareCardShell` + handle row + stat/bar/table primitives, but they ship inconsistent density, title sizes, paddings, avatar fallbacks, and bar/label rhythms. Plan unifies them on a single "editorial" tier without touching data, providers, schema, or the Free/Public path.
+## Audit findings
 
-## Scope (UI only — 5 files)
-1. `src/components/report-redesign/v2/compare/compare-card-shell.tsx`
-2. `src/components/report-redesign/v2/compare/compare-handle-row.tsx`
-3. `src/components/report-redesign/v2/compare/compare-stat-block.tsx`
-4. `src/components/report-redesign/v2/compare/compare-bar-pair.tsx`
-5. The six `competitor-*-compare.tsx` consumers — only to pass the unified density / drop one-off props (no data changes)
+**Current first card** = `ComparisonHero` (`src/components/report-redesign/v2/overview/comparison-hero.tsx`), mounted in `report-overview-block.tsx` lines 203–219 whenever `firstCompetitor` exists. The legacy "Identidade" `CompetitorOverviewCompare` follows immediately after with `scope="identity"` (followers + posts in sample), then `CompetitorBioCompare`.
 
-Out of scope: `compare-table.tsx` content layout, `compare-delta.ts`, snapshot adapter, `report-overview-block.tsx` wiring (already correct), legacy `analysis-competitor-comparison.tsx`, FormatCard / FrequencyCard.
+**"Score editorial" row** in `ComparisonHero.buildRows()` (lines 195–207) uses:
+```
+computeEnvolvimento(engagementRate, p.engagementBenchmark)
+  = min(100, round(engagementRate / tierBenchmark * 100))
+```
+For `nunomarkl`, both sides are scored against **primary's** tier benchmark and both can saturate at 100 → reader sees "100 vs 100" with zero explanation. This is the reported confusion. The metric isn't defensible as a side-by-side score (asymmetric tier baseline, cap at 100 hides spread, no methodology copy anywhere).
 
----
+**Identity gaps:** the current hero shows `CompareHandleRow size="lg"` (handles + avatars) but no follower count, no sample size, no engagement next to each handle — the identity reads as a thin pill, not a card. Tabular rows below carry the data.
 
-## 1. Shared card shell — single "editorial" density
-Today `CompareCardShell` has three tiers (`default`, `hero`, `anchor`) and only the format/weekday hero cards use it. Engagement/cadence/bio/overview pass the silent `default`, producing the smaller xl/2xl title and tighter padding — the visible inconsistency.
+**Avatars:** `CompareHandleRow` already has gradient-initial fallback (previous turn). No code change needed there, but we must ensure the new identity cards reuse the same fallback.
 
-Change: collapse runtime to **one editorial tier**, keep `density` prop for back-compat (`anchor` still adds the 3 px accent left rule on the overview/identity card), drop the `default` look.
+## What changes
 
-- Card chrome: `rounded-2xl border border-border-default bg-surface-primary shadow-card`, padding `p-6 sm:p-8` (anchor: `p-7 sm:p-9` + `border-l-[3px] border-l-[var(--accent-primary)]`).
-- Title: `font-serif text-content-primary leading-snug tracking-tight text-2xl sm:text-3xl` everywhere (anchor: `sm:text-3xl md:text-[2.25rem]`).
-- Subtitle: `text-content-secondary mt-1.5 text-sm sm:text-base`.
-- Baseline chip ("Concorrente em janela baseline"): unchanged copy, normalised to `text-xs` + `text-content-tertiary`.
-- Identity row gap to title: `mt-5` (anchor: `mt-6`).
-- Body gap: `mt-8 sm:mt-10`.
-- Footer panel: always rendered with the hero treatment — `rounded-xl border border-border-subtle bg-surface-muted px-5 py-4`, eyebrow `text-eyebrow-sm text-content-tertiary mb-1.5`, copy `text-sm sm:text-base text-content-secondary leading-relaxed`. Footer eyebrow defaults to **"Leitura"**.
+### 1. Remove "Score editorial" row from `ComparisonHero`
+Score is asymmetric (uses primary's tier benchmark for both) and saturates at 100, so it cannot be honestly compared. No tooltip can rescue it — drop the row from `buildRows()`. No external consumer of the score in this card → no other refs to update.
 
-## 2. Handle row — consistent identity strip
-- `CompareHandleRow` keeps `sm` / `lg`, but `sm` always renders the current `prominence="strong"` look. Remove the `default` branch (no consumer needs the weaker variant after unification).
-- Pill: `gap-2.5 px-3.5 py-1.5 text-sm sm:text-base font-semibold`, accent tint by side (primary: `accent-primary`; competitor: `compare-competitor`).
-- Avatar in pill: `size-8`, no ring; verified badge `size-3.5`.
-- "vs" separator: `font-serif text-xl sm:text-2xl text-content-tertiary tracking-tight`.
-- Handles are always visible as text next to the avatar — no avatar-only state. Display name shows only in the `lg` hero variant.
+### 2. Redesign the hero into an editorial duel header (replaces lines 67–93 of `comparison-hero.tsx`)
 
-## 3. Stat block — aligned values & rhythm
-- Side panel padding harmonised with the shell: `px-5 py-5 sm:py-6`, `gap-2`.
-- Handle pill above value: `text-eyebrow-sm` (Inter uppercase tracking) instead of `text-xs font-medium`, max 1 line with `truncate`.
-- Numeric value: drop the wide `clamp(1.5rem, 4.2vw, 2.25rem)`. Use a fixed editorial pair: `text-3xl sm:text-4xl font-semibold tabular-nums leading-[1.05]` — guarantees alignment across all 4 stat cards. Keep `min-w-0 overflow-hidden whitespace-nowrap` to prevent overflow.
-- Sub-text under value: `text-sm text-content-secondary` (was `text-xs`), respects the 14 px floor.
-- Center "vs": `font-serif text-2xl text-content-tertiary` (was eyebrow), matches handle row separator.
-- `variant="bare"` keeps the same internal scale so a card-hosted stat reads identically.
+Layout (desktop ≥ md):
 
-## 4. Bar pair — premium distribution rhythm
-- `variant="bare"`:
-  - Label column: `sm:grid-cols-[7rem_1fr]` (was `6rem`), `gap-3 sm:gap-6`.
-  - Category label: `text-sm sm:text-base font-medium text-content-primary` (drop semi-bold so it sits below the card H3), `sm:pt-2`.
-  - Bar pair vertical gap: `space-y-2.5 sm:space-y-3`.
-  - Bar height: `h-3.5 sm:h-4`, `rounded-full`. Surface track stays `bg-surface-muted`; zero state keeps the dashed border treatment.
-  - Avatar at bar lead: `size-6` (was `size-5`), still hidden under sm. Mobile keeps the colored 8 px dot.
-  - Right-side value column: `w-16 sm:w-20`, `font-semibold tabular-nums text-sm sm:text-base text-content-primary`.
-  - Zero label: `text-xs text-content-tertiary`, column `w-20 sm:w-24` so it never wraps.
-  - Winner ring: keep the 1 px accent shadow.
-- `variant="card"` (used by the no-competitor in-card sub-block, still alive in older consumers): tighten only to match (label `text-sm`, bar `h-2.5`). No behavior change.
+```
+┌──────────────────────────────────────────────────────────────┐
+│ COMPARAÇÃO PRO · 90 dias · [Concorrente em janela baseline]  │
+│                                                              │
+│ ┌────────────────────┐   vs   ┌────────────────────┐         │
+│ │ [AV] @primary  ✓   │        │ [AV] @competitor ✓ │         │
+│ │ Nome completo      │        │ Nome completo      │         │
+│ │                    │        │                    │         │
+│ │ 1,2 M seguidores   │        │ 480 K seguidores   │         │
+│ │ 12 publ. amostra   │        │ 12 publ. amostra   │         │
+│ │ 3,4 % envolvimento │        │ 5,1 % envolvimento │         │
+│ │ 4,2 posts/semana   │        │ 2,8 posts/semana   │         │
+│ └────────────────────┘        └────────────────────┘         │
+│                                                              │
+│ ▸ Verdict line (editorial, deterministic)                    │
+│                                                              │
+│ Comparação com base nas últimas 12 publicações disponíveis.  │
+│ Concorrente em janela baseline. (opt.)                       │
+└──────────────────────────────────────────────────────────────┘
+```
 
-## 5. Avatar fallback — gradient initials, never broken
-Replace the flat `bg-surface-muted` fallback in `Avatar` with a side-tinted gradient and white initials, so missing avatars don't read as empty grey holes:
-- Primary side: `bg-gradient-to-br from-[color-mix(in_oklab,var(--accent-primary)_85%,white)] to-[var(--accent-primary)] text-white`.
-- Competitor side: `bg-gradient-to-br from-[color-mix(in_oklab,var(--compare-competitor)_85%,white)] to-[var(--compare-competitor)] text-white`.
-- Initials font: `font-sans font-semibold` (drop `font-display` — initials should be Inter per memory rule).
-- Same gradient applies when the `<img>` errors (`onError → failed`). Image still `loading="eager"` (above the fold). No external request fallback.
+Mobile (<md): stacks the two identity cards vertically with a centered "vs" chip between them. Verdict + methodology stay full-width.
 
-## 6. Consumer cleanup (no data changes)
-For each of the 6 `competitor-*-compare.tsx`:
-- Drop the explicit `density="hero"` on `competitor-format-compare` and `competitor-weekday-compare` (the new default IS hero).
-- Add or keep `density="anchor"` only on `competitor-overview-compare` (identity anchor card).
-- Ensure `footer` is always a string (deterministic "Leitura" insight) — already the case; verified during plan.
-- No prop additions, no new exports, no copy changes other than confirming "Leitura" as the default eyebrow.
+Identity card composition:
+- Avatar 56px (md) / 48px (sm) — reuse fallback gradient with initials from `CompareHandleRow` (extract a small `<CompareAvatar>` helper inside `compare/` or inline the existing logic).
+- `@handle` (font-mono → no, use Inter SemiBold per project rules) + verified badge.
+- Display name in `text-sm text-content-secondary`.
+- 4-row metric stack: Seguidores / Publicações na amostra / Envolvimento médio / Publicações por semana. Inter, `text-base sm:text-lg tabular-nums`, label in `text-eyebrow-sm text-content-tertiary` above each value.
+- Stronger side ranked by metric → value uses `text-accent-primary` (primary) or `text-compare-competitor` (competitor); weaker side stays `text-content-primary`. Same per-row "winner" logic that already exists.
 
-## 7. Mobile (375 px)
-- All paddings drop to `p-6` on the card, side panels `px-4 py-4`, bar pair to single-column header row.
-- Stat block stacks (already does) — keep the `vs` row hidden on mobile via the existing `sm:` grid.
-- Handle pills `flex-wrap` already prevents overflow; tightened gap to `gap-2` on `<sm`.
-- Bar pair: label sits above the bar group on `<sm` (already does); value column shrinks to `w-14`.
-- No new horizontal scrollers introduced.
+Header strip stays as-is (eyebrow + window label + baseline pill).
 
-## 8. Validation checklist (manual, post-build)
-- `/admin/report-preview/nunomarkl?variant=pro_preview&draft=false` (desktop + 375 px):
-  - All 6 cards share the same Fraunces title scale, subtitle treatment, identity row, padding, footer panel and "Leitura" eyebrow.
-  - Handles are visible as text on every card. Baseline chip appears only when `windowAligned=false`.
-  - Numbers align across the engagement + cadence stat cards.
-  - Bars at hero height with avatar leads visible on ≥sm.
-  - Avatar fallback shows tinted gradient + initials (force by blocking the image URL in DevTools).
-- `/admin/report-preview/frederico.m.carvalho` (no competitor): single-profile cards (`FormatCard`, `FrequencyCard`, `EngagementCardRefined`) unchanged.
-- No new network calls on render (no provider hits).
-- Free/Public path (`variant="public_mvp"`) renders identically to before — competitor branch is Pro-only.
+### 3. Deterministic editorial verdict (under the identity cards)
+
+Pure function `buildHeroVerdict(primary, competitor)` in the same file, no AI, no provider. Decision tree (first match wins):
+
+- If `competitor.followers > 1.5×primary.followers` AND `primary.engagementRate > competitor.averageEngagementRate`:  
+  *"O concorrente tem mais escala, mas este perfil gera uma resposta proporcionalmente superior por publicação."*
+- If `primary.followers > 1.5×competitor.followers` AND `competitor.averageEngagementRate > primary.engagementRate`:  
+  *"Este perfil tem mais escala, mas o concorrente gera uma resposta proporcionalmente superior."*
+- Else if `competitor.averageEngagementRate > primary.engagementRate * 1.1`:  
+  *"O concorrente regista um envolvimento médio superior por publicação."*
+- Else if `primary.engagementRate > competitor.averageEngagementRate * 1.1`:  
+  *"Este perfil regista um envolvimento médio superior por publicação."*
+- Else if `competitor.estimatedPostsPerWeek > primary.postingFrequencyWeekly * 1.25`:  
+  *"O concorrente publica com maior frequência semanal."*
+- Else if `primary.postingFrequencyWeekly > competitor.estimatedPostsPerWeek * 1.25`:  
+  *"Este perfil publica com maior frequência semanal."*
+- Default: *"Os dois perfis apresentam dimensão e envolvimento comparáveis."*
+
+Rendered with a `▸` lead accent, `font-serif text-lg sm:text-xl text-content-primary leading-snug`.
+
+### 4. Explicit methodology footnote
+
+Single line below verdict, `text-xs text-content-tertiary`:
+- Base: *"Comparação com base nas últimas {N} publicações disponíveis."* where `N` = `min(primary.postsAnalyzed, competitor.postsAnalyzed)`. If unknown, fall back to "publicações disponíveis".
+- Append, only when `competitor.windowAligned === false`: *" Concorrente em janela baseline."*
+
+The window-aligned pill in the header stays for at-a-glance visibility; the footnote adds the prose explanation.
+
+### 5. Downstream cleanup
+- Keep `CompetitorOverviewCompare` (the "Identidade" card with Seguidores + Publicações analisadas) — it's now redundant with the new hero. **Remove it from `report-overview-block.tsx`** (lines 280–300) to avoid the same numbers twice. The component file stays for `scope="all"` consumers (none today, but file is unchanged).
+- `CompetitorBioCompare` stays unchanged.
+- No-competitor path (`!firstCompetitor`) is untouched (renders `EditorialIdentityCard`).
+- Free / Public / locked modes untouched.
+
+## Files touched
+
+1. `src/components/report-redesign/v2/overview/comparison-hero.tsx` — full hero rewrite per §2–4, drop Score row.
+2. `src/components/report-redesign/v2/report-overview-block.tsx` — pass `postsInSample` / `engagementRate` / `postingFrequencyWeekly` to `ComparisonHero` (already wired); **remove** the `<CompetitorOverviewCompare ... scope="identity" />` block.
+3. (optional) tiny shared `<CompareAvatar>` helper extracted inside `src/components/report-redesign/v2/compare/compare-handle-row.tsx` for reuse — only if cleaner; otherwise duplicate the 6-line fallback.
 
 ## Constraints respected
-- No changes to data adapters, snapshot logic, providers (Apify/OpenAI/DataForSEO), schema, credits, payments, EuPago, entitlements, Add Competitor flow, or Free/Public report.
-- Tailwind v4 + semantic tokens only — no `slate-*`, no hardcoded hexes.
-- 2-font rule preserved: Fraunces for card H3 + "vs"; Inter for everything else; no JetBrains Mono.
-- All sizes ≥ `text-xs` (12 px); body ≥ `text-sm` (14 px).
+
+- Deterministic logic only (verdict = decision tree).
+- No AI, no provider calls, no backend / schema changes.
+- Free/Public report untouched.
+- No-competitor flow untouched.
+- 2-font rule (Fraunces titles, Inter body), tokens only.
+- Mobile-first: identity cards stack at <md; values use `tabular-nums`; no horizontal overflow at 375px.
+- Avatars use existing gradient-initial fallback.
+
+## Validation
+
+- `/admin/report-preview/nunomarkl?variant=pro_preview&draft=false` — first card opens in duel mode with two identity cards (avatars, handle, follower count, sample, engagement, cadence), deterministic verdict, methodology footnote. No "100 vs 100" score anywhere.
+- `/admin/report-preview/frederico.m.carvalho` (no competitor) — unchanged, still `EditorialIdentityCard`.
+- 375px viewport — identity cards stack cleanly, no horizontal scroll.
+- `rg "Score editorial"` returns 0 hits in the comparison hero.
+- No new network requests on render (verify in browser preview).
