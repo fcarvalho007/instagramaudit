@@ -3,6 +3,7 @@ export { CompareBarPair } from "./compare-bar-pair";
 export { CompareTable } from "./compare-table";
 export { CompareCardShell } from "./compare-card-shell";
 export { CompareHandleRow } from "./compare-handle-row";
+export { CompareAvatar } from "./compare-handle-row";
 export type { CompareHandleSide } from "./compare-handle-row";
 export { buildDelta, buildDeltaPair } from "./compare-delta";
 export type {

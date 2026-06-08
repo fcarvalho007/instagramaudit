@@ -13,11 +13,19 @@ interface Props {
   competitor: CompareHandleSide;
   /** Deterministic insight string or node, rendered in the footer panel. */
   footer?: ReactNode;
+  /** Eyebrow shown above the footer string (default: "Leitura"). */
+  footerEyebrow?: string;
   /** ARIA label override for the wrapping <section>. */
   ariaLabel?: string;
   id?: string;
   children: ReactNode;
   className?: string;
+  /**
+   * - "default" (current): used by every standard compare card.
+   * - "hero": stronger title scale + identity row prominence, used by
+   *   the Phase 2 distribution cards (Format Mix, Weekday Rhythm).
+   */
+  density?: "default" | "hero";
 }
 
 /**
@@ -33,11 +41,14 @@ export function CompareCardShell({
   primary,
   competitor,
   footer,
+  footerEyebrow = "Leitura",
   ariaLabel,
   id,
   children,
   className,
+  density = "default",
 }: Props) {
+  const hero = density === "hero";
   return (
     <section
       id={id}
@@ -50,11 +61,23 @@ export function CompareCardShell({
     >
       <header className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4">
         <div className="min-w-0">
-          <h3 className="font-serif text-xl sm:text-2xl text-content-primary leading-snug">
+          <h3
+            className={cn(
+              "font-serif text-content-primary leading-snug tracking-tight",
+              hero ? "text-2xl sm:text-3xl" : "text-xl sm:text-2xl",
+            )}
+          >
             {title}
           </h3>
           {subtitle ? (
-            <p className="mt-1 text-sm text-content-secondary">{subtitle}</p>
+            <p
+              className={cn(
+                "text-content-secondary",
+                hero ? "mt-1.5 text-sm sm:text-base" : "mt-1 text-sm",
+              )}
+            >
+              {subtitle}
+            </p>
           ) : null}
         </div>
         {!windowAligned ? (
@@ -64,16 +87,31 @@ export function CompareCardShell({
         ) : null}
       </header>
 
-      <div className="mt-4">
-        <CompareHandleRow primary={primary} competitor={competitor} />
+      <div className={cn(hero ? "mt-5" : "mt-4")}>
+        <CompareHandleRow
+          primary={primary}
+          competitor={competitor}
+          prominence={hero ? "strong" : "default"}
+        />
       </div>
 
-      <div className="mt-6 md:mt-8">{children}</div>
+      <div className={cn(hero ? "mt-8 sm:mt-10" : "mt-6 md:mt-8")}>{children}</div>
 
       {footer ? (
-        <div className="mt-6 rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-content-secondary leading-relaxed">
-          {footer}
-        </div>
+        hero ? (
+          <div className="mt-8 rounded-xl border border-border-subtle bg-surface-muted px-5 py-4">
+            <p className="text-eyebrow-sm text-content-tertiary mb-1.5">
+              {footerEyebrow}
+            </p>
+            <p className="text-sm sm:text-base text-content-secondary leading-relaxed">
+              {footer}
+            </p>
+          </div>
+        ) : (
+          <div className="mt-6 rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-content-secondary leading-relaxed">
+            {footer}
+          </div>
+        )
       ) : null}
     </section>
   );

@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { CompareBarCategory, CompareUnit } from "./compare-types";
+import { CompareAvatar } from "./compare-handle-row";
 
 interface CompareBarPairProps {
   /** Eyebrow / label above the comparison (e.g. "Distribuição de formato"). */
@@ -7,12 +8,21 @@ interface CompareBarPairProps {
   /** Display names for the legend. */
   primaryHandle: string;
   competitorHandle: string;
+  /** Optional thumbnails rendered at the leading edge of each bar
+   *  (bare variant, sm+ only). Falls back to the colored dot when absent. */
+  primaryAvatarUrl?: string | null;
+  competitorAvatarUrl?: string | null;
   /** Ordered list of categories, each with raw values for both profiles. */
   categories: CompareBarCategory[];
   /** Drives the default formatted label suffix when not provided per row. */
   unit: CompareUnit;
   /** Optional hint shown under the label. */
   hint?: string;
+  /** Text shown in place of "0 %" / "0" when a side has no value (bare). */
+  zeroLabel?: string;
+  /** When true (bare only), the higher of the two bars in each row gets a
+   *  soft 1-px ring in its accent color. Ties: no cue. */
+  highlightWinner?: boolean;
   /**
    * Visual shell variant:
    * - "card" (default): self-contained section with surface-secondary
@@ -37,9 +47,13 @@ export function CompareBarPair({
   label,
   primaryHandle,
   competitorHandle,
+  primaryAvatarUrl = null,
+  competitorAvatarUrl = null,
   categories,
   unit,
   hint,
+  zeroLabel,
+  highlightWinner = false,
   variant = "card",
 }: CompareBarPairProps) {
   const maxValue = Math.max(
@@ -53,29 +67,42 @@ export function CompareBarPair({
         className="min-w-0"
         aria-label={`${label}: comparação com concorrente`}
       >
-        <Legend
-          primaryHandle={primaryHandle}
-          competitorHandle={competitorHandle}
-        />
-        <div className="mt-3 space-y-4">
+        <div className="space-y-5 sm:space-y-6">
           {categories.map((c) => (
-            <div key={c.key} className="space-y-1.5">
-              <span className="block text-xs sm:text-sm text-content-secondary truncate">
+            <div
+              key={c.key}
+              className="grid grid-cols-1 sm:grid-cols-[6rem_1fr] gap-2 sm:gap-5 items-start"
+            >
+              <span className="block text-sm sm:text-base font-semibold text-content-primary truncate sm:pt-1.5">
                 {c.label}
               </span>
-              <div className="space-y-1.5">
-                <Bar
+              <div className="space-y-2 sm:space-y-2.5">
+                <BareBar
                   value={c.primary}
                   max={maxValue}
                   accent="primary"
+                  handle={primaryHandle}
+                  avatarUrl={primaryAvatarUrl}
                   formatted={c.primaryFormatted ?? formatValue(c.primary, unit)}
+                  zeroLabel={zeroLabel}
+                  isWinner={
+                    highlightWinner && c.primary > 0 && c.primary > c.competitor
+                  }
                 />
-                <Bar
+                <BareBar
                   value={c.competitor}
                   max={maxValue}
                   accent="secondary"
+                  handle={competitorHandle}
+                  avatarUrl={competitorAvatarUrl}
                   formatted={
                     c.competitorFormatted ?? formatValue(c.competitor, unit)
+                  }
+                  zeroLabel={zeroLabel}
+                  isWinner={
+                    highlightWinner &&
+                    c.competitor > 0 &&
+                    c.competitor > c.primary
                   }
                 />
               </div>
@@ -194,6 +221,91 @@ function Bar({
       </div>
       <span className="tabular-nums text-xs text-content-primary w-14 text-right shrink-0">
         {formatted}
+      </span>
+    </div>
+  );
+}
+
+function BareBar({
+  value,
+  max,
+  accent,
+  handle,
+  avatarUrl,
+  formatted,
+  zeroLabel,
+  isWinner,
+}: {
+  value: number;
+  max: number;
+  accent: "primary" | "secondary";
+  handle: string;
+  avatarUrl: string | null;
+  formatted: string;
+  zeroLabel?: string;
+  isWinner?: boolean;
+}) {
+  const safeValue = Number.isFinite(value) && value > 0 ? value : 0;
+  const pct = Math.min(100, (safeValue / max) * 100);
+  const isZero = safeValue === 0;
+  const accentBg =
+    accent === "primary" ? "bg-accent-primary" : "bg-compare-competitor";
+  const ringClass = isWinner
+    ? accent === "primary"
+      ? "shadow-[0_0_0_1px_color-mix(in_oklab,var(--accent-primary)_30%,transparent)]"
+      : "shadow-[0_0_0_1px_color-mix(in_oklab,var(--compare-competitor)_30%,transparent)]"
+    : "";
+
+  return (
+    <div
+      className="flex items-center gap-2 sm:gap-2.5"
+      aria-label={`@${handle}: ${isZero && zeroLabel ? zeroLabel : formatted}`}
+    >
+      {/* leading identity dot (always) + avatar thumbnail on sm+ */}
+      <span
+        aria-hidden="true"
+        className="hidden sm:inline-flex shrink-0"
+      >
+        {avatarUrl ? (
+          <CompareAvatar
+            avatarUrl={avatarUrl}
+            name={handle}
+            side={accent === "primary" ? "primary" : "competitor"}
+            sizeClass="size-5"
+          />
+        ) : (
+          <span className={cn("size-2.5 rounded-full", accentBg)} />
+        )}
+      </span>
+      <span
+        aria-hidden="true"
+        className={cn("sm:hidden size-2 rounded-full shrink-0", accentBg)}
+      />
+      <div
+        className={cn(
+          "relative h-3 sm:h-3.5 flex-1 rounded-full overflow-hidden",
+          isZero
+            ? "bg-surface-muted border border-dashed border-border-subtle"
+            : "bg-surface-muted",
+          ringClass,
+        )}
+      >
+        {!isZero ? (
+          <div
+            className={cn("absolute inset-y-0 left-0 rounded-full", accentBg)}
+            style={{ width: `${pct}%` }}
+          />
+        ) : null}
+      </div>
+      <span
+        className={cn(
+          "tabular-nums text-right shrink-0",
+          isZero
+            ? "text-xs text-content-tertiary w-20 sm:w-24"
+            : "font-semibold text-content-primary text-sm sm:text-base w-14 sm:w-16",
+        )}
+      >
+        {isZero && zeroLabel ? zeroLabel : formatted}
       </span>
     </div>
   );

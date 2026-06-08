@@ -64,6 +64,7 @@ export function CompetitorFormatCompare({
     <CompareCardShell
       title="Mix de formatos"
       subtitle="Distribuição de Reels, Carrosséis e Imagens"
+      density="hero"
       windowAligned={competitor.windowAligned}
       primary={{
         handle: primaryHandle,
@@ -84,8 +85,12 @@ export function CompetitorFormatCompare({
         label="Mix de formatos"
         primaryHandle={primaryHandle}
         competitorHandle={competitor.username}
+        primaryAvatarUrl={primaryAvatarUrl ?? null}
+        competitorAvatarUrl={competitor.avatarUrl ?? null}
         categories={categories}
         unit="percent"
+        zeroLabel="Sem partilha"
+        highlightWinner
       />
     </CompareCardShell>
   );
