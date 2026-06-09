@@ -511,15 +511,6 @@ export function OnboardingModal({
             onSignInWithEmail={(email) => goToLoginView(email)}
             initialEmail={form.getValues("email")}
           />
-        ) : view.kind === "qualification" ? (
-          <QualificationStepBody
-            form={form}
-            purpose={purpose}
-            submitting={submitting}
-            serverError={serverError}
-            onBack={goBackToEntry}
-            onContinue={() => setView({ kind: "final", email: view.email })}
-          />
         ) : view.kind === "final" ? (
           <FinalStepBody
             handle={handle}
