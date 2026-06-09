@@ -915,6 +915,13 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                     label="Objetivo"
                     value={labelPurpose(lead.purpose)}
                   />
+                  {lead.qualification ? (
+                    <ContextField
+                      icon={Shield}
+                      label="Qualificação"
+                      value={labelQualification(lead.qualification)}
+                    />
+                  ) : null}
                   <ContextField
                     icon={Globe}
                     label="Origem"
@@ -922,9 +929,27 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                   />
                 </div>
                 <p className="admin-meta text-admin-text-tertiary mt-2">
-                  Só o que o lead respondeu no onboarding. Sinais derivados
+                  Respostas do onboarding/contexto de compra. Sinais derivados
                   (intenção, próximo passo) aparecem acima.
                 </p>
+                {/* Linha de consentimentos: só renderiza quando há sinal real. */}
+                {(lead.gdpr_consent_at ||
+                  (lead.marketing_consent && lead.marketing_consent_at)) ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-admin-text-tertiary">
+                    {lead.gdpr_consent_at ? (
+                      <span title={`Aceite em ${formatShortDateTime(lead.gdpr_consent_at)}`}>
+                        ✓ RGPD{lead.gdpr_consent_version ? ` ${lead.gdpr_consent_version}` : ""}
+                        {" · "}
+                        {shortDate(lead.gdpr_consent_at)}
+                      </span>
+                    ) : null}
+                    {lead.marketing_consent && lead.marketing_consent_at ? (
+                      <span title={`Aceite em ${formatShortDateTime(lead.marketing_consent_at)}`}>
+                        ✓ Marketing · {shortDate(lead.marketing_consent_at)}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
 
               {/* (c) Estado comercial — select agrupado manual/auto */}
