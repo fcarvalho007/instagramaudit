@@ -780,7 +780,6 @@ function FinalStepBody({
   const emailError = form.formState.errors.email?.message;
   const qualificationError = form.formState.errors.qualification?.message;
   const passwordError = form.formState.errors.password?.message;
-  const confirmError = form.formState.errors.confirm_password?.message;
   const consentError = form.formState.errors.gdpr_consent?.message;
   const consent = form.watch("gdpr_consent");
   const marketing = form.watch("marketing_consent");
@@ -788,7 +787,6 @@ function FinalStepBody({
   const qualification = form.watch("qualification");
   const passwordValue = form.watch("password") ?? "";
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
   const strength = computePasswordStrength(passwordValue);
   const emailIsValid = !emailError && emailValue && EMAIL_RE.test(emailValue);
 
