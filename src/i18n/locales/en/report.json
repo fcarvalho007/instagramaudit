@@ -1288,7 +1288,11 @@
       "score_public_title": "Visual score · Premium",
       "score_public_body": "Available in the full version of the report.",
       "score_dev_title": "Visual score unavailable",
-      "score_dev_body": "It will be calculated automatically once computer vision analysis is active."
+      "score_dev_body": "It will be calculated automatically once computer vision analysis is active.",
+      "pro_title": "Visual reading is being generated.",
+      "pro_body": "AI cover analysis takes 30 to 90 seconds. If more time has passed, force a new analysis to try again.",
+      "score_pro_title": "Visual score being generated",
+      "score_pro_body": "Computer vision analysis is running. Reload the page in a few seconds to see the result."
     }
   },
   "comments": {
@@ -1345,6 +1349,17 @@
       "reply_other": "replies",
       "in": "in",
       "comments": "comments"
+    },
+    "voice": {
+      "title": "Voice of the audience",
+      "empty": "The analyzed comments showed no clear patterns of questions, praise, complaints or buying intent.",
+      "hint": "Real excerpts from public comments, classified automatically. Usernames kept as they appear publicly on Instagram.",
+      "categories": {
+        "questions": "Question",
+        "praise": "Praise",
+        "complaints": "Complaint",
+        "buyingIntent": "Buying intent"
+      }
     },
     "unavailable": {
       "default_title": "Detailed comment analysis not included",
