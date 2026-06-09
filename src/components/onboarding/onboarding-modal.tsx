@@ -935,7 +935,7 @@ function FinalStepBody({
           {emailError ? (
             <p className="text-[12.5px] text-destructive">{emailError}</p>
           ) : (
-            <p className="text-[12px] text-content-tertiary">
+            <p className="text-[12px] text-content-secondary">
               {t("onboarding.final.right.emailHint")}
             </p>
           )}
