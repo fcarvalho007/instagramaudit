@@ -249,16 +249,17 @@
     },
     "qualification": {
       "eyebrow": "STEP 2 OF 3",
-      "title": "Tell us the context",
-      "subtitle": "Two quick picks to tune the analysis.",
+      "title": "Help us tailor your read",
+      "subtitle": "Two quick picks. The report adapts to what you choose.",
       "eyebrowCheckout": "BEFORE YOU PAY",
-      "titleCheckout": "Tell us the context",
-      "subtitleCheckout": "Two quick picks to tune your experience.",
+      "titleCheckout": "Help us tailor your experience",
+      "subtitleCheckout": "Two quick picks. Your experience adapts to what you choose.",
       "placeholder": "Pick one",
-      "ownershipLegend": "What's the context?",
-      "goalLegend": "What's your goal?",
-      "ownershipError": "Pick the context.",
-      "goalError": "Pick a goal.",
+      "ownershipLegend": "This profile is…",
+      "goalLegend": "What do you want to get out of it?",
+      "ownershipError": "Pick one option to continue.",
+      "goalError": "Pick what matters most to you.",
+      "missingHint": "Pick one option for each question to continue.",
       "goalOtherPlaceholder": "Tell us briefly",
       "goalOtherHint": "Minimum 2 characters",
       "back": "Back",
@@ -349,16 +350,16 @@
     },
     "compactOptions": {
       "profileOwnership": {
-        "own_profile": "Personal",
+        "own_profile": "My profile",
         "brand_profile": "My brand",
-        "client_profile": "A client",
-        "competitor_research": "Competitor"
+        "client_profile": "A client's",
+        "competitor_research": "A competitor"
       },
       "goal": {
-        "improve_content": "Improve content",
-        "benchmark_competitors": "Compare competitors",
-        "client_report": "Client report",
-        "grow_audience": "Grow audience"
+        "improve_content": "Improve my content",
+        "benchmark_competitors": "Compare with others",
+        "client_report": "Present to a client",
+        "grow_audience": "Grow my audience"
       }
     },
     "cta": {
