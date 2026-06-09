@@ -30,6 +30,20 @@ export const SERVER_PRODUCTS: Record<ProductCode, ServerProduct> = {
     currency: "EUR",
     description: "Desbloqueio do relatório completo.",
   },
+  report_pack_5: {
+    code: "report_pack_5",
+    namePt: "Pack 5 relatórios Pro",
+    amountCents: 4000,
+    currency: "EUR",
+    description: "Pack de 5 desbloqueios de relatório Pro (perfis à escolha).",
+  },
+  report_pack_10: {
+    code: "report_pack_10",
+    namePt: "Pack 10 relatórios Pro",
+    amountCents: 7200,
+    currency: "EUR",
+    description: "Pack de 10 desbloqueios de relatório Pro (perfis à escolha).",
+  },
   credit_pack_1: {
     code: "credit_pack_1",
     namePt: "1 crédito de análise",
