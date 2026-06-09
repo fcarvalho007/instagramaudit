@@ -1,36 +1,62 @@
-# Floor lab-only para blocos 03–06 — estado e plano
+# Admin account deletion — gap-fix plan
 
 ## TL;DR
-O fix mínimo que pedes **já está implementado** no código actual. Não há ficheiros novos a criar nem lógica a alterar. O plano é apenas **verificar** (correr os testes existentes) e, se passar, encerrar a tarefa sem mais edições.
+A maior parte da spec já está implementada (archive/purge em `leads-bulk.ts`, endpoint de diagnóstico, UI com "APAGAR" + override `force_paid`, migration `leads.archived_at`, testes de bulk). Faltam **três gaps cirúrgicos** para fechar consistência total. Plano abaixo só toca nesses gaps. Sem alterações em checkout, pagamentos, créditos, packs, 30d/90d, concorrente, cache, conteúdo de relatório ou visibilidade lab.
 
-## O que já existe
+## Estado actual (já existe, não tocar)
+| Item | Onde | Estado |
+|---|---|---|
+| `leads.archived_at` + índice | migration `20260609172232_…` | ✅ |
+| Archive (soft) + Purge (hard, cascade + auth.users) | `src/routes/api/admin/leads-bulk.ts` | ✅ |
+| Bloqueio `lead_payments.status='paid'` + override `force_paid` | mesmo ficheiro | ✅ |
+| Audit `leads_bulk_archived` / `leads_bulk_purged` | mesmo ficheiro | ✅ |
+| Endpoint diagnóstico (orphan auth / orphan leads / archived / dup emails) | `src/routes/api/admin/diagnostics.account-sync.ts` | ✅ |
+| UI "Arquivar" + "Apagar definitivamente conta de teste" com confirmação dupla | `src/components/admin/v2/beta-leads/leads-table.tsx` | ✅ |
+| Listagens admin filtram `archived_at IS NULL` por defeito | `follow-ups.ts`, `leads-kanban.ts`, `routes/admin.leads.tsx` | ✅ |
+| Testes do bulk (archive / purge / paid block) | `src/routes/api/admin/__tests__/leads-bulk.test.ts` | ✅ |
+| Limpeza dos 2 emails de teste | migration one-shot já corrida | ✅ |
 
-### 1. Floor server-side — `src/lib/report/effective-features.ts`
-`LOCKED_MODULES` força `hidden` para `blockPerformance`, `blockContent`, `blockSearch`, `blockBenchmark` em `public_mvp` e `pro_preview`. Aplicado **depois** do merge de overrides em `getEffectiveFeatures`, portanto nenhum override administrativo pode expor estes blocos fora de `internal_lab`.
+## Gaps a fechar
 
-### 2. Floor client-side — `src/lib/report/report-variant.ts` (`useVariantFeatures`)
-Após resolver `base` (override de contexto ou defaults estáticos), quando `variant !== "internal_lab"` o hook devolve `{ ...base, blockPerformance: "hidden", blockContent: "hidden", blockSearch: "hidden", blockBenchmark: "hidden" }`. Defesa em profundidade caso o `VariantFeaturesOverrideProvider` receba payload manipulado.
+### Gap 1 — `check-email` deve ignorar leads arquivados (regra D)
+**Ficheiro:** `src/routes/api/onboarding/check-email.ts`
+**Sintoma actual:** `findLead()` faz `select … from leads where email_normalized = ?` sem filtrar `archived_at`. Um lead arquivado devolve `exists: true` → utilizador é mandado para login de uma conta que /admin considera inactiva. Contradiz a regra D da nova spec.
+**Mudança:** adicionar `.is("archived_at", null)` ao `findLead`. Manter o `authUserExists` tal como está (auth órfão continua a ser tratado como existente — defesa em profundidade contra a confusão de archive ≠ delete).
+**Nota de produto a confirmar implicitamente:** archive deixa `auth.users` intacto. Se um lead estiver arquivado mas o auth user existir, `check-email` ainda devolve `exists: true` pela via auth. Isto está alinhado com a regra "archive mantém histórico, login pode continuar a funcionar" — apenas a UI do admin deixa de o ver na lista activa. Para esconder também do login é preciso purge.
 
-### 3. Defaults estáticos coerentes — `VARIANT_FEATURES`
-- `public_mvp`: 03–06 = `hidden`
-- `pro_preview`: 03–06 = `hidden` (com comentário a explicar a regra `internal_only`)
-- `internal_lab`: 03–06 = `full`
+### Gap 2 — UI admin para estados de excepção (regra E)
+**Ficheiros:**
+- `src/routes/admin.leads.tsx` (ou painel equivalente em `src/components/admin/v2/beta-leads/`) — adicionar **tab/filtro "Arquivados"** que invoca a query com `archived_at IS NOT NULL`.
+- Novo componente `src/components/admin/v2/beta-leads/orphan-accounts-panel.tsx` — consome `GET /api/admin/diagnostics/account-sync` e mostra 4 secções colapsáveis (auth órfão, leads órfãos, arquivados, duplicados). Botões: "Apagar auth órfão" (chama `auth.admin.deleteUser` via novo endpoint pontual) e "Restaurar lead arquivado" (`archived_at = null`).
+- Novo endpoint `POST /api/admin/auth-users/purge` para apagar auth users órfãos individualmente (recebe `{ email }`, bloqueado se existir lead activo com esse email).
+- Novo endpoint `POST /api/admin/leads/$id/restore` para reverter archive (`archived_at = null`).
 
-### 4. Sidebar comercial intacta
-`COMMERCIAL_SECTIONS` em `src/components/report-redesign/v2/block-config.ts` lista Frequência editorial, Mix de formatos, Publicações-chave e Diagnóstico editorial como âncoras dentro de `overview`/`diagnostico` — não são blocos lab e não são tocados por esta lógica.
+Sem alterações às queries existentes — só nova UI/endpoints aditivos.
 
-### 5. Testes — `src/lib/report/__tests__/lab-blocks-floor.test.ts`
-Já cobre os 6 cenários pedidos:
-- defaults estáticos de `public_mvp` / `pro_preview` / `internal_lab`
-- override que tenta expor 03–06 em `public_mvp` → clampado
-- override que tenta expor 03–06 em `pro_preview` → clampado
-- `internal_lab` continua a respeitar overrides para esconder
+### Gap 3 — Cobertura de testes adicional (regra G)
+**Ficheiro:** novo `src/routes/api/onboarding/__tests__/check-email-archived.test.ts`
+- arquivar lead → `check-email` devolve `exists:true` apenas se auth user existir; `false` se auth também não existir.
+- lead activo → `exists:true`.
+- lead inexistente, auth inexistente → `exists:false`.
 
-## Plano (1 passo, sem código novo)
+**Ficheiro:** novo `src/routes/api/admin/__tests__/diagnostics-account-sync.test.ts`
+- 1 lead activo + 1 auth órfão → diagnóstico devolve 1 em `orphan_auth_users`, 0 em `orphan_leads`.
+- 1 lead arquivado → aparece em `archived_leads`.
+- 2 leads com mesmo `email_normalized` → aparecem em `duplicate_emails`.
 
-1. Correr `bunx vitest run src/lib/report/__tests__/lab-blocks-floor.test.ts` para confirmar que o floor server+client + lock continua verde.
-2. Reportar resultado. Se passar, fechar — não há mais nada para mudar.
-3. Se algum teste falhar (não esperado), só então abrir nova edição cirúrgica no ficheiro afectado.
+Os testes existentes em `leads-bulk.test.ts` já cobrem o resto (criação→admin, purge→auth deletado, paid blocked, isolamento entre leads).
 
-## Fora de scope (não tocar)
-Checkout, pagamentos, créditos, janelas 30d/90d, concorrente, cache, enrichments, conteúdo do Report Lab, sidebar comercial.
+## Ordem de execução
+1. Patch mínimo a `check-email.ts` (gap 1).
+2. Endpoints `auth-users/purge` e `leads/$id/restore` (gap 2 back-end).
+3. UI `orphan-accounts-panel` + tab "Arquivados" no admin leads (gap 2 front-end).
+4. Testes novos (gap 3).
+5. Correr `bunx vitest run` em pasta filtrada.
+
+## Fora de scope
+checkout, EuPago, webhook de pagamento, credit grants, packs (report/credit), 30d/90d, concorrente, force refresh, cache, conteúdo do relatório, lab visibility, schema de auth, OAuth.
+
+## Riscos / decisões implícitas
+- **Archive não bloqueia login** (auth.users intacto). Documentado na UI ("Arquivar — esconde do admin mas mantém login. Para impedir login use Apagar definitivamente.").
+- **Purge de auth órfão** sem lead correspondente é seguro (não há histórico de pagamento associado, por definição). Endpoint valida ausência de lead activo antes de apagar.
+- **Restore** só reverte `archived_at`, não recria estado destrutivo.

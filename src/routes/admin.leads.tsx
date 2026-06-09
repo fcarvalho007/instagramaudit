@@ -23,10 +23,11 @@ import { KanbanBoard } from "@/components/admin/v2/beta-leads/kanban-board";
 import { LeadsTable } from "@/components/admin/v2/beta-leads/leads-table";
 import { LeadDetailSheet } from "@/components/admin/v2/beta-leads/lead-detail-sheet";
 import { LeadsConversionBanner } from "@/components/admin/v2/beta-leads/leads-conversion-banner";
+import { OrphanAccountsPanel } from "@/components/admin/v2/beta-leads/orphan-accounts-panel";
 import type { EnrichedLead } from "@/lib/admin/kanban-columns";
 import { adminFetch } from "@/lib/admin/fetch";
 
-type PipelineView = "pipeline" | "tabela";
+type PipelineView = "pipeline" | "tabela" | "diagnostico";
 
 export const Route = createFileRoute("/admin/leads")({
   component: LeadsPage,
@@ -35,7 +36,9 @@ export const Route = createFileRoute("/admin/leads")({
   ): { lead?: string; view?: PipelineView } => ({
     lead: typeof search.lead === "string" ? search.lead : undefined,
     view:
-      search.view === "tabela" || search.view === "pipeline"
+      search.view === "tabela" ||
+      search.view === "pipeline" ||
+      search.view === "diagnostico"
         ? search.view
         : undefined,
   }),
@@ -140,7 +143,12 @@ function LeadsPage() {
 
   const setView = useCallback(
     (next: string) => {
-      const v: PipelineView = next === "tabela" ? "tabela" : "pipeline";
+      const v: PipelineView =
+        next === "tabela"
+          ? "tabela"
+          : next === "diagnostico"
+            ? "diagnostico"
+            : "pipeline";
       navigate({
         to: "/admin/leads",
         search: {
@@ -221,6 +229,7 @@ function LeadsPage() {
           <TabsList className="mb-4">
             <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
             <TabsTrigger value="tabela">Tabela</TabsTrigger>
+            <TabsTrigger value="diagnostico">Diagnóstico</TabsTrigger>
           </TabsList>
 
           <TabsContent value="pipeline" className="mt-0">
@@ -233,6 +242,10 @@ function LeadsPage() {
 
           <TabsContent value="tabela" className="mt-0">
             <LeadsTable leads={leads} onOpenDetail={openDetail} />
+          </TabsContent>
+
+          <TabsContent value="diagnostico" className="mt-0">
+            <OrphanAccountsPanel />
           </TabsContent>
         </Tabs>
       )}
