@@ -1,57 +1,58 @@
-# Simplificar emails do registo — só o "relatório guardado" + contexto da plataforma
+# Recuperar ícones cinemáticos no passo 2 (questão "objetivo")
 
-## O que está mesmo a acontecer hoje
+## Diagnóstico
 
-Investiguei o fluxo real (não o que o painel `/admin/automacoes` sugere). Quem se regista pelo modal de onboarding recebe **no máximo dois emails**, dependendo do fluxo:
+O passo 2 do `OnboardingModal` tem hoje duas perguntas em cartões verticais (`RadioCardField`):
 
-| Quando | Fluxo Analyze (handle → relatório) | Fluxo Checkout (compra) |
-|---|---|---|
-| Submete email no modal | **OTP do Supabase** (código de 6 dígitos) | **OTP do Supabase** |
-| Confirma o código | — (sem email) | — (sem email, segue para pagamento) |
-| Relatório fica guardado | **`report_saved`** ("O relatório de @handle ficou guardado") via `sendLeadMagnetSequence` | — (não há relatório nesta etapa) |
+- **"Qual é o contexto?"** → renderiza com **ícones coloridos** (User azul, Star roxo, Briefcase verde, Search âmbar, HelpCircle rosa). Vem do `PROFILE_OWNERSHIP_ICONS` em `src/components/product/unlock-modal.tsx`.
+- **"Qual é o teu objetivo?"** → renderiza **sem ícone**, só radio + label. É esta a régua que parte a estética "cinematográfica" que tinhas.
 
-O **"Pedido recebido"** (`request_received`) que aparece em destaque no admin **não dispara no registo**. Só é enviado pelo formulário beta antigo (`submitBetaRequest`, `src/lib/beta.functions.ts:217`) — ficou no admin como "ativo" mas no fluxo real está sem trigger.
-
-Portanto: **já não há email de "Pedido recebido" a chegar aos novos utilizadores.** O que tu queres ("receber apenas o report_saved com contexto da plataforma") já é quase a realidade — falta limpar o que confunde no admin e enriquecer o `report_saved` com o pequeno bloco de contexto.
+A causa é simples: o `RadioCardField` da pergunta `goal` é passado sem a propriedade `icon` por opção. Nunca existiu um `GOAL_ICONS` análogo ao `PROFILE_OWNERSHIP_ICONS`, por isso a régua visual está incompleta — não é regressão, é uma omissão. O pedido é restaurar a paridade visual com a pergunta de contexto.
 
 ## Mudanças propostas
 
-### 1. Admin `/admin/automacoes` — refletir a verdade
-- Mover o bloco **"Pedido recebido"** (Ciclo 01) da coluna `TRANSACCIONAL · ATIVO` para `LEGADO · SEM TRIGGER`, com nota "disparado apenas pelo formulário beta antigo; novos registos não recebem este email".
-- O sub-bloco "Geração do relatório" (`beta_request_created`) também é legado — já está marcado `BLOQUEADO`, mantém-se mas com nota clara.
-- Adicionar 1 cartão novo no Ciclo 01 (Captação) chamado **"Verificação por código"** (OTP do Supabase), `ATIVO · SISTEMA`, evento `onboarding_otp_sent`, para o operador perceber que o único email de registo é o código.
-- Garantir que o Ciclo 02 "Relatório guardado" (`report_saved`) aparece como o único email transacional `ENTREGA PRINCIPAL · ATIVO` no fluxo Analyze.
+### 1. Adicionar `GOAL_ICONS` em `src/components/product/unlock-modal.tsx`
 
-Ficheiro alvo: `src/routes/admin/automacoes.tsx` (ou onde estiver a tabela — vou localizar antes de patchar).
+Junto ao `PROFILE_OWNERSHIP_ICONS` existente, criar um mapa equivalente para os 6 valores de `GOALS` (`improve_content`, `benchmark_competitors`, `client_report`, `grow_audience`, `validate_brand`, `other`), reutilizando ícones `lucide-react` já importados ou adicionando os que faltarem. Proposta de mapeamento (cinco cores distintas, semânticas, alinhadas com a paleta dos chips de contexto):
 
-### 2. Template `report_saved` — adicionar contexto da plataforma
-O `report_saved` (`src/lib/email/templates/report-saved.ts`) já tem a variante `isWelcome` para new leads (substituiu o `welcome_beta`). Vou:
+| Goal | Ícone | Tons (bg / fg) | Racional |
+|---|---|---|---|
+| `improve_content` | `Sparkles` | `bg-blue-100 / text-blue-600` | melhorar = polir |
+| `benchmark_competitors` | `Scale` | `bg-amber-100 / text-amber-700` | comparar = balança |
+| `client_report` | `FileText` | `bg-emerald-100 / text-emerald-600` | entrega = documento |
+| `grow_audience` | `TrendingUp` | `bg-purple-100 / text-purple-600` | crescer = subir |
+| `validate_brand` | `ShieldCheck` | `bg-cyan-100 / text-cyan-600` | validar = selo |
+| `other` | `HelpCircle` | `bg-pink-100 / text-pink-600` | aberto |
 
-- Quando `isWelcome === true`, adicionar **um bloco curto e simpático** logo a seguir ao saluto, antes do botão de abrir o relatório:
-  - 1 frase do que é a AuditProfiles ("é uma ferramenta de auditoria e benchmark de perfis de Instagram — comparas-te com concorrentes em segundos.").
-  - 1 frase sobre o que pode fazer a seguir ("o relatório fica guardado na tua conta e podes analisar outros perfis a qualquer momento.").
-  - Sem upsell, sem CTA secundário, sem promessa de "tips e benchmarks" (esse opt-in vive no checkbox de marketing).
-- Quando `isWelcome === false` (lead já existente que regerou um relatório), mantém o corpo atual sem o bloco de contexto — não é preciso repetir a explicação a cada relatório.
-- Não toco no `subject` nem na estrutura visual (header, CTA, footer); só acrescento o parágrafo de contexto dentro do mesmo `Section` editorial já existente.
+(Já temos `Sparkles`, `TrendingUp`, `FileText`, `HelpCircle` disponíveis em projetos próximos; `Scale` e `ShieldCheck` adicionam-se à mesma linha de import — não há instalação nova, é `lucide-react`.)
 
-### 3. Zero mudanças no envio
-Não mexo em `sendLeadMagnetSequence`, `processReportUnlock`, `claim-existing`, `start.ts`, EuPago webhook, nem em nada do checkout. O fluxo já está como o user quer; só o conteúdo de um único template muda e o painel de admin deixa de mentir.
+Export nomeado tal e qual o `PROFILE_OWNERSHIP_ICONS`.
+
+### 2. Importar e usar no `QualificationStepBody` em `src/components/onboarding/onboarding-modal.tsx`
+
+- Acrescentar `GOAL_ICONS` ao import existente na linha 52.
+- Na chamada `RadioCardField` da pergunta `goal` (linha ~1192), passar `icon: GOAL_ICONS[v]` no mapeamento das `options`, exatamente como já se faz para `profile_ownership`.
+
+### 3. Não tocar em mais nada
+
+- Sem mudanças no `RadioCardField` (já aceita `icon` opcional).
+- Sem mudanças em copy, ordem dos campos, validações ou submit.
+- Sem alterações no `unlock-modal.tsx` legado (continua a renderizar `goal` sem ícone — não é o modal em uso no checkout/analyze atual, e o pedido é só para o passo 2 do novo `OnboardingModal`).
 
 ## Ficheiros a alterar
 
-- `src/lib/email/templates/report-saved.ts` — adicionar bloco "o que é a AuditProfiles" condicionado a `isWelcome`.
-- `src/routes/admin/automacoes.tsx` (ou o ficheiro que renderiza a página — confirmo na fase de build) — reclassificar "Pedido recebido" como legado, adicionar cartão "Verificação por código".
+- `src/components/product/unlock-modal.tsx` — exportar `GOAL_ICONS` (novo mapa de 6 entradas, ~20 linhas).
+- `src/components/onboarding/onboarding-modal.tsx` — 1 linha no import e 1 linha no `options.map(...)` da pergunta `goal`.
+
+## QA visual
+
+1. Abrir `/precos` → onboarding → passo 2 (checkout). Confirmar que **ambas** as perguntas mostram chip com ícone à esquerda do label, com a mesma altura de cartão, mesma cor de borda no estado hover/selected, e cinco/seis tons distintos por pergunta.
+2. Abrir `/analyze/<handle>` → onboarding → passo 2 (analyze). Mesmo resultado.
+3. Mobile 414px: cartões mantêm padding consistente, ícone não quebra para nova linha.
+4. Selecionar "Outro" no objetivo: o input de texto continua a aparecer por baixo (sem regressão).
 
 ## Fora do âmbito
 
-- Remover/apagar a server function `submitBetaRequest` ou o template `request-received` (ficheiros legados, sem caller no fluxo público — manter para o histórico).
-- Mexer no OTP do Supabase (template de auth nativo, gerido fora do projeto).
-- Adicionar sequência de drip / nurturing por email pós-registo (sai do "simplificar mantendo utilidade").
-- Refactor das tabelas `email_send_log` / suppression.
-
-## QA manual
-
-1. Registo novo em `/precos` → checkout → confirmar OTP. Caixa de entrada: **só 1 email** (OTP). ✅
-2. Registo novo em `/analyze/<handle>` → confirmar OTP → relatório gerado. Caixa de entrada: **2 emails** (OTP + `report_saved` com bloco de contexto novo). ✅
-3. Lead existente faz novo unlock: recebe `report_saved` **sem** o bloco de contexto (não é "welcome"). ✅
-4. Abrir `/admin/automacoes`: "Pedido recebido" aparece como `LEGADO · SEM TRIGGER`; "Verificação por código" aparece no Ciclo 01 como `ATIVO`; "Relatório guardado" é o único `ENTREGA PRINCIPAL · ATIVO` no Ciclo 02.
+- Re-skin do `RadioCardField` (cor, sombras, animação) — visual atual já é a base "cinematográfica" pedida; só falta o ícone.
+- Adicionar ícones ao `user_type` ou outros passos.
+- Mexer no modal legado `unlock-modal.tsx`.
