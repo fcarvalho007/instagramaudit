@@ -831,6 +831,8 @@ function FinalStepBody({
   const isCheckout = purpose === "checkout";
   const nameError = form.formState.errors.full_name?.message;
   const emailError = form.formState.errors.email?.message;
+  const passwordError = form.formState.errors.password?.message;
+  const confirmError = form.formState.errors.confirm_password?.message;
   const consentError = form.formState.errors.gdpr_consent?.message;
   const consent = form.watch("gdpr_consent");
   const marketing = form.watch("marketing_consent");
@@ -991,6 +993,54 @@ function FinalStepBody({
               {t("onboarding.final.right.emailHint")}
             </p>
           )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="onb-password"
+            className="text-[13.5px] font-medium text-content-primary"
+          >
+            Palavra-passe
+          </Label>
+          <Input
+            id="onb-password"
+            type="password"
+            autoComplete="new-password"
+            placeholder="Mínimo 8 caracteres"
+            aria-invalid={Boolean(passwordError)}
+            className="text-base"
+            {...form.register("password")}
+            data-testid="onboarding-password"
+          />
+          {passwordError ? (
+            <p className="text-[12.5px] text-destructive">{passwordError}</p>
+          ) : (
+            <p className="text-[12px] text-content-secondary">
+              Usa pelo menos 8 caracteres. Vamos validar contra palavras-passe
+              comuns para te proteger.
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="onb-confirm-password"
+            className="text-[13.5px] font-medium text-content-primary"
+          >
+            Confirmar palavra-passe
+          </Label>
+          <Input
+            id="onb-confirm-password"
+            type="password"
+            autoComplete="new-password"
+            aria-invalid={Boolean(confirmError)}
+            className="text-base"
+            {...form.register("confirm_password")}
+            data-testid="onboarding-confirm-password"
+          />
+          {confirmError ? (
+            <p className="text-[12.5px] text-destructive">{confirmError}</p>
+          ) : null}
         </div>
 
         <div className="rounded-xl border border-border-default/40 bg-surface-muted/40 p-3 space-y-2.5">
