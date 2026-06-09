@@ -1350,6 +1350,17 @@
       "in": "em",
       "comments": "comentários"
     },
+    "voice": {
+      "title": "Voz da audiência",
+      "empty": "Os comentários analisados não revelaram padrões claros de perguntas, elogios, queixas ou intenção de compra.",
+      "hint": "Excertos reais de comentários públicos, classificados automaticamente. Identificadores mantidos como aparecem publicamente no Instagram.",
+      "categories": {
+        "questions": "Pergunta",
+        "praise": "Elogio",
+        "complaints": "Queixa",
+        "buyingIntent": "Intenção de compra"
+      }
+    },
     "unavailable": {
       "default_title": "Análise detalhada de comentários não incluída",
       "default_body": "Análise detalhada de comentários não incluída neste relatório beta. A leitura abaixo usa sinais públicos dos posts, como volume de comentários e rácio de conversa.",
