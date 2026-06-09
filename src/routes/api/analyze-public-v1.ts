@@ -671,10 +671,66 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               });
               return failure("WINDOW_REQUIRES_PRO");
             }
+            // ── Pro user-initiated force_refresh (cache bypass) ────
+            // Only honored for wide windows (30d/90d) AND when the lead
+            // is Pro (already verified above). Free leads are already
+            // rejected. Baseline never honors the flag (no wide-window
+            // cost to protect against). When forceRefresh flips on, the
+            // existing cache-fresh short-circuit below is skipped so the
+            // request walks the full reserve→Apify→confirm path.
+            if (parsed.data.force_refresh && !forceRefresh) {
+              forceRefresh = true;
+              userForcedRefresh = true;
+            }
           }
-          // Cache fresh + relatório já atribuído a este lead → 0 créditos.
-          const skipReserve = cacheFreshHit && alreadyAssociated;
+          // Cache fresh + relatório já atribuído a este lead → 0 créditos,
+          // EXCETO quando o utilizador pediu explicitamente force_refresh
+          // (Pro). Nesse caso reservamos crédito e bypassamos a cache.
+          const skipReserve =
+            cacheFreshHit && alreadyAssociated && !userForcedRefresh;
           if (!skipReserve) {
+            // ── Per-(lead, profile, window) daily cap ──────────────
+            // Protects per-paid-user margin on wide-window Pro analyses.
+            // Cache hits (cacheFreshHit && !userForcedRefresh) never get
+            // here. Runs BEFORE reserveCredit so a blocked call never
+            // writes credit_ledger and never triggers Apify.
+            if (isWideWindow(windowKind) && leadId) {
+              const {
+                assertProWindowProfileDailyBudgetAvailable,
+                ProWindowBudgetExceededError,
+              } = await import("@/lib/security/apify-budget.server");
+              try {
+                await assertProWindowProfileDailyBudgetAvailable({
+                  leadId,
+                  handle: primary,
+                  window: windowKind as "30d" | "90d",
+                });
+              } catch (e) {
+                if (e instanceof ProWindowBudgetExceededError) {
+                  console.warn(
+                    "[analyze-public-v1] PRO_WINDOW_BUDGET_EXCEEDED",
+                    JSON.stringify({
+                      leadId,
+                      handle: primary,
+                      window: windowKind,
+                      spent: e.spentUsd,
+                      cap: e.capUsd,
+                    }),
+                  );
+                  await logEvent({
+                    handle: primary,
+                    competitorHandles: competitors,
+                    cacheKey,
+                    dataSource: "none",
+                    outcome: "blocked_credits",
+                    errorCode: "PRO_WINDOW_BUDGET_EXCEEDED",
+                    estimatedCostUsd: 0,
+                  });
+                  return failure("PRO_WINDOW_BUDGET_EXCEEDED");
+                }
+                throw e;
+              }
+            }
             // 90d dedicated daily budget gate. Runs only on the fresh-fetch
             // path (cache hits stay free + unblocked). Sits BEFORE
             // reserveCredit so a blocked 90d call never writes credit_ledger
