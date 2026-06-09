@@ -65,6 +65,7 @@ interface FailBody {
   error_code:
     | "INVALID_PAYLOAD"
     | "PERSISTENCE_FAILED"
+    | "EMAIL_REQUIRES_VERIFICATION"
     | "INTERNAL_ERROR";
   message: string;
   /** Lista determinística de campos com problema (sem valores, sem PII). */
@@ -331,6 +332,27 @@ export async function handleOnboardingStart(
         400,
       );
     }
+  }
+
+  // Defense-in-depth ownership guard. /api/onboarding/check-email tells the
+  // client to take the OTP path when the email already belongs to a lead;
+  // we re-check here so a misbehaving / malicious client cannot bypass it.
+  const emailNormalizedForGuard = parsed.data.email.toLowerCase();
+  const existingLead = await supabaseAdmin
+    .from("leads")
+    .select("id")
+    .eq("email_normalized", emailNormalizedForGuard)
+    .maybeSingle();
+  if (existingLead.data) {
+    return json(
+      {
+        ok: false,
+        error_code: "EMAIL_REQUIRES_VERIFICATION",
+        message:
+          "Este email já tem conta. Confirma a tua identidade para abrir o relatório.",
+      },
+      403,
+    );
   }
 
   const upserted = await upsertLead(parsed.data);

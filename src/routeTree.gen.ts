@@ -74,6 +74,8 @@ import { Route as ApiPublicEupagoWebhookRouteImport } from './routes/api/public/
 import { Route as ApiPublicEnrichSnapshotRouteImport } from './routes/api/public/enrich-snapshot'
 import { Route as ApiPublicEnrichCommentsRouteImport } from './routes/api/public/enrich-comments'
 import { Route as ApiOnboardingStartRouteImport } from './routes/api/onboarding/start'
+import { Route as ApiOnboardingClaimExistingRouteImport } from './routes/api/onboarding/claim-existing'
+import { Route as ApiOnboardingCheckEmailRouteImport } from './routes/api/onboarding/check-email'
 import { Route as ApiDebugLeadSessionStatusRouteImport } from './routes/api/debug/lead-session-status'
 import { Route as ApiAnalyzeRefreshRouteImport } from './routes/api/analyze/refresh'
 import { Route as ApiAdminWhoamiRouteImport } from './routes/api/admin/whoami'
@@ -494,6 +496,17 @@ const ApiPublicEnrichCommentsRoute = ApiPublicEnrichCommentsRouteImport.update({
 const ApiOnboardingStartRoute = ApiOnboardingStartRouteImport.update({
   id: '/api/onboarding/start',
   path: '/api/onboarding/start',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOnboardingClaimExistingRoute =
+  ApiOnboardingClaimExistingRouteImport.update({
+    id: '/api/onboarding/claim-existing',
+    path: '/api/onboarding/claim-existing',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiOnboardingCheckEmailRoute = ApiOnboardingCheckEmailRouteImport.update({
+  id: '/api/onboarding/check-email',
+  path: '/api/onboarding/check-email',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiDebugLeadSessionStatusRoute =
@@ -1099,6 +1112,8 @@ export interface FileRoutesByFullPath {
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/analyze/refresh': typeof ApiAnalyzeRefreshRoute
   '/api/debug/lead-session-status': typeof ApiDebugLeadSessionStatusRoute
+  '/api/onboarding/check-email': typeof ApiOnboardingCheckEmailRoute
+  '/api/onboarding/claim-existing': typeof ApiOnboardingClaimExistingRoute
   '/api/onboarding/start': typeof ApiOnboardingStartRoute
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
@@ -1255,6 +1270,8 @@ export interface FileRoutesByTo {
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/analyze/refresh': typeof ApiAnalyzeRefreshRoute
   '/api/debug/lead-session-status': typeof ApiDebugLeadSessionStatusRoute
+  '/api/onboarding/check-email': typeof ApiOnboardingCheckEmailRoute
+  '/api/onboarding/claim-existing': typeof ApiOnboardingClaimExistingRoute
   '/api/onboarding/start': typeof ApiOnboardingStartRoute
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
@@ -1414,6 +1431,8 @@ export interface FileRoutesById {
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/analyze/refresh': typeof ApiAnalyzeRefreshRoute
   '/api/debug/lead-session-status': typeof ApiDebugLeadSessionStatusRoute
+  '/api/onboarding/check-email': typeof ApiOnboardingCheckEmailRoute
+  '/api/onboarding/claim-existing': typeof ApiOnboardingClaimExistingRoute
   '/api/onboarding/start': typeof ApiOnboardingStartRoute
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
@@ -1574,6 +1593,8 @@ export interface FileRouteTypes {
     | '/api/admin/whoami'
     | '/api/analyze/refresh'
     | '/api/debug/lead-session-status'
+    | '/api/onboarding/check-email'
+    | '/api/onboarding/claim-existing'
     | '/api/onboarding/start'
     | '/api/public/enrich-comments'
     | '/api/public/enrich-snapshot'
@@ -1730,6 +1751,8 @@ export interface FileRouteTypes {
     | '/api/admin/whoami'
     | '/api/analyze/refresh'
     | '/api/debug/lead-session-status'
+    | '/api/onboarding/check-email'
+    | '/api/onboarding/claim-existing'
     | '/api/onboarding/start'
     | '/api/public/enrich-comments'
     | '/api/public/enrich-snapshot'
@@ -1888,6 +1911,8 @@ export interface FileRouteTypes {
     | '/api/admin/whoami'
     | '/api/analyze/refresh'
     | '/api/debug/lead-session-status'
+    | '/api/onboarding/check-email'
+    | '/api/onboarding/claim-existing'
     | '/api/onboarding/start'
     | '/api/public/enrich-comments'
     | '/api/public/enrich-snapshot'
@@ -2024,6 +2049,8 @@ export interface RootRouteChildren {
   ApiAdminWhoamiRoute: typeof ApiAdminWhoamiRoute
   ApiAnalyzeRefreshRoute: typeof ApiAnalyzeRefreshRoute
   ApiDebugLeadSessionStatusRoute: typeof ApiDebugLeadSessionStatusRoute
+  ApiOnboardingCheckEmailRoute: typeof ApiOnboardingCheckEmailRoute
+  ApiOnboardingClaimExistingRoute: typeof ApiOnboardingClaimExistingRoute
   ApiOnboardingStartRoute: typeof ApiOnboardingStartRoute
   ApiPublicEnrichCommentsRoute: typeof ApiPublicEnrichCommentsRoute
   ApiPublicEnrichSnapshotRoute: typeof ApiPublicEnrichSnapshotRoute
@@ -2531,6 +2558,20 @@ declare module '@tanstack/react-router' {
       path: '/api/onboarding/start'
       fullPath: '/api/onboarding/start'
       preLoaderRoute: typeof ApiOnboardingStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/onboarding/claim-existing': {
+      id: '/api/onboarding/claim-existing'
+      path: '/api/onboarding/claim-existing'
+      fullPath: '/api/onboarding/claim-existing'
+      preLoaderRoute: typeof ApiOnboardingClaimExistingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/onboarding/check-email': {
+      id: '/api/onboarding/check-email'
+      path: '/api/onboarding/check-email'
+      fullPath: '/api/onboarding/check-email'
+      preLoaderRoute: typeof ApiOnboardingCheckEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/debug/lead-session-status': {
@@ -3477,6 +3518,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminWhoamiRoute: ApiAdminWhoamiRoute,
   ApiAnalyzeRefreshRoute: ApiAnalyzeRefreshRoute,
   ApiDebugLeadSessionStatusRoute: ApiDebugLeadSessionStatusRoute,
+  ApiOnboardingCheckEmailRoute: ApiOnboardingCheckEmailRoute,
+  ApiOnboardingClaimExistingRoute: ApiOnboardingClaimExistingRoute,
   ApiOnboardingStartRoute: ApiOnboardingStartRoute,
   ApiPublicEnrichCommentsRoute: ApiPublicEnrichCommentsRoute,
   ApiPublicEnrichSnapshotRoute: ApiPublicEnrichSnapshotRoute,

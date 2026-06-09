@@ -169,6 +169,70 @@
       "haveAccount": "Already have an account?",
       "haveAccountCta": "Sign in"
     },
+    "entry": {
+      "eyebrow": "FREE REPORT",
+      "title": "Create an account to see the report",
+      "subtitle": "You'll analyse <1>@{{handle}}</1> — it's free.",
+      "newBadge": "New here",
+      "newTitle": "Create a free account",
+      "newPromise": "You get 2 free analyses and the report is saved.",
+      "emailPlaceholder": "your email",
+      "emailInvalid": "Please double-check your email — it looks invalid.",
+      "newCta": "Create account and open report",
+      "checking": "Checking…",
+      "haveAccount": "Already have an account?",
+      "haveAccountCta": "Sign in with email  →",
+      "trustLine": "We respect GDPR · no spam"
+    },
+    "final": {
+      "left": {
+        "eyebrow": "YOU'LL READ THE REPORT FOR",
+        "handle": "@{{handle}}",
+        "tagline": "Editorial analysis, metrics and benchmarks — ready in seconds.",
+        "bullets": {
+          "credits": "Private account with <strong>2 free credits</strong>",
+          "save": "Every future report is saved",
+          "privacy": "Public data only · GDPR"
+        }
+      },
+      "right": {
+        "title": "A few last details",
+        "subtitle": "So we can address you and save the report.",
+        "nameLabel": "Name",
+        "namePlaceholder": "Ana Marques",
+        "emailLabel": "Email",
+        "emailPlaceholder": "ana@company.com",
+        "phoneLabel": "Phone",
+        "phoneOptional": "optional",
+        "phonePlaceholder": "+351 912 345 678",
+        "consentText": "I accept the <a>data processing terms</a> required to generate, store and send this report, and I've read the <a2>privacy policy</a2>.",
+        "consentMandatory": "(required)",
+        "marketingText": "I'd like to receive tips and benchmarks.",
+        "marketingOptional": "Optional.",
+        "cta": "Open report  →",
+        "back": "Back"
+      }
+    },
+    "otp": {
+      "eyebrow": "CONFIRM IT'S YOUR ACCOUNT",
+      "title": "We sent a code to {{maskedEmail}}",
+      "subtitle": "Open your email and enter the 6-digit code to open the report.",
+      "codeLabel": "6-digit code",
+      "codePlaceholder": "123456",
+      "cta": "Confirm and open  →",
+      "verifying": "Confirming…",
+      "sending": "Sending code…",
+      "resend": "Resend code",
+      "resendIn": "Resend in {{seconds}}s",
+      "back": "Back",
+      "errors": {
+        "invalid": "Invalid code. Please double-check the 6 digits.",
+        "expired": "Code expired. Please request a new one.",
+        "sendFailed": "We couldn't send the code. Please try again.",
+        "network": "Connection error. Check your internet and try again.",
+        "claimFailed": "We couldn't open the report. Please try again."
+      }
+    },
     "login": {
       "eyebrow": "WELCOME BACK",
       "title": "Sign in and open the report",

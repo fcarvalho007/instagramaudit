@@ -16,8 +16,8 @@ export interface OnboardingStartPayload {
   phone?: string;
   marketing_consent: boolean;
   beta_consent: false;
-  purpose: UnlockFormValues["goal"];
-  profile_ownership: UnlockFormValues["profile_ownership"];
+  purpose?: UnlockFormValues["goal"];
+  profile_ownership?: UnlockFormValues["profile_ownership"];
   gdpr_consent: true;
   website: string;
   _t: number;
@@ -33,15 +33,12 @@ export function buildStartPayload(
   handle?: string,
 ): OnboardingStartPayload {
   const phone = values.phone?.trim();
-  return {
+  const base: OnboardingStartPayload = {
     name: parsedFullName || values.full_name,
     email: values.email,
     phone: phone ? phone : undefined,
     marketing_consent: values.marketing_consent === true,
     beta_consent: false,
-    // user_type intentionally omitted — column is nullable on the lead row.
-    purpose: values.goal,
-    profile_ownership: values.profile_ownership,
     // GDPR consent é validado client-side antes do submit; envia sempre `true`
     // para o servidor exigir prova explícita (Zod `literal(true)`).
     gdpr_consent: true,
@@ -49,4 +46,11 @@ export function buildStartPayload(
     _t: formStartedAt,
     ...(handle ? { handle } : {}),
   };
+  // Optional context fields — kept as nullable columns on `leads`; we only
+  // send them when the (legacy) UI happens to collect them. The new
+  // entry-modal flow drops the dedicated step that used to ask for them.
+  if (values.goal) base.purpose = values.goal;
+  if (values.profile_ownership)
+    base.profile_ownership = values.profile_ownership;
+  return base;
 }
