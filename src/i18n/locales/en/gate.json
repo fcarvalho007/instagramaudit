@@ -191,6 +191,15 @@
       "haveAccountCta": "Sign in with email  →",
       "trustLine": "We respect GDPR · no spam"
     },
+    "stepper": {
+      "badge": "Step {{n}} of {{total}}",
+      "badgeLast": "Last step",
+      "labels": {
+        "entry": "Email",
+        "qualification": "Context",
+        "final": "Account"
+      }
+    },
     "final": {
       "left": {
         "eyebrow": "LAST STEP",
@@ -230,7 +239,7 @@
         "consentMandatory": "(required)",
         "marketingText": "I'd like tips and benchmarks",
         "marketingOptional": "(optional)",
-        "cta": "Generate my report  →",
+        "cta": "Generate my report",
         "ctaCheckout": "Create account and continue",
         "footnote": "GDPR · no spam",
         "footnoteCheckout": "GDPR · no spam",
