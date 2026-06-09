@@ -203,44 +203,14 @@ export function OnboardingModal({
   }, []);
 
   /**
-   * Triggers Supabase Auth OTP for an email and switches to the verify
-   * view. Used both from the entry step (existing email) and from the
-   * /start endpoint fallback when the server reports
-   * EMAIL_REQUIRES_VERIFICATION.
-   *
-   * `shouldCreateUser: true` is intentional: a lead row can exist without a
-   * matching auth.users row (legacy leads). The first OTP confirm then
-   * fires `handle_new_user`, which calls `link_user_to_existing_reports`
-   * to bind the new auth user to the existing lead.
+   * Switch to the login view for an existing email. Pure UI transition —
+   * no email is sent and no Supabase call is made until the user enters
+   * the password.
    */
-  const sendOtpAndGoToOtpView = useCallback(
-    async (email: string, mode: "new" | "existing" = "existing"): Promise<void> => {
-      setSubmitting(true);
-      setServerError(null);
-      try {
-        const { error } = await supabase.auth.signInWithOtp({
-          email,
-          options: { shouldCreateUser: true },
-        });
-        if (error) {
-          setServerError(t("onboarding.otp.errors.sendFailed"));
-          trackOnboardingEvent({
-            event_type: "onboarding_error",
-            step: 0,
-            handle,
-            error_code: `OTP_SEND_${error.status ?? "ERR"}`,
-          });
-          return;
-        }
-        setView({ kind: "otp", email, sentAt: Date.now(), mode });
-      } catch {
-        setServerError(t("onboarding.otp.errors.network"));
-      } finally {
-        setSubmitting(false);
-      }
-    },
-    [handle, t],
-  );
+  const goToLoginView = useCallback((email: string) => {
+    setServerError(null);
+    setView({ kind: "login", email });
+  }, []);
 
   /**
    * Resolves the entry step. Looks up the email via /check-email and
@@ -270,22 +240,9 @@ export function OnboardingModal({
           return;
         }
         if (data.exists) {
-          // Email existente: a propriedade tem de ser provada. Em modos
-          // `off` / `magic_link`, o servidor já enviou um link assinado
-          // pela nossa stack (Brevo → Resend). Mostramos um painel
-          // dedicado "verifica o teu email" — o clique no link define o
-          // cookie no novo separador. Em modo `otp` caímos no painel
-          // legacy de código de 6 dígitos.
-          if (
-            (data.verification_mode === "off" ||
-              data.verification_mode === "magic_link") &&
-            (data as { verification_sent?: boolean }).verification_sent ===
-              true
-          ) {
-            setView({ kind: "magic_link_sent", email });
-            return;
-          }
-          await sendOtpAndGoToOtpView(email, "existing");
+          // Email já tem conta — pedimos a palavra-passe. Nenhum email é
+          // enviado neste passo.
+          goToLoginView(email);
           return;
         }
         form.setValue("email", email, { shouldValidate: true });
@@ -296,7 +253,7 @@ export function OnboardingModal({
         setSubmitting(false);
       }
     },
-    [clearDraft, form, handle, onSuccess, sendOtpAndGoToOtpView, t],
+    [form, goToLoginView, t],
   );
 
   /**
@@ -394,6 +351,21 @@ export function OnboardingModal({
         });
         return;
       }
+      // Email já existia em auth.users — o cliente deve fazer login.
+      if (
+        data &&
+        data.ok === false &&
+        data.error_code === "EMAIL_ALREADY_EXISTS"
+      ) {
+        setSubmitting(false);
+        goToLoginView(values.email);
+        return;
+      }
+      if (!res.ok || !data || data.ok !== true) {
+        // handled by the existing error block above; this should not be
+        // reached after the early-returns, but TS narrowing wants it.
+        return;
+      }
       succeededRef.current = true;
       trackOnboardingEvent({
         event_type: "onboarding_success",
@@ -401,12 +373,11 @@ export function OnboardingModal({
         handle,
         marketing_consent: values.marketing_consent === true,
       });
-      // Beta sem verificação (`verification_mode: "off"`): o servidor já
-      // emitiu o cookie `lead_session` e os 2 créditos. Saltamos o OTP e
-      // abrimos o relatório directamente.
+      // `AUTH_MODE=password`: o servidor já criou a Supabase auth user e
+      // emitiu o cookie `lead_session`. Avançamos directamente.
       if (
-        data.verification_mode === "off" &&
-        data.verification_required === false &&
+        data.auth_mode === "password" &&
+        data.requires_email_verification === false &&
         data.lead_id
       ) {
         clearDraft();
@@ -416,15 +387,12 @@ export function OnboardingModal({
         });
         return;
       }
-      // Caso contrário (modos `magic_link` ou `otp`) cai no painel OTP
-      // existente — o magic link partilha o mesmo ecrã de "verifica o
-      // email" enquanto o utilizador não receber o clique.
-      setView({
-        kind: "otp",
-        email: values.email,
-        sentAt: Date.now(),
-        mode: "new",
-      });
+      // `password_with_email_verification`: precisa de clicar no email.
+      // Tratamos com a mesma cópia que o login pendente — neste momento
+      // este modo não está activo no UX público, só por env override.
+      setServerError(
+        "Verifica o teu email para activar a conta antes de continuar.",
+      );
     } catch {
       setServerError(t("onboarding.errors.network"));
       trackOnboardingEvent({
@@ -439,32 +407,24 @@ export function OnboardingModal({
   });
 
   /**
-   * Path B — verifies the 6-digit OTP via Supabase, then asks the server
-   * to bind the verified session to a lead and issue `lead_session`.
-   * This is the only path that grants a session for an existing email.
+   * Path B — email + password sign-in for existing accounts. Uses
+   * `signInWithPassword`, then trades the access token at
+   * `/api/onboarding/claim-existing` for our own `lead_session` cookie.
    */
-  const handleOtpVerify = useCallback(
-    async (email: string, code: string): Promise<void> => {
+  const handleLoginSubmit = useCallback(
+    async (email: string, password: string): Promise<void> => {
       setSubmitting(true);
       setServerError(null);
       try {
-        const { data: verified, error } = await supabase.auth.verifyOtp({
-          email,
-          token: code.trim(),
-          type: "email",
-        });
+        const { data: verified, error } =
+          await supabase.auth.signInWithPassword({ email, password });
         if (error || !verified.session) {
-          const msg = error?.message ?? "";
-          if (/expired/i.test(msg)) {
-            setServerError(t("onboarding.otp.errors.expired"));
-          } else {
-            setServerError(t("onboarding.otp.errors.invalid"));
-          }
+          setServerError("Email ou palavra-passe incorretos.");
           trackOnboardingEvent({
             event_type: "onboarding_error",
             step: 2,
             handle,
-            error_code: `OTP_VERIFY_${error?.status ?? "ERR"}`,
+            error_code: `LOGIN_${error?.status ?? "ERR"}`,
           });
           return;
         }
@@ -488,12 +448,14 @@ export function OnboardingModal({
           claimData.ok !== true ||
           !claimData.lead_id
         ) {
-          setServerError(t("onboarding.otp.errors.claimFailed"));
+          setServerError(
+            "Não conseguimos preparar o acesso ao relatório. Tenta novamente.",
+          );
           trackOnboardingEvent({
             event_type: "onboarding_error",
             step: 2,
             handle,
-            error_code: "OTP_CLAIM_FAILED",
+            error_code: "LOGIN_CLAIM_FAILED",
           });
           return;
         }
@@ -509,12 +471,12 @@ export function OnboardingModal({
           credits: claimData.credits ?? 0,
         });
       } catch {
-        setServerError(t("onboarding.otp.errors.network"));
+        setServerError("Erro de rede. Tenta novamente.");
       } finally {
         setSubmitting(false);
       }
     },
-    [clearDraft, handle, onSuccess, t],
+    [clearDraft, handle, onSuccess],
   );
 
   return (
@@ -556,27 +518,14 @@ export function OnboardingModal({
             }
             honeypotRef={honeypotRef}
           />
-        ) : view.kind === "otp" ? (
-          <OtpVerifyPanel
+        ) : (
+          <LoginPanel
             email={view.email}
-            sentAt={view.sentAt}
-            mode={view.mode}
             purpose={purpose}
             submitting={submitting}
             serverError={serverError}
-            onVerify={(code) => handleOtpVerify(view.email, code)}
-            onResend={() => sendOtpAndGoToOtpView(view.email, view.mode)}
+            onSubmit={(password) => handleLoginSubmit(view.email, password)}
             onBack={goBackToEntry}
-          />
-        ) : (
-          <MagicLinkSentPanel
-            email={view.email}
-            onBack={goBackToEntry}
-            onResend={async () => {
-              // Re-pede /check-email para reenviar o link assinado.
-              await handleEntrySubmit(view.email);
-            }}
-            submitting={submitting}
           />
         )}
       </DialogContent>
