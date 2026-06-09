@@ -478,7 +478,7 @@ export function OnboardingModal({
             submitting={submitting}
             serverError={serverError}
             onSubmit={handleEntrySubmit}
-            onSignInWithEmail={(email) => sendOtpAndGoToOtpView(email)}
+            onSignInWithEmail={(email) => goToLoginView(email)}
             initialEmail={form.getValues("email")}
           />
         ) : view.kind === "qualification" ? (
