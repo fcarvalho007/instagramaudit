@@ -6,7 +6,7 @@ import { AuthCard } from "@/components/auth/auth-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, CheckCircle2, KeyRound } from "lucide-react";
+import { Loader2, CheckCircle2, KeyRound, Eye, EyeOff } from "lucide-react";
 
 export const Route = createFileRoute("/reset-password")({
   component: ResetPasswordPage,
@@ -23,6 +23,7 @@ function ResetPasswordPage() {
   // Detect recovery mode (user clicked email link)
   const [isRecovery, setIsRecovery] = useState(false);
   const [newPassword, setNewPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,6 +31,12 @@ function ResetPasswordPage() {
   const [passwordUpdated, setPasswordUpdated] = useState(false);
 
   useEffect(() => {
+    // Pre-fill email from ?email= query string (used by onboarding modal link).
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const prefill = params.get("email");
+      if (prefill) setEmail(prefill);
+    }
     // Check for recovery token in URL hash
     if (typeof window !== "undefined") {
       const hash = window.location.hash;
@@ -75,8 +82,14 @@ function ResetPasswordPage() {
   const handleSetPassword = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
-    if (newPassword.length < 6) {
-      setError(t("reset.errors.passwordShort"));
+    if (
+      newPassword.length < 8 ||
+      !/[A-Za-z]/.test(newPassword) ||
+      !/\d/.test(newPassword)
+    ) {
+      setError(
+        "A palavra-passe precisa de pelo menos 8 caracteres, uma letra e um número.",
+      );
       return;
     }
     setLoading(true);
@@ -121,16 +134,37 @@ function ResetPasswordPage() {
         <form onSubmit={handleSetPassword} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="new-password">{t("reset.newLabel")}</Label>
-            <Input
-              id="new-password"
-              type="password"
-              autoComplete="new-password"
-              placeholder={t("reset.newPlaceholder")}
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              minLength={6}
-              required
-            />
+            <div className="relative">
+              <Input
+                id="new-password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
+                placeholder={t("reset.newPlaceholder")}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                minLength={8}
+                required
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-pressed={showPassword}
+                aria-label={
+                  showPassword ? "Esconder palavra-passe" : "Mostrar palavra-passe"
+                }
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-content-tertiary hover:text-content-primary"
+              >
+                {showPassword ? (
+                  <EyeOff className="size-4" aria-hidden />
+                ) : (
+                  <Eye className="size-4" aria-hidden />
+                )}
+              </button>
+            </div>
+            <p className="text-[12px] text-content-secondary">
+              Mínimo 8 caracteres, com pelo menos uma letra e um número.
+            </p>
           </div>
 
           {error && (
