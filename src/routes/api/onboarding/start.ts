@@ -22,6 +22,10 @@ import { z, type ZodIssue } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { classifyEmailDomain } from "@/lib/leads/email-domain-class";
 import { LEAD_QUALIFICATIONS } from "@/lib/leads/qualification";
+import { getEmailVerificationMode } from "@/lib/config/email-verification.server";
+import { getBalance, grantInitialCredits } from "@/lib/credits/credits.server";
+import { setLeadCookie } from "@/lib/leads/lead-cookie.server";
+import { sendVerificationEmail } from "@/lib/email/send-verification.server";
 
 const PayloadSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -53,14 +57,17 @@ type Payload = z.infer<typeof PayloadSchema>;
 interface OkBody {
   ok: true;
   /**
-   * O `lead_id` NÃO é devolvido neste passo: a sessão (cookie `lead_session`)
-   * só é emitida em `/api/onboarding/claim-existing` depois do OTP validar
-   * o email. Devolver o id antes da prova de propriedade permitiria a um
-   * atacante criar conta com o email de outra pessoa.
+   * Só preenchido quando o `verification_mode` activo permite emitir o
+   * cookie `lead_session` imediatamente — i.e. modo `"off"` (beta sem
+   * verificação). Nos modos `"magic_link"` e `"otp"`, a sessão só é
+   * emitida depois do utilizador provar propriedade do email.
    */
-  credits: 0;
-  /** Always `true` for new leads since Fase 5 — credits unlock on OTP. */
+  lead_id?: string;
+  credits: number;
+  /** `true` quando o cliente ainda tem de provar propriedade do email. */
   verification_required: boolean;
+  /** Eco do modo activo — ajuda o cliente a decidir o próximo ecrã. */
+  verification_mode: "off" | "magic_link" | "otp";
 }
 
 export interface FieldIssue {
