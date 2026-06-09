@@ -1023,15 +1023,40 @@ function QualificationStepBody({
 }) {
   const { t } = useTranslation("gate");
   const isCheckout = purpose === "checkout";
-  const value = form.watch("qualification");
-  const [localError, setLocalError] = useState<string | null>(null);
+  const ownership = form.watch("profile_ownership") as
+    | ProfileOwnership
+    | undefined;
+  const goal = form.watch("goal") as Goal | undefined;
+  const goalOtherText = form.watch("goal_other_text") ?? "";
+  const [ownershipError, setOwnershipError] = useState<string | null>(null);
+  const [goalError, setGoalError] = useState<string | null>(null);
+  const [goalOtherError, setGoalOtherError] = useState<string | null>(null);
+
+  const profileOwnershipLabel = (v: ProfileOwnership) =>
+    t(`unlock.options.profileOwnership.${v}`);
+  const goalLabel = (v: Goal) => t(`unlock.options.goal.${v}`);
 
   const handleContinue = () => {
-    if (!value) {
-      setLocalError(t("onboarding.qualification.error"));
-      return;
+    let hasError = false;
+    if (!ownership) {
+      setOwnershipError(t("onboarding.qualification.ownershipError"));
+      hasError = true;
+    } else {
+      setOwnershipError(null);
     }
-    setLocalError(null);
+    if (!goal) {
+      setGoalError(t("onboarding.qualification.goalError"));
+      hasError = true;
+    } else {
+      setGoalError(null);
+    }
+    if (goal === "other" && goalOtherText.trim().length < 2) {
+      setGoalOtherError(t("onboarding.qualification.goalOtherHint"));
+      hasError = true;
+    } else {
+      setGoalOtherError(null);
+    }
+    if (hasError) return;
     onContinue();
   };
 
@@ -1052,38 +1077,53 @@ function QualificationStepBody({
         </DialogDescription>
       </DialogHeader>
 
-      <div className="mt-6 space-y-3">
-        <Select
-          value={value ?? undefined}
-          onValueChange={(v) => {
-            form.setValue("qualification", v as LeadQualification, {
+      <div className="mt-6 space-y-6" data-testid="onboarding-qualification">
+        <RadioCardField
+          legend={t("onboarding.qualification.ownershipLegend")}
+          name="profile_ownership"
+          options={PROFILE_OWNERSHIPS.map((v) => ({
+            value: v,
+            label: profileOwnershipLabel(v),
+            icon: PROFILE_OWNERSHIP_ICONS[v],
+          }))}
+          value={ownership}
+          onChange={(v) => {
+            form.setValue("profile_ownership", v as ProfileOwnership, {
               shouldValidate: true,
             });
-            setLocalError(null);
+            setOwnershipError(null);
           }}
-        >
-          <SelectTrigger
-            id="onb-qualification"
-            aria-invalid={Boolean(localError)}
-            className="text-base h-12"
-            data-testid="onboarding-qualification"
-          >
-            <SelectValue
-              placeholder={t("onboarding.qualification.placeholder")}
-            />
-          </SelectTrigger>
-          <SelectContent>
-            {LEAD_QUALIFICATIONS.map((q) => (
-              <SelectItem key={q} value={q}>
-                {t(`onboarding.final.right.qualificationOptions.${q}`)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          error={ownershipError ?? undefined}
+        />
 
-        {localError || serverError ? (
+        <RadioCardField
+          legend={t("onboarding.qualification.goalLegend")}
+          name="goal"
+          options={GOALS.map((v) => ({
+            value: v,
+            label: goalLabel(v),
+          }))}
+          value={goal}
+          onChange={(v) => {
+            form.setValue("goal", v as Goal, { shouldValidate: true });
+            setGoalError(null);
+            if (v !== "other") setGoalOtherError(null);
+          }}
+          error={goalError ?? undefined}
+          otherValue="other"
+          otherText={goalOtherText}
+          onOtherTextChange={(v) => {
+            form.setValue("goal_other_text", v, { shouldValidate: true });
+            if (v.trim().length >= 2) setGoalOtherError(null);
+          }}
+          otherError={goalOtherError ?? undefined}
+          otherPlaceholder={t("onboarding.qualification.goalOtherPlaceholder")}
+          otherHint={t("onboarding.qualification.goalOtherHint")}
+        />
+
+        {serverError ? (
           <Alert variant="destructive">
-            <AlertDescription>{localError ?? serverError}</AlertDescription>
+            <AlertDescription>{serverError}</AlertDescription>
           </Alert>
         ) : null}
       </div>
