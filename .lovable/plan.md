@@ -1,151 +1,74 @@
-# Final action cards — diagnosis + plan
+# Final action cards — close the remaining gaps
 
-## PHASE 1 — Diagnosis
+The previous turn shipped extended `PriorityItem`, evidence-gated deterministic rules, the new UI (chips, source pill, "Baseado em:" footer), and per-card AI source mapping. Tests pass.
 
-**Where generated**
-- Deterministic rules: `src/lib/report/block02-diagnostic.ts` → `derivePriorities()` (lines 1090–1274). 7 rule blocks, fallback fillers, scored, deduped, cap 6.
-- AI priorities: `src/lib/insights/prompt-v2.ts` (system prompt + JSON schema, exactly 3 items) → `validate-v2.ts` → stored at `aiInsightsV2.priorities`.
-- Merge + render: `src/components/report-redesign/v2/report-diagnostic-block.tsx` (lines 122–162) prepends AI items, fills with deterministic, slices to 6. `prioritySource` is `"ai"` whenever AI returns ≥1, even if dedup leaves a mostly-deterministic list.
-- UI: `src/components/report-redesign/v2/report-diagnostic-priorities.tsx` — chip = level only, footer text = `it.resolves` (the raw "Resolve a Pergunta NN").
+This plan covers only what's still missing relative to the latest spec.
 
-**System type**: AI-first when present, deterministic fills to 3+. Cap 6.
+## 1) AI context — feed comment intelligence + visual sub-scores
 
-**Data passed to deterministic generator (today)**
-- `contentType`, `funnel`, `caption`, `audience`, `integration`, `dominantFormatShare/Label`.
-- NOT passed: `commentIntel` (rich comment data already built in the diagnostic block), `coverAnalysis` (visual cover score + sub-scores already parsed in the same component), `cadence` from `result.data`, top-post specifics, caption intelligence themes.
+Files: `src/lib/insights/types.ts`, `src/lib/insights/build-context.ts`, `src/lib/insights/prompt.ts`, `src/lib/insights/prompt-v2.ts`.
 
-**Data passed to AI generator (today)** — via `buildInsightsUserPayload`
-- Available: cadence, benchmark, formats, top posts, caption_intelligence (themes/hashtags), `visual_cover` summary (consistency, visual_clarity, summary).
-- NOT available: comment intelligence (brand reply rate, audience questions, complaints, buying intent, classifiedExcerpts, topConversationPosts) — nowhere injected into the AI payload.
+- Add `comment_intelligence?` to `InsightsContext` and to the user payload built by `buildInsightsUserPayload`:
+  ```ts
+  comment_intelligence?: {
+    sample_posts: number;
+    sample_comments: number;
+    owner_reply_rate_pct: number;
+    questions_from_audience_count: number;
+    complaint_or_issue_count: number;
+    buying_intent_count: number;
+    top_conversation_post?: { comments: number; dominant_signal: string };
+  };
+  ```
+  Only included when `commentIntelligence.available === true` AND it has at least one non-zero signal (avoid forcing the model to mention neutral data).
+- Extend `visual_cover` payload block with `sub_scores` (recognizability, visualVariety) when present — already partial, just surface the two numbers most useful for priorities.
+- Add a single paragraph to the priorities section of `prompt-v2.ts`:
+  > "Quando `comment_intelligence` estiver presente com sinais não-neutros, pelo menos 1 prioridade deve citar um número real dele (reply rate, perguntas, fricção, intenção de compra). Quando `visual_cover` estiver presente com `overall_score < 70` ou sub-score baixo, pelo menos 1 prioridade pode citar esse número. Nunca inventar números fora do payload."
+- No change to provider, schema cap (3 items), budget, or any other prompt rule.
 
-**Why cards still feel generic**
-1. `derivePriorities` ignores the two richest enrichments (commentIntel, coverAnalysis) even when they exist on the same page.
-2. AI prompt never receives commentIntel, so AI cards cannot cite reply rate, complaints, buying intent.
-3. No `evidence`/`basedOn`/`source`/`category` on the item shape — UI can't show evidence chips or "Baseado em:" line.
-4. Footer shows internal copy like "Resolve a Pergunta 06" — leaks question numbers to the user.
-5. Fallback fillers ("Definir 2 rubricas editoriais recorrentes") fire generically; no gating against richer evidence-based rules.
+## 2) AI priority number-sanitization guard
 
-**Upstream blocks not feeding final cards**
-- Resposta do público (commentIntel: brandReplyRate, unansweredQuestions, complaints, buyingIntent, topConversationPosts).
-- Análise visual das capas (coverAnalysis: overall score, sub-scores recognisability/humanPresence/templateRepetition).
-- Frequência editorial / cadence reliability.
-- Caption intelligence themes (topThemes) beyond CTA share.
+File: `src/lib/insights/validate-v2.ts` + `src/components/report-redesign/v2/report-diagnostic-block.tsx`.
 
-## PHASE 2 — Extend the `PriorityItem` shape (additive)
+- After Zod validation, for each AI priority `body`, extract every numeric token (`\d+(?:[.,]\d+)?%?`). Compare against the set of numbers present in the user payload (collected once into a `Set<string>` with both `,` and `.` decimal variants and ±1 rounding tolerance for percentages).
+- If a number is **unsupported**:
+  - First attempt: strip the offending number + the surrounding parenthetical fragment if it leaves a grammatical sentence.
+  - If stripping would gut the sentence, keep the card but mark it `numbersSanitized: true` (internal flag, not persisted to AI snapshot — applied at read time in the diagnostic-block).
+- Never fail the whole validation just because numbers were unsupported — degrade gracefully.
+- This is implemented as a pure helper `sanitizeAiPriorityNumbers(payload, item)` used at the moment we map AI items into `PriorityItem` in `report-diagnostic-block.tsx` (so it can be added without churning the validator's return type).
 
-In `block02-diagnostic.ts`:
+## 3) Smarter dedup — by meaning, not only title
 
-```ts
-export type PriorityCategory = "testar" | "corrigir" | "repetir" | "oportunidade";
-export type PrioritySourceTag = "ai" | "deterministic";
-export type PriorityBasis =
-  | "Resposta do público" | "Análise visual das capas"
-  | "Frequência editorial" | "Mix de formatos"
-  | "Publicações-chave" | "Padrão das captions"
-  | "Integração entre canais" | "Tipo de conteúdo dominante";
+File: `src/lib/report/block02-diagnostic.ts` (the ranker in `derivePriorities`) and the AI-merge in `report-diagnostic-block.tsx`.
 
-export interface PriorityEvidence { label: string; value?: string }
+- Replace the current `seen by title` filter with a composite dedup key:
+  ```
+  key = normalize(title) | category | basedOn.slice(0,2).join("·")
+  ```
+- When an AI and deterministic item collide (same key), prefer the AI item; otherwise highest `_score` wins.
+- Output still capped at 6.
 
-export interface PriorityItem {
-  level: PriorityLevel;              // urgency (existing)
-  category: PriorityCategory;        // NEW — type of action
-  title: string;
-  body: string;
-  basedOn: PriorityBasis[];          // NEW — readable sections
-  evidence?: PriorityEvidence[];     // NEW — real metric chips
-  source: PrioritySourceTag;         // NEW — "ai" | "deterministic"
-  /** @deprecated kept for snapshot backward compat — UI no longer renders */
-  resolves?: string;
-}
-```
+## 4) Defensive UI when category cannot be inferred
 
-All existing rules will be migrated to set `category`, `basedOn`, `evidence`, `source: "deterministic"`. Legacy `resolves` is no longer rendered (kept optional for snapshot/test compatibility).
+File: `src/components/report-redesign/v2/report-diagnostic-priorities.tsx`.
 
-## PHASE 3 — Add evidence-gated deterministic rules
+- Today: missing `category` falls back to `"oportunidade"`. Change to: hide the category chip entirely when `it.category` is `undefined` (so legacy snapshots never get a misleading label). Inference path in `inferAiPriorityItem` already returns a concrete category, so this only affects truly legacy AI snapshots.
 
-Extend `derivePriorities` args:
-```ts
-{ ..., commentIntel?: CommentIntelligence | null,
-       coverAnalysis?: VisualCoverAnalysis | null,
-       cadence?: { weekly?: number; sufficient?: boolean; method?: string } | null }
-```
-Wire from `report-diagnostic-block.tsx` (commentIntel + coverAnalysis are already in scope).
+## 5) Tests
 
-New rules (only fire when their data exists):
+- `src/lib/report/__tests__/block02-priorities.test.ts`: add a case where two rules produce different titles but same `(category, basedOn)` and assert one is dropped.
+- `src/lib/insights/__tests__/sanitize-ai-priorities.test.ts` (new):
+  - body with a supported `25%` → kept verbatim.
+  - body with an unsupported `47%` → stripped or whole-card downgraded; never crashes.
+  - body with no numbers → unchanged.
+  - rounding tolerance: payload has `24.6%`, body says `25%` → kept.
+- `src/lib/insights/__tests__/cadence-payload.test.ts` style: snapshot test asserting `comment_intelligence` shows up in the payload when present, and is omitted when all signals are zero.
 
-**Comments**
-- Brand reply rate < 10% AND unanswered questions ≥ 3 → `corrigir` / `alta` · `Resposta do público` · evidence: `Resposta da marca X%`, `N perguntas sem resposta`.
-- Complaints/friction count ≥ 2 → `corrigir` / `alta` · evidence: `N comentários com fricção`.
-- Buying intent ≥ 2 AND CTA share < 20% → `oportunidade` / `media` · `Resposta do público` + `Integração entre canais`.
-- `topConversationPosts[0]` exists with comments ≥ 10 → `repetir` / `oportunidade` · `Publicações-chave` + `Resposta do público` · evidence: `N comentários no post âncora`.
+## 6) Validation
 
-**Visual cover**
-- Overall score < 50 → `corrigir` / `alta` · `Análise visual das capas` · evidence: `Score capas X/100`.
-- Template repetition score < 50 OR recognisability < 50 → `testar` / `media` · evidence sub-score.
-- Human-presence sub-score < 40 AND human content makes sense (creator profile) → `testar` / `oportunidade`.
+- `bunx vitest run src/lib/report/ src/lib/insights/` (target 162+ → still all green).
+- Manual: `/analyze/$username` for `@frederico.m.carvalho` (no paid enrichments) — no fabricated cover/comment cards, ≥ 3 cards rendered, no "Pergunta NN" text. Then a snapshot with comment intel — ≥ 1 "Resposta do público" card with evidence chip.
 
-**Cadence**
-- `cadence.sufficient === false` OR weekly < 1 → `corrigir` / `media` · `Frequência editorial`.
-- Strong recurring dominant format + audience non-silent → `repetir` / `oportunidade` · `Mix de formatos`.
+## Out of scope (unchanged)
 
-**Captions / CTA**
-- CTA share < 15% (existing rule) → `testar` (was unlabelled) · `Padrão das captions` · evidence: `CTA em X% das captions`.
-- Caption pattern dominant AND audience active → `repetir` / `oportunidade` · `Padrão das captions`.
-
-**Ranking**
-- Score boost (+5) for any rule with `evidence.length ≥ 1` from comments or visual cover.
-- Generic fallbacks (rubricas, repetir tema, ligação canais) only fire when ≤2 evidence-rich rules exist.
-- Guarantee: if `commentIntel.available` AND any non-neutral signal, at least one final card has `basedOn` including `Resposta do público`.
-- Guarantee: if `coverAnalysis` present AND any sub-score < 70, at least one card includes `Análise visual das capas`.
-- Final length 3–6. Dedup by title.
-
-## PHASE 4 — Feed AI priorities richer context
-
-In `src/lib/insights/build-context.ts` + `prompt.ts`:
-- Add optional `comment_intelligence` block to `InsightsContext` and `buildInsightsUserPayload` payload: `{ brand_reply_rate_pct, audience_questions_count, complaints_count, buying_intent_count, top_conversation_post: {comments, caption_excerpt} | null }`. Only included when commentIntel is available on the snapshot.
-- Add same labels to `EDITORIAL_VERDICT_EVIDENCE_ALLOWLIST` for `comment_intelligence.*`.
-- Prompt addition (priorities section only — does NOT change editorial verdict rules): "Quando `comment_intelligence` estiver presente, pelo menos 1 prioridade deve citar um número real dela (reply rate, perguntas, fricção, intenção de compra). Quando `visual_cover` estiver presente, pelo menos 1 prioridade pode citar o score ou sub-score real. Nunca inventar números fora do payload."
-- `validate-v2.ts`: when mapping AI priorities into `PriorityItem`, infer `category` (keyword heuristic on title verbs: testar/repetir/corrigir/oportunidade), set `source: "ai"`, derive `basedOn` from which payload keys appear in body text, attach `evidence` when numbers in body match payload values; **reject/downgrade** any AI priority whose body contains a `\d+%` or `\d+` number not present in the user payload (treat as hallucination → strip and let deterministic top-up fill).
-- No provider or budget changes.
-
-## PHASE 5 — UI overhaul (`report-diagnostic-priorities.tsx`)
-
-Per card:
-- Top row: urgency chip (`alta`/`media`/`oportunidade` — keep colour system) · category chip (`Testar`/`Corrigir`/`Repetir`/`Oportunidade` — neutral tone) · source pill (`IA` / `Regra` — small, tertiary).
-- Optional evidence chip row (max 2): small monospace-free chips like `Score capas 42/100`, `Resposta da marca 6%`.
-- Title (existing H4).
-- Body (2–3 sentences).
-- Footer: `Baseado em: <basedOn joined by " · ">`. Falls back to existing `resolves` only for legacy snapshots without `basedOn`.
-
-Remove from UI:
-- `it.resolves` rendering with "Resolve a Pergunta NN" — replaced by `basedOn`.
-- Drop the global `source` prop on the header (per-card pill replaces it) but keep the header subtitle.
-
-i18n: add `pt/report.json` keys for category labels, source pills, and "Baseado em:".
-
-## PHASE 6 — Validation
-
-- Extend `block02-priorities.test.ts`:
-  - Snapshot with commentIntel (low reply rate + questions) → ≥1 card with `basedOn` containing `Resposta do público` and evidence chip.
-  - Snapshot with coverAnalysis score 42 → ≥1 card with `basedOn` containing `Análise visual das capas` and evidence `Score capas 42/100`.
-  - Snapshot without either → no fabricated cover/comment cards, still ≥3 items.
-  - Ranking: evidence rules outrank fallback fillers.
-- New test in `validate-v2-priorities.test.ts`: AI priority with hallucinated number is stripped; AI priority gets `source: "ai"` and inferred `category`/`basedOn`.
-- Manual visual check in `/analyze/$username` preview: no "Pergunta NN" text remains; pills + chips render; cards feel specific.
-
-## Files to change
-
-- `src/lib/report/block02-diagnostic.ts` — extend `PriorityItem`, extend `derivePriorities` args, add rules.
-- `src/lib/insights/types.ts` — add `comment_intelligence` to `InsightsContext` + allowlist.
-- `src/lib/insights/build-context.ts` — derive comment intel summary when present.
-- `src/lib/insights/prompt.ts` — surface `comment_intelligence` in payload + signals.
-- `src/lib/insights/prompt-v2.ts` — extra prompt rule for priorities citing real numbers.
-- `src/lib/insights/validate-v2.ts` — map AI priorities into new shape, hallucination guard.
-- `src/components/report-redesign/v2/report-diagnostic-block.tsx` — pass commentIntel/coverAnalysis/cadence to `derivePriorities`; merge keeps per-item `source`.
-- `src/components/report-redesign/v2/report-diagnostic-priorities.tsx` — new card layout (urgency + category + source + evidence + basedOn).
-- `src/i18n/locales/pt/report.json` — new labels.
-- Tests as above.
-
-## Out of scope (explicit)
-
-Visual cover pipeline, comment scraping pipeline, payments, EuPago, checkout, credits, 30/90d gates, competitor gates, Free report structure, AI provider/budget caps, `/report.example`.
+Visual cover pipeline, comment scraping pipeline, payments, EuPago, checkout, credits, 30/90d gates, competitor gates, Free report structure, AI provider, budget caps, `/report.example`.
