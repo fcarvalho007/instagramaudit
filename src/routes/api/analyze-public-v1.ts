@@ -167,6 +167,8 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
     "Já usaste os teus 2 relatórios gratuitos.",
   WINDOW_REQUIRES_PRO:
     "A análise por período (30d/90d) está disponível no plano Pro.",
+  WINDOW_90D_DISABLED:
+    "A análise de 90 dias está temporariamente indisponível. Tenta 30 dias.",
 };
 
 const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
@@ -185,6 +187,7 @@ const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
   ONBOARDING_REQUIRED: 402,
   INSUFFICIENT_CREDITS: 402,
   WINDOW_REQUIRES_PRO: 403,
+  WINDOW_90D_DISABLED: 403,
 };
 
 /**
