@@ -1,119 +1,33 @@
 ## Goal
-
-Hide and reject the 90-day Pro window behind a new `app_config` flag `pro_window_90d_enabled` (default **false**). 30d remains fully functional. No change to checkout, EuPago, pricing, credits, comparison UI or Free/Public.
-
-## Why this shape
-
-The codebase already has a clean public-flag pattern:
-
-- `app_config` rows are simple key/value pairs (e.g. `feature_compare_competitors_enabled = "false"`).
-- `getPublicAppConfig` (`src/lib/config/app-config.functions.ts`) is a `createServerFn` that exposes a curated, safe-for-browser subset via `usePublicAppConfig()` (cached with React Query).
-- `analyze-public-v1.ts` already enforces a Pro gate for wide windows (`WINDOW_REQUIRES_PRO`) **before** `reserveCredit`. We bolt the 90d kill-switch into the same pre-reservation block.
+Gate competitor analysis behind the `report_full_9` entitlement in `/api/analyze-public-v1`, mirroring the existing `WINDOW_REQUIRES_PRO` pattern.
 
 ## Changes
 
-### 1. Migration · seed flag
+### 1. `src/lib/analysis/types.ts`
+Add `"COMPETITORS_REQUIRE_PRO"` to the `PublicAnalysisErrorCode` union (next to `WINDOW_REQUIRES_PRO`).
 
-```sql
-INSERT INTO public.app_config (key, value, updated_by)
-VALUES ('pro_window_90d_enabled', 'false', 'system')
-ON CONFLICT (key) DO NOTHING;
-```
+### 2. `src/routes/api/analyze-public-v1.ts`
+- Add to `ERROR_MESSAGES`:
+  `COMPETITORS_REQUIRE_PRO: "A análise de concorrentes está disponível no plano Pro."`
+- Add to `HTTP_STATUS`: `COMPETITORS_REQUIRE_PRO: 403`.
+- Insert a new gate inside the `if (!isInternalBypass)` block, **after** `leadId` resolution and **before** the wide-window gate / `reserveCredit` / cache work that triggers providers. Trigger condition: `competitors.length > 0` and `!(await hasEntitlement(leadId, "report_full_9"))`. On block:
+  - `logEvent({ handle: primary, competitorHandles: competitors, cacheKey, dataSource: "none", outcome: "blocked_credits", errorCode: "COMPETITORS_REQUIRE_PRO", estimatedCostUsd: 0 })`
+  - `return failure("COMPETITORS_REQUIRE_PRO")`
+- Order in the gate chain: onboarding → competitors-pro → wide-window (90d kill-switch → wide-window-pro) → reserveCredit.
+- If the lead is already Pro (entitlement true) the existing flow runs unchanged. The wide-window block re-uses `hasEntitlement`; both checks remain (cheap; cache hit at the lookup layer is fine, no refactor required).
+- Internal bypass (`isInternalBypass` via `INTERNAL_API_TOKEN`) is untouched — admin/refresh tooling keeps working. No new bypass is introduced.
 
-### 2. Public config exposure · `src/lib/config/app-config.functions.ts`
+### 3. Tests — `src/routes/api/__tests__/analyze-public-v1-competitors-gate.test.ts` (new)
+Unit-level assertions consistent with `analyze-public-v1-window-flag.test.ts`:
+- `COMPETITORS_REQUIRE_PRO` is in `PublicAnalysisErrorCode`.
+- `ERROR_MESSAGES["COMPETITORS_REQUIRE_PRO"]` present and PT-PT.
+- `HTTP_STATUS["COMPETITORS_REQUIRE_PRO"] === 403`.
 
-- Add `proWindow90dEnabled: boolean` to `PublicAppConfig` interface and `PUBLIC_APP_CONFIG_DEFAULTS` (default `false`).
-- Read key `pro_window_90d_enabled` in `readAppConfig([...])`.
-- Parse with existing `parseConfigBool`.
-
-### 3. Error code · `src/lib/analysis/types.ts`
-
-Add `"WINDOW_90D_DISABLED"` to `PublicAnalysisErrorCode` union.
-
-### 4. Backend reject · `src/routes/api/analyze-public-v1.ts`
-
-In `ERROR_MESSAGES` add:
-- `WINDOW_90D_DISABLED: "A análise de 90 dias está temporariamente indisponível. Tenta 30 dias."`
-
-In `HTTP_STATUS` add: `WINDOW_90D_DISABLED: 403`.
-
-Inside the wide-window block (currently lines ~586-604, immediately before the existing `WINDOW_REQUIRES_PRO` Pro entitlement check and **before** `reserveCredit`), add:
-
-```ts
-if (windowKind === "90d") {
-  const { readAppConfigValue } = await import("@/lib/config/app-config.server");
-  const flagRaw = await readAppConfigValue("pro_window_90d_enabled", "false");
-  if (flagRaw !== "true") {
-    await logEvent({
-      handle: primary,
-      competitorHandles: competitors,
-      cacheKey,
-      dataSource: "none",
-      outcome: "blocked_credits",
-      errorCode: "WINDOW_90D_DISABLED",
-      estimatedCostUsd: 0,
-    });
-    return failure("WINDOW_90D_DISABLED");
-  }
-}
-```
-
-This runs strictly **before** entitlement check and **before** `reserveCredit`, so no `credit_ledger` row is ever written for a blocked 90d call.
-
-### 5. Frontend hide · `src/components/report-redesign/v2/report-block-nav.tsx`
-
-`PREMIUM_WINDOWS = [30, 90] as const` (line 489) becomes runtime-filtered:
-
-```tsx
-import { usePublicAppConfig } from "@/lib/config/use-app-config";
-// inside component:
-const { proWindow90dEnabled } = usePublicAppConfig();
-const premiumWindows = useMemo(
-  () => (proWindow90dEnabled ? [30, 90] : [30]) as readonly number[],
-  [proWindow90dEnabled],
-);
-```
-
-Replace both `PREMIUM_WINDOWS.map(...)` (line 969) and the compact-layout dialog default (`days: 30`, already 30 — unchanged) with `premiumWindows.map(...)`. The full module-level `PREMIUM_WINDOWS` constant is removed.
-
-No other UI surfaces a 90d chip (verified: `analysis-period-selector.tsx` is a separate Lab-only selector with 30/60/90/365 and is not used in the public report nav).
-
-### 6. Admin toggle (opt-in, requirement #5)
-
-The writable admin pattern exists (`setExecutionMode` in `execution-mode.functions.ts`), but the sibling **read-only** flag `feature_compare_competitors_enabled` has no UI toggle either — it's flipped via SQL. To stay minimal and consistent with the closest precedent (a public feature-flag), **no admin UI is added**. The flag is flipped via a one-line SQL update in Supabase:
-
-```sql
-UPDATE public.app_config
-SET value = 'true', updated_at = now(), updated_by = 'admin'
-WHERE key = 'pro_window_90d_enabled';
-```
-
-If you'd rather have a button in `/admin/sistema`, say the word and I'll add `getProWindow90d`/`setProWindow90d` server fns and a `SystemSwitchRow` next to the existing Execution Mode toggle — same pattern, ~40 LOC.
+Behaviour invariants documented as test comments (deep integration covered by existing harness):
+- Free + competitors → returns `COMPETITORS_REQUIRE_PRO`, no `reserveCredit`, no provider call, no snapshot, no ledger row (gate sits before reserve/cache/Apify).
+- Pro + competitors → gate passes, existing path unchanged.
+- Free without competitors → no gate fires, current behaviour preserved.
+- Pro 30d/90d without competitors → unchanged.
 
 ## Out of scope
-
-- Checkout, EuPago webhook, pricing copy, credits, comparison UI, Free/Public flow — untouched.
-- The Pro entitlement gate (`WINDOW_REQUIRES_PRO`) and credit reservation logic — untouched.
-- Admin Lab (`apify-lab`) which uses its own window enum.
-- Tests beyond a small backend assertion (see below).
-
-## Validation
-
-| Scenario | Expected |
-|---|---|
-| Flag OFF, user has Pro + credits, clicks period in sidebar | Only "30d" chip rendered; "90d" absent. |
-| Flag OFF, direct POST to `/api/analyze-public-v1` with `window:"90d"` | 403, `error_code: "WINDOW_90D_DISABLED"`, message pt-PT, **no row in `credit_ledger`**, `analysis_events` row with `outcome=blocked_credits`. |
-| Flag OFF, POST with `window:"30d"` | Unchanged behaviour (Pro gate → reservation → fresh/cache). |
-| Flag ON | "90d" chip reappears; 90d POST flows through existing `WINDOW_REQUIRES_PRO` + reservation + execution. |
-| Free/Public default `window:"baseline"` | Untouched (gate only fires on `isWideWindow`). |
-
-Add one focused vitest spec in `src/routes/api/__tests__/analyze-public-v1-window-flag.test.ts` that asserts the error code is in `PublicAnalysisErrorCode`, mirroring `analyze-public-v1-credits.test.ts`. A full integration test of the gate is deferred to keep this PR tight.
-
-## File-change summary
-
-- `supabase/migrations/<ts>_pro_window_90d_flag.sql` — new (seed).
-- `src/lib/config/app-config.functions.ts` — add flag to interface, defaults, read list, return mapping.
-- `src/lib/analysis/types.ts` — add `WINDOW_90D_DISABLED` to union.
-- `src/routes/api/analyze-public-v1.ts` — add ERROR_MESSAGES entry, HTTP_STATUS entry, pre-reservation gate.
-- `src/components/report-redesign/v2/report-block-nav.tsx` — runtime `premiumWindows` from config.
-- `src/routes/api/__tests__/analyze-public-v1-window-flag.test.ts` — new spec.
+Checkout, EuPago, pricing, email templates, comparison UI, storage persistence, Free individual report, frontend (frontend already hides competitor inputs for Free; this is the server-side enforcement of the same rule).
