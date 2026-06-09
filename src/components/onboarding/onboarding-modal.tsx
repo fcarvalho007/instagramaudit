@@ -512,6 +512,7 @@ export function OnboardingModal({
 
 function EntryStepBody({
   handle,
+  purpose,
   submitting,
   serverError,
   onSubmit,
@@ -519,6 +520,7 @@ function EntryStepBody({
   initialEmail,
 }: {
   handle: string;
+  purpose: "analyze" | "checkout";
   submitting: boolean;
   serverError: string | null;
   onSubmit: (email: string) => Promise<void> | void;
@@ -557,18 +559,30 @@ function EntryStepBody({
     >
       <DialogHeader className="text-left space-y-2.5">
         <p className="text-eyebrow text-content-tertiary">
-          {t("onboarding.entry.eyebrow")}
+          {t(
+            purpose === "checkout"
+              ? "onboarding.entry.eyebrowCheckout"
+              : "onboarding.entry.eyebrow",
+          )}
         </p>
         <DialogTitle className="font-display text-[28px] sm:text-[32px] leading-[1.08] tracking-[-0.015em] text-content-primary text-balance">
-          {t("onboarding.entry.title")}
+          {t(
+            purpose === "checkout"
+              ? "onboarding.entry.titleCheckout"
+              : "onboarding.entry.title",
+          )}
         </DialogTitle>
         <DialogDescription className="text-[15px] text-content-secondary leading-[1.55]">
-          <Trans
-            i18nKey="onboarding.entry.subtitle"
-            ns="gate"
-            values={{ handle }}
-            components={{ 1: <span className="text-primary font-medium" /> }}
-          />
+          {purpose === "checkout" ? (
+            t("onboarding.entry.subtitleCheckout")
+          ) : (
+            <Trans
+              i18nKey="onboarding.entry.subtitle"
+              ns="gate"
+              values={{ handle }}
+              components={{ 1: <span className="text-primary font-medium" /> }}
+            />
+          )}
         </DialogDescription>
       </DialogHeader>
 
