@@ -1,24 +1,43 @@
 /**
- * Auto-login server function — testing phase only.
+ * Auto-login server function — admin-only beta shortcut.
  *
- * Sets a temporary password on the hardcoded test user, returns it to the
- * client so it can do a standard signInWithPassword. Zero friction.
+ * SECURITY: this function generates a temporary password on the server
+ * and returns it to the browser so the caller can perform a regular
+ * `signInWithPassword`. Returning a server-generated password is NEVER an
+ * acceptable public UX — it exists only to give the operator a 1-click
+ * login during private beta debugging.
  *
- * Disabled by default in production. Set `BETA_AUTOLOGIN=1` to opt in.
- * Returning a server-generated password to the browser is acceptable only
- * inside the private beta — never as a user-facing pattern.
+ * Gates (ALL required):
+ *   1. `BETA_AUTOLOGIN=1` env var must be set on the server.
+ *   2. The caller's email (read from the existing Supabase session) must
+ *      be in `ADMIN_ALLOWED_EMAILS`. If no session exists, the function
+ *      throws — there is no public path that succeeds.
+ *
+ * The public `/login` page is a normal email+password form; it never
+ * calls this function.
  */
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { randomBytes } from "crypto";
 
 const ALLOWED_EMAIL = "fredericodigital@gmail.com";
 
 export const autoLogin = createServerFn({ method: "POST" })
-  .handler(async () => {
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
     if (process.env.BETA_AUTOLOGIN !== "1") {
-      throw new Error(
-        "autoLogin disabled — set BETA_AUTOLOGIN=1 to enable the beta-only shortcut.",
-      );
+      throw new Response("Not found", { status: 404 });
+    }
+    // Caller must already be an admin (signed-in Supabase session with
+    // email in ADMIN_ALLOWED_EMAILS). This prevents anonymous browsers
+    // from triggering the shortcut even if BETA_AUTOLOGIN is flipped on.
+    const callerEmail = (context.claims?.email as string | undefined) ?? null;
+    const allowed = (process.env.ADMIN_ALLOWED_EMAILS ?? "")
+      .toLowerCase()
+      .split(/[,\s]+/)
+      .filter(Boolean);
+    if (!callerEmail || !allowed.includes(callerEmail.toLowerCase())) {
+      throw new Response("Not found", { status: 404 });
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // 1. Find or create the user
