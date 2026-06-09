@@ -46,6 +46,7 @@ function baseInputs() {
     sampleSize: 12,
     totals: { likes: 1920, comments: 96, postsWithComments: 11, analysedPosts: 12 },
     topConversationPost: null,
+    explanation: "",
   };
   const integration: IntegrationResult = {
     available: true,
