@@ -37,6 +37,27 @@ export const SERVER_PRODUCTS: Record<ProductCode, ServerProduct> = {
     currency: "EUR",
     description: "1 crédito adicional para gerar novas análises (período ou concorrente) no relatório Pro.",
   },
+  credits_3: {
+    code: "credits_3",
+    namePt: "3 créditos de análise",
+    amountCents: 900,
+    currency: "EUR",
+    description: "Pack de 3 créditos para gerar novas análises no relatório Pro.",
+  },
+  credits_10: {
+    code: "credits_10",
+    namePt: "10 créditos de análise",
+    amountCents: 2500,
+    currency: "EUR",
+    description: "Pack de 10 créditos para gerar novas análises no relatório Pro.",
+  },
+  credits_25: {
+    code: "credits_25",
+    namePt: "25 créditos de análise",
+    amountCents: 4900,
+    currency: "EUR",
+    description: "Pack de 25 créditos para gerar novas análises no relatório Pro.",
+  },
 };
 
 export function getServerProduct(code: ProductCode): ServerProduct {
