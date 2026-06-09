@@ -54,7 +54,7 @@ export function ReportDiagnosticPriorities({ items }: Props) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {items.map((it, i) => {
           const s = STYLE[it.level];
-          const category = it.category ?? "oportunidade";
+          const category = it.category;
           const basedOn = it.basedOn ?? [];
           const evidence = it.evidence ?? [];
           const src = it.source ?? "deterministic";
@@ -79,14 +79,16 @@ export function ReportDiagnosticPriorities({ items }: Props) {
                 >
                   {t(s.labelKey)}
                 </span>
-                <span
-                  className={cn(
-                    "inline-flex items-center rounded-full px-2.5 py-1",
-                    "text-eyebrow-sm ring-1 bg-surface-muted text-content-secondary ring-border-default",
-                  )}
-                >
-                  {t(CATEGORY_KEY[category])}
-                </span>
+                {category ? (
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-full px-2.5 py-1",
+                      "text-eyebrow-sm ring-1 bg-surface-muted text-content-secondary ring-border-default",
+                    )}
+                  >
+                    {t(CATEGORY_KEY[category])}
+                  </span>
+                ) : null}
                 <span
                   className={cn(
                     "ml-auto inline-flex items-center rounded-full px-2 py-0.5",
