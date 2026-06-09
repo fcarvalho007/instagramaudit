@@ -28,6 +28,7 @@ import {
   Check,
   Briefcase,
   Eye,
+  EyeOff,
   LineChart,
   Loader2,
   Lock,
@@ -52,11 +53,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   unlockFormSchema,
   type UnlockFormValues,
   type Goal,
   type ProfileOwnership,
 } from "@/lib/unlock-flow";
+import {
+  LEAD_QUALIFICATIONS,
+  LEAD_QUALIFICATION_LABELS_PT,
+  type LeadQualification,
+} from "@/lib/leads/qualification";
 import { GridSelectField } from "@/components/onboarding/grid-select-field";
 import { supabase } from "@/integrations/supabase/client";
 import { parseFullName } from "@/lib/names/parse-full-name";
