@@ -10,6 +10,7 @@
 import type { EnrichmentResult } from "@/lib/enrichment/types";
 import { buildComparisonEvidence, hashEvidencePack } from "./build-evidence";
 import { buildUserPrompt, SYSTEM_PROMPT_V1 } from "./prompt";
+import { recordProviderCall } from "@/lib/analysis/events";
 import {
   COMPARISON_READINGS_KEY,
   COMPARISON_READINGS_MODEL,
@@ -38,7 +39,10 @@ function extractJson(text: string): unknown {
 
 export async function generateComparisonReadingsForSnapshot(
   normalizedPayload: AnyRecord,
+  options?: { handle?: string | null; analysisEventId?: string | null },
 ): Promise<EnrichmentResult> {
+  const handle = (options?.handle ?? "").trim();
+  const analysisEventId = options?.analysisEventId ?? null;
   const window =
     typeof (normalizedPayload.meta as AnyRecord | undefined)?.windowLabel ===
     "string"
@@ -73,6 +77,21 @@ export async function generateComparisonReadingsForSnapshot(
   const apiKey = process.env.LOVABLE_API_KEY;
   if (!apiKey) {
     console.warn(`${LOG} LOVABLE_API_KEY missing — skipping`);
+    if (handle) {
+      await recordProviderCall({
+        network: "instagram",
+        provider: "lovable_ai",
+        actor: `comparison_readings:${model}`,
+        handle,
+        status: "config_error",
+        httpStatus: null,
+        durationMs: 0,
+        model,
+        errorMessage: "LOVABLE_API_KEY missing",
+        analysisEventId,
+        sourceContext: "public_analysis",
+      });
+    }
     return { ok: true, payloadPatch: null };
   }
 
@@ -81,6 +100,12 @@ export async function generateComparisonReadingsForSnapshot(
   const startedAt = Date.now();
 
   let stored: StoredComparisonReadings;
+  let logStatus: "success" | "timeout" | "http_error" | "network_error" | "config_error" = "success";
+  let httpStatus: number | null = null;
+  let promptTokens: number | null = null;
+  let completionTokens: number | null = null;
+  let totalTokens: number | null = null;
+  let logError: string | null = null;
   try {
     const res = await fetch(AI_URL, {
       method: "POST",
@@ -101,11 +126,21 @@ export async function generateComparisonReadingsForSnapshot(
       signal: controller.signal,
     });
 
+    httpStatus = res.status;
     if (!res.ok) {
       const body = await res.text().catch(() => "");
       throw new Error(`gateway ${res.status}: ${body.slice(0, 200)}`);
     }
     const data = (await res.json()) as AnyRecord;
+    const usage = (data.usage as AnyRecord | undefined) ?? undefined;
+    if (usage) {
+      const pt = Number(usage.prompt_tokens);
+      const ct = Number(usage.completion_tokens);
+      const tt = Number(usage.total_tokens);
+      promptTokens = Number.isFinite(pt) ? pt : null;
+      completionTokens = Number.isFinite(ct) ? ct : null;
+      totalTokens = Number.isFinite(tt) ? tt : null;
+    }
     const content =
       ((data.choices as AnyRecord[] | undefined)?.[0]?.message as AnyRecord | undefined)
         ?.content;
@@ -136,6 +171,14 @@ export async function generateComparisonReadingsForSnapshot(
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`${LOG} failed`, msg);
+    logError = msg.slice(0, 500);
+    if (err instanceof Error && err.name === "AbortError") {
+      logStatus = "timeout";
+    } else if (httpStatus !== null && httpStatus >= 400) {
+      logStatus = "http_error";
+    } else {
+      logStatus = "network_error";
+    }
     stored = {
       version: "1",
       model,
@@ -150,6 +193,30 @@ export async function generateComparisonReadingsForSnapshot(
     };
   } finally {
     clearTimeout(timer);
+  }
+
+  // Best-effort telemetry: log every gateway call to provider_call_logs so
+ // the Lovable AI daily budget gate has data to sum. Skipped when handle
+ // is unknown (no useful row to write).
+  if (handle) {
+    await recordProviderCall({
+      network: "instagram",
+      provider: "lovable_ai",
+      actor: `comparison_readings:${model}`,
+      handle,
+      status: logStatus,
+      httpStatus,
+      durationMs: Date.now() - startedAt,
+      model,
+      promptTokens,
+      completionTokens,
+      totalTokens,
+      // No token-price table yet — admit null. Future PR may compute USD.
+      estimatedCostUsd: null,
+      errorMessage: logError ?? undefined,
+      analysisEventId,
+      sourceContext: "public_analysis",
+    });
   }
 
   return {

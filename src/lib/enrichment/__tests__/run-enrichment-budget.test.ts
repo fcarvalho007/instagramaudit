@@ -1,11 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { assertSpy, generateInsightsSpy, generateInsightsV2Spy, generateVisualCoverSpy, generateCaptionSemanticSpy } = vi.hoisted(() => ({
+const {
+  assertSpy,
+  generateInsightsSpy,
+  generateInsightsV2Spy,
+  generateVisualCoverSpy,
+  generateCaptionSemanticSpy,
+  lovableAllowedSpy,
+  lovableAssertSpy,
+  generateComparisonReadingsSpy,
+} = vi.hoisted(() => ({
   assertSpy: vi.fn(),
   generateInsightsSpy: vi.fn(),
   generateInsightsV2Spy: vi.fn(),
   generateVisualCoverSpy: vi.fn(),
   generateCaptionSemanticSpy: vi.fn(),
+  lovableAllowedSpy: vi.fn((_handle: string) => true),
+  lovableAssertSpy: vi.fn(),
+  generateComparisonReadingsSpy: vi.fn(),
 }));
 
 // Mocks must be declared before importing the SUT.
@@ -36,6 +48,24 @@ vi.mock("@/lib/report/caption-semantic-analysis.server", () => ({
   generateCaptionSemanticAnalysis: generateCaptionSemanticSpy,
 }));
 
+vi.mock("@/lib/security/lovable-ai-allowlist", () => ({
+  isLovableAiAllowed: (handle: string) => lovableAllowedSpy(handle),
+}));
+
+vi.mock("@/lib/security/lovable-ai-budget.server", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/security/lovable-ai-budget.server")>(
+    "@/lib/security/lovable-ai-budget.server",
+  );
+  return {
+    ...actual,
+    assertLovableAiDailyBudgetAvailable: lovableAssertSpy,
+  };
+});
+
+vi.mock("@/lib/comparison-readings/generate.server", () => ({
+  generateComparisonReadingsForSnapshot: generateComparisonReadingsSpy,
+}));
+
 // Avoid touching DB / DataForSEO from unrelated branches.
 vi.mock("@/integrations/supabase/client.server", () => ({
   supabaseAdmin: { from: () => ({ select: () => ({ eq: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }) }) }) },
@@ -46,6 +76,7 @@ vi.mock("@/lib/security/dataforseo-allowlist", () => ({
 }));
 
 import { OpenAiBudgetExceededError } from "@/lib/security/openai-budget.server";
+import { LovableAiBudgetExceededError } from "@/lib/security/lovable-ai-budget.server";
 import { runEnrichment } from "@/lib/enrichment/run-enrichment.server";
 import type { SnapshotRow } from "@/lib/analysis/cache";
 
@@ -76,6 +107,10 @@ beforeEach(() => {
   generateInsightsV2Spy.mockReset();
   generateVisualCoverSpy.mockReset();
   generateCaptionSemanticSpy.mockReset();
+  lovableAllowedSpy.mockReset();
+  lovableAllowedSpy.mockReturnValue(true);
+  lovableAssertSpy.mockReset();
+  generateComparisonReadingsSpy.mockReset();
 });
 
 describe("run-enrichment OpenAI budget gate", () => {
@@ -124,5 +159,34 @@ describe("run-enrichment OpenAI budget gate", () => {
     expect(res.payloadPatch).toBeNull();
     expect(generateCaptionSemanticSpy).not.toHaveBeenCalled();
     warn.mockRestore();
+  });
+});
+
+describe("run-enrichment Lovable AI gate (comparison_readings)", () => {
+  it("kill-switch off / not allowed → skipReason sem chamar gateway", async () => {
+    lovableAllowedSpy.mockReturnValue(false);
+    const res = await runEnrichment("comparison_readings", makeSnapshot(), null);
+    expect(res.ok).toBe(true);
+    expect(res.payloadPatch).toBeNull();
+    expect(res.skipReason).toBe("LOVABLE_AI_DISABLED_OR_NOT_ALLOWED");
+    expect(generateComparisonReadingsSpy).not.toHaveBeenCalled();
+  });
+
+  it("budget excedido → skipReason sem chamar gateway", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    lovableAssertSpy.mockRejectedValueOnce(new LovableAiBudgetExceededError(10, 5));
+    const res = await runEnrichment("comparison_readings", makeSnapshot(), null);
+    expect(res.ok).toBe(true);
+    expect(res.payloadPatch).toBeNull();
+    expect(res.skipReason).toBe("LOVABLE_AI_BUDGET_EXCEEDED");
+    expect(generateComparisonReadingsSpy).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("gates ok mas sem competidores → skip silencioso (sem skipReason)", async () => {
+    lovableAssertSpy.mockResolvedValueOnce(undefined);
+    const res = await runEnrichment("comparison_readings", makeSnapshot(), null);
+    expect(res).toEqual({ ok: true, payloadPatch: null });
+    expect(generateComparisonReadingsSpy).not.toHaveBeenCalled();
   });
 });
