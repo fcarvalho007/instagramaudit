@@ -192,7 +192,7 @@ function BetaFeedbackBanner() {
   const { feedback } = BETA_COPY;
   return (
     <section
-      aria-label="Feedback durante a fase beta"
+      aria-label="Feedback do relatório"
       className="w-full bg-slate-50 border-t border-slate-200"
     >
       <div className="mx-auto max-w-7xl px-5 md:px-6 py-10 md:py-12">
