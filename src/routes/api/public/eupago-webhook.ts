@@ -26,7 +26,10 @@ import {
   POST_PURCHASE_BETA_KIND,
 } from "@/lib/credits/credits.server";
 import { recordProductEvent } from "@/lib/tracking.server";
-import { enqueuePaidEnrichmentsForPayment } from "@/lib/enrichment/enqueue-paid.server";
+import {
+  enqueuePaidEnrichmentsForPayment,
+  enqueueCommentScrapingForPayment,
+} from "@/lib/enrichment/enqueue-paid.server";
 import type { ProductCode } from "@/lib/payments/products";
 
 const UUID_RE =
@@ -183,6 +186,20 @@ export const Route = createFileRoute("/api/public/eupago-webhook")({
           } catch (err) {
             console.error(
               "[eupago-webhook] enqueuePaidEnrichmentsForPayment failed",
+              err,
+            );
+          }
+
+          // Post-payment: also enqueue the comment scraper (Pro-only path).
+          // Best-effort; bounded by per-snapshot budget plan in the scraper.
+          try {
+            await enqueueCommentScrapingForPayment({
+              reportCacheKey: row.report_cache_key ?? null,
+              origin: new URL(request.url).origin,
+            });
+          } catch (err) {
+            console.error(
+              "[eupago-webhook] enqueueCommentScrapingForPayment failed",
               err,
             );
           }

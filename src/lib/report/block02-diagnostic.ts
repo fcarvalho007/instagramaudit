@@ -1091,7 +1091,8 @@ export function derivePriorities(args: {
   dominantFormatShare: number;
   dominantFormatLabel: string | null;
 }): PriorityItem[] {
-  const out: PriorityItem[] = [];
+  type Scored = PriorityItem & { _score: number };
+  const out: Scored[] = [];
   const {
     caption,
     audience,
@@ -1099,6 +1100,7 @@ export function derivePriorities(args: {
     dominantFormatShare,
     dominantFormatLabel,
     funnel,
+    contentType,
   } = args;
 
   // ALTA: público silencioso + poucas perguntas/CTAs
@@ -1115,6 +1117,7 @@ export function derivePriorities(args: {
           ? "Captions já são longas — basta acrescentar uma pergunta clara para convidar o público a conversar."
           : "Convidar o leitor a responder ajuda a transformar consumo passivo em interação visível.",
       resolves: "Resolve a Pergunta 06 — resposta do público.",
+      _score: 10,
     });
   }
 
@@ -1127,6 +1130,7 @@ export function derivePriorities(args: {
         dominantFormatShare,
       )} % das publicações são em ${dominantFormatLabel}. Testar formatos complementares pode equilibrar o alcance e a conversa.`,
       resolves: "Resolve a Pergunta 03 — formato dominante.",
+      _score: 7,
     });
   }
 
@@ -1142,19 +1146,124 @@ export function derivePriorities(args: {
       body:
         "Há margem para criar conteúdo que explica e aprofunda — peças que posicionam o perfil como referência antes de pedir ação.",
       resolves: "Resolve as Perguntas 02 e 08 — fase do funil e objetivo.",
+      _score: 6,
     });
   }
 
-  // Se nada disparou, fallback útil baseado em integração
-  if (out.length === 0 && integration.available) {
+  // ALTA: bio sem link externo (perde-se tráfego óbvio)
+  if (integration.available && integration.signals.bioLink.detected === false) {
+    out.push({
+      level: "alta",
+      title: "Adicionar um link na bio",
+      body:
+        "A bio não aponta para nenhum site, newsletter ou destino próprio. Adicionar um link claro permite converter visitas do perfil em audiência fora do Instagram.",
+      resolves: "Resolve a Pergunta 07 — integração entre canais.",
+      _score: 8,
+    });
+  }
+
+  // MÉDIA: CTA explícito quase ausente
+  if (
+    integration.available &&
+    integration.signals.explicitCta.sharePct < 10 &&
+    integration.signals.bioLink.detected
+  ) {
+    out.push({
+      level: "media",
+      title: "Testar 1 CTA explícito por semana",
+      body:
+        "Apenas " +
+        integration.signals.explicitCta.sharePct +
+        " % das captions têm uma chamada à acção. Pedir uma acção clara (\"comenta\", \"guarda\", \"link na bio\") aumenta a probabilidade de conversão.",
+      resolves: "Resolve a Pergunta 07 — integração entre canais.",
+      _score: 7,
+    });
+  }
+
+  // OPORTUNIDADE: captions curtas e audiência não-silenciosa → testar legendas mais longas
+  if (
+    caption.available &&
+    caption.label === "Curtas e diretas" &&
+    audience.available &&
+    audience.label !== "Audiência silenciosa"
+  ) {
+    out.push({
+      level: "oportunidade",
+      title: "Testar legendas mais longas em 2 posts",
+      body:
+        "As legendas são curtas (média de " +
+        caption.avgLength +
+        " caracteres). Testar duas legendas explicativas pode ajudar a perceber se contexto adicional aumenta interacção.",
+      resolves: "Resolve a Pergunta 04 — padrão das captions.",
+      _score: 5,
+    });
+  }
+
+  // OPORTUNIDADE: dependência clara de 1 tipo de conteúdo
+  if (
+    contentType.available &&
+    contentType.sharePct >= 55 &&
+    contentType.label &&
+    contentType.label !== "Misto / pouco claro"
+  ) {
+    out.push({
+      level: "oportunidade",
+      title: "Variar a abordagem editorial",
+      body:
+        Math.round(contentType.sharePct) +
+        " % dos posts são " +
+        String(contentType.label).toLowerCase() +
+        ". Introduzir 1–2 peças de uma abordagem diferente por semana ajuda a evitar saturação.",
+      resolves: "Resolve a Pergunta 01 — tipo de conteúdo dominante.",
+      _score: 5,
+    });
+  }
+
+  // Fallback útil baseado em integração (preenche se ainda <3)
+  if (out.length < 3 && integration.available) {
     out.push({
       level: "oportunidade",
       title: "Tornar a ligação entre canais mais visível",
       body:
         "Mencionar site, newsletter ou outros canais nas captions ajuda a audiência a sair do Instagram quando faz sentido.",
       resolves: "Resolve a Pergunta 07 — integração entre canais.",
+      _score: 3,
     });
   }
 
-  return out.slice(0, 3);
+  // Fallback genérico — repetir o que já funciona (sempre disponível)
+  if (out.length < 3) {
+    out.push({
+      level: "oportunidade",
+      title: "Repetir o tema do post com mais interacção",
+      body:
+        "Identifica o post com mais comentários ou likes dos últimos 30 dias e replica o ângulo (tema, formato, abertura) noutra peça nas próximas duas semanas.",
+      resolves: "Resolve a Pergunta 05 — resposta do público.",
+      _score: 2,
+    });
+  }
+  if (out.length < 3) {
+    out.push({
+      level: "oportunidade",
+      title: "Definir 2 rubricas editoriais recorrentes",
+      body:
+        "Criar duas rubricas claras (ex.: dica semanal + bastidores) facilita planeamento, dá ritmo ao perfil e ajuda a audiência a reconhecer o que esperar.",
+      resolves: "Resolve a Pergunta 01 — clareza editorial.",
+      _score: 1,
+    });
+  }
+
+  // Deduplicar por título e ordenar por score desc.
+  const seen = new Set<string>();
+  const ranked = out
+    .filter((it) => {
+      if (seen.has(it.title)) return false;
+      seen.add(it.title);
+      return true;
+    })
+    .sort((a, b) => b._score - a._score)
+    .slice(0, 6)
+    .map(({ _score, ...rest }) => rest);
+
+  return ranked;
 }

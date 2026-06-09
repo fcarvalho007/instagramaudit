@@ -157,3 +157,128 @@ export async function enqueuePaidEnrichmentsForPayment(args: {
     console.error(`${LOG} enqueuePaidEnrichmentsForPayment threw`, err);
   }
 }
+
+/**
+ * Post-payment top-up for the comment-intelligence scraper.
+ *
+ * Mirrors `enqueuePaidEnrichmentsForPayment` but targets the dedicated
+ * `comment_enrichment_jobs` queue (separate from `enrichment_jobs`).
+ *
+ * Idempotent: short-circuits if the snapshot already has comment
+ * intelligence or a pending/processing job. Best-effort: never throws.
+ */
+const COMMENT_LOG = "[enqueue-comments-paid]";
+
+function isValidInstagramPostUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    if (!/^(www\.)?instagram\.com$/.test(u.hostname)) return false;
+    return /^\/(p|reel|tv)\//.test(u.pathname);
+  } catch {
+    return false;
+  }
+}
+
+export async function enqueueCommentScrapingForPayment(args: {
+  reportCacheKey: string | null | undefined;
+  origin: string;
+}): Promise<void> {
+  if (!args.reportCacheKey) {
+    console.info(`${COMMENT_LOG} payment has no report_cache_key; nothing to enqueue`);
+    return;
+  }
+  try {
+    const { data: snap, error: snapErr } = await supabaseAdmin
+      .from("analysis_snapshots")
+      .select("id, instagram_username, normalized_payload")
+      .eq("cache_key", args.reportCacheKey)
+      .maybeSingle();
+    if (snapErr || !snap?.id) {
+      console.info(`${COMMENT_LOG} no snapshot for cache_key`, args.reportCacheKey);
+      return;
+    }
+
+    const payload = (snap.normalized_payload ?? {}) as Record<string, unknown>;
+    // Skip if comment intelligence already exists and is "available".
+    const ci = payload.comment_intelligence as { available?: boolean } | undefined;
+    if (ci?.available === true) {
+      console.info(`${COMMENT_LOG} snapshot already has comment_intelligence`, snap.id);
+      return;
+    }
+
+    // Skip if a pending/processing job already exists (unique index enforces it).
+    const { data: existing } = await supabaseAdmin
+      .from("comment_enrichment_jobs")
+      .select("id, status")
+      .eq("snapshot_id", snap.id)
+      .in("status", ["pending", "processing"])
+      .maybeSingle();
+    if (existing?.id) {
+      console.info(`${COMMENT_LOG} job already pending for snapshot`, snap.id);
+      return;
+    }
+
+    // Select up to 12 post permalinks ranked by comments, then engagement.
+    type PostLike = {
+      permalink?: string | null;
+      comments?: number | null;
+      engagement_pct?: number | null;
+      taken_at_iso?: string | null;
+    };
+    const posts = (payload.posts as PostLike[] | undefined) ?? [];
+    const postUrls = posts
+      .filter((p) => !!p.permalink)
+      .sort((a, b) => {
+        const ca = a.comments ?? 0;
+        const cb = b.comments ?? 0;
+        if (cb !== ca) return cb - ca;
+        const ea = a.engagement_pct ?? 0;
+        const eb = b.engagement_pct ?? 0;
+        if (eb !== ea) return eb - ea;
+        return (b.taken_at_iso ?? "").localeCompare(a.taken_at_iso ?? "");
+      })
+      .slice(0, 12)
+      .map((p) => p.permalink!)
+      .filter((u): u is string => typeof u === "string" && isValidInstagramPostUrl(u));
+
+    if (postUrls.length === 0) {
+      console.info(`${COMMENT_LOG} no valid post URLs for snapshot`, snap.id);
+      return;
+    }
+
+    const { data: jobRow, error: jobErr } = await supabaseAdmin
+      .from("comment_enrichment_jobs")
+      .insert({
+        snapshot_id: snap.id,
+        analysis_event_id: null,
+        handle: snap.instagram_username,
+        post_urls: postUrls,
+        status: "pending",
+      } as never)
+      .select("id")
+      .single();
+
+    if (jobErr || !jobRow?.id) {
+      console.error(`${COMMENT_LOG} insert job failed`, jobErr?.message);
+      return;
+    }
+
+    const internalToken = process.env.INTERNAL_API_TOKEN;
+    if (internalToken && args.origin) {
+      fetch(`${args.origin}/api/public/enrich-comments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${internalToken}`,
+        },
+        body: JSON.stringify({ job_id: jobRow.id }),
+      }).catch((err) => {
+        console.warn(`${COMMENT_LOG} trigger failed (job ensures delivery)`, err);
+      });
+    }
+
+    console.info(`${COMMENT_LOG} enqueued comment scraping for`, snap.id, postUrls.length, "posts");
+  } catch (err) {
+    console.error(`${COMMENT_LOG} unexpected failure`, err);
+  }
+}

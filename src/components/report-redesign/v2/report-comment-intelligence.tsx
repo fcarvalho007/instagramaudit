@@ -445,6 +445,9 @@ export function CommentIntelligenceSection({ data }: Props) {
         </InsightCallout>
       )}
 
+      {/* Voz da audiência — excertos reais classificados */}
+      <VozDaAudienciaSection data={data} />
+
       {/* Top conversation post */}
       {data.topConversationPost && (
         <div className="rounded-lg border border-border-subtle bg-surface-secondary px-3.5 py-2.5 space-y-1">
@@ -512,6 +515,98 @@ function MetricCell({
       </p>
       <p className="mt-0.5 text-[14px] font-semibold tabular-nums text-content-primary">
         {value}
+      </p>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Voz da audiência — quoted excerpts from classifiedExcerpts
+// ─────────────────────────────────────────────────────────────────────
+
+type ExcerptCategory = "questions" | "praise" | "complaints" | "buyingIntent";
+
+const CATEGORY_TONE: Record<ExcerptCategory, string> = {
+  questions: "border-accent-primary/20 bg-tint-primary text-accent-primary",
+  praise: "border-signal-success/20 bg-tint-success text-signal-success",
+  complaints: "border-signal-warning/20 bg-tint-warning text-signal-warning",
+  buyingIntent: "border-accent-primary/20 bg-tint-primary text-accent-primary",
+};
+
+const CATEGORY_ICON: Record<ExcerptCategory, typeof HelpCircle> = {
+  questions: HelpCircle,
+  praise: ThumbsUp,
+  complaints: AlertTriangle,
+  buyingIntent: ShoppingCart,
+};
+
+function VozDaAudienciaSection({ data }: { data: CommentIntelligence }) {
+  const { t } = useTranslation("report");
+  const excerpts = data.classifiedExcerpts;
+  if (!excerpts) return null;
+
+  const categories: ExcerptCategory[] = [
+    "questions",
+    "praise",
+    "complaints",
+    "buyingIntent",
+  ];
+  const visible = categories
+    .map((cat) => ({
+      cat,
+      items: (excerpts[cat] ?? []).slice(0, 2),
+    }))
+    .filter((g) => g.items.length > 0);
+
+  if (visible.length === 0) {
+    return (
+      <div className="space-y-1.5">
+        <p className="text-eyebrow-sm text-content-tertiary">
+          {t("comments.voice.title")}
+        </p>
+        <p className="text-xs leading-relaxed text-content-tertiary">
+          {t("comments.voice.empty")}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2.5">
+      <p className="text-eyebrow-sm text-content-tertiary">
+        {t("comments.voice.title")}
+      </p>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {visible.map((group) =>
+          group.items.map((it, i) => {
+            const Icon = CATEGORY_ICON[group.cat];
+            return (
+              <div
+                key={`${group.cat}-${i}`}
+                className="rounded-lg border border-border-subtle bg-surface-secondary px-3 py-2.5 space-y-1.5"
+              >
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-medium uppercase tracking-wide",
+                      CATEGORY_TONE[group.cat],
+                    )}
+                  >
+                    <Icon className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    {t(`comments.voice.categories.${group.cat}`)}
+                  </span>
+                </div>
+                <p className="text-[13px] leading-relaxed text-content-secondary italic break-words">
+                  &ldquo;{it.text}&rdquo;
+                </p>
+                <p className="text-[11px] text-content-tertiary">@{it.username}</p>
+              </div>
+            );
+          }),
+        )}
+      </div>
+      <p className="text-[10.5px] leading-relaxed text-content-tertiary italic">
+        {t("comments.voice.hint")}
       </p>
     </div>
   );
