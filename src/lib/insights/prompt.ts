@@ -590,6 +590,9 @@ export function buildInsightsUserPayload(
       ? { caption_intelligence: ctx.caption_intelligence }
       : {}),
     ...(ctx.visual_cover ? { visual_cover: ctx.visual_cover } : {}),
+    ...(ctx.comment_intelligence
+      ? { comment_intelligence: ctx.comment_intelligence }
+      : {}),
     available_signals: signals,
     allowed_evidence_paths: signals,
   };
