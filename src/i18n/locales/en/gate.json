@@ -206,6 +206,9 @@
         "emailLabel": "Email",
         "emailPlaceholder": "ana@company.com",
         "emailHint": "Prefer your work email when possible.",
+        "phoneLabel": "Phone",
+        "phoneOptional": "optional",
+        "phonePlaceholder": "+351 …",
         "qualificationLabel": "Which best describes you?",
         "qualificationPlaceholder": "Pick one",
         "qualificationOptions": {
@@ -224,6 +227,15 @@
         "footnote": "GDPR · no spam",
         "back": "Back"
       }
+    },
+    "qualification": {
+      "eyebrow": "STEP 2 OF 3",
+      "title": "Which best describes you?",
+      "subtitle": "One quick pick — helps us tune the analysis.",
+      "placeholder": "Pick one",
+      "back": "Back",
+      "cta": "Continue  →",
+      "error": "Pick the context that best describes you."
     },
     "otp": {
       "eyebrow": "CONFIRM YOUR EMAIL",
