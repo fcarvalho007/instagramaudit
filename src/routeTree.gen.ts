@@ -165,6 +165,7 @@ import { Route as AdminReportPreviewSnapshotSnapshotIdRouteImport } from './rout
 import { Route as AdminAutomacoesTemplatesKeyRouteImport } from './routes/admin.automacoes.templates.$key'
 import { Route as ApiPublicReportSnapshotByIdSnapshotIdRouteImport } from './routes/api/public/report-snapshot.by-id.$snapshotId'
 import { Route as ApiPublicAnalysisSnapshotByIdSnapshotIdRouteImport } from './routes/api/public/analysis-snapshot.by-id.$snapshotId'
+import { Route as ApiAdminLeadsIdRestoreRouteImport } from './routes/api/admin/leads.$id.restore'
 import { Route as ApiAdminKnowledgeSuggestionsIdRouteImport } from './routes/api/admin/knowledge.suggestions.$id'
 import { Route as ApiAdminKnowledgeNotesIdRouteImport } from './routes/api/admin/knowledge.notes.$id'
 import { Route as ApiAdminKnowledgeBenchmarksIdRouteImport } from './routes/api/admin/knowledge.benchmarks.$id'
@@ -1008,6 +1009,11 @@ const ApiPublicAnalysisSnapshotByIdSnapshotIdRoute =
     path: '/api/public/analysis-snapshot/by-id/$snapshotId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAdminLeadsIdRestoreRoute = ApiAdminLeadsIdRestoreRouteImport.update({
+  id: '/api/admin/leads/$id/restore',
+  path: '/api/admin/leads/$id/restore',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminKnowledgeSuggestionsIdRoute =
   ApiAdminKnowledgeSuggestionsIdRouteImport.update({
     id: '/$id',
@@ -1204,6 +1210,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/knowledge/benchmarks/$id': typeof ApiAdminKnowledgeBenchmarksIdRoute
   '/api/admin/knowledge/notes/$id': typeof ApiAdminKnowledgeNotesIdRoute
   '/api/admin/knowledge/suggestions/$id': typeof ApiAdminKnowledgeSuggestionsIdRoute
+  '/api/admin/leads/$id/restore': typeof ApiAdminLeadsIdRestoreRoute
   '/api/public/analysis-snapshot/by-id/$snapshotId': typeof ApiPublicAnalysisSnapshotByIdSnapshotIdRoute
   '/api/public/report-snapshot/by-id/$snapshotId': typeof ApiPublicReportSnapshotByIdSnapshotIdRoute
   '/api/admin/knowledge/history/$type/$id': typeof ApiAdminKnowledgeHistoryTypeIdRoute
@@ -1366,6 +1373,7 @@ export interface FileRoutesByTo {
   '/api/admin/knowledge/benchmarks/$id': typeof ApiAdminKnowledgeBenchmarksIdRoute
   '/api/admin/knowledge/notes/$id': typeof ApiAdminKnowledgeNotesIdRoute
   '/api/admin/knowledge/suggestions/$id': typeof ApiAdminKnowledgeSuggestionsIdRoute
+  '/api/admin/leads/$id/restore': typeof ApiAdminLeadsIdRestoreRoute
   '/api/public/analysis-snapshot/by-id/$snapshotId': typeof ApiPublicAnalysisSnapshotByIdSnapshotIdRoute
   '/api/public/report-snapshot/by-id/$snapshotId': typeof ApiPublicReportSnapshotByIdSnapshotIdRoute
   '/api/admin/knowledge/history/$type/$id': typeof ApiAdminKnowledgeHistoryTypeIdRoute
@@ -1531,6 +1539,7 @@ export interface FileRoutesById {
   '/api/admin/knowledge/benchmarks/$id': typeof ApiAdminKnowledgeBenchmarksIdRoute
   '/api/admin/knowledge/notes/$id': typeof ApiAdminKnowledgeNotesIdRoute
   '/api/admin/knowledge/suggestions/$id': typeof ApiAdminKnowledgeSuggestionsIdRoute
+  '/api/admin/leads/$id/restore': typeof ApiAdminLeadsIdRestoreRoute
   '/api/public/analysis-snapshot/by-id/$snapshotId': typeof ApiPublicAnalysisSnapshotByIdSnapshotIdRoute
   '/api/public/report-snapshot/by-id/$snapshotId': typeof ApiPublicReportSnapshotByIdSnapshotIdRoute
   '/api/admin/knowledge/history/$type/$id': typeof ApiAdminKnowledgeHistoryTypeIdRoute
@@ -1697,6 +1706,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/benchmarks/$id'
     | '/api/admin/knowledge/notes/$id'
     | '/api/admin/knowledge/suggestions/$id'
+    | '/api/admin/leads/$id/restore'
     | '/api/public/analysis-snapshot/by-id/$snapshotId'
     | '/api/public/report-snapshot/by-id/$snapshotId'
     | '/api/admin/knowledge/history/$type/$id'
@@ -1859,6 +1869,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/benchmarks/$id'
     | '/api/admin/knowledge/notes/$id'
     | '/api/admin/knowledge/suggestions/$id'
+    | '/api/admin/leads/$id/restore'
     | '/api/public/analysis-snapshot/by-id/$snapshotId'
     | '/api/public/report-snapshot/by-id/$snapshotId'
     | '/api/admin/knowledge/history/$type/$id'
@@ -2023,6 +2034,7 @@ export interface FileRouteTypes {
     | '/api/admin/knowledge/benchmarks/$id'
     | '/api/admin/knowledge/notes/$id'
     | '/api/admin/knowledge/suggestions/$id'
+    | '/api/admin/leads/$id/restore'
     | '/api/public/analysis-snapshot/by-id/$snapshotId'
     | '/api/public/report-snapshot/by-id/$snapshotId'
     | '/api/admin/knowledge/history/$type/$id'
@@ -2150,6 +2162,7 @@ export interface RootRouteChildren {
   ApiPublicHooksSyncApifyCostsRoute: typeof ApiPublicHooksSyncApifyCostsRoute
   ApiPublicHooksSyncDataforseoCostsRoute: typeof ApiPublicHooksSyncDataforseoCostsRoute
   ApiPublicHooksSyncOpenaiCostsRoute: typeof ApiPublicHooksSyncOpenaiCostsRoute
+  ApiAdminLeadsIdRestoreRoute: typeof ApiAdminLeadsIdRestoreRoute
   ApiPublicAnalysisSnapshotByIdSnapshotIdRoute: typeof ApiPublicAnalysisSnapshotByIdSnapshotIdRoute
   ApiPublicReportSnapshotByIdSnapshotIdRoute: typeof ApiPublicReportSnapshotByIdSnapshotIdRoute
   ApiAdminKnowledgeHistoryTypeIdRoute: typeof ApiAdminKnowledgeHistoryTypeIdRoute
@@ -3249,6 +3262,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAnalysisSnapshotByIdSnapshotIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/leads/$id/restore': {
+      id: '/api/admin/leads/$id/restore'
+      path: '/api/admin/leads/$id/restore'
+      fullPath: '/api/admin/leads/$id/restore'
+      preLoaderRoute: typeof ApiAdminLeadsIdRestoreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/knowledge/suggestions/$id': {
       id: '/api/admin/knowledge/suggestions/$id'
       path: '/$id'
@@ -3668,6 +3688,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksSyncDataforseoCostsRoute:
     ApiPublicHooksSyncDataforseoCostsRoute,
   ApiPublicHooksSyncOpenaiCostsRoute: ApiPublicHooksSyncOpenaiCostsRoute,
+  ApiAdminLeadsIdRestoreRoute: ApiAdminLeadsIdRestoreRoute,
   ApiPublicAnalysisSnapshotByIdSnapshotIdRoute:
     ApiPublicAnalysisSnapshotByIdSnapshotIdRoute,
   ApiPublicReportSnapshotByIdSnapshotIdRoute:
