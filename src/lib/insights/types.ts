@@ -248,6 +248,32 @@ export interface InsightsContext {
     consistency: "consistent" | "mixed" | "inconsistent" | null;
     visual_clarity: "strong" | "needs_improvement" | "critical";
     cover_pattern: string | null;
+    /**
+     * Optional numeric sub-scores so the priorities prompt can quote real
+     * numbers (0–100). Only included when present on the source analysis.
+     */
+    overall_score?: number;
+    sub_scores?: {
+      recognizability?: number;
+      visual_variety?: number;
+    };
+  };
+  /**
+   * Compact comment-intelligence block (when the snapshot has it AND
+   * carries at least one non-neutral signal). The priorities prompt may
+   * quote any of these numbers. Editorial verdict prompt MUST NOT.
+   */
+  comment_intelligence?: {
+    sample_posts: number;
+    sample_comments: number;
+    owner_reply_rate_pct: number;
+    questions_from_audience_count: number;
+    complaint_or_issue_count: number;
+    buying_intent_count: number;
+    top_conversation_post?: {
+      comments: number;
+      dominant_signal: string;
+    };
   };
 }
 
