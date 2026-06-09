@@ -97,6 +97,7 @@ import { Route as ApiAdminPreRevenueSignalsRouteImport } from './routes/api/admi
 import { Route as ApiAdminPaymentsOverviewRouteImport } from './routes/api/admin/payments-overview'
 import { Route as ApiAdminOverviewKpisRouteImport } from './routes/api/admin/overview-kpis'
 import { Route as ApiAdminOnboardingFunnelRouteImport } from './routes/api/admin/onboarding-funnel'
+import { Route as ApiAdminLogoutRouteImport } from './routes/api/admin/logout'
 import { Route as ApiAdminLeadsKanbanRouteImport } from './routes/api/admin/leads-kanban'
 import { Route as ApiAdminLeadsFunnelRouteImport } from './routes/api/admin/leads-funnel'
 import { Route as ApiAdminLeadsBulkRouteImport } from './routes/api/admin/leads-bulk'
@@ -623,6 +624,11 @@ const ApiAdminOnboardingFunnelRoute =
     path: '/api/admin/onboarding-funnel',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAdminLogoutRoute = ApiAdminLogoutRouteImport.update({
+  id: '/api/admin/logout',
+  path: '/api/admin/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminLeadsKanbanRoute = ApiAdminLeadsKanbanRouteImport.update({
   id: '/api/admin/leads-kanban',
   path: '/api/admin/leads-kanban',
@@ -1091,6 +1097,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/leads-bulk': typeof ApiAdminLeadsBulkRoute
   '/api/admin/leads-funnel': typeof ApiAdminLeadsFunnelRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
+  '/api/admin/logout': typeof ApiAdminLogoutRoute
   '/api/admin/onboarding-funnel': typeof ApiAdminOnboardingFunnelRoute
   '/api/admin/overview-kpis': typeof ApiAdminOverviewKpisRoute
   '/api/admin/payments-overview': typeof ApiAdminPaymentsOverviewRoute
@@ -1249,6 +1256,7 @@ export interface FileRoutesByTo {
   '/api/admin/leads-bulk': typeof ApiAdminLeadsBulkRoute
   '/api/admin/leads-funnel': typeof ApiAdminLeadsFunnelRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
+  '/api/admin/logout': typeof ApiAdminLogoutRoute
   '/api/admin/onboarding-funnel': typeof ApiAdminOnboardingFunnelRoute
   '/api/admin/overview-kpis': typeof ApiAdminOverviewKpisRoute
   '/api/admin/payments-overview': typeof ApiAdminPaymentsOverviewRoute
@@ -1410,6 +1418,7 @@ export interface FileRoutesById {
   '/api/admin/leads-bulk': typeof ApiAdminLeadsBulkRoute
   '/api/admin/leads-funnel': typeof ApiAdminLeadsFunnelRoute
   '/api/admin/leads-kanban': typeof ApiAdminLeadsKanbanRouteWithChildren
+  '/api/admin/logout': typeof ApiAdminLogoutRoute
   '/api/admin/onboarding-funnel': typeof ApiAdminOnboardingFunnelRoute
   '/api/admin/overview-kpis': typeof ApiAdminOverviewKpisRoute
   '/api/admin/payments-overview': typeof ApiAdminPaymentsOverviewRoute
@@ -1572,6 +1581,7 @@ export interface FileRouteTypes {
     | '/api/admin/leads-bulk'
     | '/api/admin/leads-funnel'
     | '/api/admin/leads-kanban'
+    | '/api/admin/logout'
     | '/api/admin/onboarding-funnel'
     | '/api/admin/overview-kpis'
     | '/api/admin/payments-overview'
@@ -1730,6 +1740,7 @@ export interface FileRouteTypes {
     | '/api/admin/leads-bulk'
     | '/api/admin/leads-funnel'
     | '/api/admin/leads-kanban'
+    | '/api/admin/logout'
     | '/api/admin/onboarding-funnel'
     | '/api/admin/overview-kpis'
     | '/api/admin/payments-overview'
@@ -1890,6 +1901,7 @@ export interface FileRouteTypes {
     | '/api/admin/leads-bulk'
     | '/api/admin/leads-funnel'
     | '/api/admin/leads-kanban'
+    | '/api/admin/logout'
     | '/api/admin/onboarding-funnel'
     | '/api/admin/overview-kpis'
     | '/api/admin/payments-overview'
@@ -2028,6 +2040,7 @@ export interface RootRouteChildren {
   ApiAdminLeadsBulkRoute: typeof ApiAdminLeadsBulkRoute
   ApiAdminLeadsFunnelRoute: typeof ApiAdminLeadsFunnelRoute
   ApiAdminLeadsKanbanRoute: typeof ApiAdminLeadsKanbanRouteWithChildren
+  ApiAdminLogoutRoute: typeof ApiAdminLogoutRoute
   ApiAdminOnboardingFunnelRoute: typeof ApiAdminOnboardingFunnelRoute
   ApiAdminOverviewKpisRoute: typeof ApiAdminOverviewKpisRoute
   ApiAdminPaymentsOverviewRoute: typeof ApiAdminPaymentsOverviewRoute
@@ -2719,6 +2732,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/onboarding-funnel'
       fullPath: '/api/admin/onboarding-funnel'
       preLoaderRoute: typeof ApiAdminOnboardingFunnelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/logout': {
+      id: '/api/admin/logout'
+      path: '/api/admin/logout'
+      fullPath: '/api/admin/logout'
+      preLoaderRoute: typeof ApiAdminLogoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/leads-kanban': {
@@ -3497,6 +3517,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminLeadsBulkRoute: ApiAdminLeadsBulkRoute,
   ApiAdminLeadsFunnelRoute: ApiAdminLeadsFunnelRoute,
   ApiAdminLeadsKanbanRoute: ApiAdminLeadsKanbanRouteWithChildren,
+  ApiAdminLogoutRoute: ApiAdminLogoutRoute,
   ApiAdminOnboardingFunnelRoute: ApiAdminOnboardingFunnelRoute,
   ApiAdminOverviewKpisRoute: ApiAdminOverviewKpisRoute,
   ApiAdminPaymentsOverviewRoute: ApiAdminPaymentsOverviewRoute,
