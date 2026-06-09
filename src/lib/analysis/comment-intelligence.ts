@@ -162,10 +162,49 @@ export function aggregateCommentIntelligence(
     ownerRepliesCount: number;
   } | undefined;
 
+  // Pro-grade per-post stats (top 3) — collected alongside the legacy loop
+  interface PerPostStats {
+    postUrl: string;
+    commentsCount: number;
+    ownerRepliesCount: number;
+    audienceCommentsCount: number;
+    questions: number;
+    praise: number;
+    complaints: number;
+    buyingIntent: number;
+    longestAudienceComment?: { username: string; text: string };
+  }
+  const perPost: PerPostStats[] = [];
+
   for (const batch of batches) {
     let postOwnerReplies = 0;
     let postCommentCount = 0;
     let postHasConversation = false;
+    const postStats: PerPostStats = {
+      postUrl: batch.postUrl,
+      commentsCount: 0,
+      ownerRepliesCount: 0,
+      audienceCommentsCount: 0,
+      questions: 0,
+      praise: 0,
+      complaints: 0,
+      buyingIntent: 0,
+    };
+    function trackAudience(username: string, text: string | undefined, signal: ReturnType<typeof classifySignal>) {
+      postStats.audienceCommentsCount++;
+      if (signal === "question") postStats.questions++;
+      else if (signal === "praise") postStats.praise++;
+      else if (signal === "complaint") postStats.complaints++;
+      else if (signal === "buying_intent") postStats.buyingIntent++;
+      // Track longest non-spam excerpt as "topAudienceComment" candidate
+      if (signal !== "spam" && text && text.trim().length >= 12) {
+        const trimmed = text.trim().slice(0, 140);
+        if (!postStats.longestAudienceComment || trimmed.length > postStats.longestAudienceComment.text.length) {
+          const safeUsername = username && username.trim().length > 0 ? username.trim() : "utilizador";
+          postStats.longestAudienceComment = { username: safeUsername, text: trimmed };
+        }
+      }
+    }
 
     for (const comment of batch.comments) {
       const commentOwner = normalizeUsername(comment.ownerUsername ?? "");
@@ -184,6 +223,7 @@ export function aggregateCommentIntelligence(
         else if (signal === "complaint") { complaintCount++; pushExcerpt(excerptComplaints, comment.ownerUsername ?? "", comment.text); }
         else if (signal === "buying_intent") { buyingIntentCount++; pushExcerpt(excerptBuyingIntent, comment.ownerUsername ?? "", comment.text); }
         else if (signal === "spam") spamCount++;
+        trackAudience(comment.ownerUsername ?? "", comment.text, signal);
       }
       postCommentCount++;
       totalComments++;
@@ -208,6 +248,7 @@ export function aggregateCommentIntelligence(
             else if (signal === "complaint") { complaintCount++; pushExcerpt(excerptComplaints, reply.ownerUsername ?? "", reply.text); }
             else if (signal === "buying_intent") { buyingIntentCount++; pushExcerpt(excerptBuyingIntent, reply.ownerUsername ?? "", reply.text); }
             else if (signal === "spam") spamCount++;
+            trackAudience(reply.ownerUsername ?? "", reply.text, signal);
           }
         }
       }
@@ -234,6 +275,9 @@ export function aggregateCommentIntelligence(
       // Track top 2 by audience comment count
       const audienceCommentsInPost = postCommentCount - postOwnerReplies;
       topCommentPostsList.push({ postUrl: batch.postUrl, commentsCount: audienceCommentsInPost });
+      postStats.commentsCount = postCommentCount;
+      postStats.ownerRepliesCount = postOwnerReplies;
+      perPost.push(postStats);
     }
   }
 
@@ -242,6 +286,29 @@ export function aggregateCommentIntelligence(
     .filter((p) => p.commentsCount > 0)
     .sort((a, b) => b.commentsCount - a.commentsCount)
     .slice(0, 2);
+
+  // Top 3 conversation posts, ranked by ownerReplies + audienceComments
+  const topConversationPosts = perPost
+    .filter((p) => p.audienceCommentsCount + p.ownerRepliesCount > 0)
+    .sort(
+      (a, b) =>
+        (b.ownerRepliesCount + b.audienceCommentsCount) -
+        (a.ownerRepliesCount + a.audienceCommentsCount),
+    )
+    .slice(0, 3)
+    .map((p) => {
+      const dominantSignal = pickDominantSignal(p);
+      return {
+        postUrl: p.postUrl,
+        shortcode: extractShortcode(p.postUrl),
+        commentsCount: p.commentsCount,
+        ownerRepliesCount: p.ownerRepliesCount,
+        audienceCommentsCount: p.audienceCommentsCount,
+        dominantSignal,
+        ...(p.longestAudienceComment ? { topAudienceComment: p.longestAudienceComment } : {}),
+        summary: buildPostSummary(p),
+      } as NonNullable<CommentIntelligence["topConversationPosts"]>[number];
+    });
 
   const samplePosts = batches.length;
   const ownerReplyRatePct =
@@ -315,8 +382,70 @@ export function aggregateCommentIntelligence(
         ? { questions: excerptQuestions, praise: excerptPraise, complaints: excerptComplaints, buyingIntent: excerptBuyingIntent }
         : undefined,
     topCommentPosts: topCommentPostsList.length > 0 ? topCommentPostsList : undefined,
+    topConversationPosts: topConversationPosts.length > 0 ? topConversationPosts : undefined,
     limitations,
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Helpers for top conversation posts
+// ─────────────────────────────────────────────────────────────────────
+
+function extractShortcode(postUrl: string): string | undefined {
+  // https://www.instagram.com/p/<shortcode>/  or  /reel/<shortcode>/
+  const m = postUrl.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
+  return m?.[1];
+}
+
+function pickDominantSignal(p: {
+  questions: number;
+  praise: number;
+  complaints: number;
+  buyingIntent: number;
+}): "questions" | "praise" | "complaints" | "buying_intent" | "mixed" {
+  const entries: Array<["questions" | "praise" | "complaints" | "buying_intent", number]> = [
+    ["questions", p.questions],
+    ["praise", p.praise],
+    ["complaints", p.complaints],
+    ["buying_intent", p.buyingIntent],
+  ];
+  const total = entries.reduce((s, [, n]) => s + n, 0);
+  if (total === 0) return "mixed";
+  const sorted = entries.filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+  if (sorted.length === 0) return "mixed";
+  const [topKey, topCount] = sorted[0]!;
+  // If top signal is < 50% of classified, it's mixed
+  if (topCount / total < 0.5) return "mixed";
+  return topKey;
+}
+
+function buildPostSummary(p: {
+  audienceCommentsCount: number;
+  ownerRepliesCount: number;
+  questions: number;
+  praise: number;
+  complaints: number;
+  buyingIntent: number;
+}): string {
+  const parts: string[] = [];
+  const total = p.audienceCommentsCount;
+  if (total > 0) {
+    parts.push(`${total} ${total === 1 ? "comentário" : "comentários"} da audiência`);
+  }
+  const classifiedBits: string[] = [];
+  if (p.questions > 0) classifiedBits.push(`${p.questions} ${p.questions === 1 ? "pergunta" : "perguntas"}`);
+  if (p.buyingIntent > 0) classifiedBits.push(`${p.buyingIntent} c/ intenção de compra`);
+  if (p.complaints > 0) classifiedBits.push(`${p.complaints} ${p.complaints === 1 ? "queixa" : "queixas"}`);
+  if (p.praise > 0 && classifiedBits.length < 2) classifiedBits.push(`${p.praise} ${p.praise === 1 ? "elogio" : "elogios"}`);
+  if (classifiedBits.length > 0) {
+    parts.push(classifiedBits.slice(0, 2).join(" e "));
+  }
+  const replyBit =
+    p.ownerRepliesCount > 0
+      ? `${p.ownerRepliesCount} ${p.ownerRepliesCount === 1 ? "resposta" : "respostas"} da marca`
+      : "sem resposta da marca";
+  parts.push(replyBit);
+  return parts.join(" · ");
 }
 
 // ─────────────────────────────────────────────────────────────────────
