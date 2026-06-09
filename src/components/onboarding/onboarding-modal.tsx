@@ -26,18 +26,12 @@ import { Trans, useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Check,
-  Briefcase,
   Eye,
   EyeOff,
-  LineChart,
   Loader2,
   Lock,
-  Scale,
   ShieldCheck,
   Sparkles,
-  Star,
-  TrendingUp,
-  User,
 } from "lucide-react";
 
 import {
@@ -70,7 +64,6 @@ import {
   LEAD_QUALIFICATION_LABELS_PT,
   type LeadQualification,
 } from "@/lib/leads/qualification";
-import { GridSelectField } from "@/components/onboarding/grid-select-field";
 import { supabase } from "@/integrations/supabase/client";
 import { parseFullName } from "@/lib/names/parse-full-name";
 import { useOnboardingDraft } from "@/lib/leads/use-onboarding-draft";
@@ -138,7 +131,6 @@ export interface OnboardingModalProps {
  */
 type View =
   | { kind: "entry" }
-  | { kind: "qualification"; email: string }
   | { kind: "final"; email: string }
   | { kind: "login"; email: string };
 
@@ -221,11 +213,9 @@ export function OnboardingModal({
       const step =
         view.kind === "entry"
           ? 0
-          : view.kind === "qualification"
-            ? 1
-            : view.kind === "final"
-              ? 2
-              : 3;
+          : view.kind === "final"
+            ? 2
+            : 3;
       trackOnboardingEvent({
         event_type: "onboarding_abandon",
         step: step as 0 | 1 | 2 | 3,
@@ -413,12 +403,10 @@ export function OnboardingModal({
         });
         return;
       }
-      // `password_with_email_verification`: precisa de clicar no email.
-      // Tratamos com a mesma cópia que o login pendente — neste momento
-      // este modo não está activo no UX público, só por env override.
-      setServerError(
-        "Verifica o teu email para activar a conta antes de continuar.",
-      );
+      // Em `AUTH_MODE=password` o servidor NUNCA devolve um estado
+      // pendente. Se chegarmos aqui é um erro de protocolo — mostrar
+      // erro genérico em vez de painel de verificação por email.
+      setServerError(t("onboarding.errors.generic"));
     } catch {
       setServerError(t("onboarding.errors.network"));
       trackOnboardingEvent({
@@ -521,15 +509,6 @@ export function OnboardingModal({
             onSignInWithEmail={(email) => goToLoginView(email)}
             initialEmail={form.getValues("email")}
           />
-        ) : view.kind === "qualification" ? (
-          <QualificationStepBody
-            form={form}
-            purpose={purpose}
-            submitting={submitting}
-            serverError={serverError}
-            onBack={goBackToEntry}
-            onContinue={() => setView({ kind: "final", email: view.email })}
-          />
         ) : view.kind === "final" ? (
           <FinalStepBody
             handle={handle}
@@ -559,72 +538,6 @@ export function OnboardingModal({
 /* -------------------------------------------------------------------------- */
 /* Entry step — single screen with the dual path                              */
 /* -------------------------------------------------------------------------- */
-
-/* Magic-link-sent panel — shown when /check-email enqueued a signed link */
-function MagicLinkSentPanel({
-  email,
-  onBack,
-  onResend,
-  submitting,
-}: {
-  email: string;
-  onBack: () => void;
-  onResend: () => Promise<void>;
-  submitting: boolean;
-}) {
-  const { t } = useTranslation("gate");
-  return (
-    <div
-      className="px-5 py-7 sm:px-9 sm:py-9"
-      data-testid="onboarding-magic-link-sent"
-    >
-      <DialogHeader className="text-left space-y-2.5">
-        <p className="text-eyebrow-sm text-content-tertiary">
-          {t("onboarding.otp.eyebrow", { defaultValue: "Verificação" })}
-        </p>
-        <DialogTitle className="font-display text-[24px] sm:text-[28px] leading-[1.1] tracking-[-0.015em] text-content-primary text-balance break-words">
-          Verifica o teu email
-        </DialogTitle>
-        <DialogDescription className="text-[14px] text-content-secondary leading-[1.55]">
-          Enviámos um link seguro para{" "}
-          <strong className="text-content-primary">{email}</strong>. Abre o
-          email e clica no botão para entrar — não precisas de password.
-        </DialogDescription>
-      </DialogHeader>
-
-      <div className="mt-6 rounded-lg border border-border-default/60 bg-surface-muted/60 p-4">
-        <p className="text-[13px] text-content-secondary leading-[1.55]">
-          <ShieldCheck
-            className="inline-block size-3.5 mr-1.5 -mt-0.5 text-content-tertiary"
-            aria-hidden
-          />
-          Pedimos esta verificação só por segurança — para garantir que ninguém
-          abre relatórios em teu nome. O link expira em 30 minutos.
-        </p>
-      </div>
-
-      <div className="mt-6 flex items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={onBack}
-          disabled={submitting}
-          className="inline-flex items-center gap-1 text-[13px] text-content-secondary hover:text-content-primary disabled:opacity-60"
-        >
-          <ArrowLeft className="size-3.5" aria-hidden />
-          Voltar
-        </button>
-        <button
-          type="button"
-          onClick={() => void onResend()}
-          disabled={submitting}
-          className="text-[13px] font-medium text-primary hover:underline disabled:opacity-60 disabled:no-underline"
-        >
-          {submitting ? "A reenviar…" : "Reenviar link"}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 /* Step indicator shared across entry → qualification → final */
 function OnboardingStepHeader({
@@ -1309,164 +1222,6 @@ function FinalBullet({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Qualification step — single select between entry and final                 */
-/* -------------------------------------------------------------------------- */
-
-function QualificationStepBody({
-  form,
-  purpose,
-  submitting,
-  serverError,
-  onBack,
-  onContinue,
-}: {
-  form: ReturnType<typeof useForm<UnlockFormValues>>;
-  purpose: "analyze" | "checkout";
-  submitting: boolean;
-  serverError: string | null;
-  onBack: () => void;
-  onContinue: () => void;
-}) {
-  const { t } = useTranslation("gate");
-  const isCheckout = purpose === "checkout";
-  const ownership = form.watch("profile_ownership") as
-    | ProfileOwnership
-    | undefined;
-  const goal = form.watch("goal") as Goal | undefined;
-  const [ownershipError, setOwnershipError] = useState<string | null>(null);
-  const [goalError, setGoalError] = useState<string | null>(null);
-
-  const OWNERSHIP_OPTIONS: Array<{
-    value: ProfileOwnership;
-    Icon: typeof User;
-  }> = [
-    { value: "own_profile", Icon: User },
-    { value: "brand_profile", Icon: Star },
-    { value: "client_profile", Icon: Briefcase },
-    { value: "competitor_research", Icon: Eye },
-  ];
-
-  const GOAL_OPTIONS: Array<{ value: Goal; Icon: typeof User }> = [
-    { value: "improve_content", Icon: Sparkles },
-    { value: "benchmark_competitors", Icon: Scale },
-    { value: "client_report", Icon: LineChart },
-    { value: "grow_audience", Icon: TrendingUp },
-  ];
-
-  const handleContinue = () => {
-    let hasError = false;
-    if (!ownership) {
-      setOwnershipError(t("onboarding.qualification.ownershipError"));
-      hasError = true;
-    } else {
-      setOwnershipError(null);
-    }
-    if (!goal) {
-      setGoalError(t("onboarding.qualification.goalError"));
-      hasError = true;
-    } else {
-      setGoalError(null);
-    }
-    if (hasError) return;
-    onContinue();
-  };
-
-  return (
-    <div
-      className="px-6 py-6 sm:px-10 sm:py-8"
-      data-testid="onboarding-qualification-step"
-    >
-      <OnboardingStepHeader current={2} className="mb-5" />
-      <DialogHeader className="text-left space-y-2.5">
-        <p className="text-eyebrow text-content-tertiary">
-          {t(isCheckout ? "onboarding.qualification.eyebrowCheckout" : "onboarding.qualification.eyebrow")}
-        </p>
-        <DialogTitle className="font-display text-[28px] sm:text-[32px] leading-[1.08] tracking-[-0.015em] text-content-primary text-balance">
-          {t(isCheckout ? "onboarding.qualification.titleCheckout" : "onboarding.qualification.title")}
-        </DialogTitle>
-        <DialogDescription className="text-[15px] text-content-secondary leading-[1.55]">
-          {t(isCheckout ? "onboarding.qualification.subtitleCheckout" : "onboarding.qualification.subtitle")}
-        </DialogDescription>
-      </DialogHeader>
-
-      <div className="mt-5 space-y-5" data-testid="onboarding-qualification">
-        <GridSelectField
-          legend={t("onboarding.qualification.ownershipLegend")}
-          name="profile_ownership"
-          options={OWNERSHIP_OPTIONS.map((o) => ({
-            value: o.value,
-            label: t(`onboarding.compactOptions.profileOwnership.${o.value}`),
-            Icon: o.Icon,
-          }))}
-          value={ownership}
-          onChange={(v) => {
-            form.setValue("profile_ownership", v as ProfileOwnership, {
-              shouldValidate: true,
-            });
-            setOwnershipError(null);
-          }}
-          error={ownershipError ?? undefined}
-        />
-
-        <GridSelectField
-          legend={t("onboarding.qualification.goalLegend")}
-          name="goal"
-          options={GOAL_OPTIONS.map((o) => ({
-            value: o.value,
-            label: t(`onboarding.compactOptions.goal.${o.value}`),
-            Icon: o.Icon,
-          }))}
-          value={goal}
-          onChange={(v) => {
-            form.setValue("goal", v as Goal, { shouldValidate: true });
-            form.setValue("goal_other_text", "", { shouldValidate: false });
-            setGoalError(null);
-          }}
-          error={goalError ?? undefined}
-        />
-
-        {serverError ? (
-          <Alert variant="destructive">
-            <AlertDescription>{serverError}</AlertDescription>
-          </Alert>
-        ) : null}
-      </div>
-
-      <div className="mt-6 flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 min-w-0">
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          onClick={onBack}
-          disabled={submitting}
-          className="w-full sm:w-auto sm:flex-shrink-0 rounded-lg min-w-0"
-        >
-          <ArrowLeft className="size-4" aria-hidden />
-          {t("onboarding.qualification.back")}
-        </Button>
-        <Button
-          type="button"
-          size="lg"
-          onClick={handleContinue}
-          disabled={submitting || !ownership || !goal}
-          className="w-full sm:flex-1 sm:min-w-0 rounded-lg font-medium"
-          data-testid="onboarding-qualification-continue"
-        >
-          <span className="truncate">{t("onboarding.qualification.cta")}</span>
-        </Button>
-      </div>
-      {!submitting && (!ownership || !goal) ? (
-        <p
-          className="mt-2 text-xs text-content-tertiary text-center sm:text-right"
-          aria-live="polite"
-        >
-          {t("onboarding.qualification.missingHint")}
-        </p>
-      ) : null}
-    </div>
-  );
-}
 
 /* -------------------------------------------------------------------------- */
 /* Login panel — email + password sign-in for existing accounts               */
