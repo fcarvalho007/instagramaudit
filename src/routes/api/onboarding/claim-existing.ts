@@ -89,8 +89,9 @@ export async function handleClaimExisting(request: Request): Promise<Response> {
     return json({ ok: false, error_code: "EMAIL_UNCONFIRMED" }, 401);
   }
 
+  const authEmail = authUser.email;
   const result = await findOrCreateLeadForEmail({
-    email: authUser.email,
+    email: authEmail,
     userId: authUser.id,
   });
   if ("error" in result) {
