@@ -445,6 +445,9 @@ export function CommentIntelligenceSection({ data }: Props) {
         </InsightCallout>
       )}
 
+      {/* Voz da audiência — excertos reais classificados */}
+      <VozDaAudienciaSection data={data} />
+
       {/* Top conversation post */}
       {data.topConversationPost && (
         <div className="rounded-lg border border-border-subtle bg-surface-secondary px-3.5 py-2.5 space-y-1">
