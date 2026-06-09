@@ -9,6 +9,9 @@ export const PRODUCT_CODES = [
   "authority_diagnosis_97",
   "report_full_9",
   "credit_pack_1",
+  "credits_3",
+  "credits_10",
+  "credits_25",
 ] as const;
 
 export type ProductCode = (typeof PRODUCT_CODES)[number];
@@ -46,8 +49,30 @@ export const PUBLIC_PRODUCTS: Record<ProductCode, PublicProduct> = {
     namePt: "1 crédito de análise",
     priceLabel: "9€",
     priceNote: "1 crédito · pagamento único",
-    // Hidden from public catalogues; only surfaced via the "no credits"
-    // dialog inside the Pro report.
+    // DEPRECATED: substituído pelos packs `credits_3 / credits_10 /
+    // credits_25`. Mantido no enum apenas para back-compat com pagamentos
+    // antigos; nunca apresentado em novos CTAs.
+    exposed: false,
+  },
+  credits_3: {
+    code: "credits_3",
+    namePt: "3 créditos de análise",
+    priceLabel: "9€",
+    priceNote: "3 créditos · pagamento único",
+    exposed: false,
+  },
+  credits_10: {
+    code: "credits_10",
+    namePt: "10 créditos de análise",
+    priceLabel: "25€",
+    priceNote: "10 créditos · pagamento único",
+    exposed: false,
+  },
+  credits_25: {
+    code: "credits_25",
+    namePt: "25 créditos de análise",
+    priceLabel: "49€",
+    priceNote: "25 créditos · pagamento único",
     exposed: false,
   },
 };
