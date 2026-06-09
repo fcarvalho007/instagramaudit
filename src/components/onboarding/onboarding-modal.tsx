@@ -1235,13 +1235,13 @@ function LoginPanel({
     >
       <DialogHeader className="text-left space-y-2.5">
         <p className="text-eyebrow-sm text-content-tertiary">
-          Entrar na conta
+          ENTRAR NA CONTA
         </p>
         <DialogTitle className="font-display text-[24px] sm:text-[28px] leading-[1.1] tracking-[-0.015em] text-content-primary text-balance break-words">
-          Bem-vindo de volta
+          Já existe uma conta com este email
         </DialogTitle>
         <DialogDescription className="text-[14px] text-content-secondary leading-[1.55]">
-          Este email já tem conta. Introduz a tua palavra-passe para continuar.
+          Introduz a tua palavra-passe para abrir o relatório. Os teus dados continuam protegidos.
         </DialogDescription>
       </DialogHeader>
 
@@ -1313,10 +1313,20 @@ function LoginPanel({
           ) : (
             <>
               <Lock className="size-4" aria-hidden />
-              Entrar e continuar
+              Entrar e abrir relatório
             </>
           )}
         </Button>
+
+        <div className="flex items-start gap-2 rounded-lg border border-border-default/40 bg-surface-muted/40 p-2.5">
+          <ShieldCheck
+            className="size-3.5 text-content-tertiary shrink-0 mt-0.5"
+            aria-hidden
+          />
+          <p className="text-[12px] leading-[1.5] text-content-tertiary">
+            Só o titular da conta consegue aceder aos relatórios guardados.
+          </p>
+        </div>
 
         <div className="flex items-center justify-between gap-3 pt-1">
           <button
