@@ -38,6 +38,14 @@ export const POST_PURCHASE_TOTAL_GRANTED =
 export const CREDIT_PACK_KIND = "credit_pack_purchased";
 
 /**
+ * Bónus interno aplicado a cada compra de pack durante o lançamento
+ * controlado: +2 créditos extra, não anunciados antes do pagamento.
+ * Idempotente por `(lead_id, payment_id, kind)`.
+ */
+export const CREDIT_PACK_LAUNCH_BONUS_KIND = "credit_pack_launch_bonus";
+export const CREDIT_PACK_LAUNCH_BONUS_AMOUNT = 2;
+
+/**
  * Map a `credit_pack_*` product code to the amount of credits it grants.
  * Keep in sync with `SERVER_PRODUCTS`. Returns null when the SKU is not a
  * recognised credit-pack code.
