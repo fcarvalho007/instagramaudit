@@ -61,6 +61,14 @@ export interface EnrichmentResult {
   /** JSON patch to merge into snapshot.normalized_payload */
   payloadPatch: Record<string, unknown> | null;
   error?: string;
+  /**
+   * Optional skip reason. When `ok===true && payloadPatch===null && skipReason`,
+   * the driver records the enrichment_job as `status='skipped'` with
+   * `error_message=skipReason` (instead of `success`) so admin can tell
+   * apart silent skips from real successes. Backward-compatible: existing
+   * silent skips that don't set this still flip to `success` as today.
+   */
+  skipReason?: string;
 }
 
 /** Priority mapping: lower = runs first. */
