@@ -140,6 +140,8 @@ export function OnboardingModal({
       full_name: "",
       email: "",
       phone: "",
+      password: "",
+      confirm_password: "",
       // The qualification step (2 perguntas em cartões) define estes valores
       // antes do submit; deixamos undefined para validar a escolha do user.
       profile_ownership: undefined as unknown as never,
