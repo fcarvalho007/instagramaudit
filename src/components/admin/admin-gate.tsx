@@ -1,12 +1,10 @@
 /**
- * AdminGate — gate simples (modo testes privados).
+ * AdminGate — gate do backoffice.
  *
- * Mostra apenas um input "Email" + botão "Entrar". Valida o email contra
- * `/api/admin/simple-login` (allowlist `ADMIN_ALLOWED_EMAILS`). Em sucesso
- * persiste o email em localStorage e dispara `onSuccess()` (ou recarrega
- * a página, se nenhum callback for passado).
- *
- * Sem password, sem magic link, sem 2FA — risco aceite pelo owner.
+ * Pede email + password partilhada. `/api/admin/simple-login` valida ambos
+ * server-side (allowlist + `ADMIN_LOGIN_PASSWORD`) e emite o cookie
+ * `admin_session` HttpOnly. O email guardado em localStorage é apenas para
+ * UX (pre-fill); a autoridade real é o cookie server-side.
  */
 
 import { useState, type FormEvent } from "react";
@@ -19,14 +17,15 @@ interface AdminGateProps {
 
 export function AdminGate({ onSuccess }: AdminGateProps = {}) {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const cleaned = email.trim().toLowerCase();
-    if (!cleaned) {
-      setError("Indica o email.");
+    if (!cleaned || !password) {
+      setError("Indica email e password.");
       return;
     }
     setSubmitting(true);
@@ -35,10 +34,12 @@ export function AdminGate({ onSuccess }: AdminGateProps = {}) {
       const res = await fetch("/api/admin/simple-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: cleaned }),
+        credentials: "include",
+        body: JSON.stringify({ email: cleaned, password }),
       });
       if (res.ok) {
         writeAdminEmail(cleaned);
+        setPassword("");
         if (onSuccess) {
           onSuccess(cleaned);
         } else if (typeof window !== "undefined") {
@@ -47,7 +48,7 @@ export function AdminGate({ onSuccess }: AdminGateProps = {}) {
         return;
       }
       if (res.status === 403) {
-        setError("Email não autorizado.");
+        setError("Credenciais inválidas.");
       } else {
         setError(`Erro ${res.status}. Tenta novamente.`);
       }
@@ -70,7 +71,7 @@ export function AdminGate({ onSuccess }: AdminGateProps = {}) {
           </p>
           <h1 className="font-display text-2xl text-content-primary">Acesso</h1>
           <p className="text-sm text-content-secondary">
-            Indica o email autorizado para entrar no backoffice.
+            Indica email autorizado e password partilhada do backoffice.
           </p>
         </div>
 
@@ -91,6 +92,25 @@ export function AdminGate({ onSuccess }: AdminGateProps = {}) {
             disabled={submitting}
             className="w-full rounded-md border border-border-subtle bg-surface-base px-3 py-2 text-sm text-content-primary outline-none transition focus:border-accent focus:ring-1 focus:ring-accent"
             placeholder="exemplo@dominio.pt"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label
+            htmlFor="admin-password"
+            className="text-eyebrow-sm block text-content-tertiary"
+          >
+            Password
+          </label>
+          <input
+            id="admin-password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={submitting}
+            className="w-full rounded-md border border-border-subtle bg-surface-base px-3 py-2 text-sm text-content-primary outline-none transition focus:border-accent focus:ring-1 focus:ring-accent"
+            placeholder="••••••••"
           />
         </div>
 
