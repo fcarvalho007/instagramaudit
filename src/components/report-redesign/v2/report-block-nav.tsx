@@ -1232,6 +1232,7 @@ function SidebarList({
   compact = false,
   primaryHandle,
   existingCompetitors = [],
+  isAdminPreview = false,
 }: {
   items: SidebarItem[];
   active: string | null;
@@ -1247,6 +1248,7 @@ function SidebarList({
   compact?: boolean;
   primaryHandle?: string;
   existingCompetitors?: string[];
+  isAdminPreview?: boolean;
 }) {
   const { t } = useTranslation("report");
   const { snapshotId, handle, variant: trackingVariant } = useReportTracking();
