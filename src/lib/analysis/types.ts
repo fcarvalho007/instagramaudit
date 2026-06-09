@@ -181,7 +181,8 @@ export type PublicAnalysisErrorCode =
   | "CACHE_ONLY_NO_DATA"
   | "ONBOARDING_REQUIRED"
   | "INSUFFICIENT_CREDITS"
-  | "WINDOW_REQUIRES_PRO";
+  | "WINDOW_REQUIRES_PRO"
+  | "WINDOW_90D_DISABLED";
 
 export interface PublicAnalysisFailure {
   success: false;
