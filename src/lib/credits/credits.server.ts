@@ -29,6 +29,28 @@ export const PURCHASE_INCLUDED_KIND = "purchase_included_credit";
 export const POST_PURCHASE_TOTAL_GRANTED =
   PURCHASE_INCLUDED_AMOUNT + POST_PURCHASE_BETA_BONUS;
 
+/**
+ * Kind for credits granted via a paid credit pack (`credit_pack_*` SKUs).
+ * Distinct from `purchase_included_credit` / `post_purchase_beta_bonus`
+ * so admin observability and analytics can differentiate "initial Pro
+ * grant" from "subsequent pack top-up".
+ */
+export const CREDIT_PACK_KIND = "credit_pack_purchased";
+
+/**
+ * Map a `credit_pack_*` product code to the amount of credits it grants.
+ * Keep in sync with `SERVER_PRODUCTS`. Returns null when the SKU is not a
+ * recognised credit-pack code.
+ */
+export function getCreditPackAmount(productCode: string): number | null {
+  switch (productCode) {
+    case "credit_pack_1":
+      return 1;
+    default:
+      return null;
+  }
+}
+
 export class InsufficientCreditsError extends Error {
   readonly code = "insufficient_credits" as const;
   constructor(public readonly leadId: string, public readonly balance: number) {
@@ -216,6 +238,58 @@ export async function grantPurchaseIncludedCredit(input: {
       included_credits: PURCHASE_INCLUDED_AMOUNT,
       bonus_credits: POST_PURCHASE_BETA_BONUS,
       total_granted: POST_PURCHASE_TOTAL_GRANTED,
+    } as Json,
+  });
+  return { granted: true };
+}
+
+/**
+ * Idempotent grant for a paid credit pack (`credit_pack_*` SKUs).
+ *
+ * Unicidade aplicacional: `(lead_id, reason='admin_adjust',
+ * metadata.kind='credit_pack_purchased', metadata.payment_id)` — uma
+ * segunda execução para o mesmo `payment_id` devolve `{ granted: false }`
+ * em vez de duplicar créditos. Apenas chamado pelo webhook EuPago após
+ * confirmação do pagamento.
+ */
+export async function grantCreditPack(input: {
+  leadId: string;
+  paymentId: string;
+  productCode: string;
+  amount: number;
+}): Promise<{ granted: boolean }> {
+  if (!Number.isInteger(input.amount) || input.amount <= 0) {
+    throw new Error(
+      `grantCreditPack: invalid amount ${input.amount} for ${input.productCode}`,
+    );
+  }
+
+  const { data: existing, error: selectError } = await supabaseAdmin
+    .from("credit_ledger")
+    .select("id")
+    .eq("lead_id", input.leadId)
+    .eq("reason", "admin_adjust")
+    .filter("metadata->>kind", "eq", CREDIT_PACK_KIND)
+    .filter("metadata->>payment_id", "eq", input.paymentId)
+    .limit(1)
+    .maybeSingle();
+  if (selectError) {
+    throw new Error(
+      `grantCreditPack select failed: ${selectError.message}`,
+    );
+  }
+  if (existing) return { granted: false };
+
+  await insertLedger({
+    lead_id: input.leadId,
+    delta: input.amount,
+    reason: "admin_adjust",
+    metadata: {
+      kind: CREDIT_PACK_KIND,
+      payment_id: input.paymentId,
+      product_code: input.productCode,
+      source: "payment_confirmed",
+      pack_amount: input.amount,
     } as Json,
   });
   return { granted: true };
