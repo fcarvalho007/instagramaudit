@@ -573,6 +573,11 @@ function ExploreSection({
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { proWindow90dEnabled } = usePublicAppConfig();
+  const premiumWindows = useMemo<readonly number[]>(
+    () => (proWindow90dEnabled ? PREMIUM_WINDOWS_ALL : [30]),
+    [proWindow90dEnabled],
+  );
 
   // Carrega o saldo de créditos beta apenas no estado paid — nunca antes
   // da compra, para nunca revelar o bónus ao utilizador free.
