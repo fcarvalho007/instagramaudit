@@ -139,16 +139,21 @@ export function ReportDiagnosticBlock({ result, payload, premiumUnlocked = false
     integration,
     dominantFormatShare: dominantFormat?.sharePct ?? 0,
     dominantFormatLabel: dominantFormat?.label ?? null,
+    commentIntel:
+      features.commentIntelligence === "full"
+        ? (result.enriched.commentIntelligence ?? null)
+        : null,
+    coverAnalysis: parseVisualCoverAnalysis(payload),
+    cadence: result.data.cadence
+      ? { weekly: result.data.cadence.weekly, sufficient: result.data.cadence.sufficient }
+      : null,
   });
 
   // Always guarantee ≥3 priority cards: use AI when it returns enough,
   // otherwise top up with deterministic items (deduped by title).
-  const aiMapped: PriorityItem[] = (aiPriorities ?? []).map((p) => ({
-    level: p.level,
-    title: p.title,
-    body: p.body,
-    resolves: p.resolves,
-  }));
+  const aiMapped: PriorityItem[] = (aiPriorities ?? []).map((p) =>
+    inferAiPriorityItem(p),
+  );
 
   const seenPriorityTitles = new Set(
     aiMapped.map((p) => p.title.trim().toLowerCase()),
