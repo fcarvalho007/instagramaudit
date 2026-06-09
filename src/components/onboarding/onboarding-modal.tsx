@@ -891,7 +891,7 @@ function FinalStepBody({
 
       {/* Right — compact form */}
       <div className="px-5 py-6 sm:px-7 sm:py-8 flex flex-col gap-4 bg-white min-w-0">
-        <OnboardingStepHeader current={3} />
+        <OnboardingStepHeader current={3} className="mb-2" />
         <div className="space-y-1.5">
           <Label htmlFor="onb-name" className="text-[13.5px] font-medium text-content-primary">
             {t("onboarding.final.right.nameLabel")}
