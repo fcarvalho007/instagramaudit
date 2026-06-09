@@ -175,7 +175,7 @@
       "subtitle": "You'll analyse <1>@{{handle}}</1> — it's free.",
       "newBadge": "New here",
       "newTitle": "Create a free account",
-      "newPromise": "You get 2 free analyses and the report is saved.",
+      "newPromise": "You get the saved report and 2 free credits once you confirm your email.",
       "emailPlaceholder": "your email",
       "emailInvalid": "Please double-check your email — it looks invalid.",
       "newCta": "Create account and open report",
@@ -190,8 +190,8 @@
         "title": "Your report is one click away",
         "bullets": {
           "report": "Report for @{{handle}}",
-          "credits": "Private account with <strong>2 free credits</strong>",
-          "save": "Every future report is saved"
+          "save": "Private account with every report saved",
+          "credits": "<strong>2 free credits</strong> once you confirm your email"
         }
       },
       "right": {
@@ -199,9 +199,17 @@
         "namePlaceholder": "Ana Marques",
         "emailLabel": "Email",
         "emailPlaceholder": "ana@company.com",
-        "phoneLabel": "Phone",
-        "phoneOptional": "optional",
-        "phonePlaceholder": "+351 912 345 678",
+        "emailHint": "Prefer your work email when possible.",
+        "qualificationLabel": "Which best describes you?",
+        "qualificationPlaceholder": "Pick one",
+        "qualificationOptions": {
+          "brand_company": "I have a brand/company",
+          "marketing_comms": "I work in marketing/communications",
+          "consultant_agency": "I'm a consultant/agency",
+          "content_creator": "I'm a content creator",
+          "curiosity": "Just exploring out of curiosity",
+          "other": "Other"
+        },
         "consentText": "I accept the <a>data processing terms</a>",
         "consentMandatory": "(required)",
         "marketingText": "I'd like tips and benchmarks",
@@ -212,9 +220,10 @@
       }
     },
     "otp": {
-      "eyebrow": "CONFIRM IT'S YOUR ACCOUNT",
+      "eyebrow": "CONFIRM YOUR EMAIL",
       "title": "We sent a code to {{maskedEmail}}",
-      "subtitle": "Open your email and enter the 6-digit code to open the report.",
+      "subtitle": "Enter the 6-digit code to activate your 2 free credits.",
+      "existingTitle": "This account already exists. We sent you a link to confirm access.",
       "codeLabel": "6-digit code",
       "codePlaceholder": "123456",
       "cta": "Confirm and open  →",
