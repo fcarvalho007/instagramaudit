@@ -65,6 +65,7 @@ interface FailBody {
   error_code:
     | "INVALID_PAYLOAD"
     | "PERSISTENCE_FAILED"
+    | "EMAIL_REQUIRES_VERIFICATION"
     | "INTERNAL_ERROR";
   message: string;
   /** Lista determinística de campos com problema (sem valores, sem PII). */
