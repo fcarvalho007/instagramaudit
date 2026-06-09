@@ -399,7 +399,7 @@ function PostPurchaseSuccessPanel({
         <p className="text-sm text-content-secondary leading-relaxed">
           Obrigado pela tua compra.{" "}
           {purchased > 0
-            ? `Adicionámos ${purchased} crédito${purchased === 1 ? "" : "s"} à tua conta.`
+            ? `Adicionámos ${purchased} créditos à tua conta.`
             : "Os créditos já estão disponíveis na tua conta."}{" "}
           Volta ao relatório e gera a tua análise quando quiseres.
         </p>
