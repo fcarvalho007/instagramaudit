@@ -79,6 +79,32 @@ import { buildStartPayload } from "@/lib/leads/build-start-payload";
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
+type PasswordStrength = "empty" | "weak" | "fair" | "strong";
+
+function computePasswordStrength(value: string): PasswordStrength {
+  if (!value) return "empty";
+  const hasLetter = /[A-Za-z]/.test(value);
+  const hasNumber = /\d/.test(value);
+  const hasSymbol = /[^A-Za-z0-9]/.test(value);
+  if (value.length < 8 || !hasLetter || !hasNumber) return "weak";
+  if (value.length >= 12 && hasSymbol) return "strong";
+  return "fair";
+}
+
+const STRENGTH_LABELS: Record<PasswordStrength, string> = {
+  empty: "",
+  weak: "Curta — mínimo 8 caracteres, letra + número.",
+  fair: "Aceitável. Para mais segurança usa 12+ caracteres e um símbolo.",
+  strong: "Forte.",
+};
+
+const STRENGTH_TONE: Record<PasswordStrength, string> = {
+  empty: "bg-border-default",
+  weak: "bg-destructive",
+  fair: "bg-amber-500",
+  strong: "bg-emerald-600",
+};
+
 export interface OnboardingSuccess {
   leadId: string;
   credits: number;
