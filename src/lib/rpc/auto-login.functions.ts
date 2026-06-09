@@ -22,21 +22,30 @@ import { randomBytes } from "crypto";
 
 const ALLOWED_EMAIL = "fredericodigital@gmail.com";
 
+/**
+ * Pure gate — exported so a unit test can assert that the env flag +
+ * admin allowlist are both required. Returns `true` only when BOTH:
+ *   - process.env.BETA_AUTOLOGIN === "1"
+ *   - callerEmail is in ADMIN_ALLOWED_EMAILS (case-insensitive)
+ */
+export function isAutoLoginAllowed(
+  callerEmail: string | null | undefined,
+  env: { BETA_AUTOLOGIN?: string; ADMIN_ALLOWED_EMAILS?: string },
+): boolean {
+  if (env.BETA_AUTOLOGIN !== "1") return false;
+  if (!callerEmail) return false;
+  const allowed = (env.ADMIN_ALLOWED_EMAILS ?? "")
+    .toLowerCase()
+    .split(/[,\s]+/)
+    .filter(Boolean);
+  return allowed.includes(callerEmail.toLowerCase());
+}
+
 export const autoLogin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    if (process.env.BETA_AUTOLOGIN !== "1") {
-      throw new Response("Not found", { status: 404 });
-    }
-    // Caller must already be an admin (signed-in Supabase session with
-    // email in ADMIN_ALLOWED_EMAILS). This prevents anonymous browsers
-    // from triggering the shortcut even if BETA_AUTOLOGIN is flipped on.
     const callerEmail = (context.claims?.email as string | undefined) ?? null;
-    const allowed = (process.env.ADMIN_ALLOWED_EMAILS ?? "")
-      .toLowerCase()
-      .split(/[,\s]+/)
-      .filter(Boolean);
-    if (!callerEmail || !allowed.includes(callerEmail.toLowerCase())) {
+    if (!isAutoLoginAllowed(callerEmail, process.env)) {
       throw new Response("Not found", { status: 404 });
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
