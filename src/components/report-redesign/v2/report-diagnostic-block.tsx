@@ -21,6 +21,8 @@ import {
 import {
   derivePriorities,
   type PriorityItem,
+  type PriorityCategory,
+  type PriorityBasis,
 } from "@/lib/report/block02-diagnostic";
 import { ReportDiagnosticPriorities } from "./report-diagnostic-priorities";
 
