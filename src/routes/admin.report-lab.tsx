@@ -738,11 +738,11 @@ function ConsolidatedModuleTable({ variant }: { variant: ReportVariant }) {
                     <td className={cn("px-4 py-2", variant === "public_mvp" && "bg-admin-surface-muted/40")}>
                       <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", mvpVis.cls)}>{mvpVis.text}</span>
                     </td>
-                    <td className={cn("px-4 py-2", variant === "internal_lab" && "bg-admin-surface-muted/40")}>
-                      <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", labVis.cls)}>{labVis.text}</span>
-                    </td>
                     <td className={cn("px-4 py-2", variant === "pro_preview" && "bg-admin-surface-muted/40")}>
                       <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", proVis.cls)}>{proVis.text}</span>
+                    </td>
+                    <td className={cn("px-4 py-2", variant === "internal_lab" && "bg-admin-surface-muted/40")}>
+                      <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", labVis.cls)}>{labVis.text}</span>
                     </td>
                     <td className="px-4 py-2">
                       <span className={cn("inline-block rounded px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wider", badge.cls)}>
