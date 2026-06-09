@@ -1008,6 +1008,7 @@ function ExploreSection({
             primaryHandle={primaryHandle}
             existingCompetitors={existingCompetitors}
             competitorMax={COMPETITOR_MAX}
+            onEmptyFeedback={onBuyCredits}
           />
         ) : null}
       </section>
@@ -1166,6 +1167,7 @@ function ExploreSection({
           primaryHandle={primaryHandle}
           existingCompetitors={existingCompetitors}
           competitorMax={COMPETITOR_MAX}
+          onEmptyFeedback={onBuyCredits}
         />
       ) : null}
     </section>
