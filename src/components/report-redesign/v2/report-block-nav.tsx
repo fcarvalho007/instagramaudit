@@ -924,6 +924,43 @@ function ExploreSection({
     });
   };
 
+  const onBuyCredits = useCallback(() => {
+    const returnPath =
+      typeof window !== "undefined"
+        ? `${window.location.pathname}${window.location.search}`
+        : "/";
+    trackEvent({
+      data: {
+        eventType: "credits_pack_checkout_intent",
+        metadata: {
+          source: "report_no_credits_modal",
+          intent_kind: intent?.kind ?? null,
+          intent_days:
+            intent?.kind === "period" ? intent.days : undefined,
+          return_path: returnPath,
+        },
+      },
+    }).catch(() => {});
+    setDialogOpen(false);
+    navigate({
+      to: "/checkout/credits",
+      search: {
+        return: returnPath,
+        source: "report_no_credits_modal",
+      },
+    }).catch(() => {
+      // Defensive fallback for environments where the typed router
+      // refuses the route — full-page nav still works.
+      if (typeof window !== "undefined") {
+        const qs = new URLSearchParams({
+          return: returnPath,
+          source: "report_no_credits_modal",
+        }).toString();
+        window.location.assign(`/checkout/credits?${qs}`);
+      }
+    });
+  }, [intent, navigate]);
+
   const onAddCompetitor = () => {
     if (premiumUnlocked) {
       if (competitorCount >= COMPETITOR_MAX) return;
