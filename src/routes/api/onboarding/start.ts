@@ -4,8 +4,7 @@
  * Public boundary for the onboarding modal (Fase 5 — verification-gated
  * free credits).
  *
- *  1. Validate payload (Zod). Phone is no longer accepted; `qualification`
- *     is required.
+ *  1. Validate payload (Zod). Phone is optional; `qualification` is required.
  *  2. Classify the email domain. Disposable / throwaway → reject 400.
  *  3. Upsert lead by `email_normalized` (service role) with the new
  *     `qualification` + `email_domain_class` columns.
@@ -29,6 +28,7 @@ import { LEAD_QUALIFICATIONS } from "@/lib/leads/qualification";
 const PayloadSchema = z.object({
   name: z.string().trim().min(1).max(120),
   email: z.string().trim().email().max(255),
+  phone: z.string().trim().max(40).optional(),
   marketing_consent: z.boolean().optional().default(false),
   beta_consent: z.boolean().optional().default(false),
   user_type: z.string().trim().max(40).optional(),
