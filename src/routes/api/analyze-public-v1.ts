@@ -1144,10 +1144,14 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               );
               // Phase 2B: persist deterministic per-post detail for the
               // competitor — reuses `enrichPosts` (same helper as the
-              // primary profile). Excludes coauthors/tagged_users/
-              // location_name/thumbnail_storage_url for competitors.
-              // No additional provider calls — `posts` is the same
-              // `latestPosts[]` already returned by the Apify fetch.
+              // primary profile). The sanitiser below excludes ONLY
+              // coauthors/tagged_users/location_name for competitors.
+              // `thumbnail_storage_url` IS kept (initialised as `null`
+              // by `enrichPosts` and later populated by
+              // `persistThumbnailsInPayload` inside `storeSnapshot`, which
+              // also writes `profile.avatar_storage_url`). No additional
+              // provider calls here — `posts` is the same `latestPosts[]`
+              // already returned by the Apify fetch.
               const enriched = enrichPosts(posts, profile.followers_count);
               const weekdayCounts = [0, 0, 0, 0, 0, 0, 0];
               const hashtagTally = new Map<string, number>();
@@ -1165,7 +1169,11 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
                 .slice(0, 10)
                 .map(([tag, count]) => ({ tag, count }));
-              // Strip fields we explicitly do NOT persist for competitors.
+              // Strip ONLY the fields we explicitly do not persist for
+              // competitors. Do NOT strip `thumbnail_storage_url` — it is
+              // populated by `persistThumbnailsInPayload` during
+              // `storeSnapshot` so competitor thumbnails survive expiring
+              // Instagram CDN URLs.
               const sanitizedPosts = enriched.posts.map((p) => {
                 const {
                   coauthors: _c,
