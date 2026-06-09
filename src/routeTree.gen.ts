@@ -159,6 +159,7 @@ import { Route as ApiAdminKnowledgeNotesRouteImport } from './routes/api/admin/k
 import { Route as ApiAdminKnowledgeExportRouteImport } from './routes/api/admin/knowledge.export'
 import { Route as ApiAdminKnowledgeBenchmarksRouteImport } from './routes/api/admin/knowledge.benchmarks'
 import { Route as ApiAdminEmailTemplatesKeyRouteImport } from './routes/api/admin/email-templates.$key'
+import { Route as ApiAdminDiagnosticsAccountSyncRouteImport } from './routes/api/admin/diagnostics.account-sync'
 import { Route as AdminReportPreviewSnapshotSnapshotIdRouteImport } from './routes/admin_.report-preview.snapshot.$snapshotId'
 import { Route as AdminAutomacoesTemplatesKeyRouteImport } from './routes/admin.automacoes.templates.$key'
 import { Route as ApiPublicReportSnapshotByIdSnapshotIdRouteImport } from './routes/api/public/report-snapshot.by-id.$snapshotId'
@@ -971,6 +972,12 @@ const ApiAdminEmailTemplatesKeyRoute =
     path: '/$key',
     getParentRoute: () => ApiAdminEmailTemplatesRoute,
   } as any)
+const ApiAdminDiagnosticsAccountSyncRoute =
+  ApiAdminDiagnosticsAccountSyncRouteImport.update({
+    id: '/account-sync',
+    path: '/account-sync',
+    getParentRoute: () => ApiAdminDiagnosticsRoute,
+  } as any)
 const AdminReportPreviewSnapshotSnapshotIdRoute =
   AdminReportPreviewSnapshotSnapshotIdRouteImport.update({
     id: '/admin_/report-preview/snapshot/$snapshotId',
@@ -1094,7 +1101,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
   '/api/admin/cache-stats': typeof ApiAdminCacheStatsRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
-  '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
+  '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRouteWithChildren
   '/api/admin/email-templates': typeof ApiAdminEmailTemplatesRouteWithChildren
   '/api/admin/follow-ups': typeof ApiAdminFollowUpsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
@@ -1146,6 +1153,7 @@ export interface FileRoutesByFullPath {
   '/admin/automacoes/': typeof AdminAutomacoesIndexRoute
   '/admin/automacoes/templates/$key': typeof AdminAutomacoesTemplatesKeyRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
+  '/api/admin/diagnostics/account-sync': typeof ApiAdminDiagnosticsAccountSyncRoute
   '/api/admin/email-templates/$key': typeof ApiAdminEmailTemplatesKeyRouteWithChildren
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
   '/api/admin/knowledge/export': typeof ApiAdminKnowledgeExportRoute
@@ -1254,7 +1262,7 @@ export interface FileRoutesByTo {
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
   '/api/admin/cache-stats': typeof ApiAdminCacheStatsRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
-  '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
+  '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRouteWithChildren
   '/api/admin/email-templates': typeof ApiAdminEmailTemplatesRouteWithChildren
   '/api/admin/follow-ups': typeof ApiAdminFollowUpsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
@@ -1306,6 +1314,7 @@ export interface FileRoutesByTo {
   '/admin/automacoes': typeof AdminAutomacoesIndexRoute
   '/admin/automacoes/templates/$key': typeof AdminAutomacoesTemplatesKeyRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
+  '/api/admin/diagnostics/account-sync': typeof ApiAdminDiagnosticsAccountSyncRoute
   '/api/admin/email-templates/$key': typeof ApiAdminEmailTemplatesKeyRouteWithChildren
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
   '/api/admin/knowledge/export': typeof ApiAdminKnowledgeExportRoute
@@ -1417,7 +1426,7 @@ export interface FileRoutesById {
   '/api/admin/billing-reconciliation': typeof ApiAdminBillingReconciliationRoute
   '/api/admin/cache-stats': typeof ApiAdminCacheStatsRoute
   '/api/admin/dataforseo-diagnostics': typeof ApiAdminDataforseoDiagnosticsRoute
-  '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRoute
+  '/api/admin/diagnostics': typeof ApiAdminDiagnosticsRouteWithChildren
   '/api/admin/email-templates': typeof ApiAdminEmailTemplatesRouteWithChildren
   '/api/admin/follow-ups': typeof ApiAdminFollowUpsRoute
   '/api/admin/force-refresh': typeof ApiAdminForceRefreshRoute
@@ -1469,6 +1478,7 @@ export interface FileRoutesById {
   '/admin/automacoes/': typeof AdminAutomacoesIndexRoute
   '/admin/automacoes/templates/$key': typeof AdminAutomacoesTemplatesKeyRoute
   '/admin_/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
+  '/api/admin/diagnostics/account-sync': typeof ApiAdminDiagnosticsAccountSyncRoute
   '/api/admin/email-templates/$key': typeof ApiAdminEmailTemplatesKeyRouteWithChildren
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
   '/api/admin/knowledge/export': typeof ApiAdminKnowledgeExportRoute
@@ -1633,6 +1643,7 @@ export interface FileRouteTypes {
     | '/admin/automacoes/'
     | '/admin/automacoes/templates/$key'
     | '/admin/report-preview/snapshot/$snapshotId'
+    | '/api/admin/diagnostics/account-sync'
     | '/api/admin/email-templates/$key'
     | '/api/admin/knowledge/benchmarks'
     | '/api/admin/knowledge/export'
@@ -1793,6 +1804,7 @@ export interface FileRouteTypes {
     | '/admin/automacoes'
     | '/admin/automacoes/templates/$key'
     | '/admin/report-preview/snapshot/$snapshotId'
+    | '/api/admin/diagnostics/account-sync'
     | '/api/admin/email-templates/$key'
     | '/api/admin/knowledge/benchmarks'
     | '/api/admin/knowledge/export'
@@ -1955,6 +1967,7 @@ export interface FileRouteTypes {
     | '/admin/automacoes/'
     | '/admin/automacoes/templates/$key'
     | '/admin_/report-preview/snapshot/$snapshotId'
+    | '/api/admin/diagnostics/account-sync'
     | '/api/admin/email-templates/$key'
     | '/api/admin/knowledge/benchmarks'
     | '/api/admin/knowledge/export'
@@ -2043,7 +2056,7 @@ export interface RootRouteChildren {
   ApiAdminBillingReconciliationRoute: typeof ApiAdminBillingReconciliationRoute
   ApiAdminCacheStatsRoute: typeof ApiAdminCacheStatsRoute
   ApiAdminDataforseoDiagnosticsRoute: typeof ApiAdminDataforseoDiagnosticsRoute
-  ApiAdminDiagnosticsRoute: typeof ApiAdminDiagnosticsRoute
+  ApiAdminDiagnosticsRoute: typeof ApiAdminDiagnosticsRouteWithChildren
   ApiAdminEmailTemplatesRoute: typeof ApiAdminEmailTemplatesRouteWithChildren
   ApiAdminFollowUpsRoute: typeof ApiAdminFollowUpsRoute
   ApiAdminForceRefreshRoute: typeof ApiAdminForceRefreshRoute
@@ -3181,6 +3194,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminEmailTemplatesKeyRouteImport
       parentRoute: typeof ApiAdminEmailTemplatesRoute
     }
+    '/api/admin/diagnostics/account-sync': {
+      id: '/api/admin/diagnostics/account-sync'
+      path: '/account-sync'
+      fullPath: '/api/admin/diagnostics/account-sync'
+      preLoaderRoute: typeof ApiAdminDiagnosticsAccountSyncRouteImport
+      parentRoute: typeof ApiAdminDiagnosticsRoute
+    }
     '/admin_/report-preview/snapshot/$snapshotId': {
       id: '/admin_/report-preview/snapshot/$snapshotId'
       path: '/admin/report-preview/snapshot/$snapshotId'
@@ -3362,6 +3382,17 @@ const CheckoutRouteWithChildren = CheckoutRoute._addFileChildren(
   CheckoutRouteChildren,
 )
 
+interface ApiAdminDiagnosticsRouteChildren {
+  ApiAdminDiagnosticsAccountSyncRoute: typeof ApiAdminDiagnosticsAccountSyncRoute
+}
+
+const ApiAdminDiagnosticsRouteChildren: ApiAdminDiagnosticsRouteChildren = {
+  ApiAdminDiagnosticsAccountSyncRoute: ApiAdminDiagnosticsAccountSyncRoute,
+}
+
+const ApiAdminDiagnosticsRouteWithChildren =
+  ApiAdminDiagnosticsRoute._addFileChildren(ApiAdminDiagnosticsRouteChildren)
+
 interface ApiAdminEmailTemplatesKeyRouteChildren {
   ApiAdminEmailTemplatesKeyPreviewRoute: typeof ApiAdminEmailTemplatesKeyPreviewRoute
 }
@@ -3528,7 +3559,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminBillingReconciliationRoute: ApiAdminBillingReconciliationRoute,
   ApiAdminCacheStatsRoute: ApiAdminCacheStatsRoute,
   ApiAdminDataforseoDiagnosticsRoute: ApiAdminDataforseoDiagnosticsRoute,
-  ApiAdminDiagnosticsRoute: ApiAdminDiagnosticsRoute,
+  ApiAdminDiagnosticsRoute: ApiAdminDiagnosticsRouteWithChildren,
   ApiAdminEmailTemplatesRoute: ApiAdminEmailTemplatesRouteWithChildren,
   ApiAdminFollowUpsRoute: ApiAdminFollowUpsRoute,
   ApiAdminForceRefreshRoute: ApiAdminForceRefreshRoute,

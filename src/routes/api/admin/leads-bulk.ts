@@ -1,10 +1,23 @@
 /**
- * DELETE /api/admin/leads-bulk — eliminação em massa de leads.
+ * DELETE /api/admin/leads-bulk — acção em massa sobre leads do /admin.
  *
- * Protegido por `requireAdminSession`. Apaga em ordem segura todas as
- * tabelas que referenciam `leads.id` antes de remover os próprios leads.
- * Não há transação cross-table no PostgREST — abortamos no primeiro erro
- * e devolvemos o estado parcial para diagnóstico.
+ * Dois modos:
+ *   - `mode: "archive"` (default, GDPR-safe): marca `leads.archived_at = now()`,
+ *     escondendo dos KPIs/filtros activos. Mantém auth.users, pagamentos,
+ *     créditos, snapshots e audit logs. A conta continua activa e
+ *     `/api/onboarding/check-email` continua a devolver `exists: true`.
+ *
+ *   - `mode: "purge"` (destrutivo, contas de teste): apaga em ordem segura
+ *     todas as tabelas que referenciam `leads.id`, depois remove os
+ *     próprios leads, e por fim apaga o respectivo `auth.users` (via
+ *     `auth.admin.deleteUser`) — garantindo que `check-email` devolve
+ *     `exists: false` e que o email pode ser reutilizado.
+ *     Bloqueado se algum lead tiver `lead_payments.status = 'paid'`,
+ *     excepto se `force_paid: true` for enviado explicitamente.
+ *
+ * Protegido por `requireAdminSession`. Não há transação cross-table no
+ * PostgREST — abortamos no primeiro erro e devolvemos o estado parcial
+ * para diagnóstico.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -19,6 +32,8 @@ const BodySchema = z.object({
     .min(1, "Pelo menos um id")
     .max(200, "Máximo 200 ids por pedido")
     .transform((arr) => Array.from(new Set(arr))),
+  mode: z.enum(["archive", "purge"]).default("archive"),
+  force_paid: z.boolean().optional().default(false),
 });
 
 function jsonResponse(body: unknown, status = 200) {
@@ -26,6 +41,36 @@ function jsonResponse(body: unknown, status = 200) {
     status,
     headers: { "Content-Type": "application/json" },
   });
+}
+
+/**
+ * Lookup auth.users IDs for a list of normalized emails. Paginates
+ * `auth.admin.listUsers` because there is no per-email lookup in the
+ * admin API. Returns a map email_normalized → user_id.
+ */
+async function findAuthUsersByEmails(
+  emails: string[],
+): Promise<Map<string, string>> {
+  const wanted = new Set(emails.map((e) => e.toLowerCase()));
+  const found = new Map<string, string>();
+  if (wanted.size === 0) return found;
+
+  const perPage = 200;
+  for (let page = 1; page <= 50; page += 1) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+      page,
+      perPage,
+    });
+    if (error) throw new Error(`auth.listUsers failed: ${error.message}`);
+    const users = data?.users ?? [];
+    for (const u of users) {
+      const e = (u.email ?? "").toLowerCase();
+      if (wanted.has(e)) found.set(e, u.id);
+    }
+    if (users.length < perPage) break;
+    if (found.size === wanted.size) break;
+  }
+  return found;
 }
 
 export const Route = createFileRoute("/api/admin/leads-bulk")({
@@ -56,7 +101,90 @@ export const Route = createFileRoute("/api/admin/leads-bulk")({
             400,
           );
         }
-        const ids = parsed.data.ids;
+        const { ids, mode, force_paid } = parsed.data;
+
+        // ────────────────────────────── ARCHIVE (soft) ──────────────────────────────
+        if (mode === "archive") {
+          const { error, count } = await supabaseAdmin
+            .from("leads")
+            .update(
+              { archived_at: new Date().toISOString() },
+              { count: "exact" },
+            )
+            .in("id", ids)
+            .is("archived_at", null);
+          if (error) {
+            console.error("[leads-bulk] archive failed", error);
+            return jsonResponse(
+              { success: false, error: "Falha ao arquivar contactos" },
+              500,
+            );
+          }
+          try {
+            await supabaseAdmin.from("product_events").insert([
+              {
+                event_type: "leads_bulk_archived",
+                metadata: {
+                  count: count ?? 0,
+                  requested: ids.length,
+                  ids_sample: ids.slice(0, 10),
+                  actor_email: admin?.email ?? null,
+                },
+              },
+            ]);
+          } catch (err) {
+            console.error("[leads-bulk] archive audit insert failed", err);
+          }
+          return jsonResponse({
+            success: true,
+            mode: "archive",
+            archived: count ?? 0,
+          });
+        }
+
+        // ────────────────────────────── PURGE (hard) ──────────────────────────────
+        // 0) Lookup leads + paid-payment guard
+        const { data: leadRows, error: leadLookupErr } = await supabaseAdmin
+          .from("leads")
+          .select("id, email_normalized")
+          .in("id", ids);
+        if (leadLookupErr) {
+          console.error("[leads-bulk] leads lookup failed", leadLookupErr);
+          return jsonResponse(
+            { success: false, error: "Falha ao ler contactos" },
+            500,
+          );
+        }
+        const emails = (leadRows ?? [])
+          .map((r) => r.email_normalized)
+          .filter((e): e is string => typeof e === "string" && e.length > 0);
+
+        if (!force_paid) {
+          const { data: paidRows, error: paidErr } = await supabaseAdmin
+            .from("lead_payments")
+            .select("lead_id")
+            .in("lead_id", ids)
+            .eq("status", "paid")
+            .limit(1);
+          if (paidErr) {
+            console.error("[leads-bulk] paid check failed", paidErr);
+            return jsonResponse(
+              { success: false, error: "Falha ao verificar pagamentos" },
+              500,
+            );
+          }
+          if ((paidRows ?? []).length > 0) {
+            return jsonResponse(
+              {
+                success: false,
+                error_code: "PAID_LEAD_BLOCKED",
+                error:
+                  "Alguns contactos têm pagamentos confirmados. Use force_paid=true se mesmo assim quiser apagar.",
+              },
+              409,
+            );
+          }
+        }
 
         const details = {
           profiles_unlinked: 0,
@@ -64,7 +192,14 @@ export const Route = createFileRoute("/api/admin/leads-bulk")({
           snapshots: 0,
           requests: 0,
           events: 0,
+          payments: 0,
+          credit_ledger: 0,
+          entitlements: 0,
+          report_unlocks: 0,
+          coupon_redemptions: 0,
+          lead_reports: 0,
           leads: 0,
+          auth_users: 0,
         };
 
         // 1) desligar profiles
@@ -147,7 +282,33 @@ export const Route = createFileRoute("/api/admin/leads-bulk")({
           details.events = count ?? 0;
         }
 
-        // 6) leads
+        // 6) lead_payments / credit_ledger / lead_entitlements /
+        //    lead_report_unlocks / coupon_redemptions / lead_reports
+        const cascade: Array<{ key: keyof typeof details; table: string }> = [
+          { key: "payments", table: "lead_payments" },
+          { key: "credit_ledger", table: "credit_ledger" },
+          { key: "entitlements", table: "lead_entitlements" },
+          { key: "report_unlocks", table: "lead_report_unlocks" },
+          { key: "coupon_redemptions", table: "coupon_redemptions" },
+          { key: "lead_reports", table: "lead_reports" },
+        ];
+        for (const { key, table } of cascade) {
+          const { error, count } = await supabaseAdmin
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .from(table as any)
+            .delete({ count: "exact" })
+            .in("lead_id", ids);
+          if (error) {
+            console.error(`[leads-bulk] ${table} delete failed`, error);
+            return jsonResponse(
+              { success: false, error: `Falha ao apagar ${table}`, details },
+              500,
+            );
+          }
+          (details as Record<string, number>)[key] = count ?? 0;
+        }
+
+        // 7) leads
         {
           const { error, count } = await supabaseAdmin
             .from("leads")
@@ -163,16 +324,43 @@ export const Route = createFileRoute("/api/admin/leads-bulk")({
           details.leads = count ?? 0;
         }
 
+        // 8) auth.users — só depois de o lead estar fora, para o trigger
+        //    handle_new_user não recriar nada (ele só dispara em INSERT).
+        const authErrors: Array<{ email: string; message: string }> = [];
+        try {
+          const authMap = await findAuthUsersByEmails(emails);
+          for (const [email, userId] of authMap.entries()) {
+            const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+            if (error) {
+              authErrors.push({ email, message: error.message });
+              console.error(
+                `[leads-bulk] auth.deleteUser failed for ${email}`,
+                error,
+              );
+            } else {
+              details.auth_users += 1;
+            }
+          }
+        } catch (err) {
+          console.error("[leads-bulk] auth cleanup failed", err);
+          authErrors.push({
+            email: "*",
+            message: err instanceof Error ? err.message : String(err),
+          });
+        }
+
         // auditoria (best-effort)
         try {
           await supabaseAdmin.from("product_events").insert([
             {
-              event_type: "leads_bulk_deleted",
+              event_type: "leads_bulk_purged",
               metadata: {
                 count: details.leads,
                 requested: ids.length,
                 ids_sample: ids.slice(0, 10),
                 actor_email: admin?.email ?? null,
+                force_paid,
+                auth_errors: authErrors,
                 details,
               },
             },
@@ -183,7 +371,9 @@ export const Route = createFileRoute("/api/admin/leads-bulk")({
 
         return jsonResponse({
           success: true,
+          mode: "purge",
           deleted: details.leads,
+          auth_errors: authErrors,
           details,
         });
       },
