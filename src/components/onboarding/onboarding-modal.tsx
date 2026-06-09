@@ -41,22 +41,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   unlockFormSchema,
   type UnlockFormValues,
 } from "@/lib/unlock-flow";
+import {
+  GOALS,
+  PROFILE_OWNERSHIPS,
+  type Goal,
+  type ProfileOwnership,
+} from "@/lib/unlock-flow";
+import {
+  PROFILE_OWNERSHIP_ICONS,
+  RadioCardField,
+} from "@/components/product/unlock-modal";
 import { supabase } from "@/integrations/supabase/client";
 import { parseFullName } from "@/lib/names/parse-full-name";
 import { useOnboardingDraft } from "@/lib/leads/use-onboarding-draft";
 import { trackOnboardingEvent } from "@/lib/tracking/onboarding-events";
 import { buildStartPayload } from "@/lib/leads/build-start-payload";
-import { LEAD_QUALIFICATIONS, type LeadQualification } from "@/lib/leads/qualification";
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 const RESEND_COOLDOWN_SECONDS = 30;
