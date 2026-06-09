@@ -653,10 +653,11 @@ function ExploreSection({
   }, [balance, existingCompetitors, primaryHandle, probePeriodCache]);
 
   const onConfirmConsume = useCallback(
-    async (nextIntent: ConsumeCreditIntent) => {
-      // Period: backend não suporta janela personalizada ainda — apenas
-      // regista intenção (NÃO consome crédito) e fecha o dialog. UI já
-      // mostra "em preparação".
+    async (
+      nextIntent: ConsumeCreditIntent,
+      opts: { forceRefresh?: boolean } = {},
+    ) => {
+      const forceRefresh = !!opts.forceRefresh;
       if (nextIntent.kind === "period") {
         const days = nextIntent.days;
         const windowKind: "30d" | "90d" = days === 90 ? "90d" : "30d";
@@ -669,11 +670,14 @@ function ExploreSection({
         setErrorMessage(null);
         trackEvent({
           data: {
-            eventType: "beta_credit_intent_period",
+            eventType: forceRefresh
+              ? "beta_period_force_refresh"
+              : "beta_credit_intent_period",
             metadata: {
               action_type: "period_analysis",
               days,
               window: windowKind,
+              force_refresh: forceRefresh,
             },
           },
         }).catch(() => {});
@@ -681,7 +685,7 @@ function ExploreSection({
           const result = await fetchPublicAnalysis(
             primaryHandle,
             existingCompetitors,
-            { window: windowKind },
+            { window: windowKind, forceRefresh },
           );
           if (result.success) {
             trackEvent({
@@ -692,6 +696,7 @@ function ExploreSection({
                   days,
                   window: windowKind,
                   credit_amount: 1,
+                  force_refresh: forceRefresh,
                 },
               },
             }).catch(() => {});
@@ -738,6 +743,7 @@ function ExploreSection({
                   days,
                   window: windowKind,
                   error_code: result.error_code,
+                  force_refresh: forceRefresh,
                 },
               },
             }).catch(() => {});
@@ -746,9 +752,22 @@ function ExploreSection({
               setErrorMessage(
                 t("nav.explore.consume_dialog.period_error_requires_pro"),
               );
-            } else if (result.error_code === "WINDOW_90D_BUDGET_EXCEEDED") {
+            } else if (
+              result.error_code === "WINDOW_90D_BUDGET_EXCEEDED" ||
+              result.error_code === "PRO_WINDOW_BUDGET_EXCEEDED"
+            ) {
+              // Friendly user-facing copy — never mention provider/cost.
+              toast.error(
+                t("nav.explore.consume_dialog.period_unavailable_toast"),
+              );
               setErrorMessage(
-                t("nav.explore.consume_dialog.period_error_window_90d_budget"),
+                result.error_code === "WINDOW_90D_BUDGET_EXCEEDED"
+                  ? t(
+                      "nav.explore.consume_dialog.period_error_window_90d_budget",
+                    )
+                  : t(
+                      "nav.explore.consume_dialog.period_error_pro_window_budget",
+                    ),
               );
             } else {
               setErrorMessage(
