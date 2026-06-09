@@ -292,16 +292,17 @@ export function OnboardingModal({
       const data = (await res
         .json()
         .catch(() => null)) as OnboardingApiResponse | null;
-      // Defense-in-depth: if check-email raced and the email now exists as
-      // a lead, the server returns EMAIL_REQUIRES_VERIFICATION. Reroute to
-      // OTP with the email the user already typed.
+      // Race condition: o utilizador acabou de criar conta noutro
+      // separador OU a conta já existia e o /check-email falhou silenciosa.
+      // Redirige para o ecrã de login para o user introduzir a password.
       if (
         data &&
         data.ok === false &&
-        data.error_code === "EMAIL_REQUIRES_VERIFICATION"
+        (data.error_code === "EMAIL_ALREADY_EXISTS" ||
+          data.error_code === "EMAIL_REQUIRES_VERIFICATION")
       ) {
         setSubmitting(false);
-        await sendOtpAndGoToOtpView(values.email, "existing");
+        goToLoginView(values.email);
         return;
       }
       if (!res.ok || !data || data.ok !== true) {
@@ -349,21 +350,6 @@ export function OnboardingModal({
           handle,
           error_code: errorCode,
         });
-        return;
-      }
-      // Email já existia em auth.users — o cliente deve fazer login.
-      if (
-        data &&
-        data.ok === false &&
-        data.error_code === "EMAIL_ALREADY_EXISTS"
-      ) {
-        setSubmitting(false);
-        goToLoginView(values.email);
-        return;
-      }
-      if (!res.ok || !data || data.ok !== true) {
-        // handled by the existing error block above; this should not be
-        // reached after the early-returns, but TS narrowing wants it.
         return;
       }
       succeededRef.current = true;
