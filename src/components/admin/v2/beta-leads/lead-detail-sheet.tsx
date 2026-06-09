@@ -95,6 +95,8 @@ import {
   labelProfileOwnership,
   labelPurpose,
   labelSource,
+  labelQualification,
+  labelEmailDomainClass,
 } from "@/lib/admin/lead-context-labels";
 import {
   deriveWindow,
