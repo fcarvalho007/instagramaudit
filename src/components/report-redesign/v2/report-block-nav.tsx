@@ -1140,6 +1140,8 @@ function ExploreSection({
           intent={intent}
           balance={balance}
           onConfirm={onConfirmConsume}
+          onOpenCached={(i) => onConfirmConsume(i, { forceRefresh: false })}
+          periodCacheState={periodCacheState}
           submitting={submitting}
           errorMessage={errorMessage}
           primaryHandle={primaryHandle}
