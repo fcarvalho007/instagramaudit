@@ -955,7 +955,7 @@ function ExploreSection({
         return: returnPath,
         source: "report_no_credits_modal",
         intent: intendedAction,
-        pack: "credits_3",
+        pack: "credit_pack_1",
       },
     }).catch(() => {
       // Defensive fallback for environments where the typed router
@@ -965,7 +965,7 @@ function ExploreSection({
           return: returnPath,
           source: "report_no_credits_modal",
           intent: intendedAction,
-          pack: "credits_3",
+          pack: "credit_pack_1",
         }).toString();
         window.location.assign(`/checkout/credits?${qs}`);
       }

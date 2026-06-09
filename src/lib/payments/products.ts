@@ -49,16 +49,21 @@ export const PUBLIC_PRODUCTS: Record<ProductCode, PublicProduct> = {
     namePt: "1 crédito de análise",
     priceLabel: "9€",
     priceNote: "1 crédito · pagamento único",
-    // DEPRECATED: substituído pelos packs `credits_3 / credits_10 /
-    // credits_25`. Mantido no enum apenas para back-compat com pagamentos
-    // antigos; nunca apresentado em novos CTAs.
-    exposed: false,
+    // SKU activo do lançamento controlado. A combinação pública é
+    // "1 crédito · 9€"; o bónus interno de +2 créditos é aplicado pelo
+    // webhook (`grantCreditPackLaunchBonus`) e registado como linha
+    // separada no ledger (`credit_pack_launch_bonus`). Decisão
+    // temporária — ver TEMPORARY LAUNCH OFFER em `credits.server.ts`.
+    exposed: true,
   },
   credits_3: {
     code: "credits_3",
     namePt: "3 créditos de análise",
     priceLabel: "9€",
     priceNote: "3 créditos · pagamento único",
+    // Reservado para uma futura fase de lançamento pública com vários
+    // packs. Mantido no enum para back-compat com `lead_payments`
+    // gerados em testes; nunca apresentado em CTAs hoje.
     exposed: false,
   },
   credits_10: {
@@ -66,6 +71,7 @@ export const PUBLIC_PRODUCTS: Record<ProductCode, PublicProduct> = {
     namePt: "10 créditos de análise",
     priceLabel: "25€",
     priceNote: "10 créditos · pagamento único",
+    // Idem `credits_3`: SKU reservado, não exposto.
     exposed: false,
   },
   credits_25: {
@@ -73,6 +79,7 @@ export const PUBLIC_PRODUCTS: Record<ProductCode, PublicProduct> = {
     namePt: "25 créditos de análise",
     priceLabel: "49€",
     priceNote: "25 créditos · pagamento único",
+    // Idem `credits_3`: SKU reservado, não exposto.
     exposed: false,
   },
 };
