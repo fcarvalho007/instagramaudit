@@ -833,7 +833,7 @@ function FinalStepBody({
       </div>
 
       {/* Left — navy value panel */}
-      <aside className="bg-content-primary text-white px-6 py-7 sm:px-8 sm:py-9 lg:py-10 flex flex-col gap-5">
+      <aside className="bg-content-primary text-white px-6 py-7 sm:px-7 sm:py-9 lg:py-10 flex flex-col gap-5">
         <p className="text-eyebrow-sm text-cyan-300">
           {t(
             purpose === "checkout"
