@@ -35,6 +35,7 @@ import type { PersistedMarketSignals } from "@/lib/market-signals/cache";
 import type { InsightsContext } from "./types";
 import type { CaptionSemanticAnalysis } from "@/lib/report/caption-semantic-types";
 import type { VisualCoverAnalysis } from "@/lib/report/visual-cover-types";
+import type { CommentIntelligence } from "@/lib/analysis/types";
 
 /** Subset of the `EnrichedPost` shape the helper actually reads. */
 type PostInput = {
@@ -81,6 +82,12 @@ export interface BuildInsightsCtxInput {
    * verdict paragraph.
    */
   visualCover?: VisualCoverAnalysis | null;
+  /**
+   * Optional comment-intelligence summary already persisted on the
+   * snapshot. When `null/undefined` or all signals are zero, the
+   * resulting ctx will NOT carry `comment_intelligence`.
+   */
+  commentIntelligence?: CommentIntelligence | null;
 }
 
 export interface BuildInsightsCtxResult {
@@ -229,6 +236,13 @@ export function buildInsightsCtx(
       : {}),
     ...(visualCover
       ? { visual_cover: deriveVisualCoverSummary(visualCover) }
+      : {}),
+    ...(deriveCommentIntelligenceSummary(commentIntelligence ?? null)
+      ? {
+          comment_intelligence: deriveCommentIntelligenceSummary(
+            commentIntelligence ?? null,
+          )!,
+        }
       : {}),
   };
 
