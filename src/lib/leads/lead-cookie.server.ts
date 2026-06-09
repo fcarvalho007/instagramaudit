@@ -20,6 +20,12 @@ import {
 
 export const LEAD_COOKIE_NAME = "lead_session";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 365; // 1 year
+/**
+ * Hard server-side TTL: even if a browser kept the cookie longer (or it was
+ * exfiltrated), `decodeLeadCookie` rejects anything older than this. Keeps
+ * the long Max-Age for UX while bounding replay risk.
+ */
+const HARD_TTL_SECONDS = 60 * 60 * 24 * 90; // 90 days
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -70,6 +76,11 @@ export function decodeLeadCookie(
   if (!UUID_RE.test(leadId)) return null;
   const issuedAtSec = Number(issuedAtStr);
   if (!Number.isFinite(issuedAtSec) || issuedAtSec <= 0) return null;
+
+  // Enforce hard TTL server-side: reject cookies older than HARD_TTL_SECONDS
+  // (and reject clearly future-dated ones beyond a small clock-skew window).
+  const ageSec = Math.floor(Date.now() / 1000) - issuedAtSec;
+  if (ageSec > HARD_TTL_SECONDS || ageSec < -60) return null;
 
   let expected: string;
   try {
