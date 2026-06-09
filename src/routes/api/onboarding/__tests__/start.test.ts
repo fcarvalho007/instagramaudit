@@ -12,8 +12,6 @@ type LeadRow = {
   id: string;
   email_normalized: string;
   name: string;
-  phone: string | null;
-  phone_normalized: string | null;
   [k: string]: unknown;
 };
 
@@ -75,9 +73,6 @@ function leadsBuilder() {
           email_normalized:
             (pendingInsert.email_normalized as string) ?? "",
           name: (pendingInsert.name as string) ?? "",
-          phone: (pendingInsert.phone as string | null) ?? null,
-          phone_normalized:
-            (pendingInsert.phone_normalized as string | null) ?? null,
           ...pendingInsert,
         };
         leadStore.set(row.email_normalized, row);
@@ -111,6 +106,9 @@ function leadsBuilder() {
 
 vi.mock("@/integrations/supabase/client.server", () => ({
   supabaseAdmin: {
+    auth: {
+      signInWithOtp: vi.fn(async () => ({ data: {}, error: null })),
+    },
     from: (table: string) => {
       if (table === "leads") return leadsBuilder();
       if (table === "product_events") {
@@ -152,12 +150,15 @@ const GENERIC =
   "Não foi possível preparar o acesso ao relatório. Tenta novamente dentro de instantes.";
 
 function post(body: Record<string, unknown>): Request {
-  const withGdpr =
-    "gdpr_consent" in body ? body : { ...body, gdpr_consent: true };
+  const withDefaults: Record<string, unknown> = {
+    qualification: "brand_company",
+    ...body,
+  };
+  if (!("gdpr_consent" in withDefaults)) withDefaults.gdpr_consent = true;
   return new Request("http://test.local/api/onboarding/start", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(withGdpr),
+    body: JSON.stringify(withDefaults),
   });
 }
 
@@ -175,12 +176,11 @@ beforeEach(() => {
 });
 
 describe("POST /api/onboarding/start", () => {
-  it("valid payload → 200 with lead_id, credits=2 and cookie writer invoked", async () => {
+  it("valid payload → 200 with lead_id, credits=0 (verification-gated) and cookie writer invoked", async () => {
     const res = await handleOnboardingStart(
       post({
         name: "Ana Silva",
         email: "ana@example.com",
-        phone: "+351912345678",
         marketing_consent: true,
       }),
     );
@@ -189,10 +189,14 @@ describe("POST /api/onboarding/start", () => {
       ok: boolean;
       lead_id: string;
       credits: number;
+      verification_required?: boolean;
     };
     expect(body.ok).toBe(true);
     expect(body.lead_id).toMatch(UUID_RE);
-    expect(body.credits).toBe(2);
+    expect(body.credits).toBe(0);
+    expect(body.verification_required).toBe(true);
+    // Fase 5: /start no longer grants credits — that moves to /claim-existing.
+    expect(grantInitialCreditsMock).not.toHaveBeenCalled();
     expect(setLeadCookieMock).toHaveBeenCalledTimes(1);
     expect(setLeadCookieMock).toHaveBeenCalledWith(body.lead_id);
   });
@@ -222,29 +226,22 @@ describe("POST /api/onboarding/start", () => {
     );
   });
 
-  it("duplicate email → same lead_id, credits stays at 2 (no double grant)", async () => {
+  it("duplicate email on /start → 403 EMAIL_REQUIRES_VERIFICATION (defense-in-depth)", async () => {
     const first = await handleOnboardingStart(
       post({ name: "Ana", email: "dup@example.com" }),
     );
-    const firstBody = (await first.json()) as {
-      lead_id: string;
-      credits: number;
-    };
     expect(first.status).toBe(200);
-    expect(firstBody.credits).toBe(2);
 
     const second = await handleOnboardingStart(
       post({ name: "Ana Maria", email: "dup@example.com" }),
     );
-    const secondBody = (await second.json()) as {
-      lead_id: string;
-      credits: number;
+    expect(second.status).toBe(403);
+    const body = (await second.json()) as {
+      ok: boolean;
+      error_code: string;
     };
-    expect(second.status).toBe(200);
-    expect(secondBody.lead_id).toBe(firstBody.lead_id);
-    expect(secondBody.credits).toBe(2); // NOT 4
-    expect(grantInitialCreditsMock).toHaveBeenCalledTimes(2);
-    expect(grantedLeads.size).toBe(1);
+    expect(body.ok).toBe(false);
+    expect(body.error_code).toBe("EMAIL_REQUIRES_VERIFICATION");
   });
 
   it("SESSION_SECRET misconfigured → 500 INTERNAL_ERROR with generic, secret-safe message", async () => {
@@ -271,19 +268,45 @@ describe("POST /api/onboarding/start", () => {
     expect(body.message.toLowerCase()).not.toContain("hmac");
   });
 
-  it("formatted phone is accepted and normalized to digits", async () => {
+  it("disposable email domain → 400 INVALID_PAYLOAD (email field)", async () => {
+    const res = await handleOnboardingStart(
+      post({ name: "Ana", email: "abuse@mailinator.com" }),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as {
+      ok: boolean;
+      error_code: string;
+      issues?: { field: string; code: string }[];
+    };
+    expect(body.error_code).toBe("INVALID_PAYLOAD");
+    expect(body.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: "email", code: "disposable" }),
+      ]),
+    );
+    expect(setLeadCookieMock).not.toHaveBeenCalled();
+  });
+
+  it("missing qualification → 400 INVALID_PAYLOAD (qualification field)", async () => {
     const res = await handleOnboardingStart(
       post({
         name: "Ana",
-        email: "phone@example.com",
-        phone: "+351 912 345 678",
+        email: "noqual@example.com",
+        qualification: undefined,
       }),
     );
-    expect(res.status).toBe(200);
-    expect(insertCalls).toHaveLength(1);
-    const inserted = insertCalls[0];
-    expect(inserted.phone).toBe("+351 912 345 678");
-    expect(inserted.phone_normalized).toBe("351912345678");
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as {
+      ok: boolean;
+      error_code: string;
+      issues?: { field: string; code: string }[];
+    };
+    expect(body.error_code).toBe("INVALID_PAYLOAD");
+    expect(body.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: "qualification" }),
+      ]),
+    );
   });
 
   it("missing gdpr_consent → 400 INVALID_PAYLOAD", async () => {

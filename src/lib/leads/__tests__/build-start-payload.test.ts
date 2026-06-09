@@ -35,9 +35,9 @@ describe("buildStartPayload", () => {
     expect(filled.website).toBe("spam-bot");
   });
 
-  it("omits phone when blank, trims when present", () => {
+  it("never includes phone (field removed from public modal)", () => {
     const empty = buildStartPayload({ ...baseValues, phone: "   " }, "Ana", "", 1);
-    expect(empty.phone).toBeUndefined();
+    expect("phone" in empty).toBe(false);
 
     const filled = buildStartPayload(
       { ...baseValues, phone: "  +351 912 345 678  " },
@@ -45,7 +45,19 @@ describe("buildStartPayload", () => {
       "",
       1,
     );
-    expect(filled.phone).toBe("+351 912 345 678");
+    expect("phone" in filled).toBe(false);
+  });
+
+  it("includes qualification only when set", () => {
+    const off = buildStartPayload(baseValues, "Ana", "", 1);
+    expect("qualification" in off).toBe(false);
+    const on = buildStartPayload(
+      { ...baseValues, qualification: "brand_company" },
+      "Ana",
+      "",
+      1,
+    );
+    expect(on.qualification).toBe("brand_company");
   });
 
   it("propagates marketing_consent as boolean", () => {

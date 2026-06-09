@@ -40,6 +40,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   unlockFormSchema,
   type UnlockFormValues,
 } from "@/lib/unlock-flow";
@@ -48,6 +55,7 @@ import { parseFullName } from "@/lib/names/parse-full-name";
 import { useOnboardingDraft } from "@/lib/leads/use-onboarding-draft";
 import { trackOnboardingEvent } from "@/lib/tracking/onboarding-events";
 import { buildStartPayload } from "@/lib/leads/build-start-payload";
+import { LEAD_QUALIFICATIONS, type LeadQualification } from "@/lib/leads/qualification";
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 const RESEND_COOLDOWN_SECONDS = 30;
@@ -78,7 +86,7 @@ export interface OnboardingModalProps {
 type View =
   | { kind: "entry" }
   | { kind: "final"; email: string }
-  | { kind: "otp"; email: string; sentAt: number };
+  | { kind: "otp"; email: string; sentAt: number; mode: "new" | "existing" };
 
 interface OnboardingApiOk {
   ok: true;
@@ -122,6 +130,7 @@ export function OnboardingModal({
       user_type: "creator",
       goal_other_text: "",
       user_type_other_text: "",
+      qualification: undefined,
       gdpr_consent: false as unknown as true,
       marketing_consent: false,
     },
@@ -176,7 +185,7 @@ export function OnboardingModal({
    * to bind the new auth user to the existing lead.
    */
   const sendOtpAndGoToOtpView = useCallback(
-    async (email: string): Promise<void> => {
+    async (email: string, mode: "new" | "existing" = "existing"): Promise<void> => {
       setSubmitting(true);
       setServerError(null);
       try {
@@ -194,7 +203,7 @@ export function OnboardingModal({
           });
           return;
         }
-        setView({ kind: "otp", email, sentAt: Date.now() });
+        setView({ kind: "otp", email, sentAt: Date.now(), mode });
       } catch {
         setServerError(t("onboarding.otp.errors.network"));
       } finally {
@@ -228,7 +237,7 @@ export function OnboardingModal({
           return;
         }
         if (data.exists) {
-          await sendOtpAndGoToOtpView(email);
+          await sendOtpAndGoToOtpView(email, "existing");
           return;
         }
         form.setValue("email", email, { shouldValidate: true });
@@ -287,7 +296,7 @@ export function OnboardingModal({
         data.error_code === "EMAIL_REQUIRES_VERIFICATION"
       ) {
         setSubmitting(false);
-        await sendOtpAndGoToOtpView(values.email);
+        await sendOtpAndGoToOtpView(values.email, "existing");
         return;
       }
       if (!res.ok || !data || data.ok !== true) {
@@ -306,7 +315,7 @@ export function OnboardingModal({
         const fieldErrorMap: Record<string, keyof UnlockFormValues> = {
           name: "full_name",
           email: "email",
-          phone: "phone",
+          qualification: "qualification",
           gdpr_consent: "gdpr_consent",
         };
         let firstFocus: keyof UnlockFormValues | null = null;
@@ -344,8 +353,15 @@ export function OnboardingModal({
         handle,
         marketing_consent: values.marketing_consent === true,
       });
-      clearDraft();
-      onSuccess(handle, { leadId: data.lead_id, credits: data.credits });
+      // Fase 5: `/start` no longer grants credits. It triggered the
+      // verification OTP server-side; route to the OTP panel so the user
+      // can confirm and unlock the 2 free credits via /claim-existing.
+      setView({
+        kind: "otp",
+        email: values.email,
+        sentAt: Date.now(),
+        mode: "new",
+      });
     } catch {
       setServerError(t("onboarding.errors.network"));
       trackOnboardingEvent({
@@ -467,10 +483,11 @@ export function OnboardingModal({
           <OtpVerifyPanel
             email={view.email}
             sentAt={view.sentAt}
+            mode={view.mode}
             submitting={submitting}
             serverError={serverError}
             onVerify={(code) => handleOtpVerify(view.email, code)}
-            onResend={() => sendOtpAndGoToOtpView(view.email)}
+            onResend={() => sendOtpAndGoToOtpView(view.email, view.mode)}
             onBack={goBackToEntry}
           />
         )}
@@ -648,11 +665,12 @@ function FinalStepBody({
   const { t } = useTranslation("gate");
   const nameError = form.formState.errors.full_name?.message;
   const emailError = form.formState.errors.email?.message;
-  const phoneError = form.formState.errors.phone?.message;
+  const qualificationError = form.formState.errors.qualification?.message;
   const consentError = form.formState.errors.gdpr_consent?.message;
   const consent = form.watch("gdpr_consent");
   const marketing = form.watch("marketing_consent");
   const emailValue = form.watch("email");
+  const qualificationValue = form.watch("qualification");
   const emailIsValid = !emailError && emailValue && EMAIL_RE.test(emailValue);
 
   return (
@@ -754,28 +772,45 @@ function FinalStepBody({
           </div>
           {emailError ? (
             <p className="text-[12.5px] text-destructive">{emailError}</p>
-          ) : null}
+          ) : (
+            <p className="text-[12px] text-content-tertiary">
+              {t("onboarding.final.right.emailHint")}
+            </p>
+          )}
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="onb-phone" className="text-[13.5px] font-medium text-content-primary">
-            {t("onboarding.final.right.phoneLabel")}{" "}
-            <span className="text-content-tertiary text-[12.5px] font-normal">
-              — {t("onboarding.final.right.phoneOptional")}
-            </span>
+          <Label htmlFor="onb-qualification" className="text-[13.5px] font-medium text-content-primary">
+            {t("onboarding.final.right.qualificationLabel")}
           </Label>
-          <Input
-            id="onb-phone"
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            placeholder={t("onboarding.final.right.phonePlaceholder")}
-            aria-invalid={Boolean(phoneError)}
-            className="text-base"
-            {...form.register("phone")}
-          />
-          {phoneError ? (
-            <p className="text-[12.5px] text-destructive">{phoneError}</p>
+          <Select
+            value={qualificationValue ?? undefined}
+            onValueChange={(v) =>
+              form.setValue("qualification", v as LeadQualification, {
+                shouldValidate: true,
+              })
+            }
+          >
+            <SelectTrigger
+              id="onb-qualification"
+              aria-invalid={Boolean(qualificationError)}
+              className="text-base"
+              data-testid="onboarding-qualification"
+            >
+              <SelectValue
+                placeholder={t("onboarding.final.right.qualificationPlaceholder")}
+              />
+            </SelectTrigger>
+            <SelectContent>
+              {LEAD_QUALIFICATIONS.map((q) => (
+                <SelectItem key={q} value={q}>
+                  {t(`onboarding.final.right.qualificationOptions.${q}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {qualificationError ? (
+            <p className="text-[12.5px] text-destructive">{qualificationError}</p>
           ) : null}
         </div>
 
@@ -922,6 +957,7 @@ function maskEmail(email: string): string {
 function OtpVerifyPanel({
   email,
   sentAt,
+  mode,
   submitting,
   serverError,
   onVerify,
@@ -930,6 +966,7 @@ function OtpVerifyPanel({
 }: {
   email: string;
   sentAt: number;
+  mode: "new" | "existing";
   submitting: boolean;
   serverError: string | null;
   onVerify: (code: string) => Promise<void> | void;
@@ -962,6 +999,11 @@ function OtpVerifyPanel({
         <p className="text-eyebrow-sm text-content-tertiary">
           {t("onboarding.otp.eyebrow")}
         </p>
+        {mode === "existing" ? (
+          <p className="text-[13px] text-content-secondary leading-[1.5]">
+            {t("onboarding.otp.existingTitle")}
+          </p>
+        ) : null}
         <DialogTitle className="font-display text-[24px] sm:text-[28px] leading-[1.1] tracking-[-0.015em] text-content-primary text-balance break-words">
           {t("onboarding.otp.title", { maskedEmail: maskEmail(email) })}
         </DialogTitle>

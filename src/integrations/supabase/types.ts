@@ -1007,6 +1007,7 @@ export type Database = {
           contacted_at: string | null
           created_at: string
           email: string
+          email_domain_class: string | null
           email_normalized: string
           gdpr_consent_at: string | null
           gdpr_consent_version: string | null
@@ -1020,6 +1021,7 @@ export type Database = {
           pricing_preference: string | null
           profile_ownership: string | null
           purpose: string | null
+          qualification: string | null
           source: string
           updated_at: string
           user_type: string | null
@@ -1033,6 +1035,7 @@ export type Database = {
           contacted_at?: string | null
           created_at?: string
           email: string
+          email_domain_class?: string | null
           email_normalized: string
           gdpr_consent_at?: string | null
           gdpr_consent_version?: string | null
@@ -1046,6 +1049,7 @@ export type Database = {
           pricing_preference?: string | null
           profile_ownership?: string | null
           purpose?: string | null
+          qualification?: string | null
           source?: string
           updated_at?: string
           user_type?: string | null
@@ -1059,6 +1063,7 @@ export type Database = {
           contacted_at?: string | null
           created_at?: string
           email?: string
+          email_domain_class?: string | null
           email_normalized?: string
           gdpr_consent_at?: string | null
           gdpr_consent_version?: string | null
@@ -1072,6 +1077,7 @@ export type Database = {
           pricing_preference?: string | null
           profile_ownership?: string | null
           purpose?: string | null
+          qualification?: string | null
           source?: string
           updated_at?: string
           user_type?: string | null

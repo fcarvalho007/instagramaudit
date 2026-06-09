@@ -6,6 +6,8 @@
  */
 import { z } from "zod";
 
+import { LEAD_QUALIFICATIONS } from "@/lib/leads/qualification";
+
 export const PROFILE_OWNERSHIPS = [
   "own_profile",
   "brand_profile",
@@ -93,9 +95,15 @@ export const unlockFormSchema = z
       .max(120, "Nome demasiado longo")
       .regex(/\S/, "Indica o teu nome"),
     email: z.string().trim().toLowerCase().email("Email inválido").max(255),
-    // Optional mobile phone — used only in exceptional cases (account /
-    // report-access validation). Not required to reduce friction at magnet.
+    // Phone field removed from the public onboarding modal (Fase 5).
+    // Kept as `optional()` in the schema so legacy callers (admin, tests)
+    // that still pass a value don't break; the new form never sets it.
     phone: z.string().trim().max(40).optional(),
+    // Qualification (Fase 5 modal). Optional at the shared-schema level so
+    // legacy callers (old unlock flow, tests) still validate; the new
+    // onboarding modal enforces it client-side and the server route
+    // (`/api/onboarding/start`) requires it via its own Zod schema.
+    qualification: z.enum(LEAD_QUALIFICATIONS).optional(),
     profile_ownership: z.enum(PROFILE_OWNERSHIPS, {
       required_error: "Escolhe uma opção",
     }),
