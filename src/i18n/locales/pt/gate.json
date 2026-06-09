@@ -191,8 +191,11 @@
       "left": {
         "eyebrow": "ÚLTIMO PASSO",
         "title": "O teu relatório fica a um clique",
+        "eyebrowCheckout": "ANTES DE PAGAR",
+        "titleCheckout": "Só faltam alguns dados",
         "bullets": {
           "report": "Relatório de @{{handle}}",
+          "reportCheckout": "Conta privada onde guardamos a tua compra e os relatórios",
           "save": "Conta privada com os relatórios guardados",
           "credits": "<strong>2 créditos grátis</strong> após confirmação do email"
         }
