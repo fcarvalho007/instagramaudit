@@ -554,7 +554,7 @@ export function OnboardingModal({
             }
             honeypotRef={honeypotRef}
           />
-        ) : (
+        ) : view.kind === "otp" ? (
           <OtpVerifyPanel
             email={view.email}
             sentAt={view.sentAt}
@@ -565,6 +565,16 @@ export function OnboardingModal({
             onVerify={(code) => handleOtpVerify(view.email, code)}
             onResend={() => sendOtpAndGoToOtpView(view.email, view.mode)}
             onBack={goBackToEntry}
+          />
+        ) : (
+          <MagicLinkSentPanel
+            email={view.email}
+            onBack={goBackToEntry}
+            onResend={async () => {
+              // Re-pede /check-email para reenviar o link assinado.
+              await handleEntrySubmit(view.email);
+            }}
+            submitting={submitting}
           />
         )}
       </DialogContent>
