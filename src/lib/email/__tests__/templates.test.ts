@@ -19,7 +19,7 @@ describe("renderRequestReceived", () => {
     expect(out.subject).toBe("Recebemos o teu pedido para @frederico.m.carvalho");
     expect(out.text).toContain("Olá Maria,");
     expect(out.text).toContain("@frederico.m.carvalho");
-    expect(out.text).toContain("fase beta");
+    expect(out.text).toContain("genuinamente útil");
     expect(out.text).toContain("equipa AuditProfiles");
     expect(out.html).toMatch(/^<!DOCTYPE html>/);
     expect(out.html).toContain('<html lang="pt-PT">');

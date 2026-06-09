@@ -41,7 +41,7 @@ export function getRequestReceivedParts(
     "",
     `Recebemos o teu pedido para analisar ${handle}. A preparação do relatório está em curso — vais receber um email assim que estiver pronto, normalmente em poucos minutos.`,
     "",
-    "Esta ferramenta está em fase beta. O objetivo é simples: perceber se a análise que entregamos é genuinamente útil para quem decide sobre conteúdo, audiência ou marca no Instagram.",
+    "O nosso objetivo é simples: perceber se a análise que entregamos é genuinamente útil para quem decide sobre conteúdo, audiência ou marca no Instagram.",
     "",
     "Por isso, depois de explorares o relatório, vamos pedir-te uma opinião curta. Vale ouro nesta fase.",
     "",
@@ -54,7 +54,7 @@ export function getRequestReceivedParts(
       `Recebemos o teu pedido para analisar <strong style="color:#0a0e1a;">${safeHandle}</strong>. A preparação do relatório está em curso — vais receber um email assim que estiver pronto, normalmente em poucos minutos.`,
     ),
     pMuted(
-      "Esta ferramenta está em fase <strong style=\"color:#0a0e1a;\">beta</strong>. O objetivo é simples: perceber se a análise que entregamos é genuinamente útil para quem decide sobre conteúdo, audiência ou marca no Instagram.",
+      "O nosso objetivo é simples: perceber se a análise que entregamos é genuinamente útil para quem decide sobre conteúdo, audiência ou marca no Instagram.",
     ),
     pMuted(
       "Por isso, depois de explorares o relatório, vamos pedir-te uma opinião curta. Vale ouro nesta fase.",

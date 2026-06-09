@@ -1,7 +1,7 @@
 export const SHARE_COPY = {
   eyebrow: "Partilhar relatório",
   description:
-    "Envia este relatório a quem precise de o ler. O link é público durante a fase beta.",
+    "Envia este relatório a quem precise de o ler. O link é público.",
   actions: {
     copy: { label: "Copiar link", labelDone: "Link copiado" },
     linkedin: { label: "Partilhar no LinkedIn" },

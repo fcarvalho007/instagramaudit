@@ -7,10 +7,10 @@
 
 export const BETA_COPY = {
   feedback: {
-    eyebrow: "Feedback beta",
+    eyebrow: "Feedback",
     title: "Este relatório foi útil?",
     subtitle:
-      "O AuditProfiles está em fase beta. Um email curto ajuda-nos a tornar a análise mais útil para marcas, criadores e equipas de marketing.",
+      "Um email curto ajuda-nos a tornar a análise mais útil para marcas, criadores e equipas de marketing.",
     action: {
       label: "Enviar feedback por email",
       href: "mailto:hello@auditprofiles.com?subject=Feedback%20AuditProfiles",
