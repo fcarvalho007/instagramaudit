@@ -957,6 +957,7 @@ function maskEmail(email: string): string {
 function OtpVerifyPanel({
   email,
   sentAt,
+  mode,
   submitting,
   serverError,
   onVerify,
@@ -965,6 +966,7 @@ function OtpVerifyPanel({
 }: {
   email: string;
   sentAt: number;
+  mode: "new" | "existing";
   submitting: boolean;
   serverError: string | null;
   onVerify: (code: string) => Promise<void> | void;
@@ -997,6 +999,11 @@ function OtpVerifyPanel({
         <p className="text-eyebrow-sm text-content-tertiary">
           {t("onboarding.otp.eyebrow")}
         </p>
+        {mode === "existing" ? (
+          <p className="text-[13px] text-content-secondary leading-[1.5]">
+            {t("onboarding.otp.existingTitle")}
+          </p>
+        ) : null}
         <DialogTitle className="font-display text-[24px] sm:text-[28px] leading-[1.1] tracking-[-0.015em] text-content-primary text-balance break-words">
           {t("onboarding.otp.title", { maskedEmail: maskEmail(email) })}
         </DialogTitle>
