@@ -60,6 +60,11 @@ export interface ReportSavedInput {
   insights?: ReportSavedInsights | null;
   /** Opcional: link one-click unsubscribe (footer marketing). */
   unsubscribeUrl?: string | null;
+  /** Opcional: URL para o fluxo de redefinição de palavra-passe. Quando
+   *  presente, o template (variante `welcome`) inclui uma nota de segurança
+   *  a explicar que nunca enviamos a palavra-passe por email e oferece o
+   *  link de reset. NUNCA incluir a palavra-passe ou um valor mascarado. */
+  resetPasswordUrl?: string | null;
 }
 
 const PREHEADER_DEFAULT =
@@ -221,6 +226,14 @@ export function getReportSavedParts(input: ReportSavedInput): EmailTemplateParts
     ...signatureText("Boa leitura,"),
   );
 
+  if (variant === "welcome" && input.resetPasswordUrl) {
+    textLines.push(
+      "",
+      "Por segurança, nunca enviamos a tua palavra-passe por email. Se te esqueceres dela, podes redefini-la aqui:",
+      input.resetPasswordUrl,
+    );
+  }
+
   if (input.unsubscribeUrl) {
     textLines.push(
       "",
@@ -272,6 +285,17 @@ export function getReportSavedParts(input: ReportSavedInput): EmailTemplateParts
     renderUrlFallbackHtml(analyzeUrl),
     signatureHtml("Boa leitura,"),
   );
+
+  if (variant === "welcome" && input.resetPasswordUrl) {
+    const safeReset = escapeHtml(input.resetPasswordUrl);
+    htmlParts.push(
+      `<div style="margin-top:24px;padding:12px 16px;border:1px solid #e7e5e4;border-radius:8px;background-color:#fafaf9;">
+  <p style="margin:0;font-size:13px;line-height:1.55;color:#57534e;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+    🔒 Por segurança, nunca enviamos a tua palavra-passe por email. Se te esqueceres dela, podes <a href="${safeReset}" style="color:#3772E5;text-decoration:underline;">redefini-la aqui</a>.
+  </p>
+</div>`,
+    );
+  }
 
   return {
     subject,
