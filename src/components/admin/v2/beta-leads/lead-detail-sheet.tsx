@@ -101,6 +101,7 @@ import {
   windowBadgeVariant,
   windowLabel,
   dataSourceBadgeVariant,
+  dataSourceLabel,
 } from "@/lib/admin/analysis-window";
 import type { AdminAccent } from "@/components/admin/v2/admin-tokens";
 

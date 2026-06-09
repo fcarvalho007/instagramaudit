@@ -55,6 +55,7 @@ import {
   windowBadgeVariant,
   windowLabel,
   dataSourceBadgeVariant,
+  dataSourceLabel,
 } from "@/lib/admin/analysis-window";
 
 interface ReportDrawerProps {

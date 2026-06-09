@@ -18,6 +18,7 @@ import { ReportDrawer } from "../report-drawer";
 import { adminFetch } from "@/lib/admin/fetch";
 import {
   dataSourceBadgeVariant,
+  dataSourceLabel,
   deriveWindow,
   windowBadgeVariant,
   windowLabel,
