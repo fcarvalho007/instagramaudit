@@ -294,13 +294,21 @@ describe("POST /api/onboarding/start", () => {
     expect(adminCreateUserMock).not.toHaveBeenCalled();
   });
 
-  it("password com menos de 8 caracteres → 400 PASSWORD_REQUIRED", async () => {
+  it("password com menos de 8 caracteres → 400 INVALID_PAYLOAD (password field)", async () => {
     const res = await handleOnboardingStart(
       post({ name: "Ana", email: "short@example.com", password: "abc" }),
     );
     expect(res.status).toBe(400);
-    const body = (await res.json()) as { error_code: string };
-    expect(body.error_code).toBe("PASSWORD_REQUIRED");
+    const body = (await res.json()) as {
+      error_code: string;
+      issues?: { field: string; code: string }[];
+    };
+    expect(body.error_code).toBe("INVALID_PAYLOAD");
+    expect(body.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: "password" }),
+      ]),
+    );
   });
 
   it("disposable email domain → 400 INVALID_PAYLOAD (email field)", async () => {
