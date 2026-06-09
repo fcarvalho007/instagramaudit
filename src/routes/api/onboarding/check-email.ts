@@ -52,6 +52,33 @@ async function findLead(
   return data ?? null;
 }
 
+/**
+ * Defense-in-depth: an auth user may exist without a lead row (legacy
+ * `/signup` flow, future OAuth, etc.). If we only checked `leads` we
+ * would tell the modal "new email", then `/start` would reject 409 on
+ * `admin.createUser`. Checking `auth.users` up front gives the client
+ * the login screen immediately. Paginated to handle >50 users.
+ */
+async function authUserExists(emailNormalized: string): Promise<boolean | "error"> {
+  const perPage = 200;
+  for (let page = 1; page <= 50; page += 1) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+      page,
+      perPage,
+    });
+    if (error) {
+      console.warn("[onboarding/check-email] auth.listUsers error", error.message);
+      return "error";
+    }
+    const users = data?.users ?? [];
+    for (const u of users) {
+      if ((u.email ?? "").toLowerCase() === emailNormalized) return true;
+    }
+    if (users.length < perPage) return false;
+  }
+  return false;
+}
+
 export async function handleCheckEmail(request: Request): Promise<Response> {
   const startedAt = Date.now();
   let raw: unknown;
@@ -70,7 +97,15 @@ export async function handleCheckEmail(request: Request): Promise<Response> {
 
   // Fail closed: erro transiente → comporta-te como "exists" na vertente
   // segura (cliente cai no fluxo de login, password é a prova).
-  const exists = lookup === "error" ? true : Boolean(lookup);
+  let exists = lookup === "error" ? true : Boolean(lookup);
+
+  // Se não há lead, verifica também auth.users — cobre o caso em que
+  // um auth user existe sem lead correspondente (legacy /signup, OAuth).
+  if (!exists) {
+    const authCheck = await authUserExists(emailNormalized);
+    if (authCheck === "error") exists = true;
+    else if (authCheck) exists = true;
+  }
 
   const body: Record<string, unknown> = {
     ok: true,
