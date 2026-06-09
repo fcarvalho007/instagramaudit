@@ -46,7 +46,7 @@ const PayloadSchema = z.object({
   // Tracking-only — não persiste em `leads`, serve para correlacionar
   // erros de validação com o handle que o utilizador estava a analisar.
   handle: z.string().trim().max(60).optional(),
-});
+}).strict();
 
 type Payload = z.infer<typeof PayloadSchema>;
 
