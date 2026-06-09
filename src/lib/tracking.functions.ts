@@ -83,6 +83,9 @@ const ALLOWED_EVENTS = [
   "beta_credit_used_competitor",
   "post_purchase_view",
   "post_purchase_bonus_seen",
+  "checkout_onboarding_shown",
+  "checkout_onboarding_completed",
+  "credits_pack_non_pro_warning_shown",
   // Inline onboarding inside checkout (from /precos with no lead session)
   "checkout_onboarding_shown",
   "checkout_onboarding_completed",
