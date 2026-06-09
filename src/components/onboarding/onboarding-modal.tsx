@@ -102,8 +102,8 @@ type View =
 
 interface OnboardingApiOk {
   ok: true;
-  lead_id: string;
-  credits: number;
+  lead_id?: string;
+  credits?: number;
   verification_required?: boolean;
   verification_mode?: "off" | "magic_link" | "otp";
 }
