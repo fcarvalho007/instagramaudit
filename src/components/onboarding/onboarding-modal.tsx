@@ -1125,21 +1125,6 @@ function FinalStepBody({
           <p className="text-[12.5px] text-destructive">{consentError}</p>
         ) : null}
 
-        {hiddenErrorKeys.length > 0 ? (
-          <Alert variant="destructive" aria-live="polite">
-            <AlertDescription className="flex items-center justify-between gap-3">
-              <span>{t("onboarding.final.right.missingQualification")}</span>
-              <button
-                type="button"
-                onClick={onMissingQualification}
-                className="font-semibold underline shrink-0"
-              >
-                {t("onboarding.final.right.back")}
-              </button>
-            </AlertDescription>
-          </Alert>
-        ) : null}
-
         {serverError ? (
           <Alert variant="destructive" aria-live="polite">
             <AlertDescription>{serverError}</AlertDescription>
