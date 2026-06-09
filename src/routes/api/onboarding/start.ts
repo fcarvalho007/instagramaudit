@@ -1,40 +1,43 @@
 /**
  * POST /api/onboarding/start
  *
- * Public boundary for the onboarding modal (Fase 1).
+ * Public boundary for the onboarding modal (Fase 5 — verification-gated
+ * free credits).
  *
- *  1. Validate payload (Zod).
- *  2. Upsert lead by `email_normalized` (service role).
- *  3. Grant initial credits (idempotent — at most one per lead via partial
- *     unique index `uniq_credit_ledger_initial_grant`).
- *  4. Issue signed `lead_session` cookie bound to the lead.
- *  5. Return `{ ok, lead_id, credits }`.
- *
- * Does NOT trigger any analysis or cache lookup. The credit reserve /
- * confirm / release lifecycle starts on a subsequent endpoint (Fase 2).
+ *  1. Validate payload (Zod). Phone is no longer accepted; `qualification`
+ *     is required.
+ *  2. Classify the email domain. Disposable / throwaway → reject 400.
+ *  3. Upsert lead by `email_normalized` (service role) with the new
+ *     `qualification` + `email_domain_class` columns.
+ *  4. Issue signed `lead_session` cookie bound to the lead so the report
+ *     opens immediately, but DO NOT grant the 2 free credits yet.
+ *  5. Trigger Supabase Auth OTP (`signInWithOtp`, shouldCreateUser=true)
+ *     so the user can verify the email and then activate the credits via
+ *     `/api/onboarding/claim-existing`.
+ *  6. Return `{ ok, lead_id, credits: 0, verification_required: true }`.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
 import { z, type ZodIssue } from "zod";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { getBalance, grantInitialCredits } from "@/lib/credits/credits.server";
+import { getBalance } from "@/lib/credits/credits.server";
 import { setLeadCookie } from "@/lib/leads/lead-cookie.server";
+import { classifyEmailDomain } from "@/lib/leads/email-domain-class";
+import { LEAD_QUALIFICATIONS } from "@/lib/leads/qualification";
 
 const PayloadSchema = z.object({
   name: z.string().trim().min(1).max(120),
   email: z.string().trim().email().max(255),
-  phone: z
-    .string()
-    .trim()
-    .max(40)
-    .optional()
-    .transform((v) => (v && v.length > 0 ? v : undefined)),
   marketing_consent: z.boolean().optional().default(false),
   beta_consent: z.boolean().optional().default(false),
   user_type: z.string().trim().max(40).optional(),
   purpose: z.string().trim().max(120).optional(),
   profile_ownership: z.string().trim().max(40).optional(),
+  qualification: z.enum(LEAD_QUALIFICATIONS, {
+    required_error: "missing",
+    invalid_type_error: "invalid",
+  }),
   pricing_preference: z.string().trim().max(40).optional(),
   // GDPR — exige `true` explícito. Ausência ou `false` → 400 INVALID_PAYLOAD.
   gdpr_consent: z.literal(true),
@@ -53,6 +56,8 @@ interface OkBody {
   ok: true;
   lead_id: string;
   credits: number;
+  /** Always `true` for new leads since Fase 5 — credits unlock on OTP. */
+  verification_required: boolean;
 }
 
 export interface FieldIssue {
@@ -82,7 +87,7 @@ const FIELD_MESSAGES_PT: Record<string, string> = {
   gdpr_consent: "Falta aceitar o tratamento de dados para continuar.",
   email: "O endereço de email indicado parece inválido.",
   name: "Falta indicar o teu nome.",
-  phone: "O número de telefone indicado parece inválido.",
+  qualification: "Escolhe o contexto que melhor te descreve.",
   purpose: "Volta ao passo anterior e escolhe o que queres perceber.",
   profile_ownership:
     "Volta ao passo anterior e indica a tua relação com o perfil.",
@@ -183,6 +188,7 @@ function nowIso(): string {
 
 async function upsertLead(
   data: Payload,
+  emailDomainClass: string,
 ): Promise<{ leadId: string; isNew: boolean } | { error: string }> {
   const emailNormalized = data.email.toLowerCase();
   const consentTimestamp = nowIso();
@@ -202,8 +208,6 @@ async function upsertLead(
       .from("leads")
       .update({
         name: data.name,
-        phone: data.phone ?? null,
-        phone_normalized: data.phone ? data.phone.replace(/\D/g, "") : null,
         marketing_consent: data.marketing_consent,
         marketing_consent_at: data.marketing_consent ? consentTimestamp : null,
         beta_consent: data.beta_consent,
@@ -211,6 +215,8 @@ async function upsertLead(
         user_type: data.user_type ?? null,
         purpose: data.purpose ?? null,
         profile_ownership: data.profile_ownership ?? null,
+        qualification: data.qualification,
+        email_domain_class: emailDomainClass,
         pricing_preference: data.pricing_preference ?? null,
         gdpr_consent_at: consentTimestamp,
         gdpr_consent_version: "v1",
@@ -226,8 +232,6 @@ async function upsertLead(
       name: data.name,
       email: data.email,
       email_normalized: emailNormalized,
-      phone: data.phone ?? null,
-      phone_normalized: data.phone ? data.phone.replace(/\D/g, "") : null,
       marketing_consent: data.marketing_consent,
       marketing_consent_at: data.marketing_consent ? consentTimestamp : null,
       beta_consent: data.beta_consent,
@@ -235,6 +239,8 @@ async function upsertLead(
       user_type: data.user_type ?? null,
       purpose: data.purpose ?? null,
       profile_ownership: data.profile_ownership ?? null,
+      qualification: data.qualification,
+      email_domain_class: emailDomainClass,
       pricing_preference: data.pricing_preference ?? null,
       gdpr_consent_at: consentTimestamp,
       gdpr_consent_version: "v1",
@@ -247,6 +253,27 @@ async function upsertLead(
     return { error: inserted.error?.message ?? "insert failed" };
   }
   return { leadId: inserted.data.id, isNew: true };
+}
+
+/**
+ * Fire-and-forget Supabase OTP email. Failures are logged but do not block
+ * the response — the user can retry from the OTP panel ("Reenviar código").
+ */
+async function sendOtpEmail(email: string, leadId: string): Promise<void> {
+  try {
+    const { error } = await supabaseAdmin.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: true, data: { lead_id: leadId } },
+    });
+    if (error) {
+      console.warn(
+        "[onboarding/start] OTP send failed",
+        JSON.stringify({ status: error.status, message: error.message }),
+      );
+    }
+  } catch (err) {
+    console.warn("[onboarding/start] OTP send threw", err);
+  }
 }
 
 /**
@@ -287,6 +314,29 @@ export async function handleOnboardingStart(
         ok: false,
         error_code: "INVALID_PAYLOAD",
         message: messageForIssues(issues),
+        issues,
+      },
+      400,
+    );
+  }
+
+  // Email-domain classification. Disposable / throwaway domains are hard
+  // rejected so abusers cannot farm free credits via temp-mail addresses.
+  const emailDomainClass = classifyEmailDomain(parsed.data.email);
+  if (emailDomainClass === "disposable_or_suspicious") {
+    const issues: FieldIssue[] = [{ field: "email", code: "disposable" }];
+    await logServerOnboardingError({
+      errorCode: "INVALID_PAYLOAD",
+      issues,
+      handle: safeHandle(raw),
+      fieldsPresent: presentFieldNames(raw),
+    });
+    return json(
+      {
+        ok: false,
+        error_code: "INVALID_PAYLOAD",
+        message:
+          "Usa um email permanente — não aceitamos endereços temporários.",
         issues,
       },
       400,
@@ -355,7 +405,7 @@ export async function handleOnboardingStart(
     );
   }
 
-  const upserted = await upsertLead(parsed.data);
+  const upserted = await upsertLead(parsed.data, emailDomainClass);
   if ("error" in upserted) {
     console.error("[onboarding/start] lead upsert failed", upserted.error);
     return json(
@@ -368,19 +418,8 @@ export async function handleOnboardingStart(
     );
   }
 
-  try {
-    await grantInitialCredits(upserted.leadId);
-  } catch (err) {
-    console.error("[onboarding/start] grant failed", err);
-    return json(
-      {
-        ok: false,
-        error_code: "INTERNAL_ERROR",
-        message: GENERIC_FALLBACK_MESSAGE,
-      },
-      500,
-    );
-  }
+  // Initial credit grant is deferred until the user verifies the email
+  // via OTP. See `/api/onboarding/claim-existing` for the grant call.
 
   try {
     setLeadCookie(upserted.leadId);
@@ -396,6 +435,10 @@ export async function handleOnboardingStart(
     );
   }
 
+  // Send the verification OTP. Best-effort: the modal also lets the user
+  // resend from the OTP panel if delivery fails.
+  await sendOtpEmail(parsed.data.email, upserted.leadId);
+
   let credits = 0;
   try {
     credits = await getBalance(upserted.leadId);
@@ -403,7 +446,15 @@ export async function handleOnboardingStart(
     console.error("[onboarding/start] balance read failed", err);
   }
 
-  return json({ ok: true, lead_id: upserted.leadId, credits }, 200);
+  return json(
+    {
+      ok: true,
+      lead_id: upserted.leadId,
+      credits,
+      verification_required: true,
+    },
+    200,
+  );
 }
 
 export const Route = createFileRoute("/api/onboarding/start")({
