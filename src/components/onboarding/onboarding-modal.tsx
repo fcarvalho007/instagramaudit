@@ -172,7 +172,6 @@ export function OnboardingModal({
       email: "",
       phone: "",
       password: "",
-      confirm_password: "",
       // O single-step signup recolhe apenas `qualification`. Mantemos
       // valores neutros para `profile_ownership`/`goal` (campos legados,
       // ainda presentes no schema) — o server deriva o que precisa de
