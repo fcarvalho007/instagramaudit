@@ -15,7 +15,7 @@ const {
   generateInsightsV2Spy: vi.fn(),
   generateVisualCoverSpy: vi.fn(),
   generateCaptionSemanticSpy: vi.fn(),
-  lovableAllowedSpy: vi.fn(() => true),
+  lovableAllowedSpy: vi.fn((_handle: string) => true),
   lovableAssertSpy: vi.fn(),
   generateComparisonReadingsSpy: vi.fn(),
 }));
