@@ -13,7 +13,7 @@ const RECENT_WINDOW_MS = 5 * 60 * 1000; // 5 minutos
 
 /**
  * Aviso editorial subtil que indica ao leitor que a leitura estratégica
- * gerada por IA ainda está em preparação. Aparece apenas quando o
+ * gerada por IA ainda está a ser gerada. Aparece apenas quando o
  * snapshot é recente (< 5 min) e não traz `ai_insights_v1`. Para
  * snapshots antigos sem IA, fica oculto — preserva o comportamento
  * actual de degradação silenciosa.
@@ -27,9 +27,9 @@ export function ReportPendingAiNotice({ generatedAtIso }: Props) {
   return (
     <ReportSectionFrame
       eyebrow="Diagnóstico estratégico · IA editorial"
-      title="A preparar o diagnóstico estratégico"
+      title="A gerar o diagnóstico estratégico"
       tone="white"
-      ariaLabel="Diagnóstico estratégico em preparação"
+      ariaLabel="Diagnóstico estratégico a ser gerado"
     >
       <div
         className={cn(

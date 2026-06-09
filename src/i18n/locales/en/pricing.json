@@ -45,7 +45,7 @@
     "cta": "Book diagnosis"
   },
   "trust_note": "No subscription. No automatic renewal.",
-  "pending_note": "Payment coming soon — the button registers your interest.",
+  "pending_note": "Payment available shortly — the button registers your interest.",
   "access": {
     "title": "How access works",
     "steps": [
