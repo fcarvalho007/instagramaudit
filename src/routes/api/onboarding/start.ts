@@ -356,6 +356,7 @@ export async function handleOnboardingStart(
         ok: true,
         lead_id: "00000000-0000-0000-0000-000000000000",
         credits: 0,
+        verification_required: true,
       },
       200,
     );
