@@ -11,6 +11,24 @@
 import type { UnlockFormValues } from "@/lib/unlock-flow";
 import type { LeadQualification } from "@/lib/leads/qualification";
 
+/**
+ * The onboarding modal asks for `profile_ownership` + `goal` (the legacy
+ * 2-question layout) but the admin Kanban/segmentation still indexes on
+ * `qualification`. When the user did not explicitly pick a qualification
+ * (new modal never asks for it), derive it from `profile_ownership` so the
+ * lead lands in the right column.
+ */
+const OWNERSHIP_TO_QUALIFICATION: Record<
+  NonNullable<UnlockFormValues["profile_ownership"]>,
+  LeadQualification
+> = {
+  brand_profile: "brand_company",
+  client_profile: "consultant_agency",
+  competitor_research: "marketing_comms",
+  own_profile: "content_creator",
+  curiosity: "curiosity",
+};
+
 export interface OnboardingStartPayload {
   name: string;
   email: string;
@@ -54,6 +72,10 @@ export function buildStartPayload(
   if (values.goal) base.purpose = values.goal;
   if (values.profile_ownership)
     base.profile_ownership = values.profile_ownership;
-  if (values.qualification) base.qualification = values.qualification;
+  if (values.qualification) {
+    base.qualification = values.qualification;
+  } else if (values.profile_ownership) {
+    base.qualification = OWNERSHIP_TO_QUALIFICATION[values.profile_ownership];
+  }
   return base;
 }
