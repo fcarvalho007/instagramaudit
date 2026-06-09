@@ -967,6 +967,57 @@ export type Database = {
           },
         ]
       }
+      lead_report_unlocks: {
+        Row: {
+          created_at: string
+          delta: number
+          id: string
+          instagram_username: string | null
+          lead_id: string
+          metadata: Json
+          payment_id: string | null
+          reason: string
+          report_cache_key: string | null
+        }
+        Insert: {
+          created_at?: string
+          delta: number
+          id?: string
+          instagram_username?: string | null
+          lead_id: string
+          metadata?: Json
+          payment_id?: string | null
+          reason: string
+          report_cache_key?: string | null
+        }
+        Update: {
+          created_at?: string
+          delta?: number
+          id?: string
+          instagram_username?: string | null
+          lead_id?: string
+          metadata?: Json
+          payment_id?: string | null
+          reason?: string
+          report_cache_key?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_report_unlocks_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_report_unlocks_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "lead_payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_reports: {
         Row: {
           analysis_snapshot_id: string | null
@@ -1925,6 +1976,7 @@ export type Database = {
             }
             Returns: string
           }
+      report_unlocks_balance: { Args: { p_lead_id: string }; Returns: number }
       set_admin_email_session: { Args: { p_email: string }; Returns: undefined }
       set_enrichment_status: {
         Args: { p_key: string; p_snapshot_id: string; p_value: string }
