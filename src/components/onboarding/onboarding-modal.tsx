@@ -213,11 +213,9 @@ export function OnboardingModal({
       const step =
         view.kind === "entry"
           ? 0
-          : view.kind === "qualification"
-            ? 1
-            : view.kind === "final"
-              ? 2
-              : 3;
+          : view.kind === "final"
+            ? 2
+            : 3;
       trackOnboardingEvent({
         event_type: "onboarding_abandon",
         step: step as 0 | 1 | 2 | 3,
