@@ -171,8 +171,21 @@ export function useReportVariant(): ReportVariant {
  */
 export function useVariantFeatures(): VariantFeatures {
   const override = useContext(VariantFeaturesOverrideContext);
-  if (override) return override;
-  return getVariantFeatures(useReportVariant());
+  const variant = useReportVariant();
+  const base = override ?? getVariantFeatures(variant);
+  // Defesa-em-profundidade: blocos lab 03–06 só podem ser visíveis em
+  // `internal_lab`. Em `public_mvp` e `pro_preview` forçamos `hidden`,
+  // mesmo que um override (server ou prop) tente expô-los.
+  if (variant !== "internal_lab") {
+    return {
+      ...base,
+      blockPerformance: "hidden",
+      blockContent: "hidden",
+      blockSearch: "hidden",
+      blockBenchmark: "hidden",
+    };
+  }
+  return base;
 }
 
 // ── Public readiness checklist (admin-only, informational) ────────

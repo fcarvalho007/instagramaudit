@@ -20,6 +20,13 @@ const LOCKED_MODULES: Partial<Record<keyof VariantFeatures, LockRule>> = {
   overviewHeroKpis: { variants: "*", value: "full" },
   diagnosticQ01Q07: { variants: "*", value: "full" },
   methodology: { variants: ["public_mvp", "pro_preview"], value: "full" },
+  // Lab-only blocks 03–06: hard-locked to "hidden" in every non-lab variant.
+  // Defesa-em-profundidade contra overrides administrativos que possam,
+  // por engano, expor blocos lab no relatório público (Free ou Pro).
+  blockPerformance: { variants: ["public_mvp", "pro_preview"], value: "hidden" },
+  blockContent:     { variants: ["public_mvp", "pro_preview"], value: "hidden" },
+  blockSearch:      { variants: ["public_mvp", "pro_preview"], value: "hidden" },
+  blockBenchmark:   { variants: ["public_mvp", "pro_preview"], value: "hidden" },
 };
 
 export { LOCKED_MODULES };
