@@ -5,9 +5,6 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 type LeadRow = {
   id: string;
   email_normalized: string;
@@ -145,9 +142,6 @@ vi.mock("@/lib/leads/lead-cookie.server", () => ({
 
 // Import AFTER mocks.
 import { handleOnboardingStart } from "@/routes/api/onboarding/start";
-
-const GENERIC =
-  "Não foi possível preparar o acesso ao relatório. Tenta novamente dentro de instantes.";
 
 function post(body: Record<string, unknown>): Request {
   const withDefaults: Record<string, unknown> = {
