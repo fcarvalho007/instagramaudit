@@ -6,7 +6,6 @@ import type { UnlockFormValues } from "@/lib/unlock-flow";
 const baseValues: UnlockFormValues = {
   full_name: "Ana Marques",
   email: "ana@example.com",
-  phone: "",
   profile_ownership: "own_profile",
   goal: "improve_content",
   user_type: "creator",
@@ -36,16 +35,8 @@ describe("buildStartPayload", () => {
   });
 
   it("never includes phone (field removed from public modal)", () => {
-    const empty = buildStartPayload({ ...baseValues, phone: "   " }, "Ana", "", 1);
+    const empty = buildStartPayload(baseValues, "Ana", "", 1);
     expect("phone" in empty).toBe(false);
-
-    const filled = buildStartPayload(
-      { ...baseValues, phone: "  +351 912 345 678  " },
-      "Ana",
-      "",
-      1,
-    );
-    expect("phone" in filled).toBe(false);
   });
 
   it("includes qualification only when set", () => {

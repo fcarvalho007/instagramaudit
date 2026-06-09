@@ -168,7 +168,6 @@ export function UnlockModal({
     defaultValues: {
       full_name: "",
       email: "",
-      phone: "",
       profile_ownership: undefined as unknown as ProfileOwnership,
       goal: undefined as unknown as Goal,
       user_type: undefined as unknown as UserType,
@@ -200,7 +199,7 @@ export function UnlockModal({
       if (form.getValues("user_type") === "other")
         fields.push("user_type_other_text");
     }
-    if (step === 5) fields = ["email", "phone", "gdpr_consent"];
+    if (step === 5) fields = ["email", "gdpr_consent"];
     const ok = await form.trigger(fields, { shouldFocus: true });
     if (!ok) return;
 
@@ -238,7 +237,6 @@ export function UnlockModal({
           first_name: parsed.first_name || undefined,
           last_name: parsed.last_name ?? undefined,
           name: parsed.full_name || undefined,
-          phone: values.phone?.trim() ? values.phone.trim() : undefined,
           instagram_username: instagramUsername,
           analysis_snapshot_id: snapshotId,
           profile_ownership: values.profile_ownership,
@@ -580,7 +578,6 @@ export function Step5EmailPhone({
 }) {
   const { t } = useTranslation("gate");
   const error = form.formState.errors.email?.message;
-  const phoneError = form.formState.errors.phone?.message;
   const consentError = form.formState.errors.gdpr_consent?.message;
   const consent = form.watch("gdpr_consent");
   const marketing = form.watch("marketing_consent");
@@ -612,30 +609,6 @@ export function Step5EmailPhone({
           ) : null}
         </div>
         {error ? <p className="text-xs text-destructive">{error}</p> : null}
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="unlock-phone" className="text-sm">
-          {t("unlock.step5.phoneLabel")}{" "}
-          <span className="text-primary" aria-hidden>
-            *
-          </span>
-        </Label>
-        <Input
-          id="unlock-phone"
-          type="tel"
-          inputMode="tel"
-          autoComplete="tel"
-          placeholder={t("unlock.step5.phonePlaceholder")}
-          aria-invalid={Boolean(phoneError)}
-          {...form.register("phone")}
-        />
-        <p className="text-[11px] text-content-tertiary">
-          {t("unlock.step5.phoneHint")}
-        </p>
-        {phoneError ? (
-          <p className="text-xs text-destructive">{phoneError}</p>
-        ) : null}
       </div>
 
       <div className="rounded-xl border border-border-default/40 bg-surface-muted/40 p-4 space-y-3">

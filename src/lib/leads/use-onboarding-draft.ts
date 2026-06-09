@@ -7,8 +7,8 @@
  *
  * Não persiste `gdpr_consent` (consentimento é por-sessão de submissão).
  *
- * Cross-handle: a identidade (`full_name`, `email`, `phone`,
- * `marketing_consent`) persiste entre handles diferentes; as respostas
+ * Cross-handle: a identidade (`full_name`, `email`, `marketing_consent`)
+ * persiste entre handles diferentes; as respostas
  * contextuais (`profile_ownership`, `goal`) só são restauradas se o
  * handle actual for igual ao `last_handle` guardado.
  */
@@ -24,7 +24,6 @@ const DraftSchema = z
   .object({
     full_name: z.string().max(120).optional(),
     email: z.string().max(255).optional(),
-    phone: z.string().max(40).optional(),
     profile_ownership: z.string().max(40).optional(),
     goal: z.string().max(40).optional(),
     marketing_consent: z.boolean().optional(),
@@ -75,7 +74,7 @@ export function loadOnboardingDraft(): OnboardingDraft | null {
  * Pure helper — devolve apenas os campos do draft seguros para hidratar o
  * form, dado o handle actual.
  *
- * - identidade (full_name/email/phone/marketing_consent) preserva-se sempre
+ * - identidade (full_name/email/marketing_consent) preserva-se sempre
  * - profile_ownership/goal só se `draft.last_handle === currentHandle`
  */
 export function selectDraftForHandle(
@@ -91,7 +90,6 @@ export function selectDraftForHandle(
   return {
     full_name: draft.full_name,
     email: draft.email,
-    phone: draft.phone,
     marketing_consent: draft.marketing_consent,
     // contexto resetado
     profile_ownership: undefined,
@@ -122,7 +120,6 @@ export function useOnboardingDraft(
         ...form.getValues(),
         full_name: draft.full_name ?? "",
         email: draft.email ?? "",
-        phone: draft.phone ?? "",
         profile_ownership: (draft.profile_ownership ?? undefined) as never,
         goal: (draft.goal ?? undefined) as never,
         marketing_consent: draft.marketing_consent ?? false,
@@ -138,7 +135,6 @@ export function useOnboardingDraft(
         writeStorage({
           full_name: values.full_name || undefined,
           email: values.email || undefined,
-          phone: values.phone || undefined,
           profile_ownership: values.profile_ownership || undefined,
           goal: values.goal || undefined,
           marketing_consent: values.marketing_consent ?? undefined,
