@@ -43,6 +43,7 @@ async function findLead(
     .from("leads")
     .select("id, name")
     .eq("email_normalized", emailNormalized)
+    .is("archived_at", null)
     .limit(1)
     .maybeSingle();
   if (error) {
