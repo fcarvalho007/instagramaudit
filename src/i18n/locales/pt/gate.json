@@ -174,8 +174,8 @@
       "title": "Cria conta e vê o relatório",
       "subtitle": "Vais analisar <1>@{{handle}}</1> — é grátis.",
       "eyebrowCheckout": "ANTES DE PAGAR",
-      "titleCheckout": "Cria a tua conta para continuar",
-      "subtitleCheckout": "Em ~30 segundos. Usamos o teu email para te enviarmos o recibo e dar acesso ao relatório na tua conta.",
+      "titleCheckout": "Continua para o checkout",
+      "subtitleCheckout": "Indica o teu email para associarmos a compra à tua conta.",
       "newBadge": "Novo por aqui",
       "newTitle": "Criar conta grátis",
       "newPromise": "Recebes o relatório guardado e 2 créditos grátis após confirmares o email.",
@@ -199,7 +199,7 @@
         "titleCheckout": "Só faltam alguns dados",
         "bullets": {
           "report": "Relatório de @{{handle}}",
-          "reportCheckout": "Conta privada onde guardamos a tua compra e os relatórios",
+          "reportCheckout": "A tua compra fica associada à tua conta",
           "save": "Conta privada com os relatórios guardados",
           "credits": "<strong>2 créditos grátis</strong> após confirmação do email",
           "receiptCheckout": "Recebes o recibo no email indicado",
@@ -233,7 +233,7 @@
         "cta": "Gerar o meu relatório  →",
         "ctaCheckout": "Criar conta e continuar",
         "footnote": "RGPD · sem spam",
-        "footnoteCheckout": "Sem subscrição. RGPD.",
+        "footnoteCheckout": "RGPD · sem spam",
         "back": "Voltar"
       }
     },
