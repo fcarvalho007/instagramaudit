@@ -510,6 +510,9 @@ export function OnboardingModal({
             submitting={submitting}
             onBack={() => goBackToQualification(view.email)}
             onSubmit={handleFinalSubmit}
+            onMissingQualification={() =>
+              setView({ kind: "qualification", email: view.email })
+            }
             honeypotRef={honeypotRef}
           />
         ) : (
@@ -759,6 +762,7 @@ function FinalStepBody({
   submitting,
   onBack,
   onSubmit,
+  onMissingQualification,
   honeypotRef,
 }: {
   handle: string;
@@ -768,6 +772,7 @@ function FinalStepBody({
   submitting: boolean;
   onBack: () => void;
   onSubmit: () => Promise<void> | void;
+  onMissingQualification: () => void;
   honeypotRef: React.RefObject<HTMLInputElement | null>;
 }) {
   const { t } = useTranslation("gate");
@@ -780,14 +785,35 @@ function FinalStepBody({
   const emailValue = form.watch("email");
   const emailIsValid = !emailError && emailValue && EMAIL_RE.test(emailValue);
 
+  const trySubmit = async () => {
+    const ok = await form.trigger();
+    if (!ok) {
+      const errs = form.formState.errors;
+      // Erros que vivem no passo 2 (qualificação) → manda o user para lá.
+      if (errs.profile_ownership || errs.goal || errs.goal_other_text) {
+        onMissingQualification();
+        return;
+      }
+      // Erros visíveis no passo 3 — react-hook-form já marca os campos.
+      return;
+    }
+    await onSubmit();
+  };
+
+  // Defesa: se houver erros em campos que não renderizamos no passo 3,
+  // mostramos um alerta no topo para nunca falhar em silêncio.
+  const hiddenErrorKeys = (
+    ["profile_ownership", "goal", "goal_other_text", "user_type", "user_type_other_text"] as const
+  ).filter((k) => Boolean(form.formState.errors[k]));
+
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        void onSubmit();
+        void trySubmit();
       }}
       noValidate
-      className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] min-w-0"
+      className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.25fr)] min-w-0"
     >
       {/* Honeypot — invisible to humans, attracts bots */}
       <div
@@ -807,7 +833,7 @@ function FinalStepBody({
       </div>
 
       {/* Left — navy value panel */}
-      <aside className="bg-content-primary text-white px-6 py-7 sm:px-8 sm:py-9 lg:py-10 flex flex-col gap-5">
+      <aside className="bg-content-primary text-white px-6 py-7 sm:px-7 sm:py-9 lg:py-10 flex flex-col gap-5">
         <p className="text-eyebrow-sm text-cyan-300">
           {t(
             purpose === "checkout"
@@ -865,7 +891,7 @@ function FinalStepBody({
 
       {/* Right — compact form */}
       <div className="px-5 py-6 sm:px-7 sm:py-8 flex flex-col gap-4 bg-white min-w-0">
-        <OnboardingStepHeader current={3} />
+        <OnboardingStepHeader current={3} className="mb-2" />
         <div className="space-y-1.5">
           <Label htmlFor="onb-name" className="text-[13.5px] font-medium text-content-primary">
             {t("onboarding.final.right.nameLabel")}
@@ -909,7 +935,7 @@ function FinalStepBody({
           {emailError ? (
             <p className="text-[12.5px] text-destructive">{emailError}</p>
           ) : (
-            <p className="text-[12px] text-content-tertiary">
+            <p className="text-[12px] text-content-secondary">
               {t("onboarding.final.right.emailHint")}
             </p>
           )}
@@ -985,35 +1011,50 @@ function FinalStepBody({
           <p className="text-[12.5px] text-destructive">{consentError}</p>
         ) : null}
 
+        {hiddenErrorKeys.length > 0 ? (
+          <Alert variant="destructive" aria-live="polite">
+            <AlertDescription className="flex items-center justify-between gap-3">
+              <span>{t("onboarding.final.right.missingQualification")}</span>
+              <button
+                type="button"
+                onClick={onMissingQualification}
+                className="font-semibold underline shrink-0"
+              >
+                {t("onboarding.final.right.back")}
+              </button>
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
         {serverError ? (
-          <Alert variant="destructive">
+          <Alert variant="destructive" aria-live="polite">
             <AlertDescription>{serverError}</AlertDescription>
           </Alert>
         ) : null}
 
-        <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 pt-1 min-w-0">
+        <div className="flex flex-col-reverse md:flex-row gap-2 md:gap-3 pt-1 min-w-0">
           <Button
             type="button"
-            variant="outline"
-            size="lg"
+            variant="ghost"
+            size="md"
             onClick={onBack}
             disabled={submitting}
-            className="w-full sm:w-auto sm:flex-shrink-0 rounded-lg min-w-0"
+            className="w-full md:w-auto md:flex-shrink-0 rounded-lg min-w-0 text-content-secondary"
           >
-            <ArrowLeft className="size-4" aria-hidden />
+            <ArrowLeft className="size-4 hidden md:inline" aria-hidden />
             {t("onboarding.final.right.back")}
           </Button>
           <Button
             type="submit"
             size="lg"
             disabled={submitting}
-            className="w-full sm:flex-1 sm:min-w-0 rounded-lg font-medium"
+            className="w-full md:flex-1 md:min-w-0 rounded-lg font-medium"
             data-testid="onboarding-final-submit"
           >
             {submitting ? (
               <>
                 <Loader2 className="size-4 animate-spin" aria-hidden />
-                <span className="truncate">{t("onboarding.submitting")}</span>
+                <span>{t("onboarding.submitting")}</span>
               </>
             ) : (
               <>
@@ -1022,7 +1063,7 @@ function FinalStepBody({
                 ) : (
                   <Sparkles className="size-4" aria-hidden />
                 )}
-                <span className="truncate">
+                <span>
                   {t(isCheckout ? "onboarding.final.right.ctaCheckout" : "onboarding.final.right.cta")}
                 </span>
               </>
