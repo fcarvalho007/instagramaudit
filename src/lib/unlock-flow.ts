@@ -106,6 +106,12 @@ export const unlockFormSchema = z
       .string()
       .min(8, "Mínimo 8 caracteres")
       .max(72, "Demasiado longo")
+      .refine((v) => /[A-Za-z]/.test(v), {
+        message: "Inclui pelo menos uma letra",
+      })
+      .refine((v) => /\d/.test(v), {
+        message: "Inclui pelo menos um número",
+      })
       .optional(),
     confirm_password: z.string().max(72).optional(),
     // Qualification (Fase 5 modal). Optional at the shared-schema level so

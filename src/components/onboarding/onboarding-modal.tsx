@@ -28,6 +28,7 @@ import {
   Check,
   Briefcase,
   Eye,
+  EyeOff,
   LineChart,
   Loader2,
   Lock,
@@ -52,11 +53,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   unlockFormSchema,
   type UnlockFormValues,
   type Goal,
   type ProfileOwnership,
 } from "@/lib/unlock-flow";
+import {
+  LEAD_QUALIFICATIONS,
+  LEAD_QUALIFICATION_LABELS_PT,
+  type LeadQualification,
+} from "@/lib/leads/qualification";
 import { GridSelectField } from "@/components/onboarding/grid-select-field";
 import { supabase } from "@/integrations/supabase/client";
 import { parseFullName } from "@/lib/names/parse-full-name";
@@ -65,6 +78,32 @@ import { trackOnboardingEvent } from "@/lib/tracking/onboarding-events";
 import { buildStartPayload } from "@/lib/leads/build-start-payload";
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
+
+type PasswordStrength = "empty" | "weak" | "fair" | "strong";
+
+function computePasswordStrength(value: string): PasswordStrength {
+  if (!value) return "empty";
+  const hasLetter = /[A-Za-z]/.test(value);
+  const hasNumber = /\d/.test(value);
+  const hasSymbol = /[^A-Za-z0-9]/.test(value);
+  if (value.length < 8 || !hasLetter || !hasNumber) return "weak";
+  if (value.length >= 12 && hasSymbol) return "strong";
+  return "fair";
+}
+
+const STRENGTH_LABELS: Record<PasswordStrength, string> = {
+  empty: "",
+  weak: "Curta — mínimo 8 caracteres, letra + número.",
+  fair: "Aceitável. Para mais segurança usa 12+ caracteres e um símbolo.",
+  strong: "Forte.",
+};
+
+const STRENGTH_TONE: Record<PasswordStrength, string> = {
+  empty: "bg-border-default",
+  weak: "bg-destructive",
+  fair: "bg-amber-500",
+  strong: "bg-emerald-600",
+};
 
 export interface OnboardingSuccess {
   leadId: string;
@@ -142,10 +181,12 @@ export function OnboardingModal({
       phone: "",
       password: "",
       confirm_password: "",
-      // The qualification step (2 perguntas em cartões) define estes valores
-      // antes do submit; deixamos undefined para validar a escolha do user.
-      profile_ownership: undefined as unknown as never,
-      goal: undefined as unknown as never,
+      // O single-step signup recolhe apenas `qualification`. Mantemos
+      // valores neutros para `profile_ownership`/`goal` (campos legados,
+      // ainda presentes no schema) — o server deriva o que precisa de
+      // `qualification`.
+      profile_ownership: "curiosity" as ProfileOwnership,
+      goal: "improve_content" as Goal,
       user_type: "creator",
       goal_other_text: "",
       user_type_other_text: "",
@@ -199,11 +240,6 @@ export function OnboardingModal({
     setView({ kind: "entry" });
   }, []);
 
-  const goBackToQualification = useCallback((email: string) => {
-    setServerError(null);
-    setView({ kind: "qualification", email });
-  }, []);
-
   /**
    * Switch to the login view for an existing email. Pure UI transition —
    * no email is sent and no Supabase call is made until the user enters
@@ -248,7 +284,9 @@ export function OnboardingModal({
           return;
         }
         form.setValue("email", email, { shouldValidate: true });
-        setView({ kind: "qualification", email });
+        // Single-step signup: a qualificação é recolhida no próprio form
+        // final (select inline), sem passo intermédio.
+        setView({ kind: "final", email });
       } catch {
         setServerError(t("onboarding.errors.network"));
       } finally {
@@ -499,11 +537,8 @@ export function OnboardingModal({
             form={form}
             serverError={serverError}
             submitting={submitting}
-            onBack={() => goBackToQualification(view.email)}
+            onBack={goBackToEntry}
             onSubmit={handleFinalSubmit}
-            onMissingQualification={() =>
-              setView({ kind: "qualification", email: view.email })
-            }
             honeypotRef={honeypotRef}
           />
         ) : (
@@ -816,7 +851,6 @@ function FinalStepBody({
   submitting,
   onBack,
   onSubmit,
-  onMissingQualification,
   honeypotRef,
 }: {
   handle: string;
@@ -826,41 +860,38 @@ function FinalStepBody({
   submitting: boolean;
   onBack: () => void;
   onSubmit: () => Promise<void> | void;
-  onMissingQualification: () => void;
   honeypotRef: React.RefObject<HTMLInputElement | null>;
 }) {
   const { t } = useTranslation("gate");
   const isCheckout = purpose === "checkout";
   const nameError = form.formState.errors.full_name?.message;
   const emailError = form.formState.errors.email?.message;
+  const qualificationError = form.formState.errors.qualification?.message;
   const passwordError = form.formState.errors.password?.message;
   const confirmError = form.formState.errors.confirm_password?.message;
   const consentError = form.formState.errors.gdpr_consent?.message;
   const consent = form.watch("gdpr_consent");
   const marketing = form.watch("marketing_consent");
   const emailValue = form.watch("email");
+  const qualification = form.watch("qualification");
+  const passwordValue = form.watch("password") ?? "";
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const strength = computePasswordStrength(passwordValue);
   const emailIsValid = !emailError && emailValue && EMAIL_RE.test(emailValue);
 
   const trySubmit = async () => {
-    const ok = await form.trigger();
-    if (!ok) {
-      const errs = form.formState.errors;
-      // Erros que vivem no passo 2 (qualificação) → manda o user para lá.
-      if (errs.profile_ownership || errs.goal || errs.goal_other_text) {
-        onMissingQualification();
-        return;
-      }
-      // Erros visíveis no passo 3 — react-hook-form já marca os campos.
+    if (!form.getValues("qualification")) {
+      form.setError("qualification", {
+        type: "manual",
+        message: "Escolhe uma opção",
+      });
       return;
     }
+    const ok = await form.trigger();
+    if (!ok) return;
     await onSubmit();
   };
-
-  // Defesa: se houver erros em campos que não renderizamos no passo 3,
-  // mostramos um alerta no topo para nunca falhar em silêncio.
-  const hiddenErrorKeys = (
-    ["profile_ownership", "goal", "goal_other_text", "user_type", "user_type_other_text"] as const
-  ).filter((k) => Boolean(form.formState.errors[k]));
 
   return (
     <form
@@ -999,27 +1030,108 @@ function FinalStepBody({
 
         <div className="space-y-1.5">
           <Label
+            htmlFor="onb-qualification"
+            className="text-[13.5px] font-medium text-content-primary"
+          >
+            {t("onboarding.final.right.qualificationLabel")}
+          </Label>
+          <Select
+            value={qualification ?? ""}
+            onValueChange={(v) => {
+              form.setValue("qualification", v as LeadQualification, {
+                shouldValidate: true,
+              });
+              form.clearErrors("qualification");
+            }}
+          >
+            <SelectTrigger
+              id="onb-qualification"
+              aria-invalid={Boolean(qualificationError)}
+              data-testid="onboarding-qualification"
+              className="text-base"
+            >
+              <SelectValue
+                placeholder={t("onboarding.final.right.qualificationPlaceholder")}
+              />
+            </SelectTrigger>
+            <SelectContent>
+              {LEAD_QUALIFICATIONS.map((q) => (
+                <SelectItem key={q} value={q}>
+                  {LEAD_QUALIFICATION_LABELS_PT[q]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {qualificationError ? (
+            <p className="text-[12.5px] text-destructive">{qualificationError}</p>
+          ) : null}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label
             htmlFor="onb-password"
             className="text-[13.5px] font-medium text-content-primary"
           >
             Palavra-passe
           </Label>
-          <Input
-            id="onb-password"
-            type="password"
-            autoComplete="new-password"
-            placeholder="Mínimo 8 caracteres"
-            aria-invalid={Boolean(passwordError)}
-            className="text-base"
-            {...form.register("password")}
-            data-testid="onboarding-password"
-          />
+          <div className="relative">
+            <Input
+              id="onb-password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
+              placeholder="Mínimo 8 caracteres"
+              aria-invalid={Boolean(passwordError)}
+              className="pr-10 text-base"
+              {...form.register("password")}
+              data-testid="onboarding-password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-pressed={showPassword}
+              aria-label={
+                showPassword ? "Esconder palavra-passe" : "Mostrar palavra-passe"
+              }
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-content-tertiary hover:text-content-primary"
+              data-testid="onboarding-password-toggle"
+            >
+              {showPassword ? (
+                <EyeOff className="size-4" aria-hidden />
+              ) : (
+                <Eye className="size-4" aria-hidden />
+              )}
+            </button>
+          </div>
+          {passwordValue ? (
+            <div className="flex items-center gap-2" aria-live="polite">
+              <div className="h-1 flex-1 rounded-full bg-border-default overflow-hidden">
+                <div
+                  className={`h-full transition-all ${STRENGTH_TONE[strength]}`}
+                  style={{
+                    width:
+                      strength === "strong"
+                        ? "100%"
+                        : strength === "fair"
+                          ? "66%"
+                          : "33%",
+                  }}
+                />
+              </div>
+              <span className="text-[11.5px] text-content-tertiary">
+                {strength === "strong"
+                  ? "Forte"
+                  : strength === "fair"
+                    ? "Aceitável"
+                    : "Curta"}
+              </span>
+            </div>
+          ) : null}
           {passwordError ? (
             <p className="text-[12.5px] text-destructive">{passwordError}</p>
           ) : (
             <p className="text-[12px] text-content-secondary">
-              Usa pelo menos 8 caracteres. Vamos validar contra palavras-passe
-              comuns para te proteger.
+              {STRENGTH_LABELS[strength] ||
+                "Pelo menos 8 caracteres, com letra e número. Validamos contra palavras-passe comuns."}
             </p>
           )}
         </div>
@@ -1031,15 +1143,32 @@ function FinalStepBody({
           >
             Confirmar palavra-passe
           </Label>
-          <Input
-            id="onb-confirm-password"
-            type="password"
-            autoComplete="new-password"
-            aria-invalid={Boolean(confirmError)}
-            className="text-base"
-            {...form.register("confirm_password")}
-            data-testid="onboarding-confirm-password"
-          />
+          <div className="relative">
+            <Input
+              id="onb-confirm-password"
+              type={showConfirm ? "text" : "password"}
+              autoComplete="new-password"
+              aria-invalid={Boolean(confirmError)}
+              className="pr-10 text-base"
+              {...form.register("confirm_password")}
+              data-testid="onboarding-confirm-password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirm((v) => !v)}
+              aria-pressed={showConfirm}
+              aria-label={
+                showConfirm ? "Esconder palavra-passe" : "Mostrar palavra-passe"
+              }
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-content-tertiary hover:text-content-primary"
+            >
+              {showConfirm ? (
+                <EyeOff className="size-4" aria-hidden />
+              ) : (
+                <Eye className="size-4" aria-hidden />
+              )}
+            </button>
+          </div>
           {confirmError ? (
             <p className="text-[12.5px] text-destructive">{confirmError}</p>
           ) : null}
@@ -1113,21 +1242,6 @@ function FinalStepBody({
 
         {consentError ? (
           <p className="text-[12.5px] text-destructive">{consentError}</p>
-        ) : null}
-
-        {hiddenErrorKeys.length > 0 ? (
-          <Alert variant="destructive" aria-live="polite">
-            <AlertDescription className="flex items-center justify-between gap-3">
-              <span>{t("onboarding.final.right.missingQualification")}</span>
-              <button
-                type="button"
-                onClick={onMissingQualification}
-                className="font-semibold underline shrink-0"
-              >
-                {t("onboarding.final.right.back")}
-              </button>
-            </AlertDescription>
-          </Alert>
         ) : null}
 
         {serverError ? (
@@ -1399,11 +1513,10 @@ function LoginPanel({
           Entrar na conta
         </p>
         <DialogTitle className="font-display text-[24px] sm:text-[28px] leading-[1.1] tracking-[-0.015em] text-content-primary text-balance break-words">
-          Já tens conta com {maskEmail(email)}
+          Bem-vindo de volta
         </DialogTitle>
         <DialogDescription className="text-[14px] text-content-secondary leading-[1.55]">
-          Introduz a tua palavra-passe para abrir o relatório. Os teus dados
-          continuam protegidos.
+          Este email já tem conta. Introduz a tua palavra-passe para continuar.
         </DialogDescription>
       </DialogHeader>
 
@@ -1434,12 +1547,12 @@ function LoginPanel({
               Palavra-passe
             </Label>
             <a
-              href="/reset-password"
+              href={`/reset-password?email=${encodeURIComponent(email)}`}
               className="text-[12px] font-medium text-primary hover:underline"
               target="_blank"
               rel="noopener"
             >
-              Esqueceste-te?
+              Esqueceste-te da palavra-passe?
             </a>
           </div>
           <Input
@@ -1475,7 +1588,7 @@ function LoginPanel({
           ) : (
             <>
               <Lock className="size-4" aria-hidden />
-              Entrar
+              Entrar e continuar
             </>
           )}
         </Button>
