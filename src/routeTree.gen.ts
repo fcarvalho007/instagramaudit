@@ -160,6 +160,7 @@ import { Route as ApiAdminKnowledgeExportRouteImport } from './routes/api/admin/
 import { Route as ApiAdminKnowledgeBenchmarksRouteImport } from './routes/api/admin/knowledge.benchmarks'
 import { Route as ApiAdminEmailTemplatesKeyRouteImport } from './routes/api/admin/email-templates.$key'
 import { Route as ApiAdminDiagnosticsAccountSyncRouteImport } from './routes/api/admin/diagnostics.account-sync'
+import { Route as ApiAdminAuthUsersPurgeRouteImport } from './routes/api/admin/auth-users.purge'
 import { Route as AdminReportPreviewSnapshotSnapshotIdRouteImport } from './routes/admin_.report-preview.snapshot.$snapshotId'
 import { Route as AdminAutomacoesTemplatesKeyRouteImport } from './routes/admin.automacoes.templates.$key'
 import { Route as ApiPublicReportSnapshotByIdSnapshotIdRouteImport } from './routes/api/public/report-snapshot.by-id.$snapshotId'
@@ -978,6 +979,11 @@ const ApiAdminDiagnosticsAccountSyncRoute =
     path: '/account-sync',
     getParentRoute: () => ApiAdminDiagnosticsRoute,
   } as any)
+const ApiAdminAuthUsersPurgeRoute = ApiAdminAuthUsersPurgeRouteImport.update({
+  id: '/api/admin/auth-users/purge',
+  path: '/api/admin/auth-users/purge',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminReportPreviewSnapshotSnapshotIdRoute =
   AdminReportPreviewSnapshotSnapshotIdRouteImport.update({
     id: '/admin_/report-preview/snapshot/$snapshotId',
@@ -1153,6 +1159,7 @@ export interface FileRoutesByFullPath {
   '/admin/automacoes/': typeof AdminAutomacoesIndexRoute
   '/admin/automacoes/templates/$key': typeof AdminAutomacoesTemplatesKeyRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
+  '/api/admin/auth-users/purge': typeof ApiAdminAuthUsersPurgeRoute
   '/api/admin/diagnostics/account-sync': typeof ApiAdminDiagnosticsAccountSyncRoute
   '/api/admin/email-templates/$key': typeof ApiAdminEmailTemplatesKeyRouteWithChildren
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
@@ -1314,6 +1321,7 @@ export interface FileRoutesByTo {
   '/admin/automacoes': typeof AdminAutomacoesIndexRoute
   '/admin/automacoes/templates/$key': typeof AdminAutomacoesTemplatesKeyRoute
   '/admin/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
+  '/api/admin/auth-users/purge': typeof ApiAdminAuthUsersPurgeRoute
   '/api/admin/diagnostics/account-sync': typeof ApiAdminDiagnosticsAccountSyncRoute
   '/api/admin/email-templates/$key': typeof ApiAdminEmailTemplatesKeyRouteWithChildren
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
@@ -1478,6 +1486,7 @@ export interface FileRoutesById {
   '/admin/automacoes/': typeof AdminAutomacoesIndexRoute
   '/admin/automacoes/templates/$key': typeof AdminAutomacoesTemplatesKeyRoute
   '/admin_/report-preview/snapshot/$snapshotId': typeof AdminReportPreviewSnapshotSnapshotIdRoute
+  '/api/admin/auth-users/purge': typeof ApiAdminAuthUsersPurgeRoute
   '/api/admin/diagnostics/account-sync': typeof ApiAdminDiagnosticsAccountSyncRoute
   '/api/admin/email-templates/$key': typeof ApiAdminEmailTemplatesKeyRouteWithChildren
   '/api/admin/knowledge/benchmarks': typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
@@ -1643,6 +1652,7 @@ export interface FileRouteTypes {
     | '/admin/automacoes/'
     | '/admin/automacoes/templates/$key'
     | '/admin/report-preview/snapshot/$snapshotId'
+    | '/api/admin/auth-users/purge'
     | '/api/admin/diagnostics/account-sync'
     | '/api/admin/email-templates/$key'
     | '/api/admin/knowledge/benchmarks'
@@ -1804,6 +1814,7 @@ export interface FileRouteTypes {
     | '/admin/automacoes'
     | '/admin/automacoes/templates/$key'
     | '/admin/report-preview/snapshot/$snapshotId'
+    | '/api/admin/auth-users/purge'
     | '/api/admin/diagnostics/account-sync'
     | '/api/admin/email-templates/$key'
     | '/api/admin/knowledge/benchmarks'
@@ -1967,6 +1978,7 @@ export interface FileRouteTypes {
     | '/admin/automacoes/'
     | '/admin/automacoes/templates/$key'
     | '/admin_/report-preview/snapshot/$snapshotId'
+    | '/api/admin/auth-users/purge'
     | '/api/admin/diagnostics/account-sync'
     | '/api/admin/email-templates/$key'
     | '/api/admin/knowledge/benchmarks'
@@ -2105,6 +2117,7 @@ export interface RootRouteChildren {
   BetaSubmittedRequestIdRoute: typeof BetaSubmittedRequestIdRoute
   ReportPrintSnapshotIdRoute: typeof ReportPrintSnapshotIdRoute
   AdminReportPreviewSnapshotSnapshotIdRoute: typeof AdminReportPreviewSnapshotSnapshotIdRoute
+  ApiAdminAuthUsersPurgeRoute: typeof ApiAdminAuthUsersPurgeRoute
   ApiAdminKnowledgeBenchmarksRoute: typeof ApiAdminKnowledgeBenchmarksRouteWithChildren
   ApiAdminKnowledgeExportRoute: typeof ApiAdminKnowledgeExportRoute
   ApiAdminKnowledgeNotesRoute: typeof ApiAdminKnowledgeNotesRouteWithChildren
@@ -3201,6 +3214,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminDiagnosticsAccountSyncRouteImport
       parentRoute: typeof ApiAdminDiagnosticsRoute
     }
+    '/api/admin/auth-users/purge': {
+      id: '/api/admin/auth-users/purge'
+      path: '/api/admin/auth-users/purge'
+      fullPath: '/api/admin/auth-users/purge'
+      preLoaderRoute: typeof ApiAdminAuthUsersPurgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin_/report-preview/snapshot/$snapshotId': {
       id: '/admin_/report-preview/snapshot/$snapshotId'
       path: '/admin/report-preview/snapshot/$snapshotId'
@@ -3609,6 +3629,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReportPrintSnapshotIdRoute: ReportPrintSnapshotIdRoute,
   AdminReportPreviewSnapshotSnapshotIdRoute:
     AdminReportPreviewSnapshotSnapshotIdRoute,
+  ApiAdminAuthUsersPurgeRoute: ApiAdminAuthUsersPurgeRoute,
   ApiAdminKnowledgeBenchmarksRoute:
     ApiAdminKnowledgeBenchmarksRouteWithChildren,
   ApiAdminKnowledgeExportRoute: ApiAdminKnowledgeExportRoute,
