@@ -41,11 +41,37 @@ export function getApifyHardCapUsd(): number {
   return readNumber("APIFY_HARD_CAP_USD", 10);
 }
 
+/**
+ * Dedicated daily cap for 90-day analysis windows (USD).
+ *
+ * Defaults to ~€5/day (5.5 USD). Operators can tune via
+ * `APIFY_90D_DAILY_CAP_USD`. Trips `WINDOW_90D_BUDGET_EXCEEDED` at the
+ * public endpoint before credit reservation and before the provider call.
+ */
+export function getApify90dDailyCapUsd(): number {
+  return readNumber("APIFY_90D_DAILY_CAP_USD", 5.5);
+}
+
+export class Window90dBudgetExceededError extends Error {
+  readonly spentUsd: number;
+  readonly capUsd: number;
+  constructor(spentUsd: number, capUsd: number) {
+    super(
+      `90d daily budget exceeded: $${spentUsd.toFixed(2)} >= $${capUsd}`,
+    );
+    this.name = "Window90dBudgetExceededError";
+    this.spentUsd = spentUsd;
+    this.capUsd = capUsd;
+  }
+}
+
 let cachedSpend: { value: number; at: number } | null = null;
+let cached90dSpend: { value: number; at: number } | null = null;
 const TTL_MS = 60_000;
 
 export function invalidateApifyBudgetCache(): void {
   cachedSpend = null;
+  cached90dSpend = null;
 }
 
 function startOfUtcDayIso(now: Date = new Date()): string {
@@ -90,6 +116,55 @@ export async function assertApifyDailyBudgetAvailable(): Promise<void> {
   const cap = getApifyHardCapUsd();
   const spent = await getApifyDailySpendUsd();
   if (spent >= cap) throw new BudgetExceededError(spent, cap);
+}
+
+/**
+ * Sum of estimated/actual Apify spend (USD) for 90d analysis windows since
+ * 00:00 UTC today. Mirrors `getApifyDailySpendUsd` but filtered by
+ * `analysis_window='90d'`. 60s in-memory cache (separate slot).
+ */
+export async function getApify90dDailySpendUsd(
+  now: Date = new Date(),
+): Promise<number> {
+  const ts = now.getTime();
+  if (cached90dSpend && ts - cached90dSpend.at < TTL_MS)
+    return cached90dSpend.value;
+
+  try {
+    const { data, error } = await (supabaseAdmin as any)
+      .from("provider_call_logs")
+      .select("estimated_cost_usd, actual_cost_usd")
+      .eq("provider", "apify")
+      .eq("analysis_window", "90d")
+      .gte("created_at", startOfUtcDayIso(now))
+      .limit(5000);
+    if (error) {
+      console.error("[apify-budget] 90d sum query failed", error.message);
+      cached90dSpend = { value: 0, at: ts };
+      return 0;
+    }
+    const total = (data ?? []).reduce((sum: number, r: any) => {
+      const raw = r.actual_cost_usd ?? r.estimated_cost_usd ?? 0;
+      const v = typeof raw === "string" ? Number.parseFloat(raw) : Number(raw);
+      return sum + (Number.isFinite(v) ? v : 0);
+    }, 0);
+    cached90dSpend = { value: total, at: ts };
+    return total;
+  } catch (err) {
+    console.error("[apify-budget] 90d unexpected", err);
+    return 0;
+  }
+}
+
+/**
+ * Throws `Window90dBudgetExceededError` when today's 90d Apify spend has
+ * reached the dedicated cap. Caller must place this check on the fresh-fetch
+ * path only (cache hits must stay free and unblocked).
+ */
+export async function assertApify90dDailyBudgetAvailable(): Promise<void> {
+  const cap = getApify90dDailyCapUsd();
+  const spent = await getApify90dDailySpendUsd();
+  if (spent >= cap) throw new Window90dBudgetExceededError(spent, cap);
 }
 
 /**
