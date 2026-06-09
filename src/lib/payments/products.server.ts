@@ -30,6 +30,13 @@ export const SERVER_PRODUCTS: Record<ProductCode, ServerProduct> = {
     currency: "EUR",
     description: "Desbloqueio do relatório completo.",
   },
+  credit_pack_1: {
+    code: "credit_pack_1",
+    namePt: "1 crédito de análise",
+    amountCents: 900,
+    currency: "EUR",
+    description: "1 crédito adicional para gerar novas análises (período ou concorrente) no relatório Pro.",
+  },
 };
 
 export function getServerProduct(code: ProductCode): ServerProduct {
