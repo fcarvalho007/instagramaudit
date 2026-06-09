@@ -49,7 +49,7 @@ vi.mock("@/lib/report/caption-semantic-analysis.server", () => ({
 }));
 
 vi.mock("@/lib/security/lovable-ai-allowlist", () => ({
-  isLovableAiAllowed: (...args: unknown[]) => lovableAllowedSpy(...args),
+  isLovableAiAllowed: (handle: string) => lovableAllowedSpy(handle),
 }));
 
 vi.mock("@/lib/security/lovable-ai-budget.server", async () => {
