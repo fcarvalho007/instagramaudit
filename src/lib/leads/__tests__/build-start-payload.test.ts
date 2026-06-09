@@ -34,9 +34,16 @@ describe("buildStartPayload", () => {
     expect(filled.website).toBe("spam-bot");
   });
 
-  it("never includes phone (field removed from public modal)", () => {
+  it("omits phone when blank, sends trimmed phone when provided", () => {
     const empty = buildStartPayload(baseValues, "Ana", "", 1);
     expect("phone" in empty).toBe(false);
+    const filled = buildStartPayload(
+      { ...baseValues, phone: "  +351 912 345 678 " },
+      "Ana",
+      "",
+      1,
+    );
+    expect(filled.phone).toBe("+351 912 345 678");
   });
 
   it("includes qualification only when set", () => {
