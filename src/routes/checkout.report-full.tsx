@@ -34,7 +34,7 @@ import { getLeadSessionStatus } from "@/lib/leads/lead-session.functions";
 import { trackEvent } from "@/lib/tracking.functions";
 import type { ProductCode } from "@/lib/payments/products";
 
-const SOURCE_PRODUCT: ProductCode = "report_full_9";
+const SOURCE_PRODUCT = "report_full_9" satisfies ProductCode;
 const UPSELL_TARGET: ProductCode = "authority_diagnosis_97";
 
 const REPORT_PLAN_CODES = [
