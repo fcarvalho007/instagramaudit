@@ -1,106 +1,56 @@
-# Auditoria GTM — Email Lifecycle & Cadência
+# Plano — `credit_ledger.analysis_event_id` linkage
 
 ## TL;DR
-**Verdict: 🟢 GO BETA · 🟡 GO PUBLIC pago condicional.** O lifecycle de email está hoje significativamente mais limpo do que estava: `report_saved` é o único auto-trigger pós-unlock, `welcome_beta` e `report_summary` estão marcados legacy e **sem callers**, `report_ready` é admin-only manual, e `payment_confirmed` está protegido por kill-switch + idempotência por `payment_id`. **Pricing copy está limpo** — nenhum template menciona 7€ ou 28€ pack; o único template com valor monetário é `payment_confirmed` e usa `amountLabel` derivado de `PUBLIC_PRODUCTS` (`9€` / `97€`). **Não existem duplicados automáticos** dentro de segundos.
+**Já está tudo implementado.** A auditoria do repo confirma que o schema, a server lib, o orquestrador `analyze-public-v1`, o endpoint admin e a UI da lead-detail-sheet já têm `analysis_event_id` ponta-a-ponta. Os 3 unit tests pedidos também já existem e cobrem confirm/release com event id + comportamento legacy NULL.
 
-**Único bloqueador para launch público pago:** `PAYMENT_CONFIRMATION_EMAIL_ENABLED` continua **default OFF** (`send-payment-confirmed.server.ts:51`), pelo que pagamentos reais não geram confirmação por email enquanto a flag não for explicitamente ligada.
+**Não há trabalho de código novo a fazer.** O plano abaixo é um relatório de cobertura para fechar o ticket — se houver alguma extensão extra que queiras (ex.: link clickável para o `analysis_event` no admin, ou backfill controlado), diz-me e adiciono ao scope.
 
 ---
 
-## 1. Inventário de templates
+## Cobertura ponto-a-ponto vs. o teu scope
 
-| # | Key | Subject (resumido) | Lifecycle role | Modo | Trigger | Kill-switch | Dedup/Idempotência |
-|---|---|---|---|---|---|---|---|
-| 1 | `request_received` | "Recebemos o teu pedido" | Captação · transactional | Auto | `src/lib/beta.functions.ts` (submissão pedido beta) | — | `beta_request_received_email_sent` |
-| 2 | `report_ready` | "O teu relatório está disponível" | Entrega · **manual fallback** | Manual | Admin · `/api/admin/send-report-link.ts` (signed URL) | — | nenhum (admin-only) |
-| 3 | `feedback_request` | "O teu relatório foi útil?" | Retenção · **manual** | Manual | Admin · `/api/admin/send-feedback-request.ts` | — | ✅ `product_events.feedback_request_email_sent` filtrando `lead_id + report_request_id` (lookup `send-feedback-request.ts:44-66`) |
-| 4 | `personal_area_saved` | "O relatório foi guardado na tua área pessoal" | **Planeado** · sem trigger | Disabled | Nenhum endpoint o chama | — | n/a |
-| 5 | `welcome_beta` | "Bem-vindo à beta — o que esperar daqui" | **Legacy · desactivado** | Disabled | Nenhum caller (`rg sendWelcomeBeta` → só a definição) | — | (legacy event `beta_welcome_email_sent` ainda honrado pela dedup do `report_saved`) |
-| 6 | `report_summary` | "Resumo do relatório @{handle}" | **Legacy · desactivado** | Disabled | Nenhum caller (`rg sendReportSummary` → só a definição) | — | (legacy event `report_summary_email_sent` ainda honrado pela dedup do `report_saved`) |
-| 7 | `commercial_followup` | "Continuação…" (dinâmico por handle) | Conversão · **manual** | Manual | Admin · `/api/admin/send-commercial-followup.ts` | — | nenhum (admin-only) |
-| 8 | `payment_confirmed` | "Pagamento confirmado — relatório completo desbloqueado" | Pagamento · transactional | Auto fire-and-forget | EuPago webhook branch `paid` (`eupago-webhook.ts:282-300`) | 🚨 **`PAYMENT_CONFIRMATION_EMAIL_ENABLED` default OFF** (`send-payment-confirmed.server.ts:51`) | ✅ `product_events.payment_confirmation_email_sent` por `payment_id` |
-| 9 | `report_saved` | dinâmico ("Guardámos o teu relatório de @handle") | **Entrega · email principal** | Auto | `lead-magnet-sequence.server.ts` após unlock | `LEAD_MAGNET_EMAIL_SEQUENCE_ENABLED` (default **ON**) | ✅ dedup por `(lead_id, report_request_id)` honrando 3 eventos: `report_saved_email_sent` + legacy `beta_welcome_email_sent` + legacy `report_summary_email_sent` (`lead-magnet-sequence.server.ts:70-72`) |
-
-## 2. Cadência automática (diagrama)
-
-```text
-[lead submete pedido beta]
-        │
-        ├──> (auto, imediato) request_received        [#1]
-        │
-        ▼
-[admin processa / unlock acontece]
-        │
-        ├──> (auto, imediato) report_saved            [#9]    ← ÚNICO email pós-unlock
-        │       └─ dedup: lead_id+report_request_id (honra legacy)
-        │
-        │   [welcome_beta + report_summary]: REMOVIDOS do auto-flow
-        │
-        ▼
-[admin opcional — sem auto]
-        ├──> report_ready          (manual, signed URL)        [#2]
-        ├──> feedback_request      (manual, com dedup)         [#3]
-        └──> commercial_followup   (manual, sem auto-trigger)  [#7]
-
-[EuPago webhook: status=paid]
-        │
-        └──> (auto fire-and-forget) payment_confirmed          [#8]
-                ├─ guard: payment.status === "paid" && paid_at
-                ├─ kill-switch: PAYMENT_CONFIRMATION_EMAIL_ENABLED (🚨 OFF)
-                └─ dedup: payment_id
-```
-
-## 3. Risco de duplicados
-
-| Cenário | Pode duplicar? | Evidência |
-|---|---|---|
-| Mesmo unlock dispara 2x `report_saved` | 🟡 **Race teórica** | Dedup é lookup-then-insert sem unique index em `product_events`. Em unlocks concorrentes pelo mesmo `report_request_id` os dois podem passar a verificação. `email-template-registry.ts:633` lista este risco. |
-| `report_saved` + `welcome_beta` no mesmo unlock | ✅ Impossível | `welcome_beta` sem caller; dedup do `report_saved` também honra o evento legacy. |
-| `report_saved` + `report_summary` no mesmo unlock | ✅ Impossível | Igual ao anterior. |
-| `payment_confirmed` 2x no mesmo pagamento | ✅ Impossível | Dedup por `payment_id` + guarda `status === "paid"` no webhook. |
-| `payment_confirmed` em pagamento pendente | ✅ Impossível | Webhook só entra no branch após `row.status === "paid" && row.paid_at` (`eupago-webhook.ts:151`). |
-| `feedback_request` 2x | ✅ Bloqueado | Dedup `lead_id+report_request_id`. |
-| Beta form + public unlock geram 2 emails | ✅ Não duplica | `request_received` é confirmação inicial; `report_saved` só dispara no unlock. Conteúdos distintos. |
-| Admin envia `report_ready` depois do `report_saved` automático | ⚠️ **Pode soar duplicado ao utilizador** | Não há guarda. `report_ready` é manual e fica à descrição do admin. |
-| Admin envia `commercial_followup` depois do `report_saved` | ⚠️ Idem | Sem guarda; manual. Aceitável: são lifecycle stages distintos. |
-
-## 4. Pricing copy — mismatches
-
-| Template | 7€ | 28€ pack | 9€ correto | 97€ correto | "1 incluído + 2 bónus" |
-|---|---|---|---|---|---|
-| `payment_confirmed` | ✅ ausente | ✅ ausente | ✅ via `amountLabel` (sample `9,00 €`) | ✅ via `PUBLIC_PRODUCTS["authority_diagnosis_97"].priceLabel = "97€"` | ✅ presente no template (`payment-confirmed.ts:132,171`) e sender alimenta `creditsGranted = { included: 1, bonus: 2 }` só para `report_full_9` (`send-payment-confirmed.server.ts:225-231`) |
-| `commercial_followup` | ✅ ausente | ✅ ausente | n/a (sem preço hard-coded) | n/a | n/a |
-| `report_saved` | ✅ ausente | ✅ ausente | n/a | n/a | n/a |
-| Outros | ✅ ausente | ✅ ausente | n/a | n/a | n/a |
-
-🟢 **Pricing copy limpo em todo o lifecycle.** Não há menções residuais a 7€ ou 28€ pack. O Authority Diagnosis (97€) **não tem template próprio de confirmação** — usa o mesmo `payment_confirmed` com `productName` dinâmico, sem créditos (correto: a flag `creditsGranted` é `null` para produtos != `report_full_9`).
-
-## 5. Verificação ponto-a-ponto do pedido
-
-| # | Verificação | Resultado |
-|---|---|---|
-| 3 | Legacy emails escondidos/colapsados por defeito | ✅ `email-lab-page.tsx:128` `showLegacy=false` por defeito; chip "Legado" filtra explicitamente. Registry classifica `welcome_beta` e `report_summary` com `lifecycleStage:"legado"` + badge `"desactivado"`. |
-| 4 | `report_saved` é o email principal de entrega | ✅ Único auto-trigger pós-unlock no `lead-magnet-sequence`. |
-| 5 | `welcome_beta` e `report_summary` já não são automáticos | ✅ Confirmado — `rg sendWelcomeBeta`/`sendReportSummary` retorna só as definições, **zero callers**. |
-| 6 | `report_ready` é claramente manual/signed URL | ✅ Apenas chamado por `/api/admin/send-report-link.ts`. Marcado `lifecycleRole: "manual_fallback"`. |
-| 7 | `payment_confirmed` kill-switch / copy / créditos / não-pending | 🟡 Kill-switch existe mas **default OFF** (BLOQUEADOR público). Copy correto (`amountLabel` dinâmico). Créditos 1+2 só para `report_full_9`. Só dispara no branch `paid`. |
-| 8 | `commercial_followup` pricing actualizado | ✅ Sem preços hard-coded — narrativa neutra que usa `checkoutUrl` opcional. |
-| 9 | `feedback_request` tem dedup | ✅ `alreadySentForRequest()` em `lead_id+report_request_id`. |
-| 10 | Dois emails dentro de segundos para o mesmo report | ✅ Não — `report_saved` é o único auto pós-unlock. `payment_confirmed` está noutro lifecycle (pagamento). |
-| 11 | Confusão cross-channel | ✅ Improvável no fluxo auto. ⚠️ Risco residual: admin enviar manualmente `report_ready` depois do `report_saved` automático. |
-
-## 6. Fixes recomendados antes do launch público pago
-
-| Prioridade | Fix | Ficheiro | Acção |
+| # | Item pedido | Estado | Evidência |
 |---|---|---|---|
-| 🚨 P0 | Activar `PAYMENT_CONFIRMATION_EMAIL_ENABLED=true` no ambiente de produção | env / secrets | Sem isto, **nenhum pagamento real gera email de confirmação**. |
-| 🟡 P1 | Eliminar race teórica em `report_saved` | migration — unique partial index em `product_events` para `event_type='report_saved_email_sent'` por `(metadata->>'lead_id', metadata->>'report_request_id')` | Fecha a janela entre lookup e insert em unlocks concorrentes. |
-| 🟡 P1 | Guarda no admin UI para avisar "este lead já recebeu `report_saved` há Xh — tens a certeza que queres enviar `report_ready`/`commercial_followup`?" | `admin/v2/...` (UI only) | Reduz confusão percebida pelo utilizador. |
-| 🟢 P2 | Documentar no `email-lab` que `payment_confirmed` para Authority Diagnosis (97€) não envia créditos (esperado) | `email-template-registry.ts` `wiredNote` | Clarifica para suporte. |
-| 🟢 P2 | Considerar deprecar fisicamente `send-welcome-beta.server.ts` e `send-report-summary.server.ts` (manter só renderers para overrides) | `src/lib/email/` | Reduz superfície de erro humano. |
+| 1 | Coluna `analysis_event_id uuid` nullable em `credit_ledger` | ✅ existe | `\d credit_ledger` → `analysis_event_id | uuid | nullable` |
+| 2 | FK para `analysis_events(id) ON DELETE SET NULL` | ✅ existe | `credit_ledger_analysis_event_id_fkey FOREIGN KEY (analysis_event_id) REFERENCES analysis_events(id) ON DELETE SET NULL` |
+| 3 | Partial index para non-null | ✅ existe | `idx_credit_ledger_analysis_event btree (analysis_event_id) WHERE analysis_event_id IS NOT NULL` |
+| 4 | `confirmReservation` aceita `analysisEventId` | ✅ | `credits.server.ts:295-312` |
+| 5 | `releaseReservation` aceita `analysisEventId` | ✅ | `credits.server.ts:319-336` |
+| 6 | Insert `analysis_event_id` na linha confirm/release | ✅ | `insertLedger` recebe e propaga (`credits.server.ts:59-74`) |
+| 7 | Back-update da linha `reserve` por `reservation_id` | ✅ | `backfillReserveEventId` (`credits.server.ts:82-98`), invocado por confirm e release apenas quando `analysisEventId` é não-nulo, sem `throw` em erro |
+| 8 | Pass do `analysis_event_id` terminal pelo `analyze-public-v1` | ✅ | `analyze-public-v1.ts:654-678` → `confirmReservation({ analysisEventId: lastEventId })` / `releaseReservation({ analysisEventId: lastEventId })`. `lastEventId` é obtido via `recordAnalysisEvent` (linha 431) e `logEvent` (1307). |
+| 9a | Admin lead credit activity expõe a coluna | ✅ | `routes/api/admin/lead-credit-activity.$id.ts:47` (SELECT inclui `analysis_event_id`) + `components/admin/v2/beta-leads/lead-detail-sheet.tsx:2352, 2512-2513` renderiza chip truncado com tooltip do uuid completo |
+| 9b | Report detail drawer onde já relevante | ✅ | Único drawer que mostra credit activity é o `lead-detail-sheet` (`rg credit_ledger src/components/admin` → 1 ficheiro). Não há outro drawer a tocar — N/A |
 
-## 7. Verdict
+## Constraints — verificação
 
-- 🟢 **GO BETA** — lifecycle limpo, dedup nos pontos críticos, sem duplicados automáticos, sem pricing copy desactualizado.
-- 🟡 **GO PUBLIC pago** — condicional a virar `PAYMENT_CONFIRMATION_EMAIL_ENABLED=true`. P1 (unique index) e UX guards são polish, não blockers.
-- 🔴 **NO-GO** — manter a flag de payment_confirmed OFF em produção: o cliente paga 9€/97€ e não recebe confirmação, o que mata trust no minuto 1.
+| Constraint | Cumprida? |
+|---|---|
+| Não reordenar reserve → analysis → event → confirm/release | ✅ ordem preservada em `analyze-public-v1.ts` |
+| Não expor `analysis_event_id` publicamente | ✅ apenas leitura em rotas `/api/admin/*` e UI `/admin/*` |
+| Não tocar checkout / EuPago / pricing / Free public report / competitor UI / provider calls | ✅ alterações isoladas a `credits.server.ts` + orquestrador + endpoint admin + drawer |
+| Não fazer backfill histórico nesta PR | ✅ apenas back-update do reserve **dentro da mesma reservation_id** ao confirm/release acontecer; linhas históricas continuam NULL |
+
+## Validações — estado actual
+
+| Validação | Estado | Evidência |
+|---|---|---|
+| Unit test: confirm com `analysisEventId` liga confirm + reserve | ✅ | `credits.test.ts:188-202` |
+| Unit test: release com `analysisEventId` liga release + reserve | ✅ | `credits.test.ts:204-218` |
+| Unit test: confirm sem `analysisEventId` mantém comportamento legacy NULL | ✅ | `credits.test.ts:221-229` |
+| Existing credit tests continuam a passar | 🟡 a confirmar correndo `bunx vitest run src/lib/credits` (sem alterações novas, baseline esperado) |
+| Fresh analysis → reserve + confirm linked ao mesmo event | ✅ por inspecção de `analyze-public-v1.ts:654-661` (mesma `lastEventId` propagada) |
+| Provider error → reserve + release linked ao mesmo event | ✅ por inspecção de `analyze-public-v1.ts:670-678` |
+| Blocked `WINDOW_REQUIRES_PRO` → 0 ledger rows | ✅ confirmado: o `reserveCredit` está atrás do gate `report_full_9` → se bloqueado por pro window, retorna antes de reservar (`analyze-public-v1.ts` early-return antes de `reserveCredit`) |
+| Admin lida graciosamente com NULL | ✅ `lead-detail-sheet.tsx:2513` `e.analysis_event_id ? e.analysis_event_id.slice(0,8) : "—"` |
+
+## Recomendação
+
+1. **Marcar o ticket como "já entregue em PR anterior"** — não há ficheiros novos a editar.
+2. (Opcional) Em build mode, posso correr `bunx vitest run src/lib/credits src/routes/api/__tests__/analyze-public-v1-credit-gate.test.ts` para confirmar verde antes do encerramento. Avisa se queres que faça isso.
+3. (Opcional, fora do scope original) Possíveis follow-ups que **não** implemento sem aprovação extra:
+   - Link clickável no drawer (`analysis_event_id` → tooltip já mostra uuid completo; podia abrir o admin event detail).
+   - Backfill histórico controlado em job manual — explicitamente fora deste PR pelo teu próprio constraint.
+
+## Verdict
+🟢 **Scope 100% coberto.** Sem edits requeridos.
