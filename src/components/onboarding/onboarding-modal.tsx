@@ -1303,7 +1303,7 @@ function QualificationStepBody({
 }
 
 /* -------------------------------------------------------------------------- */
-/* OTP verify panel — for existing emails (ownership proof)                   */
+/* Login panel — email + password sign-in for existing accounts               */
 /* -------------------------------------------------------------------------- */
 
 function maskEmail(email: string): string {
@@ -1313,98 +1313,92 @@ function maskEmail(email: string): string {
   return `${head}${user.length > 2 ? "•••" : ""}@${domain}`;
 }
 
-function OtpVerifyPanel({
+function LoginPanel({
   email,
-  sentAt,
-  mode,
   purpose,
   submitting,
   serverError,
-  onVerify,
-  onResend,
+  onSubmit,
   onBack,
 }: {
   email: string;
-  sentAt: number;
-  mode: "new" | "existing";
   purpose: "analyze" | "checkout";
   submitting: boolean;
   serverError: string | null;
-  onVerify: (code: string) => Promise<void> | void;
-  onResend: () => Promise<void> | void;
+  onSubmit: (password: string) => Promise<void> | void;
   onBack: () => void;
 }) {
-  const { t } = useTranslation("gate");
-  const isCheckout = purpose === "checkout";
-  const [code, setCode] = useState("");
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const elapsedSeconds = Math.floor((now - sentAt) / 1000);
-  const cooldown = Math.max(0, RESEND_COOLDOWN_SECONDS - elapsedSeconds);
-  const canResend = cooldown === 0 && !submitting;
+  void purpose;
+  const [password, setPassword] = useState("");
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = code.trim();
-    if (trimmed.length !== 6) return;
-    await onVerify(trimmed);
+    if (!password) return;
+    await onSubmit(password);
   };
 
   return (
-    <div className="px-5 py-7 sm:px-9 sm:py-9" data-testid="onboarding-otp-step">
+    <div
+      className="px-5 py-7 sm:px-9 sm:py-9"
+      data-testid="onboarding-login-step"
+    >
       <DialogHeader className="text-left space-y-2.5">
         <p className="text-eyebrow-sm text-content-tertiary">
-          {t("onboarding.otp.eyebrow")}
+          Entrar na conta
         </p>
-        {mode === "existing" && !isCheckout ? (
-          <p className="text-[13px] text-content-secondary leading-[1.5]">
-            {t("onboarding.otp.existingTitle")}
-          </p>
-        ) : null}
         <DialogTitle className="font-display text-[24px] sm:text-[28px] leading-[1.1] tracking-[-0.015em] text-content-primary text-balance break-words">
-          {isCheckout
-            ? t(
-                mode === "existing"
-                  ? "onboarding.otp.titleExistingCheckout"
-                  : "onboarding.otp.titleNewCheckout",
-                { maskedEmail: maskEmail(email) },
-              )
-            : t("onboarding.otp.title", { maskedEmail: maskEmail(email) })}
+          Já tens conta com {maskEmail(email)}
         </DialogTitle>
         <DialogDescription className="text-[14px] text-content-secondary leading-[1.55]">
-          {isCheckout
-            ? t(
-                mode === "existing"
-                  ? "onboarding.otp.subtitleExistingCheckout"
-                  : "onboarding.otp.subtitleNewCheckout",
-                { maskedEmail: maskEmail(email) },
-              )
-            : t("onboarding.otp.subtitle")}
+          Introduz a tua palavra-passe para abrir o relatório. Os teus dados
+          continuam protegidos.
         </DialogDescription>
       </DialogHeader>
 
       <form onSubmit={submit} className="mt-5 space-y-4" noValidate>
         <div className="space-y-1.5">
-          <Label htmlFor="onb-otp" className="text-[13.5px] font-medium text-content-primary">
-            {t("onboarding.otp.codeLabel")}
+          <Label
+            htmlFor="onb-login-email"
+            className="text-[13.5px] font-medium text-content-primary"
+          >
+            Email
           </Label>
           <Input
-            id="onb-otp"
-            type="text"
-            inputMode="numeric"
-            autoComplete="one-time-code"
+            id="onb-login-email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            readOnly
+            className="bg-surface-muted/40 text-base"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Label
+              htmlFor="onb-login-password"
+              className="text-[13.5px] font-medium text-content-primary"
+            >
+              Palavra-passe
+            </Label>
+            <a
+              href="/reset-password"
+              className="text-[12px] font-medium text-primary hover:underline"
+              target="_blank"
+              rel="noopener"
+            >
+              Esqueceste-te?
+            </a>
+          </div>
+          <Input
+            id="onb-login-password"
+            type="password"
+            autoComplete="current-password"
             autoFocus
-            maxLength={6}
-            placeholder={t("onboarding.otp.codePlaceholder")}
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            className="text-center font-mono text-[20px] tracking-[0.45em] h-12"
-            data-testid="onboarding-otp-code"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="text-base"
+            data-testid="onboarding-login-password"
           />
         </div>
 
@@ -1417,17 +1411,20 @@ function OtpVerifyPanel({
         <Button
           type="submit"
           size="lg"
-          disabled={submitting || code.length !== 6}
+          disabled={submitting || password.length === 0}
           className="w-full rounded-lg font-medium h-12"
-          data-testid="onboarding-otp-submit"
+          data-testid="onboarding-login-submit"
         >
           {submitting ? (
             <>
               <Loader2 className="size-4 animate-spin" aria-hidden />
-              {t("onboarding.otp.verifying")}
+              A entrar…
             </>
           ) : (
-            t(isCheckout ? "onboarding.otp.ctaCheckout" : "onboarding.otp.cta")
+            <>
+              <Lock className="size-4" aria-hidden />
+              Entrar
+            </>
           )}
         </Button>
 
@@ -1439,19 +1436,18 @@ function OtpVerifyPanel({
             className="inline-flex items-center gap-1 text-[13px] text-content-secondary hover:text-content-primary disabled:opacity-60"
           >
             <ArrowLeft className="size-3.5" aria-hidden />
-            {t("onboarding.otp.back")}
+            Voltar
           </button>
-          <button
-            type="button"
-            onClick={() => void onResend()}
-            disabled={!canResend}
-            className="text-[13px] font-medium text-primary hover:underline disabled:opacity-60 disabled:no-underline"
-            data-testid="onboarding-otp-resend"
-          >
-            {canResend
-              ? t("onboarding.otp.resend")
-              : t("onboarding.otp.resendIn", { seconds: cooldown })}
-          </button>
+          <span className="text-[12px] text-content-tertiary">
+            Não és tu?{" "}
+            <button
+              type="button"
+              onClick={onBack}
+              className="font-medium text-primary hover:underline"
+            >
+              Usar outro email
+            </button>
+          </span>
         </div>
       </form>
     </div>
