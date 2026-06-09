@@ -619,12 +619,15 @@ export function classifyAudienceResponse(
     .slice(0, 3);
 
   const topCommentPosts = postsByComments.map(({ p, i }) => {
-    // Thumbnail já persistido no bucket público pelo
-    // `persist-thumbnails.server.ts` no momento do snapshot.
+    // Prefer the persisted bucket URL (stable, no IG CDN dependency); fall
+    // back to the original Apify/IG URL.
     const thumbnailUrl =
-      typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
+      (typeof p.thumbnail_storage_url === "string" && p.thumbnail_storage_url.length > 0
+        ? p.thumbnail_storage_url
+        : null) ??
+      (typeof p.thumbnail_url === "string" && p.thumbnail_url.length > 0
         ? p.thumbnail_url
-        : null;
+        : null);
     const permalinkRaw =
       typeof p.permalink === "string" && p.permalink.trim().length > 0
         ? p.permalink.trim()
@@ -644,6 +647,7 @@ export function classifyAudienceResponse(
       date: p.taken_at_iso ?? null,
       thumbnailUrl,
       permalink,
+      shortcode,
     };
   });
 
