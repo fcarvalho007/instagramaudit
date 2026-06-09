@@ -14,6 +14,7 @@ import {
   PRODUCT_CODES,
   type ProductCode,
 } from "./products";
+import { safeReturnPath } from "@/lib/security/safe-return-path";
 import {
   SAFE_CHECKOUT_PREPARE_ERROR,
   safeCheckoutPrepareError,
@@ -34,7 +35,6 @@ const inputSchema = z
       .string()
       .trim()
       .max(200)
-      .regex(/^\/[A-Za-z0-9/_\-.?=&%]*$/, "must be a relative path")
       .optional(),
     source_component: z.string().trim().min(1).max(80).optional(),
     coupon_code: z
@@ -280,7 +280,7 @@ export const createEupagoCheckout = createServerFn({ method: "POST" })
         currency: product.currency,
         description: product.description,
         internalPaymentId: paymentRow.id,
-        returnUrl: `${baseUrl}${data.return_path ?? "/"}`,
+      returnUrl: `${baseUrl}${safeReturnPath(data.return_path, "/")}`,
         webhookUrl: `${baseUrl}/api/public/eupago-webhook`,
         customerEmail,
       });
