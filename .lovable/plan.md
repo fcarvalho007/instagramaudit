@@ -1,46 +1,64 @@
-# Bug confirmado: Pro não vê o Bloco 03 (Desempenho)
+# Refinamento de copy e UX do Passo 2 do onboarding
 
-## O que está a acontecer
+## Diagnóstico
 
-Em `src/routes/analyze.$username.tsx` (linha 449) a variant do relatório está **hardcoded** em `"public_mvp"`, independentemente de o utilizador ter desbloqueado o Pro.
+O passo 2 actual funciona, mas o tom é seco e o vocabulário ainda é "interno" (contexto, objetivo, ajustar a análise, p/ cliente). Para leigos:
 
-Em `src/lib/report/report-variant.ts` (linha 73), para `public_mvp`, `blockPerformance` é `"hidden"`.
+- "Conta-nos o contexto" / "Qual é o contexto?" — repete "contexto" duas vezes; soa a formulário.
+- "Duas escolhas rápidas para ajustarmos a análise." — frio, sem benefício claro.
+- "Qual é o teu objetivo?" — formal; "objetivo" é vago.
+- "Analisar p/ cliente" — abreviatura "p/" parece SMS, fica deslocada num modal premium.
+- "A minha marca" / "De um cliente" — sem sujeito, lê-se mal sem o contexto da pergunta.
 
-Em `src/components/report-redesign/v2/report-shell-v2.tsx` (linha 279), o Bloco 03 só renderiza com:
+UX adicional:
+- O `Continuar` está sempre activo mesmo sem selecção (a validação só dispara ao clicar). Para leigos é melhor desactivá-lo até as duas escolhas estarem feitas, com uma micro-mensagem subtil.
+- Não há feedback do que cada escolha muda. Uma linha discreta tipo "Vamos usar isto para personalizar a leitura" reforça o porquê sem peso.
 
-```
-{premiumUnlocked && features.blockPerformance === "full" && ( … )}
-```
+## Mudanças propostas (copy)
 
-Resultado: mesmo com `premiumUnlocked = true` (entitlement `report_full_9` confirmado pelo servidor), o Bloco 03 nunca aparece porque `features.blockPerformance === "hidden"` em `public_mvp`. O relatório termina em "07 · Prioridades de acção" — exactamente o sintoma reportado.
+Apenas `src/i18n/locales/pt/gate.json` (e espelho em `en/gate.json`). Sem mexer em layout, ícones, cores ou estrutura de componentes.
 
-Nota lateral: blocos 02 / 04 / 05 / 06 usam `!== "hidden"`, por isso esses sobrevivem ao bug. Apenas o Bloco 03 tem a condição mais estrita `=== "full"`.
+### `onboarding.qualification`
+- `title`: "Conta-nos o contexto" → **"Ajuda-nos a personalizar"**
+- `subtitle`: "Duas escolhas rápidas para ajustarmos a análise." → **"Duas perguntas rápidas. A leitura do relatório adapta-se ao que escolheres."**
+- `subtitleCheckout`: idem com tom equivalente.
+- `ownershipLegend`: "Qual é o contexto?" → **"Este perfil é…"**
+- `goalLegend`: "Qual é o teu objetivo?" → **"O que queres tirar daqui?"**
+- `ownershipError`: "Escolhe o contexto." → **"Escolhe uma opção para continuar."**
+- `goalError`: "Escolhe um objetivo." → **"Escolhe o que mais te interessa."**
 
-## Fix proposto (alteração mínima, sem mexer em UI nem em regras de produto)
+### `onboarding.compactOptions.profileOwnership` (cartões — coluna 1)
+- `own_profile`: "Perfil pessoal" → **"O meu perfil"**
+- `brand_profile`: "A minha marca" → **"A minha marca"** (mantém — já claro)
+- `client_profile`: "De um cliente" → **"De um cliente"** (mantém)
+- `competitor_research`: "Concorrência" → **"Um concorrente"**
 
-1. Em `src/routes/analyze.$username.tsx`:
-   - Derivar `effectiveVariant = premiumUnlocked ? "pro_preview" : "public_mvp"`.
-   - Passar essa variant tanto para `<ReportShellV2 variant=… />` como para `getPublishedFeatures({ data: { variant: effectiveVariant } })` (refetch quando `premiumUnlocked` muda).
-   - Refletir a mesma variant no `metadata` do `trackEvent("report_viewed")`.
+### `onboarding.compactOptions.goal` (cartões — coluna 2)
+- `improve_content`: "Melhorar conteúdo" → **"Melhorar o conteúdo"**
+- `benchmark_competitors`: "Comparar concorrentes" → **"Comparar com outros"**
+- `client_report`: "Analisar p/ cliente" → **"Apresentar a um cliente"**  (remove abreviatura "p/")
+- `grow_audience`: "Crescer audiência" → **"Crescer a audiência"**
 
-2. Não alterar `report-variant.ts` (a matriz por variant continua correcta: `pro_preview` já tem todos os blocos a `"full"`).
+EN espelhado com tom igualmente leve (ex.: "Help us tailor your read", "This profile is…", "What do you want to get out of it?").
 
-3. Não alterar `report-shell-v2.tsx` (condição `=== "full"` do Bloco 03 fica consistente com a matriz uma vez que a variant comute).
+## Mudanças propostas (UX mínima)
 
-## Porque é seguro
+Em `src/components/onboarding/onboarding-modal.tsx` (corpo `QualificationStepBody`):
 
-- Não muda preços, créditos, conteúdo do relatório nem fluxos de pagamento.
-- Não altera UI: o Bloco 03 já existia, só estava a ser suprimido pelo gating errado.
-- A decisão de "Pro vê tudo" continua server-side (`getMyReportEntitlement` → `lead_entitlements.report_full_9`). A variant local é apenas o switch de feature flags do shell.
-- Free continua exactamente igual: `premiumUnlocked=false` ⇒ `effectiveVariant="public_mvp"`.
+1. **Desactivar `Continuar` enquanto faltar selecção** — `disabled = !ownership || !goal`. Mantém o handler de validação para fallback.
+2. **Hint sob o botão** (apenas quando desactivado e o utilizador já interagiu com pelo menos um campo): _"Escolhe uma opção em cada pergunta para continuar."_ — `text-xs text-content-tertiary`, sem mudar a altura do modal.
 
-## Validação
+Nada mais muda: grelha, ícones, cores seleccionado/não-seleccionado, padding, ordem dos cartões.
 
-- Abrir um relatório com lead que tem `report_full_9` activo → confirmar que aparecem os blocos 03 (Desempenho), 04 (Conteúdo), 05 (Procura) e 06 (Comparação) abaixo de "07 · Prioridades de acção".
-- Abrir um relatório sem entitlement → confirmar que o gate Premium continua a aparecer como antes (sem blocos 02–06 fora do teaser).
-- Verificar `/admin/report-lab?variant=pro_preview` continua a render igual (sem regressão).
+## Ficheiros tocados
+
+- `src/i18n/locales/pt/gate.json` — copy refinada.
+- `src/i18n/locales/en/gate.json` — espelho EN.
+- `src/components/onboarding/onboarding-modal.tsx` — `disabled` no botão + hint condicional.
+- `src/i18n/__tests__/onboarding-copy.test.ts` — actualizar as duas/três labels asseridas (se aplicável).
 
 ## Risco residual
 
-- Se `getPublishedFeatures` para `pro_preview` ainda não tiver overrides publicados, o fallback aplica os defaults de `pro_preview` em `report-variant.ts` — que é o comportamento desejado.
-- Não há impacto em SSR/prerender: a lógica corre client-side no `useEffect` já existente.
+- Nenhum impacto em product logic, créditos, preços, RLS, payments.
+- Snapshot/visual tests que comparem strings exactas podem precisar de update — verifico no run.
+- Telemetria que use a label visível como chave de evento mantém-se a usar o `value` (`own_profile`, `improve_content`, etc.), que não muda.
