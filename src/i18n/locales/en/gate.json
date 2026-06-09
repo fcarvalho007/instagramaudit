@@ -174,8 +174,8 @@
       "title": "Create an account to see the report",
       "subtitle": "You'll analyse <1>@{{handle}}</1> — it's free.",
       "eyebrowCheckout": "BEFORE YOU PAY",
-      "titleCheckout": "Create your account to continue",
-      "subtitleCheckout": "About 30 seconds. We use your email to send the receipt and unlock the report in your account.",
+      "titleCheckout": "Continue to checkout",
+      "subtitleCheckout": "Enter your email so we can link the purchase to your account.",
       "newBadge": "New here",
       "newTitle": "Create a free account",
       "newPromise": "You get the saved report and 2 free credits once you confirm your email.",
@@ -199,7 +199,7 @@
         "titleCheckout": "Just a few details left",
         "bullets": {
           "report": "Report for @{{handle}}",
-          "reportCheckout": "Private account that stores your purchase and reports",
+          "reportCheckout": "Your purchase is linked to your account",
           "save": "Private account with every report saved",
           "credits": "<strong>2 free credits</strong> once you confirm your email",
           "receiptCheckout": "Your receipt arrives at the email you provide",
@@ -233,7 +233,7 @@
         "cta": "Generate my report  →",
         "ctaCheckout": "Create account and continue",
         "footnote": "GDPR · no spam",
-        "footnoteCheckout": "No subscription. GDPR.",
+        "footnoteCheckout": "GDPR · no spam",
         "back": "Back"
       }
     },
