@@ -22,10 +22,17 @@ import { Trans, useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Check,
+  Briefcase,
+  Eye,
+  LineChart,
   Loader2,
   Lock,
+  Scale,
   ShieldCheck,
   Sparkles,
+  Star,
+  TrendingUp,
+  User,
 } from "lucide-react";
 
 import {
@@ -43,16 +50,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   unlockFormSchema,
   type UnlockFormValues,
-  GOALS,
-  PROFILE_OWNERSHIPS,
   type Goal,
   type ProfileOwnership,
 } from "@/lib/unlock-flow";
-import {
-  GOAL_ICONS,
-  PROFILE_OWNERSHIP_ICONS,
-  RadioCardField,
-} from "@/components/product/unlock-modal";
+import { GridSelectField } from "@/components/onboarding/grid-select-field";
 import { supabase } from "@/integrations/supabase/client";
 import { parseFullName } from "@/lib/names/parse-full-name";
 import { useOnboardingDraft } from "@/lib/leads/use-onboarding-draft";
