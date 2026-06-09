@@ -98,7 +98,8 @@ type View =
   | { kind: "entry" }
   | { kind: "qualification"; email: string }
   | { kind: "final"; email: string }
-  | { kind: "otp"; email: string; sentAt: number; mode: "new" | "existing" };
+  | { kind: "otp"; email: string; sentAt: number; mode: "new" | "existing" }
+  | { kind: "magic_link_sent"; email: string };
 
 interface OnboardingApiOk {
   ok: true;
@@ -267,23 +268,19 @@ export function OnboardingModal({
           return;
         }
         if (data.exists) {
-          // Beta sem verificação: server já emitiu cookie + créditos.
+          // Email existente: a propriedade tem de ser provada. Em modos
+          // `off` / `magic_link`, o servidor já enviou um link assinado
+          // pela nossa stack (Brevo → Resend). Mostramos um painel
+          // dedicado "verifica o teu email" — o clique no link define o
+          // cookie no novo separador. Em modo `otp` caímos no painel
+          // legacy de código de 6 dígitos.
           if (
-            data.verification_mode === "off" &&
-            data.claimed === true &&
-            data.lead_id
+            (data.verification_mode === "off" ||
+              data.verification_mode === "magic_link") &&
+            (data as { verification_sent?: boolean }).verification_sent ===
+              true
           ) {
-            succeededRef.current = true;
-            trackOnboardingEvent({
-              event_type: "onboarding_success",
-              step: 0,
-              handle,
-            });
-            clearDraft();
-            onSuccess(handle, {
-              leadId: data.lead_id,
-              credits: data.credits ?? 0,
-            });
+            setView({ kind: "magic_link_sent", email });
             return;
           }
           await sendOtpAndGoToOtpView(email, "existing");
