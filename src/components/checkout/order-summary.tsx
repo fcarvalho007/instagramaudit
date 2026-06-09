@@ -17,8 +17,7 @@ export function OrderSummary({
   const wrapperClass = sticky
     ? "rounded-xl border border-border-default bg-white p-4 lg:sticky lg:top-6"
     : "rounded-xl border border-border-default bg-white p-4";
-  const compareAtLabel =
-    productCode === "authority_diagnosis_97" ? "149€" : null;
+  const compareAtLabel = product.strikePrice ?? null;
   return (
     <div className={wrapperClass}>
       <h3 className="text-xs font-semibold uppercase tracking-wide text-content-tertiary mb-3">
