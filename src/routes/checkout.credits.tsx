@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { queryOptions, useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { ArrowLeft, Coins, Loader2, Lock } from "lucide-react";
+import { ArrowLeft, Check, Coins, Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -23,7 +23,25 @@ import { getMyCreditBalance } from "@/lib/credits/credits.functions";
 import { trackEvent } from "@/lib/tracking.functions";
 import { PUBLIC_PRODUCTS, type ProductCode } from "@/lib/payments/products";
 
-const PRODUCT: ProductCode = "credit_pack_1";
+const PACKS = [
+  { id: "credits_3", code: "credits_3" as ProductCode, credits: 3, priceEur: 9, priceLabel: "9€" },
+  { id: "credits_10", code: "credits_10" as ProductCode, credits: 10, priceEur: 25, priceLabel: "25€" },
+  { id: "credits_25", code: "credits_25" as ProductCode, credits: 25, priceEur: 49, priceLabel: "49€" },
+] as const;
+
+type PackId = (typeof PACKS)[number]["id"];
+const PACK_IDS = PACKS.map((p) => p.id) as readonly PackId[];
+const DEFAULT_PACK: PackId = "credits_3";
+
+function getPack(id: PackId) {
+  return PACKS.find((p) => p.id === id) ?? PACKS[0];
+}
+
+type IntendedAction =
+  | "period_change"
+  | "competitor_add"
+  | "force_refresh"
+  | "generic_pro_analysis";
 
 const searchSchema = z.object({
   return: z
@@ -34,6 +52,15 @@ const searchSchema = z.object({
     .optional(),
   source: z.string().trim().min(1).max(80).optional(),
   status: z.enum(["success"]).optional(),
+  pack: z.enum(PACK_IDS as unknown as [PackId, ...PackId[]]).optional(),
+  intent: z
+    .enum([
+      "period_change",
+      "competitor_add",
+      "force_refresh",
+      "generic_pro_analysis",
+    ])
+    .optional(),
 });
 
 const leadSessionQueryOptions = queryOptions({
