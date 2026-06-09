@@ -9,15 +9,16 @@
  *  - `phone` is `undefined` when blank, trimmed string otherwise.
  */
 import type { UnlockFormValues } from "@/lib/unlock-flow";
+import type { LeadQualification } from "@/lib/leads/qualification";
 
 export interface OnboardingStartPayload {
   name: string;
   email: string;
-  phone?: string;
   marketing_consent: boolean;
   beta_consent: false;
   purpose?: UnlockFormValues["goal"];
   profile_ownership?: UnlockFormValues["profile_ownership"];
+  qualification?: LeadQualification;
   gdpr_consent: true;
   website: string;
   _t: number;
@@ -32,11 +33,9 @@ export function buildStartPayload(
   formStartedAt: number,
   handle?: string,
 ): OnboardingStartPayload {
-  const phone = values.phone?.trim();
   const base: OnboardingStartPayload = {
     name: parsedFullName || values.full_name,
     email: values.email,
-    phone: phone ? phone : undefined,
     marketing_consent: values.marketing_consent === true,
     beta_consent: false,
     // GDPR consent é validado client-side antes do submit; envia sempre `true`
@@ -52,5 +51,6 @@ export function buildStartPayload(
   if (values.goal) base.purpose = values.goal;
   if (values.profile_ownership)
     base.profile_ownership = values.profile_ownership;
+  if (values.qualification) base.qualification = values.qualification;
   return base;
 }
