@@ -1,58 +1,84 @@
-# Recuperar ícones cinemáticos no passo 2 (questão "objetivo")
+# Auditoria de segurança — Auth, lead session, RLS, IDOR, admin, créditos
 
-## Diagnóstico
+*Auditoria read-only. Nenhum ficheiro alterado.*
 
-O passo 2 do `OnboardingModal` tem hoje duas perguntas em cartões verticais (`RadioCardField`):
+## 1. Tabela Pass/Fail (objetivos do brief)
 
-- **"Qual é o contexto?"** → renderiza com **ícones coloridos** (User azul, Star roxo, Briefcase verde, Search âmbar, HelpCircle rosa). Vem do `PROFILE_OWNERSHIP_ICONS` em `src/components/product/unlock-modal.tsx`.
-- **"Qual é o teu objetivo?"** → renderiza **sem ícone**, só radio + label. É esta a régua que parte a estética "cinematográfica" que tinhas.
-
-A causa é simples: o `RadioCardField` da pergunta `goal` é passado sem a propriedade `icon` por opção. Nunca existiu um `GOAL_ICONS` análogo ao `PROFILE_OWNERSHIP_ICONS`, por isso a régua visual está incompleta — não é regressão, é uma omissão. O pedido é restaurar a paridade visual com a pergunta de contexto.
-
-## Mudanças propostas
-
-### 1. Adicionar `GOAL_ICONS` em `src/components/product/unlock-modal.tsx`
-
-Junto ao `PROFILE_OWNERSHIP_ICONS` existente, criar um mapa equivalente para os 6 valores de `GOALS` (`improve_content`, `benchmark_competitors`, `client_report`, `grow_audience`, `validate_brand`, `other`), reutilizando ícones `lucide-react` já importados ou adicionando os que faltarem. Proposta de mapeamento (cinco cores distintas, semânticas, alinhadas com a paleta dos chips de contexto):
-
-| Goal | Ícone | Tons (bg / fg) | Racional |
+| # | Objetivo | Estado | Evidência |
 |---|---|---|---|
-| `improve_content` | `Sparkles` | `bg-blue-100 / text-blue-600` | melhorar = polir |
-| `benchmark_competitors` | `Scale` | `bg-amber-100 / text-amber-700` | comparar = balança |
-| `client_report` | `FileText` | `bg-emerald-100 / text-emerald-600` | entrega = documento |
-| `grow_audience` | `TrendingUp` | `bg-purple-100 / text-purple-600` | crescer = subir |
-| `validate_brand` | `ShieldCheck` | `bg-cyan-100 / text-cyan-600` | validar = selo |
-| `other` | `HelpCircle` | `bg-pink-100 / text-pink-600` | aberto |
+| 1 | Nenhum user acede a conta/relatórios/pagamentos/créditos de outro | **PARCIAL** | `lead_session` é assinado (HMAC) mas é emitido antes da prova de email → CRIT-3 |
+| 2 | Saber o email de alguém não dá acesso | **FALHA** | `X-Admin-Email` confere apenas o header contra allowlist; saber 1 email = full admin → CRIT-1 |
+| 3 | Créditos grátis só após verificação de email | **PASS** | `grantInitialCredits` corre em `/claim-existing` depois de validar o JWT do OTP (`claim-existing.ts:104-108`) |
+| 4 | Créditos pagos só após webhook EuPago verificado | **PASS** | HMAC validado antes do parse (`eupago-webhook.ts:88-91`, `eupago.server.ts:171-186`); idempotência por unique index |
+| 5 | Admin protegido server-side | **FALHA** | Header de texto simples, sem secret/token/cookie assinado (`session.ts:48-73`) |
+| 6 | RLS protege tabelas expostas | **PARCIAL** | Todas as rotas usam `supabaseAdmin` (bypass RLS); a defesa real está nos handlers — alguns vazam (MED-3) |
 
-(Já temos `Sparkles`, `TrendingUp`, `FileText`, `HelpCircle` disponíveis em projetos próximos; `Scale` e `ShieldCheck` adicionam-se à mesma linha de import — não há instalação nova, é `lucide-react`.)
+## 2. Riscos críticos
 
-Export nomeado tal e qual o `PROFILE_OWNERSHIP_ICONS`.
+### CRIT-1 — Admin forjável por qualquer pessoa que conheça um email da allowlist
+`src/lib/admin/session.ts:48-73`. `requireAdminSession()` lê apenas o header `X-Admin-Email` e compara com `ADMIN_ALLOWED_EMAILS`. Sem token, sem assinatura, sem cookie. Curl trivial:
 
-### 2. Importar e usar no `QualificationStepBody` em `src/components/onboarding/onboarding-modal.tsx`
+```
+curl -H "X-Admin-Email: <admin-conhecido>" https://app/api/admin/leads-kanban
+```
 
-- Acrescentar `GOAL_ICONS` ao import existente na linha 52.
-- Na chamada `RadioCardField` da pergunta `goal` (linha ~1192), passar `icon: GOAL_ICONS[v]` no mapeamento das `options`, exatamente como já se faz para `profile_ownership`.
+Impacto: leitura total de leads, pagamentos, ledger, snapshots, PII; trigger de Apify/DataForSEO/OpenAI; reconciliação billing. Afeta ~74 rotas em `src/routes/api/admin/*`. O endpoint `whoami.ts` (MED-4) ainda funciona como oráculo para enumerar emails válidos.
 
-### 3. Não tocar em mais nada
+### CRIT-2 — Endpoints de enriquecimento aceitam a anon key pública
+`src/routes/api/public/enrich-snapshot.ts:40-43`, `enrich-comments.ts:241-244`. Aceitam `apikey: <SUPABASE_PUBLISHABLE_KEY>`, que está no bundle do browser. Qualquer visitante consegue extrair a key e disparar `sweep:true` → corridas Apify/DataForSEO/OpenAI sem rate-limit. Risco financeiro direto.
 
-- Sem mudanças no `RadioCardField` (já aceita `icon` opcional).
-- Sem mudanças em copy, ordem dos campos, validações ou submit.
-- Sem alterações no `unlock-modal.tsx` legado (continua a renderizar `goal` sem ícone — não é o modal em uso no checkout/analyze atual, e o pedido é só para o passo 2 do novo `OnboardingModal`).
+### CRIT-3 — Cookie `lead_session` emitido antes da verificação do email
+`src/routes/api/onboarding/start.ts:428`. `setLeadCookie(upserted.leadId)` corre sem prova de propriedade do email; a resposta também devolve o `lead_id` em claro (linhas 452-459). Os créditos estão bem (gated em `/claim-existing`), mas a sessão de lead já dá acesso a páginas de relatório e à identidade usada por `analyze-public-v1`. Atacante consegue cookie + `lead_id` válidos só com um POST.
 
-## Ficheiros a alterar
+## 3. Riscos médios
 
-- `src/components/product/unlock-modal.tsx` — exportar `GOAL_ICONS` (novo mapa de 6 entradas, ~20 linhas).
-- `src/components/onboarding/onboarding-modal.tsx` — 1 linha no import e 1 linha no `options.map(...)` da pergunta `goal`.
+- **MED-1 — `SameSite=None` + CORS wildcard.** `lead-cookie.server.ts:133` define `SameSite=None; Partitioned`. `start.ts:470` e `claim-existing.ts:133` respondem `Access-Control-Allow-Origin: *`. Sem CSRF token em endpoints state-changing. A combinação é desnecessariamente permissiva mesmo que hoje não exploite cookies (fetch cross-origin não envia credentials por defeito).
+- **MED-2 — Sem expiração/rotação real do `lead_session`.** `MAX_AGE_SECONDS = 1 ano` (`lead-cookie.server.ts:22`); `decodeLeadCookie` só rejeita `issuedAtSec <= 0`. Cookie roubado vale 12 meses; não roda após pagamento.
+- **MED-3 — Snapshots públicos por UUID sem auth.** `src/routes/api/public/analysis-snapshot.by-id.$snapshotId.ts:43-75` e `report-snapshot.by-id.$snapshotId.ts` devolvem o `normalized_payload` completo a qualquer um com o UUID. Vazamento por email/referrer expõe seguidores, engagement, insights AI, concorrentes.
+- **MED-4 — `whoami` enumera allowlist.** `src/routes/api/admin/whoami.ts:26-33` aceita qualquer `X-Admin-Email` e devolve `{ allowed: true/false }`. Oráculo perfeito para encontrar o email que destrava CRIT-1.
+- **MED-5 — Cron hooks aceitam anon key.** `src/lib/admin/cron-auth.server.ts:12-22` (mesmo problema que CRIT-2 mas para hooks de cleanup/cost-sync).
+- **MED-6 — Sem rate-limit server-side em `/onboarding/start` e `/analyze-public-v1`.** Honeypot + 2s no cliente é trivial de iludir. Permite criar leads/relatórios em volume.
 
-## QA visual
+## 4. Riscos baixos
 
-1. Abrir `/precos` → onboarding → passo 2 (checkout). Confirmar que **ambas** as perguntas mostram chip com ícone à esquerda do label, com a mesma altura de cartão, mesma cor de borda no estado hover/selected, e cinco/seis tons distintos por pergunta.
-2. Abrir `/analyze/<handle>` → onboarding → passo 2 (analyze). Mesmo resultado.
-3. Mobile 414px: cartões mantêm padding consistente, ícone não quebra para nova linha.
-4. Selecionar "Outro" no objetivo: o input de texto continua a aparecer por baixo (sem regressão).
+- **LOW-1** — `start.ts:151-166` regista o `handle` do Instagram no `product_events` no path de erro/bot.
+- **LOW-2** — Rate-limiter in-memory em `public/lookup-lead.ts:31-57` reseta a cada deploy/cold-start.
+- **LOW-3** — `admin/simple-login.ts` ecoa o email submetido no 403 (`{ ok:false, error:"NOT_ALLOWED", email }`).
+- **LOW-4** — Cookie usa só `Max-Age`, sem `Expires` (compat marginal).
+- **LOW-5** — `EUPAGO_WEBHOOK_SECRET` ausente faz fail-closed silencioso (`eupago.server.ts:176`); sem alarme/health-check.
 
-## Fora do âmbito
+## 5. Ficheiros envolvidos
 
-- Re-skin do `RadioCardField` (cor, sombras, animação) — visual atual já é a base "cinematográfica" pedida; só falta o ícone.
-- Adicionar ícones ao `user_type` ou outros passos.
-- Mexer no modal legado `unlock-modal.tsx`.
+**Auth + cookie:** `src/routes/api/onboarding/{start,claim-existing,check-email}.ts`, `src/lib/leads/lead-cookie.server.ts`.
+**Admin:** `src/lib/admin/{session,simple-gate,fetch,cron-auth.server}.ts`, `src/routes/api/admin/{simple-login,whoami}.ts`, todas as ~74 rotas `src/routes/api/admin/*.ts`.
+**Pagamentos/créditos:** `src/routes/api/public/eupago-webhook.ts`, `src/lib/payments/{eupago,entitlements}.server.ts`, `src/lib/credits/credits.server.ts`.
+**Snapshots públicos:** `src/routes/api/public/{analysis-snapshot,report-snapshot}.by-id.$snapshotId.ts`.
+**Enrichment com anon key:** `src/routes/api/public/{enrich-snapshot,enrich-comments}.ts`.
+**CORS/público:** `src/routes/api/{analyze-public-v1,request-full-report}.ts`, `src/routes/api/public/lookup-lead.ts`, `src/integrations/supabase/client.ts`.
+
+## 6. Plano de correção mínimo, por prioridade
+
+### Crítico (fazer já, por esta ordem)
+1. **CRIT-1** — `src/lib/admin/session.ts`: substituir a verificação por header por cookie HMAC-assinado emitido no `simple-login` com TTL curto (≤8 h). No mínimo, exigir um `ADMIN_SESSION_SECRET` partilhado junto com o email para que conhecer o email não chegue.
+2. **CRIT-2** — `src/routes/api/public/{enrich-snapshot,enrich-comments}.ts`: remover o branch `validApikey` (Supabase anon). Aceitar apenas `Bearer INTERNAL_API_TOKEN`.
+3. **CRIT-3** — `src/routes/api/onboarding/start.ts:428`: não chamar `setLeadCookie` nem devolver `lead_id` antes do OTP. Emitir cookie só em `/claim-existing` depois do JWT validar `email_confirmed_at`.
+
+### Médio
+4. **MED-1** — `lead-cookie.server.ts`: `SameSite=Lax` em produção (manter `None` só em preview Lovable via flag); restringir `Access-Control-Allow-Origin` em `start.ts` e `claim-existing.ts` à allowlist de origens conhecidas.
+5. **MED-2** — `lead-cookie.server.ts`: enforce max-age efetivo em `decodeLeadCookie` (rejeitar > 90 dias); rodar valor do cookie após pagamento confirmado.
+6. **MED-3** — `analysis-snapshot.by-id.*.ts` + `report-snapshot.by-id.*.ts`: exigir `lead_session` válido (user-facing) ou `INTERNAL_API_TOKEN` (PDF renderer). Cortar acesso anónimo ao payload bruto.
+7. **MED-4** — `admin/whoami.ts`: remover endpoint ou exigir token pré-partilhado.
+8. **MED-5** — `cron-auth.server.ts`: remover branch da anon key; aceitar só `INTERNAL_API_TOKEN`.
+9. **MED-6** — `onboarding/start.ts` + `analyze-public-v1.ts`: rate-limit por IP server-side (KV/Redis/Supabase RPC com `pg_cron`); 10 req/min onboarding, 5 req/min análise.
+
+### Baixo
+10. **LOW-1** — não logar `handle` raw em erros do `start.ts` (ou hash).
+11. **LOW-2** — `lookup-lead.ts`: rate-limit persistente.
+12. **LOW-3** — `admin/simple-login.ts`: tirar `email` do 403.
+13. **LOW-5** — `eupago.server.ts`: health-check no boot a confirmar que `EUPAGO_WEBHOOK_SECRET` está definido; expor no `sistema.secrets`.
+
+## Recomendação
+
+**CRIT-1 é a porta mais larga.** Resolver os três críticos numa única ronda fecha 95% do risco real (account takeover do admin, fraude financeira via enrichment, hijack de sessão de lead). Os médios são defesa em profundidade — válidos mas não bloqueantes.
+
+Diz se queres que avance com os três críticos primeiro (uma PR cirúrgica por cada), ou se preferes uma ronda única que feche críticos + médios.
