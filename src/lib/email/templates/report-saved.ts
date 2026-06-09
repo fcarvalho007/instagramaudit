@@ -182,6 +182,14 @@ export function getReportSavedParts(input: ReportSavedInput): EmailTemplateParts
     "",
   ];
 
+  if (variant === "welcome") {
+    textLines.push(
+      "A AuditProfiles é uma ferramenta de auditoria e benchmark de perfis de Instagram — comparas-te com concorrentes em segundos, sem folhas de cálculo.",
+      "O relatório fica guardado na tua conta e podes analisar outros perfis sempre que quiseres.",
+      "",
+    );
+  }
+
   if (credits) {
     textLines.push(
       `Começaste com ${credits.totalFree} análises gratuitas:`,
@@ -235,6 +243,17 @@ export function getReportSavedParts(input: ReportSavedInput): EmailTemplateParts
       `O relatório de <strong style="color:#0a0e1a;">@${escapeHtml(handle)}</strong> ficou guardado na tua área <strong style="color:#0a0e1a;">AuditProfiles</strong>.`,
     ),
   );
+
+  if (variant === "welcome") {
+    htmlParts.push(
+      p(
+        "A <strong style=\"color:#0a0e1a;\">AuditProfiles</strong> é uma ferramenta de auditoria e benchmark de perfis de Instagram — comparas-te com concorrentes em segundos, sem folhas de cálculo.",
+      ),
+      pMuted(
+        "O relatório fica guardado na tua conta e podes analisar outros perfis sempre que quiseres.",
+      ),
+    );
+  }
 
   if (credits) {
     htmlParts.push(renderCreditCardHtml(credits, handle));

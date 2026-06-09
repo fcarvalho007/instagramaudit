@@ -284,19 +284,20 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
           {
             key: "pedido_recebido",
             title: "Pedido recebido",
-            description: "Recebemos o teu pedido para @{{handle}}.",
-            trigger: { kind: "form", label: "Submissão de pedido beta" },
+            description:
+              "Mantido para auditoria. Só dispara pelo formulário beta antigo — novos registos via onboarding/checkout não recebem este email.",
+            trigger: { kind: "form", label: "Formulário beta antigo (legado)" },
             action: { kind: "manual", label: "Admin aprova e gera relatório" },
             kind: "automatic",
             fromStatus: null,
             toStatus: "novo_pedido",
-            stage: "01_captacao",
+            stage: "99_legado",
             visualKind: "email",
             extraTag: null,
             timing: {
               kind: "immediate",
               eventName: "request_submitted",
-              contextHint: "utilizador submete o formulário",
+              contextHint: "apenas formulário beta antigo",
             },
             templateKey: "request_received",
             counts: () => ({
@@ -305,8 +306,9 @@ export const Route = createFileRoute("/api/admin/automation-flow")({
               completedLeads: countAtLeast("em_analise"),
             }),
             failures: 0,
-            wired: FLOW_EVENTS.pedido_recebido.instrumented,
-            lifecycleBadges: ["activo", "transaccional"],
+            wired: false,
+            lifecycleBadges: ["legado", "sem_trigger"],
+            note: "Sem trigger no fluxo de onboarding/analyze/checkout. Só o formulário beta antigo (submitBetaRequest) o envia.",
           },
           {
             key: "relatorio_gerado",
