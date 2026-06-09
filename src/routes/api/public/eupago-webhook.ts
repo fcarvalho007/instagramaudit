@@ -200,6 +200,35 @@ export const Route = createFileRoute("/api/public/eupago-webhook")({
               console.error("[eupago-webhook] grantCreditPack failed", err);
             }
 
+            // Bónus interno de lançamento controlado: +2 créditos extra
+            // em cada compra de pack. Idempotente por payment_id.
+            try {
+              const bonus = await grantCreditPackLaunchBonus({
+                leadId: row.lead_id,
+                paymentId: row.id,
+                productCode: row.product,
+              });
+              if (bonus.granted) {
+                await recordProductEvent({
+                  eventType: "credits_pack_launch_bonus_granted",
+                  leadId: row.lead_id,
+                  metadata: {
+                    payment_id: row.id,
+                    product_code: row.product,
+                    delta: CREDIT_PACK_LAUNCH_BONUS_AMOUNT,
+                    kind: CREDIT_PACK_LAUNCH_BONUS_KIND,
+                    source: "payment_confirmed",
+                    launch_bonus: true,
+                  },
+                });
+              }
+            } catch (err) {
+              console.error(
+                "[eupago-webhook] grantCreditPackLaunchBonus failed",
+                err,
+              );
+            }
+
             // Coupon redemption ainda corre (caso queiramos lançar cupões
             // de pack no futuro); por agora `payment_coupons` valida
             // por produto e bloqueia se não existir.
