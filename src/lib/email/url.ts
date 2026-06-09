@@ -43,3 +43,17 @@ export function buildUnsubscribeUrl(leadId: string): string {
   const base = resolveBaseUrl();
   return `${base}/unsubscribe?token=${encodeURIComponent(token)}`;
 }
+
+/**
+ * Absolute URL para a página de redefinição de palavra-passe. Usado em
+ * emails para que o utilizador possa redefinir o acesso — nunca enviamos
+ * a palavra-passe por email.
+ */
+export function buildResetPasswordUrl(email?: string | null): string {
+  const base = resolveBaseUrl();
+  const trimmed = email?.trim();
+  if (trimmed) {
+    return `${base}/reset-password?email=${encodeURIComponent(trimmed)}`;
+  }
+  return `${base}/reset-password`;
+}
