@@ -839,37 +839,27 @@ function FinalStepBody({
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="onb-qualification" className="text-[13.5px] font-medium text-content-primary">
-            {t("onboarding.final.right.qualificationLabel")}
-          </Label>
-          <Select
-            value={qualificationValue ?? undefined}
-            onValueChange={(v) =>
-              form.setValue("qualification", v as LeadQualification, {
-                shouldValidate: true,
-              })
-            }
+          <Label
+            htmlFor="onb-phone"
+            className="text-[13.5px] font-medium text-content-primary"
           >
-            <SelectTrigger
-              id="onb-qualification"
-              aria-invalid={Boolean(qualificationError)}
-              className="text-base"
-              data-testid="onboarding-qualification"
-            >
-              <SelectValue
-                placeholder={t("onboarding.final.right.qualificationPlaceholder")}
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {LEAD_QUALIFICATIONS.map((q) => (
-                <SelectItem key={q} value={q}>
-                  {t(`onboarding.final.right.qualificationOptions.${q}`)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {qualificationError ? (
-            <p className="text-[12.5px] text-destructive">{qualificationError}</p>
+            {t("onboarding.final.right.phoneLabel")}{" "}
+            <span className="text-content-tertiary font-normal">
+              {t("onboarding.final.right.phoneOptional")}
+            </span>
+          </Label>
+          <Input
+            id="onb-phone"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder={t("onboarding.final.right.phonePlaceholder")}
+            aria-invalid={Boolean(phoneError)}
+            className="text-base"
+            {...form.register("phone")}
+          />
+          {phoneError ? (
+            <p className="text-[12.5px] text-destructive">{phoneError}</p>
           ) : null}
         </div>
 
