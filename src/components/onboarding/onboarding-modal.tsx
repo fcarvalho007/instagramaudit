@@ -43,8 +43,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   unlockFormSchema,
   type UnlockFormValues,
-} from "@/lib/unlock-flow";
-import {
   GOALS,
   PROFILE_OWNERSHIPS,
   type Goal,
