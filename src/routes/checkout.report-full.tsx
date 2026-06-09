@@ -11,6 +11,10 @@ import { CheckoutPrimaryButton } from "@/components/checkout/checkout-primary-bu
 import { StepProgress } from "@/components/checkout/step-progress";
 import { ConfirmUnlockCard } from "@/components/checkout/confirm-unlock-card";
 import {
+  ReportPlanChooser,
+  type ReportPlanCode,
+} from "@/components/checkout/report-plan-chooser";
+import {
   BillingForm,
   EMPTY_BILLING,
   validateBilling,
@@ -32,6 +36,16 @@ import type { ProductCode } from "@/lib/payments/products";
 
 const SOURCE_PRODUCT: ProductCode = "report_full_9";
 const UPSELL_TARGET: ProductCode = "authority_diagnosis_97";
+
+const REPORT_PLAN_CODES = [
+  "report_full_9",
+  "report_pack_5",
+  "report_pack_10",
+] as const satisfies readonly ReportPlanCode[];
+
+function isReportPlanCode(code: ProductCode): code is ReportPlanCode {
+  return (REPORT_PLAN_CODES as readonly string[]).includes(code);
+}
 
 const STEP_LABELS = [
   "Confirmar desbloqueio",
@@ -115,6 +129,7 @@ function CheckoutSteps() {
   const [reportGoals, setReportGoals] = useState<ReportGoal[]>([]);
   const [selectedProduct, setSelectedProduct] =
     useState<ProductCode>(SOURCE_PRODUCT);
+  const [planCode, setPlanCode] = useState<ReportPlanCode>(SOURCE_PRODUCT);
   const [upsellPresented, setUpsellPresented] = useState(false);
   const [upsellAccepted, setUpsellAccepted] = useState(false);
   const [billing, setBilling] = useState<BillingValue>(EMPTY_BILLING);
@@ -216,7 +231,7 @@ function CheckoutSteps() {
   };
 
   const handleUpsellDecline = () => {
-    setSelectedProduct(SOURCE_PRODUCT);
+    setSelectedProduct(planCode);
     setUpsellAccepted(false);
     trackEvent({
       data: {
