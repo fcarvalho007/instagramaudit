@@ -305,6 +305,24 @@ function computeAvailableSignals(ctx: InsightsContext): string[] {
     if (ctx.visual_cover.summary) signals.push("visual_cover.summary");
     if (ctx.visual_cover.consistency) signals.push("visual_cover.consistency");
     if (ctx.visual_cover.visual_clarity) signals.push("visual_cover.visual_clarity");
+    if (typeof ctx.visual_cover.overall_score === "number")
+      signals.push("visual_cover.overall_score");
+    if (ctx.visual_cover.sub_scores?.recognizability !== undefined)
+      signals.push("visual_cover.sub_scores.recognizability");
+    if (ctx.visual_cover.sub_scores?.visual_variety !== undefined)
+      signals.push("visual_cover.sub_scores.visual_variety");
+  }
+
+  if (ctx.comment_intelligence) {
+    signals.push("comment_intelligence.owner_reply_rate_pct");
+    if (ctx.comment_intelligence.questions_from_audience_count > 0)
+      signals.push("comment_intelligence.questions_from_audience_count");
+    if (ctx.comment_intelligence.complaint_or_issue_count > 0)
+      signals.push("comment_intelligence.complaint_or_issue_count");
+    if (ctx.comment_intelligence.buying_intent_count > 0)
+      signals.push("comment_intelligence.buying_intent_count");
+    if (ctx.comment_intelligence.top_conversation_post)
+      signals.push("comment_intelligence.top_conversation_post.comments");
   }
 
   // Per-post allow-list. Mirrors the trimmed `top_posts` array sent in
