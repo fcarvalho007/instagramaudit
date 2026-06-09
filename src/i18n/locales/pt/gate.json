@@ -240,7 +240,8 @@
         "marketingText": "Quero dicas e benchmarks",
         "marketingOptional": "(opcional)",
         "cta": "Gerar o meu relatório",
-        "ctaCheckout": "Criar conta e continuar",
+        "ctaCheckout": "Criar conta",
+        "missingQualification": "Faltam dados do passo anterior. Volta para completar.",
         "footnote": "RGPD · sem spam",
         "footnoteCheckout": "RGPD · sem spam",
         "back": "Voltar"
