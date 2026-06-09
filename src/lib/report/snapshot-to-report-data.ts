@@ -1903,7 +1903,10 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     aiInsights: enrichedAiInsights,
     aiInsightsV2: buildAiInsightsV2(payload.ai_insights_v2),
     editorialPatterns: buildEditorialPatterns(payload),
-    commentIntelligence: (payload as { comment_intelligence?: CommentIntelligence | null }).comment_intelligence ?? null,
+    commentIntelligence: enrichCommentIntelligenceWithThumbnails(
+      (payload as { comment_intelligence?: CommentIntelligence | null }).comment_intelligence ?? null,
+      posts,
+    ),
     postingTimeline: buildPostingTimeline(posts),
     analysedPostFormats: buildAnalysedPostFormats(posts),
     cadence,
