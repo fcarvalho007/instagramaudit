@@ -1469,7 +1469,9 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             handle: primary,
             competitorHandles: competitors,
             cacheKey,
-            dataSource: "fresh",
+            // `fresh_forced` distinguishes a user-initiated Pro
+            // `force_refresh:true` from a regular fresh run in admin UI.
+            dataSource: userForcedRefresh ? "fresh_forced" : "fresh",
             outcome: "success",
             analysisSnapshotId: snapshotId ?? null,
             providerCallLogId: providerCallIds[0] ?? null,
