@@ -46,7 +46,10 @@ export interface ReportCompetitorBreakdownEntry {
    * may be empty so older snapshots (and the example mock) continue
    * to render. The shape mirrors what `enrichPosts` produces minus
    * the fields we deliberately strip for competitors
-   * (coauthors, tagged_users, location_name, thumbnail_storage_url).
+   * (coauthors, tagged_users, location_name). `thumbnail_storage_url`
+   * IS preserved — populated by `persistThumbnailsInPayload` during
+   * snapshot persistence so competitor thumbnails survive expiring
+   * Instagram CDN URLs.
    */
   posts?: unknown[];
   formatStats?: Record<
