@@ -560,6 +560,7 @@ function ExploreSection({
   compact = false,
   primaryHandle,
   existingCompetitors = [],
+  isAdminPreview = false,
 }: {
   premiumUnlocked: boolean;
   sampleSize: number;
@@ -569,11 +570,15 @@ function ExploreSection({
   compact?: boolean;
   primaryHandle?: string;
   existingCompetitors?: string[];
+  isAdminPreview?: boolean;
 }) {
   const { t } = useTranslation("report");
   const { handlePremiumAccessClick } = usePremiumCta();
   const fetchBalance = useServerFn(getMyCreditBalance);
-  const [balance, setBalance] = useState(0);
+  const ADMIN_SIMULATED_BALANCE = 999_999;
+  const [balance, setBalance] = useState(
+    isAdminPreview ? ADMIN_SIMULATED_BALANCE : 0,
+  );
   const [intent, setIntent] = useState<ConsumeCreditIntent | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -592,6 +597,8 @@ function ExploreSection({
   // da compra, para nunca revelar o bónus ao utilizador free.
   useEffect(() => {
     if (!premiumUnlocked) return;
+    // Admin preview: never call the server, keep the simulated balance.
+    if (isAdminPreview) return;
     let cancelled = false;
     (async () => {
       try {
@@ -604,16 +611,17 @@ function ExploreSection({
     return () => {
       cancelled = true;
     };
-  }, [premiumUnlocked, fetchBalance]);
+  }, [premiumUnlocked, fetchBalance, isAdminPreview]);
 
   const refreshBalance = useCallback(async () => {
+    if (isAdminPreview) return;
     try {
       const r = await fetchBalance();
       if (r.hasLead) setBalance(r.balance);
     } catch {
       /* ignore */
     }
-  }, [fetchBalance]);
+  }, [fetchBalance, isAdminPreview]);
 
   const openConsumeDialog = useCallback((nextIntent: ConsumeCreditIntent) => {
     setIntent(nextIntent);
