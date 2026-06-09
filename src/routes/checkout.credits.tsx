@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { queryOptions, useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { ArrowLeft, Coins, Gift, Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -16,7 +16,7 @@ import {
   type BillingValue,
 } from "@/components/checkout/billing-form";
 import { OrderSummary } from "@/components/checkout/order-summary";
-import { MissingLeadSession } from "@/components/checkout/missing-lead-session";
+import { CheckoutAccountGate } from "@/components/checkout/checkout-account-gate";
 import { createEupagoCheckout } from "@/lib/payments/eupago.functions";
 import { getLeadSessionStatus } from "@/lib/leads/lead-session.functions";
 import { getMyCreditBalance } from "@/lib/credits/credits.functions";
@@ -106,6 +106,7 @@ export const Route = createFileRoute("/checkout/credits")({
 function CheckoutCreditsFlow() {
   const { data: leadStatus } = useSuspenseQuery(leadSessionQueryOptions);
   const search = Route.useSearch();
+  const queryClient = useQueryClient();
   if (search.status === "success") {
     return (
       <PostPurchaseSuccessPanel
@@ -116,9 +117,14 @@ function CheckoutCreditsFlow() {
   }
   if (!leadStatus.hasLead) {
     return (
-      <MissingLeadSession
-        title="Para comprar créditos, começa por criar a tua conta gratuita."
-        description="Precisamos de uma sessão ativa para associar os créditos ao teu perfil. Demora menos de um minuto."
+      <CheckoutAccountGate
+        productCode="credit_pack_1"
+        exitPath={search.return ?? "/precos"}
+        onSignedIn={() => {
+          queryClient.invalidateQueries({
+            queryKey: leadSessionQueryOptions.queryKey,
+          });
+        }}
       />
     );
   }
