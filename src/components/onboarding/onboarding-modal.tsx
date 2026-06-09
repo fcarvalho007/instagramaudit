@@ -864,7 +864,8 @@ function FinalStepBody({
       </aside>
 
       {/* Right — compact form */}
-      <div className="px-5 py-6 sm:px-8 sm:py-8 flex flex-col gap-4 bg-white min-w-0">
+      <div className="px-5 py-6 sm:px-7 sm:py-8 flex flex-col gap-4 bg-white min-w-0">
+        <OnboardingStepHeader current={3} />
         <div className="space-y-1.5">
           <Label htmlFor="onb-name" className="text-[13.5px] font-medium text-content-primary">
             {t("onboarding.final.right.nameLabel")}
@@ -990,14 +991,14 @@ function FinalStepBody({
           </Alert>
         ) : null}
 
-        <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 pt-1">
+        <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 pt-1 min-w-0">
           <Button
             type="button"
             variant="outline"
             size="lg"
             onClick={onBack}
             disabled={submitting}
-            className="w-full sm:w-auto sm:flex-shrink-0 rounded-lg"
+            className="w-full sm:w-auto sm:flex-shrink-0 rounded-lg min-w-0"
           >
             <ArrowLeft className="size-4" aria-hidden />
             {t("onboarding.final.right.back")}
@@ -1006,13 +1007,13 @@ function FinalStepBody({
             type="submit"
             size="lg"
             disabled={submitting}
-            className="w-full sm:flex-1 rounded-lg font-medium"
+            className="w-full sm:flex-1 sm:min-w-0 rounded-lg font-medium"
             data-testid="onboarding-final-submit"
           >
             {submitting ? (
               <>
                 <Loader2 className="size-4 animate-spin" aria-hidden />
-                {t("onboarding.submitting")}
+                <span className="truncate">{t("onboarding.submitting")}</span>
               </>
             ) : (
               <>
@@ -1021,7 +1022,9 @@ function FinalStepBody({
                 ) : (
                   <Sparkles className="size-4" aria-hidden />
                 )}
-                {t(isCheckout ? "onboarding.final.right.ctaCheckout" : "onboarding.final.right.cta")}
+                <span className="truncate">
+                  {t(isCheckout ? "onboarding.final.right.ctaCheckout" : "onboarding.final.right.cta")}
+                </span>
               </>
             )}
           </Button>
