@@ -536,6 +536,10 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         const url = new URL(request.url);
         const refreshRequested = url.searchParams.get("refresh") === "1";
         let forceRefresh = false;
+        // Tracks whether the fresh call was triggered by an explicit user
+        // `force_refresh:true` (vs internal admin `?refresh=1`). Drives
+        // `data_source = "fresh_forced"` so admin can tell the two apart.
+        let userForcedRefresh = false;
         if (refreshRequested) {
           const internalToken = process.env.INTERNAL_API_TOKEN;
           const authHeader = request.headers.get("authorization") ?? "";
