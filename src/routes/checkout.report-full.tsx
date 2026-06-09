@@ -37,16 +37,6 @@ import type { ProductCode } from "@/lib/payments/products";
 const SOURCE_PRODUCT = "report_full_9" satisfies ProductCode;
 const UPSELL_TARGET: ProductCode = "authority_diagnosis_97";
 
-const REPORT_PLAN_CODES = [
-  "report_full_9",
-  "report_pack_5",
-  "report_pack_10",
-] as const satisfies readonly ReportPlanCode[];
-
-function isReportPlanCode(code: ProductCode): code is ReportPlanCode {
-  return (REPORT_PLAN_CODES as readonly string[]).includes(code);
-}
-
 const STEP_LABELS = [
   "Confirmar desbloqueio",
   "Objectivo",
