@@ -70,8 +70,11 @@ vi.mock("@/integrations/supabase/client.server", () => {
 
 import {
   CREDIT_PACK_KIND,
+  CREDIT_PACK_LAUNCH_BONUS_AMOUNT,
+  CREDIT_PACK_LAUNCH_BONUS_KIND,
   getCreditPackAmount,
   grantCreditPack,
+  grantCreditPackLaunchBonus,
 } from "../credits.server";
 
 const LEAD = "11111111-2222-3333-4444-555555555555";
@@ -168,5 +171,60 @@ describe("grantCreditPack", () => {
         amount: -1,
       }),
     ).rejects.toThrow(/invalid amount/);
+  });
+});
+
+describe("grantCreditPackLaunchBonus", () => {
+  it("inserts +2 admin_adjust row tagged as launch bonus", async () => {
+    const res = await grantCreditPackLaunchBonus({
+      leadId: LEAD,
+      paymentId: PAYMENT,
+      productCode: "credit_pack_1",
+    });
+    expect(res.granted).toBe(true);
+    expect(ledger).toHaveLength(1);
+    expect(ledger[0]).toMatchObject({
+      lead_id: LEAD,
+      delta: CREDIT_PACK_LAUNCH_BONUS_AMOUNT,
+      reason: "admin_adjust",
+    });
+    expect(ledger[0].metadata).toMatchObject({
+      kind: CREDIT_PACK_LAUNCH_BONUS_KIND,
+      payment_id: PAYMENT,
+      product_code: "credit_pack_1",
+      launch_bonus: true,
+    });
+  });
+
+  it("is idempotent per (lead_id, payment_id)", async () => {
+    const first = await grantCreditPackLaunchBonus({
+      leadId: LEAD,
+      paymentId: PAYMENT,
+      productCode: "credit_pack_1",
+    });
+    const second = await grantCreditPackLaunchBonus({
+      leadId: LEAD,
+      paymentId: PAYMENT,
+      productCode: "credit_pack_1",
+    });
+    expect(first.granted).toBe(true);
+    expect(second.granted).toBe(false);
+    expect(ledger).toHaveLength(1);
+  });
+
+  it("combines with grantCreditPack to credit 3 total", async () => {
+    await grantCreditPack({
+      leadId: LEAD,
+      paymentId: PAYMENT,
+      productCode: "credit_pack_1",
+      amount: 1,
+    });
+    await grantCreditPackLaunchBonus({
+      leadId: LEAD,
+      paymentId: PAYMENT,
+      productCode: "credit_pack_1",
+    });
+    const total = ledger.reduce((acc, r) => acc + r.delta, 0);
+    expect(total).toBe(3);
   });
 });
