@@ -1447,6 +1447,7 @@ function SidebarList({
         compact={compact}
         primaryHandle={primaryHandle}
         existingCompetitors={existingCompetitors}
+        isAdminPreview={isAdminPreview}
       />
 
       {!premiumUnlocked && (
