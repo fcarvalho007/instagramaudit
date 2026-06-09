@@ -268,8 +268,8 @@ async function upsertLead(
 }
 
 /**
- * Fire-and-forget Supabase OTP email. Failures are logged but do not block
- * the response — the user can retry from the OTP panel ("Reenviar código").
+ * Fire-and-forget Supabase OTP email (modo `otp` — legacy). Falhas só são
+ * registadas; o utilizador pode pedir o reenvio no painel do modal.
  */
 async function sendOtpEmail(email: string, leadId: string): Promise<void> {
   try {
@@ -289,6 +289,25 @@ async function sendOtpEmail(email: string, leadId: string): Promise<void> {
 }
 
 /**
+ * Modo `off` (beta): claim imediato. Cookie `lead_session` + grant inicial
+ * de créditos. Idempotente — cliques repetidos voltam a emitir o cookie.
+ */
+async function grantSessionAndCredits(leadId: string): Promise<number> {
+  try {
+    await grantInitialCredits(leadId);
+  } catch (err) {
+    console.warn("[onboarding/start] grantInitialCredits warn:", err);
+  }
+  setLeadCookie(leadId);
+  try {
+    return await getBalance(leadId);
+  } catch (err) {
+    console.warn("[onboarding/start] getBalance warn:", err);
+    return 0;
+  }
+}
+
+/**
  * Pure handler — exported para permitir testes unitários sem montar o
  * router. Comportamento idêntico ao `POST` registado no `Route` abaixo.
  */
@@ -296,6 +315,7 @@ export async function handleOnboardingStart(
   request: Request,
 ): Promise<Response> {
   warnIfSecretMisconfigured();
+  const mode = getEmailVerificationMode();
   let raw: unknown;
   try {
     raw = await request.json();
@@ -367,7 +387,8 @@ export async function handleOnboardingStart(
       {
         ok: true,
         credits: 0,
-        verification_required: true,
+        verification_required: mode !== "off",
+        verification_mode: mode,
       },
       200,
     );
@@ -396,25 +417,26 @@ export async function handleOnboardingStart(
     }
   }
 
-  // Defense-in-depth ownership guard. /api/onboarding/check-email tells the
-  // client to take the OTP path when the email already belongs to a lead;
-  // we re-check here so a misbehaving / malicious client cannot bypass it.
-  const emailNormalizedForGuard = parsed.data.email.toLowerCase();
-  const existingLead = await supabaseAdmin
-    .from("leads")
-    .select("id")
-    .eq("email_normalized", emailNormalizedForGuard)
-    .maybeSingle();
-  if (existingLead.data) {
-    return json(
-      {
-        ok: false,
-        error_code: "EMAIL_REQUIRES_VERIFICATION",
-        message:
-          "Este email já tem conta. Confirma a tua identidade para abrir o relatório.",
-      },
-      403,
-    );
+  // Defense-in-depth ownership guard — só nos modos com verificação. Em
+  // modo `off` (beta) o claim acontece directamente abaixo.
+  if (mode !== "off") {
+    const emailNormalizedForGuard = parsed.data.email.toLowerCase();
+    const existingLead = await supabaseAdmin
+      .from("leads")
+      .select("id")
+      .eq("email_normalized", emailNormalizedForGuard)
+      .maybeSingle();
+    if (existingLead.data) {
+      return json(
+        {
+          ok: false,
+          error_code: "EMAIL_REQUIRES_VERIFICATION",
+          message:
+            "Este email já tem conta. Confirma a tua identidade para abrir o relatório.",
+        },
+        403,
+      );
+    }
   }
 
   const upserted = await upsertLead(parsed.data, emailDomainClass);
@@ -430,19 +452,55 @@ export async function handleOnboardingStart(
     );
   }
 
-  // Initial credit grant E sessão (`lead_session` cookie) só são emitidos
-  // em `/api/onboarding/claim-existing` depois do OTP validar o email.
-  // Aqui ficamos só com o registo do lead em DB.
+  // Branching por modo de verificação.
+  if (mode === "off") {
+    // Beta: sem verificação. Emite cookie + créditos imediatamente.
+    const credits = await grantSessionAndCredits(upserted.leadId);
+    console.info("[onboarding/start] beta no-verification claim", {
+      lead_id: upserted.leadId,
+      handle: parsed.data.handle ?? null,
+      is_new: upserted.isNew,
+    });
+    return json(
+      {
+        ok: true,
+        lead_id: upserted.leadId,
+        credits,
+        verification_required: false,
+        verification_mode: "off",
+      },
+      200,
+    );
+  }
 
-  // Send the verification OTP. Best-effort: the modal also lets the user
-  // resend from the OTP panel if delivery fails.
+  if (mode === "magic_link") {
+    // Envia link assinado pela nossa stack (Brevo → Resend). Cookie e
+    // créditos só após clique no link.
+    void sendVerificationEmail({
+      leadId: upserted.leadId,
+      toEmail: parsed.data.email,
+      firstName: parsed.data.name?.split(/\s+/)[0] ?? null,
+      instagramHandle: parsed.data.handle ?? null,
+    });
+    return json(
+      {
+        ok: true,
+        credits: 0,
+        verification_required: true,
+        verification_mode: "magic_link",
+      },
+      200,
+    );
+  }
+
+  // modo `otp` — legacy Supabase Auth.
   await sendOtpEmail(parsed.data.email, upserted.leadId);
-
   return json(
     {
       ok: true,
       credits: 0,
       verification_required: true,
+      verification_mode: "otp",
     },
     200,
   );
