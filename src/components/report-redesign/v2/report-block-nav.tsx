@@ -109,6 +109,10 @@ interface SidebarProps {
   /** Lista actual de concorrentes para alimentar o "Adicionar concorrente"
    *  (passada do shell a partir do `?vs=`). */
   competitorHandles?: string[];
+  /** Admin preview override: when true, the explore section uses a
+   *  simulated credit balance so the operator can test 30d/90d and
+   *  competitor flows without holding real customer credits. */
+  isAdminPreview?: boolean;
 }
 
 // ── Item builder ─────────────────────────────────────────────────────
