@@ -16,10 +16,17 @@ export { ADMIN_GATE_STORAGE_KEY };
  * para que o gate apareça outra vez.
  */
 function handleUnauthorized(): void {
-  // Limpa o email guardado para que o gate volte a aparecer no próximo
-  // navigate/refresh, mas NÃO recarrega imediatamente para que a UI possa
-  // mostrar uma mensagem clara (estado de sessão expirada + CTA Iniciar sessão).
+  // Limpa o email guardado e despacha um evento global para que o
+  // `AdminAuthShell` mostre imediatamente o gate (sem refresh manual nem
+  // cascata de "Erro ao carregar HTTP 401" em cada card).
   clearAdminEmail();
+  if (typeof window !== "undefined") {
+    try {
+      window.dispatchEvent(new CustomEvent("admin:session-expired"));
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 export async function adminFetch(
