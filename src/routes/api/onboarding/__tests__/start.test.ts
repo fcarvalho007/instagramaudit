@@ -101,9 +101,27 @@ function leadsBuilder() {
   return wrapped;
 }
 
+const createdAuthUsers = new Map<string, { id: string }>();
+const adminCreateUserMock = vi.fn(
+  async ({ email }: { email: string; password: string; email_confirm: boolean }) => {
+    const norm = email.toLowerCase();
+    if (createdAuthUsers.has(norm)) {
+      return {
+        data: { user: null },
+        error: { message: "User already registered", status: 422 },
+      } as any;
+    }
+    const id = `auth-${createdAuthUsers.size + 1}`;
+    createdAuthUsers.set(norm, { id });
+    return { data: { user: { id, email } }, error: null } as any;
+  },
+);
 vi.mock("@/integrations/supabase/client.server", () => ({
   supabaseAdmin: {
     auth: {
+      admin: {
+        createUser: (args: any) => adminCreateUserMock(args),
+      },
       signInWithOtp: vi.fn(async () => ({ data: {}, error: null })),
     },
     from: (table: string) => {
@@ -165,6 +183,7 @@ import { handleOnboardingStart } from "@/routes/api/onboarding/start";
 function post(body: Record<string, unknown>): Request {
   const withDefaults: Record<string, unknown> = {
     qualification: "brand_company",
+    password: "correct-horse-battery-staple",
     ...body,
   };
   if (!("gdpr_consent" in withDefaults)) withDefaults.gdpr_consent = true;
@@ -182,6 +201,8 @@ beforeEach(() => {
   grantedLeads.clear();
   balanceByLead.clear();
   nextLeadId = 0;
+  createdAuthUsers.clear();
+  adminCreateUserMock.mockClear();
   grantInitialCreditsMock.mockClear();
   getBalanceMock.mockClear();
   setLeadCookieMock.mockClear();
@@ -189,7 +210,7 @@ beforeEach(() => {
 });
 
 describe("POST /api/onboarding/start", () => {
-  it("beta off (default) → 200 com lead_id, créditos e cookie emitidos", async () => {
+  it("password mode (default) → 200 com lead_id, créditos e cookie emitidos", async () => {
     const res = await handleOnboardingStart(
       post({
         name: "Ana Silva",
@@ -202,14 +223,15 @@ describe("POST /api/onboarding/start", () => {
       ok: boolean;
       lead_id?: string;
       credits: number;
-      verification_required?: boolean;
-      verification_mode?: string;
+      requires_email_verification?: boolean;
+      auth_mode?: string;
     };
     expect(body.ok).toBe(true);
-    expect(body.verification_mode).toBe("off");
-    expect(body.verification_required).toBe(false);
+    expect(body.auth_mode).toBe("password");
+    expect(body.requires_email_verification).toBe(false);
     expect(body.lead_id).toBeDefined();
     expect(body.credits).toBeGreaterThanOrEqual(2);
+    expect(adminCreateUserMock).toHaveBeenCalledTimes(1);
     expect(grantInitialCreditsMock).toHaveBeenCalledTimes(1);
     expect(setLeadCookieMock).toHaveBeenCalledTimes(1);
   });
@@ -239,7 +261,7 @@ describe("POST /api/onboarding/start", () => {
     );
   });
 
-  it("beta off + email duplicado → 200 com claim idempotente (cookie reemitido, grant idempotente)", async () => {
+  it("password mode + email duplicado → 409 EMAIL_ALREADY_EXISTS (sem cookie, sem grant)", async () => {
     const first = await handleOnboardingStart(
       post({ name: "Ana", email: "dup@example.com" }),
     );
@@ -248,53 +270,45 @@ describe("POST /api/onboarding/start", () => {
     const second = await handleOnboardingStart(
       post({ name: "Ana Maria", email: "dup@example.com" }),
     );
-    expect(second.status).toBe(200);
+    expect(second.status).toBe(409);
     const body = (await second.json()) as {
       ok: boolean;
-      lead_id?: string;
-      verification_mode?: string;
+      error_code?: string;
     };
-    expect(body.ok).toBe(true);
-    expect(body.verification_mode).toBe("off");
-    expect(body.lead_id).toBeDefined();
-    // Grant é idempotente — chamado 2x mas só credita uma.
-    expect(grantInitialCreditsMock).toHaveBeenCalledTimes(2);
-    expect(setLeadCookieMock).toHaveBeenCalledTimes(2);
+    expect(body.ok).toBe(false);
+    expect(body.error_code).toBe("EMAIL_ALREADY_EXISTS");
+    // O segundo POST NÃO deve emitir cookie nem grant.
+    expect(grantInitialCreditsMock).toHaveBeenCalledTimes(1);
+    expect(setLeadCookieMock).toHaveBeenCalledTimes(1);
   });
 
-  it("modo `otp` (legacy) → 200 sem cookie, sem créditos, mantém gate de duplicado", async () => {
-    const prev = process.env.EMAIL_VERIFICATION_MODE;
-    process.env.EMAIL_VERIFICATION_MODE = "otp";
-    try {
-      const first = await handleOnboardingStart(
-        post({ name: "Ana", email: "otp-new@example.com" }),
-      );
-      expect(first.status).toBe(200);
-      const firstBody = (await first.json()) as {
-        verification_mode?: string;
-        verification_required?: boolean;
-        lead_id?: string;
-      };
-      expect(firstBody.verification_mode).toBe("otp");
-      expect(firstBody.verification_required).toBe(true);
-      expect(firstBody.lead_id).toBeUndefined();
-      expect(setLeadCookieMock).not.toHaveBeenCalled();
-      expect(grantInitialCreditsMock).not.toHaveBeenCalled();
+  it("password ausente → 400 PASSWORD_REQUIRED", async () => {
+    const res = await handleOnboardingStart(
+      post({ name: "Ana", email: "nopass@example.com", password: undefined }),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { ok: boolean; error_code: string };
+    expect(body.ok).toBe(false);
+    expect(body.error_code).toBe("PASSWORD_REQUIRED");
+    expect(setLeadCookieMock).not.toHaveBeenCalled();
+    expect(adminCreateUserMock).not.toHaveBeenCalled();
+  });
 
-      const second = await handleOnboardingStart(
-        post({ name: "Ana Maria", email: "otp-new@example.com" }),
-      );
-      expect(second.status).toBe(403);
-      const body = (await second.json()) as {
-        ok: boolean;
-        error_code: string;
-      };
-      expect(body.ok).toBe(false);
-      expect(body.error_code).toBe("EMAIL_REQUIRES_VERIFICATION");
-    } finally {
-      if (prev === undefined) delete process.env.EMAIL_VERIFICATION_MODE;
-      else process.env.EMAIL_VERIFICATION_MODE = prev;
-    }
+  it("password com menos de 8 caracteres → 400 INVALID_PAYLOAD (password field)", async () => {
+    const res = await handleOnboardingStart(
+      post({ name: "Ana", email: "short@example.com", password: "abc" }),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as {
+      error_code: string;
+      issues?: { field: string; code: string }[];
+    };
+    expect(body.error_code).toBe("INVALID_PAYLOAD");
+    expect(body.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: "password" }),
+      ]),
+    );
   });
 
   it("disposable email domain → 400 INVALID_PAYLOAD (email field)", async () => {

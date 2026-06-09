@@ -1,18 +1,22 @@
 /**
- * OnboardingModal — entry + final + OTP (Fase 4 redesign).
+ * OnboardingModal — entry + qualification + final + login (password mode).
  *
- * Public flow:
- *   Entry ──┬─► (new email)       Final 2-col ──► /api/onboarding/start
- *           └─► (existing email)  OTP 6 digits ──► supabase.auth.verifyOtp
- *                                               ──► /api/onboarding/claim-existing
+ * Public flow (AUTH_MODE=password):
+ *   Entry ──┬─► (new email)       Qualification ─► Final form (com password)
+ *           │                                      ──► POST /api/onboarding/start
+ *           │                                          (admin.createUser + cookie)
+ *           └─► (existing email)  Login (email + password)
+ *                                 ──► supabase.auth.signInWithPassword
+ *                                 ──► POST /api/onboarding/claim-existing
  *
- * Security: the server (`start.ts`) rejects any payload whose email
- * already maps to a lead with `EMAIL_REQUIRES_VERIFICATION`. Only the OTP
- * path can grant a `lead_session` for existing emails, so a typo or a
- * malicious client cannot hijack someone else's reports.
+ * Security: o servidor (`start.ts`) cria a Supabase auth user via
+ * service-role e só emite o cookie `lead_session` após sucesso. Para email
+ * já existente, `/start` rejeita com `EMAIL_ALREADY_EXISTS` e o cliente
+ * salta para o ecrã de login. Nunca emitimos sessão sem prova de
+ * propriedade.
  *
- * Copy lives in `gate.json` under `onboarding.entry`, `onboarding.final`,
- * and `onboarding.otp`.
+ * Magic link / OTP foram removidos da UX pública — ficam reachable só via
+ * `AUTH_MODE=magic_link` (env override) para contingência.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -61,7 +65,6 @@ import { trackOnboardingEvent } from "@/lib/tracking/onboarding-events";
 import { buildStartPayload } from "@/lib/leads/build-start-payload";
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
-const RESEND_COOLDOWN_SECONDS = 30;
 
 export interface OnboardingSuccess {
   leadId: string;
@@ -98,15 +101,14 @@ type View =
   | { kind: "entry" }
   | { kind: "qualification"; email: string }
   | { kind: "final"; email: string }
-  | { kind: "otp"; email: string; sentAt: number; mode: "new" | "existing" }
-  | { kind: "magic_link_sent"; email: string };
+  | { kind: "login"; email: string };
 
 interface OnboardingApiOk {
   ok: true;
   lead_id?: string;
   credits?: number;
-  verification_required?: boolean;
-  verification_mode?: "off" | "magic_link" | "otp";
+  requires_email_verification?: boolean;
+  auth_mode?: "password" | "password_with_email_verification" | "magic_link";
 }
 interface OnboardingApiFail {
   ok: false;
@@ -138,6 +140,8 @@ export function OnboardingModal({
       full_name: "",
       email: "",
       phone: "",
+      password: "",
+      confirm_password: "",
       // The qualification step (2 perguntas em cartões) define estes valores
       // antes do submit; deixamos undefined para validar a escolha do user.
       profile_ownership: undefined as unknown as never,
@@ -201,44 +205,14 @@ export function OnboardingModal({
   }, []);
 
   /**
-   * Triggers Supabase Auth OTP for an email and switches to the verify
-   * view. Used both from the entry step (existing email) and from the
-   * /start endpoint fallback when the server reports
-   * EMAIL_REQUIRES_VERIFICATION.
-   *
-   * `shouldCreateUser: true` is intentional: a lead row can exist without a
-   * matching auth.users row (legacy leads). The first OTP confirm then
-   * fires `handle_new_user`, which calls `link_user_to_existing_reports`
-   * to bind the new auth user to the existing lead.
+   * Switch to the login view for an existing email. Pure UI transition —
+   * no email is sent and no Supabase call is made until the user enters
+   * the password.
    */
-  const sendOtpAndGoToOtpView = useCallback(
-    async (email: string, mode: "new" | "existing" = "existing"): Promise<void> => {
-      setSubmitting(true);
-      setServerError(null);
-      try {
-        const { error } = await supabase.auth.signInWithOtp({
-          email,
-          options: { shouldCreateUser: true },
-        });
-        if (error) {
-          setServerError(t("onboarding.otp.errors.sendFailed"));
-          trackOnboardingEvent({
-            event_type: "onboarding_error",
-            step: 0,
-            handle,
-            error_code: `OTP_SEND_${error.status ?? "ERR"}`,
-          });
-          return;
-        }
-        setView({ kind: "otp", email, sentAt: Date.now(), mode });
-      } catch {
-        setServerError(t("onboarding.otp.errors.network"));
-      } finally {
-        setSubmitting(false);
-      }
-    },
-    [handle, t],
-  );
+  const goToLoginView = useCallback((email: string) => {
+    setServerError(null);
+    setView({ kind: "login", email });
+  }, []);
 
   /**
    * Resolves the entry step. Looks up the email via /check-email and
@@ -268,22 +242,9 @@ export function OnboardingModal({
           return;
         }
         if (data.exists) {
-          // Email existente: a propriedade tem de ser provada. Em modos
-          // `off` / `magic_link`, o servidor já enviou um link assinado
-          // pela nossa stack (Brevo → Resend). Mostramos um painel
-          // dedicado "verifica o teu email" — o clique no link define o
-          // cookie no novo separador. Em modo `otp` caímos no painel
-          // legacy de código de 6 dígitos.
-          if (
-            (data.verification_mode === "off" ||
-              data.verification_mode === "magic_link") &&
-            (data as { verification_sent?: boolean }).verification_sent ===
-              true
-          ) {
-            setView({ kind: "magic_link_sent", email });
-            return;
-          }
-          await sendOtpAndGoToOtpView(email, "existing");
+          // Email já tem conta — pedimos a palavra-passe. Nenhum email é
+          // enviado neste passo.
+          goToLoginView(email);
           return;
         }
         form.setValue("email", email, { shouldValidate: true });
@@ -294,7 +255,7 @@ export function OnboardingModal({
         setSubmitting(false);
       }
     },
-    [clearDraft, form, handle, onSuccess, sendOtpAndGoToOtpView, t],
+    [form, goToLoginView, t],
   );
 
   /**
@@ -333,16 +294,17 @@ export function OnboardingModal({
       const data = (await res
         .json()
         .catch(() => null)) as OnboardingApiResponse | null;
-      // Defense-in-depth: if check-email raced and the email now exists as
-      // a lead, the server returns EMAIL_REQUIRES_VERIFICATION. Reroute to
-      // OTP with the email the user already typed.
+      // Race condition: o utilizador acabou de criar conta noutro
+      // separador OU a conta já existia e o /check-email falhou silenciosa.
+      // Redirige para o ecrã de login para o user introduzir a password.
       if (
         data &&
         data.ok === false &&
-        data.error_code === "EMAIL_REQUIRES_VERIFICATION"
+        (data.error_code === "EMAIL_ALREADY_EXISTS" ||
+          data.error_code === "EMAIL_REQUIRES_VERIFICATION")
       ) {
         setSubmitting(false);
-        await sendOtpAndGoToOtpView(values.email, "existing");
+        goToLoginView(values.email);
         return;
       }
       if (!res.ok || !data || data.ok !== true) {
@@ -399,12 +361,11 @@ export function OnboardingModal({
         handle,
         marketing_consent: values.marketing_consent === true,
       });
-      // Beta sem verificação (`verification_mode: "off"`): o servidor já
-      // emitiu o cookie `lead_session` e os 2 créditos. Saltamos o OTP e
-      // abrimos o relatório directamente.
+      // `AUTH_MODE=password`: o servidor já criou a Supabase auth user e
+      // emitiu o cookie `lead_session`. Avançamos directamente.
       if (
-        data.verification_mode === "off" &&
-        data.verification_required === false &&
+        data.auth_mode === "password" &&
+        data.requires_email_verification === false &&
         data.lead_id
       ) {
         clearDraft();
@@ -414,15 +375,12 @@ export function OnboardingModal({
         });
         return;
       }
-      // Caso contrário (modos `magic_link` ou `otp`) cai no painel OTP
-      // existente — o magic link partilha o mesmo ecrã de "verifica o
-      // email" enquanto o utilizador não receber o clique.
-      setView({
-        kind: "otp",
-        email: values.email,
-        sentAt: Date.now(),
-        mode: "new",
-      });
+      // `password_with_email_verification`: precisa de clicar no email.
+      // Tratamos com a mesma cópia que o login pendente — neste momento
+      // este modo não está activo no UX público, só por env override.
+      setServerError(
+        "Verifica o teu email para activar a conta antes de continuar.",
+      );
     } catch {
       setServerError(t("onboarding.errors.network"));
       trackOnboardingEvent({
@@ -437,32 +395,24 @@ export function OnboardingModal({
   });
 
   /**
-   * Path B — verifies the 6-digit OTP via Supabase, then asks the server
-   * to bind the verified session to a lead and issue `lead_session`.
-   * This is the only path that grants a session for an existing email.
+   * Path B — email + password sign-in for existing accounts. Uses
+   * `signInWithPassword`, then trades the access token at
+   * `/api/onboarding/claim-existing` for our own `lead_session` cookie.
    */
-  const handleOtpVerify = useCallback(
-    async (email: string, code: string): Promise<void> => {
+  const handleLoginSubmit = useCallback(
+    async (email: string, password: string): Promise<void> => {
       setSubmitting(true);
       setServerError(null);
       try {
-        const { data: verified, error } = await supabase.auth.verifyOtp({
-          email,
-          token: code.trim(),
-          type: "email",
-        });
+        const { data: verified, error } =
+          await supabase.auth.signInWithPassword({ email, password });
         if (error || !verified.session) {
-          const msg = error?.message ?? "";
-          if (/expired/i.test(msg)) {
-            setServerError(t("onboarding.otp.errors.expired"));
-          } else {
-            setServerError(t("onboarding.otp.errors.invalid"));
-          }
+          setServerError("Email ou palavra-passe incorretos.");
           trackOnboardingEvent({
             event_type: "onboarding_error",
             step: 2,
             handle,
-            error_code: `OTP_VERIFY_${error?.status ?? "ERR"}`,
+            error_code: `LOGIN_${error?.status ?? "ERR"}`,
           });
           return;
         }
@@ -486,12 +436,14 @@ export function OnboardingModal({
           claimData.ok !== true ||
           !claimData.lead_id
         ) {
-          setServerError(t("onboarding.otp.errors.claimFailed"));
+          setServerError(
+            "Não conseguimos preparar o acesso ao relatório. Tenta novamente.",
+          );
           trackOnboardingEvent({
             event_type: "onboarding_error",
             step: 2,
             handle,
-            error_code: "OTP_CLAIM_FAILED",
+            error_code: "LOGIN_CLAIM_FAILED",
           });
           return;
         }
@@ -507,12 +459,12 @@ export function OnboardingModal({
           credits: claimData.credits ?? 0,
         });
       } catch {
-        setServerError(t("onboarding.otp.errors.network"));
+        setServerError("Erro de rede. Tenta novamente.");
       } finally {
         setSubmitting(false);
       }
     },
-    [clearDraft, handle, onSuccess, t],
+    [clearDraft, handle, onSuccess],
   );
 
   return (
@@ -528,7 +480,7 @@ export function OnboardingModal({
             submitting={submitting}
             serverError={serverError}
             onSubmit={handleEntrySubmit}
-            onSignInWithEmail={(email) => sendOtpAndGoToOtpView(email)}
+            onSignInWithEmail={(email) => goToLoginView(email)}
             initialEmail={form.getValues("email")}
           />
         ) : view.kind === "qualification" ? (
@@ -554,27 +506,14 @@ export function OnboardingModal({
             }
             honeypotRef={honeypotRef}
           />
-        ) : view.kind === "otp" ? (
-          <OtpVerifyPanel
+        ) : (
+          <LoginPanel
             email={view.email}
-            sentAt={view.sentAt}
-            mode={view.mode}
             purpose={purpose}
             submitting={submitting}
             serverError={serverError}
-            onVerify={(code) => handleOtpVerify(view.email, code)}
-            onResend={() => sendOtpAndGoToOtpView(view.email, view.mode)}
+            onSubmit={(password) => handleLoginSubmit(view.email, password)}
             onBack={goBackToEntry}
-          />
-        ) : (
-          <MagicLinkSentPanel
-            email={view.email}
-            onBack={goBackToEntry}
-            onResend={async () => {
-              // Re-pede /check-email para reenviar o link assinado.
-              await handleEntrySubmit(view.email);
-            }}
-            submitting={submitting}
           />
         )}
       </DialogContent>
@@ -894,6 +833,8 @@ function FinalStepBody({
   const isCheckout = purpose === "checkout";
   const nameError = form.formState.errors.full_name?.message;
   const emailError = form.formState.errors.email?.message;
+  const passwordError = form.formState.errors.password?.message;
+  const confirmError = form.formState.errors.confirm_password?.message;
   const consentError = form.formState.errors.gdpr_consent?.message;
   const consent = form.watch("gdpr_consent");
   const marketing = form.watch("marketing_consent");
@@ -1054,6 +995,54 @@ function FinalStepBody({
               {t("onboarding.final.right.emailHint")}
             </p>
           )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="onb-password"
+            className="text-[13.5px] font-medium text-content-primary"
+          >
+            Palavra-passe
+          </Label>
+          <Input
+            id="onb-password"
+            type="password"
+            autoComplete="new-password"
+            placeholder="Mínimo 8 caracteres"
+            aria-invalid={Boolean(passwordError)}
+            className="text-base"
+            {...form.register("password")}
+            data-testid="onboarding-password"
+          />
+          {passwordError ? (
+            <p className="text-[12.5px] text-destructive">{passwordError}</p>
+          ) : (
+            <p className="text-[12px] text-content-secondary">
+              Usa pelo menos 8 caracteres. Vamos validar contra palavras-passe
+              comuns para te proteger.
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="onb-confirm-password"
+            className="text-[13.5px] font-medium text-content-primary"
+          >
+            Confirmar palavra-passe
+          </Label>
+          <Input
+            id="onb-confirm-password"
+            type="password"
+            autoComplete="new-password"
+            aria-invalid={Boolean(confirmError)}
+            className="text-base"
+            {...form.register("confirm_password")}
+            data-testid="onboarding-confirm-password"
+          />
+          {confirmError ? (
+            <p className="text-[12.5px] text-destructive">{confirmError}</p>
+          ) : null}
         </div>
 
         <div className="rounded-xl border border-border-default/40 bg-surface-muted/40 p-3 space-y-2.5">
@@ -1366,7 +1355,7 @@ function QualificationStepBody({
 }
 
 /* -------------------------------------------------------------------------- */
-/* OTP verify panel — for existing emails (ownership proof)                   */
+/* Login panel — email + password sign-in for existing accounts               */
 /* -------------------------------------------------------------------------- */
 
 function maskEmail(email: string): string {
@@ -1376,98 +1365,92 @@ function maskEmail(email: string): string {
   return `${head}${user.length > 2 ? "•••" : ""}@${domain}`;
 }
 
-function OtpVerifyPanel({
+function LoginPanel({
   email,
-  sentAt,
-  mode,
   purpose,
   submitting,
   serverError,
-  onVerify,
-  onResend,
+  onSubmit,
   onBack,
 }: {
   email: string;
-  sentAt: number;
-  mode: "new" | "existing";
   purpose: "analyze" | "checkout";
   submitting: boolean;
   serverError: string | null;
-  onVerify: (code: string) => Promise<void> | void;
-  onResend: () => Promise<void> | void;
+  onSubmit: (password: string) => Promise<void> | void;
   onBack: () => void;
 }) {
-  const { t } = useTranslation("gate");
-  const isCheckout = purpose === "checkout";
-  const [code, setCode] = useState("");
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const elapsedSeconds = Math.floor((now - sentAt) / 1000);
-  const cooldown = Math.max(0, RESEND_COOLDOWN_SECONDS - elapsedSeconds);
-  const canResend = cooldown === 0 && !submitting;
+  void purpose;
+  const [password, setPassword] = useState("");
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = code.trim();
-    if (trimmed.length !== 6) return;
-    await onVerify(trimmed);
+    if (!password) return;
+    await onSubmit(password);
   };
 
   return (
-    <div className="px-5 py-7 sm:px-9 sm:py-9" data-testid="onboarding-otp-step">
+    <div
+      className="px-5 py-7 sm:px-9 sm:py-9"
+      data-testid="onboarding-login-step"
+    >
       <DialogHeader className="text-left space-y-2.5">
         <p className="text-eyebrow-sm text-content-tertiary">
-          {t("onboarding.otp.eyebrow")}
+          Entrar na conta
         </p>
-        {mode === "existing" && !isCheckout ? (
-          <p className="text-[13px] text-content-secondary leading-[1.5]">
-            {t("onboarding.otp.existingTitle")}
-          </p>
-        ) : null}
         <DialogTitle className="font-display text-[24px] sm:text-[28px] leading-[1.1] tracking-[-0.015em] text-content-primary text-balance break-words">
-          {isCheckout
-            ? t(
-                mode === "existing"
-                  ? "onboarding.otp.titleExistingCheckout"
-                  : "onboarding.otp.titleNewCheckout",
-                { maskedEmail: maskEmail(email) },
-              )
-            : t("onboarding.otp.title", { maskedEmail: maskEmail(email) })}
+          Já tens conta com {maskEmail(email)}
         </DialogTitle>
         <DialogDescription className="text-[14px] text-content-secondary leading-[1.55]">
-          {isCheckout
-            ? t(
-                mode === "existing"
-                  ? "onboarding.otp.subtitleExistingCheckout"
-                  : "onboarding.otp.subtitleNewCheckout",
-                { maskedEmail: maskEmail(email) },
-              )
-            : t("onboarding.otp.subtitle")}
+          Introduz a tua palavra-passe para abrir o relatório. Os teus dados
+          continuam protegidos.
         </DialogDescription>
       </DialogHeader>
 
       <form onSubmit={submit} className="mt-5 space-y-4" noValidate>
         <div className="space-y-1.5">
-          <Label htmlFor="onb-otp" className="text-[13.5px] font-medium text-content-primary">
-            {t("onboarding.otp.codeLabel")}
+          <Label
+            htmlFor="onb-login-email"
+            className="text-[13.5px] font-medium text-content-primary"
+          >
+            Email
           </Label>
           <Input
-            id="onb-otp"
-            type="text"
-            inputMode="numeric"
-            autoComplete="one-time-code"
+            id="onb-login-email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            readOnly
+            className="bg-surface-muted/40 text-base"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Label
+              htmlFor="onb-login-password"
+              className="text-[13.5px] font-medium text-content-primary"
+            >
+              Palavra-passe
+            </Label>
+            <a
+              href="/reset-password"
+              className="text-[12px] font-medium text-primary hover:underline"
+              target="_blank"
+              rel="noopener"
+            >
+              Esqueceste-te?
+            </a>
+          </div>
+          <Input
+            id="onb-login-password"
+            type="password"
+            autoComplete="current-password"
             autoFocus
-            maxLength={6}
-            placeholder={t("onboarding.otp.codePlaceholder")}
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            className="text-center font-mono text-[20px] tracking-[0.45em] h-12"
-            data-testid="onboarding-otp-code"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="text-base"
+            data-testid="onboarding-login-password"
           />
         </div>
 
@@ -1480,17 +1463,20 @@ function OtpVerifyPanel({
         <Button
           type="submit"
           size="lg"
-          disabled={submitting || code.length !== 6}
+          disabled={submitting || password.length === 0}
           className="w-full rounded-lg font-medium h-12"
-          data-testid="onboarding-otp-submit"
+          data-testid="onboarding-login-submit"
         >
           {submitting ? (
             <>
               <Loader2 className="size-4 animate-spin" aria-hidden />
-              {t("onboarding.otp.verifying")}
+              A entrar…
             </>
           ) : (
-            t(isCheckout ? "onboarding.otp.ctaCheckout" : "onboarding.otp.cta")
+            <>
+              <Lock className="size-4" aria-hidden />
+              Entrar
+            </>
           )}
         </Button>
 
@@ -1502,19 +1488,18 @@ function OtpVerifyPanel({
             className="inline-flex items-center gap-1 text-[13px] text-content-secondary hover:text-content-primary disabled:opacity-60"
           >
             <ArrowLeft className="size-3.5" aria-hidden />
-            {t("onboarding.otp.back")}
+            Voltar
           </button>
-          <button
-            type="button"
-            onClick={() => void onResend()}
-            disabled={!canResend}
-            className="text-[13px] font-medium text-primary hover:underline disabled:opacity-60 disabled:no-underline"
-            data-testid="onboarding-otp-resend"
-          >
-            {canResend
-              ? t("onboarding.otp.resend")
-              : t("onboarding.otp.resendIn", { seconds: cooldown })}
-          </button>
+          <span className="text-[12px] text-content-tertiary">
+            Não és tu?{" "}
+            <button
+              type="button"
+              onClick={onBack}
+              className="font-medium text-primary hover:underline"
+            >
+              Usar outro email
+            </button>
+          </span>
         </div>
       </form>
     </div>

@@ -95,9 +95,19 @@ export const unlockFormSchema = z
       .max(120, "Nome demasiado longo")
       .regex(/\S/, "Indica o teu nome"),
     email: z.string().trim().toLowerCase().email("Email inválido").max(255),
-    // Optional phone (Fase 6 modal — reintroduced as optional). Free-form;
-    // server route may normalize later.
+    // Phone field removed from the public onboarding (AUTH_MODE=password).
+    // Kept as `.optional()` deprecation slot so legacy payload builders
+    // don't break; new code MUST NOT collect it via the modal.
     phone: z.string().trim().max(40).optional(),
+    // Password fields — `AUTH_MODE=password`. Min 8 chars; HIBP check is
+    // performed server-side by Supabase Auth. `confirm_password` must
+    // match `password` (refined below).
+    password: z
+      .string()
+      .min(8, "Mínimo 8 caracteres")
+      .max(72, "Demasiado longo")
+      .optional(),
+    confirm_password: z.string().max(72).optional(),
     // Qualification (Fase 5 modal). Optional at the shared-schema level so
     // legacy callers (old unlock flow, tests) still validate; the new
     // onboarding modal enforces it client-side and the server route
@@ -138,6 +148,24 @@ export const unlockFormSchema = z
         code: z.ZodIssueCode.custom,
         message: "Conta-nos brevemente (mínimo 2 caracteres)",
       });
+    }
+    // Password match — only enforce when at least one is provided (legacy
+    // callers without password fields still validate).
+    if (data.password || data.confirm_password) {
+      if (!data.password) {
+        ctx.addIssue({
+          path: ["password"],
+          code: z.ZodIssueCode.custom,
+          message: "Define uma palavra-passe",
+        });
+      }
+      if (data.password && data.password !== data.confirm_password) {
+        ctx.addIssue({
+          path: ["confirm_password"],
+          code: z.ZodIssueCode.custom,
+          message: "As palavras-passe não coincidem",
+        });
+      }
     }
   });
 
