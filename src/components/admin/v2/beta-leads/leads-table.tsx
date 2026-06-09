@@ -770,7 +770,6 @@ export function LeadsTable({ leads, onOpenDetail }: LeadsTableProps) {
                     />
                     Forçar mesmo com pagamentos pagos (destrutivo)
                   </label>
-                  </div>
                   <div>
                     Escreve{" "}
                     <code className="px-1 py-0.5 rounded bg-admin-surface-muted text-admin-text-primary font-mono text-[12px]">
