@@ -136,6 +136,14 @@ const PayloadSchema = z.object({
     .enum(["baseline", "30d", "90d"])
     .optional()
     .default("baseline"),
+  /**
+   * Pro-only opt-in to bypass a fresh cache hit and force a new provider
+   * call for the same (handle, competitors, window) tuple. Ignored unless
+   * the lead has `report_full_9` AND the window is not baseline. Consumes
+   * 1 credit when it proceeds. Subject to all existing caps (Apify global,
+   * 90d, per-lead/profile/window/day).
+   */
+  force_refresh: z.boolean().optional().default(false),
 });
 
 const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
@@ -171,6 +179,8 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
     "A análise de 90 dias está temporariamente indisponível. Tenta 30 dias.",
   WINDOW_90D_BUDGET_EXCEEDED:
     "A análise de 90 dias está temporariamente indisponível por segurança operacional. Tenta novamente mais tarde ou usa a janela de 30 dias.",
+  PRO_WINDOW_BUDGET_EXCEEDED:
+    "Análise temporariamente indisponível por segurança operacional. Tenta novamente mais tarde ou usa outra janela de análise.",
   COMPETITORS_REQUIRE_PRO:
     "A análise de concorrentes está disponível no plano Pro.",
 };
@@ -193,6 +203,7 @@ const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
   WINDOW_REQUIRES_PRO: 403,
   WINDOW_90D_DISABLED: 403,
   WINDOW_90D_BUDGET_EXCEEDED: 503,
+  PRO_WINDOW_BUDGET_EXCEEDED: 503,
   COMPETITORS_REQUIRE_PRO: 403,
 };
 
