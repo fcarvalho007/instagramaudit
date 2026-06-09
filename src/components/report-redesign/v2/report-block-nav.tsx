@@ -977,7 +977,7 @@ function ExploreSection({
               ? t("nav.explore.period_sample", { count: sampleSize })
               : "—"}
           </span>
-          {PREMIUM_WINDOWS.map((days) => (
+          {premiumWindows.map((days) => (
             <button
               key={days}
               type="button"
