@@ -182,6 +182,10 @@
       "emailPlaceholder": "o teu email",
       "emailInvalid": "Confirma o teu email — parece inválido.",
       "newCta": "Criar conta e abrir relatório",
+      "newCtaCheckout": "Continuar",
+      "trustLineCheckout": "Sem subscrição. Sem cobrança automática. RGPD.",
+      "haveAccountCheckout": "Já tens conta?",
+      "haveAccountCtaCheckout": "Entrar  →",
       "checking": "A verificar…",
       "haveAccount": "Já tens conta?",
       "haveAccountCta": "Entrar com email  →",
@@ -197,7 +201,10 @@
           "report": "Relatório de @{{handle}}",
           "reportCheckout": "Conta privada onde guardamos a tua compra e os relatórios",
           "save": "Conta privada com os relatórios guardados",
-          "credits": "<strong>2 créditos grátis</strong> após confirmação do email"
+          "credits": "<strong>2 créditos grátis</strong> após confirmação do email",
+          "receiptCheckout": "Recebes o recibo no email indicado",
+          "returnCheckout": "Podes voltar aos relatórios sempre que quiseres",
+          "noSubCheckout": "Sem subscrição nem cobrança automática"
         }
       },
       "right": {
@@ -224,7 +231,9 @@
         "marketingText": "Quero dicas e benchmarks",
         "marketingOptional": "(opcional)",
         "cta": "Gerar o meu relatório  →",
+        "ctaCheckout": "Criar conta e continuar",
         "footnote": "RGPD · sem spam",
+        "footnoteCheckout": "Sem subscrição. RGPD.",
         "back": "Voltar"
       }
     },
@@ -232,6 +241,9 @@
       "eyebrow": "PASSO 2 DE 3",
       "title": "O que melhor descreve o teu contexto?",
       "subtitle": "Uma escolha rápida — ajuda-nos a ajustar a análise.",
+      "eyebrowCheckout": "ANTES DE PAGAR",
+      "titleCheckout": "O que melhor descreve o teu contexto?",
+      "subtitleCheckout": "Uma escolha rápida — ajuda-nos a ajustar a tua experiência.",
       "placeholder": "Escolhe uma opção",
       "back": "Voltar",
       "cta": "Continuar  →",
@@ -242,6 +254,11 @@
       "title": "Enviámos um código para {{maskedEmail}}",
       "subtitle": "Confirma o código de 6 dígitos para activar os teus 2 créditos grátis.",
       "existingTitle": "Esta conta já existe. Enviámos um link para confirmares o acesso.",
+      "titleNewCheckout": "Confirma o teu email",
+      "subtitleNewCheckout": "Enviámos um código para {{maskedEmail}}. Confirma para continuares para o pagamento.",
+      "titleExistingCheckout": "Confirma o acesso à tua conta",
+      "subtitleExistingCheckout": "Este email já tem conta. Enviámos um código para confirmares que és o titular.",
+      "ctaCheckout": "Confirmar e continuar  →",
       "codeLabel": "Código de 6 dígitos",
       "codePlaceholder": "123456",
       "cta": "Confirmar e abrir  →",

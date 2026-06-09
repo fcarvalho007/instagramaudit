@@ -88,15 +88,14 @@ export function CheckoutAccountGate({
       <section className="min-w-0 space-y-5">
         <header className="space-y-2">
           <span className="text-eyebrow-sm text-content-tertiary">
-            Antes de pagar
+            ANTES DE PAGAR
           </span>
           <h1 className="font-fraunces text-2xl sm:text-3xl font-medium text-content-primary leading-tight">
-            Cria a tua conta para continuar
+            Continua para o checkout
           </h1>
           <p className="text-sm text-content-secondary leading-relaxed">
-            Demora cerca de 30 segundos. Precisamos do teu email para te
-            enviarmos o recibo e dar acesso ao relatório na tua conta
-            privada.
+            Cria conta ou entra em ~30 segundos. Associamos a tua compra à
+            tua conta e enviamos-te o recibo por email.
           </p>
         </header>
 

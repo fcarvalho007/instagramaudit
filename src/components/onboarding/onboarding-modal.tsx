@@ -23,6 +23,7 @@ import {
   ArrowLeft,
   Check,
   Loader2,
+  Lock,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
@@ -495,6 +496,7 @@ export function OnboardingModal({
         ) : view.kind === "qualification" ? (
           <QualificationStepBody
             form={form}
+            purpose={purpose}
             submitting={submitting}
             serverError={serverError}
             onBack={goBackToEntry}
@@ -516,6 +518,7 @@ export function OnboardingModal({
             email={view.email}
             sentAt={view.sentAt}
             mode={view.mode}
+            purpose={purpose}
             submitting={submitting}
             serverError={serverError}
             onVerify={(code) => handleOtpVerify(view.email, code)}
@@ -552,6 +555,7 @@ function EntryStepBody({
   const { t } = useTranslation("gate");
   const [email, setEmail] = useState(initialEmail ?? "");
   const [localError, setLocalError] = useState<string | null>(null);
+  const isCheckout = purpose === "checkout";
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -611,20 +615,28 @@ function EntryStepBody({
       <form
         onSubmit={submit}
         noValidate
-        className="mt-6 relative rounded-2xl border-2 border-primary/40 bg-primary/[0.03] p-5 sm:p-6 space-y-4"
+        className={
+          isCheckout
+            ? "mt-6 relative rounded-2xl border border-border-default bg-white p-5 sm:p-6 space-y-4"
+            : "mt-6 relative rounded-2xl border-2 border-primary/40 bg-primary/[0.03] p-5 sm:p-6 space-y-4"
+        }
       >
-        <span className="absolute -top-2.5 left-4 inline-flex items-center rounded-full bg-primary text-white px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
-          {t("onboarding.entry.newBadge")}
-        </span>
-        <div className="flex items-center gap-2">
-          <Sparkles className="size-4 text-primary" aria-hidden />
-          <p className="text-[15px] font-semibold text-content-primary">
-            {t("onboarding.entry.newTitle")}
-          </p>
-        </div>
-        <p className="text-[14px] text-content-secondary leading-[1.5]">
-          {t("onboarding.entry.newPromise")}
-        </p>
+        {!isCheckout ? (
+          <>
+            <span className="absolute -top-2.5 left-4 inline-flex items-center rounded-full bg-primary text-white px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
+              {t("onboarding.entry.newBadge")}
+            </span>
+            <div className="flex items-center gap-2">
+              <Sparkles className="size-4 text-primary" aria-hidden />
+              <p className="text-[15px] font-semibold text-content-primary">
+                {t("onboarding.entry.newTitle")}
+              </p>
+            </div>
+            <p className="text-[14px] text-content-secondary leading-[1.5]">
+              {t("onboarding.entry.newPromise")}
+            </p>
+          </>
+        ) : null}
 
         <Input
           id="onb-entry-email"
@@ -632,6 +644,7 @@ function EntryStepBody({
           autoFocus
           autoComplete="email"
           inputMode="email"
+          aria-label={t("onboarding.entry.emailPlaceholder")}
           placeholder={t("onboarding.entry.emailPlaceholder")}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -659,14 +672,14 @@ function EntryStepBody({
               {t("onboarding.entry.checking")}
             </>
           ) : (
-            t("onboarding.entry.newCta")
+            t(isCheckout ? "onboarding.entry.newCtaCheckout" : "onboarding.entry.newCta")
           )}
         </Button>
       </form>
 
       <div className="mt-5 flex items-center justify-between gap-3 rounded-lg border border-border-default/50 bg-surface-muted/40 px-4 py-3">
         <span className="text-[13.5px] text-content-secondary">
-          {t("onboarding.entry.haveAccount")}
+          {t(isCheckout ? "onboarding.entry.haveAccountCheckout" : "onboarding.entry.haveAccount")}
         </span>
         <button
           type="button"
@@ -675,13 +688,13 @@ function EntryStepBody({
           className="text-[13.5px] font-semibold text-primary hover:underline disabled:opacity-60"
           data-testid="onboarding-entry-signin"
         >
-          {t("onboarding.entry.haveAccountCta")}
+          {t(isCheckout ? "onboarding.entry.haveAccountCtaCheckout" : "onboarding.entry.haveAccountCta")}
         </button>
       </div>
 
       <p className="mt-4 text-center text-[12.5px] text-content-tertiary flex items-center justify-center gap-1.5">
         <ShieldCheck className="size-3.5" aria-hidden />
-        {t("onboarding.entry.trustLine")}
+        {t(isCheckout ? "onboarding.entry.trustLineCheckout" : "onboarding.entry.trustLine")}
       </p>
     </div>
   );
@@ -711,9 +724,9 @@ function FinalStepBody({
   honeypotRef: React.RefObject<HTMLInputElement | null>;
 }) {
   const { t } = useTranslation("gate");
+  const isCheckout = purpose === "checkout";
   const nameError = form.formState.errors.full_name?.message;
   const emailError = form.formState.errors.email?.message;
-  const phoneError = form.formState.errors.phone?.message;
   const consentError = form.formState.errors.gdpr_consent?.message;
   const consent = form.watch("gdpr_consent");
   const marketing = form.watch("marketing_consent");
@@ -774,16 +787,32 @@ function FinalStepBody({
               />
             )}
           </FinalBullet>
-          <FinalBullet>
-            <Trans
-              i18nKey="onboarding.final.left.bullets.credits"
-              ns="gate"
-              components={{ strong: <strong className="text-white" /> }}
-            />
-          </FinalBullet>
-          <FinalBullet>
-            {t("onboarding.final.left.bullets.save")}
-          </FinalBullet>
+          {isCheckout ? (
+            <>
+              <FinalBullet>
+                {t("onboarding.final.left.bullets.receiptCheckout")}
+              </FinalBullet>
+              <FinalBullet>
+                {t("onboarding.final.left.bullets.returnCheckout")}
+              </FinalBullet>
+              <FinalBullet>
+                {t("onboarding.final.left.bullets.noSubCheckout")}
+              </FinalBullet>
+            </>
+          ) : (
+            <>
+              <FinalBullet>
+                <Trans
+                  i18nKey="onboarding.final.left.bullets.credits"
+                  ns="gate"
+                  components={{ strong: <strong className="text-white" /> }}
+                />
+              </FinalBullet>
+              <FinalBullet>
+                {t("onboarding.final.left.bullets.save")}
+              </FinalBullet>
+            </>
+          )}
         </ul>
       </aside>
 
@@ -836,31 +865,6 @@ function FinalStepBody({
               {t("onboarding.final.right.emailHint")}
             </p>
           )}
-        </div>
-
-        <div className="space-y-1.5">
-          <Label
-            htmlFor="onb-phone"
-            className="text-[13.5px] font-medium text-content-primary"
-          >
-            {t("onboarding.final.right.phoneLabel")}{" "}
-            <span className="text-content-tertiary font-normal">
-              {t("onboarding.final.right.phoneOptional")}
-            </span>
-          </Label>
-          <Input
-            id="onb-phone"
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            placeholder={t("onboarding.final.right.phonePlaceholder")}
-            aria-invalid={Boolean(phoneError)}
-            className="text-base"
-            {...form.register("phone")}
-          />
-          {phoneError ? (
-            <p className="text-[12.5px] text-destructive">{phoneError}</p>
-          ) : null}
         </div>
 
         <div className="rounded-xl border border-border-default/40 bg-surface-muted/40 p-3 space-y-2.5">
@@ -965,14 +969,18 @@ function FinalStepBody({
               </>
             ) : (
               <>
-                <Sparkles className="size-4" aria-hidden />
-                {t("onboarding.final.right.cta")}
+                {isCheckout ? (
+                  <Lock className="size-4" aria-hidden />
+                ) : (
+                  <Sparkles className="size-4" aria-hidden />
+                )}
+                {t(isCheckout ? "onboarding.final.right.ctaCheckout" : "onboarding.final.right.cta")}
               </>
             )}
           </Button>
         </div>
         <p className="text-center text-[12px] text-content-tertiary mt-1">
-          {t("onboarding.final.right.footnote")}
+          {t(isCheckout ? "onboarding.final.right.footnoteCheckout" : "onboarding.final.right.footnote")}
         </p>
       </div>
     </form>
@@ -998,18 +1006,21 @@ function FinalBullet({ children }: { children: React.ReactNode }) {
 
 function QualificationStepBody({
   form,
+  purpose,
   submitting,
   serverError,
   onBack,
   onContinue,
 }: {
   form: ReturnType<typeof useForm<UnlockFormValues>>;
+  purpose: "analyze" | "checkout";
   submitting: boolean;
   serverError: string | null;
   onBack: () => void;
   onContinue: () => void;
 }) {
   const { t } = useTranslation("gate");
+  const isCheckout = purpose === "checkout";
   const value = form.watch("qualification");
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -1029,13 +1040,13 @@ function QualificationStepBody({
     >
       <DialogHeader className="text-left space-y-2.5">
         <p className="text-eyebrow text-content-tertiary">
-          {t("onboarding.qualification.eyebrow")}
+          {t(isCheckout ? "onboarding.qualification.eyebrowCheckout" : "onboarding.qualification.eyebrow")}
         </p>
         <DialogTitle className="font-display text-[28px] sm:text-[32px] leading-[1.08] tracking-[-0.015em] text-content-primary text-balance">
-          {t("onboarding.qualification.title")}
+          {t(isCheckout ? "onboarding.qualification.titleCheckout" : "onboarding.qualification.title")}
         </DialogTitle>
         <DialogDescription className="text-[15px] text-content-secondary leading-[1.55]">
-          {t("onboarding.qualification.subtitle")}
+          {t(isCheckout ? "onboarding.qualification.subtitleCheckout" : "onboarding.qualification.subtitle")}
         </DialogDescription>
       </DialogHeader>
 
@@ -1117,6 +1128,7 @@ function OtpVerifyPanel({
   email,
   sentAt,
   mode,
+  purpose,
   submitting,
   serverError,
   onVerify,
@@ -1126,6 +1138,7 @@ function OtpVerifyPanel({
   email: string;
   sentAt: number;
   mode: "new" | "existing";
+  purpose: "analyze" | "checkout";
   submitting: boolean;
   serverError: string | null;
   onVerify: (code: string) => Promise<void> | void;
@@ -1133,6 +1146,7 @@ function OtpVerifyPanel({
   onBack: () => void;
 }) {
   const { t } = useTranslation("gate");
+  const isCheckout = purpose === "checkout";
   const [code, setCode] = useState("");
   const [now, setNow] = useState(() => Date.now());
 
@@ -1158,16 +1172,30 @@ function OtpVerifyPanel({
         <p className="text-eyebrow-sm text-content-tertiary">
           {t("onboarding.otp.eyebrow")}
         </p>
-        {mode === "existing" ? (
+        {mode === "existing" && !isCheckout ? (
           <p className="text-[13px] text-content-secondary leading-[1.5]">
             {t("onboarding.otp.existingTitle")}
           </p>
         ) : null}
         <DialogTitle className="font-display text-[24px] sm:text-[28px] leading-[1.1] tracking-[-0.015em] text-content-primary text-balance break-words">
-          {t("onboarding.otp.title", { maskedEmail: maskEmail(email) })}
+          {isCheckout
+            ? t(
+                mode === "existing"
+                  ? "onboarding.otp.titleExistingCheckout"
+                  : "onboarding.otp.titleNewCheckout",
+                { maskedEmail: maskEmail(email) },
+              )
+            : t("onboarding.otp.title", { maskedEmail: maskEmail(email) })}
         </DialogTitle>
         <DialogDescription className="text-[14px] text-content-secondary leading-[1.55]">
-          {t("onboarding.otp.subtitle")}
+          {isCheckout
+            ? t(
+                mode === "existing"
+                  ? "onboarding.otp.subtitleExistingCheckout"
+                  : "onboarding.otp.subtitleNewCheckout",
+                { maskedEmail: maskEmail(email) },
+              )
+            : t("onboarding.otp.subtitle")}
         </DialogDescription>
       </DialogHeader>
 
@@ -1210,7 +1238,7 @@ function OtpVerifyPanel({
               {t("onboarding.otp.verifying")}
             </>
           ) : (
-            t("onboarding.otp.cta")
+            t(isCheckout ? "onboarding.otp.ctaCheckout" : "onboarding.otp.cta")
           )}
         </Button>
 
