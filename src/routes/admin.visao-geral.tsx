@@ -131,6 +131,7 @@ function VisaoGeralPage() {
           <AcquisitionFunnel />
           <CostSummaryCard />
         </div>
+        <OnboardingFunnelCard />
         <PriorityFollowups />
         <IntentSection />
       </div>
