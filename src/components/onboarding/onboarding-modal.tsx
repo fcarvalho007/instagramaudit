@@ -683,16 +683,20 @@ function FinalStepBody({
 
       {/* Left — navy value panel */}
       <aside className="bg-content-primary text-white px-6 py-7 sm:px-8 sm:py-9 lg:py-10 flex flex-col gap-5">
-        <p className="text-eyebrow-sm text-white/60">
+        <p className="text-eyebrow-sm text-cyan-300">
           {t("onboarding.final.left.eyebrow")}
         </p>
-        <p className="font-display text-[26px] sm:text-[30px] leading-[1.05] tracking-[-0.015em] text-white break-words">
-          @{handle}
+        <p className="font-display text-[28px] sm:text-[32px] leading-[1.08] tracking-[-0.015em] text-white text-balance">
+          {t("onboarding.final.left.title")}
         </p>
-        <p className="text-[14.5px] text-white/75 leading-[1.55]">
-          {t("onboarding.final.left.tagline")}
-        </p>
-        <ul className="space-y-3 pt-1">
+        <ul className="space-y-3 pt-2">
+          <FinalBullet>
+            <Trans
+              i18nKey="onboarding.final.left.bullets.report"
+              ns="gate"
+              values={{ handle }}
+            />
+          </FinalBullet>
           <FinalBullet>
             <Trans
               i18nKey="onboarding.final.left.bullets.credits"
@@ -703,23 +707,11 @@ function FinalStepBody({
           <FinalBullet>
             {t("onboarding.final.left.bullets.save")}
           </FinalBullet>
-          <FinalBullet>
-            {t("onboarding.final.left.bullets.privacy")}
-          </FinalBullet>
         </ul>
       </aside>
 
       {/* Right — compact form */}
       <div className="px-5 py-6 sm:px-8 sm:py-8 flex flex-col gap-4 bg-white min-w-0">
-        <DialogHeader className="text-left space-y-1.5">
-          <DialogTitle className="font-display text-[22px] sm:text-[24px] leading-[1.1] tracking-[-0.01em] text-content-primary">
-            {t("onboarding.final.right.title")}
-          </DialogTitle>
-          <DialogDescription className="text-[13.5px] text-content-secondary leading-[1.5]">
-            {t("onboarding.final.right.subtitle")}
-          </DialogDescription>
-        </DialogHeader>
-
         <div className="space-y-1.5">
           <Label htmlFor="onb-name" className="text-[13.5px] font-medium text-content-primary">
             {t("onboarding.final.right.nameLabel")}
@@ -895,6 +887,9 @@ function FinalStepBody({
             )}
           </Button>
         </div>
+        <p className="text-center text-[12px] text-content-tertiary mt-1">
+          {t("onboarding.final.right.footnote")}
+        </p>
       </div>
     </form>
   );

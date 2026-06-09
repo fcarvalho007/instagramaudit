@@ -186,18 +186,15 @@
     },
     "final": {
       "left": {
-        "eyebrow": "YOU'LL READ THE REPORT FOR",
-        "handle": "@{{handle}}",
-        "tagline": "Editorial analysis, metrics and benchmarks — ready in seconds.",
+        "eyebrow": "LAST STEP",
+        "title": "Your report is one click away",
         "bullets": {
+          "report": "Report for @{{handle}}",
           "credits": "Private account with <strong>2 free credits</strong>",
-          "save": "Every future report is saved",
-          "privacy": "Public data only · GDPR"
+          "save": "Every future report is saved"
         }
       },
       "right": {
-        "title": "A few last details",
-        "subtitle": "So we can address you and save the report.",
         "nameLabel": "Name",
         "namePlaceholder": "Ana Marques",
         "emailLabel": "Email",
@@ -205,11 +202,12 @@
         "phoneLabel": "Phone",
         "phoneOptional": "optional",
         "phonePlaceholder": "+351 912 345 678",
-        "consentText": "I accept the <a>data processing terms</a> required to generate, store and send this report, and I've read the <a2>privacy policy</a2>.",
+        "consentText": "I accept the <a>data processing terms</a>",
         "consentMandatory": "(required)",
-        "marketingText": "I'd like to receive tips and benchmarks.",
-        "marketingOptional": "Optional.",
-        "cta": "Open report  →",
+        "marketingText": "I'd like tips and benchmarks",
+        "marketingOptional": "(optional)",
+        "cta": "Generate my report  →",
+        "footnote": "GDPR · no spam",
         "back": "Back"
       }
     },
