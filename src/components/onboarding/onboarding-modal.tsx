@@ -1004,6 +1004,116 @@ function FinalBullet({ children }: { children: React.ReactNode }) {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Qualification step — single select between entry and final                 */
+/* -------------------------------------------------------------------------- */
+
+function QualificationStepBody({
+  form,
+  submitting,
+  serverError,
+  onBack,
+  onContinue,
+}: {
+  form: ReturnType<typeof useForm<UnlockFormValues>>;
+  submitting: boolean;
+  serverError: string | null;
+  onBack: () => void;
+  onContinue: () => void;
+}) {
+  const { t } = useTranslation("gate");
+  const value = form.watch("qualification");
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  const handleContinue = () => {
+    if (!value) {
+      setLocalError(t("onboarding.qualification.error"));
+      return;
+    }
+    setLocalError(null);
+    onContinue();
+  };
+
+  return (
+    <div
+      className="px-6 py-7 sm:px-10 sm:py-9"
+      data-testid="onboarding-qualification-step"
+    >
+      <DialogHeader className="text-left space-y-2.5">
+        <p className="text-eyebrow text-content-tertiary">
+          {t("onboarding.qualification.eyebrow")}
+        </p>
+        <DialogTitle className="font-display text-[28px] sm:text-[32px] leading-[1.08] tracking-[-0.015em] text-content-primary text-balance">
+          {t("onboarding.qualification.title")}
+        </DialogTitle>
+        <DialogDescription className="text-[15px] text-content-secondary leading-[1.55]">
+          {t("onboarding.qualification.subtitle")}
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="mt-6 space-y-3">
+        <Select
+          value={value ?? undefined}
+          onValueChange={(v) => {
+            form.setValue("qualification", v as LeadQualification, {
+              shouldValidate: true,
+            });
+            setLocalError(null);
+          }}
+        >
+          <SelectTrigger
+            id="onb-qualification"
+            aria-invalid={Boolean(localError)}
+            className="text-base h-12"
+            data-testid="onboarding-qualification"
+          >
+            <SelectValue
+              placeholder={t("onboarding.qualification.placeholder")}
+            />
+          </SelectTrigger>
+          <SelectContent>
+            {LEAD_QUALIFICATIONS.map((q) => (
+              <SelectItem key={q} value={q}>
+                {t(`onboarding.final.right.qualificationOptions.${q}`)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {localError || serverError ? (
+          <Alert variant="destructive">
+            <AlertDescription>{localError ?? serverError}</AlertDescription>
+          </Alert>
+        ) : null}
+      </div>
+
+      <div className="mt-6 flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          onClick={onBack}
+          disabled={submitting}
+          className="w-full sm:w-auto sm:flex-shrink-0 rounded-lg"
+        >
+          <ArrowLeft className="size-4" aria-hidden />
+          {t("onboarding.qualification.back")}
+        </Button>
+        <Button
+          type="button"
+          size="lg"
+          onClick={handleContinue}
+          disabled={submitting}
+          className="w-full sm:flex-1 rounded-lg font-medium"
+          data-testid="onboarding-qualification-continue"
+        >
+          {t("onboarding.qualification.cta")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /* OTP verify panel — for existing emails (ownership proof)                   */
 /* -------------------------------------------------------------------------- */
 
