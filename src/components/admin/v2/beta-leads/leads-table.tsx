@@ -37,7 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Inbox, Loader2, Search, Trash2, X } from "lucide-react";
+import { Archive, Inbox, Loader2, Search, Trash2, X } from "lucide-react";
 import { adminFetch } from "@/lib/admin/fetch";
 import {
   COMMERCIAL_STATUS_OPTIONS,
@@ -210,6 +210,7 @@ export function LeadsTable({ leads, onOpenDetail }: LeadsTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const [forcePaid, setForcePaid] = useState(false);
   const [hideQa, setHideQa] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
     const v = window.localStorage.getItem("admin.leads.hideQa");
@@ -340,11 +341,15 @@ export function LeadsTable({ leads, onOpenDetail }: LeadsTableProps) {
   );
 
   const deleteMutation = useMutation({
-    mutationFn: async (ids: string[]) => {
+    mutationFn: async (args: { ids: string[]; force_paid?: boolean }) => {
       const res = await adminFetch("/api/admin/leads-bulk", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids }),
+        body: JSON.stringify({
+          ids: args.ids,
+          mode: "purge",
+          force_paid: args.force_paid ?? false,
+        }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || json?.success === false) {
@@ -355,16 +360,43 @@ export function LeadsTable({ leads, onOpenDetail }: LeadsTableProps) {
     onSuccess: (data) => {
       toast.success(
         data.deleted === 1
-          ? "1 contacto apagado"
-          : `${data.deleted} contactos apagados`,
+          ? "1 conta de teste apagada definitivamente"
+          : `${data.deleted} contas de teste apagadas definitivamente`,
       );
       clearSelection();
       setConfirmOpen(false);
       setConfirmText("");
+      setForcePaid(false);
       queryClient.invalidateQueries({ queryKey: ["admin", "leads"] });
     },
     onError: (err: Error) => {
       toast.error(err.message || "Falha ao apagar contactos");
+    },
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const res = await adminFetch("/api/admin/leads-bulk", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids, mode: "archive" }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json?.success === false) {
+        throw new Error(json?.error ?? `Falha ao arquivar (HTTP ${res.status})`);
+      }
+      return json as { archived: number };
+    },
+    onSuccess: (data) => {
+      const n = data.archived ?? 0;
+      toast.success(
+        n === 1 ? "1 contacto arquivado" : `${n} contactos arquivados`,
+      );
+      clearSelection();
+      queryClient.invalidateQueries({ queryKey: ["admin", "leads"] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Falha ao arquivar contactos");
     },
   });
 
@@ -375,7 +407,10 @@ export function LeadsTable({ leads, onOpenDetail }: LeadsTableProps) {
   const onOpenConfirmChange = (open: boolean) => {
     if (!open && deleteMutation.isPending) return;
     setConfirmOpen(open);
-    if (!open) setConfirmText("");
+    if (!open) {
+      setConfirmText("");
+      setForcePaid(false);
+    }
   };
 
   const handleActionClick = (lead: EnrichedLead, _action: SuggestedActionKey) => {
@@ -528,12 +563,29 @@ export function LeadsTable({ leads, onOpenDetail }: LeadsTableProps) {
               </Button>
               <Button
                 size="sm"
+                variant="outline"
+                onClick={() =>
+                  archiveMutation.mutate(selectedLeads.map((l) => l.id))
+                }
+                disabled={archiveMutation.isPending || selectedLeads.length === 0}
+                className="gap-1.5"
+              >
+                {archiveMutation.isPending ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Archive size={14} />
+                )}
+                Arquivar ({selectedIds.size})
+              </Button>
+              <Button
+                size="sm"
                 variant="destructive"
                 onClick={() => setConfirmOpen(true)}
                 className="gap-1.5"
+                title="Apagar definitivamente — só para contas de teste"
               >
                 <Trash2 size={14} />
-                Apagar ({selectedIds.size})
+                Apagar definitivamente ({selectedIds.size})
               </Button>
             </div>
           </div>
@@ -673,8 +725,8 @@ export function LeadsTable({ leads, onOpenDetail }: LeadsTableProps) {
             <AlertDialogHeader>
               <AlertDialogTitle>
                 {selectedIds.size === 1
-                  ? "Apagar 1 contacto permanentemente?"
-                  : `Apagar ${selectedIds.size} contactos permanentemente?`}
+                  ? "Apagar definitivamente 1 conta de teste?"
+                  : `Apagar definitivamente ${selectedIds.size} contas de teste?`}
               </AlertDialogTitle>
               <AlertDialogDescription asChild>
                 <div className="space-y-3 text-[13px] text-admin-text-secondary">
@@ -696,11 +748,28 @@ export function LeadsTable({ leads, onOpenDetail }: LeadsTableProps) {
                   <div>
                     Esta acção é{" "}
                     <span className="font-semibold text-admin-text-primary">
-                      permanente
+                      permanente e destinada a contas de teste
                     </span>
-                    . Vão ser removidos também: relatórios pedidos, snapshots,
-                    feedback beta e eventos associados. Os perfis ligados ficam
-                    sem referência ao contacto.
+                    . Vão ser removidos: o utilizador de autenticação
+                    (auth.users), todos os relatórios pedidos, snapshots,
+                    pagamentos, créditos, entitlements, unlocks, feedback beta
+                    e eventos associados. Para arquivar sem destruir, usa o
+                    botão <span className="font-medium">Arquivar</span>.
+                  </div>
+                  <div className="rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2 text-[12px] text-amber-900">
+                    Se algum contacto tiver pagamentos confirmados, a operação
+                    é bloqueada por defeito. Activa a opção abaixo só se sabes
+                    o que estás a fazer.
+                  </div>
+                  <label className="flex items-center gap-2 text-[12px] text-admin-text-secondary">
+                    <input
+                      type="checkbox"
+                      checked={forcePaid}
+                      onChange={(e) => setForcePaid(e.target.checked)}
+                      className="h-3.5 w-3.5"
+                    />
+                    Forçar mesmo com pagamentos pagos (destrutivo)
+                  </label>
                   </div>
                   <div>
                     Escreve{" "}
@@ -720,7 +789,10 @@ export function LeadsTable({ leads, onOpenDetail }: LeadsTableProps) {
                         !confirmDisabled &&
                         selectedLeads.length > 0
                       ) {
-                        deleteMutation.mutate(selectedLeads.map((l) => l.id));
+                        deleteMutation.mutate({
+                          ids: selectedLeads.map((l) => l.id),
+                          force_paid: forcePaid,
+                        });
                       }
                     }}
                     placeholder={HARD_CONFIRM_PHRASE}
@@ -738,7 +810,10 @@ export function LeadsTable({ leads, onOpenDetail }: LeadsTableProps) {
                 onClick={(e) => {
                   e.preventDefault();
                   if (confirmDisabled || selectedLeads.length === 0) return;
-                  deleteMutation.mutate(selectedLeads.map((l) => l.id));
+                  deleteMutation.mutate({
+                    ids: selectedLeads.map((l) => l.id),
+                    force_paid: forcePaid,
+                  });
                 }}
                 className="bg-[rgb(var(--admin-expense-500))] text-white hover:bg-[rgb(var(--admin-expense-500))]/90"
               >
