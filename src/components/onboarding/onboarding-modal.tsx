@@ -534,6 +534,53 @@ export function OnboardingModal({
 /* Entry step — single screen with the dual path                              */
 /* -------------------------------------------------------------------------- */
 
+/* Step indicator shared across entry → qualification → final */
+function OnboardingStepHeader({
+  current,
+  className,
+}: {
+  current: 1 | 2 | 3;
+  className?: string;
+}) {
+  const { t } = useTranslation("gate");
+  const steps: Array<{ id: 1 | 2 | 3; key: "entry" | "qualification" | "final" }> = [
+    { id: 1, key: "entry" },
+    { id: 2, key: "qualification" },
+    { id: 3, key: "final" },
+  ];
+  return (
+    <div
+      className={`flex items-center justify-between gap-3 ${className ?? ""}`}
+      data-testid="onboarding-step-header"
+    >
+      <ol className="flex items-center gap-1.5" aria-label={`Passo ${current} de 3`}>
+        {steps.map((s) => {
+          const state =
+            s.id < current ? "done" : s.id === current ? "active" : "future";
+          return (
+            <li
+              key={s.id}
+              className={`h-1.5 w-7 rounded-full transition-colors ${
+                state === "active"
+                  ? "bg-primary"
+                  : state === "done"
+                  ? "bg-primary/40"
+                  : "bg-border-default"
+              }`}
+              aria-current={state === "active" ? "step" : undefined}
+            />
+          );
+        })}
+      </ol>
+      <span className="text-eyebrow-sm text-content-tertiary whitespace-nowrap">
+        {current === 3
+          ? t("onboarding.stepper.badgeLast")
+          : t("onboarding.stepper.badge", { n: current, total: 3 })}
+      </span>
+    </div>
+  );
+}
+
 function EntryStepBody({
   handle,
   purpose,
