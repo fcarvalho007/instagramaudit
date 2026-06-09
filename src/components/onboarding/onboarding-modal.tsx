@@ -845,16 +845,17 @@ function FinalStepBody({
               : "onboarding.final.left.title",
           )}
         </p>
+        {!isCheckout ? (
+          <p className="text-[14px] leading-[1.55] text-white/75 text-balance">
+            {t("onboarding.final.left.subtitle")}
+          </p>
+        ) : null}
         <ul className="space-y-3 pt-2">
           <FinalBullet>
             {purpose === "checkout" ? (
               t("onboarding.final.left.bullets.reportCheckout")
             ) : (
-              <Trans
-                i18nKey="onboarding.final.left.bullets.report"
-                ns="gate"
-                values={{ handle }}
-              />
+              t("onboarding.final.left.bullets.save")
             )}
           </FinalBullet>
           {isCheckout ? (
@@ -872,18 +873,28 @@ function FinalStepBody({
           ) : (
             <>
               <FinalBullet>
-                <Trans
-                  i18nKey="onboarding.final.left.bullets.credits"
-                  ns="gate"
-                  components={{ strong: <strong className="text-white" /> }}
-                />
+                {t("onboarding.final.left.bullets.passwordProtected")}
               </FinalBullet>
               <FinalBullet>
-                {t("onboarding.final.left.bullets.save")}
+                {t("onboarding.final.left.bullets.privateData")}
+              </FinalBullet>
+              <FinalBullet>
+                {t("onboarding.final.left.bullets.returnAny")}
               </FinalBullet>
             </>
           )}
         </ul>
+        {!isCheckout ? (
+          <div className="mt-auto flex items-start gap-2.5 rounded-lg border border-white/10 bg-white/5 p-3">
+            <ShieldCheck
+              className="size-4 text-cyan-300 shrink-0 mt-0.5"
+              aria-hidden
+            />
+            <p className="text-[12.5px] leading-[1.5] text-white/70">
+              {t("onboarding.final.left.securityNote")}
+            </p>
+          </div>
+        ) : null}
       </aside>
 
       {/* Right — compact form */}
