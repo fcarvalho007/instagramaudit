@@ -179,6 +179,14 @@ export interface EnrichedLead {
   credits_used: number;
   /** Saldo actual (SUM(delta)). */
   credits_remaining: number;
+  /** Total de `report_requests` deste lead (independente do estado). */
+  reports_count: number;
+  /** Campos do onboarding/contexto que o admin renderiza tal como gravados. */
+  qualification: string | null;
+  email_domain_class: string | null;
+  gdpr_consent_at: string | null;
+  gdpr_consent_version: string | null;
+  marketing_consent_at: string | null;
 }
 
 export interface BetaFeedbackSummary {
