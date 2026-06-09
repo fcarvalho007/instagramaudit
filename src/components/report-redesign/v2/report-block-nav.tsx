@@ -1133,13 +1133,20 @@ function ExploreSection({
                 : undefined
             }
           >
-            {balance > 0
+            {isAdminPreview
+              ? "Modo teste admin · créditos simulados"
+              : balance > 0
               ? t("nav.explore.beta_credits_available", { count: balance })
               : t("nav.explore.beta_credits_empty")}
           </p>
-          {balance >= 3 ? (
+          {!isAdminPreview && balance >= 3 ? (
             <p className="mt-0.5 text-[10px] text-content-tertiary">
               1 incluído na compra + 2 bónus beta
+            </p>
+          ) : null}
+          {isAdminPreview ? (
+            <p className="mt-0.5 text-[10px] text-amber-700">
+              Não consome créditos reais.
             </p>
           ) : null}
         </div>
