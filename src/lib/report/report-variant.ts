@@ -106,10 +106,15 @@ const VARIANT_FEATURES: Record<ReportVariant, VariantFeatures> = {
     debugLabels: "hidden",
     blockOverview: "full",
     blockDiagnosis: "full",
-    blockPerformance: "full",
-    blockContent: "full",
-    blockSearch: "full",
-    blockBenchmark: "full",
+    // Blocos 03–06 são lab-only por regra de negócio (ver MODULE_READINESS:
+    // `internal_only`). Mantemo-los `hidden` aqui como defesa-em-profundidade:
+    // se algum dia `pro_preview` voltar a ser usado numa rota pública ou
+    // for publicado via overrides, os blocos internos não escapam. Para
+    // inspeccionar 03–06 internamente usa-se `internal_lab`.
+    blockPerformance: "hidden",
+    blockContent: "hidden",
+    blockSearch: "hidden",
+    blockBenchmark: "hidden",
   },
 };
 

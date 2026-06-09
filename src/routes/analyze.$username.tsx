@@ -412,13 +412,13 @@ function AnalyzeReady({
     };
   }, []);
 
-  // Variant efectiva: comuta para `pro_preview` assim que o servidor confirma
-  // o entitlement `report_full_9`. Sem este switch, as feature flags do shell
-  // mantêm `blockPerformance: "hidden"` (config de `public_mvp`) e o Bloco 03
-  // nunca renderiza — mesmo com premiumUnlocked=true.
-  const effectiveVariant: "public_mvp" | "pro_preview" = premiumUnlocked
-    ? "pro_preview"
-    : "public_mvp";
+  // Rota pública usa SEMPRE `public_mvp`. Pro adiciona conteúdo premium
+  // dentro dos blocos 01/02 (e gates de competitor/janela 30d/90d/créditos)
+  // via `premiumUnlocked` — não através da variant. Blocos 03–06 são
+  // lab-only e ficam `hidden` em qualquer contexto público. As variantes
+  // `pro_preview`/`internal_lab` só são consumidas pelas rotas de admin
+  // (`/admin/report-lab`, `/admin/report-preview/...`).
+  const effectiveVariant: "public_mvp" = "public_mvp";
 
   // Load published module visibility overrides (silent fallback to static
   // defaults). Refetch quando a variant efectiva muda.
