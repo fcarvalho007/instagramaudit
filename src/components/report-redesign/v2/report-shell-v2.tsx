@@ -110,6 +110,7 @@ export function ReportShellV2({
   premiumUnlocked = false,
   onUnlockClick,
   competitorHandles = [],
+  isAdminPreview = false,
 }: ReportShellV2Props) {
   const { t } = useTranslation("report");
   const v2 = result.enriched.aiInsightsV2;
