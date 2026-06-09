@@ -629,6 +629,7 @@ function EntryStepBody({
       className="px-6 py-7 sm:px-10 sm:py-9"
       data-testid="onboarding-entry-step"
     >
+      <OnboardingStepHeader current={1} className="mb-5" />
       <DialogHeader className="text-left space-y-2.5">
         <p className="text-eyebrow text-content-tertiary">
           {t(
