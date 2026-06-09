@@ -324,6 +324,11 @@ export function ConsumeCreditDialog({
                 {t("nav.explore.consume_dialog.balance_label")}: {balance}
               </span>
             </div>
+            <p className="text-[11px] text-content-tertiary">
+              {periodHasFreshCache
+                ? t("nav.explore.consume_dialog.period_cache_note")
+                : t("nav.explore.consume_dialog.period_new_note")}
+            </p>
           </>
         ) : null}
 
@@ -341,12 +346,63 @@ export function ConsumeCreditDialog({
           >
             {t("nav.explore.consume_dialog.cta_cancel")}
           </Button>
-          {atCompetitorLimit ? null : hasCredit ? (
+          {atCompetitorLimit ? null : !hasCredit ? (
+            isPeriod ? (
+              // Case C — period + balance 0: just a close button.
+              <Button onClick={() => onOpenChange(false)}>
+                {t("nav.explore.consume_dialog.cta_cancel")}
+              </Button>
+            ) : (
+              <Button
+                onClick={() => {
+                  onOpenChange(false);
+                  onEmptyFeedback?.();
+                }}
+              >
+                {t("nav.explore.consume_dialog.empty_cta")}
+              </Button>
+            )
+          ) : isPeriod && periodHasFreshCache ? (
+            <>
+              {/* Case A — primary "open cached" (0 credits), secondary
+                  "generate new" (1 credit, force_refresh). */}
+              <Button
+                onClick={() => {
+                  if (submitting) return;
+                  onOpenCached?.(intent);
+                }}
+                disabled={submitting}
+                className="gap-2"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                    {t("nav.explore.consume_dialog.submitting")}
+                  </>
+                ) : (
+                  <>
+                    {t("nav.explore.consume_dialog.period_cache_open_cta")}
+                    <ArrowRight className="size-4" aria-hidden="true" />
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (submitting) return;
+                  onConfirm(intent, { forceRefresh: true });
+                }}
+                disabled={submitting}
+                className="gap-2"
+              >
+                {t("nav.explore.consume_dialog.period_cache_force_cta")}
+              </Button>
+            </>
+          ) : (
+            // Case B (period, no fresh cache) OR competitor flow.
             <Button
               onClick={handleConfirmClick}
-              disabled={
-                submitting || (isCompetitor && !competitorReady)
-              }
+              disabled={submitting || (isCompetitor && !competitorReady)}
               className="gap-2"
             >
               {submitting ? (
@@ -356,19 +412,12 @@ export function ConsumeCreditDialog({
                 </>
               ) : (
                 <>
-                  {confirmCta}
+                  {isPeriod
+                    ? t("nav.explore.consume_dialog.period_new_cta")
+                    : competitorConfirmCta}
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </>
               )}
-            </Button>
-          ) : (
-            <Button
-              onClick={() => {
-                onOpenChange(false);
-                onEmptyFeedback?.();
-              }}
-            >
-              {t("nav.explore.consume_dialog.empty_cta")}
             </Button>
           )}
         </DialogFooter>
