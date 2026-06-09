@@ -850,6 +850,9 @@ function buildFormatBreakdown(
 }
 
 function buildTopPosts(posts: SnapshotPost[]): ReportData["topPosts"] {
+
+
+
   const sorted = [...posts].sort(
     (a, b) => num(b.engagement_pct, 0) - num(a.engagement_pct, 0),
   );
