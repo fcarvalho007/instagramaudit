@@ -262,6 +262,9 @@ function CheckoutSteps() {
 }
 
 function PostPurchaseSuccessPanel({ returnPath }: { returnPath: string }) {
+  const fetchBalance = useServerFn(getMyCreditBalance);
+  const startedAt = useState(() => Date.now())[0];
+
   useEffect(() => {
     trackEvent({
       data: {
@@ -272,6 +275,28 @@ function PostPurchaseSuccessPanel({ returnPath }: { returnPath: string }) {
   }, []);
 
   const target = returnPath.startsWith("/") ? returnPath : "/";
+
+  const EXPECTED_TOTAL = 3;
+  const POLL_WINDOW_MS = 10_000;
+
+  const balanceQuery = useQuery({
+    queryKey: ["my-credit-balance", "post-purchase"],
+    queryFn: () => fetchBalance(),
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      const balance = data?.hasLead ? data.balance : 0;
+      if (balance >= EXPECTED_TOTAL) return false;
+      if (Date.now() - startedAt > POLL_WINDOW_MS) return false;
+      return 1500;
+    },
+    refetchIntervalInBackground: false,
+    staleTime: 0,
+    gcTime: 0,
+  });
+
+  const balance = balanceQuery.data?.hasLead ? balanceQuery.data.balance : 0;
+  const waiting =
+    balance < EXPECTED_TOTAL && Date.now() - startedAt <= POLL_WINDOW_MS;
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
@@ -288,6 +313,19 @@ function PostPurchaseSuccessPanel({ returnPath }: { returnPath: string }) {
         </p>
         <p className="text-sm text-content-primary font-medium leading-relaxed">
           Oferta de lançamento aplicada: recebeste 2 créditos extra.
+        </p>
+        <p
+          className="text-sm text-content-secondary leading-relaxed tabular-nums"
+          aria-live="polite"
+        >
+          {waiting ? (
+            <span className="inline-flex items-center gap-2">
+              <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+              A actualizar saldo…
+            </span>
+          ) : (
+            <>Saldo actualizado: {balance} créditos.</>
+          )}
         </p>
       </header>
 
