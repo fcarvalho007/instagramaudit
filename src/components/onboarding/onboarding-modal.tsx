@@ -1,18 +1,22 @@
 /**
- * OnboardingModal — entry + final + OTP (Fase 4 redesign).
+ * OnboardingModal — entry + qualification + final + login (password mode).
  *
- * Public flow:
- *   Entry ──┬─► (new email)       Final 2-col ──► /api/onboarding/start
- *           └─► (existing email)  OTP 6 digits ──► supabase.auth.verifyOtp
- *                                               ──► /api/onboarding/claim-existing
+ * Public flow (AUTH_MODE=password):
+ *   Entry ──┬─► (new email)       Qualification ─► Final form (com password)
+ *           │                                      ──► POST /api/onboarding/start
+ *           │                                          (admin.createUser + cookie)
+ *           └─► (existing email)  Login (email + password)
+ *                                 ──► supabase.auth.signInWithPassword
+ *                                 ──► POST /api/onboarding/claim-existing
  *
- * Security: the server (`start.ts`) rejects any payload whose email
- * already maps to a lead with `EMAIL_REQUIRES_VERIFICATION`. Only the OTP
- * path can grant a `lead_session` for existing emails, so a typo or a
- * malicious client cannot hijack someone else's reports.
+ * Security: o servidor (`start.ts`) cria a Supabase auth user via
+ * service-role e só emite o cookie `lead_session` após sucesso. Para email
+ * já existente, `/start` rejeita com `EMAIL_ALREADY_EXISTS` e o cliente
+ * salta para o ecrã de login. Nunca emitimos sessão sem prova de
+ * propriedade.
  *
- * Copy lives in `gate.json` under `onboarding.entry`, `onboarding.final`,
- * and `onboarding.otp`.
+ * Magic link / OTP foram removidos da UX pública — ficam reachable só via
+ * `AUTH_MODE=magic_link` (env override) para contingência.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -61,7 +65,6 @@ import { trackOnboardingEvent } from "@/lib/tracking/onboarding-events";
 import { buildStartPayload } from "@/lib/leads/build-start-payload";
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
-const RESEND_COOLDOWN_SECONDS = 30;
 
 export interface OnboardingSuccess {
   leadId: string;
@@ -98,15 +101,14 @@ type View =
   | { kind: "entry" }
   | { kind: "qualification"; email: string }
   | { kind: "final"; email: string }
-  | { kind: "otp"; email: string; sentAt: number; mode: "new" | "existing" }
-  | { kind: "magic_link_sent"; email: string };
+  | { kind: "login"; email: string };
 
 interface OnboardingApiOk {
   ok: true;
   lead_id?: string;
   credits?: number;
-  verification_required?: boolean;
-  verification_mode?: "off" | "magic_link" | "otp";
+  requires_email_verification?: boolean;
+  auth_mode?: "password" | "password_with_email_verification" | "magic_link";
 }
 interface OnboardingApiFail {
   ok: false;
