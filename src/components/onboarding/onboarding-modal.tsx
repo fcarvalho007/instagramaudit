@@ -762,6 +762,7 @@ function FinalStepBody({
   submitting,
   onBack,
   onSubmit,
+  onMissingQualification,
   honeypotRef,
 }: {
   handle: string;
@@ -771,6 +772,7 @@ function FinalStepBody({
   submitting: boolean;
   onBack: () => void;
   onSubmit: () => Promise<void> | void;
+  onMissingQualification: () => void;
   honeypotRef: React.RefObject<HTMLInputElement | null>;
 }) {
   const { t } = useTranslation("gate");
@@ -783,14 +785,35 @@ function FinalStepBody({
   const emailValue = form.watch("email");
   const emailIsValid = !emailError && emailValue && EMAIL_RE.test(emailValue);
 
+  const trySubmit = async () => {
+    const ok = await form.trigger();
+    if (!ok) {
+      const errs = form.formState.errors;
+      // Erros que vivem no passo 2 (qualificação) → manda o user para lá.
+      if (errs.profile_ownership || errs.goal || errs.goal_other_text) {
+        onMissingQualification();
+        return;
+      }
+      // Erros visíveis no passo 3 — react-hook-form já marca os campos.
+      return;
+    }
+    await onSubmit();
+  };
+
+  // Defesa: se houver erros em campos que não renderizamos no passo 3,
+  // mostramos um alerta no topo para nunca falhar em silêncio.
+  const hiddenErrorKeys = (
+    ["profile_ownership", "goal", "goal_other_text", "user_type", "user_type_other_text"] as const
+  ).filter((k) => Boolean(form.formState.errors[k]));
+
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        void onSubmit();
+        void trySubmit();
       }}
       noValidate
-      className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] min-w-0"
+      className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.25fr)] min-w-0"
     >
       {/* Honeypot — invisible to humans, attracts bots */}
       <div
