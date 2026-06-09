@@ -49,6 +49,12 @@ function lead(overrides: Partial<EnrichedLead> = {}): EnrichedLead {
     credits_granted: 0,
     credits_used: 0,
     credits_remaining: 0,
+    reports_count: 0,
+    qualification: null,
+    email_domain_class: null,
+    gdpr_consent_at: null,
+    gdpr_consent_version: null,
+    marketing_consent_at: null,
     ...overrides,
   };
 }
