@@ -11,6 +11,7 @@ import type { EnrichmentResult } from "@/lib/enrichment/types";
 import { buildComparisonEvidence, hashEvidencePack } from "./build-evidence";
 import { buildUserPrompt, SYSTEM_PROMPT_V1 } from "./prompt";
 import { recordProviderCall } from "@/lib/analysis/events";
+import { estimateLovableAiCallCostUsd } from "@/lib/security/lovable-ai-cost";
 import {
   COMPARISON_READINGS_KEY,
   COMPARISON_READINGS_MODEL,
@@ -87,6 +88,7 @@ export async function generateComparisonReadingsForSnapshot(
         httpStatus: null,
         durationMs: 0,
         model,
+        estimatedCostUsd: 0,
         errorMessage: "LOVABLE_API_KEY missing",
         analysisEventId,
         sourceContext: "public_analysis",
@@ -211,8 +213,13 @@ export async function generateComparisonReadingsForSnapshot(
       promptTokens,
       completionTokens,
       totalTokens,
-      // No token-price table yet — admit null. Future PR may compute USD.
-      estimatedCostUsd: null,
+      // Token-based estimate when usage available; flat fallback otherwise.
+      // Failed calls still consume gateway quota, so they are charged too.
+      estimatedCostUsd: estimateLovableAiCallCostUsd({
+        model,
+        promptTokens,
+        completionTokens,
+      }),
       errorMessage: logError ?? undefined,
       analysisEventId,
       sourceContext: "public_analysis",
