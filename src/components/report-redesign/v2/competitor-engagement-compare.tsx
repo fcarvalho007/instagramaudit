@@ -1,4 +1,8 @@
-import { CompareCardShell, CompareStatBlock } from "@/components/report-redesign/v2/compare";
+import {
+  CompareCardShell,
+  CompareStatBlock,
+  CompareMissingDataNote,
+} from "@/components/report-redesign/v2/compare";
 import type { ReportCompetitorBreakdownEntry } from "@/components/report/report-mock-data";
 import { cn } from "@/lib/utils";
 
@@ -121,18 +125,23 @@ function MethodologyLine({
 }) {
   const p = isPositive(primary.postsAnalyzed) ? (primary.postsAnalyzed as number) : 0;
   const c = isPositive(competitor.postsAnalyzed) ? (competitor.postsAnalyzed as number) : 0;
-  const parts: string[] = [];
-  if (p > 0) parts.push(`${p} publicações (@${primary.handle})`);
-  if (c > 0) parts.push(`${c} publicações (@${competitor.username})`);
-  const competitorMissing = c === 0;
-  const sentences: string[] = [];
-  if (parts.length > 0) sentences.push(`Amostra: ${parts.join(" · ")}.`);
-  if (competitorMissing) {
-    sentences.push("Dados do concorrente indisponíveis nesta amostra.");
-  }
-  if (sentences.length === 0) return null;
+  const both = p > 0 && c > 0;
   return (
-    <p className="mt-5 text-sm text-content-secondary">{sentences.join(" ")}</p>
+    <CompareMissingDataNote
+      className="mt-5"
+      sampleN={both ? null : p > 0 ? p : null}
+      perSide={
+        both
+          ? {
+              primaryHandle: primary.handle,
+              primaryN: p,
+              competitorHandle: competitor.username,
+              competitorN: c,
+            }
+          : null
+      }
+      competitorMissing={p > 0 && c === 0}
+    />
   );
 }
 

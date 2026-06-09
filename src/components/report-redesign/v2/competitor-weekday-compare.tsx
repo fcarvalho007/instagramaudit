@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import {
   CompareCardShell,
   CompareMissingDataNote,
+  COMPARE_MISSING_COPY,
 } from "@/components/report-redesign/v2/compare";
 import type { ReportCompetitorBreakdownEntry } from "@/components/report/report-mock-data";
 import type { SnapshotPayload, SnapshotPost } from "@/lib/report/snapshot-to-report-data";
@@ -72,14 +73,16 @@ export function CompetitorWeekdayCompare({
 
   const footer = competitorHasData
     ? buildWeekdayInsight(primaryIso, competitorIso, totalPrimary, totalCompetitor)
-    : "Sem dados suficientes do concorrente — leitura limitada ao perfil.";
+    : competitorFieldMissing
+      ? COMPARE_MISSING_COPY.competitorMissing
+      : COMPARE_MISSING_COPY.competitorNoPosts;
 
-  const sampleN = competitorHasData ? totalPrimary + totalCompetitor : totalPrimary;
-
+  const bothSidesHaveData = competitorHasData && totalPrimary > 0;
+  const sampleN = bothSidesHaveData ? null : totalPrimary;
   const missingCopy = competitorFieldMissing
-    ? "Sem dados suficientes do concorrente para comparar o ritmo semanal."
+    ? COMPARE_MISSING_COPY.competitorMissing
     : !competitorHasData
-      ? "Sem publicações do concorrente nesta janela."
+      ? COMPARE_MISSING_COPY.competitorNoPosts
       : null;
 
   return (
@@ -209,8 +212,19 @@ export function CompetitorWeekdayCompare({
         </div>
 
         <CompareMissingDataNote
-          sampleN={sampleN > 0 ? sampleN : null}
-          competitorMissing={!competitorHasData}
+          sampleN={sampleN && sampleN > 0 ? sampleN : null}
+          perSide={
+            bothSidesHaveData
+              ? {
+                  primaryHandle,
+                  primaryN: totalPrimary,
+                  competitorHandle: competitor.username,
+                  competitorN: totalCompetitor,
+                }
+              : null
+          }
+          competitorMissing={competitorFieldMissing}
+          competitorNoPosts={!competitorFieldMissing && !competitorHasData}
         />
       </div>
     </CompareCardShell>

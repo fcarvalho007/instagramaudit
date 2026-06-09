@@ -2,6 +2,7 @@ import type { ReportCompetitorBreakdownEntry } from "@/components/report/report-
 import { formatCompactNumber } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
 import { CompareAvatar } from "@/components/report-redesign/v2/compare/compare-handle-row";
+import { COMPARE_MISSING_COPY } from "@/components/report-redesign/v2/compare";
 
 interface PrimarySide {
   handle: string;
@@ -39,7 +40,7 @@ interface MetricRow {
 export function ComparisonHero({ primary, competitor, windowLabel }: Props) {
   const rows = buildRows(primary, competitor);
   const verdict = buildHeroVerdict(primary, competitor);
-  const sampleN = methodologySampleSize(primary, competitor);
+  const methodology = buildMethodology(primary, competitor);
 
   return (
     <section
@@ -107,13 +108,9 @@ export function ComparisonHero({ primary, competitor, windowLabel }: Props) {
           className="mt-1.5 inline-block size-1.5 shrink-0 rounded-full bg-accent-primary"
         />
         <p className="leading-relaxed">
-          {sampleN > 0
-            ? `Comparação com base nas últimas ${sampleN} publicações disponíveis.`
-            : "Comparação com base nas publicações disponíveis."}
-          {sampleAsymmetric(primary, competitor) ? (
-            <span className="text-content-tertiary">
-              {" "}Dados do concorrente indisponíveis nesta amostra.
-            </span>
+          {methodology.headline}
+          {methodology.missingSuffix ? (
+            <span className="text-content-tertiary"> {methodology.missingSuffix}</span>
           ) : null}
           {competitor.windowAligned === false ? (
             <span className="text-content-tertiary"> Concorrente em janela de referência.</span>
@@ -323,25 +320,43 @@ function buildHeroVerdict(p: PrimarySide, c: ReportCompetitorBreakdownEntry): st
   return "Os dois perfis apresentam dimensão e envolvimento comparáveis.";
 }
 
-function methodologySampleSize(
+/** Builds the headline + optional missing-data suffix shown inside the
+ *  hero's methodology box. Mirrors the rules used by
+ *  CompareMissingDataNote — no shared sample size is implied when the
+ *  two sides have asymmetric samples. */
+function buildMethodology(
   p: PrimarySide,
   c: ReportCompetitorBreakdownEntry,
-): number {
+): { headline: string; missingSuffix: string | null } {
   const a = isPos(p.postsAnalyzed) ? p.postsAnalyzed : 0;
   const b = isPos(c.postsAnalyzed) ? c.postsAnalyzed : 0;
-  if (a > 0 && b > 0) return Math.min(a, b);
-  return Math.max(a, b);
-}
 
-/** True when only one side has a positive sample size — the methodology
- *  number reflects a single profile, so we must say so explicitly. */
-function sampleAsymmetric(
-  p: PrimarySide,
-  c: ReportCompetitorBreakdownEntry,
-): boolean {
-  const a = isPos(p.postsAnalyzed) ? p.postsAnalyzed : 0;
-  const b = isPos(c.postsAnalyzed) ? c.postsAnalyzed : 0;
-  return (a > 0) !== (b > 0);
+  if (a > 0 && b > 0) {
+    return {
+      headline: `Comparação com base em ${a} publicações de @${p.handle} e ${b} publicações de @${c.username}.`,
+      missingSuffix: null,
+    };
+  }
+  if (a > 0 && b === 0) {
+    const suffix =
+      c.hasPosts === false
+        ? COMPARE_MISSING_COPY.competitorMissing
+        : COMPARE_MISSING_COPY.competitorNoPosts;
+    return {
+      headline: `Comparação com base em ${a} publicações de @${p.handle}.`,
+      missingSuffix: suffix,
+    };
+  }
+  if (a === 0 && b > 0) {
+    return {
+      headline: `Comparação com base em ${b} publicações de @${c.username}.`,
+      missingSuffix: null,
+    };
+  }
+  return {
+    headline: "Comparação com base nas publicações disponíveis.",
+    missingSuffix: c.hasPosts === false ? COMPARE_MISSING_COPY.competitorMissing : null,
+  };
 }
 
 function pickWinner(a: number, b: number): Side {

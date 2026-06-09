@@ -59,12 +59,18 @@ export function CompetitorCadenceCompare({
   const primaryThumbs = primaryStrip.filter((p) => Boolean(p.thumbUrl)).length;
   const competitorThumbs = competitorStrip.filter((p) => Boolean(p.thumbUrl)).length;
 
-  let sampleN = 0;
-  if (primaryThumbs > 0 && competitorThumbs > 0) {
-    sampleN = Math.min(primaryThumbs, competitorThumbs);
-  } else {
-    sampleN = Math.max(primaryThumbs, competitorThumbs);
-  }
+  // Methodology line uses postsAnalyzed (analysed posts), not thumbnail
+  // count — a blocked CDN doesn't reduce the analysed sample.
+  const primaryPostsAnalyzed = primaryStrip.length;
+  const competitorPostsAnalyzed =
+    typeof competitor.postsAnalyzed === "number" && competitor.postsAnalyzed > 0
+      ? competitor.postsAnalyzed
+      : 0;
+  const bothSidesHavePosts =
+    primaryPostsAnalyzed > 0 && competitorPostsAnalyzed > 0;
+  const fallbackSampleN = primaryPostsAnalyzed > 0
+    ? primaryPostsAnalyzed
+    : competitorPostsAnalyzed;
 
   const insight = buildCadenceInsight(
     primary.postingFrequencyWeekly,
@@ -136,7 +142,17 @@ export function CompetitorCadenceCompare({
 
       <CompareMissingDataNote
         className="mt-4"
-        sampleN={sampleN > 0 ? sampleN : null}
+        sampleN={bothSidesHavePosts ? null : fallbackSampleN > 0 ? fallbackSampleN : null}
+        perSide={
+          bothSidesHavePosts
+            ? {
+                primaryHandle: primary.handle,
+                primaryN: primaryPostsAnalyzed,
+                competitorHandle: competitor.username,
+                competitorN: competitorPostsAnalyzed,
+              }
+            : null
+        }
         competitorMissing={competitorPostsMissing}
         qualifier={
           competitorBlocked
@@ -256,11 +272,6 @@ function SampleStrip({
           <Thumb key={`${p?.permalink ?? i}`} side={side} post={p} />
         ))}
       </div>
-      {allPlaceholders ? (
-        <p className="text-xs text-content-tertiary">
-          Miniaturas indisponíveis nesta amostra.
-        </p>
-      ) : null}
     </div>
   );
 }

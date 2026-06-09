@@ -79,11 +79,15 @@ export function CompetitorFormatCompare({
   const competitorPostsAnalyzed =
     typeof competitor.postsAnalyzed === "number" ? competitor.postsAnalyzed : 0;
 
-  const sampleN = competitorHasStats
-    ? primaryPostsAnalyzed > 0 && competitorPostsAnalyzed > 0
-      ? Math.min(primaryPostsAnalyzed, competitorPostsAnalyzed)
-      : Math.max(primaryPostsAnalyzed, competitorPostsAnalyzed)
-    : primaryPostsAnalyzed;
+  const bothSidesHaveSample =
+    competitorHasStats &&
+    primaryPostsAnalyzed > 0 &&
+    competitorPostsAnalyzed > 0;
+  const sampleN = bothSidesHaveSample
+    ? null
+    : primaryPostsAnalyzed > 0
+      ? primaryPostsAnalyzed
+      : competitorPostsAnalyzed;
 
   return (
     <CompareCardShell
@@ -135,7 +139,17 @@ export function CompetitorFormatCompare({
       </div>
       <CompareMissingDataNote
         className="mt-4"
-        sampleN={sampleN > 0 ? sampleN : null}
+        sampleN={sampleN && sampleN > 0 ? sampleN : null}
+        perSide={
+          bothSidesHaveSample
+            ? {
+                primaryHandle,
+                primaryN: primaryPostsAnalyzed,
+                competitorHandle: competitor.username,
+                competitorN: competitorPostsAnalyzed,
+              }
+            : null
+        }
         competitorMissing={!competitorHasStats}
       />
     </CompareCardShell>
