@@ -142,7 +142,7 @@ vi.mock("@/lib/leads/lead-cookie.server", () => ({
 
 // Mock dos emails transactional disparados em fire-and-forget — evita
 // chamadas reais ao Brevo/Resend nos testes.
-const sendReportAccessEmailMock = vi.fn(async () => ({
+const sendReportAccessEmailMock = vi.fn(async (_args: unknown) => ({
   ok: true as const,
   messageId: "mock-msg-id",
   provider: "brevo" as const,
@@ -150,7 +150,7 @@ const sendReportAccessEmailMock = vi.fn(async () => ({
 vi.mock("@/lib/email/send-report-access.server", () => ({
   sendReportAccessEmail: (args: unknown) => sendReportAccessEmailMock(args),
 }));
-const sendVerificationEmailMock = vi.fn(async () => ({
+const sendVerificationEmailMock = vi.fn(async (_args: unknown) => ({
   ok: true as const,
   messageId: "mock-msg-id",
   provider: "brevo" as const,
