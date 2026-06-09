@@ -46,9 +46,7 @@ describe("buildStartPayload", () => {
     expect(filled.phone).toBe("+351 912 345 678");
   });
 
-  it("includes qualification only when set", () => {
-    const off = buildStartPayload(baseValues, "Ana", "", 1);
-    expect("qualification" in off).toBe(false);
+  it("uses explicit qualification when provided", () => {
     const on = buildStartPayload(
       { ...baseValues, qualification: "brand_company" },
       "Ana",
@@ -56,6 +54,27 @@ describe("buildStartPayload", () => {
       1,
     );
     expect(on.qualification).toBe("brand_company");
+  });
+
+  it("derives qualification from profile_ownership when not explicit", () => {
+    const cases: Array<
+      [UnlockFormValues["profile_ownership"], string]
+    > = [
+      ["own_profile", "content_creator"],
+      ["brand_profile", "brand_company"],
+      ["client_profile", "consultant_agency"],
+      ["competitor_research", "marketing_comms"],
+      ["curiosity", "curiosity"],
+    ];
+    for (const [ownership, expected] of cases) {
+      const payload = buildStartPayload(
+        { ...baseValues, profile_ownership: ownership },
+        "Ana",
+        "",
+        1,
+      );
+      expect(payload.qualification).toBe(expected);
+    }
   });
 
   it("propagates marketing_consent as boolean", () => {
