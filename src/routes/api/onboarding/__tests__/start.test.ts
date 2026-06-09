@@ -170,7 +170,7 @@ beforeEach(() => {
 });
 
 describe("POST /api/onboarding/start", () => {
-  it("valid payload → 200 with credits=0 (verification-gated), NO lead_id and NO cookie before OTP", async () => {
+  it("beta off (default) → 200 com lead_id, créditos e cookie emitidos", async () => {
     const res = await handleOnboardingStart(
       post({
         name: "Ana Silva",
@@ -184,16 +184,15 @@ describe("POST /api/onboarding/start", () => {
       lead_id?: string;
       credits: number;
       verification_required?: boolean;
+      verification_mode?: string;
     };
     expect(body.ok).toBe(true);
-    // CRIT-3: lead_id NÃO deve ser devolvido antes do OTP validar o email.
-    expect(body.lead_id).toBeUndefined();
-    expect(body.credits).toBe(0);
-    expect(body.verification_required).toBe(true);
-    // Fase 5: /start no longer grants credits — that moves to /claim-existing.
-    expect(grantInitialCreditsMock).not.toHaveBeenCalled();
-    // CRIT-3: cookie `lead_session` só é emitido em /claim-existing.
-    expect(setLeadCookieMock).not.toHaveBeenCalled();
+    expect(body.verification_mode).toBe("off");
+    expect(body.verification_required).toBe(false);
+    expect(body.lead_id).toBeDefined();
+    expect(body.credits).toBeGreaterThanOrEqual(2);
+    expect(grantInitialCreditsMock).toHaveBeenCalledTimes(1);
+    expect(setLeadCookieMock).toHaveBeenCalledTimes(1);
   });
 
   it("invalid payload (missing email) → 400 INVALID_PAYLOAD with field issues + human message", async () => {
@@ -221,7 +220,7 @@ describe("POST /api/onboarding/start", () => {
     );
   });
 
-  it("duplicate email on /start → 403 EMAIL_REQUIRES_VERIFICATION (defense-in-depth)", async () => {
+  it("beta off + email duplicado → 200 com claim idempotente (cookie reemitido, grant idempotente)", async () => {
     const first = await handleOnboardingStart(
       post({ name: "Ana", email: "dup@example.com" }),
     );
@@ -230,21 +229,53 @@ describe("POST /api/onboarding/start", () => {
     const second = await handleOnboardingStart(
       post({ name: "Ana Maria", email: "dup@example.com" }),
     );
-    expect(second.status).toBe(403);
+    expect(second.status).toBe(200);
     const body = (await second.json()) as {
       ok: boolean;
-      error_code: string;
+      lead_id?: string;
+      verification_mode?: string;
     };
-    expect(body.ok).toBe(false);
-    expect(body.error_code).toBe("EMAIL_REQUIRES_VERIFICATION");
+    expect(body.ok).toBe(true);
+    expect(body.verification_mode).toBe("off");
+    expect(body.lead_id).toBeDefined();
+    // Grant é idempotente — chamado 2x mas só credita uma.
+    expect(grantInitialCreditsMock).toHaveBeenCalledTimes(2);
+    expect(setLeadCookieMock).toHaveBeenCalledTimes(2);
   });
 
-  it("never invokes setLeadCookie at /start (CRIT-3 — gate on OTP)", async () => {
-    const res = await handleOnboardingStart(
-      post({ name: "Ana", email: "secret@example.com" }),
-    );
-    expect(res.status).toBe(200);
-    expect(setLeadCookieMock).not.toHaveBeenCalled();
+  it("modo `otp` (legacy) → 200 sem cookie, sem créditos, mantém gate de duplicado", async () => {
+    const prev = process.env.EMAIL_VERIFICATION_MODE;
+    process.env.EMAIL_VERIFICATION_MODE = "otp";
+    try {
+      const first = await handleOnboardingStart(
+        post({ name: "Ana", email: "otp-new@example.com" }),
+      );
+      expect(first.status).toBe(200);
+      const firstBody = (await first.json()) as {
+        verification_mode?: string;
+        verification_required?: boolean;
+        lead_id?: string;
+      };
+      expect(firstBody.verification_mode).toBe("otp");
+      expect(firstBody.verification_required).toBe(true);
+      expect(firstBody.lead_id).toBeUndefined();
+      expect(setLeadCookieMock).not.toHaveBeenCalled();
+      expect(grantInitialCreditsMock).not.toHaveBeenCalled();
+
+      const second = await handleOnboardingStart(
+        post({ name: "Ana Maria", email: "otp-new@example.com" }),
+      );
+      expect(second.status).toBe(403);
+      const body = (await second.json()) as {
+        ok: boolean;
+        error_code: string;
+      };
+      expect(body.ok).toBe(false);
+      expect(body.error_code).toBe("EMAIL_REQUIRES_VERIFICATION");
+    } finally {
+      if (prev === undefined) delete process.env.EMAIL_VERIFICATION_MODE;
+      else process.env.EMAIL_VERIFICATION_MODE = prev;
+    }
   });
 
   it("disposable email domain → 400 INVALID_PAYLOAD (email field)", async () => {

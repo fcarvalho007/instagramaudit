@@ -102,8 +102,10 @@ type View =
 
 interface OnboardingApiOk {
   ok: true;
-  lead_id: string;
-  credits: number;
+  lead_id?: string;
+  credits?: number;
+  verification_required?: boolean;
+  verification_mode?: "off" | "magic_link" | "otp";
 }
 interface OnboardingApiFail {
   ok: false;
@@ -255,12 +257,35 @@ export function OnboardingModal({
         const data = (await res.json().catch(() => null)) as {
           ok: boolean;
           exists?: boolean;
+          verification_mode?: "off" | "magic_link" | "otp";
+          claimed?: boolean;
+          lead_id?: string;
+          credits?: number;
         } | null;
         if (!res.ok || !data || data.ok !== true) {
           setServerError(t("onboarding.errors.generic"));
           return;
         }
         if (data.exists) {
+          // Beta sem verificação: server já emitiu cookie + créditos.
+          if (
+            data.verification_mode === "off" &&
+            data.claimed === true &&
+            data.lead_id
+          ) {
+            succeededRef.current = true;
+            trackOnboardingEvent({
+              event_type: "onboarding_success",
+              step: 0,
+              handle,
+            });
+            clearDraft();
+            onSuccess(handle, {
+              leadId: data.lead_id,
+              credits: data.credits ?? 0,
+            });
+            return;
+          }
           await sendOtpAndGoToOtpView(email, "existing");
           return;
         }
@@ -272,7 +297,7 @@ export function OnboardingModal({
         setSubmitting(false);
       }
     },
-    [form, sendOtpAndGoToOtpView, t],
+    [clearDraft, form, handle, onSuccess, sendOtpAndGoToOtpView, t],
   );
 
   /**
@@ -377,9 +402,24 @@ export function OnboardingModal({
         handle,
         marketing_consent: values.marketing_consent === true,
       });
-      // Fase 5: `/start` no longer grants credits. It triggered the
-      // verification OTP server-side; route to the OTP panel so the user
-      // can confirm and unlock the 2 free credits via /claim-existing.
+      // Beta sem verificação (`verification_mode: "off"`): o servidor já
+      // emitiu o cookie `lead_session` e os 2 créditos. Saltamos o OTP e
+      // abrimos o relatório directamente.
+      if (
+        data.verification_mode === "off" &&
+        data.verification_required === false &&
+        data.lead_id
+      ) {
+        clearDraft();
+        onSuccess(handle, {
+          leadId: data.lead_id,
+          credits: data.credits ?? 0,
+        });
+        return;
+      }
+      // Caso contrário (modos `magic_link` ou `otp`) cai no painel OTP
+      // existente — o magic link partilha o mesmo ecrã de "verifica o
+      // email" enquanto o utilizador não receber o clique.
       setView({
         kind: "otp",
         email: values.email,
