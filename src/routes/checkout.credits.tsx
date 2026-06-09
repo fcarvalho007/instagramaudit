@@ -41,7 +41,15 @@ const PACKS = [
 ] as const;
 
 type PackId = (typeof PACKS)[number]["id"];
-const PACK_IDS = PACKS.map((p) => p.id) as readonly PackId[];
+// Schema aceita também os SKUs reservados (`credits_3 / 10 / 25`) para
+// não quebrar links antigos ou tabs abertos; o componente normaliza
+// sempre para `credit_pack_1`.
+const PACK_QUERY_VALUES = [
+  "credit_pack_1",
+  "credits_3",
+  "credits_10",
+  "credits_25",
+] as const;
 const DEFAULT_PACK: PackId = "credit_pack_1";
 
 const LAUNCH_BONUS_CREDITS = 2;
@@ -65,7 +73,7 @@ const searchSchema = z.object({
     .optional(),
   source: z.string().trim().min(1).max(80).optional(),
   status: z.enum(["success"]).optional(),
-  pack: z.enum(PACK_IDS as unknown as [PackId, ...PackId[]]).optional(),
+  pack: z.enum(PACK_QUERY_VALUES).optional(),
   intent: z
     .enum([
       "period_change",
@@ -102,7 +110,7 @@ function CheckoutCreditsFlow() {
     return (
       <PostPurchaseSuccessPanel
         returnPath={search.return ?? "/"}
-        packId={search.pack ?? null}
+        packId={search.pack === "credit_pack_1" ? "credit_pack_1" : null}
       />
     );
   }
