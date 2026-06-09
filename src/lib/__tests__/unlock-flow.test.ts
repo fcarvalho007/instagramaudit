@@ -112,4 +112,60 @@ describe("unlockFormSchema", () => {
     });
     expect(r.success).toBe(true);
   });
+
+  it("requires letter+number in password (rejects all-letters)", () => {
+    const r = unlockFormSchema.safeParse({
+      full_name: "Ana",
+      email: "a@b.pt",
+      profile_ownership: "own_profile",
+      goal: "improve_content",
+      user_type: "creator",
+      gdpr_consent: true,
+      password: "abcdefgh",
+      confirm_password: "abcdefgh",
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("requires letter+number in password (rejects all-digits)", () => {
+    const r = unlockFormSchema.safeParse({
+      full_name: "Ana",
+      email: "a@b.pt",
+      profile_ownership: "own_profile",
+      goal: "improve_content",
+      user_type: "creator",
+      gdpr_consent: true,
+      password: "12345678",
+      confirm_password: "12345678",
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("rejects mismatched confirm_password", () => {
+    const r = unlockFormSchema.safeParse({
+      full_name: "Ana",
+      email: "a@b.pt",
+      profile_ownership: "own_profile",
+      goal: "improve_content",
+      user_type: "creator",
+      gdpr_consent: true,
+      password: "abc12345",
+      confirm_password: "abc12346",
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("accepts compliant password (8+ chars, letter+number, matching)", () => {
+    const r = unlockFormSchema.safeParse({
+      full_name: "Ana",
+      email: "a@b.pt",
+      profile_ownership: "own_profile",
+      goal: "improve_content",
+      user_type: "creator",
+      gdpr_consent: true,
+      password: "abc12345",
+      confirm_password: "abc12345",
+    });
+    expect(r.success).toBe(true);
+  });
 });
