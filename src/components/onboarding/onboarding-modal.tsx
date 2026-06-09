@@ -93,6 +93,7 @@ export interface OnboardingModalProps {
  */
 type View =
   | { kind: "entry" }
+  | { kind: "qualification"; email: string }
   | { kind: "final"; email: string }
   | { kind: "otp"; email: string; sentAt: number; mode: "new" | "existing" };
 
@@ -130,6 +131,7 @@ export function OnboardingModal({
     defaultValues: {
       full_name: "",
       email: "",
+      phone: "",
       // The dedicated step that asked for these is gone. We keep safe
       // defaults so the (legacy) schema validates; the payload builder
       // omits them when the form was never asked.
