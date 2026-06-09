@@ -135,11 +135,10 @@ export function OnboardingModal({
       full_name: "",
       email: "",
       phone: "",
-      // The dedicated step that asked for these is gone. We keep safe
-      // defaults so the (legacy) schema validates; the payload builder
-      // omits them when the form was never asked.
-      profile_ownership: "own_profile" as never,
-      goal: "improve_content" as never,
+      // The qualification step (2 perguntas em cartões) define estes valores
+      // antes do submit; deixamos undefined para validar a escolha do user.
+      profile_ownership: undefined as unknown as never,
+      goal: undefined as unknown as never,
       user_type: "creator",
       goal_other_text: "",
       user_type_other_text: "",
