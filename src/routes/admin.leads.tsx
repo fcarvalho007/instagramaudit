@@ -23,6 +23,7 @@ import { KanbanBoard } from "@/components/admin/v2/beta-leads/kanban-board";
 import { LeadsTable } from "@/components/admin/v2/beta-leads/leads-table";
 import { LeadDetailSheet } from "@/components/admin/v2/beta-leads/lead-detail-sheet";
 import { LeadsConversionBanner } from "@/components/admin/v2/beta-leads/leads-conversion-banner";
+import { OrphanAccountsPanel } from "@/components/admin/v2/beta-leads/orphan-accounts-panel";
 import type { EnrichedLead } from "@/lib/admin/kanban-columns";
 import { adminFetch } from "@/lib/admin/fetch";
 
@@ -221,6 +222,7 @@ function LeadsPage() {
           <TabsList className="mb-4">
             <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
             <TabsTrigger value="tabela">Tabela</TabsTrigger>
+            <TabsTrigger value="diagnostico">Diagnóstico</TabsTrigger>
           </TabsList>
 
           <TabsContent value="pipeline" className="mt-0">
@@ -233,6 +235,10 @@ function LeadsPage() {
 
           <TabsContent value="tabela" className="mt-0">
             <LeadsTable leads={leads} onOpenDetail={openDetail} />
+          </TabsContent>
+
+          <TabsContent value="diagnostico" className="mt-0">
+            <OrphanAccountsPanel />
           </TabsContent>
         </Tabs>
       )}
