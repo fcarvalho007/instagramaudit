@@ -279,11 +279,14 @@ function PostPurchaseSuccessPanel({ returnPath }: { returnPath: string }) {
           Pagamento confirmado
         </span>
         <h1 className="font-fraunces text-2xl sm:text-3xl font-medium text-content-primary leading-tight">
-          Crédito adicionado
+          Créditos adicionados com sucesso
         </h1>
         <p className="text-sm text-content-secondary leading-relaxed">
-          Obrigado pela tua compra. O crédito já está disponível na tua
-          conta — podes voltar ao relatório e gerar a tua análise.
+          Obrigado pela tua compra. Os créditos já estão disponíveis na
+          tua conta — podes voltar ao relatório e gerar a tua análise.
+        </p>
+        <p className="text-sm text-content-primary font-medium leading-relaxed">
+          Oferta de lançamento aplicada: recebeste 2 créditos extra.
         </p>
       </header>
 
