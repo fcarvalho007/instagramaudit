@@ -234,7 +234,11 @@ export function ConsumeCreditDialog({
               ? t("nav.explore.competitor_limit_dialog_body")
               : hasCredit
               ? description
-              : t("nav.explore.consume_dialog.empty_body")}
+              : isPeriod
+              ? t("nav.explore.consume_dialog.empty_body_period_change")
+              : isCompetitor
+              ? t("nav.explore.consume_dialog.empty_body_competitor_add")
+              : t("nav.explore.consume_dialog.empty_body_generic")}
           </DialogDescription>
         </DialogHeader>
 
@@ -247,14 +251,8 @@ export function ConsumeCreditDialog({
         {!hasCredit && !atCompetitorLimit ? (
           <div className="space-y-2 rounded-lg border border-border-default bg-surface-muted/60 p-3">
             <p className="text-sm text-content-secondary">
-              {t("nav.explore.consume_dialog.empty_usage_intro")}
+              {t("nav.explore.consume_dialog.empty_pro_active_note")}
             </p>
-            <ul className="list-disc space-y-1 pl-5 text-sm text-content-secondary">
-              <li>{t("nav.explore.consume_dialog.empty_usage_refresh")}</li>
-              <li>{t("nav.explore.consume_dialog.empty_usage_window")}</li>
-              <li>{t("nav.explore.consume_dialog.empty_usage_competitor")}</li>
-              <li>{t("nav.explore.consume_dialog.empty_usage_fresh")}</li>
-            </ul>
           </div>
         ) : null}
 
