@@ -168,7 +168,14 @@ export function OnboardingModal({
   const handleClose = (next: boolean) => {
     if (submitting) return;
     if (!next && open && !succeededRef.current) {
-      const step = view.kind === "entry" ? 0 : view.kind === "final" ? 1 : 2;
+      const step =
+        view.kind === "entry"
+          ? 0
+          : view.kind === "qualification"
+            ? 1
+            : view.kind === "final"
+              ? 2
+              : 3;
       trackOnboardingEvent({
         event_type: "onboarding_abandon",
         step: step as 0 | 1 | 2 | 3,
@@ -181,6 +188,11 @@ export function OnboardingModal({
   const goBackToEntry = useCallback(() => {
     setServerError(null);
     setView({ kind: "entry" });
+  }, []);
+
+  const goBackToQualification = useCallback((email: string) => {
+    setServerError(null);
+    setView({ kind: "qualification", email });
   }, []);
 
   /**
@@ -251,7 +263,7 @@ export function OnboardingModal({
           return;
         }
         form.setValue("email", email, { shouldValidate: true });
-        setView({ kind: "final", email });
+        setView({ kind: "qualification", email });
       } catch {
         setServerError(t("onboarding.errors.network"));
       } finally {
