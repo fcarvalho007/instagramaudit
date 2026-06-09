@@ -86,7 +86,12 @@ function CheckoutCreditsFlow() {
   const { data: leadStatus } = useSuspenseQuery(leadSessionQueryOptions);
   const search = Route.useSearch();
   if (search.status === "success") {
-    return <PostPurchaseSuccessPanel returnPath={search.return ?? "/"} />;
+    return (
+      <PostPurchaseSuccessPanel
+        returnPath={search.return ?? "/"}
+        packId={search.pack ?? null}
+      />
+    );
   }
   if (!leadStatus.hasLead) {
     return (
