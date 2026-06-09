@@ -713,12 +713,11 @@ function FinalStepBody({
   const { t } = useTranslation("gate");
   const nameError = form.formState.errors.full_name?.message;
   const emailError = form.formState.errors.email?.message;
-  const qualificationError = form.formState.errors.qualification?.message;
+  const phoneError = form.formState.errors.phone?.message;
   const consentError = form.formState.errors.gdpr_consent?.message;
   const consent = form.watch("gdpr_consent");
   const marketing = form.watch("marketing_consent");
   const emailValue = form.watch("email");
-  const qualificationValue = form.watch("qualification");
   const emailIsValid = !emailError && emailValue && EMAIL_RE.test(emailValue);
 
   return (
