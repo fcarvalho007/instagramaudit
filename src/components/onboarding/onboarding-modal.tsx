@@ -479,7 +479,7 @@ export function OnboardingModal({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
-        className="w-[calc(100vw-2rem)] sm:max-w-[820px] max-h-[92vh] overflow-x-hidden overflow-y-auto p-0 gap-0 border-border-default/60"
+        className="w-[calc(100vw-2rem)] sm:w-[calc(100vw-3rem)] sm:max-w-[820px] max-h-[92vh] overflow-x-hidden overflow-y-auto p-0 gap-0 border-border-default/60"
         data-testid="onboarding-modal"
       >
         {view.kind === "entry" ? (
