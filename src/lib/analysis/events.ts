@@ -21,7 +21,16 @@ export type AnalysisOutcome =
   | "blocked_cache_only"
   | "blocked_credits";
 
-export type AnalysisDataSource = "fresh" | "cache" | "stale" | "none";
+/**
+ * `fresh_forced` marks a Pro `force_refresh` call that bypassed a fresh
+ * cache hit. Admin surfaces render it as "Fresh (forçado)".
+ */
+export type AnalysisDataSource =
+  | "fresh"
+  | "fresh_forced"
+  | "cache"
+  | "stale"
+  | "none";
 
 export type AnalysisWindowKind = "baseline" | "30d" | "90d";
 

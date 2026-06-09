@@ -20,6 +20,10 @@
   "ONBOARDING_SESSION_LOST": "We couldn't store your session in this browser. Try again — if it persists, open the report in a new tab.",
   "INSUFFICIENT_CREDITS": "No credits available.",
   "INSUFFICIENT_CREDITS_HELPER": "You've already used your 2 free reports.",
+  "WINDOW_REQUIRES_PRO": "30d/90d analysis is available on the Pro plan.",
+  "WINDOW_90D_DISABLED": "90-day analysis is temporarily unavailable. Try 30 days.",
+  "WINDOW_90D_BUDGET_EXCEEDED": "Analysis temporarily unavailable. Try again later or use another window.",
+  "PRO_WINDOW_BUDGET_EXCEEDED": "Analysis temporarily unavailable. Try again later or use another window.",
   "snapshot": {
     "loadFailed": "We couldn't load this report. Please try again.",
     "networkFailed": "Connection failed.",

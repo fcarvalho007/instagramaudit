@@ -20,6 +20,10 @@
   "ONBOARDING_SESSION_LOST": "Não conseguimos guardar a tua sessão neste browser. Tenta novamente — se persistir, abre o relatório num separador novo.",
   "INSUFFICIENT_CREDITS": "Sem créditos disponíveis.",
   "INSUFFICIENT_CREDITS_HELPER": "Já usaste os teus 2 relatórios gratuitos.",
+  "WINDOW_REQUIRES_PRO": "A análise por período (30d/90d) está disponível no plano Pro.",
+  "WINDOW_90D_DISABLED": "A análise de 90 dias está temporariamente indisponível. Tenta 30 dias.",
+  "WINDOW_90D_BUDGET_EXCEEDED": "A análise temporariamente indisponível. Tenta novamente mais tarde ou usa outra janela de análise.",
+  "PRO_WINDOW_BUDGET_EXCEEDED": "Análise temporariamente indisponível. Tenta novamente mais tarde ou usa outra janela de análise.",
   "snapshot": {
     "loadFailed": "Não foi possível carregar este relatório. Tenta novamente.",
     "networkFailed": "Falha de ligação.",
