@@ -1476,6 +1476,7 @@ export function ReportBlockSidebar({
   competitorCount = 0,
   competitorMax = 2,
   competitorHandles,
+  isAdminPreview = false,
 }: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
@@ -1545,6 +1546,7 @@ export function ReportBlockSidebar({
         existingCompetitors={
           competitorHandles ?? profileList.slice(1).map((p) => p.handle)
         }
+        isAdminPreview={isAdminPreview}
       />
     </nav>
   );
