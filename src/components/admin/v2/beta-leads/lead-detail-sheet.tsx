@@ -811,6 +811,21 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                 >
                   {lead.email}
                 </a>
+                {labelEmailDomainClass(lead.email_domain_class) ? (
+                  <p className="admin-meta text-admin-text-tertiary mt-0.5 m-0">
+                    {labelEmailDomainClass(lead.email_domain_class)}
+                  </p>
+                ) : null}
+                {lead.phone ? (
+                  <a
+                    href={`tel:${lead.phone}`}
+                    className="admin-meta text-admin-text-tertiary mt-0.5 m-0 hover:text-admin-text-secondary transition-colors flex items-center gap-1.5"
+                    title={lead.phone}
+                  >
+                    <Phone size={11} aria-hidden />
+                    <span className="truncate">{lead.phone}</span>
+                  </a>
+                ) : null}
               </div>
             </div>
             {columnDef && (
