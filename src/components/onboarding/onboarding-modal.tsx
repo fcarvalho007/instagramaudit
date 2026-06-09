@@ -76,6 +76,14 @@ export interface OnboardingModalProps {
    * navigate to /analyze/$username to trigger provider work.
    */
   onSuccess: (handle: string, result: OnboardingSuccess) => void;
+  /**
+   * Origin of the modal. Default `"analyze"` keeps the legacy copy that
+   * references the handle being analysed. `"checkout"` swaps the
+   * handle-dependent copy for checkout-friendly text (no `@username`
+   * interpolation) so the modal can be rendered from `/precos` or any
+   * focused checkout flow before a handle has been chosen.
+   */
+  purpose?: "analyze" | "checkout";
 }
 
 /**
@@ -106,6 +114,7 @@ export function OnboardingModal({
   onOpenChange,
   handle,
   onSuccess,
+  purpose = "analyze",
 }: OnboardingModalProps) {
   const { t } = useTranslation("gate");
   const [view, setView] = useState<View>({ kind: "entry" });
@@ -462,6 +471,7 @@ export function OnboardingModal({
         {view.kind === "entry" ? (
           <EntryStepBody
             handle={handle}
+            purpose={purpose}
             submitting={submitting}
             serverError={serverError}
             onSubmit={handleEntrySubmit}
@@ -471,6 +481,7 @@ export function OnboardingModal({
         ) : view.kind === "final" ? (
           <FinalStepBody
             handle={handle}
+            purpose={purpose}
             form={form}
             serverError={serverError}
             submitting={submitting}
