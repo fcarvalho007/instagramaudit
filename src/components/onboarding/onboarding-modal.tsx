@@ -510,6 +510,9 @@ export function OnboardingModal({
             submitting={submitting}
             onBack={() => goBackToQualification(view.email)}
             onSubmit={handleFinalSubmit}
+            onMissingQualification={() =>
+              setView({ kind: "qualification", email: view.email })
+            }
             honeypotRef={honeypotRef}
           />
         ) : (
