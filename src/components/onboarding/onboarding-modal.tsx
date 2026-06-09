@@ -1518,11 +1518,10 @@ function LoginPanel({
           Entrar na conta
         </p>
         <DialogTitle className="font-display text-[24px] sm:text-[28px] leading-[1.1] tracking-[-0.015em] text-content-primary text-balance break-words">
-          Já tens conta com {maskEmail(email)}
+          Bem-vindo de volta
         </DialogTitle>
         <DialogDescription className="text-[14px] text-content-secondary leading-[1.55]">
-          Introduz a tua palavra-passe para abrir o relatório. Os teus dados
-          continuam protegidos.
+          Este email já tem conta. Introduz a tua palavra-passe para continuar.
         </DialogDescription>
       </DialogHeader>
 
@@ -1553,12 +1552,12 @@ function LoginPanel({
               Palavra-passe
             </Label>
             <a
-              href="/reset-password"
+              href={`/reset-password?email=${encodeURIComponent(email)}`}
               className="text-[12px] font-medium text-primary hover:underline"
               target="_blank"
               rel="noopener"
             >
-              Esqueceste-te?
+              Esqueceste-te da palavra-passe?
             </a>
           </div>
           <Input
@@ -1594,7 +1593,7 @@ function LoginPanel({
           ) : (
             <>
               <Lock className="size-4" aria-hidden />
-              Entrar
+              Entrar e continuar
             </>
           )}
         </Button>
