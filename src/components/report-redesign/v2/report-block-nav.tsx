@@ -33,7 +33,9 @@ import { usePublicAppConfig } from "@/lib/config/use-app-config";
 import {
   ConsumeCreditDialog,
   type ConsumeCreditIntent,
+  type PeriodCacheStateUi,
 } from "./consume-credit-dialog";
+import { getPeriodCacheState } from "@/lib/analysis/period-cache.functions";
 
 /**
  * Hook: returns true once the user has scrolled past `threshold` px.
