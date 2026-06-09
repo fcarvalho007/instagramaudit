@@ -104,6 +104,8 @@ interface OnboardingApiOk {
   ok: true;
   lead_id: string;
   credits: number;
+  verification_required?: boolean;
+  verification_mode?: "off" | "magic_link" | "otp";
 }
 interface OnboardingApiFail {
   ok: false;
@@ -255,12 +257,35 @@ export function OnboardingModal({
         const data = (await res.json().catch(() => null)) as {
           ok: boolean;
           exists?: boolean;
+          verification_mode?: "off" | "magic_link" | "otp";
+          claimed?: boolean;
+          lead_id?: string;
+          credits?: number;
         } | null;
         if (!res.ok || !data || data.ok !== true) {
           setServerError(t("onboarding.errors.generic"));
           return;
         }
         if (data.exists) {
+          // Beta sem verificação: server já emitiu cookie + créditos.
+          if (
+            data.verification_mode === "off" &&
+            data.claimed === true &&
+            data.lead_id
+          ) {
+            succeededRef.current = true;
+            trackOnboardingEvent({
+              event_type: "onboarding_success",
+              step: 0,
+              handle,
+            });
+            clearDraft();
+            onSuccess(handle, {
+              leadId: data.lead_id,
+              credits: data.credits ?? 0,
+            });
+            return;
+          }
           await sendOtpAndGoToOtpView(email, "existing");
           return;
         }
@@ -272,7 +297,7 @@ export function OnboardingModal({
         setSubmitting(false);
       }
     },
-    [form, sendOtpAndGoToOtpView, t],
+    [clearDraft, form, handle, onSuccess, sendOtpAndGoToOtpView, t],
   );
 
   /**
