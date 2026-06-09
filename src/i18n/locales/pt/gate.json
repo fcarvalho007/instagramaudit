@@ -191,6 +191,15 @@
       "haveAccountCta": "Entrar com email  →",
       "trustLine": "Respeitamos o RGPD · sem spam"
     },
+    "stepper": {
+      "badge": "Passo {{n}} de {{total}}",
+      "badgeLast": "Último passo",
+      "labels": {
+        "entry": "Email",
+        "qualification": "Contexto",
+        "final": "Conta"
+      }
+    },
     "final": {
       "left": {
         "eyebrow": "ÚLTIMO PASSO",
@@ -230,7 +239,7 @@
         "consentMandatory": "(obrigatório)",
         "marketingText": "Quero dicas e benchmarks",
         "marketingOptional": "(opcional)",
-        "cta": "Gerar o meu relatório  →",
+        "cta": "Gerar o meu relatório",
         "ctaCheckout": "Criar conta e continuar",
         "footnote": "RGPD · sem spam",
         "footnoteCheckout": "RGPD · sem spam",

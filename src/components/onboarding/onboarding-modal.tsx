@@ -479,7 +479,7 @@ export function OnboardingModal({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
-        className="w-[calc(100vw-2rem)] sm:max-w-[820px] max-h-[92vh] overflow-x-hidden overflow-y-auto p-0 gap-0 border-border-default/60"
+        className="w-[calc(100vw-2rem)] sm:w-[calc(100vw-3rem)] sm:max-w-[820px] max-h-[92vh] overflow-x-hidden overflow-y-auto p-0 gap-0 border-border-default/60"
         data-testid="onboarding-modal"
       >
         {view.kind === "entry" ? (
@@ -534,6 +534,53 @@ export function OnboardingModal({
 /* Entry step — single screen with the dual path                              */
 /* -------------------------------------------------------------------------- */
 
+/* Step indicator shared across entry → qualification → final */
+function OnboardingStepHeader({
+  current,
+  className,
+}: {
+  current: 1 | 2 | 3;
+  className?: string;
+}) {
+  const { t } = useTranslation("gate");
+  const steps: Array<{ id: 1 | 2 | 3; key: "entry" | "qualification" | "final" }> = [
+    { id: 1, key: "entry" },
+    { id: 2, key: "qualification" },
+    { id: 3, key: "final" },
+  ];
+  return (
+    <div
+      className={`flex items-center justify-between gap-3 ${className ?? ""}`}
+      data-testid="onboarding-step-header"
+    >
+      <ol className="flex items-center gap-1.5" aria-label={`Passo ${current} de 3`}>
+        {steps.map((s) => {
+          const state =
+            s.id < current ? "done" : s.id === current ? "active" : "future";
+          return (
+            <li
+              key={s.id}
+              className={`h-1.5 w-7 rounded-full transition-colors ${
+                state === "active"
+                  ? "bg-primary"
+                  : state === "done"
+                  ? "bg-primary/40"
+                  : "bg-border-default"
+              }`}
+              aria-current={state === "active" ? "step" : undefined}
+            />
+          );
+        })}
+      </ol>
+      <span className="text-eyebrow-sm text-content-tertiary whitespace-nowrap">
+        {current === 3
+          ? t("onboarding.stepper.badgeLast")
+          : t("onboarding.stepper.badge", { n: current, total: 3 })}
+      </span>
+    </div>
+  );
+}
+
 function EntryStepBody({
   handle,
   purpose,
@@ -582,6 +629,7 @@ function EntryStepBody({
       className="px-6 py-7 sm:px-10 sm:py-9"
       data-testid="onboarding-entry-step"
     >
+      <OnboardingStepHeader current={1} className="mb-5" />
       <DialogHeader className="text-left space-y-2.5">
         <p className="text-eyebrow text-content-tertiary">
           {t(
@@ -816,7 +864,8 @@ function FinalStepBody({
       </aside>
 
       {/* Right — compact form */}
-      <div className="px-5 py-6 sm:px-8 sm:py-8 flex flex-col gap-4 bg-white min-w-0">
+      <div className="px-5 py-6 sm:px-7 sm:py-8 flex flex-col gap-4 bg-white min-w-0">
+        <OnboardingStepHeader current={3} />
         <div className="space-y-1.5">
           <Label htmlFor="onb-name" className="text-[13.5px] font-medium text-content-primary">
             {t("onboarding.final.right.nameLabel")}
@@ -942,14 +991,14 @@ function FinalStepBody({
           </Alert>
         ) : null}
 
-        <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 pt-1">
+        <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 pt-1 min-w-0">
           <Button
             type="button"
             variant="outline"
             size="lg"
             onClick={onBack}
             disabled={submitting}
-            className="w-full sm:w-auto sm:flex-shrink-0 rounded-lg"
+            className="w-full sm:w-auto sm:flex-shrink-0 rounded-lg min-w-0"
           >
             <ArrowLeft className="size-4" aria-hidden />
             {t("onboarding.final.right.back")}
@@ -958,13 +1007,13 @@ function FinalStepBody({
             type="submit"
             size="lg"
             disabled={submitting}
-            className="w-full sm:flex-1 rounded-lg font-medium"
+            className="w-full sm:flex-1 sm:min-w-0 rounded-lg font-medium"
             data-testid="onboarding-final-submit"
           >
             {submitting ? (
               <>
                 <Loader2 className="size-4 animate-spin" aria-hidden />
-                {t("onboarding.submitting")}
+                <span className="truncate">{t("onboarding.submitting")}</span>
               </>
             ) : (
               <>
@@ -973,7 +1022,9 @@ function FinalStepBody({
                 ) : (
                   <Sparkles className="size-4" aria-hidden />
                 )}
-                {t(isCheckout ? "onboarding.final.right.ctaCheckout" : "onboarding.final.right.cta")}
+                <span className="truncate">
+                  {t(isCheckout ? "onboarding.final.right.ctaCheckout" : "onboarding.final.right.cta")}
+                </span>
               </>
             )}
           </Button>
@@ -1062,6 +1113,7 @@ function QualificationStepBody({
       className="px-6 py-7 sm:px-10 sm:py-9"
       data-testid="onboarding-qualification-step"
     >
+      <OnboardingStepHeader current={2} className="mb-5" />
       <DialogHeader className="text-left space-y-2.5">
         <p className="text-eyebrow text-content-tertiary">
           {t(isCheckout ? "onboarding.qualification.eyebrowCheckout" : "onboarding.qualification.eyebrow")}
@@ -1125,14 +1177,14 @@ function QualificationStepBody({
         ) : null}
       </div>
 
-      <div className="mt-6 flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
+      <div className="mt-6 flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 min-w-0">
         <Button
           type="button"
           variant="outline"
           size="lg"
           onClick={onBack}
           disabled={submitting}
-          className="w-full sm:w-auto sm:flex-shrink-0 rounded-lg"
+          className="w-full sm:w-auto sm:flex-shrink-0 rounded-lg min-w-0"
         >
           <ArrowLeft className="size-4" aria-hidden />
           {t("onboarding.qualification.back")}
@@ -1142,10 +1194,10 @@ function QualificationStepBody({
           size="lg"
           onClick={handleContinue}
           disabled={submitting}
-          className="w-full sm:flex-1 rounded-lg font-medium"
+          className="w-full sm:flex-1 sm:min-w-0 rounded-lg font-medium"
           data-testid="onboarding-qualification-continue"
         >
-          {t("onboarding.qualification.cta")}
+          <span className="truncate">{t("onboarding.qualification.cta")}</span>
         </Button>
       </div>
     </div>

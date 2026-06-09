@@ -1,91 +1,61 @@
-## Goal
+# Melhorias UX/UI do modal de onboarding (checkout e analyze)
 
-Substituir o passo 2 atual (Select dropdown único de `qualification`) por **duas perguntas em cartões de rádio**, recuperando o visual do antigo `unlock-modal`:
+Dois problemas a corrigir, isolados ao `OnboardingModal`. Sem mexer em lógica, server functions, i18n estrutural nem fluxo.
 
-- **Em cima:** "Qual é o contexto?" → `profile_ownership` (5 cartões)
-- **Em baixo:** "Qual é o teu objetivo?" → `goal` (6 cartões, com "Outro" abrindo input)
+## 1. Indicador de passo no topo (em falta)
 
-Tudo num único passo (continua a ser o "Passo 2 de 3"). O dropdown atual sai. As outras etapas (entry, final, OTP) ficam intactas.
+Hoje os passos do modal (`entry → qualification → final → otp`) não têm nenhum indicador visual de progresso. O utilizador pediu "falta inserir último passo no topo" — referindo-se ao badge "último passo" que existia no `unlock-modal` antigo e que sumiu na nova versão.
 
-## UI
+**Solução:** novo componente leve `OnboardingStepHeader` renderizado no topo de cada step (dentro de `EntryStepBody`, `QualificationStepBody` e do painel direito de `FinalStepBody`). Mostra:
 
-Reutilizar o componente `RadioCardField` do `src/components/product/unlock-modal.tsx` — mover/exportar para `src/components/onboarding/radio-card-field.tsx` para ser partilhado pelos dois modais sem duplicação.
+- 3 pontos/segmentos pequenos (Inter, tokens semânticos) representando: `Email · Contexto · Conta`
+- Segmento ativo a cheio (`bg-accent-primary`), passados a `bg-content-primary/40`, futuros `bg-border-default`
+- À direita, badge discreto Inter uppercase: `Passo 1 de 3`, `Passo 2 de 3`, ou `Último passo` (no step `final`)
+- No OTP não aparece (é confirmação fora do fluxo de 3 passos)
 
-Render do novo `QualificationStepBody`:
+Strings reutilizam as chaves já existentes:
+- `onboarding.stepBadgeLast` ("último passo") já existe no gate.json — basta adicionar irmãos `stepBadge` ("Passo {{n}} de {{total}}") e labels curtas `stepLabels.entry/qualification/final` em PT e EN.
 
-```
-[ Eyebrow: PASSO 2 DE 3 ]
-[ H2: "Conta-nos o contexto" ]
-[ Subtítulo: "Duas escolhas rápidas — ajuda-nos a ajustar a análise." ]
+Posicionamento:
+- `EntryStepBody` e `QualificationStepBody`: acima do `DialogHeader`/eyebrow, com `mb-5`.
+- `FinalStepBody`: no topo do painel branco direito (antes do campo "Nome"), para o utilizador perceber que está mesmo no último passo. Não é colocado por cima do painel navy (que já tem o eyebrow "Antes de pagar").
 
-┌─ Bloco "Qual é o contexto?" ──────────┐
-│  ● É o meu perfil pessoal             │
-│  ○ É o perfil da minha marca          │
-│  ○ É o perfil de um cliente           │
-│  ○ Estou a observar concorrência      │
-│  ○ Estou só a explorar                │
-└───────────────────────────────────────┘
+## 2. Botão CTA cortado em desktop/tablet/mobile
 
-┌─ Bloco "Qual é o teu objetivo?" ──────┐
-│  ○ Melhorar o conteúdo                │
-│  ○ Comparar com concorrentes          │
-│  ○ Preparar uma análise para cliente  │
-│  ○ Crescer a audiência                │
-│  ○ Validar a presença da marca        │
-│  ○ Outro            (abre input)      │
-└───────────────────────────────────────┘
+Na screenshot, "Gerar o meu relatório" aparece cortado à direita. Causa: no `FinalStepBody`, o submit button usa `w-full sm:flex-1` com `size="lg"` e a label inclui ícone + seta `→`. Em larguras intermédias (tablet, lg ~1024) o `flex-1` partilha espaço com o botão "Voltar" (`sm:w-auto`) e o ícone `Sparkles`/`Lock` + label "Gerar o meu relatório  →" estoura.
 
-[ ← Voltar ]   [ Continuar → ]
-```
+**Solução (apenas presentational, no `FinalStepBody`):**
+- Adicionar `min-w-0` ao container de botões e a ambos os botões para permitir shrink.
+- Trocar `sm:flex-1` por `sm:flex-1 sm:min-w-0` no submit e adicionar `whitespace-nowrap` ao label envolto em `<span className="truncate">` (assim em viewports apertados encolhe em vez de cortar do contentor).
+- Reduzir padding lateral do painel direito de `sm:px-8` para `sm:px-7` para libertar ~8px no eixo crítico.
+- Remover a seta `→` dentro de `cta` ("Gerar o meu relatório") — o ícone `Sparkles` à esquerda já comunica acção; a seta extra é o que mais aumenta a largura. Mantém-se a seta no `ctaCheckout` ("Criar conta e continuar") só se couber.
+- O mesmo tratamento (`min-w-0` + `truncate` no span) é aplicado ao botão "Continuar" do `QualificationStepBody` por consistência.
 
-Validação client-side: ambos os campos obrigatórios antes do "Continuar"; se `goal === "other"`, exigir `goal_other_text` (≥ 2 chars).
+Também reduzir `DialogContent` em mobile: já está `w-[calc(100vw-2rem)]`; adicionar `sm:w-[calc(100vw-3rem)]` antes de `sm:max-w-[820px]` para garantir margem visual em tablets estreitos (768–820px) onde o dialog encosta ao limite.
 
-## Dados / payload
+## Ficheiros a alterar
 
-O schema `unlockFormSchema` já tem `profile_ownership` + `goal` + `goal_other_text`. O `buildStartPayload` já envia esses campos para `/api/onboarding/start` (que também já os aceita — ver `src/routes/api/onboarding/start.ts`).
+- `src/components/onboarding/onboarding-modal.tsx`
+  - Novo componente local `OnboardingStepHeader({ current: 1|2|3 })`.
+  - Renderizar no topo de `EntryStepBody`, `QualificationStepBody`, e no painel direito de `FinalStepBody`.
+  - Aplicar fix de largura nos botões (Final + Qualification).
+  - Ajustar `DialogContent` width.
+- `src/i18n/locales/pt/gate.json` e `src/i18n/locales/en/gate.json`
+  - Adicionar `onboarding.stepBadge` ("Passo {{n}} de {{total}}" / "Step {{n}} of {{total}}"), `onboarding.stepBadgeLast` já existe, e `onboarding.stepLabels.{entry,qualification,final}`.
+  - Remover a seta `→` da string `onboarding.final.right.cta`.
 
-O campo `qualification` continua a existir (opcional no schema partilhado) mas deixa de ser pedido. Para manter a admin Kanban/segmentação sem perdas, derivar `qualification` automaticamente a partir do `profile_ownership` no submit:
+## Fora do âmbito
 
-| profile_ownership | qualification derivada |
-| --- | --- |
-| brand_profile | brand_company |
-| client_profile | consultant_agency |
-| competitor_research | marketing_comms |
-| own_profile | content_creator |
-| curiosity | curiosity |
-
-(Mapeamento aplicado em `buildStartPayload` quando `values.qualification` é `undefined`.)
-
-## Files changed
-
-1. `src/components/onboarding/radio-card-field.tsx` — **novo**: extrai o `RadioCardField` (e tipos `RadioOption`) de `unlock-modal.tsx`.
-2. `src/components/product/unlock-modal.tsx` — passa a importar `RadioCardField` do novo módulo (remove a definição local; sem mudança visual).
-3. `src/components/onboarding/onboarding-modal.tsx`:
-   - Reescreve `QualificationStepBody` para renderizar dois `RadioCardField` (profile_ownership + goal).
-   - Remove o `Select`/`SelectItem` daí.
-   - `defaultValues` do form: `profile_ownership` e `goal` passam de `"own_profile" as never` para `undefined` (para validação correta).
-   - Lógica do `handleEntrySubmit` mantém-se (continua a saltar para `qualification` no novo email).
-4. `src/lib/leads/build-start-payload.ts` — adiciona derivação `qualification ← profile_ownership` quando ausente.
-5. `src/lib/leads/__tests__/build-start-payload.test.ts` — caso para a derivação.
-6. `src/i18n/locales/pt/gate.json` + `en/gate.json`:
-   - Atualizar `onboarding.qualification.title/subtitle` (e variantes `*Checkout`).
-   - Adicionar `onboarding.qualification.ownershipLegend` ("Qual é o contexto?") e `onboarding.qualification.goalLegend` ("Qual é o teu objetivo?").
-   - Reutilizar `unlock.options.profileOwnership.*` e `unlock.options.goal.*` (já existem).
-
-## Bonus — fix runtime error
-
-`trackEvent({ eventType: "checkout_onboarding_shown" | "checkout_onboarding_completed" })` está a falhar Zod (enum não inclui os novos valores). Adicionar `checkout_onboarding_shown`, `checkout_onboarding_completed`, `credits_pack_non_pro_warning_shown` ao enum `eventType` em `src/lib/tracking.functions.ts` (ou `src/lib/tracking/events.ts` consoante a localização do schema).
-
-## Out of scope
-
-- Não mexer em `unlock-modal.tsx` para além da importação partilhada (ainda em uso na rota antiga).
-- Não mexer no schema do servidor (`start.ts`) — já aceita os campos.
-- Não mexer no fluxo de checkout/EuPago/credit grants.
+- `unlock-modal.tsx`, lógica de submissão, validações, server payload, OTP, OAuth, checkout/EuPago.
+- Mudança de copy fora do necessário para encurtar o CTA.
+- Animação do stepper (mantém-se estático; transição vem do próprio re-render do step).
 
 ## QA manual
 
-1. `/precos` → checkout sem sessão → email → passo 2 mostra os **dois blocos de cartões** (não dropdown).
-2. Tentar avançar sem preencher → erro inline em cada bloco.
-3. Escolher "Outro" no objetivo → abre input; vazio bloqueia "Continuar".
-4. Continuar → passo 3 (final form sem telemóvel) → OTP → checkout retoma com query params intactos.
-5. Sem consola com `ZodError eventType`.
+1. `/precos` → comprar → modal abre no Entry: topo mostra `● ○ ○  Passo 1 de 3`.
+2. Avançar com email novo → Qualification: `● ● ○  Passo 2 de 3`, com 2 blocos de cartões.
+3. Avançar → Final: `● ● ●  Último passo`, painel navy à esquerda intacto.
+4. Botão "Gerar o meu relatório" / "Criar conta e continuar" totalmente visível em 1440px, 1024px, 820px, 768px, 414px, 375px (sem corte à direita).
+5. Botão "Voltar" mantém-se à esquerda em sm+ e empilha por baixo em mobile.
+6. OTP step continua sem stepper.
+7. Modo analyze (a partir do home/análise) também mostra o stepper com as mesmas 3 etapas.
