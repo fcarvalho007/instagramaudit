@@ -10,6 +10,8 @@
 
 import type { SnapshotPost } from "./snapshot-to-report-data";
 import type { ReportData } from "@/components/report/report-mock-data";
+import type { CommentIntelligence } from "@/lib/analysis/types";
+import type { VisualCoverAnalysis } from "@/lib/report/visual-cover-types";
 
 /**
  * Forma mínima da entrada `aiInsightsV2.sections.language` que este
@@ -1080,11 +1082,39 @@ export function inferProbableObjective(args: {
 
 export type PriorityLevel = "alta" | "media" | "oportunidade";
 
+export type PriorityCategory = "testar" | "corrigir" | "repetir" | "oportunidade";
+
+export type PrioritySourceTag = "ai" | "deterministic";
+
+export type PriorityBasis =
+  | "Resposta do público"
+  | "Análise visual das capas"
+  | "Frequência editorial"
+  | "Mix de formatos"
+  | "Publicações-chave"
+  | "Padrão das captions"
+  | "Integração entre canais"
+  | "Tipo de conteúdo dominante";
+
+export interface PriorityEvidence {
+  label: string;
+  value?: string;
+}
+
 export interface PriorityItem {
   level: PriorityLevel;
+  /** Type of action — chip in the UI. */
+  category: PriorityCategory;
   title: string;
   body: string;
-  resolves: string;
+  /** Readable report-section references shown in the footer. */
+  basedOn: PriorityBasis[];
+  /** Real metric chips (optional). */
+  evidence?: PriorityEvidence[];
+  /** Provenance of the item. */
+  source: PrioritySourceTag;
+  /** @deprecated legacy "Resolve a Pergunta NN" copy. UI no longer renders it. */
+  resolves?: string;
 }
 
 export function derivePriorities(args: {
@@ -1095,6 +1125,9 @@ export function derivePriorities(args: {
   integration: IntegrationResult;
   dominantFormatShare: number;
   dominantFormatLabel: string | null;
+  commentIntel?: CommentIntelligence | null;
+  coverAnalysis?: VisualCoverAnalysis | null;
+  cadence?: { weekly?: number; sufficient?: boolean } | null;
 }): PriorityItem[] {
   type Scored = PriorityItem & { _score: number };
   const out: Scored[] = [];
@@ -1106,6 +1139,9 @@ export function derivePriorities(args: {
     dominantFormatLabel,
     funnel,
     contentType,
+    commentIntel,
+    coverAnalysis,
+    cadence,
   } = args;
 
   // ALTA: público silencioso + poucas perguntas/CTAs
@@ -1116,6 +1152,13 @@ export function derivePriorities(args: {
   ) {
     out.push({
       level: "alta",
+      category: "testar",
+      basedOn: ["Padrão das captions", "Resposta do público"],
+      source: "deterministic",
+      evidence:
+        caption.available && caption.ctaSharePct >= 0
+          ? [{ label: "CTA em captions", value: `${Math.round(caption.ctaSharePct)}%` }]
+          : undefined,
       title: "Adicionar perguntas no fim das captions",
       body:
         caption.available && caption.label === "Longas e educativas"
@@ -1130,6 +1173,12 @@ export function derivePriorities(args: {
   if (dominantFormatShare >= 60 && dominantFormatLabel) {
     out.push({
       level: "media",
+      category: "testar",
+      basedOn: ["Mix de formatos"],
+      source: "deterministic",
+      evidence: [
+        { label: dominantFormatLabel, value: `${Math.round(dominantFormatShare)}%` },
+      ],
       title: `Diversificar formatos além de ${dominantFormatLabel}`,
       body: `Cerca de ${Math.round(
         dominantFormatShare,
@@ -1147,6 +1196,9 @@ export function derivePriorities(args: {
   ) {
     out.push({
       level: "oportunidade",
+      category: "oportunidade",
+      basedOn: ["Integração entre canais"],
+      source: "deterministic",
       title: "Reforçar conteúdo de meio de funil",
       body:
         "Há margem para criar conteúdo que explica e aprofunda — peças que posicionam o perfil como referência antes de pedir ação.",
@@ -1159,6 +1211,9 @@ export function derivePriorities(args: {
   if (integration.available && integration.signals.bioLink.detected === false) {
     out.push({
       level: "alta",
+      category: "corrigir",
+      basedOn: ["Integração entre canais"],
+      source: "deterministic",
       title: "Adicionar um link na bio",
       body:
         "A bio não aponta para nenhum site, newsletter ou destino próprio. Adicionar um link claro permite converter visitas do perfil em audiência fora do Instagram.",
@@ -1175,6 +1230,12 @@ export function derivePriorities(args: {
   ) {
     out.push({
       level: "media",
+      category: "testar",
+      basedOn: ["Integração entre canais", "Padrão das captions"],
+      source: "deterministic",
+      evidence: [
+        { label: "CTA explícito", value: `${integration.signals.explicitCta.sharePct}%` },
+      ],
       title: "Testar 1 CTA explícito por semana",
       body:
         "Apenas " +
@@ -1194,6 +1255,10 @@ export function derivePriorities(args: {
   ) {
     out.push({
       level: "oportunidade",
+      category: "testar",
+      basedOn: ["Padrão das captions"],
+      source: "deterministic",
+      evidence: [{ label: "Média de captions", value: `${caption.avgLength} car.` }],
       title: "Testar legendas mais longas em 2 posts",
       body:
         "As legendas são curtas (média de " +
@@ -1213,6 +1278,12 @@ export function derivePriorities(args: {
   ) {
     out.push({
       level: "oportunidade",
+      category: "testar",
+      basedOn: ["Tipo de conteúdo dominante"],
+      source: "deterministic",
+      evidence: [
+        { label: String(contentType.label), value: `${Math.round(contentType.sharePct)}%` },
+      ],
       title: "Variar a abordagem editorial",
       body:
         Math.round(contentType.sharePct) +
@@ -1224,10 +1295,211 @@ export function derivePriorities(args: {
     });
   }
 
+  // ──────────────────────────────────────────────────────────────────
+  // Comment intelligence (evidence-gated · only when available)
+  // ──────────────────────────────────────────────────────────────────
+  if (commentIntel && commentIntel.available) {
+    const replyRate = Math.round(commentIntel.ownerReplyRatePct ?? 0);
+    const questions = commentIntel.questionsFromAudienceCount ?? 0;
+    const complaints = commentIntel.complaintOrIssueCount ?? 0;
+    const buyingIntent = commentIntel.buyingIntentCount ?? 0;
+    const topPost = commentIntel.topConversationPosts?.[0] ?? null;
+
+    if (replyRate < 10 && questions >= 3) {
+      out.push({
+        level: "alta",
+        category: "corrigir",
+        basedOn: ["Resposta do público"],
+        source: "deterministic",
+        evidence: [
+          { label: "Resposta da marca", value: `${replyRate}%` },
+          { label: "Perguntas sem resposta", value: String(questions) },
+        ],
+        title: "Responder às perguntas da audiência",
+        body:
+          `A marca responde apenas em ${replyRate}% dos comentários e há ${questions} perguntas explícitas sem resposta. Responder cria conversa e mostra atenção real.`,
+        resolves: "Resolve a Pergunta 06 — resposta do público.",
+        _score: 12,
+      });
+    }
+
+    if (complaints >= 2) {
+      out.push({
+        level: "alta",
+        category: "corrigir",
+        basedOn: ["Resposta do público"],
+        source: "deterministic",
+        evidence: [{ label: "Comentários com fricção", value: String(complaints) }],
+        title: "Endereçar fricção visível nos comentários",
+        body:
+          `Foram detetados ${complaints} comentários com sinais de queixa ou fricção. Responder publicamente protege percepção e dá contexto a quem chega depois.`,
+        resolves: "Resolve a Pergunta 06 — resposta do público.",
+        _score: 11,
+      });
+    }
+
+    if (buyingIntent >= 2 && caption.available && caption.ctaSharePct < 20) {
+      out.push({
+        level: "media",
+        category: "oportunidade",
+        basedOn: ["Resposta do público", "Integração entre canais"],
+        source: "deterministic",
+        evidence: [
+          { label: "Intenção de compra", value: String(buyingIntent) },
+          { label: "CTA em captions", value: `${Math.round(caption.ctaSharePct)}%` },
+        ],
+        title: "Capturar intenção de compra com CTA claro",
+        body:
+          `Há ${buyingIntent} comentários com intenção de compra, mas só ${Math.round(caption.ctaSharePct)}% das captions têm CTA. Acrescentar um CTA simples (link, DM, WhatsApp) pode converter o que já está latente.`,
+        resolves: "Resolve a Pergunta 07 — integração entre canais.",
+        _score: 9,
+      });
+    }
+
+    if (topPost && topPost.commentsCount >= 10) {
+      const signalPt: Record<string, string> = {
+        questions: "perguntas",
+        praise: "elogios",
+        complaints: "fricção",
+        buying_intent: "intenção de compra",
+        mixed: "mistura de sinais",
+      };
+      const sigLabel = signalPt[topPost.dominantSignal] ?? "conversa";
+      out.push({
+        level: "oportunidade",
+        category: "repetir",
+        basedOn: ["Publicações-chave", "Resposta do público"],
+        source: "deterministic",
+        evidence: [
+          { label: "Comentários no post âncora", value: String(topPost.commentsCount) },
+        ],
+        title: "Repetir o ângulo do post com mais conversa",
+        body:
+          `O post com mais interação acumulou ${topPost.commentsCount} comentários, dominados por ${sigLabel}. Replicar o tema, formato e abertura noutra peça mantém o sinal vivo.`,
+        resolves: "Resolve a Pergunta 05 — resposta do público.",
+        _score: 8,
+      });
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  // Visual cover (evidence-gated)
+  // ──────────────────────────────────────────────────────────────────
+  if (coverAnalysis) {
+    const score = Math.round(coverAnalysis.overallScore ?? 0);
+    const sub = coverAnalysis.subScores;
+    if (score > 0 && score < 50) {
+      out.push({
+        level: "alta",
+        category: "corrigir",
+        basedOn: ["Análise visual das capas"],
+        source: "deterministic",
+        evidence: [{ label: "Score capas", value: `${score}/100` }],
+        title: "Reconstruir o sistema de capas",
+        body:
+          `As capas pontuam ${score}/100. Definir 2–3 templates claros (cor, tipografia, ponto focal) torna o feed reconhecível em 1 segundo.`,
+        resolves: "Resolve a Pergunta 03 — clareza visual.",
+        _score: 11,
+      });
+    } else if (sub) {
+      if (sub.recognizability < 50) {
+        out.push({
+          level: "media",
+          category: "testar",
+          basedOn: ["Análise visual das capas"],
+          source: "deterministic",
+          evidence: [{ label: "Reconhecibilidade", value: `${Math.round(sub.recognizability)}/100` }],
+          title: "Testar uma assinatura visual recorrente",
+          body:
+            `A reconhecibilidade das capas pontua ${Math.round(sub.recognizability)}/100. Um elemento fixo (cor, moldura, tipografia) ajuda o feed a parecer um perfil único.`,
+          resolves: "Resolve a Pergunta 03 — clareza visual.",
+          _score: 7,
+        });
+      }
+      if (sub.visualVariety < 40) {
+        out.push({
+          level: "media",
+          category: "testar",
+          basedOn: ["Análise visual das capas"],
+          source: "deterministic",
+          evidence: [{ label: "Variedade visual", value: `${Math.round(sub.visualVariety)}/100` }],
+          title: "Quebrar a repetição visual com 1 capa diferente",
+          body:
+            `A variedade visual está baixa (${Math.round(sub.visualVariety)}/100). Testar uma capa fora do padrão por semana ajuda a perceber o que prende mais o scroll.`,
+          resolves: "Resolve a Pergunta 03 — clareza visual.",
+          _score: 6,
+        });
+      }
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  // Cadence (evidence-gated)
+  // ──────────────────────────────────────────────────────────────────
+  if (cadence && cadence.sufficient === false) {
+    out.push({
+      level: "media",
+      category: "corrigir",
+      basedOn: ["Frequência editorial"],
+      source: "deterministic",
+      title: "Estabilizar o ritmo de publicação",
+      body:
+        "O ritmo de publicação ainda não é fiável o suficiente para tirar conclusões sólidas. Definir um mínimo semanal (ex.: 2 posts) gera padrão e dados comparáveis.",
+      resolves: "Resolve a Pergunta 02 — frequência editorial.",
+      _score: 6,
+    });
+  } else if (cadence && typeof cadence.weekly === "number" && cadence.weekly < 1) {
+    out.push({
+      level: "media",
+      category: "corrigir",
+      basedOn: ["Frequência editorial"],
+      source: "deterministic",
+      evidence: [{ label: "Publicações/semana", value: cadence.weekly.toFixed(1).replace(".", ",") }],
+      title: "Aumentar para pelo menos 2 publicações/semana",
+      body:
+        `O ritmo atual ronda ${cadence.weekly.toFixed(1).replace(".", ",")} publicações por semana. Subir para 2 mantém o perfil presente sem comprometer qualidade.`,
+      resolves: "Resolve a Pergunta 02 — frequência editorial.",
+      _score: 6,
+    });
+  }
+
+  // Repetir o formato dominante quando há sinal saudável
+  if (
+    dominantFormatShare >= 40 &&
+    dominantFormatLabel &&
+    audience.available &&
+    audience.label !== "Audiência silenciosa"
+  ) {
+    out.push({
+      level: "oportunidade",
+      category: "repetir",
+      basedOn: ["Mix de formatos"],
+      source: "deterministic",
+      evidence: [
+        { label: dominantFormatLabel, value: `${Math.round(dominantFormatShare)}%` },
+      ],
+      title: `Manter o ritmo em ${dominantFormatLabel}`,
+      body:
+        `${dominantFormatLabel} representa ${Math.round(dominantFormatShare)}% e a audiência responde. Vale a pena manter o ritmo e iterar variações dentro do mesmo formato.`,
+      resolves: "Resolve a Pergunta 03 — formato dominante.",
+      _score: 4,
+    });
+  }
+
   // Fallback útil baseado em integração (preenche se ainda <3)
+  const evidenceRichCount = out.filter(
+    (it) =>
+      it.basedOn.some(
+        (b) => b === "Resposta do público" || b === "Análise visual das capas",
+      ),
+  ).length;
+
   if (out.length < 3 && integration.available) {
     out.push({
       level: "oportunidade",
+      category: "oportunidade",
+      basedOn: ["Integração entre canais"],
+      source: "deterministic",
       title: "Tornar a ligação entre canais mais visível",
       body:
         "Mencionar site, newsletter ou outros canais nas captions ajuda a audiência a sair do Instagram quando faz sentido.",
@@ -1237,9 +1509,12 @@ export function derivePriorities(args: {
   }
 
   // Fallback genérico — repetir o que já funciona (sempre disponível)
-  if (out.length < 3) {
+  if (out.length < 3 && evidenceRichCount < 2) {
     out.push({
       level: "oportunidade",
+      category: "repetir",
+      basedOn: ["Publicações-chave"],
+      source: "deterministic",
       title: "Repetir o tema do post com mais interacção",
       body:
         "Identifica o post com mais comentários ou likes dos últimos 30 dias e replica o ângulo (tema, formato, abertura) noutra peça nas próximas duas semanas.",
@@ -1247,15 +1522,26 @@ export function derivePriorities(args: {
       _score: 2,
     });
   }
-  if (out.length < 3) {
+  if (out.length < 3 && evidenceRichCount < 2) {
     out.push({
       level: "oportunidade",
+      category: "testar",
+      basedOn: ["Tipo de conteúdo dominante"],
+      source: "deterministic",
       title: "Definir 2 rubricas editoriais recorrentes",
       body:
         "Criar duas rubricas claras (ex.: dica semanal + bastidores) facilita planeamento, dá ritmo ao perfil e ajuda a audiência a reconhecer o que esperar.",
       resolves: "Resolve a Pergunta 01 — clareza editorial.",
       _score: 1,
     });
+  }
+
+  // Boost score for evidence-rich rules (comments / visual cover).
+  for (const it of out) {
+    const richBasis = it.basedOn.some(
+      (b) => b === "Resposta do público" || b === "Análise visual das capas",
+    );
+    if (richBasis && it.evidence && it.evidence.length > 0) it._score += 5;
   }
 
   // Deduplicar por título e ordenar por score desc.

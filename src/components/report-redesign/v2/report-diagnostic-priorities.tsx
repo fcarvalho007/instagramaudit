@@ -1,10 +1,10 @@
 import { cn } from "@/lib/utils";
 import type { PriorityItem } from "@/lib/report/block02-diagnostic";
-import { ReportSourceLabel } from "./report-source-label";
 import { useTranslation } from "react-i18next";
 
 interface Props {
   items: PriorityItem[];
+  /** @deprecated kept for backward compatibility — per-item source pill replaces this. */
   source?: "ai" | "deterministic";
 }
 
@@ -26,7 +26,14 @@ const STYLE = {
   },
 } as const;
 
-export function ReportDiagnosticPriorities({ items, source = "deterministic" }: Props) {
+const CATEGORY_KEY = {
+  testar: "diagnostic.priorities_category.testar",
+  corrigir: "diagnostic.priorities_category.corrigir",
+  repetir: "diagnostic.priorities_category.repetir",
+  oportunidade: "diagnostic.priorities_category.oportunidade",
+} as const;
+
+export function ReportDiagnosticPriorities({ items }: Props) {
   const { t } = useTranslation("report");
   if (items.length === 0) return null;
   return (
@@ -36,7 +43,6 @@ export function ReportDiagnosticPriorities({ items, source = "deterministic" }: 
           <p className="text-eyebrow-sm text-content-tertiary">
             07 · Prioridades de acção
           </p>
-          {source === "ai" ? <ReportSourceLabel type="ia" /> : null}
           <span className="text-eyebrow-sm ml-auto text-content-tertiary tabular-nums">
             {t("diagnostic.priorities_count", { count: items.length })}
           </span>
@@ -48,6 +54,10 @@ export function ReportDiagnosticPriorities({ items, source = "deterministic" }: 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {items.map((it, i) => {
           const s = STYLE[it.level];
+          const category = it.category ?? "oportunidade";
+          const basedOn = it.basedOn ?? [];
+          const evidence = it.evidence ?? [];
+          const src = it.source ?? "deterministic";
           return (
             <article
               key={`${it.title}-${i}`}
@@ -59,22 +69,65 @@ export function ReportDiagnosticPriorities({ items, source = "deterministic" }: 
                 s.border,
               )}
             >
-              <span
-                className={cn(
-                  "self-start inline-flex items-center rounded-full px-2.5 py-1",
-                  "text-eyebrow-sm ring-1",
-                  s.chip,
-                )}
-              >
-                {t(s.labelKey)}
-              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span
+                  className={cn(
+                    "inline-flex items-center rounded-full px-2.5 py-1",
+                    "text-eyebrow-sm ring-1",
+                    s.chip,
+                  )}
+                >
+                  {t(s.labelKey)}
+                </span>
+                <span
+                  className={cn(
+                    "inline-flex items-center rounded-full px-2.5 py-1",
+                    "text-eyebrow-sm ring-1 bg-surface-muted text-content-secondary ring-border-default",
+                  )}
+                >
+                  {t(CATEGORY_KEY[category])}
+                </span>
+                <span
+                  className={cn(
+                    "ml-auto inline-flex items-center rounded-full px-2 py-0.5",
+                    "text-[10px] font-medium tracking-wide uppercase",
+                    "bg-transparent text-content-tertiary ring-1 ring-border-default",
+                  )}
+                  title={t(`diagnostic.priorities_source.${src}`)}
+                >
+                  {t(`diagnostic.priorities_source.${src}`)}
+                </span>
+              </div>
+
               <h4 className="font-display text-[1.05rem] font-semibold tracking-tight text-content-primary leading-snug">
                 {it.title}
               </h4>
               <p className="text-sm text-content-secondary leading-relaxed">{it.body}</p>
-              <p className="text-eyebrow-sm mt-auto text-content-tertiary">
-                {it.resolves}
-              </p>
+
+              {evidence.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {evidence.slice(0, 2).map((ev, j) => (
+                    <span
+                      key={`${ev.label}-${j}`}
+                      className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs bg-surface-muted text-content-secondary ring-1 ring-border-default tabular-nums"
+                    >
+                      <span className="text-content-tertiary">{ev.label}</span>
+                      {ev.value ? (
+                        <span className="font-semibold text-content-primary">{ev.value}</span>
+                      ) : null}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+
+              {basedOn.length > 0 ? (
+                <p className="text-xs text-content-tertiary mt-auto leading-relaxed">
+                  <span className="font-medium">{t("diagnostic.priorities_based_on")}</span>{" "}
+                  {basedOn.join(" · ")}
+                </p>
+              ) : it.resolves ? (
+                <p className="text-eyebrow-sm mt-auto text-content-tertiary">{it.resolves}</p>
+              ) : null}
             </article>
           );
         })}

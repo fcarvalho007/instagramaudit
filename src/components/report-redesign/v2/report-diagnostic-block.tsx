@@ -21,6 +21,8 @@ import {
 import {
   derivePriorities,
   type PriorityItem,
+  type PriorityCategory,
+  type PriorityBasis,
 } from "@/lib/report/block02-diagnostic";
 import { ReportDiagnosticPriorities } from "./report-diagnostic-priorities";
 
@@ -71,6 +73,53 @@ function parseCaptionSemanticAnalysis(
   if (r.source !== "openai" || typeof r.analyzedCaptions !== "number") return null;
   if (r.schemaVersion !== 2) return null;
   return raw as CaptionSemanticAnalysis;
+}
+
+/**
+ * Map an AI-produced priority item into the local `PriorityItem` shape.
+ * Infers `category` from action verbs and `basedOn` from keyword hints
+ * in title/body. Source is always "ai".
+ */
+function inferAiPriorityItem(p: {
+  level: "alta" | "media" | "oportunidade";
+  title: string;
+  body: string;
+  resolves: string;
+}): PriorityItem {
+  const text = `${p.title} ${p.body}`.toLowerCase();
+  let category: PriorityCategory = "oportunidade";
+  if (/\b(corrig|resolve[r]?|reparar|arrumar|endereçar)/.test(text)) {
+    category = "corrigir";
+  } else if (/\b(repetir|manter|continuar|escalar|replicar)/.test(text)) {
+    category = "repetir";
+  } else if (/\b(testar|experimentar|tentar|introduzir|variar|adicionar)/.test(text)) {
+    category = "testar";
+  }
+
+  const basedOn: PriorityBasis[] = [];
+  const add = (b: PriorityBasis) => {
+    if (!basedOn.includes(b)) basedOn.push(b);
+  };
+  if (/\b(coment|respond|conversa|audi[êe]ncia)\b/.test(text)) add("Resposta do público");
+  if (/\b(capa|thumbnail|visual|imagem)\b/.test(text)) add("Análise visual das capas");
+  if (/\b(ritmo|frequ[êe]ncia|cad[êe]ncia|semana|semanal|publica)\b/.test(text))
+    add("Frequência editorial");
+  if (/\b(reel|carross|formato)\b/.test(text)) add("Mix de formatos");
+  if (/\b(post[s]? com|melhor post|post-âncora|post ancora|publica[çc][ãa]o-chave)\b/.test(text))
+    add("Publicações-chave");
+  if (/\b(caption|legend|cta|chamada)\b/.test(text)) add("Padrão das captions");
+  if (/\b(bio|link|newsletter|site|canal|whatsapp|dm)\b/.test(text)) add("Integração entre canais");
+  if (basedOn.length === 0) add("Tipo de conteúdo dominante");
+
+  return {
+    level: p.level,
+    category,
+    title: p.title,
+    body: p.body,
+    resolves: p.resolves,
+    basedOn,
+    source: "ai",
+  };
 }
 
 interface Props {
@@ -137,16 +186,24 @@ export function ReportDiagnosticBlock({ result, payload, premiumUnlocked = false
     integration,
     dominantFormatShare: dominantFormat?.sharePct ?? 0,
     dominantFormatLabel: dominantFormat?.label ?? null,
+    commentIntel:
+      features.commentIntelligence === "full"
+        ? (result.enriched.commentIntelligence ?? null)
+        : null,
+    coverAnalysis: parseVisualCoverAnalysis(payload),
+    cadence: result.enriched.cadence
+      ? {
+          weekly: result.enriched.cadence.weekly,
+          sufficient: result.enriched.cadence.sufficient,
+        }
+      : null,
   });
 
   // Always guarantee ≥3 priority cards: use AI when it returns enough,
   // otherwise top up with deterministic items (deduped by title).
-  const aiMapped: PriorityItem[] = (aiPriorities ?? []).map((p) => ({
-    level: p.level,
-    title: p.title,
-    body: p.body,
-    resolves: p.resolves,
-  }));
+  const aiMapped: PriorityItem[] = (aiPriorities ?? []).map((p) =>
+    inferAiPriorityItem(p),
+  );
 
   const seenPriorityTitles = new Set(
     aiMapped.map((p) => p.title.trim().toLowerCase()),

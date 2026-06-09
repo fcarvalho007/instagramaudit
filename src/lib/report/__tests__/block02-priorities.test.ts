@@ -7,6 +7,8 @@ import {
   type AudienceResponseResult,
   type IntegrationResult,
 } from "../block02-diagnostic";
+import type { CommentIntelligence } from "@/lib/analysis/types";
+import type { VisualCoverAnalysis } from "@/lib/report/visual-cover-types";
 
 function baseInputs() {
   const contentType: ContentTypeResult = {
@@ -68,6 +70,11 @@ describe("derivePriorities", () => {
       dominantFormatLabel: "Carrossel",
     });
     expect(items.length).toBeGreaterThanOrEqual(3);
+    for (const it of items) {
+      expect(it.category).toBeDefined();
+      expect(it.basedOn.length).toBeGreaterThan(0);
+      expect(it.source).toBe("deterministic");
+    }
   });
 
   it("returns at most 6 items", () => {
@@ -100,5 +107,86 @@ describe("derivePriorities", () => {
     expect(items.length).toBeGreaterThanOrEqual(3);
     // First item should be a high-priority "alta" rule
     expect(items[0].level).toBe("alta");
+  });
+
+  it("surfaces a 'Resposta do público' card when commentIntel has low reply rate + questions", () => {
+    const commentIntel: CommentIntelligence = {
+      available: true,
+      source: "apify_comments",
+      samplePosts: 5,
+      sampleComments: 80,
+      sampleReplies: 10,
+      ownerUsername: "x",
+      ownerRepliesCount: 4,
+      ownerReplyRatePct: 6,
+      postsWithOwnerReplyPct: 20,
+      audienceCommentsCount: 70,
+      uniqueAudienceCommentersCount: 60,
+      postsWithConversationPct: 40,
+      questionsFromAudienceCount: 7,
+      praiseCount: 12,
+      complaintOrIssueCount: 0,
+      buyingIntentCount: 0,
+      spamOrLowQualityCount: 0,
+      dominantConversationSignals: ["questions"],
+      recommendedConversationAction: "",
+      limitations: [],
+    };
+    const items = derivePriorities({
+      ...baseInputs(),
+      dominantFormatShare: 30,
+      dominantFormatLabel: "Reel",
+      commentIntel,
+    });
+    const card = items.find((it) => it.basedOn.includes("Resposta do público"));
+    expect(card).toBeDefined();
+    expect(card!.evidence?.some((e) => /Resposta da marca/i.test(e.label))).toBe(true);
+  });
+
+  it("surfaces an 'Análise visual das capas' card when overall cover score is low", () => {
+    const coverAnalysis: VisualCoverAnalysis = {
+      analyzedCount: 9,
+      overallScore: 42,
+      status: "critical",
+      summary: "",
+      subScores: {
+        recognizability: 40,
+        colorCoherence: 50,
+        composition: 55,
+        visualVariety: 60,
+        textDensity: 70,
+      },
+      thumbnails: [],
+      aggregate: {
+        humanPresencePct: 0,
+        textInImagePct: 0,
+        dominantPalette: [],
+        repeatedTemplateCount: 0,
+        repeatedTemplateNote: null,
+      },
+      diagnostic: { main: "", works: "", critical: "", watch: "" },
+    };
+    const items = derivePriorities({
+      ...baseInputs(),
+      dominantFormatShare: 30,
+      dominantFormatLabel: "Reel",
+      coverAnalysis,
+    });
+    const card = items.find((it) => it.basedOn.includes("Análise visual das capas"));
+    expect(card).toBeDefined();
+    expect(card!.evidence?.some((e) => /Score capas/i.test(e.label))).toBe(true);
+  });
+
+  it("does not fabricate cover/comment cards when both enrichments are missing", () => {
+    const items = derivePriorities({
+      ...baseInputs(),
+      dominantFormatShare: 30,
+      dominantFormatLabel: "Reel",
+    });
+    expect(items.length).toBeGreaterThanOrEqual(3);
+    for (const it of items) {
+      expect(it.basedOn).not.toContain("Análise visual das capas");
+      expect(it.basedOn).not.toContain("Resposta do público");
+    }
   });
 });
