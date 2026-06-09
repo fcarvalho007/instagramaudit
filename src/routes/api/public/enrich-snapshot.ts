@@ -175,21 +175,31 @@ export const Route = createFileRoute("/api/public/enrich-snapshot")({
               }
             }
 
-            // Update enrichment_status in the snapshot payload
-            await setEnrichmentStatusAtomic(job.snapshot_id, job.enrichment_type, "success");
+            // Distinguish silent skips with a reason (e.g. provider gate /
+            // budget) from real successes so admin can audit them.
+            const isSkip =
+              result.payloadPatch === null &&
+              typeof result.skipReason === "string" &&
+              result.skipReason.length > 0;
+
+            await setEnrichmentStatusAtomic(
+              job.snapshot_id,
+              job.enrichment_type,
+              isSkip ? "skipped" : "success",
+            );
 
             await supabaseAdmin
               .from("enrichment_jobs")
               .update({
-                status: "success",
+                status: isSkip ? "skipped" : "success",
                 completed_at: new Date().toISOString(),
-                error_message: null,
+                error_message: isSkip ? (result.skipReason as string) : null,
               })
               .eq("id", job.id);
             succeeded += 1;
 
             // After visual_cover succeeds, remove bulky base64 thumbnails
-            if (job.enrichment_type === "visual_cover") {
+            if (!isSkip && job.enrichment_type === "visual_cover") {
               await removePayloadKey(job.snapshot_id, "_thumbnail_base64");
             }
           } else {
