@@ -129,7 +129,7 @@ export function getPaymentConfirmedParts(
   <tr>
     <td style="padding:18px 20px;">
       <p style="margin:0 0 8px 0;font-size:11px;line-height:1.4;letter-spacing:0.14em;color:#78716c;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-weight:600;">Créditos ativados</p>
-      <p style="margin:0;font-size:14px;line-height:1.55;color:#0a0e1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Além do acesso ao relatório completo, ativámos <strong style="color:#0a0e1a;">${totalCredits} créditos</strong> na tua conta: ${includedCredits} incluído na compra e ${bonusCredits} créditos extra por esta fase beta. Podes usá-los para testar novas janelas de análise ou adicionar concorrentes.</p>
+      <p style="margin:0;font-size:14px;line-height:1.55;color:#0a0e1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Além do acesso ao relatório completo, ativámos <strong style="color:#0a0e1a;">${totalCredits} créditos</strong> na tua conta: ${includedCredits} incluído na compra e ${bonusCredits} créditos extra de lançamento. Podes usá-los nas janelas de análise 30d e 90d ou na comparação com concorrente.</p>
     </td>
   </tr>
 </table>`
@@ -168,8 +168,8 @@ export function getPaymentConfirmedParts(
     ? [
         "",
         "— Créditos ativados —",
-        `Além do acesso ao relatório completo, ativámos ${totalCredits} créditos na tua conta: ${includedCredits} incluído na compra e ${bonusCredits} créditos extra por esta fase beta.`,
-        "Podes usá-los para testar novas janelas de análise ou adicionar concorrentes.",
+        `Além do acesso ao relatório completo, ativámos ${totalCredits} créditos na tua conta: ${includedCredits} incluído na compra e ${bonusCredits} créditos extra de lançamento.`,
+        "Podes usá-los nas janelas de análise 30d e 90d ou na comparação com concorrente.",
       ]
     : [];
 
