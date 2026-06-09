@@ -29,6 +29,7 @@ import { PUBLIC_PRODUCTS } from "@/lib/payments/products";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyCreditBalance } from "@/lib/credits/credits.functions";
 import { fetchPublicAnalysis } from "@/lib/analysis/client";
+import { usePublicAppConfig } from "@/lib/config/use-app-config";
 import {
   ConsumeCreditDialog,
   type ConsumeCreditIntent,
@@ -486,7 +487,12 @@ function LockedItemRow({
   );
 }
 
-const PREMIUM_WINDOWS = [30, 90] as const;
+/**
+ * Pro windows surfaced as chips in the sidebar. 90d is gated by the
+ * `pro_window_90d_enabled` flag (see `usePublicAppConfig`); chip render
+ * uses the runtime-filtered `premiumWindows` derived inside the component.
+ */
+const PREMIUM_WINDOWS_ALL = [30, 90] as const;
 
 // TODO: centralisar este limite num módulo partilhado (ex.: lib/config) quando
 // existir um sítio óbvio. Por agora vive aqui colado ao único consumidor.
@@ -567,6 +573,11 @@ function ExploreSection({
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { proWindow90dEnabled } = usePublicAppConfig();
+  const premiumWindows = useMemo<readonly number[]>(
+    () => (proWindow90dEnabled ? PREMIUM_WINDOWS_ALL : [30]),
+    [proWindow90dEnabled],
+  );
 
   // Carrega o saldo de créditos beta apenas no estado paid — nunca antes
   // da compra, para nunca revelar o bónus ao utilizador free.
@@ -966,7 +977,7 @@ function ExploreSection({
               ? t("nav.explore.period_sample", { count: sampleSize })
               : "—"}
           </span>
-          {PREMIUM_WINDOWS.map((days) => (
+          {premiumWindows.map((days) => (
             <button
               key={days}
               type="button"

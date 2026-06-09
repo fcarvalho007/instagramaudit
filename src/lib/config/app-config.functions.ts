@@ -21,12 +21,19 @@ export interface PublicAppConfig {
   contactEmail: string;
   /** When true, the "Comparar concorrente" feature is live (no teaser badge). */
   compareEnabled: boolean;
+  /**
+   * When true, the 90-day Pro window chip is rendered and the backend
+   * accepts `window:"90d"`. Default OFF — high-volume / cost behaviour
+   * not yet validated.
+   */
+  proWindow90dEnabled: boolean;
 }
 
 export const PUBLIC_APP_CONFIG_DEFAULTS: PublicAppConfig = {
   freeMonthlyReportLimit: 3,
   contactEmail: "hello@auditprofiles.com",
   compareEnabled: false,
+  proWindow90dEnabled: false,
 };
 
 export const getPublicAppConfig = createServerFn({ method: "GET" }).handler(
@@ -35,6 +42,7 @@ export const getPublicAppConfig = createServerFn({ method: "GET" }).handler(
       "free_monthly_report_limit",
       "contact_email",
       "feature_compare_competitors_enabled",
+      "pro_window_90d_enabled",
     ]);
 
     return {
@@ -48,6 +56,10 @@ export const getPublicAppConfig = createServerFn({ method: "GET" }).handler(
       compareEnabled: parseConfigBool(
         map.feature_compare_competitors_enabled,
         PUBLIC_APP_CONFIG_DEFAULTS.compareEnabled,
+      ),
+      proWindow90dEnabled: parseConfigBool(
+        map.pro_window_90d_enabled,
+        PUBLIC_APP_CONFIG_DEFAULTS.proWindow90dEnabled,
       ),
     };
   },

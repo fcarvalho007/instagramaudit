@@ -167,6 +167,8 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
     "Já usaste os teus 2 relatórios gratuitos.",
   WINDOW_REQUIRES_PRO:
     "A análise por período (30d/90d) está disponível no plano Pro.",
+  WINDOW_90D_DISABLED:
+    "A análise de 90 dias está temporariamente indisponível. Tenta 30 dias.",
 };
 
 const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
@@ -185,6 +187,7 @@ const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
   ONBOARDING_REQUIRED: 402,
   INSUFFICIENT_CREDITS: 402,
   WINDOW_REQUIRES_PRO: 403,
+  WINDOW_90D_DISABLED: 403,
 };
 
 /**
@@ -588,6 +591,29 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           // check BEFORE reserving credit so a Free lead is never
           // charged for a window they cannot use.
           if (isWideWindow(windowKind)) {
+            // 90d kill-switch — runs BEFORE entitlement check and BEFORE
+            // reserveCredit so a blocked 90d call never writes credit_ledger.
+            if (windowKind === "90d") {
+              const { readAppConfigValue } = await import(
+                "@/lib/config/app-config.server"
+              );
+              const flagRaw = await readAppConfigValue(
+                "pro_window_90d_enabled",
+                "false",
+              );
+              if (flagRaw !== "true") {
+                await logEvent({
+                  handle: primary,
+                  competitorHandles: competitors,
+                  cacheKey,
+                  dataSource: "none",
+                  outcome: "blocked_credits",
+                  errorCode: "WINDOW_90D_DISABLED",
+                  estimatedCostUsd: 0,
+                });
+                return failure("WINDOW_90D_DISABLED");
+              }
+            }
             const isPro = await hasEntitlement(leadId, "report_full_9");
             if (!isPro) {
               await logEvent({
