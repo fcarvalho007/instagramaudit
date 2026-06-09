@@ -31,6 +31,7 @@ import { Route as ReportsSnapshotIdRouteImport } from './routes/reports.$snapsho
 import { Route as ReportExampleRouteImport } from './routes/report.example'
 import { Route as FeedbackRequestIdRouteImport } from './routes/feedback.$requestId'
 import { Route as CheckoutReportFullRouteImport } from './routes/checkout.report-full'
+import { Route as CheckoutCreditsRouteImport } from './routes/checkout.credits'
 import { Route as CheckoutAuthorityDiagnosisRouteImport } from './routes/checkout.authority-diagnosis'
 import { Route as BetaRequestRouteImport } from './routes/beta.request'
 import { Route as AppReportsRouteImport } from './routes/app.reports'
@@ -273,6 +274,11 @@ const FeedbackRequestIdRoute = FeedbackRequestIdRouteImport.update({
 const CheckoutReportFullRoute = CheckoutReportFullRouteImport.update({
   id: '/report-full',
   path: '/report-full',
+  getParentRoute: () => CheckoutRoute,
+} as any)
+const CheckoutCreditsRoute = CheckoutCreditsRouteImport.update({
+  id: '/credits',
+  path: '/credits',
   getParentRoute: () => CheckoutRoute,
 } as any)
 const CheckoutAuthorityDiagnosisRoute =
@@ -1045,6 +1051,7 @@ export interface FileRoutesByFullPath {
   '/app/reports': typeof AppReportsRouteWithChildren
   '/beta/request': typeof BetaRequestRoute
   '/checkout/authority-diagnosis': typeof CheckoutAuthorityDiagnosisRoute
+  '/checkout/credits': typeof CheckoutCreditsRoute
   '/checkout/report-full': typeof CheckoutReportFullRoute
   '/feedback/$requestId': typeof FeedbackRequestIdRoute
   '/report/example': typeof ReportExampleRoute
@@ -1200,6 +1207,7 @@ export interface FileRoutesByTo {
   '/app/reports': typeof AppReportsRouteWithChildren
   '/beta/request': typeof BetaRequestRoute
   '/checkout/authority-diagnosis': typeof CheckoutAuthorityDiagnosisRoute
+  '/checkout/credits': typeof CheckoutCreditsRoute
   '/checkout/report-full': typeof CheckoutReportFullRoute
   '/feedback/$requestId': typeof FeedbackRequestIdRoute
   '/report/example': typeof ReportExampleRoute
@@ -1358,6 +1366,7 @@ export interface FileRoutesById {
   '/app/reports': typeof AppReportsRouteWithChildren
   '/beta/request': typeof BetaRequestRoute
   '/checkout/authority-diagnosis': typeof CheckoutAuthorityDiagnosisRoute
+  '/checkout/credits': typeof CheckoutCreditsRoute
   '/checkout/report-full': typeof CheckoutReportFullRoute
   '/feedback/$requestId': typeof FeedbackRequestIdRoute
   '/report/example': typeof ReportExampleRoute
@@ -1517,6 +1526,7 @@ export interface FileRouteTypes {
     | '/app/reports'
     | '/beta/request'
     | '/checkout/authority-diagnosis'
+    | '/checkout/credits'
     | '/checkout/report-full'
     | '/feedback/$requestId'
     | '/report/example'
@@ -1672,6 +1682,7 @@ export interface FileRouteTypes {
     | '/app/reports'
     | '/beta/request'
     | '/checkout/authority-diagnosis'
+    | '/checkout/credits'
     | '/checkout/report-full'
     | '/feedback/$requestId'
     | '/report/example'
@@ -1829,6 +1840,7 @@ export interface FileRouteTypes {
     | '/app/reports'
     | '/beta/request'
     | '/checkout/authority-diagnosis'
+    | '/checkout/credits'
     | '/checkout/report-full'
     | '/feedback/$requestId'
     | '/report/example'
@@ -2218,6 +2230,13 @@ declare module '@tanstack/react-router' {
       path: '/report-full'
       fullPath: '/checkout/report-full'
       preLoaderRoute: typeof CheckoutReportFullRouteImport
+      parentRoute: typeof CheckoutRoute
+    }
+    '/checkout/credits': {
+      id: '/checkout/credits'
+      path: '/credits'
+      fullPath: '/checkout/credits'
+      preLoaderRoute: typeof CheckoutCreditsRouteImport
       parentRoute: typeof CheckoutRoute
     }
     '/checkout/authority-diagnosis': {
@@ -3248,11 +3267,13 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 interface CheckoutRouteChildren {
   CheckoutAuthorityDiagnosisRoute: typeof CheckoutAuthorityDiagnosisRoute
+  CheckoutCreditsRoute: typeof CheckoutCreditsRoute
   CheckoutReportFullRoute: typeof CheckoutReportFullRoute
 }
 
 const CheckoutRouteChildren: CheckoutRouteChildren = {
   CheckoutAuthorityDiagnosisRoute: CheckoutAuthorityDiagnosisRoute,
+  CheckoutCreditsRoute: CheckoutCreditsRoute,
   CheckoutReportFullRoute: CheckoutReportFullRoute,
 }
 

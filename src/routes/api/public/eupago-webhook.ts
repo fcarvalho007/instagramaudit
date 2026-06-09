@@ -24,6 +24,9 @@ import {
   PURCHASE_INCLUDED_AMOUNT,
   PURCHASE_INCLUDED_KIND,
   POST_PURCHASE_BETA_KIND,
+  CREDIT_PACK_KIND,
+  getCreditPackAmount,
+  grantCreditPack,
 } from "@/lib/credits/credits.server";
 import { recordProductEvent } from "@/lib/tracking.server";
 import {
@@ -163,6 +166,74 @@ export const Route = createFileRoute("/api/public/eupago-webhook")({
               provider_payment_id: providerPaymentId ?? undefined,
             })
             .eq("id", row.id);
+
+          // ── Credit-pack SKUs ─────────────────────────────────────────
+          // Packs (`credit_pack_*`) só adicionam créditos. NÃO concedem
+          // entitlement Pro, não disparam enrichments (o snapshot já está
+          // pago) e não somam bónus beta. Idempotente por payment_id.
+          const packAmount = getCreditPackAmount(row.product);
+          if (packAmount != null) {
+            try {
+              const result = await grantCreditPack({
+                leadId: row.lead_id,
+                paymentId: row.id,
+                productCode: row.product,
+                amount: packAmount,
+              });
+              if (result.granted) {
+                await recordProductEvent({
+                  eventType: "credits_pack_granted",
+                  leadId: row.lead_id,
+                  metadata: {
+                    payment_id: row.id,
+                    product_code: row.product,
+                    delta: packAmount,
+                    kind: CREDIT_PACK_KIND,
+                    source: "payment_confirmed",
+                  },
+                });
+              }
+            } catch (err) {
+              console.error("[eupago-webhook] grantCreditPack failed", err);
+            }
+
+            // Coupon redemption ainda corre (caso queiramos lançar cupões
+            // de pack no futuro); por agora `payment_coupons` valida
+            // por produto e bloqueia se não existir.
+            const couponCode =
+              (row.metadata?.coupon_code as string | null | undefined) ?? null;
+            if (couponCode) {
+              try {
+                const { redeemCouponForPayment } = await import(
+                  "@/lib/payments/coupons.server"
+                );
+                await redeemCouponForPayment({
+                  couponCode,
+                  paymentId: row.id,
+                  productCode: row.product,
+                  leadId: row.lead_id,
+                });
+              } catch (err) {
+                console.error(
+                  "[eupago-webhook] coupon redemption failed (pack)",
+                  err,
+                );
+              }
+            }
+
+            await recordProductEvent({
+              eventType: "payment_webhook_paid",
+              leadId: row.lead_id,
+              metadata: {
+                payment_id: row.id,
+                product_code: row.product,
+                provider_payment_id: providerPaymentId,
+                pack_amount: packAmount,
+              },
+            });
+
+            return new Response("ok", { status: 200 });
+          }
 
           try {
             await grantEntitlement({

@@ -8,6 +8,7 @@
 export const PRODUCT_CODES = [
   "authority_diagnosis_97",
   "report_full_9",
+  "credit_pack_1",
 ] as const;
 
 export type ProductCode = (typeof PRODUCT_CODES)[number];
@@ -39,6 +40,15 @@ export const PUBLIC_PRODUCTS: Record<ProductCode, PublicProduct> = {
     priceLabel: "9€",
     priceNote: "por relatório · pagamento único",
     exposed: true,
+  },
+  credit_pack_1: {
+    code: "credit_pack_1",
+    namePt: "1 crédito de análise",
+    priceLabel: "9€",
+    priceNote: "1 crédito · pagamento único",
+    // Hidden from public catalogues; only surfaced via the "no credits"
+    // dialog inside the Pro report.
+    exposed: false,
   },
 };
 
