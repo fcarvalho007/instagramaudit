@@ -12,8 +12,14 @@ describe("analyze-public-v1 · 90d kill-switch contract", () => {
     expect(code).toBe("WINDOW_90D_DISABLED");
   });
 
-  it("PublicAppConfig expõe proWindow90dEnabled com default OFF", async () => {
+  it("PublicAppConfig expõe proWindow90dEnabled com default ON", async () => {
     const mod = await import("@/lib/config/app-config.functions");
-    expect(mod.PUBLIC_APP_CONFIG_DEFAULTS.proWindow90dEnabled).toBe(false);
+    expect(mod.PUBLIC_APP_CONFIG_DEFAULTS.proWindow90dEnabled).toBe(true);
+  });
+
+  it("PublicAnalysisErrorCode inclui WINDOW_90D_BUDGET_EXCEEDED", () => {
+    type Code = import("@/lib/analysis/types").PublicAnalysisErrorCode;
+    const code: Code = "WINDOW_90D_BUDGET_EXCEEDED";
+    expect(code).toBe("WINDOW_90D_BUDGET_EXCEEDED");
   });
 });

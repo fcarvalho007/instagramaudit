@@ -169,6 +169,8 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
     "A análise por período (30d/90d) está disponível no plano Pro.",
   WINDOW_90D_DISABLED:
     "A análise de 90 dias está temporariamente indisponível. Tenta 30 dias.",
+  WINDOW_90D_BUDGET_EXCEEDED:
+    "A análise de 90 dias está temporariamente indisponível por segurança operacional. Tenta novamente mais tarde ou usa a janela de 30 dias.",
   COMPETITORS_REQUIRE_PRO:
     "A análise de concorrentes está disponível no plano Pro.",
 };
@@ -190,6 +192,7 @@ const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
   INSUFFICIENT_CREDITS: 402,
   WINDOW_REQUIRES_PRO: 403,
   WINDOW_90D_DISABLED: 403,
+  WINDOW_90D_BUDGET_EXCEEDED: 503,
   COMPETITORS_REQUIRE_PRO: 403,
 };
 
@@ -625,7 +628,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               );
               const flagRaw = await readAppConfigValue(
                 "pro_window_90d_enabled",
-                "false",
+                "true",
               );
               if (flagRaw !== "true") {
                 await logEvent({
@@ -657,6 +660,33 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           // Cache fresh + relatório já atribuído a este lead → 0 créditos.
           const skipReserve = cacheFreshHit && alreadyAssociated;
           if (!skipReserve) {
+            // 90d dedicated daily budget gate. Runs only on the fresh-fetch
+            // path (cache hits stay free + unblocked). Sits BEFORE
+            // reserveCredit so a blocked 90d call never writes credit_ledger
+            // and never triggers Apify.
+            if (windowKind === "90d") {
+              const {
+                assertApify90dDailyBudgetAvailable,
+                Window90dBudgetExceededError,
+              } = await import("@/lib/security/apify-budget.server");
+              try {
+                await assertApify90dDailyBudgetAvailable();
+              } catch (e) {
+                if (e instanceof Window90dBudgetExceededError) {
+                  await logEvent({
+                    handle: primary,
+                    competitorHandles: competitors,
+                    cacheKey,
+                    dataSource: "none",
+                    outcome: "blocked_credits",
+                    errorCode: "WINDOW_90D_BUDGET_EXCEEDED",
+                    estimatedCostUsd: 0,
+                  });
+                  return failure("WINDOW_90D_BUDGET_EXCEEDED");
+                }
+                throw e;
+              }
+            }
             try {
               const outcome = await reserveCredit({
                 leadId,

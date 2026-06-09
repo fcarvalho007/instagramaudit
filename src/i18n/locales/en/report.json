@@ -662,7 +662,8 @@
         "period_success_toast_cache": "Analysis reused — no extra credit used.",
         "period_success_toast_fresh": "New analysis generated. 1 credit used.",
         "period_success_toast_neutral": "Period analysis loaded.",
-        "period_error_requires_pro": "This window requires active Pro access."
+        "period_error_requires_pro": "This window requires active Pro access.",
+        "period_error_window_90d_budget": "90-day analysis is temporarily unavailable for operational safety. Try again later or use the 30-day window."
       }
     },
     "status": {
