@@ -887,6 +887,9 @@ function FinalStepBody({
             )}
           </Button>
         </div>
+        <p className="text-center text-[12px] text-content-tertiary mt-1">
+          {t("onboarding.final.right.footnote")}
+        </p>
       </div>
     </form>
   );
