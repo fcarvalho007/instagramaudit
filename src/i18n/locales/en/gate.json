@@ -173,6 +173,9 @@
       "eyebrow": "FREE REPORT",
       "title": "Create an account to see the report",
       "subtitle": "You'll analyse <1>@{{handle}}</1> — it's free.",
+      "eyebrowCheckout": "BEFORE YOU PAY",
+      "titleCheckout": "Create your account to continue",
+      "subtitleCheckout": "About 30 seconds. We use your email to send the receipt and unlock the report in your account.",
       "newBadge": "New here",
       "newTitle": "Create a free account",
       "newPromise": "You get the saved report and 2 free credits once you confirm your email.",
@@ -188,8 +191,11 @@
       "left": {
         "eyebrow": "LAST STEP",
         "title": "Your report is one click away",
+        "eyebrowCheckout": "BEFORE YOU PAY",
+        "titleCheckout": "Just a few details left",
         "bullets": {
           "report": "Report for @{{handle}}",
+          "reportCheckout": "Private account that stores your purchase and reports",
           "save": "Private account with every report saved",
           "credits": "<strong>2 free credits</strong> once you confirm your email"
         }

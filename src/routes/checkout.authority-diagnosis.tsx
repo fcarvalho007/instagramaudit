@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -25,7 +25,7 @@ import {
   type BillingValue,
 } from "@/components/checkout/billing-form";
 import { OrderSummary } from "@/components/checkout/order-summary";
-import { MissingLeadSession } from "@/components/checkout/missing-lead-session";
+import { CheckoutAccountGate } from "@/components/checkout/checkout-account-gate";
 import { createEupagoCheckout } from "@/lib/payments/eupago.functions";
 import { getLeadSessionStatus } from "@/lib/leads/lead-session.functions";
 import { trackEvent } from "@/lib/tracking.functions";
@@ -77,11 +77,18 @@ export const Route = createFileRoute("/checkout/authority-diagnosis")({
 
 function CheckoutFlow() {
   const { data: leadStatus } = useSuspenseQuery(leadSessionQueryOptions);
+  const search = Route.useSearch();
+  const queryClient = useQueryClient();
   if (!leadStatus.hasLead) {
     return (
-      <MissingLeadSession
-        title="Para reservar o diagnóstico, começa por criar a tua conta gratuita."
-        description="Precisamos de uma sessão ativa para associar o diagnóstico ao teu perfil. Demora menos de um minuto."
+      <CheckoutAccountGate
+        productCode="authority_diagnosis_97"
+        exitPath={search.return ?? "/precos"}
+        onSignedIn={() => {
+          queryClient.invalidateQueries({
+            queryKey: leadSessionQueryOptions.queryKey,
+          });
+        }}
       />
     );
   }

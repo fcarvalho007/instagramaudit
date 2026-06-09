@@ -76,6 +76,14 @@ export interface OnboardingModalProps {
    * navigate to /analyze/$username to trigger provider work.
    */
   onSuccess: (handle: string, result: OnboardingSuccess) => void;
+  /**
+   * Origin of the modal. Default `"analyze"` keeps the legacy copy that
+   * references the handle being analysed. `"checkout"` swaps the
+   * handle-dependent copy for checkout-friendly text (no `@username`
+   * interpolation) so the modal can be rendered from `/precos` or any
+   * focused checkout flow before a handle has been chosen.
+   */
+  purpose?: "analyze" | "checkout";
 }
 
 /**
@@ -106,6 +114,7 @@ export function OnboardingModal({
   onOpenChange,
   handle,
   onSuccess,
+  purpose = "analyze",
 }: OnboardingModalProps) {
   const { t } = useTranslation("gate");
   const [view, setView] = useState<View>({ kind: "entry" });
@@ -462,6 +471,7 @@ export function OnboardingModal({
         {view.kind === "entry" ? (
           <EntryStepBody
             handle={handle}
+            purpose={purpose}
             submitting={submitting}
             serverError={serverError}
             onSubmit={handleEntrySubmit}
@@ -471,6 +481,7 @@ export function OnboardingModal({
         ) : view.kind === "final" ? (
           <FinalStepBody
             handle={handle}
+            purpose={purpose}
             form={form}
             serverError={serverError}
             submitting={submitting}
@@ -501,6 +512,7 @@ export function OnboardingModal({
 
 function EntryStepBody({
   handle,
+  purpose,
   submitting,
   serverError,
   onSubmit,
@@ -508,6 +520,7 @@ function EntryStepBody({
   initialEmail,
 }: {
   handle: string;
+  purpose: "analyze" | "checkout";
   submitting: boolean;
   serverError: string | null;
   onSubmit: (email: string) => Promise<void> | void;
@@ -546,18 +559,30 @@ function EntryStepBody({
     >
       <DialogHeader className="text-left space-y-2.5">
         <p className="text-eyebrow text-content-tertiary">
-          {t("onboarding.entry.eyebrow")}
+          {t(
+            purpose === "checkout"
+              ? "onboarding.entry.eyebrowCheckout"
+              : "onboarding.entry.eyebrow",
+          )}
         </p>
         <DialogTitle className="font-display text-[28px] sm:text-[32px] leading-[1.08] tracking-[-0.015em] text-content-primary text-balance">
-          {t("onboarding.entry.title")}
+          {t(
+            purpose === "checkout"
+              ? "onboarding.entry.titleCheckout"
+              : "onboarding.entry.title",
+          )}
         </DialogTitle>
         <DialogDescription className="text-[15px] text-content-secondary leading-[1.55]">
-          <Trans
-            i18nKey="onboarding.entry.subtitle"
-            ns="gate"
-            values={{ handle }}
-            components={{ 1: <span className="text-primary font-medium" /> }}
-          />
+          {purpose === "checkout" ? (
+            t("onboarding.entry.subtitleCheckout")
+          ) : (
+            <Trans
+              i18nKey="onboarding.entry.subtitle"
+              ns="gate"
+              values={{ handle }}
+              components={{ 1: <span className="text-primary font-medium" /> }}
+            />
+          )}
         </DialogDescription>
       </DialogHeader>
 
@@ -646,6 +671,7 @@ function EntryStepBody({
 
 function FinalStepBody({
   handle,
+  purpose,
   form,
   serverError,
   submitting,
@@ -654,6 +680,7 @@ function FinalStepBody({
   honeypotRef,
 }: {
   handle: string;
+  purpose: "analyze" | "checkout";
   form: ReturnType<typeof useForm<UnlockFormValues>>;
   serverError: string | null;
   submitting: boolean;
@@ -701,18 +728,30 @@ function FinalStepBody({
       {/* Left — navy value panel */}
       <aside className="bg-content-primary text-white px-6 py-7 sm:px-8 sm:py-9 lg:py-10 flex flex-col gap-5">
         <p className="text-eyebrow-sm text-cyan-300">
-          {t("onboarding.final.left.eyebrow")}
+          {t(
+            purpose === "checkout"
+              ? "onboarding.final.left.eyebrowCheckout"
+              : "onboarding.final.left.eyebrow",
+          )}
         </p>
         <p className="font-display text-[28px] sm:text-[32px] leading-[1.08] tracking-[-0.015em] text-white text-balance">
-          {t("onboarding.final.left.title")}
+          {t(
+            purpose === "checkout"
+              ? "onboarding.final.left.titleCheckout"
+              : "onboarding.final.left.title",
+          )}
         </p>
         <ul className="space-y-3 pt-2">
           <FinalBullet>
-            <Trans
-              i18nKey="onboarding.final.left.bullets.report"
-              ns="gate"
-              values={{ handle }}
-            />
+            {purpose === "checkout" ? (
+              t("onboarding.final.left.bullets.reportCheckout")
+            ) : (
+              <Trans
+                i18nKey="onboarding.final.left.bullets.report"
+                ns="gate"
+                values={{ handle }}
+              />
+            )}
           </FinalBullet>
           <FinalBullet>
             <Trans
