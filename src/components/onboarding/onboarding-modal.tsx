@@ -1118,14 +1118,25 @@ function QualificationStepBody({
     | ProfileOwnership
     | undefined;
   const goal = form.watch("goal") as Goal | undefined;
-  const goalOtherText = form.watch("goal_other_text") ?? "";
   const [ownershipError, setOwnershipError] = useState<string | null>(null);
   const [goalError, setGoalError] = useState<string | null>(null);
-  const [goalOtherError, setGoalOtherError] = useState<string | null>(null);
 
-  const profileOwnershipLabel = (v: ProfileOwnership) =>
-    t(`unlock.options.profileOwnership.${v}`);
-  const goalLabel = (v: Goal) => t(`unlock.options.goal.${v}`);
+  const OWNERSHIP_OPTIONS: Array<{
+    value: ProfileOwnership;
+    Icon: typeof User;
+  }> = [
+    { value: "own_profile", Icon: User },
+    { value: "brand_profile", Icon: Star },
+    { value: "client_profile", Icon: Briefcase },
+    { value: "competitor_research", Icon: Eye },
+  ];
+
+  const GOAL_OPTIONS: Array<{ value: Goal; Icon: typeof User }> = [
+    { value: "improve_content", Icon: Sparkles },
+    { value: "benchmark_competitors", Icon: Scale },
+    { value: "client_report", Icon: LineChart },
+    { value: "grow_audience", Icon: TrendingUp },
+  ];
 
   const handleContinue = () => {
     let hasError = false;
@@ -1141,19 +1152,13 @@ function QualificationStepBody({
     } else {
       setGoalError(null);
     }
-    if (goal === "other" && goalOtherText.trim().length < 2) {
-      setGoalOtherError(t("onboarding.qualification.goalOtherHint"));
-      hasError = true;
-    } else {
-      setGoalOtherError(null);
-    }
     if (hasError) return;
     onContinue();
   };
 
   return (
     <div
-      className="px-6 py-7 sm:px-10 sm:py-9"
+      className="px-6 py-6 sm:px-10 sm:py-8"
       data-testid="onboarding-qualification-step"
     >
       <OnboardingStepHeader current={2} className="mb-5" />
@@ -1169,14 +1174,14 @@ function QualificationStepBody({
         </DialogDescription>
       </DialogHeader>
 
-      <div className="mt-6 space-y-6" data-testid="onboarding-qualification">
-        <RadioCardField
+      <div className="mt-5 space-y-5" data-testid="onboarding-qualification">
+        <GridSelectField
           legend={t("onboarding.qualification.ownershipLegend")}
           name="profile_ownership"
-          options={PROFILE_OWNERSHIPS.map((v) => ({
-            value: v,
-            label: profileOwnershipLabel(v),
-            icon: PROFILE_OWNERSHIP_ICONS[v],
+          options={OWNERSHIP_OPTIONS.map((o) => ({
+            value: o.value,
+            label: t(`onboarding.compactOptions.profileOwnership.${o.value}`),
+            Icon: o.Icon,
           }))}
           value={ownership}
           onChange={(v) => {
@@ -1188,30 +1193,21 @@ function QualificationStepBody({
           error={ownershipError ?? undefined}
         />
 
-        <RadioCardField
+        <GridSelectField
           legend={t("onboarding.qualification.goalLegend")}
           name="goal"
-          options={GOALS.map((v) => ({
-            value: v,
-            label: goalLabel(v),
-            icon: GOAL_ICONS[v],
+          options={GOAL_OPTIONS.map((o) => ({
+            value: o.value,
+            label: t(`onboarding.compactOptions.goal.${o.value}`),
+            Icon: o.Icon,
           }))}
           value={goal}
           onChange={(v) => {
             form.setValue("goal", v as Goal, { shouldValidate: true });
+            form.setValue("goal_other_text", "", { shouldValidate: false });
             setGoalError(null);
-            if (v !== "other") setGoalOtherError(null);
           }}
           error={goalError ?? undefined}
-          otherValue="other"
-          otherText={goalOtherText}
-          onOtherTextChange={(v) => {
-            form.setValue("goal_other_text", v, { shouldValidate: true });
-            if (v.trim().length >= 2) setGoalOtherError(null);
-          }}
-          otherError={goalOtherError ?? undefined}
-          otherPlaceholder={t("onboarding.qualification.goalOtherPlaceholder")}
-          otherHint={t("onboarding.qualification.goalOtherHint")}
         />
 
         {serverError ? (
