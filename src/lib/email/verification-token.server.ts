@@ -65,13 +65,23 @@ export interface VerifiedVerificationToken extends VerificationTokenPayload {
 export function signVerificationToken(
   input: VerificationTokenPayload,
   now?: number,
+  /**
+   * Optional override for the token TTL (seconds). Defaults to the short
+   * verification TTL (30 min). Pass a longer value for account-access /
+   * report re-entry links sent in transactional emails.
+   */
+  ttlSeconds?: number,
 ): string {
   if (!input.leadId || !input.email) {
     throw new Error("leadId and email are required");
   }
   const secret = getSecret();
   const iat = Math.floor((now ?? Date.now()) / 1000);
-  const exp = iat + TTL_SECONDS;
+  const ttl =
+    typeof ttlSeconds === "number" && ttlSeconds > 0
+      ? Math.floor(ttlSeconds)
+      : TTL_SECONDS;
+  const exp = iat + ttl;
   const payload = {
     leadId: input.leadId,
     email: input.email.toLowerCase(),
