@@ -716,9 +716,9 @@ function ConsolidatedModuleTable({ variant }: { variant: ReportVariant }) {
             <thead>
               <tr className="border-t border-admin-border bg-admin-surface-muted/30">
                 <th className="px-4 py-2 font-medium text-admin-text-secondary">Módulo</th>
-                <th className={cn("px-4 py-2 font-medium", variant === "public_mvp" ? "text-admin-text-primary" : "text-admin-text-secondary")}>Público</th>
-                <th className={cn("px-4 py-2 font-medium", variant === "internal_lab" ? "text-admin-text-primary" : "text-admin-text-secondary")}>Interno</th>
-                <th className={cn("px-4 py-2 font-medium", variant === "pro_preview" ? "text-admin-text-primary" : "text-admin-text-secondary")}>Pro</th>
+                <th className={cn("px-4 py-2 font-medium", variant === "public_mvp" ? "text-admin-text-primary" : "text-admin-text-secondary")}>Público (Free)</th>
+                <th className={cn("px-4 py-2 font-medium", variant === "pro_preview" ? "text-admin-text-primary" : "text-admin-text-secondary")}>Pro (cliente pago)</th>
+                <th className={cn("px-4 py-2 font-medium", variant === "internal_lab" ? "text-admin-text-primary" : "text-admin-text-secondary")}>Interno (lab)</th>
                 <th className="px-4 py-2 font-medium text-admin-text-secondary">Estado</th>
                 <th className="px-4 py-2 font-medium text-admin-text-secondary">Risco</th>
                 <th className="px-4 py-2 font-medium text-admin-text-secondary">Nota</th>
@@ -738,11 +738,11 @@ function ConsolidatedModuleTable({ variant }: { variant: ReportVariant }) {
                     <td className={cn("px-4 py-2", variant === "public_mvp" && "bg-admin-surface-muted/40")}>
                       <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", mvpVis.cls)}>{mvpVis.text}</span>
                     </td>
-                    <td className={cn("px-4 py-2", variant === "internal_lab" && "bg-admin-surface-muted/40")}>
-                      <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", labVis.cls)}>{labVis.text}</span>
-                    </td>
                     <td className={cn("px-4 py-2", variant === "pro_preview" && "bg-admin-surface-muted/40")}>
                       <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", proVis.cls)}>{proVis.text}</span>
+                    </td>
+                    <td className={cn("px-4 py-2", variant === "internal_lab" && "bg-admin-surface-muted/40")}>
+                      <span className={cn("inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", labVis.cls)}>{labVis.text}</span>
                     </td>
                     <td className="px-4 py-2">
                       <span className={cn("inline-block rounded px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wider", badge.cls)}>
@@ -819,9 +819,9 @@ function BlockAccessMatrix({ variant }: { variant: ReportVariant }) {
           <thead>
             <tr className="bg-admin-surface-muted/30">
               <th className="px-4 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-admin-text-tertiary">Bloco</th>
-              {colHeader("Público", variant === "public_mvp")}
-              {colHeader("Interno", variant === "internal_lab")}
-              {colHeader("Pro", variant === "pro_preview")}
+              {colHeader("Público (Free)", variant === "public_mvp")}
+              {colHeader("Pro (cliente pago)", variant === "pro_preview")}
+              {colHeader("Interno (lab)", variant === "internal_lab")}
             </tr>
           </thead>
           <tbody>
@@ -832,8 +832,8 @@ function BlockAccessMatrix({ variant }: { variant: ReportVariant }) {
                   {b.shortLabel}
                 </td>
                 {cell(mvp[b.featureKey], "public_mvp", b.id, variant === "public_mvp")}
-                {cell(lab[b.featureKey], "internal_lab", b.id, variant === "internal_lab")}
                 {cell(pro[b.featureKey], "pro_preview", b.id, variant === "pro_preview")}
+                {cell(lab[b.featureKey], "internal_lab", b.id, variant === "internal_lab")}
               </tr>
             ))}
           </tbody>

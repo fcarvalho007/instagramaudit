@@ -109,6 +109,10 @@ interface SidebarProps {
   /** Lista actual de concorrentes para alimentar o "Adicionar concorrente"
    *  (passada do shell a partir do `?vs=`). */
   competitorHandles?: string[];
+  /** Admin preview override: when true, the explore section uses a
+   *  simulated credit balance so the operator can test 30d/90d and
+   *  competitor flows without holding real customer credits. */
+  isAdminPreview?: boolean;
 }
 
 // ── Item builder ─────────────────────────────────────────────────────
@@ -556,6 +560,7 @@ function ExploreSection({
   compact = false,
   primaryHandle,
   existingCompetitors = [],
+  isAdminPreview = false,
 }: {
   premiumUnlocked: boolean;
   sampleSize: number;
@@ -565,11 +570,15 @@ function ExploreSection({
   compact?: boolean;
   primaryHandle?: string;
   existingCompetitors?: string[];
+  isAdminPreview?: boolean;
 }) {
   const { t } = useTranslation("report");
   const { handlePremiumAccessClick } = usePremiumCta();
   const fetchBalance = useServerFn(getMyCreditBalance);
-  const [balance, setBalance] = useState(0);
+  const ADMIN_SIMULATED_BALANCE = 999_999;
+  const [balance, setBalance] = useState(
+    isAdminPreview ? ADMIN_SIMULATED_BALANCE : 0,
+  );
   const [intent, setIntent] = useState<ConsumeCreditIntent | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -588,6 +597,8 @@ function ExploreSection({
   // da compra, para nunca revelar o bónus ao utilizador free.
   useEffect(() => {
     if (!premiumUnlocked) return;
+    // Admin preview: never call the server, keep the simulated balance.
+    if (isAdminPreview) return;
     let cancelled = false;
     (async () => {
       try {
@@ -600,16 +611,17 @@ function ExploreSection({
     return () => {
       cancelled = true;
     };
-  }, [premiumUnlocked, fetchBalance]);
+  }, [premiumUnlocked, fetchBalance, isAdminPreview]);
 
   const refreshBalance = useCallback(async () => {
+    if (isAdminPreview) return;
     try {
       const r = await fetchBalance();
       if (r.hasLead) setBalance(r.balance);
     } catch {
       /* ignore */
     }
-  }, [fetchBalance]);
+  }, [fetchBalance, isAdminPreview]);
 
   const openConsumeDialog = useCallback((nextIntent: ConsumeCreditIntent) => {
     setIntent(nextIntent);
@@ -1121,13 +1133,20 @@ function ExploreSection({
                 : undefined
             }
           >
-            {balance > 0
+            {isAdminPreview
+              ? "Modo teste admin · créditos simulados"
+              : balance > 0
               ? t("nav.explore.beta_credits_available", { count: balance })
               : t("nav.explore.beta_credits_empty")}
           </p>
-          {balance >= 3 ? (
+          {!isAdminPreview && balance >= 3 ? (
             <p className="mt-0.5 text-[10px] text-content-tertiary">
               1 incluído na compra + 2 bónus beta
+            </p>
+          ) : null}
+          {isAdminPreview ? (
+            <p className="mt-0.5 text-[10px] text-amber-700">
+              Não consome créditos reais.
             </p>
           ) : null}
         </div>
@@ -1220,6 +1239,7 @@ function SidebarList({
   compact = false,
   primaryHandle,
   existingCompetitors = [],
+  isAdminPreview = false,
 }: {
   items: SidebarItem[];
   active: string | null;
@@ -1235,6 +1255,7 @@ function SidebarList({
   compact?: boolean;
   primaryHandle?: string;
   existingCompetitors?: string[];
+  isAdminPreview?: boolean;
 }) {
   const { t } = useTranslation("report");
   const { snapshotId, handle, variant: trackingVariant } = useReportTracking();
@@ -1433,6 +1454,7 @@ function SidebarList({
         compact={compact}
         primaryHandle={primaryHandle}
         existingCompetitors={existingCompetitors}
+        isAdminPreview={isAdminPreview}
       />
 
       {!premiumUnlocked && (
@@ -1461,6 +1483,7 @@ export function ReportBlockSidebar({
   competitorCount = 0,
   competitorMax = 2,
   competitorHandles,
+  isAdminPreview = false,
 }: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
@@ -1530,6 +1553,7 @@ export function ReportBlockSidebar({
         existingCompetitors={
           competitorHandles ?? profileList.slice(1).map((p) => p.handle)
         }
+        isAdminPreview={isAdminPreview}
       />
     </nav>
   );
@@ -1550,6 +1574,7 @@ export function ReportBlockTopTabs({
   competitorCount = 0,
   competitorMax = 2,
   competitorHandles,
+  isAdminPreview = false,
 }: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
@@ -1708,6 +1733,7 @@ export function ReportBlockTopTabs({
                 existingCompetitors={
                   competitorHandles ?? profileList.slice(1).map((p) => p.handle)
                 }
+                isAdminPreview={isAdminPreview}
               />
             </div>
           </SheetContent>

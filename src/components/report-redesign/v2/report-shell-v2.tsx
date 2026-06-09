@@ -78,6 +78,11 @@ interface ReportShellV2Props {
    *  o sidebar saber `competitorCount` real e enviar `existingCompetitors`
    *  ao fluxo de "Adicionar concorrente". */
   competitorHandles?: string[];
+  /** True only when rendered inside the admin preview route. Enables
+   *  simulated credit balance so operators can test 30d/90d/competitor
+   *  flows without holding real customer credits. Never set on the
+   *  public `/analyze/:username` route. */
+  isAdminPreview?: boolean;
 }
 
 /**
@@ -105,6 +110,7 @@ export function ReportShellV2({
   premiumUnlocked = false,
   onUnlockClick,
   competitorHandles = [],
+  isAdminPreview = false,
 }: ReportShellV2Props) {
   const { t } = useTranslation("report");
   const v2 = result.enriched.aiInsightsV2;
@@ -209,6 +215,7 @@ export function ReportShellV2({
           observedDays={result.coverage.windowDays ?? 0}
           competitorHandles={competitorHandles}
           competitorCount={competitorHandles.length}
+          isAdminPreview={isAdminPreview}
         />
 
         {/* Layout 2-col a partir do bloco 01 */}
@@ -225,6 +232,7 @@ export function ReportShellV2({
               observedDays={result.coverage.windowDays ?? 0}
               competitorHandles={competitorHandles}
               competitorCount={competitorHandles.length}
+              isAdminPreview={isAdminPreview}
             />
             <main className="min-w-0 flex-1 overflow-x-clip">
               {/* 01 · Overview (redesigned) */}
