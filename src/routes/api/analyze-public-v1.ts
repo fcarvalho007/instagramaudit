@@ -589,6 +589,29 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             return failure("ONBOARDING_REQUIRED");
           }
           alreadyAssociated = await leadOwnsReport(leadId, cacheKey);
+          // ── Pro gate for competitor analysis ────────────────────
+          // Competitor enrichment can trigger extra Apify work, so it's
+          // restricted to leads with the `report_full_9` entitlement.
+          // Runs BEFORE reserveCredit / wide-window gate / provider so a
+          // Free lead is never charged and no provider is hit.
+          if (competitors.length > 0) {
+            const isProForCompetitors = await hasEntitlement(
+              leadId,
+              "report_full_9",
+            );
+            if (!isProForCompetitors) {
+              await logEvent({
+                handle: primary,
+                competitorHandles: competitors,
+                cacheKey,
+                dataSource: "none",
+                outcome: "blocked_credits",
+                errorCode: "COMPETITORS_REQUIRE_PRO",
+                estimatedCostUsd: 0,
+              });
+              return failure("COMPETITORS_REQUIRE_PRO");
+            }
+          }
           // ── Pro gate for wide windows (30d/90d) ─────────────────
           // Wide windows require the `report_full_9` entitlement. We
           // check BEFORE reserving credit so a Free lead is never
