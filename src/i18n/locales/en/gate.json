@@ -182,6 +182,10 @@
       "emailPlaceholder": "your email",
       "emailInvalid": "Please double-check your email — it looks invalid.",
       "newCta": "Create account and open report",
+      "newCtaCheckout": "Continue",
+      "trustLineCheckout": "No subscription. No automatic charges. GDPR.",
+      "haveAccountCheckout": "Already have an account?",
+      "haveAccountCtaCheckout": "Sign in  →",
       "checking": "Checking…",
       "haveAccount": "Already have an account?",
       "haveAccountCta": "Sign in with email  →",
@@ -197,7 +201,10 @@
           "report": "Report for @{{handle}}",
           "reportCheckout": "Private account that stores your purchase and reports",
           "save": "Private account with every report saved",
-          "credits": "<strong>2 free credits</strong> once you confirm your email"
+          "credits": "<strong>2 free credits</strong> once you confirm your email",
+          "receiptCheckout": "Your receipt arrives at the email you provide",
+          "returnCheckout": "Come back to your reports whenever you want",
+          "noSubCheckout": "No subscription or automatic charges"
         }
       },
       "right": {
@@ -224,7 +231,9 @@
         "marketingText": "I'd like tips and benchmarks",
         "marketingOptional": "(optional)",
         "cta": "Generate my report  →",
+        "ctaCheckout": "Create account and continue",
         "footnote": "GDPR · no spam",
+        "footnoteCheckout": "No subscription. GDPR.",
         "back": "Back"
       }
     },
@@ -232,6 +241,9 @@
       "eyebrow": "STEP 2 OF 3",
       "title": "Which best describes you?",
       "subtitle": "One quick pick — helps us tune the analysis.",
+      "eyebrowCheckout": "BEFORE YOU PAY",
+      "titleCheckout": "Which best describes you?",
+      "subtitleCheckout": "One quick pick — helps us tune your experience.",
       "placeholder": "Pick one",
       "back": "Back",
       "cta": "Continue  →",
@@ -242,6 +254,11 @@
       "title": "We sent a code to {{maskedEmail}}",
       "subtitle": "Enter the 6-digit code to activate your 2 free credits.",
       "existingTitle": "This account already exists. We sent you a link to confirm access.",
+      "titleNewCheckout": "Confirm your email",
+      "subtitleNewCheckout": "We sent a code to {{maskedEmail}}. Confirm it to continue to payment.",
+      "titleExistingCheckout": "Confirm access to your account",
+      "subtitleExistingCheckout": "This email already has an account. We sent a code so you can confirm you're the owner.",
+      "ctaCheckout": "Confirm and continue  →",
       "codeLabel": "6-digit code",
       "codePlaceholder": "123456",
       "cta": "Confirm and open  →",
