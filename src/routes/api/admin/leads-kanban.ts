@@ -120,11 +120,16 @@ export const Route = createFileRoute("/api/admin/leads-kanban")({
         // Build map: lead_id → latest request
         type ReqRow = NonNullable<typeof requests>[number];
         const requestByLead = new Map<string, ReqRow>();
+        const reportCountByLead = new Map<string, number>();
         if (requests) {
           for (const r of requests) {
             if (!requestByLead.has(r.lead_id)) {
               requestByLead.set(r.lead_id, r);
             }
+            reportCountByLead.set(
+              r.lead_id,
+              (reportCountByLead.get(r.lead_id) ?? 0) + 1,
+            );
           }
         }
 
