@@ -130,6 +130,7 @@ export interface AudienceResponseResult {
     date?: string | null;
     thumbnailUrl?: string | null;
     permalink?: string | null;
+    shortcode?: string | null;
   }>;
   explanation: string;
 }
