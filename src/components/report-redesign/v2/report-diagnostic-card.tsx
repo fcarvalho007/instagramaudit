@@ -798,73 +798,11 @@ export function DiagnosticAudienceHighlight({
         </div>
       )}
 
-      {/* ── Z4: Top 2 posts by comments ── */}
-      {topCommentPosts && topCommentPosts.length > 0 && (
-        <div className="space-y-2.5">
-          <p className="text-eyebrow text-content-tertiary">Posts que geraram mais conversa</p>
-          <p className="text-xs text-content-tertiary/60 mt-0.5">Classificação exclusiva por volume de conversa pública.</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-            {topCommentPosts.slice(0, 3).map((post, idx) => {
-              const Wrapper = post.permalink ? "a" : "article";
-              const wrapperProps = post.permalink
-                ? { href: post.permalink, target: "_blank" as const, rel: "noopener noreferrer" }
-                : {};
-              return (
-                <Wrapper
-                  key={idx}
-                  {...wrapperProps}
-                  className="group bg-surface-secondary border border-border-default rounded-xl overflow-hidden flex flex-col transition-all duration-200 hover:ring-1 hover:ring-accent-primary/30 hover:border-accent-primary/40"
-                >
-                  {/* Thumbnail — 3:4 ratio */}
-                  <div className="relative aspect-[3/4] overflow-hidden bg-surface-muted rounded-t-xl">
-                    {post.thumbnailUrl && (
-                      <img
-                        src={post.thumbnailUrl}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                        referrerPolicy="no-referrer"
-                        onError={(e) => { e.currentTarget.style.display = "none"; }}
-                        className="absolute inset-0 h-full w-full object-cover"
-                      />
-                    )}
-                    {post.format && (
-                      <span className="text-eyebrow-sm absolute top-2 right-2 z-10 px-1.5 py-0.5 rounded-md bg-white/90 backdrop-blur text-content-primary font-semibold text-xs">
-                        {post.format}
-                      </span>
-                    )}
-                    {post.permalink && (
-                      <span className="absolute top-2 left-2 z-10 flex items-center justify-center size-6 rounded-full bg-black/40 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                        <ExternalLink className="size-3 text-white" />
-                      </span>
-                    )}
-                  </div>
-                  {/* Content */}
-                  <div className="px-3 py-2.5 flex flex-col gap-1.5 flex-1">
-                    {post.date && (
-                      <span className="text-eyebrow-sm text-content-tertiary text-xs">
-                        {new Date(post.date).toLocaleDateString("pt-PT", { day: "numeric", month: "short", year: "numeric" })}
-                      </span>
-                    )}
-                    {post.captionExcerpt && (
-                      <p className="text-[11.5px] text-content-primary leading-snug line-clamp-2">
-                        {post.captionExcerpt}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-1.5 pt-1.5 mt-auto border-t border-border-subtle/30">
-                      <MessageCircle size={12} className="text-accent-primary" strokeWidth={1.5} />
-                      <span className="tabular-nums text-[13px] font-bold tabular-nums text-accent-primary">
-                        {post.comments.toLocaleString("pt-PT")}
-                      </span>
-                      <span className="text-xs text-content-tertiary">comentários</span>
-                    </div>
-                  </div>
-                </Wrapper>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* ── Z4: Top conversation posts (compact thumb cards) ── */}
+      <TopConversationPostsGrid
+        topCommentPosts={topCommentPosts}
+        commentIntel={commentIntel}
+      />
 
       {/* ── Methodology footer ── */}
       {status !== "unavailable" && (
