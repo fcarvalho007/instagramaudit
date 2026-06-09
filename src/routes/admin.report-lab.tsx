@@ -716,9 +716,9 @@ function ConsolidatedModuleTable({ variant }: { variant: ReportVariant }) {
             <thead>
               <tr className="border-t border-admin-border bg-admin-surface-muted/30">
                 <th className="px-4 py-2 font-medium text-admin-text-secondary">Módulo</th>
-                <th className={cn("px-4 py-2 font-medium", variant === "public_mvp" ? "text-admin-text-primary" : "text-admin-text-secondary")}>Público</th>
-                <th className={cn("px-4 py-2 font-medium", variant === "internal_lab" ? "text-admin-text-primary" : "text-admin-text-secondary")}>Interno</th>
-                <th className={cn("px-4 py-2 font-medium", variant === "pro_preview" ? "text-admin-text-primary" : "text-admin-text-secondary")}>Pro</th>
+                <th className={cn("px-4 py-2 font-medium", variant === "public_mvp" ? "text-admin-text-primary" : "text-admin-text-secondary")}>Público (Free)</th>
+                <th className={cn("px-4 py-2 font-medium", variant === "pro_preview" ? "text-admin-text-primary" : "text-admin-text-secondary")}>Pro (cliente pago)</th>
+                <th className={cn("px-4 py-2 font-medium", variant === "internal_lab" ? "text-admin-text-primary" : "text-admin-text-secondary")}>Interno (lab)</th>
                 <th className="px-4 py-2 font-medium text-admin-text-secondary">Estado</th>
                 <th className="px-4 py-2 font-medium text-admin-text-secondary">Risco</th>
                 <th className="px-4 py-2 font-medium text-admin-text-secondary">Nota</th>
