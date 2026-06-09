@@ -22,7 +22,6 @@ import { AdminCard } from "../admin-card";
 import { AdminSectionHeader } from "../admin-section-header";
 import { SectionError, SectionSkeleton } from "../section-state";
 import { adminFetch } from "@/lib/admin/fetch";
-import type { OverviewKpis } from "@/routes/api/admin/overview-kpis";
 
 interface BetaStage {
   key: string;
@@ -61,16 +60,6 @@ export function AcquisitionFunnel() {
     },
     staleTime: 30_000,
   });
-  const { data: kpis } = useQuery<OverviewKpis>({
-    queryKey: ["admin", "overview-kpis"],
-    queryFn: async () => {
-      const res = await adminFetch("/api/admin/overview-kpis");
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    },
-    staleTime: 30_000,
-  });
-  const revenueActive = kpis?.revenue_active ?? false;
 
   return (
     <AdminCard>
@@ -84,44 +73,43 @@ export function AcquisitionFunnel() {
       ) : error || !data?.success ? (
         <SectionError error={(error as Error) ?? data?.error} onRetry={() => refetch()} />
       ) : (
-        <FunnelBody data={data} revenueActive={revenueActive} />
+        <FunnelBody data={data} />
       )}
     </AdminCard>
   );
 }
 
-function FunnelBody({ data, revenueActive }: { data: BetaResponse; revenueActive: boolean }) {
+function FunnelBody({ data }: { data: BetaResponse }) {
   const stages = data.stages ?? [];
   const get = (key: string) => stages.find((s) => s.key === key)?.count ?? 0;
 
+  const viewCount = get("report_visto");
   const emailCount = get("unlock_iniciado");
   const leadCount = get("unlock_concluido");
   const feedbackCount = get("feedback_recebido");
   const convertedCount = get("convertido");
 
-  // Base de % do funil = etapa máxima conhecida (não inclui report views).
-  const base = Math.max(emailCount, leadCount, feedbackCount, convertedCount, 1);
+  // Base de % do funil = topo do funil (views), com fallback para a etapa
+  // máxima conhecida se ainda não houver views.
+  const base = Math.max(
+    viewCount,
+    emailCount,
+    leadCount,
+    feedbackCount,
+    convertedCount,
+    1,
+  );
 
   const display: DisplayStage[] = [
-    {
-      label: "Report público visto",
-      count: 0,
-      pct: 0,
-      note: "sem tracker",
-      unavailable: true,
-    },
+    { label: "Report público visto", count: viewCount, pct: viewCount / base },
     { label: "Email submetido", count: emailCount, pct: emailCount / base },
     { label: "Conta criada (lead)", count: leadCount, pct: leadCount / base },
     { label: "Feedback recebido", count: feedbackCount, pct: feedbackCount / base },
-    revenueActive
-      ? { label: "Convertido (pago)", count: convertedCount, pct: convertedCount / base }
-      : {
-          label: "Convertido (pago)",
-          count: 0,
-          pct: 0,
-          note: "checkout por ligar",
-          unavailable: true,
-        },
+    {
+      label: "Convertido (pago)",
+      count: convertedCount,
+      pct: convertedCount / base,
+    },
   ];
 
   const zeroStages = display.filter(
@@ -136,11 +124,9 @@ function FunnelBody({ data, revenueActive }: { data: BetaResponse; revenueActive
         ))}
       </div>
       <p className="mt-5 pt-4 border-t border-admin-border text-[12px] text-admin-text-tertiary leading-relaxed m-0">
-        {revenueActive
-          ? zeroStages > 0
-            ? `${zeroStages} etapa${zeroStages > 1 ? "s" : ""} a 0% nesta janela.`
-            : "Tracker de visitantes ainda por ligar — a primeira etapa fica em placeholder."
-          : "Tracker de visitantes e checkout ainda por ligar — duas etapas ficam em placeholder."}
+        {zeroStages > 0
+          ? `${zeroStages} etapa${zeroStages > 1 ? "s" : ""} a 0 nesta janela.`
+          : "Todas as etapas com actividade nesta janela."}
       </p>
     </>
   );
