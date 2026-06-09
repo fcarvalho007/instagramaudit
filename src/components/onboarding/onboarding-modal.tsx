@@ -26,12 +26,18 @@ import { Trans, useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Check,
+  Briefcase,
   Eye,
   EyeOff,
+  LineChart,
   Loader2,
   Lock,
+  Scale,
   ShieldCheck,
   Sparkles,
+  Star,
+  TrendingUp,
+  User,
 } from "lucide-react";
 
 import {
@@ -64,6 +70,7 @@ import {
   LEAD_QUALIFICATION_LABELS_PT,
   type LeadQualification,
 } from "@/lib/leads/qualification";
+import { GridSelectField } from "@/components/onboarding/grid-select-field";
 import { supabase } from "@/integrations/supabase/client";
 import { parseFullName } from "@/lib/names/parse-full-name";
 import { useOnboardingDraft } from "@/lib/leads/use-onboarding-draft";
@@ -131,6 +138,7 @@ export interface OnboardingModalProps {
  */
 type View =
   | { kind: "entry" }
+  | { kind: "qualification"; email: string }
   | { kind: "final"; email: string }
   | { kind: "login"; email: string };
 
@@ -212,9 +220,11 @@ export function OnboardingModal({
       const step =
         view.kind === "entry"
           ? 0
-          : view.kind === "final"
-            ? 2
-            : 3;
+          : view.kind === "qualification"
+            ? 1
+            : view.kind === "final"
+              ? 2
+              : 3;
       trackOnboardingEvent({
         event_type: "onboarding_abandon",
         step: step as 0 | 1 | 2 | 3,
@@ -273,9 +283,7 @@ export function OnboardingModal({
           return;
         }
         form.setValue("email", email, { shouldValidate: true });
-        // Single-step signup: a qualificação é recolhida no próprio form
-        // final (select inline), sem passo intermédio.
-        setView({ kind: "final", email });
+        setView({ kind: "qualification", email });
       } catch {
         setServerError(t("onboarding.errors.network"));
       } finally {
@@ -507,6 +515,15 @@ export function OnboardingModal({
             onSubmit={handleEntrySubmit}
             onSignInWithEmail={(email) => goToLoginView(email)}
             initialEmail={form.getValues("email")}
+          />
+        ) : view.kind === "qualification" ? (
+          <QualificationStepBody
+            form={form}
+            purpose={purpose}
+            submitting={submitting}
+            serverError={serverError}
+            onBack={goBackToEntry}
+            onContinue={() => setView({ kind: "final", email: view.email })}
           />
         ) : view.kind === "final" ? (
           <FinalStepBody
@@ -1352,4 +1369,163 @@ function LoginPanel({
       </form>
     </div>
   );
+}/* -------------------------------------------------------------------------- */
+/* Qualification step — single select between entry and final                 */
+/* -------------------------------------------------------------------------- */
+
+function QualificationStepBody({
+  form,
+  purpose,
+  submitting,
+  serverError,
+  onBack,
+  onContinue,
+}: {
+  form: ReturnType<typeof useForm<UnlockFormValues>>;
+  purpose: "analyze" | "checkout";
+  submitting: boolean;
+  serverError: string | null;
+  onBack: () => void;
+  onContinue: () => void;
+}) {
+  const { t } = useTranslation("gate");
+  const isCheckout = purpose === "checkout";
+  const ownership = form.watch("profile_ownership") as
+    | ProfileOwnership
+    | undefined;
+  const goal = form.watch("goal") as Goal | undefined;
+  const [ownershipError, setOwnershipError] = useState<string | null>(null);
+  const [goalError, setGoalError] = useState<string | null>(null);
+
+  const OWNERSHIP_OPTIONS: Array<{
+    value: ProfileOwnership;
+    Icon: typeof User;
+  }> = [
+    { value: "own_profile", Icon: User },
+    { value: "brand_profile", Icon: Star },
+    { value: "client_profile", Icon: Briefcase },
+    { value: "competitor_research", Icon: Eye },
+  ];
+
+  const GOAL_OPTIONS: Array<{ value: Goal; Icon: typeof User }> = [
+    { value: "improve_content", Icon: Sparkles },
+    { value: "benchmark_competitors", Icon: Scale },
+    { value: "client_report", Icon: LineChart },
+    { value: "grow_audience", Icon: TrendingUp },
+  ];
+
+  const handleContinue = () => {
+    let hasError = false;
+    if (!ownership) {
+      setOwnershipError(t("onboarding.qualification.ownershipError"));
+      hasError = true;
+    } else {
+      setOwnershipError(null);
+    }
+    if (!goal) {
+      setGoalError(t("onboarding.qualification.goalError"));
+      hasError = true;
+    } else {
+      setGoalError(null);
+    }
+    if (hasError) return;
+    onContinue();
+  };
+
+  return (
+    <div
+      className="px-6 py-6 sm:px-10 sm:py-8"
+      data-testid="onboarding-qualification-step"
+    >
+      <OnboardingStepHeader current={2} className="mb-5" />
+      <DialogHeader className="text-left space-y-2.5">
+        <p className="text-eyebrow text-content-tertiary">
+          {t(isCheckout ? "onboarding.qualification.eyebrowCheckout" : "onboarding.qualification.eyebrow")}
+        </p>
+        <DialogTitle className="font-display text-[28px] sm:text-[32px] leading-[1.08] tracking-[-0.015em] text-content-primary text-balance">
+          {t(isCheckout ? "onboarding.qualification.titleCheckout" : "onboarding.qualification.title")}
+        </DialogTitle>
+        <DialogDescription className="text-[15px] text-content-secondary leading-[1.55]">
+          {t(isCheckout ? "onboarding.qualification.subtitleCheckout" : "onboarding.qualification.subtitle")}
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="mt-5 space-y-5" data-testid="onboarding-qualification">
+        <GridSelectField
+          legend={t("onboarding.qualification.ownershipLegend")}
+          name="profile_ownership"
+          options={OWNERSHIP_OPTIONS.map((o) => ({
+            value: o.value,
+            label: t(`onboarding.compactOptions.profileOwnership.${o.value}`),
+            Icon: o.Icon,
+          }))}
+          value={ownership}
+          onChange={(v) => {
+            form.setValue("profile_ownership", v as ProfileOwnership, {
+              shouldValidate: true,
+            });
+            setOwnershipError(null);
+          }}
+          error={ownershipError ?? undefined}
+        />
+
+        <GridSelectField
+          legend={t("onboarding.qualification.goalLegend")}
+          name="goal"
+          options={GOAL_OPTIONS.map((o) => ({
+            value: o.value,
+            label: t(`onboarding.compactOptions.goal.${o.value}`),
+            Icon: o.Icon,
+          }))}
+          value={goal}
+          onChange={(v) => {
+            form.setValue("goal", v as Goal, { shouldValidate: true });
+            form.setValue("goal_other_text", "", { shouldValidate: false });
+            setGoalError(null);
+          }}
+          error={goalError ?? undefined}
+        />
+
+        {serverError ? (
+          <Alert variant="destructive">
+            <AlertDescription>{serverError}</AlertDescription>
+          </Alert>
+        ) : null}
+      </div>
+
+      <div className="mt-6 flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 min-w-0">
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          onClick={onBack}
+          disabled={submitting}
+          className="w-full sm:w-auto sm:flex-shrink-0 rounded-lg min-w-0"
+        >
+          <ArrowLeft className="size-4" aria-hidden />
+          {t("onboarding.qualification.back")}
+        </Button>
+        <Button
+          type="button"
+          size="lg"
+          onClick={handleContinue}
+          disabled={submitting || !ownership || !goal}
+          className="w-full sm:flex-1 sm:min-w-0 rounded-lg font-medium"
+          data-testid="onboarding-qualification-continue"
+        >
+          <span className="truncate">{t("onboarding.qualification.cta")}</span>
+        </Button>
+      </div>
+      {!submitting && (!ownership || !goal) ? (
+        <p
+          className="mt-2 text-xs text-content-tertiary text-center sm:text-right"
+          aria-live="polite"
+        >
+          {t("onboarding.qualification.missingHint")}
+        </p>
+      ) : null}
+    </div>
+  );
 }
+
+
