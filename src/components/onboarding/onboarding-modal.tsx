@@ -121,7 +121,6 @@ export function OnboardingModal({
     defaultValues: {
       full_name: "",
       email: "",
-      phone: "",
       // The dedicated step that asked for these is gone. We keep safe
       // defaults so the (legacy) schema validates; the payload builder
       // omits them when the form was never asked.

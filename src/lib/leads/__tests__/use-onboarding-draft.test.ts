@@ -8,7 +8,6 @@ import {
 const fullDraft: OnboardingDraft = {
   full_name: "Ana Marques",
   email: "ana@example.com",
-  phone: "+351912345678",
   profile_ownership: "own_profile",
   goal: "improve_content",
   marketing_consent: true,
@@ -31,7 +30,6 @@ describe("selectDraftForHandle", () => {
     expect(out?.goal).toBeUndefined();
     expect(out?.full_name).toBe(fullDraft.full_name);
     expect(out?.email).toBe(fullDraft.email);
-    expect(out?.phone).toBe(fullDraft.phone);
     expect(out?.marketing_consent).toBe(true);
   });
 
