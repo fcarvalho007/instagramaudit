@@ -1110,6 +1110,7 @@ function QualificationStepBody({
       className="px-6 py-7 sm:px-10 sm:py-9"
       data-testid="onboarding-qualification-step"
     >
+      <OnboardingStepHeader current={2} className="mb-5" />
       <DialogHeader className="text-left space-y-2.5">
         <p className="text-eyebrow text-content-tertiary">
           {t(isCheckout ? "onboarding.qualification.eyebrowCheckout" : "onboarding.qualification.eyebrow")}
