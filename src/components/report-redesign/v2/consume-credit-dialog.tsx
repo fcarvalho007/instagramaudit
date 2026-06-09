@@ -344,24 +344,23 @@ export function ConsumeCreditDialog({
             onClick={() => onOpenChange(false)}
             disabled={submitting}
           >
-            {t("nav.explore.consume_dialog.cta_cancel")}
+            {hasCredit
+              ? t("nav.explore.consume_dialog.cta_cancel")
+              : t("nav.explore.consume_dialog.cta_close", {
+                  defaultValue: "Fechar",
+                })}
           </Button>
           {atCompetitorLimit ? null : !hasCredit ? (
-            isPeriod ? (
-              // Case C — period + balance 0: just a close button.
-              <Button onClick={() => onOpenChange(false)}>
-                {t("nav.explore.consume_dialog.cta_cancel")}
-              </Button>
-            ) : (
-              <Button
-                onClick={() => {
-                  onOpenChange(false);
-                  onEmptyFeedback?.();
-                }}
-              >
-                {t("nav.explore.consume_dialog.empty_cta")}
-              </Button>
-            )
+            // Case C/D — no credits (period or competitor): single
+            // meaningful primary CTA. No duplicate "Cancelar".
+            <Button
+              onClick={() => {
+                onOpenChange(false);
+                onEmptyFeedback?.();
+              }}
+            >
+              {t("nav.explore.consume_dialog.empty_cta")}
+            </Button>
           ) : isPeriod && periodHasFreshCache ? (
             <>
               {/* Case A — primary "open cached" (0 credits), secondary
