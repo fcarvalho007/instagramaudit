@@ -26,7 +26,8 @@ export type TxFlow =
   | "report-summary"
   | "payment-confirmed"
   | "report-saved"
-  | "email-verification";
+  | "email-verification"
+  | "report-access";
 
 export interface SendTransactionalEmailInput {
   to: string;
@@ -67,6 +68,7 @@ const FLOW_FAILURE_EVENT: Record<TxFlow, string> = {
   "payment-confirmed": "payment_confirmation_email_failed",
   "report-saved": "report_saved_email_failed",
   "email-verification": "email_verification_email_failed",
+  "report-access": "report_access_email_failed",
 };
 
 function maskEmail(email: string | null | undefined): string {
