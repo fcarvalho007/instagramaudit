@@ -43,6 +43,12 @@ const baseLead: EnrichedLead = {
   credits_granted: 1,
   credits_used: 1,
   credits_remaining: 0,
+  reports_count: 1,
+  qualification: null,
+  email_domain_class: null,
+  gdpr_consent_at: null,
+  gdpr_consent_version: null,
+  marketing_consent_at: null,
 };
 
 function ev(
