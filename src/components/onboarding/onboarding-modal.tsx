@@ -98,7 +98,8 @@ type View =
   | { kind: "entry" }
   | { kind: "qualification"; email: string }
   | { kind: "final"; email: string }
-  | { kind: "otp"; email: string; sentAt: number; mode: "new" | "existing" };
+  | { kind: "otp"; email: string; sentAt: number; mode: "new" | "existing" }
+  | { kind: "magic_link_sent"; email: string };
 
 interface OnboardingApiOk {
   ok: true;
@@ -267,23 +268,19 @@ export function OnboardingModal({
           return;
         }
         if (data.exists) {
-          // Beta sem verificação: server já emitiu cookie + créditos.
+          // Email existente: a propriedade tem de ser provada. Em modos
+          // `off` / `magic_link`, o servidor já enviou um link assinado
+          // pela nossa stack (Brevo → Resend). Mostramos um painel
+          // dedicado "verifica o teu email" — o clique no link define o
+          // cookie no novo separador. Em modo `otp` caímos no painel
+          // legacy de código de 6 dígitos.
           if (
-            data.verification_mode === "off" &&
-            data.claimed === true &&
-            data.lead_id
+            (data.verification_mode === "off" ||
+              data.verification_mode === "magic_link") &&
+            (data as { verification_sent?: boolean }).verification_sent ===
+              true
           ) {
-            succeededRef.current = true;
-            trackOnboardingEvent({
-              event_type: "onboarding_success",
-              step: 0,
-              handle,
-            });
-            clearDraft();
-            onSuccess(handle, {
-              leadId: data.lead_id,
-              credits: data.credits ?? 0,
-            });
+            setView({ kind: "magic_link_sent", email });
             return;
           }
           await sendOtpAndGoToOtpView(email, "existing");
@@ -557,7 +554,7 @@ export function OnboardingModal({
             }
             honeypotRef={honeypotRef}
           />
-        ) : (
+        ) : view.kind === "otp" ? (
           <OtpVerifyPanel
             email={view.email}
             sentAt={view.sentAt}
@@ -569,6 +566,16 @@ export function OnboardingModal({
             onResend={() => sendOtpAndGoToOtpView(view.email, view.mode)}
             onBack={goBackToEntry}
           />
+        ) : (
+          <MagicLinkSentPanel
+            email={view.email}
+            onBack={goBackToEntry}
+            onResend={async () => {
+              // Re-pede /check-email para reenviar o link assinado.
+              await handleEntrySubmit(view.email);
+            }}
+            submitting={submitting}
+          />
         )}
       </DialogContent>
     </Dialog>
@@ -578,6 +585,72 @@ export function OnboardingModal({
 /* -------------------------------------------------------------------------- */
 /* Entry step — single screen with the dual path                              */
 /* -------------------------------------------------------------------------- */
+
+/* Magic-link-sent panel — shown when /check-email enqueued a signed link */
+function MagicLinkSentPanel({
+  email,
+  onBack,
+  onResend,
+  submitting,
+}: {
+  email: string;
+  onBack: () => void;
+  onResend: () => Promise<void>;
+  submitting: boolean;
+}) {
+  const { t } = useTranslation("gate");
+  return (
+    <div
+      className="px-5 py-7 sm:px-9 sm:py-9"
+      data-testid="onboarding-magic-link-sent"
+    >
+      <DialogHeader className="text-left space-y-2.5">
+        <p className="text-eyebrow-sm text-content-tertiary">
+          {t("onboarding.otp.eyebrow", { defaultValue: "Verificação" })}
+        </p>
+        <DialogTitle className="font-display text-[24px] sm:text-[28px] leading-[1.1] tracking-[-0.015em] text-content-primary text-balance break-words">
+          Verifica o teu email
+        </DialogTitle>
+        <DialogDescription className="text-[14px] text-content-secondary leading-[1.55]">
+          Enviámos um link seguro para{" "}
+          <strong className="text-content-primary">{email}</strong>. Abre o
+          email e clica no botão para entrar — não precisas de password.
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="mt-6 rounded-lg border border-border-default/60 bg-surface-muted/60 p-4">
+        <p className="text-[13px] text-content-secondary leading-[1.55]">
+          <ShieldCheck
+            className="inline-block size-3.5 mr-1.5 -mt-0.5 text-content-tertiary"
+            aria-hidden
+          />
+          Pedimos esta verificação só por segurança — para garantir que ninguém
+          abre relatórios em teu nome. O link expira em 30 minutos.
+        </p>
+      </div>
+
+      <div className="mt-6 flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={submitting}
+          className="inline-flex items-center gap-1 text-[13px] text-content-secondary hover:text-content-primary disabled:opacity-60"
+        >
+          <ArrowLeft className="size-3.5" aria-hidden />
+          Voltar
+        </button>
+        <button
+          type="button"
+          onClick={() => void onResend()}
+          disabled={submitting}
+          className="text-[13px] font-medium text-primary hover:underline disabled:opacity-60 disabled:no-underline"
+        >
+          {submitting ? "A reenviar…" : "Reenviar link"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 /* Step indicator shared across entry → qualification → final */
 function OnboardingStepHeader({

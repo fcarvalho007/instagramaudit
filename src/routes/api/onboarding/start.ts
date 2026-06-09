@@ -26,6 +26,7 @@ import { getEmailVerificationMode } from "@/lib/config/email-verification.server
 import { getBalance, grantInitialCredits } from "@/lib/credits/credits.server";
 import { setLeadCookie } from "@/lib/leads/lead-cookie.server";
 import { sendVerificationEmail } from "@/lib/email/send-verification.server";
+import { sendReportAccessEmail } from "@/lib/email/send-report-access.server";
 
 const PayloadSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -461,6 +462,24 @@ export async function handleOnboardingStart(
       handle: parsed.data.handle ?? null,
       is_new: upserted.isNew,
     });
+    // Fire-and-forget: envia email contextual com o link do relatório e
+    // um magic link de re-acesso (TTL 14 dias). Falha não bloqueia o
+    // utilizador — o relatório já abriu na browser tab.
+    if (upserted.isNew) {
+      void sendReportAccessEmail({
+        leadId: upserted.leadId,
+        toEmail: parsed.data.email,
+        firstName: parsed.data.name?.split(/\s+/)[0] ?? null,
+        instagramHandle: parsed.data.handle ?? null,
+      }).then((r) => {
+        if (!r.ok) {
+          console.warn("[onboarding/start] report-access email failed", {
+            lead_id: upserted.leadId,
+            reason: r.reason,
+          });
+        }
+      });
+    }
     return json(
       {
         ok: true,
