@@ -1,102 +1,86 @@
-# Eliminar zeros enganosos nos cards Profile vs Competitor
+# Harden Lovable AI Gateway gating for `comparison_readings`
 
 ## TL;DR
-Centralizar 5 frases canónicas no primitivo `CompareMissingDataNote` (existe, mas só cobre 2 cenários) e usá-lo em todos os cards de comparação. Cards passam a distinguir **true zero** (publica e tem 0) de **dado em falta** (campo não está no snapshot ou janela vazia), sem renderizar barras/donuts/zeros fabricados. Apenas copy, flags do adapter e métodos já existentes — sem schema, sem provider, sem novos fetches.
+Mirror the OpenAI hardening (kill-switch + allowlist + daily budget cap + provider_call_logs telemetry) for the Lovable AI Gateway path used by `comparison_readings`. No schema changes, no prompts/models/UI/copy changes. Skips are silent and safe — report keeps rendering.
 
 ---
 
-## Tarefa 1 — Extensão do primitivo `compare-missing-data-note.tsx`
+## Today's gaps (audit)
+- `runComparisonReadings` → `generateComparisonReadingsForSnapshot` calls `https://ai.gateway.lovable.dev/v1/chat/completions` directly with no allowlist, kill-switch, daily cap, or `provider_call_logs` row.
+- Paid entitlement gate is already enforced upstream (only `PAID_ENRICHMENT_TYPES` enqueues `comparison_readings` post-payment via `enqueuePaidEnrichmentsForSnapshot`). Free flow uses `buildFreeEnrichmentStatus()` → `skipped_free`. Keep that as-is.
 
-Passa a aceitar uma API explícita por cenário; tudo é opcional, render só sai quando há pelo menos uma frase.
+## Design decisions
+- **Mirror the OpenAI structure** but invert kill-switch default for the live feature:
+  - `LOVABLE_AI_ENABLED`: default ON (`!== "false"`). Documented as opt-out emergency kill; OpenAI's opt-in default would silently disable a production-paid path on first deploy.
+  - `LOVABLE_AI_TESTING_MODE`: default OFF (`=== "true"`). When on, restricts to `LOVABLE_AI_ALLOWLIST` (same CSV parser as OpenAI/DFS).
+  - `LOVABLE_AI_DAILY_CAP_USD`: default 5 (same as OpenAI). 60s in-memory cache like OpenAI.
+- Sum spend from `provider_call_logs WHERE provider = 'lovable_ai' AND created_at >= start_of_utc_day`. New rows are inserted by the comparison-readings call using the existing `recordProviderCall` helper — no schema migration; the writer is already provider-agnostic.
+- Cost per call comes from the gateway response `usage` block when present. If absent (gateway doesn't always return token counts), insert with tokens null + estimated_cost_usd null; the row still proves a call happened so future calls can be rate-limited by *call count* if needed (out of scope here).
+- Surface skip reasons in `enrichment_jobs.error_message` by extending `EnrichmentResult` with an optional `skipReason?: string`. When `ok && payloadPatch === null && skipReason`, the driver writes `enrichment_jobs.status = "skipped"` + `error_message = skipReason` instead of `success`. Backward-compatible — existing call sites that return `ok: true, payloadPatch: null` without `skipReason` behave exactly as before.
 
-```ts
-interface Props {
-  // Frase de amostra (mutually exclusive)
-  sampleN?: number | null;                              // "Amostra: últimas N publicações disponíveis."
-  perSide?: {                                           // "Amostra: P publicações (@primary) · C publicações (@competitor)."
-    primaryHandle: string; primaryN: number;
-    competitorHandle: string; competitorN: number;
-  } | null;
+## Tasks
 
-  // Estados de ausência (independentes)
-  competitorNoPosts?: boolean;     // "Sem publicações do concorrente nesta janela."
-  competitorMissing?: boolean;     // "Dados do concorrente indisponíveis nesta amostra."
-  thumbnailsMissing?: boolean;     // "Miniaturas indisponíveis nesta amostra."
+### 1. New file: `src/lib/security/lovable-ai-allowlist.ts`
+Same shape as `openai-allowlist.ts`:
+- `isLovableAiEnabled()` → `process.env.LOVABLE_AI_ENABLED !== "false"` (default ON, see decision above)
+- `isLovableAiTestingModeActive()` → `process.env.LOVABLE_AI_TESTING_MODE === "true"` (default OFF)
+- `getLovableAiAllowlist()` → CSV parse of `LOVABLE_AI_ALLOWLIST`
+- `isLovableAiAllowed(handle)` → kill-switch first, then optional allowlist
 
-  qualifier?: string | null;       // free-form escape hatch (CDN-expired, etc.)
-  className?: string;
-}
-```
+### 2. New file: `src/lib/security/lovable-ai-budget.server.ts`
+Clone of `openai-budget.server.ts` with `provider = 'lovable_ai'`:
+- `LovableAiBudgetExceededError`
+- `getLovableAiDailyCapUsd()` → reads `LOVABLE_AI_DAILY_CAP_USD`, default 5
+- `getLovableAiDailySpendUsd()` (60s cache, identical pattern)
+- `assertLovableAiDailyBudgetAvailable()`
+- `invalidateLovableAiBudgetCache()` (test hook)
 
-Ordem fixa: `[amostra] [competitorNoPosts] [competitorMissing] [thumbnailsMissing] [qualifier]`. `perSide` ganha precedência sobre `sampleN` quando ambos forem passados. Quando `perSide` é assimétrico (uma das contagens = 0), o caller deve preferir `sampleN` + flag de ausência, mas o primitivo é robusto se ambos forem passados.
+### 3. Extend `src/lib/comparison-readings/generate.server.ts`
+- Add optional second arg: `options?: { handle?: string | null; analysisEventId?: string | null }`.
+- After every fetch resolution (success or error), call `recordProviderCall({ provider: "lovable_ai", actor: "comparison_readings:${model}", handle, model, status, httpStatus, durationMs, promptTokens, completionTokens, totalTokens, estimatedCostUsd: null, errorMessage, analysisEventId, sourceContext: "public_analysis" })`. Use existing helper.
+- Read `usage.prompt_tokens` / `usage.completion_tokens` / `usage.total_tokens` from gateway response when present. Don't compute USD cost here (no token-price table yet — admit `null` and rely on call-count visibility).
+- Existing config-error path (`LOVABLE_API_KEY missing`) also logs with `status: "config_error"`.
 
-## Tarefa 2 — Strings canónicas (single source of truth)
-Definidas dentro do primitivo como constantes não-exportadas. Não há duplicação noutros componentes — eliminamos `"Sem dados suficientes do concorrente para comparar o ritmo semanal."` e variantes locais.
+### 4. Update `runComparisonReadings` in `src/lib/enrichment/run-enrichment.server.ts`
+Add gates in this order **before** the existing "no usable competitor" check:
+1. `isLovableAiAllowed(handle)` false → `return { ok: true, payloadPatch: null, skipReason: "LOVABLE_AI_DISABLED_OR_NOT_ALLOWED" }`.
+2. `assertLovableAiDailyBudgetAvailable()` → on `LovableAiBudgetExceededError`, log warn (spent/cap) and return `{ ok: true, payloadPatch: null, skipReason: "LOVABLE_AI_BUDGET_EXCEEDED" }`.
+3. Existing competitor-presence check stays.
+4. Pass `{ handle: ctx.profile.username, analysisEventId }` to `generateComparisonReadingsForSnapshot`.
 
-## Tarefa 3 — `competitor-format-compare.tsx`
-- **Linha metodológica sempre renderizada** (mesmo sem insight) na base do card.
-- Quando `competitorHasStats === true` e ambos lados têm `postsAnalyzed > 0` → usa `perSide` (mostra ambas as contagens explicitamente).
-- Quando apenas o primary tem amostra → `sampleN={primaryPostsAnalyzed}` + `competitorMissing` (renderiza `MissingSide` no donut como já faz).
-- **True-zero por categoria**: dentro de `DonutSide`, manter `—` (já é o que faz para `share <= 0` com tooltip explicativo). Não tocar.
-- **Distinção crítica**: continuar a gatear o render do donut do concorrente em `competitorHasStats` (`hasFormatStats !== false`); zero verdadeiro mostra 0% num donut existente, missing mostra `MissingSide`.
+### 5. Extend `EnrichmentResult` in `src/lib/enrichment/types.ts`
+Add optional `skipReason?: string`. Pure type addition — no runtime change for existing returns.
 
-## Tarefa 4 — `competitor-weekday-compare.tsx`
-- Manter o gate `competitorHasData` que **não renderiza** os 7 bars do concorrente quando não há dados.
-- Substituir o `aside` de copy local pela combinação:
-  - `hasWeekdayData === false` → passa `competitorMissing` no primitivo + aside com a mesma frase canónica.
-  - `hasWeekdayData !== false && totalCompetitor === 0` → passa `competitorNoPosts`.
-- Footer da `CompareCardShell`: manter o insight quando há dados; quando não há, footer = a mesma frase canónica do primitivo (lê do helper exportado do primitivo, evita duplicação).
-- Metodologia: se ambos têm `total > 0`, usa `perSide`; senão `sampleN` do primary.
+### 6. Update driver `src/routes/api/public/enrich-snapshot.ts`
+Inside the `result.ok` branch, when `result.payloadPatch === null && result.skipReason`:
+- `setEnrichmentStatusAtomic(job.snapshot_id, job.enrichment_type, "skipped")`
+- Update `enrichment_jobs` row with `status: "skipped"`, `completed_at`, `error_message: result.skipReason`.
+- Increment `succeeded` counter (it's not a failure — same accounting as today's silent skips).
 
-## Tarefa 5 — `competitor-engagement-compare.tsx`
-- `MethodologyLine` interno é eliminado; passa a usar `CompareMissingDataNote` com:
-  - `perSide` quando ambos têm `postsAnalyzed > 0`.
-  - `sampleN = primary.postsAnalyzed` + `competitorMissing` quando só primary tem.
-  - Nunca fabricar 0 quando `postsAnalyzed` é null/undefined — primitivo simplesmente não emite a sentence de amostra.
+### 7. Tests (Vitest, no provider calls)
+Add `src/lib/security/__tests__/lovable-ai-budget.test.ts` mirroring `openai-budget.test.ts` (mock supabase admin, assert cap-exceeded throws).
+Add a small unit in `src/lib/enrichment/__tests__/run-enrichment-budget.test.ts` (or sibling) that:
+- Mocks `isLovableAiAllowed = false` → `runEnrichment("comparison_readings", …)` returns `ok: true, payloadPatch: null, skipReason: "LOVABLE_AI_DISABLED_OR_NOT_ALLOWED"`.
+- Mocks budget exceeded → same shape with `LOVABLE_AI_BUDGET_EXCEEDED`.
+- Mocks both allowed + budget ok + no competitors → existing "no usable competitor" path still returns `{ ok: true, payloadPatch: null }` with no `skipReason`.
 
-## Tarefa 6 — `competitor-cadence-compare.tsx`
-- Manter a lógica atual de `competitorBlocked` (hasPosts true + miniaturas 0) e `competitorPostsMissing` (hasPosts false), mas mapear para o novo primitivo:
-  - `competitor.hasPosts === false` → `competitorMissing` (frase canónica "Dados do concorrente indisponíveis nesta amostra.").
-  - `competitor.hasPosts === true && competitorThumbs === 0` → `qualifier = "Miniaturas do concorrente indisponíveis (links de CDN expirados)."` (mantém a explicação técnica única deste card).
-- Substituir o `<p>` inline "Miniaturas indisponíveis nesta amostra." dentro do `SampleStrip` por dependência do primitivo na base do card; o strip por lado mantém o subtítulo "Sem amostra disponível" como label curto contextual.
-- Metodologia: usar `perSide` baseado em **postsAnalyzed** (não em thumbs) quando ambos > 0.
+## Out of scope (explicit)
+- No prompt / model / UI / report copy changes.
+- No `StoredComparisonReadings` schema changes (skips don't write a stored payload).
+- No backfill of historical `provider_call_logs`.
+- No new pricing table for Lovable AI token cost (call-count visibility only).
+- No change to Free/Public flow or entitlement enforcement.
 
-## Tarefa 7 — `comparison-hero.tsx`
-- Manter a caixa visual destacada (não trocar pelo primitivo, é editorial).
-- Reescrever a construção da frase usando as mesmas regras do primitivo (refactor interno do `<p>` dentro da caixa):
-  - **Sample simétrico** (`primaryPostsAnalyzed > 0 && competitorPostsAnalyzed > 0`): `Comparação com base em P publicações de @primary e C publicações de @competitor.` (substitui o "últimas N" que mascarava assimetria).
-  - **Sample assimétrico** (uma das contagens = 0): `Comparação com base em N publicações de @{ladoComDados}.` + suffix canónico:
-    - competitor 0 + `hasPosts === false` → `Dados do concorrente indisponíveis nesta amostra.`
-    - competitor 0 + `hasPosts === true` (ou indeterminado) → `Sem publicações do concorrente nesta janela.`
-  - **Ambos 0/unknown**: `Comparação com base nas publicações disponíveis.` (genérico, sem número).
-- Manter os suffixes já existentes (`Concorrente em janela de referência.` e `Algumas comparações detalhadas requerem análise mais recente do concorrente.`).
-- **Não implicar shared sample size quando assimétrico**: `methodologySampleSize` actual (`Math.min` quando ambos, `Math.max` caso contrário) gera o problema → substituído pelas regras acima.
-
----
-
-## Constraints respeitadas
-- ✅ Sem schema, sem provider, sem novos secrets.
-- ✅ Sem checkout/EuPago/credits/entitlements.
-- ✅ Sem Free/Public changes — só `report-redesign/v2` e `overview/comparison-hero.tsx`.
-- ✅ Sem novos componentes além do primitivo já existente (apenas extensão).
-
-## Validação
-1. `bunx vitest run` para os testes que tocam `compare/` e `competitor-*` (se existirem; senão typecheck via build automático).
-2. Browser na rota `/analyze/nunomarkl` com snapshot legacy (sem `format_stats`, sem `weekday_iso`, sem thumbnails) → cards devem mostrar estados intencionais:
-   - Format: `MissingSide` + frase "Dados do concorrente indisponíveis…".
-   - Weekday: zero bars do concorrente, aside com frase canónica.
-   - Cadence: tile strip do concorrente como placeholders + "Miniaturas indisponíveis…".
-   - Hero: metodologia adaptada à assimetria.
-3. Browser na mesma rota com snapshot novo + concorrente fresco → cards mostram números reais sem frases de missing.
-4. Browser viewport 375px → sem overflow horizontal nos cards e na caixa de metodologia do hero.
-5. Grep final: `rg "indispon|fake|zero" src/components/report-redesign/v2` para confirmar que só o primitivo emite estas strings.
+## Validation
+1. **Free flow unchanged**: `buildFreeEnrichmentStatus` still pre-marks `comparison_readings = "skipped_free"`; never enqueued. Re-run existing free-path tests.
+2. **Paid flow, gateway enabled, budget ok**: `comparison_readings` runs, `provider_call_logs` gains a `lovable_ai` row, status flips to `success`.
+3. **Paid flow, `LOVABLE_AI_ENABLED=false`**: enrichment_job ends `status="skipped"`, `error_message="LOVABLE_AI_DISABLED_OR_NOT_ALLOWED"`, snapshot payload unchanged, report renders without AI readings (falls back to deterministic cards).
+4. **Paid flow, budget exhausted**: same outcome with `LOVABLE_AI_BUDGET_EXCEEDED`.
+5. **Existing OpenAI/Apify/DFS enrichments**: unchanged — `EnrichmentResult.skipReason` is optional and they don't set it.
+6. `bunx vitest run src/lib/security src/lib/enrichment` green.
+7. Manual grep `rg "ai.gateway.lovable.dev"` → only `generate.server.ts` hits it, and that path now logs every call.
 
 ## Risks
-- Pequeno risco de quebra de testes que dependam da string literal em weekday ou engagement — mitigado por grep prévio antes do edit.
-- Hero altera o layout de uma única linha — se overflow em pt-PT longo, ajustar `text-balance` (não esperado).
-
-## Out of scope (não tocar)
-- Schema de snapshot, adapter `competitor.hasPosts/hasFormatStats/hasWeekdayData` (apenas consumir).
-- Re-hosting de imagens (P0 separado).
-- Gate de entitlement em add-competitor (P0 separado).
-- Insight copy do `buildVerdict`, `buildCadenceInsight`, `buildWeekdayInsight` — apenas missing-data copy.
+- **Budget cache (60s) means rapid bursts can briefly exceed the cap.** Mirrors OpenAI behavior; acceptable for a $5/day cap. Note in code comment.
+- Default-ON kill-switch deviates from OpenAI's default-OFF. Documented in the new file's header; operator can flip to "false" instantly without redeploy.
+- Token counts may be absent from gateway responses → cost-based cap reduces to call-count visibility. Out-of-scope to compute USD here; future PR can add a token-price table.
