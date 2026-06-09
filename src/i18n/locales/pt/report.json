@@ -1288,7 +1288,11 @@
       "score_public_title": "Score visual · Premium",
       "score_public_body": "Disponível na versão completa do relatório.",
       "score_dev_title": "Score visual indisponível",
-      "score_dev_body": "Será calculado automaticamente quando a análise por visão computacional estiver ativa."
+      "score_dev_body": "Será calculado automaticamente quando a análise por visão computacional estiver ativa.",
+      "pro_title": "A leitura visual está a ser gerada.",
+      "pro_body": "A análise IA das capas leva entre 30 a 90 segundos. Se já passou esse tempo, força uma nova análise para tentar novamente.",
+      "score_pro_title": "Score visual a ser gerado",
+      "score_pro_body": "A análise por visão computacional está em curso. Recarrega a página em alguns segundos para ver o resultado."
     }
   },
   "comments": {
