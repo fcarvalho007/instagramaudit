@@ -11,7 +11,7 @@
 import { buildReportSavedData } from "./build-report-saved-data.server";
 import { renderReportSaved } from "./templates/report-saved";
 import { sendTransactionalEmail } from "./transactional-email.server";
-import { buildUnsubscribeUrl } from "./url";
+import { buildUnsubscribeUrl, buildResetPasswordUrl } from "./url";
 import { renderWithOverride } from "./template-overrides.server";
 
 export interface SendReportSavedArgs {
@@ -53,6 +53,9 @@ export async function sendReportSavedEmail(
   let rendered;
   try {
     const unsubscribeUrl = buildUnsubscribeUrl(args.leadId);
+    const resetPasswordUrl = args.isWelcome
+      ? buildResetPasswordUrl(args.toEmail)
+      : null;
     rendered = await renderWithOverride(
       "report_saved",
       {
@@ -71,6 +74,7 @@ export async function sendReportSavedEmail(
           credits: data.credits,
           insights: data.insights,
           unsubscribeUrl,
+          resetPasswordUrl,
         }),
     );
   } catch (err) {
