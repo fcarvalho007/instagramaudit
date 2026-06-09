@@ -261,7 +261,9 @@ export function OnboardingModal({
           return;
         }
         form.setValue("email", email, { shouldValidate: true });
-        setView({ kind: "qualification", email });
+        // Single-step signup: a qualificação é recolhida no próprio form
+        // final (select inline), sem passo intermédio.
+        setView({ kind: "final", email });
       } catch {
         setServerError(t("onboarding.errors.network"));
       } finally {
