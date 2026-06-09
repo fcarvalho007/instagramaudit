@@ -81,15 +81,15 @@ export async function handleClaimExisting(request: Request): Promise<Response> {
   // Re-verify the bearer token with Supabase. This rejects forged or
   // tampered tokens, expired sessions, and tokens from another project.
   const userResp = await supabaseAdmin.auth.getUser(parsed.data.access_token);
-  if (userResp.error || !userResp.data.user || !userResp.data.user.email) {
+  const authUser = userResp.data.user;
+  const authEmail = authUser?.email;
+  if (userResp.error || !authUser || !authEmail) {
     return json({ ok: false, error_code: "INVALID_TOKEN" }, 401);
   }
-  const authUser = userResp.data.user;
   if (!authUser.email_confirmed_at) {
     return json({ ok: false, error_code: "EMAIL_UNCONFIRMED" }, 401);
   }
 
-  const authEmail = authUser.email;
   const result = await findOrCreateLeadForEmail({
     email: authEmail,
     userId: authUser.id,
