@@ -208,6 +208,7 @@ async function upsertLead(
       .from("leads")
       .update({
         name: data.name,
+        phone: data.phone ?? null,
         marketing_consent: data.marketing_consent,
         marketing_consent_at: data.marketing_consent ? consentTimestamp : null,
         beta_consent: data.beta_consent,
@@ -232,6 +233,7 @@ async function upsertLead(
       name: data.name,
       email: data.email,
       email_normalized: emailNormalized,
+      phone: data.phone ?? null,
       marketing_consent: data.marketing_consent,
       marketing_consent_at: data.marketing_consent ? consentTimestamp : null,
       beta_consent: data.beta_consent,
