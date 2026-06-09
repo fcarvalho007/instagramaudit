@@ -43,6 +43,10 @@ export function dataSourceBadgeVariant(
   switch ((ds ?? "").toLowerCase()) {
     case "fresh":
       return "signal";
+    case "fresh_forced":
+      // Pro user-initiated force_refresh — louder than "fresh" because
+      // it intentionally bypassed a fresh cache hit and consumed credit.
+      return "revenue";
     case "cache":
       return "neutral";
     case "stale":
@@ -51,5 +55,19 @@ export function dataSourceBadgeVariant(
       return "danger";
     default:
       return "neutral";
+  }
+}
+
+/**
+ * Friendly admin label for a raw `data_source` value. Keeps existing
+ * tokens ("fresh"/"cache"/"stale") and renders "fresh_forced" as
+ * "Fresh (forçado)".
+ */
+export function dataSourceLabel(ds: string | null | undefined): string {
+  switch ((ds ?? "").toLowerCase()) {
+    case "fresh_forced":
+      return "fresh (forçado)";
+    default:
+      return ds ?? "—";
   }
 }
