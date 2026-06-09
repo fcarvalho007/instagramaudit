@@ -196,8 +196,15 @@ export function aggregateCommentIntelligence(
       else if (signal === "praise") postStats.praise++;
       else if (signal === "complaint") postStats.complaints++;
       else if (signal === "buying_intent") postStats.buyingIntent++;
-      // Track longest non-spam excerpt as "topAudienceComment" candidate
-      if (signal !== "spam" && text && text.trim().length >= 12) {
+      // Track longest classified excerpt as "topAudienceComment" candidate.
+      // Mirrors `classifiedExcerpts`: only stored when signal classification
+      // matched, so the GDPR contract (no raw uncategorised text) holds.
+      const isClassified =
+        signal === "question" ||
+        signal === "praise" ||
+        signal === "complaint" ||
+        signal === "buying_intent";
+      if (isClassified && text && text.trim().length >= 12) {
         const trimmed = text.trim().slice(0, 140);
         if (!postStats.longestAudienceComment || trimmed.length > postStats.longestAudienceComment.text.length) {
           const safeUsername = username && username.trim().length > 0 ? username.trim() : "utilizador";
