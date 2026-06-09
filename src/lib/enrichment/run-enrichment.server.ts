@@ -381,6 +381,10 @@ async function buildCtxForInsights(ctx: SnapshotContext): Promise<{
       (ctx.previousPayload.visual_cover_analysis as
         | VisualCoverAnalysis
         | undefined) ?? null,
+    commentIntelligence:
+      (ctx.previousPayload.comment_intelligence as
+        | import("@/lib/analysis/types").CommentIntelligence
+        | undefined) ?? null,
   });
 
   return { insightsCtx, benchmark };

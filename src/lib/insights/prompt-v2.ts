@@ -96,6 +96,8 @@ Prioridades de ação (obrigatório · campo "priorities"):
 - Cada item: { "level": "alta" | "media" | "oportunidade", "title": ≤ 60 chars no infinitivo impessoal, "body": 1 frase ≤ 180 chars com pelo menos um número concreto do payload, "resolves": frase curta a indicar que pergunta(s) do diagnóstico endereça (ex.: "Resolve a Pergunta 06.", "Resolve as Perguntas 02 e 07."). IMPORTANTE: o diagnóstico só tem 7 perguntas (01–07) — NUNCA referenciar "Pergunta 08" ou números superiores.
 - Hierarquia esperada: 1 "alta" (problema mais urgente), 1 "media" (correção estrutural), 1 "oportunidade" (alavanca de crescimento). Se não houver problema "alta", trocar por "media".
 - Distintas entre si — sem repetir a mesma recomendação. Sem citar fontes externas. Sem snake_case.
+- Quando "comment_intelligence" estiver presente, pelo menos 1 prioridade deve citar um número real desse bloco (owner_reply_rate_pct, questions_from_audience_count, complaint_or_issue_count, buying_intent_count, ou top_conversation_post.comments). Nunca inventar números.
+- Quando "visual_cover" estiver presente com overall_score < 70 ou sub_score baixo, pelo menos 1 prioridade pode citar esse número. Nunca inventar números fora do payload.
 
 Veredicto editorial (obrigatório · campo "editorial_verdict") — DIAGNÓSTICO, não solução:
 - Primeira leitura do relatório. Camada interpretativa: descreve o que os dados sugerem, NÃO prescreve. Recomendações vivem nas "priorities" e no Bloco 02.

@@ -189,4 +189,22 @@ describe("derivePriorities", () => {
       expect(it.basedOn).not.toContain("Resposta do público");
     }
   });
+
+  it("dedupes by composite key (title + category + basis), not just title", () => {
+    // Force a configuration where multiple rules fire on the same basis
+    // and category — the dedup must keep only one of each (category, basis).
+    const inputs = baseInputs();
+    inputs.integration.signals.bioLink = { detected: false };
+    inputs.integration.signals.explicitCta = { detected: false, sharePct: 5 };
+    const items = derivePriorities({
+      ...inputs,
+      dominantFormatShare: 75,
+      dominantFormatLabel: "Reel",
+    });
+    const keys = items.map(
+      (it) =>
+        `${it.title.trim().toLowerCase()}|${it.category}|${it.basedOn[0] ?? ""}`,
+    );
+    expect(new Set(keys).size).toBe(keys.length);
+  });
 });

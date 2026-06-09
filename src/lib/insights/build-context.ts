@@ -35,6 +35,7 @@ import type { PersistedMarketSignals } from "@/lib/market-signals/cache";
 import type { InsightsContext } from "./types";
 import type { CaptionSemanticAnalysis } from "@/lib/report/caption-semantic-types";
 import type { VisualCoverAnalysis } from "@/lib/report/visual-cover-types";
+import type { CommentIntelligence } from "@/lib/analysis/types";
 
 /** Subset of the `EnrichedPost` shape the helper actually reads. */
 type PostInput = {
@@ -81,6 +82,12 @@ export interface BuildInsightsCtxInput {
    * verdict paragraph.
    */
   visualCover?: VisualCoverAnalysis | null;
+  /**
+   * Optional comment-intelligence summary already persisted on the
+   * snapshot. When `null/undefined` or all signals are zero, the
+   * resulting ctx will NOT carry `comment_intelligence`.
+   */
+  commentIntelligence?: CommentIntelligence | null;
 }
 
 export interface BuildInsightsCtxResult {
@@ -113,6 +120,7 @@ export function buildInsightsCtx(
     marketSignals,
     captionSemantic,
     visualCover,
+    commentIntelligence,
   } = input;
 
   const successfulCompetitors = competitorResults.filter(
@@ -230,6 +238,13 @@ export function buildInsightsCtx(
     ...(visualCover
       ? { visual_cover: deriveVisualCoverSummary(visualCover) }
       : {}),
+    ...(deriveCommentIntelligenceSummary(commentIntelligence ?? null)
+      ? {
+          comment_intelligence: deriveCommentIntelligenceSummary(
+            commentIntelligence ?? null,
+          )!,
+        }
+      : {}),
   };
 
   return { ctx, editorialPatternsForAi };
@@ -295,6 +310,24 @@ function deriveVisualCoverSummary(
   const repeated = v.aggregate?.repeatedTemplateCount ?? 0;
   const consistency: "consistent" | "mixed" | "inconsistent" | null =
     repeated >= 4 ? "consistent" : repeated >= 1 ? "mixed" : "inconsistent";
+  const overallScore =
+    typeof v.overallScore === "number" && Number.isFinite(v.overallScore)
+      ? Math.round(v.overallScore)
+      : undefined;
+  const subRaw = v.subScores ?? null;
+  const sub_scores =
+    subRaw &&
+    (Number.isFinite(subRaw.recognizability) ||
+      Number.isFinite(subRaw.visualVariety))
+      ? {
+          ...(Number.isFinite(subRaw.recognizability)
+            ? { recognizability: Math.round(subRaw.recognizability) }
+            : {}),
+          ...(Number.isFinite(subRaw.visualVariety)
+            ? { visual_variety: Math.round(subRaw.visualVariety) }
+            : {}),
+        }
+      : undefined;
   return {
     summary: (v.summary ?? "").trim().slice(0, 240),
     consistency,
@@ -302,5 +335,51 @@ function deriveVisualCoverSummary(
     cover_pattern: v.aggregate?.repeatedTemplateNote
       ? v.aggregate.repeatedTemplateNote.trim().slice(0, 200)
       : null,
+    ...(overallScore !== undefined ? { overall_score: overallScore } : {}),
+    ...(sub_scores ? { sub_scores } : {}),
+  };
+}
+
+/**
+ * Compact comment-intelligence summary surfaced to the priorities prompt.
+ * Returns `null` when:
+ *  - the source is null / not available;
+ *  - all classified signals are zero (treat as neutral — nothing for the
+ *    model to ground a priority in).
+ */
+function deriveCommentIntelligenceSummary(
+  ci: CommentIntelligence | null,
+): NonNullable<InsightsContext["comment_intelligence"]> | null {
+  if (!ci || !ci.available) return null;
+  const replyRate = Math.round(ci.ownerReplyRatePct ?? 0);
+  const questions = ci.questionsFromAudienceCount ?? 0;
+  const complaints = ci.complaintOrIssueCount ?? 0;
+  const buyingIntent = ci.buyingIntentCount ?? 0;
+  const topPostsArr = ci.topConversationPosts ?? [];
+  const top = topPostsArr[0];
+
+  const nonNeutral =
+    replyRate > 0 ||
+    questions > 0 ||
+    complaints > 0 ||
+    buyingIntent > 0 ||
+    (top !== undefined && top.commentsCount > 0);
+  if (!nonNeutral) return null;
+
+  return {
+    sample_posts: ci.samplePosts ?? 0,
+    sample_comments: ci.sampleComments ?? 0,
+    owner_reply_rate_pct: replyRate,
+    questions_from_audience_count: questions,
+    complaint_or_issue_count: complaints,
+    buying_intent_count: buyingIntent,
+    ...(top
+      ? {
+          top_conversation_post: {
+            comments: top.commentsCount,
+            dominant_signal: top.dominantSignal,
+          },
+        }
+      : {}),
   };
 }

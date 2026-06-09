@@ -17,6 +17,7 @@ import type {
 import type { BenchmarkPositioning } from "@/lib/benchmark/types";
 import type { CaptionSemanticAnalysis } from "@/lib/report/caption-semantic-types";
 import type { VisualCoverAnalysis } from "@/lib/report/visual-cover-types";
+import type { CommentIntelligence } from "@/lib/analysis/types";
 
 type Post = {
   format: "Reels" | "Carrosséis" | "Imagens";
@@ -74,6 +75,7 @@ function basePosts(): Post[] {
 function build(opts: {
   captionSemantic?: CaptionSemanticAnalysis | null;
   visualCover?: VisualCoverAnalysis | null;
+  commentIntelligence?: CommentIntelligence | null;
 }) {
   const { ctx } = buildInsightsCtx({
     profile: profile(),
@@ -88,6 +90,9 @@ function build(opts: {
       ? { captionSemantic: opts.captionSemantic }
       : {}),
     ...(opts.visualCover !== undefined ? { visualCover: opts.visualCover } : {}),
+    ...(opts.commentIntelligence !== undefined
+      ? { commentIntelligence: opts.commentIntelligence }
+      : {}),
   });
   return ctx;
 }
@@ -177,5 +182,61 @@ describe("buildInsightsCtx — caption_intelligence / visual_cover", () => {
     expect(ctx.visual_cover).toBeUndefined();
     const ctx2 = build({});
     expect(ctx2.visual_cover).toBeUndefined();
+  });
+
+  it("inclui comment_intelligence quando ci tem sinais não-neutros", () => {
+    const ci: CommentIntelligence = {
+      available: true,
+      source: "apify_comments",
+      samplePosts: 5,
+      sampleComments: 60,
+      sampleReplies: 8,
+      ownerUsername: "x",
+      ownerRepliesCount: 4,
+      ownerReplyRatePct: 8,
+      postsWithOwnerReplyPct: 40,
+      audienceCommentsCount: 52,
+      uniqueAudienceCommentersCount: 45,
+      postsWithConversationPct: 50,
+      questionsFromAudienceCount: 5,
+      praiseCount: 10,
+      complaintOrIssueCount: 0,
+      buyingIntentCount: 0,
+      spamOrLowQualityCount: 0,
+      dominantConversationSignals: ["questions"],
+      recommendedConversationAction: "",
+      limitations: [],
+    };
+    const ctx = build({ commentIntelligence: ci });
+    expect(ctx.comment_intelligence).toBeDefined();
+    expect(ctx.comment_intelligence!.owner_reply_rate_pct).toBe(8);
+    expect(ctx.comment_intelligence!.questions_from_audience_count).toBe(5);
+  });
+
+  it("omite comment_intelligence quando todos os sinais são zero", () => {
+    const ci: CommentIntelligence = {
+      available: true,
+      source: "apify_comments",
+      samplePosts: 5,
+      sampleComments: 10,
+      sampleReplies: 0,
+      ownerUsername: "x",
+      ownerRepliesCount: 0,
+      ownerReplyRatePct: 0,
+      postsWithOwnerReplyPct: 0,
+      audienceCommentsCount: 10,
+      uniqueAudienceCommentersCount: 10,
+      postsWithConversationPct: 0,
+      questionsFromAudienceCount: 0,
+      praiseCount: 0,
+      complaintOrIssueCount: 0,
+      buyingIntentCount: 0,
+      spamOrLowQualityCount: 0,
+      dominantConversationSignals: [],
+      recommendedConversationAction: "",
+      limitations: [],
+    };
+    const ctx = build({ commentIntelligence: ci });
+    expect(ctx.comment_intelligence).toBeUndefined();
   });
 });

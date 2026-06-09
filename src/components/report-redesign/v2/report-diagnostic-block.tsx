@@ -49,6 +49,7 @@ import type { VisualCoverAnalysis } from "@/lib/report/visual-cover-types";
 import { useReportVariant, useVariantFeatures } from "@/lib/report/report-variant";
 import { getEnrichmentState } from "./enrichment-pending";
 import { EnrichmentPlaceholderCard } from "./enrichment-placeholder-card";
+import { sanitizeAiPriorityBody } from "@/lib/insights/sanitize-ai-priorities";
 
 /** Parse persisted visual_cover_analysis from snapshot payload. */
 function parseVisualCoverAnalysis(
@@ -199,24 +200,38 @@ export function ReportDiagnosticBlock({ result, payload, premiumUnlocked = false
       : null,
   });
 
-  // Always guarantee ≥3 priority cards: use AI when it returns enough,
-  // otherwise top up with deterministic items (deduped by title).
-  const aiMapped: PriorityItem[] = (aiPriorities ?? []).map((p) =>
-    inferAiPriorityItem(p),
-  );
+  // Always guarantee ≥3 priority cards: AI items first (cleaned of any
+  // unsupported numbers), then deterministic items merged with a
+  // composite dedup key (title + category + first basis).
+  const sanitizationPool = {
+    keyMetrics: km,
+    cadence: result.enriched.cadence ?? null,
+    commentIntelligence: result.enriched.commentIntelligence ?? null,
+    coverAnalysis: parseVisualCoverAnalysis(payload),
+    contentType,
+    caption,
+    audience,
+    integration,
+    dominantFormatShare: dominantFormat?.sharePct ?? 0,
+  };
 
-  const seenPriorityTitles = new Set(
-    aiMapped.map((p) => p.title.trim().toLowerCase()),
-  );
-  const priorityItems: PriorityItem[] = [
-    ...aiMapped,
-    ...deterministicPriorities.filter((p) => {
-      const key = p.title.trim().toLowerCase();
-      if (seenPriorityTitles.has(key)) return false;
-      seenPriorityTitles.add(key);
-      return true;
-    }),
-  ].slice(0, 6);
+  const aiMapped: PriorityItem[] = (aiPriorities ?? []).map((p) => {
+    const item = inferAiPriorityItem(p);
+    const { body, sanitized } = sanitizeAiPriorityBody(item.body, sanitizationPool);
+    return sanitized ? { ...item, body } : item;
+  });
+
+  const dedupKey = (p: PriorityItem) =>
+    `${p.title.trim().toLowerCase()}|${p.category ?? ""}|${(p.basedOn?.[0] ?? "")}`;
+  const seen = new Set<string>();
+  const priorityItems: PriorityItem[] = [];
+  for (const it of [...aiMapped, ...deterministicPriorities]) {
+    const k = dedupKey(it);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    priorityItems.push(it);
+    if (priorityItems.length >= 6) break;
+  }
 
   // ── Enrichment pending / error placeholders (Pro + Lab only) ─────
   const coverAnalysis = parseVisualCoverAnalysis(payload);

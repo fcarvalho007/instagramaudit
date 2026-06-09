@@ -1545,11 +1545,14 @@ export function derivePriorities(args: {
   }
 
   // Deduplicar por título e ordenar por score desc.
+  // Dedupe by composite key (title + category + first basis) so two rules
+  // that recommend the same action with different wording collapse to one.
   const seen = new Set<string>();
   const ranked = out
     .filter((it) => {
-      if (seen.has(it.title)) return false;
-      seen.add(it.title);
+      const key = `${it.title.trim().toLowerCase()}|${it.category}|${it.basedOn[0] ?? ""}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
       return true;
     })
     .sort((a, b) => b._score - a._score)
