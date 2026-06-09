@@ -574,12 +574,15 @@ function ExploreSection({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [periodCacheState, setPeriodCacheState] =
+    useState<PeriodCacheStateUi | null>(null);
   const navigate = useNavigate();
   const { proWindow90dEnabled } = usePublicAppConfig();
   const premiumWindows = useMemo<readonly number[]>(
     () => (proWindow90dEnabled ? PREMIUM_WINDOWS_ALL : [30]),
     [proWindow90dEnabled],
   );
+  const probePeriodCache = useServerFn(getPeriodCacheState);
 
   // Carrega o saldo de créditos beta apenas no estado paid — nunca antes
   // da compra, para nunca revelar o bónus ao utilizador free.
