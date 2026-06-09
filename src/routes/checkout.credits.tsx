@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { queryOptions, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { ArrowLeft, Coins, Gift, Loader2, Lock } from "lucide-react";
+import { ArrowLeft, Coins, Gift, Info, Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -162,6 +162,18 @@ function CheckoutSteps() {
         },
       },
     }).catch(() => {});
+    // Banner "Não-Pro" — até termos um sinal server-side fiável de
+    // entitlement Pro (ex: `report_full_9` activo no lead), mostramos
+    // sempre. Tracking permite medir frequência e refinar mais tarde.
+    trackEvent({
+      data: {
+        eventType: "credits_pack_non_pro_warning_shown",
+        metadata: {
+          pack_id: selectedPack.id,
+          source_component: search.source ?? null,
+        },
+      },
+    }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPack.code]);
 
@@ -255,6 +267,39 @@ function CheckoutSteps() {
             Pagamento único. Sem subscrição.
           </p>
         </div>
+
+        <aside
+          role="note"
+          className="rounded-xl border border-border-default bg-surface-muted p-5 max-w-xl flex items-start gap-3"
+        >
+          <Info
+            className="size-5 text-content-tertiary mt-0.5 shrink-0"
+            aria-hidden="true"
+          />
+          <div className="text-sm text-content-secondary leading-relaxed">
+            <p className="text-eyebrow-sm text-content-tertiary">
+              Antes de comprar
+            </p>
+            <p className="mt-1 font-semibold text-content-primary">
+              Os créditos só fazem sentido se já tiveres acesso Pro.
+            </p>
+            <p className="mt-1">
+              Cada crédito permite gerar uma nova análise Pro (mudar período,
+              adicionar concorrente, forçar nova recolha). Se ainda não
+              desbloqueaste o relatório completo, começa por aí.
+            </p>
+            <div className="mt-3">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate({ to: "/precos" }).catch(() => {})}
+              >
+                Ver opções Pro
+              </Button>
+            </div>
+          </div>
+        </aside>
 
         <section className="space-y-3">
           <h2 className="font-fraunces text-xl font-medium text-content-primary">

@@ -1,19 +1,30 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { ShieldCheck } from "lucide-react";
 
 import { OnboardingModal } from "@/components/onboarding/onboarding-modal";
 import { OrderSummary } from "@/components/checkout/order-summary";
 import { Button } from "@/components/ui/button";
+import { trackEvent } from "@/lib/tracking.functions";
 import type { ProductCode } from "@/lib/payments/products";
 
 interface Props {
   productCode: ProductCode;
   /**
    * Called after the onboarding flow finishes successfully and the
-   * `lead_session` cookie is in place. Caller should invalidate the
-   * `getLeadSessionStatus` query so the checkout re-renders into
-   * `<CheckoutSteps />`.
+   * `lead_session` cookie is in place.
+   *
+   * IMPORTANT: this fires *only* after the user has verified the OTP
+   * (or magic-link) inside `OnboardingModal` and `/api/onboarding/claim-existing`
+   * returned 2xx, meaning the `lead_session` cookie is set server-side.
+   * `/api/onboarding/start` alone is not enough — it only seeds the lead
+   * and triggers the OTP email; the session is only created at claim time.
+   *
+   * Caller MUST invalidate (and ideally refetch) the `getLeadSessionStatus`
+   * query so the checkout re-renders into `<CheckoutSteps />`. The gate
+   * never navigates, so all search params (`source`, `return`, `coupon`,
+   * `pack`, `intent`) are preserved in the URL.
    */
   onSignedIn: () => void;
   /**
@@ -38,7 +49,39 @@ export function CheckoutAccountGate({
   exitPath = "/precos",
 }: Props) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(true);
+
+  useEffect(() => {
+    trackEvent({
+      data: {
+        eventType: "checkout_onboarding_shown",
+        metadata: {
+          product_code: productCode,
+          exit_path: exitPath,
+        },
+      },
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productCode]);
+
+  const handleSuccess = async () => {
+    trackEvent({
+      data: {
+        eventType: "checkout_onboarding_completed",
+        metadata: {
+          product_code: productCode,
+          exit_path: exitPath,
+        },
+      },
+    }).catch(() => {});
+    // Ensure the lead-session query is fresh BEFORE the parent re-renders,
+    // so `useSuspenseQuery` immediately sees `hasLead === true` and swaps
+    // straight to `<CheckoutSteps />` (avoids a placeholder flash).
+    await queryClient.invalidateQueries({ queryKey: ["checkout", "lead-session"] });
+    await queryClient.refetchQueries({ queryKey: ["checkout", "lead-session"] });
+    onSignedIn();
+  };
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
@@ -103,7 +146,10 @@ export function CheckoutAccountGate({
         handle=""
         purpose="checkout"
         onSuccess={() => {
-          onSignedIn();
+          handleSuccess().catch(() => {
+            // Best-effort: even on refetch failure, let parent decide.
+            onSignedIn();
+          });
         }}
       />
     </div>
