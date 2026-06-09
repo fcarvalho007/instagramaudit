@@ -1,138 +1,110 @@
-# Diagnóstico: contas orfãs invisíveis em /admin
+# Refinamento UX do modal de onboarding (password mode)
 
-## Resumo executivo
+## Mudanças propostas
 
-`frederico.carvalho@digitalfc.pt` **existe** em `auth.users` (id `f7d12047-…`, criado `2026-06-09 12:52:19`, `email_confirmed_at = NULL`) e em `public.profiles`, mas **não existe** em `public.leads`. /admin lista exclusivamente `leads`, por isso o email é invisível. Não é caso isolado — todos os 4 utilizadores em `auth.users` estão sem `lead` correspondente, e todas as 9 leads são pré-flow password (sem `auth.users`).
+### A. Painel navy do final step (novo utilizador)
 
-## Mapa do fluxo actual
+`src/i18n/locales/pt/gate.json` — bloco `onboarding.final.left`:
 
-### Detecção de "email existe" (modal de onboarding)
+- **eyebrow**: manter `"ÚLTIMO PASSO"`
+- **title**: `"O teu relatório fica a um clique"` → `"A tua área privada"`
+- novo **subtitle**: `"Criamos uma conta segura para guardar este relatório e os próximos que gerares."`
+- **bullets** (substitui as actuais `report`/`save`/`credits` no caminho analyze):
+  - `"Relatório guardado na tua conta"`
+  - `"Acesso protegido por palavra-passe"`
+  - `"Dados privados e associados ao teu email"`
+  - `"Podes voltar aos relatórios quando quiseres"`
+- novo **securityNote**: `"A tua palavra-passe nunca é enviada por email nem guardada em texto visível."`
+- **Caminho `checkout`**: manter copy actual (compra associada à conta, recibo, sem subscrição) — não tem o mesmo problema.
 
-`POST /api/onboarding/check-email` (`src/routes/api/onboarding/check-email.ts`, função `findLead`)
-- Consulta **apenas** `public.leads` por `email_normalized`.
-- `auth.users` **não** é consultada.
-- Em erro de DB, devolve `exists: true` por segurança (fail-closed).
+`src/components/onboarding/onboarding-modal.tsx` — `FinalStepBody` aside (linhas 836–890):
+- Adiciona subtitle por baixo do `title`.
+- Substitui a lista de bullets analyze pelas 4 novas (icon mini check em cyan).
+- Adiciona rodapé com a security note num cartão glass compacto (`bg-white/5 border border-white/10 rounded-lg p-3`, ícone shield-check à esquerda, texto `text-[12.5px] text-white/70`).
+- Mantém estrutura visual existente (dark navy `bg-content-primary`, cyan eyebrow); sem mudar grid nem responsive.
 
-`POST /api/onboarding/start` (`src/routes/api/onboarding/start.ts`, função `createAuthUser` → `upsertLead`)
-- Tenta `supabaseAdmin.auth.admin.createUser({ email, password, email_confirm: true })`.
-- Se o email já estiver em `auth.users` (status 422 / "already registered"), devolve `409 EMAIL_ALREADY_EXISTS` e o cliente salta para `LoginPanel`.
-- Só corre `upsertLead` **depois** do `createUser` ter sucesso — é uma criação não transacional, mas neste path os dois passos correm juntos.
+### B. Campos de password — simplificar para um único campo
 
-### Listagem de /admin
+Decisão: **remover `confirm_password`**. Justificação:
+- O show/hide toggle já está em funcionamento (linhas 1001–1016), permite ao utilizador validar o que escreveu.
+- Erros típicos de typo são detectados via fluxo de reset (`/reset-password`) já existente.
+- Reduz fricção no formulário (menos um campo, menos altura mobile).
+- A reentrada da password ainda existe noutros pontos (Supabase HIBP server-side valida força).
 
-`GET /api/admin/leads-kanban` (`src/routes/api/admin/leads-kanban.ts`, linha 36)
-- `supabaseAdmin.from("leads").select("*").order(...)`.
-- Não junta `auth.users`, nem `profiles`, nem `report_requests`. Lead sem registo na tabela `leads` ⇒ invisível.
-- `/api/admin/leads-funnel` e `/api/admin/follow-ups` lêem o mesmo conjunto.
+Alterações:
+- `src/lib/unlock-flow.ts`: remove `confirm_password` do schema e a regra de matching no `superRefine` (mantém apenas validação de `password`).
+- `src/components/onboarding/onboarding-modal.tsx`:
+  - Remove bloco do campo "Confirmar palavra-passe" (linhas 1052–1088) e `showConfirm` state.
+  - Remove `confirm_password` de `defaultValues` (linha 175).
+  - Mantém campo `password` único com show/hide e indicador de força + hint.
+  - Hint actualizado para: `"Mínimo 8 caracteres, com letras e números. Validamos contra palavras-passe comuns."`
+- `src/lib/__tests__/unlock-flow.test.ts`: remove asserts de matching; mantém testes de min length, letras e números.
+- CTA mantém `"Criar conta e abrir relatório"` (já em `gate.json:242`).
 
-### Path que cria `auth.users` sem `leads` (a causa raiz)
+### C. Login panel (utilizador existente)
 
-`src/routes/signup.tsx` (linha 61): página pública `/signup` chama `supabase.auth.signUp` **directamente do browser**. Cria a auth user e nada mais — nunca toca em `/api/onboarding/start`, logo nunca cria `leads`, nunca atribui créditos, nunca regista qualificação.
+`src/components/onboarding/onboarding-modal.tsx` — `LoginPanel` (linhas 1237–1374). Estas strings são hardcoded; passo a aplicar directamente sem novas keys i18n (mantém escopo focado).
 
-Outros paths que tocam auth mas não criam lead:
-- `/login` (sign-in com password de uma conta já existente) — não cria nada novo.
-- `/reset-password` — só faz `resetPasswordForEmail` / `updateUser`, não cria conta.
-- `autoLogin` (admin beta shortcut) — `admin.createUser` para o email allowlist, sem lead. Gated por `BETA_AUTOLOGIN=1`.
+- eyebrow: `"Entrar na conta"` → `"ENTRAR NA CONTA"` (uppercase via `.text-eyebrow-sm`, já aplica)
+- title: `"Bem-vindo de volta"` → `"Já existe uma conta com este email"`
+- description: `"Este email já tem conta. Introduz a tua palavra-passe para continuar."` → `"Introduz a tua palavra-passe para abrir o relatório. Os teus dados continuam protegidos."`
+- CTA do botão (linha 1346): `"Entrar e continuar"` → `"Entrar e abrir relatório"`
+- Adicionar reassurance text por baixo dos action buttons:
+  > "Só o titular da conta consegue aceder aos relatórios guardados."
+  Pequeno (`text-[12px] text-content-tertiary`), com ícone shield-check.
+- "Esqueceste-te?" link já está implementado (linhas 1304–1311).
+- "Não és tu? Usar outro email" já está (linhas 1361–1370) — mantém.
 
-### Recuperação parcial existente
+### D. Remoção de copy de verificação por email
 
-`POST /api/onboarding/claim-existing` (`src/routes/api/onboarding/claim-existing.ts`, `findOrCreateLeadForEmail`) **já** cria lazy uma lead quando o utilizador faz login no modal e o lead não existe (`source: 'otp_claim'`). Funciona, mas só é chamada quando o user completa um login no modal — não corre no `/login` standalone, nem retroactivamente para os 3 orfãos actuais.
+`src/i18n/locales/pt/gate.json`:
+- `creditNote` (linha 165): `"Começas com 2 créditos grátis. Esta análise usa 1."` — sem referência a confirmação → manter.
+- `newPromise` (linha 181): manter (já não menciona verificação).
+- `subtitle` da secção `otp` (linha 272): orphan (modal já não usa OTP). Manter no ficheiro para não partir traduções externas, mas confirmar que não é renderizada.
+- `phoneLabel/phoneHint` em `entry` (99–101) e `final.right` (225–227): orphans. Não renderizadas. Manter.
 
-## Source-of-truth mismatch
+Como não há mais copy live de verificação, nada a remover no JSX.
 
-| Pergunta | Resposta |
-| --- | --- |
-| Onde o onboarding decide "exists"? | `public.leads.email_normalized` |
-| Onde a criação real acontece? | `auth.users` (via /start ou /signup) |
-| Onde /admin lê? | `public.leads` |
-| Pode auth user existir sem lead? | **Sim** — actualmente 4/4 |
-| Pode lead existir sem auth user? | **Sim** — actualmente 9/9 (todos os antigos `public_report_unlock`) |
-| Resultado | O conceito "conta" está fragmentado em duas tabelas que não se mantêm sincronizadas. /admin vê metade da realidade. |
+### E. Phone field — confirmação
 
-## Onde está o email exemplo
+Já não é renderizado em `FinalStepBody`. Adicionar teste regressivo.
 
-| Tabela | Presente? | Notas |
-| --- | --- | --- |
-| `auth.users` | ✅ | id `f7d12047-4c27-4777-8bd2-6626b7982f33`, `email_confirmed_at = NULL` ⇒ veio de `/signup` (que não usa `email_confirm: true`) |
-| `public.profiles` | ✅ | criado pelo trigger `handle_new_user`; `lead_id = NULL` porque não há lead para ligar |
-| `public.leads` | ❌ | nunca passou no `/api/onboarding/start` nem completou login no modal (que dispararia `claim-existing`) |
-| `report_requests`, `credit_ledger`, `lead_payments` | ❌ | dependem de `lead_id` |
+### F. Testes (`src/components/onboarding/__tests__/`)
 
-## Ficheiros / funções envolvidos
+Criar `onboarding-modal.copy.test.tsx` com asserts focados (RTL):
+1. Renderiza step final em modo `password` → não existe `<input>` com `name="phone"` nem label "Telemóvel".
+2. Painel navy renderiza `"A tua área privada"` + bullets `"Acesso protegido por palavra-passe"` + security note.
+3. Step final não contém "confirmação do email" nem "verifica o teu email".
+4. Submit válido chama `/api/onboarding/start` com `password` e SEM `confirm_password` no payload.
+5. LoginPanel renderiza `"Já existe uma conta com este email"` + CTA `"Entrar e abrir relatório"` + reassurance shield.
+6. `localStorage` draft não contém `password` (já existe verificação em `useOnboardingDraft`; reforça com assert directo após preencher).
 
-- `src/routes/api/onboarding/check-email.ts` (`findLead`)
-- `src/routes/api/onboarding/start.ts` (`handleOnboardingStart`, `createAuthUser`, `upsertLead`)
-- `src/routes/api/onboarding/claim-existing.ts` (`findOrCreateLeadForEmail`)
-- `src/routes/signup.tsx` (causa raiz: cria auth user sem lead)
-- `src/routes/api/admin/leads-kanban.ts` (consumidor: só lê `leads`)
-- Trigger `public.handle_new_user` em `auth.users` (cria profile, tenta `link_user_to_existing_reports` por email — falha em silêncio quando não há lead)
+Actualiza `src/lib/__tests__/unlock-flow.test.ts`:
+- Remove caso "passwords não coincidem".
+- Mantém: min 8, letra obrigatória, número obrigatório.
 
-## Tabelas envolvidas
+## Fora de scope (não tocar)
 
-`auth.users`, `public.profiles`, `public.leads`, `public.report_requests`, `public.credit_ledger`, `public.lead_payments`.
+Payments, EuPago, créditos, packs, webhooks, conteúdo do relatório, 30d/90d, competidor, force refresh, cache, admin, schema DB, `/api/onboarding/start` server, `claim-existing`, `auto-login`.
 
-## Fix recomendado (a aprovar antes de qualquer edição)
+## Ficheiros tocados (estimado)
 
-Política proposta: **toda a auth user tem uma lead correspondente; /admin lista a partir da união consistente das duas, com `leads` como tabela canónica**.
-
-Fix mínimo seguro, em três camadas, sem mudar checkout / créditos / reports / fluxo de auth:
-
-1. **Backfill** dos 4 orfãos actuais via migration (lead com `source = 'auth_backfill'`, `email_normalized = lower(u.email)`, nome derivado do `raw_user_meta_data.full_name` ou local-part). Reaproveita o trigger `handle_new_user` para ligar `profiles.lead_id` automaticamente.
-2. **Estender o trigger `handle_new_user`** para criar a `lead` quando ainda não existir (em vez de só ligar). Garante que **qualquer** caminho que crie `auth.users` (modal, /signup, autoLogin, futuros OAuth) deixa lead em DB. Mantém `source` por origem (`auth_signup`, `oauth`, etc.).
-3. **Endurecer `check-email`** para consultar também `auth.users` via `supabaseAdmin.auth.admin.listUsers` (ou um índice/RPC dedicado) — assim o modal mostra o login screen logo na entrada para emails que existam só em `auth`, sem ter de chegar ao `/start` para descobrir. Continua fail-closed em erro.
-
-Camadas 1 e 2 resolvem a invisibilidade em /admin. Camada 3 melhora a UX (evita o atalho actual em que `check-email` diz "novo" e `/start` rejeita 409).
+- `src/i18n/locales/pt/gate.json` (copy do painel navy)
+- `src/components/onboarding/onboarding-modal.tsx` (FinalStepBody aside + remoção confirm field + LoginPanel copy)
+- `src/lib/unlock-flow.ts` (schema sem confirm_password)
+- `src/lib/__tests__/unlock-flow.test.ts` (ajuste)
+- `src/components/onboarding/__tests__/onboarding-modal.copy.test.tsx` (novo)
 
 ## Riscos
 
-- **Trigger em `auth.users`**: a regra é "não tocar no schema `auth`". A solução é colocar o trigger no schema `public` apontando para `auth.users` (já é o que `handle_new_user` faz) — mantém-se essa convenção.
-- **Backfill com nome vazio**: usar `local-part(email)` como fallback é consistente com o que `claim-existing` já faz (`args.email.split("@")[0]`).
-- **`gdpr_consent_at` = NULL** nos backfilled: deve-se manter NULL (não fabricar consentimento). /admin precisa de saber filtrar leads sem consent — verificar se o kanban já tolera `null` aqui (sim, é só uma timestamp informativa).
-- **Race condition entre /start e trigger**: `/start` chama `admin.createUser` (dispara o trigger → lead lazy criada) e a seguir corre `upsertLead`. O upsert por `email_normalized` já é idempotente, mas há uma janela em que o trigger cria a lead com defaults e o `/start` faz update. Aceitável — `upsertLead` faz `UPDATE` quando encontra a lead.
-- **Detecção via `admin.listUsers`** em `check-email`: O list está paginado (50/req por defeito). Para >50 utilizadores, usar `listUsers({ page, perPage })` em loop ou criar uma função RPC `auth_user_exists(email)` security definer. Não introduzir antes de medir.
+- **Schema change `confirm_password`**: removido também do tipo `UnlockFormValues`. Verifico se outros consumidores usam (`rg confirm_password src/`); se houver callers, ou ajusto ou mantenho confirm field. Vou validar antes de tocar.
+- **CTA testid**: mantém `data-testid="onboarding-submit"` para não partir Playwright.
+- **Mudança de copy do LoginPanel**: hardcoded → safe; sem dependentes i18n.
 
-## Verificações manuais (SQL e admin)
+## QA manual a entregar
 
-```sql
--- 1. Quantos orfãos auth↔lead existem hoje
-SELECT
-  (SELECT count(*) FROM auth.users) AS auth_users,
-  (SELECT count(*) FROM public.leads) AS leads,
-  (SELECT count(*) FROM auth.users u
-    WHERE NOT EXISTS (SELECT 1 FROM public.leads l
-                      WHERE l.email_normalized = lower(u.email))) AS auth_sem_lead,
-  (SELECT count(*) FROM public.leads l
-    WHERE NOT EXISTS (SELECT 1 FROM auth.users u
-                      WHERE lower(u.email) = l.email_normalized)) AS lead_sem_auth;
--- Estado actual: 4 / 9 / 4 / 9.
-
--- 2. Lista detalhada dos orfãos auth-only
-SELECT u.id, u.email, u.created_at, u.email_confirmed_at, p.lead_id
-FROM auth.users u
-LEFT JOIN public.profiles p ON p.id = u.id
-WHERE NOT EXISTS (SELECT 1 FROM public.leads l
-                  WHERE l.email_normalized = lower(u.email))
-ORDER BY u.created_at DESC;
-
--- 3. Confirmar que o email exemplo está só em auth/profiles
-SELECT 'auth.users' src, id::text, email FROM auth.users
-  WHERE lower(email) = 'frederico.carvalho@digitalfc.pt'
-UNION ALL
-SELECT 'profiles', id::text, email FROM public.profiles
-  WHERE lower(email) = 'frederico.carvalho@digitalfc.pt'
-UNION ALL
-SELECT 'leads', id::text, email FROM public.leads
-  WHERE email_normalized = 'frederico.carvalho@digitalfc.pt';
-
--- 4. Validar que o utilizador veio de /signup (sinal: email_confirmed_at NULL)
---    /start usa email_confirm:true → confirmed != NULL
---    /signup usa signUp() padrão → confirmed = NULL até clicar
-```
-
-Em /admin: pesquisar pelo email e confirmar que não aparece em nenhuma vista (kanban, follow-ups, leads-funnel) — todas leem `leads`.
-
-## Decisões pendentes do utilizador
-
-1. Aprovar o fix em 3 camadas (backfill + trigger + check-email) ou prefere começar só pelo backfill + trigger e deixar `check-email` para depois?
-2. Para leads backfilled, manter `qualification = NULL` e marcar `source = 'auth_backfill'`, ou atribuir uma `qualification` por defeito (ex.: `curiosity`) para evitar avisos em /admin?
-3. Quer que `/signup` passe a ser opcional / removido do UX público (já que o modal cobre o caso), ou mantém os dois pontos de entrada?
+1. Abre modal de relatório com email novo → painel navy mostra "A tua área privada" + 4 bullets + nota de segurança; form tem 1 campo de password com toggle; submeter cria conta + abre relatório.
+2. Abre modal com email já existente → screen mostra "Já existe uma conta com este email" + reassurance shield; login OK abre relatório; password errada mostra erro sem criar conta.
+3. Inspecciona `localStorage.onboarding_draft_v1` após preencher → sem `password`.
+4. DevTools Network: payload `/start` não inclui `confirm_password`.
+5. Sem campo "Telemóvel" visível em nenhum step.
