@@ -1177,14 +1177,14 @@ function QualificationStepBody({
         ) : null}
       </div>
 
-      <div className="mt-6 flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
+      <div className="mt-6 flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 min-w-0">
         <Button
           type="button"
           variant="outline"
           size="lg"
           onClick={onBack}
           disabled={submitting}
-          className="w-full sm:w-auto sm:flex-shrink-0 rounded-lg"
+          className="w-full sm:w-auto sm:flex-shrink-0 rounded-lg min-w-0"
         >
           <ArrowLeft className="size-4" aria-hidden />
           {t("onboarding.qualification.back")}
@@ -1194,10 +1194,10 @@ function QualificationStepBody({
           size="lg"
           onClick={handleContinue}
           disabled={submitting}
-          className="w-full sm:flex-1 rounded-lg font-medium"
+          className="w-full sm:flex-1 sm:min-w-0 rounded-lg font-medium"
           data-testid="onboarding-qualification-continue"
         >
-          {t("onboarding.qualification.cta")}
+          <span className="truncate">{t("onboarding.qualification.cta")}</span>
         </Button>
       </div>
     </div>
