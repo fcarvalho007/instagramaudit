@@ -760,7 +760,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
   // Métricas do cabeçalho — derivadas de campos reais. Mostrar "—" em vez de
   // zero quando o campo não existe (não inflacionar).
-  const kpiReports = lead.report_request_id ? "1" : "0";
+  const kpiReports = String(lead.reports_count ?? 0);
   const kpiCredits =
     lead.credits_granted > 0
       ? `${lead.credits_remaining} / ${lead.credits_granted}`
