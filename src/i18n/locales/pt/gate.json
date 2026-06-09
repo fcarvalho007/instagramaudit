@@ -206,6 +206,9 @@
         "emailLabel": "Email",
         "emailPlaceholder": "ana@empresa.pt",
         "emailHint": "Usa preferencialmente o email profissional.",
+        "phoneLabel": "Telemóvel",
+        "phoneOptional": "opcional",
+        "phonePlaceholder": "+351 …",
         "qualificationLabel": "O que melhor descreve o teu contexto?",
         "qualificationPlaceholder": "Escolhe uma opção",
         "qualificationOptions": {
@@ -224,6 +227,15 @@
         "footnote": "RGPD · sem spam",
         "back": "Voltar"
       }
+    },
+    "qualification": {
+      "eyebrow": "PASSO 2 DE 3",
+      "title": "O que melhor descreve o teu contexto?",
+      "subtitle": "Uma escolha rápida — ajuda-nos a ajustar a análise.",
+      "placeholder": "Escolhe uma opção",
+      "back": "Voltar",
+      "cta": "Continuar  →",
+      "error": "Escolhe o contexto que melhor te descreve."
     },
     "otp": {
       "eyebrow": "CONFIRMA O TEU EMAIL",
