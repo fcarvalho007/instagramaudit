@@ -38,6 +38,14 @@ export const POST_PURCHASE_TOTAL_GRANTED =
 export const CREDIT_PACK_KIND = "credit_pack_purchased";
 
 /**
+ * Bónus interno aplicado a cada compra de pack durante o lançamento
+ * controlado: +2 créditos extra, não anunciados antes do pagamento.
+ * Idempotente por `(lead_id, payment_id, kind)`.
+ */
+export const CREDIT_PACK_LAUNCH_BONUS_KIND = "credit_pack_launch_bonus";
+export const CREDIT_PACK_LAUNCH_BONUS_AMOUNT = 2;
+
+/**
  * Map a `credit_pack_*` product code to the amount of credits it grants.
  * Keep in sync with `SERVER_PRODUCTS`. Returns null when the SKU is not a
  * recognised credit-pack code.
@@ -290,6 +298,50 @@ export async function grantCreditPack(input: {
       product_code: input.productCode,
       source: "payment_confirmed",
       pack_amount: input.amount,
+    } as Json,
+  });
+  return { granted: true };
+}
+
+/**
+ * Idempotent +2 créditos "bónus de lançamento controlado", aplicados
+ * em cima de cada compra de pack (`credit_pack_*`). Não anunciado
+ * antes do pagamento. Unicidade aplicacional:
+ * `(lead_id, reason='admin_adjust',
+ *   metadata.kind='credit_pack_launch_bonus', metadata.payment_id)`.
+ */
+export async function grantCreditPackLaunchBonus(input: {
+  leadId: string;
+  paymentId: string;
+  productCode: string;
+}): Promise<{ granted: boolean }> {
+  const { data: existing, error: selectError } = await supabaseAdmin
+    .from("credit_ledger")
+    .select("id")
+    .eq("lead_id", input.leadId)
+    .eq("reason", "admin_adjust")
+    .filter("metadata->>kind", "eq", CREDIT_PACK_LAUNCH_BONUS_KIND)
+    .filter("metadata->>payment_id", "eq", input.paymentId)
+    .limit(1)
+    .maybeSingle();
+  if (selectError) {
+    throw new Error(
+      `grantCreditPackLaunchBonus select failed: ${selectError.message}`,
+    );
+  }
+  if (existing) return { granted: false };
+
+  await insertLedger({
+    lead_id: input.leadId,
+    delta: CREDIT_PACK_LAUNCH_BONUS_AMOUNT,
+    reason: "admin_adjust",
+    metadata: {
+      kind: CREDIT_PACK_LAUNCH_BONUS_KIND,
+      payment_id: input.paymentId,
+      product_code: input.productCode,
+      source: "payment_confirmed",
+      launch_bonus: true,
+      bonus_credits: CREDIT_PACK_LAUNCH_BONUS_AMOUNT,
     } as Json,
   });
   return { granted: true };
