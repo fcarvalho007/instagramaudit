@@ -487,7 +487,12 @@ function LockedItemRow({
   );
 }
 
-const PREMIUM_WINDOWS = [30, 90] as const;
+/**
+ * Pro windows surfaced as chips in the sidebar. 90d is gated by the
+ * `pro_window_90d_enabled` flag (see `usePublicAppConfig`); chip render
+ * uses the runtime-filtered `premiumWindows` derived inside the component.
+ */
+const PREMIUM_WINDOWS_ALL = [30, 90] as const;
 
 // TODO: centralisar este limite num módulo partilhado (ex.: lib/config) quando
 // existir um sítio óbvio. Por agora vive aqui colado ao único consumidor.
