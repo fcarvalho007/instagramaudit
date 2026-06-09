@@ -27,6 +27,9 @@ import {
   CREDIT_PACK_KIND,
   getCreditPackAmount,
   grantCreditPack,
+  grantCreditPackLaunchBonus,
+  CREDIT_PACK_LAUNCH_BONUS_AMOUNT,
+  CREDIT_PACK_LAUNCH_BONUS_KIND,
 } from "@/lib/credits/credits.server";
 import { recordProductEvent } from "@/lib/tracking.server";
 import {
