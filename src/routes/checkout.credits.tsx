@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { queryOptions, useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { ArrowLeft, Check, Coins, Loader2, Lock } from "lucide-react";
+import { ArrowLeft, Coins, Gift, Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -23,15 +23,28 @@ import { getMyCreditBalance } from "@/lib/credits/credits.functions";
 import { trackEvent } from "@/lib/tracking.functions";
 import { PUBLIC_PRODUCTS, type ProductCode } from "@/lib/payments/products";
 
+/**
+ * TEMPORARY LAUNCH OFFER — durante o lançamento controlado expomos um
+ * único SKU `credit_pack_1` (1 crédito · 9€). O webhook concede +2
+ * créditos extra (bónus de lançamento, não anunciado antes do pagamento).
+ * Os packs `credits_3 / credits_10 / credits_25` ficam reservados no
+ * enum mas não aparecem aqui.
+ */
 const PACKS = [
-  { id: "credits_3", code: "credits_3" as ProductCode, credits: 3, priceEur: 9, priceLabel: "9€" },
-  { id: "credits_10", code: "credits_10" as ProductCode, credits: 10, priceEur: 25, priceLabel: "25€" },
-  { id: "credits_25", code: "credits_25" as ProductCode, credits: 25, priceEur: 49, priceLabel: "49€" },
+  {
+    id: "credit_pack_1",
+    code: "credit_pack_1" as ProductCode,
+    credits: 1,
+    priceEur: 9,
+    priceLabel: "9€",
+  },
 ] as const;
 
 type PackId = (typeof PACKS)[number]["id"];
 const PACK_IDS = PACKS.map((p) => p.id) as readonly PackId[];
-const DEFAULT_PACK: PackId = "credits_3";
+const DEFAULT_PACK: PackId = "credit_pack_1";
+
+const LAUNCH_BONUS_CREDITS = 2;
 
 function getPack(id: PackId) {
   return PACKS.find((p) => p.id === id) ?? PACKS[0];
@@ -109,8 +122,9 @@ function CheckoutSteps() {
   const navigate = useNavigate();
   const createCheckout = useServerFn(createEupagoCheckout);
 
-  const initialPackId: PackId = search.pack ?? DEFAULT_PACK;
-  const [selectedPackId, setSelectedPackId] = useState<PackId>(initialPackId);
+  // Single-SKU launch flow: ignore `?pack=` overrides that no longer
+  // map to an exposed product and always fall back to `credit_pack_1`.
+  const selectedPackId: PackId = DEFAULT_PACK;
   const selectedPack = getPack(selectedPackId);
   const intendedAction: IntendedAction = search.intent ?? "generic_pro_analysis";
 
@@ -210,57 +224,22 @@ function CheckoutSteps() {
           </p>
         </header>
 
-        <div
-          role="radiogroup"
-          aria-label="Pack de créditos"
-          className="grid gap-3 sm:grid-cols-3"
-        >
-          {PACKS.map((pack) => {
-            const checked = pack.id === selectedPackId;
-            const perCredit = (pack.priceEur / pack.credits).toLocaleString(
-              "pt-PT",
-              { minimumFractionDigits: 2, maximumFractionDigits: 2 },
-            );
-            return (
-              <button
-                key={pack.id}
-                type="button"
-                role="radio"
-                aria-checked={checked}
-                onClick={() => setSelectedPackId(pack.id)}
-                className={
-                  "relative text-left rounded-xl border bg-white p-4 transition-colors " +
-                  (checked
-                    ? "border-accent-primary ring-2 ring-accent-primary/30"
-                    : "border-border-default hover:border-content-tertiary")
-                }
-              >
-                {checked ? (
-                  <span
-                    aria-hidden="true"
-                    className="absolute top-3 right-3 inline-flex size-5 items-center justify-center rounded-full bg-accent-primary text-white"
-                  >
-                    <Check className="size-3" />
-                  </span>
-                ) : null}
-                <div className="flex items-center gap-2">
-                  <Coins
-                    className="size-4 text-accent-primary"
-                    aria-hidden="true"
-                  />
-                  <span className="text-sm font-semibold text-content-primary tabular-nums">
-                    {pack.credits} créditos
-                  </span>
-                </div>
-                <p className="mt-2 font-fraunces text-2xl font-medium text-content-primary tabular-nums leading-none">
-                  {pack.priceLabel}
-                </p>
-                <p className="mt-1 text-xs text-content-tertiary tabular-nums">
-                  ≈ {perCredit}€/crédito
-                </p>
-              </button>
-            );
-          })}
+        <div className="rounded-xl border border-accent-primary/40 bg-white p-5 max-w-xl">
+          <div className="flex items-center gap-2">
+            <Coins
+              className="size-4 text-accent-primary"
+              aria-hidden="true"
+            />
+            <span className="text-sm font-semibold text-content-primary tabular-nums">
+              {selectedPack.credits} crédito · pagamento único
+            </span>
+          </div>
+          <p className="mt-2 font-fraunces text-3xl font-medium text-content-primary tabular-nums leading-none">
+            {selectedPack.priceLabel}
+          </p>
+          <p className="mt-2 text-xs text-content-tertiary">
+            Pagamento único. Sem subscrição.
+          </p>
         </div>
 
         <section className="space-y-3">
