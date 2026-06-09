@@ -41,6 +41,30 @@ describe("lead-cookie", () => {
     expect(decodeLeadCookie("a.b.c.d")).toBeNull();
   });
 
+  it("rejects cookies older than the hard TTL (90d)", () => {
+    const ancientIat = Math.floor(Date.now() / 1000) - 60 * 60 * 24 * 91;
+    // Re-sign with the existing helper internals would require exporting
+    // `sign`; we build the same shape by hand using a fresh encoding and
+    // surgically replacing `iat`. Tamper of payload invalidates sig, so
+    // we must compute the signature with the same secret.
+    const { createHmac } = require("node:crypto") as typeof import("node:crypto");
+    const payload = `${LEAD_ID}.${ancientIat}`;
+    const sig = createHmac("sha256", process.env.SESSION_SECRET!)
+      .update(payload)
+      .digest("base64url");
+    expect(decodeLeadCookie(`${payload}.${sig}`)).toBeNull();
+  });
+
+  it("accepts cookies within the hard TTL window", () => {
+    const recentIat = Math.floor(Date.now() / 1000) - 60 * 60 * 24 * 30;
+    const { createHmac } = require("node:crypto") as typeof import("node:crypto");
+    const payload = `${LEAD_ID}.${recentIat}`;
+    const sig = createHmac("sha256", process.env.SESSION_SECRET!)
+      .update(payload)
+      .digest("base64url");
+    expect(decodeLeadCookie(`${payload}.${sig}`)?.leadId).toBe(LEAD_ID);
+  });
+
   it("rejects non-uuid leadId on encode", () => {
     expect(() => encodeLeadCookie("not-a-uuid")).toThrow();
   });
