@@ -45,6 +45,7 @@ export const SOURCE_LABELS: Record<string, string> = {
   public_report_gate: "Gate de relatório público",
   onboarding_modal: "Modal de onboarding",
   onboarding: "Modal de onboarding",
+  otp_claim: "Conta reentrou (OTP)",
   homepage: "Página inicial",
   beta_form: "Formulário beta",
   beta: "Formulário beta",
@@ -56,6 +57,25 @@ export const SOURCE_LABELS: Record<string, string> = {
   organic: "Tráfego orgânico",
   email: "Email",
   unknown: "Origem desconhecida",
+};
+
+/**
+ * Mapa derivado em `build-start-payload.ts` a partir do `profile_ownership`.
+ * Os valores aqui têm de coincidir com o domínio de `LEAD_QUALIFICATIONS`.
+ */
+export const QUALIFICATION_LABELS: Record<string, string> = {
+  brand_company: "Marca / empresa",
+  consultant_agency: "Consultor / agência",
+  marketing_comms: "Marketing / comunicação",
+  content_creator: "Criador de conteúdo",
+  curiosity: "Curiosidade",
+};
+
+export const EMAIL_DOMAIN_CLASS_LABELS: Record<string, string> = {
+  corporate: "Email corporativo",
+  personal: "Email pessoal",
+  disposable: "Email descartável",
+  unknown: "Domínio desconhecido",
 };
 
 export function labelProfileOwnership(value: string | null | undefined): string {
@@ -71,6 +91,20 @@ export function labelPurpose(value: string | null | undefined): string {
 export function labelSource(value: string | null | undefined): string {
   if (!value) return "—";
   return SOURCE_LABELS[value] ?? humanize(value);
+}
+
+export function labelQualification(
+  value: string | null | undefined,
+): string {
+  if (!value) return "—";
+  return QUALIFICATION_LABELS[value] ?? humanize(value);
+}
+
+export function labelEmailDomainClass(
+  value: string | null | undefined,
+): string | null {
+  if (!value) return null;
+  return EMAIL_DOMAIN_CLASS_LABELS[value] ?? humanize(value);
 }
 
 /** Fallback: snake_case → "Snake case". */

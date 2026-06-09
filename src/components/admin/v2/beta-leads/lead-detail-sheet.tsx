@@ -95,6 +95,8 @@ import {
   labelProfileOwnership,
   labelPurpose,
   labelSource,
+  labelQualification,
+  labelEmailDomainClass,
 } from "@/lib/admin/lead-context-labels";
 import {
   deriveWindow,
@@ -758,7 +760,7 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
 
   // Métricas do cabeçalho — derivadas de campos reais. Mostrar "—" em vez de
   // zero quando o campo não existe (não inflacionar).
-  const kpiReports = lead.report_request_id ? "1" : "0";
+  const kpiReports = String(lead.reports_count ?? 0);
   const kpiCredits =
     lead.credits_granted > 0
       ? `${lead.credits_remaining} / ${lead.credits_granted}`
@@ -809,6 +811,21 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                 >
                   {lead.email}
                 </a>
+                {labelEmailDomainClass(lead.email_domain_class) ? (
+                  <p className="admin-meta text-admin-text-tertiary mt-0.5 m-0">
+                    {labelEmailDomainClass(lead.email_domain_class)}
+                  </p>
+                ) : null}
+                {lead.phone ? (
+                  <a
+                    href={`tel:${lead.phone}`}
+                    className="admin-meta text-admin-text-tertiary mt-0.5 m-0 hover:text-admin-text-secondary transition-colors flex items-center gap-1.5"
+                    title={lead.phone}
+                  >
+                    <Phone size={11} aria-hidden />
+                    <span className="truncate">{lead.phone}</span>
+                  </a>
+                ) : null}
               </div>
             </div>
             {columnDef && (
@@ -898,6 +915,13 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                     label="Objetivo"
                     value={labelPurpose(lead.purpose)}
                   />
+                  {lead.qualification ? (
+                    <ContextField
+                      icon={Shield}
+                      label="Qualificação"
+                      value={labelQualification(lead.qualification)}
+                    />
+                  ) : null}
                   <ContextField
                     icon={Globe}
                     label="Origem"
@@ -905,9 +929,27 @@ export function LeadDetailSheet({ open, onOpenChange, lead, onUpdate, onRefresh 
                   />
                 </div>
                 <p className="admin-meta text-admin-text-tertiary mt-2">
-                  Só o que o lead respondeu no onboarding. Sinais derivados
+                  Respostas do onboarding/contexto de compra. Sinais derivados
                   (intenção, próximo passo) aparecem acima.
                 </p>
+                {/* Linha de consentimentos: só renderiza quando há sinal real. */}
+                {(lead.gdpr_consent_at ||
+                  (lead.marketing_consent && lead.marketing_consent_at)) ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-admin-text-tertiary">
+                    {lead.gdpr_consent_at ? (
+                      <span title={`Aceite em ${formatShortDateTime(lead.gdpr_consent_at)}`}>
+                        ✓ RGPD{lead.gdpr_consent_version ? ` ${lead.gdpr_consent_version}` : ""}
+                        {" · "}
+                        {shortDate(lead.gdpr_consent_at)}
+                      </span>
+                    ) : null}
+                    {lead.marketing_consent && lead.marketing_consent_at ? (
+                      <span title={`Aceite em ${formatShortDateTime(lead.marketing_consent_at)}`}>
+                        ✓ Marketing · {shortDate(lead.marketing_consent_at)}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
 
               {/* (c) Estado comercial — select agrupado manual/auto */}

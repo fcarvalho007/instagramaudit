@@ -15,6 +15,7 @@ import { AdminActionButton } from "@/components/admin/v2/admin-action-button";
 import { OverviewKpiRow } from "@/components/admin/v2/visao-geral/overview-kpi-row";
 import { MarginAlert } from "@/components/admin/v2/visao-geral/margin-alert";
 import { AcquisitionFunnel } from "@/components/admin/v2/visao-geral/acquisition-funnel";
+import { OnboardingFunnelCard } from "@/components/admin/v2/visao-geral/onboarding-funnel-card";
 import { CostSummaryCard } from "@/components/admin/v2/visao-geral/cost-summary-card";
 import { AnalysisWindowCard } from "@/components/admin/v2/visao-geral/analysis-window-card";
 import { PriorityFollowups } from "@/components/admin/v2/visao-geral/priority-followups";
@@ -130,6 +131,7 @@ function VisaoGeralPage() {
           <AcquisitionFunnel />
           <CostSummaryCard />
         </div>
+        <OnboardingFunnelCard />
         <PriorityFollowups />
         <IntentSection />
       </div>

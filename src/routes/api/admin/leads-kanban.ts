@@ -120,11 +120,16 @@ export const Route = createFileRoute("/api/admin/leads-kanban")({
         // Build map: lead_id → latest request
         type ReqRow = NonNullable<typeof requests>[number];
         const requestByLead = new Map<string, ReqRow>();
+        const reportCountByLead = new Map<string, number>();
         if (requests) {
           for (const r of requests) {
             if (!requestByLead.has(r.lead_id)) {
               requestByLead.set(r.lead_id, r);
             }
+            reportCountByLead.set(
+              r.lead_id,
+              (reportCountByLead.get(r.lead_id) ?? 0) + 1,
+            );
           }
         }
 
@@ -388,6 +393,15 @@ export const Route = createFileRoute("/api/admin/leads-kanban")({
             purpose: lead.purpose,
             company: lead.company,
             profile_ownership: lead.profile_ownership,
+            qualification: (lead.qualification as string | null) ?? null,
+            email_domain_class:
+              (lead.email_domain_class as string | null) ?? null,
+            gdpr_consent_at:
+              (lead.gdpr_consent_at as string | null) ?? null,
+            gdpr_consent_version:
+              (lead.gdpr_consent_version as string | null) ?? null,
+            marketing_consent_at:
+              (lead.marketing_consent_at as string | null) ?? null,
             source: lead.source,
             beta_consent: lead.beta_consent,
             beta_consent_at: lead.beta_consent_at,
@@ -404,6 +418,7 @@ export const Route = createFileRoute("/api/admin/leads-kanban")({
             last_interaction: lastEvent ?? lead.updated_at,
             created_at: lead.created_at,
             report_request_id: req?.id ?? null,
+            reports_count: reportCountByLead.get(lead.id) ?? 0,
             feedback: feedbackByLead.get(lead.id) ?? null,
             lead_magnet: lm,
             marketing_consent: !!lead.marketing_consent,
