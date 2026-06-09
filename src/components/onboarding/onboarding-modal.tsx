@@ -40,6 +40,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   unlockFormSchema,
   type UnlockFormValues,
 } from "@/lib/unlock-flow";
@@ -48,6 +55,7 @@ import { parseFullName } from "@/lib/names/parse-full-name";
 import { useOnboardingDraft } from "@/lib/leads/use-onboarding-draft";
 import { trackOnboardingEvent } from "@/lib/tracking/onboarding-events";
 import { buildStartPayload } from "@/lib/leads/build-start-payload";
+import { LEAD_QUALIFICATIONS, type LeadQualification } from "@/lib/leads/qualification";
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 const RESEND_COOLDOWN_SECONDS = 30;
@@ -78,7 +86,7 @@ export interface OnboardingModalProps {
 type View =
   | { kind: "entry" }
   | { kind: "final"; email: string }
-  | { kind: "otp"; email: string; sentAt: number };
+  | { kind: "otp"; email: string; sentAt: number; mode: "new" | "existing" };
 
 interface OnboardingApiOk {
   ok: true;
@@ -122,6 +130,7 @@ export function OnboardingModal({
       user_type: "creator",
       goal_other_text: "",
       user_type_other_text: "",
+      qualification: undefined,
       gdpr_consent: false as unknown as true,
       marketing_consent: false,
     },
@@ -176,7 +185,7 @@ export function OnboardingModal({
    * to bind the new auth user to the existing lead.
    */
   const sendOtpAndGoToOtpView = useCallback(
-    async (email: string): Promise<void> => {
+    async (email: string, mode: "new" | "existing" = "existing"): Promise<void> => {
       setSubmitting(true);
       setServerError(null);
       try {
@@ -194,7 +203,7 @@ export function OnboardingModal({
           });
           return;
         }
-        setView({ kind: "otp", email, sentAt: Date.now() });
+        setView({ kind: "otp", email, sentAt: Date.now(), mode });
       } catch {
         setServerError(t("onboarding.otp.errors.network"));
       } finally {
@@ -228,7 +237,7 @@ export function OnboardingModal({
           return;
         }
         if (data.exists) {
-          await sendOtpAndGoToOtpView(email);
+          await sendOtpAndGoToOtpView(email, "existing");
           return;
         }
         form.setValue("email", email, { shouldValidate: true });
@@ -287,7 +296,7 @@ export function OnboardingModal({
         data.error_code === "EMAIL_REQUIRES_VERIFICATION"
       ) {
         setSubmitting(false);
-        await sendOtpAndGoToOtpView(values.email);
+        await sendOtpAndGoToOtpView(values.email, "existing");
         return;
       }
       if (!res.ok || !data || data.ok !== true) {
@@ -306,7 +315,7 @@ export function OnboardingModal({
         const fieldErrorMap: Record<string, keyof UnlockFormValues> = {
           name: "full_name",
           email: "email",
-          phone: "phone",
+          qualification: "qualification",
           gdpr_consent: "gdpr_consent",
         };
         let firstFocus: keyof UnlockFormValues | null = null;
@@ -344,8 +353,15 @@ export function OnboardingModal({
         handle,
         marketing_consent: values.marketing_consent === true,
       });
-      clearDraft();
-      onSuccess(handle, { leadId: data.lead_id, credits: data.credits });
+      // Fase 5: `/start` no longer grants credits. It triggered the
+      // verification OTP server-side; route to the OTP panel so the user
+      // can confirm and unlock the 2 free credits via /claim-existing.
+      setView({
+        kind: "otp",
+        email: values.email,
+        sentAt: Date.now(),
+        mode: "new",
+      });
     } catch {
       setServerError(t("onboarding.errors.network"));
       trackOnboardingEvent({
