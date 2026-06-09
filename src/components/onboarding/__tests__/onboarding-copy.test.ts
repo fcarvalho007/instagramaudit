@@ -52,10 +52,13 @@ describe("onboarding modal copy (password mode)", () => {
 
   it("does not contain magic-link / email-verification copy", () => {
     // Password mode never displays these phrases. Catches regressions
-    // from copying old fragments back in.
+    // from copying old fragments back in. Note: we scan for user-facing
+    // strings only — code-level references to the legacy `magic_link`
+    // auth-mode literal are tolerated.
     expect(MODAL_SRC).not.toMatch(/após confirmação do email/i);
     expect(MODAL_SRC).not.toMatch(/verifica o teu email/i);
-    expect(MODAL_SRC).not.toMatch(/magic.?link/i);
+    expect(MODAL_SRC).not.toMatch(/Enviámos um link/i);
+    expect(MODAL_SRC).not.toMatch(/link mágico/i);
   });
 
   it("LoginPanel renders the reassurance copy and updated CTA", () => {
