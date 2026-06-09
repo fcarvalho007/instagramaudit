@@ -249,16 +249,17 @@
     },
     "qualification": {
       "eyebrow": "PASSO 2 DE 3",
-      "title": "Conta-nos o contexto",
-      "subtitle": "Duas escolhas rápidas para ajustarmos a análise.",
+      "title": "Ajuda-nos a personalizar",
+      "subtitle": "Duas perguntas rápidas. A leitura do relatório adapta-se ao que escolheres.",
       "eyebrowCheckout": "ANTES DE PAGAR",
-      "titleCheckout": "Conta-nos o contexto",
-      "subtitleCheckout": "Duas escolhas rápidas para ajustarmos a tua experiência.",
+      "titleCheckout": "Ajuda-nos a personalizar",
+      "subtitleCheckout": "Duas perguntas rápidas. A tua experiência adapta-se ao que escolheres.",
       "placeholder": "Escolhe uma opção",
-      "ownershipLegend": "Qual é o contexto?",
-      "goalLegend": "Qual é o teu objetivo?",
-      "ownershipError": "Escolhe o contexto.",
-      "goalError": "Escolhe um objetivo.",
+      "ownershipLegend": "Este perfil é…",
+      "goalLegend": "O que queres tirar daqui?",
+      "ownershipError": "Escolhe uma opção para continuar.",
+      "goalError": "Escolhe o que mais te interessa.",
+      "missingHint": "Escolhe uma opção em cada pergunta para continuar.",
       "goalOtherPlaceholder": "Conta-nos brevemente",
       "goalOtherHint": "Mínimo 2 caracteres",
       "back": "Voltar",
@@ -349,16 +350,16 @@
     },
     "compactOptions": {
       "profileOwnership": {
-        "own_profile": "Perfil pessoal",
+        "own_profile": "O meu perfil",
         "brand_profile": "A minha marca",
         "client_profile": "De um cliente",
-        "competitor_research": "Concorrência"
+        "competitor_research": "Um concorrente"
       },
       "goal": {
-        "improve_content": "Melhorar conteúdo",
-        "benchmark_competitors": "Comparar concorrentes",
-        "client_report": "Analisar p/ cliente",
-        "grow_audience": "Crescer audiência"
+        "improve_content": "Melhorar o conteúdo",
+        "benchmark_competitors": "Comparar com outros",
+        "client_report": "Apresentar a um cliente",
+        "grow_audience": "Crescer a audiência"
       }
     },
     "cta": {
