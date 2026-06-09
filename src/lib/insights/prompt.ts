@@ -215,6 +215,11 @@ export interface InsightsUserPayload {
    */
   visual_cover?: NonNullable<InsightsContext["visual_cover"]>;
   /**
+   * Compact comment-intelligence block (when present + non-neutral).
+   * The priorities prompt may cite any number from here.
+   */
+  comment_intelligence?: NonNullable<InsightsContext["comment_intelligence"]>;
+  /**
    * The flat list of `evidence` strings the model is allowed to cite.
    * Mirrored by `validate.ts` so any citation outside this list is
    * rejected. Keep paths short and JSON-pointer-ish.
