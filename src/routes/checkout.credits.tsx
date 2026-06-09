@@ -318,7 +318,7 @@ function CheckoutSteps() {
       <aside className="hidden lg:block">
         <OrderSummary
           productCode={selectedPack.code}
-          note={`${selectedPack.credits} créditos · pagamento único`}
+          note={`${selectedPack.credits} crédito${selectedPack.credits === 1 ? "" : "s"} · pagamento único`}
           sticky
         />
       </aside>
