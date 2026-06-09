@@ -1,17 +1,14 @@
 /**
  * Admin session helpers.
  *
- * Acesso administrativo simplificado (modo testes privados): o cliente
- * envia o email do admin no header `X-Admin-Email`. Se estiver na allowlist
- * `ADMIN_ALLOWED_EMAILS` (CSV, lowercase), o pedido é aceite. Sem JWT, sem
- * password, sem 2FA — risco aceite pelo owner durante a fase de testes.
- *
- * O backoffice expõe dados sensíveis (custos, snapshots, KB). Quando o
- * produto sair de testes privados, voltar a um esquema com password ou
- * Google + allowlist.
+ * A sessão é estabelecida em `/api/admin/simple-login` (email da allowlist
+ * + `ADMIN_LOGIN_PASSWORD`) e materializada como cookie HttpOnly assinado
+ * com HMAC sobre `SESSION_SECRET` (ver `cookie.server.ts`). O header
+ * `X-Admin-Email` foi descontinuado — saber um email da allowlist já não
+ * chega para passar pela gate.
  */
 
-import { getRequestHeader } from "@tanstack/react-start/server";
+import { getAdminEmailFromCookie } from "./cookie.server";
 
 export interface AdminUser {
   id: string;
@@ -45,14 +42,6 @@ export function isAdminEmailAllowed(email: string | null | undefined): boolean {
   return allowlist.includes(email.toLowerCase());
 }
 
-function extractAdminEmail(): string | null {
-  const raw =
-    getRequestHeader("x-admin-email") ?? getRequestHeader("X-Admin-Email");
-  if (!raw) return null;
-  const trimmed = raw.trim().toLowerCase();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
 /**
  * Throws a Response (401/403) when the caller is not an authenticated admin.
  * Use at the top of any /api/admin/* handler.
@@ -60,7 +49,7 @@ function extractAdminEmail(): string | null {
  * Returns the authenticated admin user when authorized.
  */
 export async function requireAdminSession(): Promise<AdminUser> {
-  const email = extractAdminEmail();
+  const email = getAdminEmailFromCookie();
   if (!email) {
     throw jsonError(401, "UNAUTHENTICATED", "Sessão em falta. Inicia sessão no /admin.");
   }

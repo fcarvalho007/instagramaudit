@@ -234,14 +234,12 @@ export const Route = createFileRoute("/api/public/enrich-comments")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        // Auth check — accepts INTERNAL_API_TOKEN (Bearer) or apikey header (for pg_cron sweep)
+        // Auth check — apenas Bearer INTERNAL_API_TOKEN (ver enrich-snapshot
+        // para racional: anon key da Supabase é pública).
         const token = process.env.INTERNAL_API_TOKEN;
         const auth = request.headers.get("Authorization");
-        const apikey = request.headers.get("apikey");
-        const anonKey = process.env.SUPABASE_PUBLISHABLE_KEY;
         const validBearer = token && auth === `Bearer ${token}`;
-        const validApikey = anonKey && apikey === anonKey;
-        if (!validBearer && !validApikey) {
+        if (!validBearer) {
           return Response.json({ error: "Unauthorized" }, { status: 401  });
         }
 

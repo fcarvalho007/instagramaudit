@@ -176,7 +176,7 @@ beforeEach(() => {
 });
 
 describe("POST /api/onboarding/start", () => {
-  it("valid payload → 200 with lead_id, credits=0 (verification-gated) and cookie writer invoked", async () => {
+  it("valid payload → 200 with credits=0 (verification-gated), NO lead_id and NO cookie before OTP", async () => {
     const res = await handleOnboardingStart(
       post({
         name: "Ana Silva",
@@ -187,18 +187,19 @@ describe("POST /api/onboarding/start", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       ok: boolean;
-      lead_id: string;
+      lead_id?: string;
       credits: number;
       verification_required?: boolean;
     };
     expect(body.ok).toBe(true);
-    expect(body.lead_id).toMatch(UUID_RE);
+    // CRIT-3: lead_id NÃO deve ser devolvido antes do OTP validar o email.
+    expect(body.lead_id).toBeUndefined();
     expect(body.credits).toBe(0);
     expect(body.verification_required).toBe(true);
     // Fase 5: /start no longer grants credits — that moves to /claim-existing.
     expect(grantInitialCreditsMock).not.toHaveBeenCalled();
-    expect(setLeadCookieMock).toHaveBeenCalledTimes(1);
-    expect(setLeadCookieMock).toHaveBeenCalledWith(body.lead_id);
+    // CRIT-3: cookie `lead_session` só é emitido em /claim-existing.
+    expect(setLeadCookieMock).not.toHaveBeenCalled();
   });
 
   it("invalid payload (missing email) → 400 INVALID_PAYLOAD with field issues + human message", async () => {
@@ -244,28 +245,12 @@ describe("POST /api/onboarding/start", () => {
     expect(body.error_code).toBe("EMAIL_REQUIRES_VERIFICATION");
   });
 
-  it("SESSION_SECRET misconfigured → 500 INTERNAL_ERROR with generic, secret-safe message", async () => {
-    setLeadCookieMock.mockImplementationOnce(() => {
-      throw new Error(
-        "SESSION_SECRET missing or too short (need at least 32 chars).",
-      );
-    });
+  it("never invokes setLeadCookie at /start (CRIT-3 — gate on OTP)", async () => {
     const res = await handleOnboardingStart(
       post({ name: "Ana", email: "secret@example.com" }),
     );
-    expect(res.status).toBe(500);
-    const body = (await res.json()) as {
-      ok: boolean;
-      error_code: string;
-      message: string;
-    };
-    expect(body.ok).toBe(false);
-    expect(body.error_code).toBe("INTERNAL_ERROR");
-    expect(body.message).toBe(GENERIC);
-    // não vaza o nome do secret nem detalhes internos
-    expect(body.message.toLowerCase()).not.toContain("session_secret");
-    expect(body.message.toLowerCase()).not.toContain("secret");
-    expect(body.message.toLowerCase()).not.toContain("hmac");
+    expect(res.status).toBe(200);
+    expect(setLeadCookieMock).not.toHaveBeenCalled();
   });
 
   it("disposable email domain → 400 INVALID_PAYLOAD (email field)", async () => {

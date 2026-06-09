@@ -20,8 +20,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z, type ZodIssue } from "zod";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { getBalance } from "@/lib/credits/credits.server";
-import { setLeadCookie } from "@/lib/leads/lead-cookie.server";
 import { classifyEmailDomain } from "@/lib/leads/email-domain-class";
 import { LEAD_QUALIFICATIONS } from "@/lib/leads/qualification";
 
@@ -54,8 +52,13 @@ type Payload = z.infer<typeof PayloadSchema>;
 
 interface OkBody {
   ok: true;
-  lead_id: string;
-  credits: number;
+  /**
+   * O `lead_id` NÃO é devolvido neste passo: a sessão (cookie `lead_session`)
+   * só é emitida em `/api/onboarding/claim-existing` depois do OTP validar
+   * o email. Devolver o id antes da prova de propriedade permitiria a um
+   * atacante criar conta com o email de outra pessoa.
+   */
+  credits: 0;
   /** Always `true` for new leads since Fase 5 — credits unlock on OTP. */
   verification_required: boolean;
 }
@@ -356,7 +359,6 @@ export async function handleOnboardingStart(
     return json(
       {
         ok: true,
-        lead_id: "00000000-0000-0000-0000-000000000000",
         credits: 0,
         verification_required: true,
       },
@@ -421,39 +423,18 @@ export async function handleOnboardingStart(
     );
   }
 
-  // Initial credit grant is deferred until the user verifies the email
-  // via OTP. See `/api/onboarding/claim-existing` for the grant call.
-
-  try {
-    setLeadCookie(upserted.leadId);
-  } catch (err) {
-    console.error("[onboarding/start] cookie write failed", err);
-    return json(
-      {
-        ok: false,
-        error_code: "INTERNAL_ERROR",
-        message: GENERIC_FALLBACK_MESSAGE,
-      },
-      500,
-    );
-  }
+  // Initial credit grant E sessão (`lead_session` cookie) só são emitidos
+  // em `/api/onboarding/claim-existing` depois do OTP validar o email.
+  // Aqui ficamos só com o registo do lead em DB.
 
   // Send the verification OTP. Best-effort: the modal also lets the user
   // resend from the OTP panel if delivery fails.
   await sendOtpEmail(parsed.data.email, upserted.leadId);
 
-  let credits = 0;
-  try {
-    credits = await getBalance(upserted.leadId);
-  } catch (err) {
-    console.error("[onboarding/start] balance read failed", err);
-  }
-
   return json(
     {
       ok: true,
-      lead_id: upserted.leadId,
-      credits,
+      credits: 0,
       verification_required: true,
     },
     200,

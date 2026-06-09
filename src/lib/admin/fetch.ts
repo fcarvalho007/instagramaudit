@@ -1,12 +1,13 @@
 /**
  * Helper para chamadas client-side a /api/admin/*.
  *
- * Lê o email do admin guardado em localStorage (gate simples) e injeta-o
- * no header `X-Admin-Email`. Os handlers server-side validam contra a
- * allowlist em `requireAdminSession()`.
+ * A autenticação é feita 100% server-side via cookie `admin_session`
+ * (HttpOnly, HMAC, TTL 8h) emitido por `/api/admin/simple-login`. Aqui só
+ * garantimos que o fetch inclui o cookie e que limpamos o flag local em
+ * 401/403 para o gate reaparecer.
  */
 
-import { ADMIN_GATE_STORAGE_KEY, clearAdminEmail, readAdminEmail } from "./simple-gate";
+import { ADMIN_GATE_STORAGE_KEY, clearAdminEmail } from "./simple-gate";
 
 export { ADMIN_GATE_STORAGE_KEY };
 
@@ -25,13 +26,10 @@ export async function adminFetch(
   input: string,
   init: RequestInit = {},
 ): Promise<Response> {
-  const email = readAdminEmail();
   const headers = new Headers(init.headers);
-  if (email) {
-    headers.set("X-Admin-Email", email);
-  }
-
-  const res = await fetch(input, { ...init, headers });
+  // `credentials: "include"` garante envio do cookie HttpOnly mesmo em
+  // contextos onde o default seria `same-origin` (ex: preview iframe).
+  const res = await fetch(input, { ...init, headers, credentials: "include" });
   if (res.status === 401 || res.status === 403) {
     handleUnauthorized();
   }

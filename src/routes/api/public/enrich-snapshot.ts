@@ -33,14 +33,15 @@ export const Route = createFileRoute("/api/public/enrich-snapshot")({
         }),
 
       POST: async ({ request }) => {
-        // Auth gate — accepts INTERNAL_API_TOKEN (Bearer) or apikey header (for pg_cron sweep)
+        // Auth gate — apenas Bearer INTERNAL_API_TOKEN. A Supabase anon key
+        // está embebida no bundle do browser e NÃO pode ser usada como
+        // secret aqui (qualquer visitante extraía-a do DevTools e disparava
+        // corridas Apify/DataForSEO/OpenAI à custa do projecto).
         const internalToken = process.env.INTERNAL_API_TOKEN;
         const authHeader = request.headers.get("authorization") ?? "";
-        const apikey = request.headers.get("apikey") ?? "";
-        const anonKey = process.env.SUPABASE_PUBLISHABLE_KEY ?? "";
-        const validBearer = internalToken && authHeader === `Bearer ${internalToken}`;
-        const validApikey = anonKey && apikey === anonKey;
-        if (!validBearer && !validApikey) {
+        const validBearer =
+          internalToken && authHeader === `Bearer ${internalToken}`;
+        if (!validBearer) {
           return new Response(JSON.stringify({ error: "unauthorized" }), {
             status: 401,
             headers: { "Content-Type": "application/json" },
