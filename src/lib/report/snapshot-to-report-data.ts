@@ -850,6 +850,9 @@ function buildFormatBreakdown(
 }
 
 function buildTopPosts(posts: SnapshotPost[]): ReportData["topPosts"] {
+
+
+
   const sorted = [...posts].sort(
     (a, b) => num(b.engagement_pct, 0) - num(a.engagement_pct, 0),
   );
@@ -1903,7 +1906,10 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     aiInsights: enrichedAiInsights,
     aiInsightsV2: buildAiInsightsV2(payload.ai_insights_v2),
     editorialPatterns: buildEditorialPatterns(payload),
-    commentIntelligence: (payload as { comment_intelligence?: CommentIntelligence | null }).comment_intelligence ?? null,
+    commentIntelligence: enrichCommentIntelligenceWithThumbnails(
+      (payload as { comment_intelligence?: CommentIntelligence | null }).comment_intelligence ?? null,
+      posts,
+    ),
     postingTimeline: buildPostingTimeline(posts),
     analysedPostFormats: buildAnalysedPostFormats(posts),
     cadence,
@@ -1975,4 +1981,52 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     externalReferences:
       input.benchmark?.externalReferences?.instagramByFormat ?? null,
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Comment intelligence — thumbnail join
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Hydrates `commentIntelligence.topConversationPosts` with `thumbnailUrl`
+ * and `postId` by matching on `shortcode` against the snapshot posts array.
+ * Pure: returns a new CI object if a join happened; otherwise the original.
+ */
+function enrichCommentIntelligenceWithThumbnails(
+  ci: CommentIntelligence | null,
+  posts: SnapshotPost[],
+): CommentIntelligence | null {
+  if (!ci || !ci.topConversationPosts || ci.topConversationPosts.length === 0) {
+    return ci;
+  }
+  // Build shortcode → post lookup once.
+  const byShortcode = new Map<string, SnapshotPost>();
+  for (const p of posts) {
+    const sc =
+      (typeof p.shortcode === "string" && p.shortcode.trim()) ||
+      extractShortcodeFromPermalink(p.permalink ?? null) ||
+      "";
+    if (sc) byShortcode.set(sc, p);
+  }
+  const hydrated = ci.topConversationPosts.map((entry) => {
+    const sc = entry.shortcode ?? extractShortcodeFromPermalink(entry.postUrl);
+    if (!sc) return entry;
+    const post = byShortcode.get(sc);
+    if (!post) return entry;
+    const thumb = pickThumbnailUrl(post) ?? undefined;
+    const postId = typeof post.id === "string" ? post.id : undefined;
+    return {
+      ...entry,
+      shortcode: entry.shortcode ?? sc,
+      ...(thumb ? { thumbnailUrl: thumb } : {}),
+      ...(postId ? { postId } : {}),
+    };
+  });
+  return { ...ci, topConversationPosts: hydrated };
+}
+
+function extractShortcodeFromPermalink(url: string | null): string | undefined {
+  if (!url) return undefined;
+  const m = url.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
+  return m?.[1];
 }

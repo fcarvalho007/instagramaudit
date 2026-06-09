@@ -267,4 +267,29 @@ export interface CommentIntelligence {
     postUrl: string;
     commentsCount: number;
   }>;
+  /**
+   * Pro-grade top conversation posts (max 3) — richer than `topCommentPosts`.
+   * Contains per-post signal counts and a deterministic 1-line summary so
+   * the UI can render compact thumbnail cards with grounded context.
+   * `thumbnailUrl` is left undefined by the aggregator (no post metadata
+   * here) and joined in `snapshot-to-report-data.ts` via shortcode lookup.
+   */
+  topConversationPosts?: Array<{
+    postUrl: string;
+    shortcode?: string;
+    postId?: string;
+    thumbnailUrl?: string;
+    commentsCount: number;
+    ownerRepliesCount: number;
+    audienceCommentsCount: number;
+    dominantSignal:
+      | "questions"
+      | "praise"
+      | "complaints"
+      | "buying_intent"
+      | "mixed";
+    topAudienceComment?: { username: string; text: string };
+    /** Deterministic, grounded in counts. Never AI-generated. */
+    summary: string;
+  }>;
 }
