@@ -240,7 +240,8 @@
         "marketingText": "I'd like tips and benchmarks",
         "marketingOptional": "(optional)",
         "cta": "Generate my report",
-        "ctaCheckout": "Create account and continue",
+        "ctaCheckout": "Create account",
+        "missingQualification": "Missing details from the previous step. Go back to complete.",
         "footnote": "GDPR · no spam",
         "footnoteCheckout": "GDPR · no spam",
         "back": "Back"
