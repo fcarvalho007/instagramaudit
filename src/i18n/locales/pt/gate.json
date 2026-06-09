@@ -203,18 +203,23 @@
     "final": {
       "left": {
         "eyebrow": "ÚLTIMO PASSO",
-        "title": "O teu relatório fica a um clique",
+        "title": "A tua área privada",
+        "subtitle": "Criamos uma conta segura para guardar este relatório e os próximos que gerares.",
         "eyebrowCheckout": "ANTES DE PAGAR",
         "titleCheckout": "Só faltam alguns dados",
         "bullets": {
           "report": "Relatório de @{{handle}}",
           "reportCheckout": "A tua compra fica associada à tua conta",
-          "save": "Conta privada com os relatórios guardados",
+          "save": "Relatório guardado na tua conta",
+          "passwordProtected": "Acesso protegido por palavra-passe",
+          "privateData": "Dados privados e associados ao teu email",
+          "returnAny": "Podes voltar aos relatórios quando quiseres",
           "credits": "<strong>2 créditos grátis</strong> incluídos na tua conta",
           "receiptCheckout": "Recebes o recibo no email indicado",
           "returnCheckout": "Podes voltar aos relatórios sempre que quiseres",
           "noSubCheckout": "Sem subscrição nem cobrança automática"
-        }
+        },
+        "securityNote": "A tua palavra-passe nunca é enviada por email nem guardada em texto visível."
       },
       "right": {
         "nameLabel": "Nome",

@@ -172,7 +172,6 @@ export function OnboardingModal({
       email: "",
       phone: "",
       password: "",
-      confirm_password: "",
       // O single-step signup recolhe apenas `qualification`. Mantemos
       // valores neutros para `profile_ownership`/`goal` (campos legados,
       // ainda presentes no schema) — o server deriva o que precisa de
@@ -781,7 +780,6 @@ function FinalStepBody({
   const emailError = form.formState.errors.email?.message;
   const qualificationError = form.formState.errors.qualification?.message;
   const passwordError = form.formState.errors.password?.message;
-  const confirmError = form.formState.errors.confirm_password?.message;
   const consentError = form.formState.errors.gdpr_consent?.message;
   const consent = form.watch("gdpr_consent");
   const marketing = form.watch("marketing_consent");
@@ -789,7 +787,6 @@ function FinalStepBody({
   const qualification = form.watch("qualification");
   const passwordValue = form.watch("password") ?? "";
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
   const strength = computePasswordStrength(passwordValue);
   const emailIsValid = !emailError && emailValue && EMAIL_RE.test(emailValue);
 
@@ -848,16 +845,17 @@ function FinalStepBody({
               : "onboarding.final.left.title",
           )}
         </p>
+        {!isCheckout ? (
+          <p className="text-[14px] leading-[1.55] text-white/75 text-balance">
+            {t("onboarding.final.left.subtitle")}
+          </p>
+        ) : null}
         <ul className="space-y-3 pt-2">
           <FinalBullet>
             {purpose === "checkout" ? (
               t("onboarding.final.left.bullets.reportCheckout")
             ) : (
-              <Trans
-                i18nKey="onboarding.final.left.bullets.report"
-                ns="gate"
-                values={{ handle }}
-              />
+              t("onboarding.final.left.bullets.save")
             )}
           </FinalBullet>
           {isCheckout ? (
@@ -875,18 +873,28 @@ function FinalStepBody({
           ) : (
             <>
               <FinalBullet>
-                <Trans
-                  i18nKey="onboarding.final.left.bullets.credits"
-                  ns="gate"
-                  components={{ strong: <strong className="text-white" /> }}
-                />
+                {t("onboarding.final.left.bullets.passwordProtected")}
               </FinalBullet>
               <FinalBullet>
-                {t("onboarding.final.left.bullets.save")}
+                {t("onboarding.final.left.bullets.privateData")}
+              </FinalBullet>
+              <FinalBullet>
+                {t("onboarding.final.left.bullets.returnAny")}
               </FinalBullet>
             </>
           )}
         </ul>
+        {!isCheckout ? (
+          <div className="mt-auto flex items-start gap-2.5 rounded-lg border border-white/10 bg-white/5 p-3">
+            <ShieldCheck
+              className="size-4 text-cyan-300 shrink-0 mt-0.5"
+              aria-hidden
+            />
+            <p className="text-[12.5px] leading-[1.5] text-white/70">
+              {t("onboarding.final.left.securityNote")}
+            </p>
+          </div>
+        ) : null}
       </aside>
 
       {/* Right — compact form */}
@@ -1044,47 +1052,9 @@ function FinalStepBody({
           ) : (
             <p className="text-[12px] text-content-secondary">
               {STRENGTH_LABELS[strength] ||
-                "Pelo menos 8 caracteres, com letra e número. Validamos contra palavras-passe comuns."}
+                "Mínimo 8 caracteres, com letras e números. Validamos contra palavras-passe comuns."}
             </p>
           )}
-        </div>
-
-        <div className="space-y-1.5">
-          <Label
-            htmlFor="onb-confirm-password"
-            className="text-[13.5px] font-medium text-content-primary"
-          >
-            Confirmar palavra-passe
-          </Label>
-          <div className="relative">
-            <Input
-              id="onb-confirm-password"
-              type={showConfirm ? "text" : "password"}
-              autoComplete="new-password"
-              aria-invalid={Boolean(confirmError)}
-              className="pr-10 text-base"
-              {...form.register("confirm_password")}
-              data-testid="onboarding-confirm-password"
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirm((v) => !v)}
-              aria-pressed={showConfirm}
-              aria-label={
-                showConfirm ? "Esconder palavra-passe" : "Mostrar palavra-passe"
-              }
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-content-tertiary hover:text-content-primary"
-            >
-              {showConfirm ? (
-                <EyeOff className="size-4" aria-hidden />
-              ) : (
-                <Eye className="size-4" aria-hidden />
-              )}
-            </button>
-          </div>
-          {confirmError ? (
-            <p className="text-[12.5px] text-destructive">{confirmError}</p>
-          ) : null}
         </div>
 
         <div className="rounded-xl border border-border-default/40 bg-surface-muted/40 p-3 space-y-2.5">
@@ -1265,13 +1235,13 @@ function LoginPanel({
     >
       <DialogHeader className="text-left space-y-2.5">
         <p className="text-eyebrow-sm text-content-tertiary">
-          Entrar na conta
+          ENTRAR NA CONTA
         </p>
         <DialogTitle className="font-display text-[24px] sm:text-[28px] leading-[1.1] tracking-[-0.015em] text-content-primary text-balance break-words">
-          Bem-vindo de volta
+          Já existe uma conta com este email
         </DialogTitle>
         <DialogDescription className="text-[14px] text-content-secondary leading-[1.55]">
-          Este email já tem conta. Introduz a tua palavra-passe para continuar.
+          Introduz a tua palavra-passe para abrir o relatório. Os teus dados continuam protegidos.
         </DialogDescription>
       </DialogHeader>
 
@@ -1343,10 +1313,20 @@ function LoginPanel({
           ) : (
             <>
               <Lock className="size-4" aria-hidden />
-              Entrar e continuar
+              Entrar e abrir relatório
             </>
           )}
         </Button>
+
+        <div className="flex items-start gap-2 rounded-lg border border-border-default/40 bg-surface-muted/40 p-2.5">
+          <ShieldCheck
+            className="size-3.5 text-content-tertiary shrink-0 mt-0.5"
+            aria-hidden
+          />
+          <p className="text-[12px] leading-[1.5] text-content-tertiary">
+            Só o titular da conta consegue aceder aos relatórios guardados.
+          </p>
+        </div>
 
         <div className="flex items-center justify-between gap-3 pt-1">
           <button
