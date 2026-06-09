@@ -240,11 +240,6 @@ export function OnboardingModal({
     setView({ kind: "entry" });
   }, []);
 
-  const goBackToQualification = useCallback((email: string) => {
-    setServerError(null);
-    setView({ kind: "qualification", email });
-  }, []);
-
   /**
    * Switch to the login view for an existing email. Pure UI transition —
    * no email is sent and no Supabase call is made until the user enters
