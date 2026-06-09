@@ -175,7 +175,7 @@
       "subtitle": "Vais analisar <1>@{{handle}}</1> — é grátis.",
       "newBadge": "Novo por aqui",
       "newTitle": "Criar conta grátis",
-      "newPromise": "Recebes 2 análises grátis e o relatório fica guardado.",
+      "newPromise": "Recebes o relatório guardado e 2 créditos grátis após confirmares o email.",
       "emailPlaceholder": "o teu email",
       "emailInvalid": "Confirma o teu email — parece inválido.",
       "newCta": "Criar conta e abrir relatório",
@@ -190,8 +190,8 @@
         "title": "O teu relatório fica a um clique",
         "bullets": {
           "report": "Relatório de @{{handle}}",
-          "credits": "Conta privada com <strong>2 créditos</strong> grátis",
-          "save": "Todos os relatórios futuros guardados"
+          "save": "Conta privada com os relatórios guardados",
+          "credits": "<strong>2 créditos grátis</strong> após confirmação do email"
         }
       },
       "right": {
@@ -199,9 +199,17 @@
         "namePlaceholder": "Ana Marques",
         "emailLabel": "Email",
         "emailPlaceholder": "ana@empresa.pt",
-        "phoneLabel": "Telemóvel",
-        "phoneOptional": "opcional",
-        "phonePlaceholder": "+351 912 345 678",
+        "emailHint": "Usa preferencialmente o email profissional.",
+        "qualificationLabel": "O que melhor descreve o teu contexto?",
+        "qualificationPlaceholder": "Escolhe uma opção",
+        "qualificationOptions": {
+          "brand_company": "Tenho uma marca/empresa",
+          "marketing_comms": "Trabalho em marketing/comunicação",
+          "consultant_agency": "Sou consultor/agência",
+          "content_creator": "Sou criador de conteúdo",
+          "curiosity": "Estou a explorar por curiosidade",
+          "other": "Outro"
+        },
         "consentText": "Aceito o <a>tratamento de dados</a>",
         "consentMandatory": "(obrigatório)",
         "marketingText": "Quero dicas e benchmarks",
@@ -212,9 +220,10 @@
       }
     },
     "otp": {
-      "eyebrow": "CONFIRMA QUE É A TUA CONTA",
+      "eyebrow": "CONFIRMA O TEU EMAIL",
       "title": "Enviámos um código para {{maskedEmail}}",
-      "subtitle": "Abre o email e indica o código de 6 dígitos para abrir o relatório.",
+      "subtitle": "Confirma o código de 6 dígitos para activar os teus 2 créditos grátis.",
+      "existingTitle": "Esta conta já existe. Enviámos um link para confirmares o acesso.",
       "codeLabel": "Código de 6 dígitos",
       "codePlaceholder": "123456",
       "cta": "Confirmar e abrir  →",
@@ -316,7 +325,7 @@
         "gdpr_consent": "Falta aceitar o tratamento de dados para continuar.",
         "email": "Confirma o teu email — parece inválido.",
         "name": "Falta indicar o teu nome.",
-        "phone": "O número de telefone parece inválido.",
+        "qualification": "Escolhe o contexto que melhor te descreve.",
         "purpose": "Volta ao passo anterior e escolhe o que queres perceber.",
         "profile_ownership": "Volta ao passo anterior e indica a tua relação com o perfil."
       }
