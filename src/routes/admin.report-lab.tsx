@@ -819,9 +819,9 @@ function BlockAccessMatrix({ variant }: { variant: ReportVariant }) {
           <thead>
             <tr className="bg-admin-surface-muted/30">
               <th className="px-4 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-admin-text-tertiary">Bloco</th>
-              {colHeader("Público", variant === "public_mvp")}
-              {colHeader("Interno", variant === "internal_lab")}
-              {colHeader("Pro", variant === "pro_preview")}
+              {colHeader("Público (Free)", variant === "public_mvp")}
+              {colHeader("Pro (cliente pago)", variant === "pro_preview")}
+              {colHeader("Interno (lab)", variant === "internal_lab")}
             </tr>
           </thead>
           <tbody>
@@ -832,8 +832,8 @@ function BlockAccessMatrix({ variant }: { variant: ReportVariant }) {
                   {b.shortLabel}
                 </td>
                 {cell(mvp[b.featureKey], "public_mvp", b.id, variant === "public_mvp")}
-                {cell(lab[b.featureKey], "internal_lab", b.id, variant === "internal_lab")}
                 {cell(pro[b.featureKey], "pro_preview", b.id, variant === "pro_preview")}
+                {cell(lab[b.featureKey], "internal_lab", b.id, variant === "internal_lab")}
               </tr>
             ))}
           </tbody>
