@@ -120,6 +120,7 @@ export function buildInsightsCtx(
     marketSignals,
     captionSemantic,
     visualCover,
+    commentIntelligence,
   } = input;
 
   const successfulCompetitors = competitorResults.filter(
