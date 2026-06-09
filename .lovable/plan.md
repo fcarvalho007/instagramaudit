@@ -1,97 +1,94 @@
-# Alinhar acesso, cópia e gating para o modelo Free → Pro
+# Pre-launch finalization — Pro 30d/90d + Free→Pro copy
 
-## Resumo
+## Status check (already done in earlier turns)
 
-A maior parte da infra (gates server-side 30d/90d/competitor, cache-aware modal Caso A/B/C, per-(lead, handle, window) cap, `pro_window_90d_enabled` seedado, admin observability com `fresh_forced`) já está pronta dos turnos anteriores. Esta passagem é maioritariamente **cópia e remoção do enquadramento "beta privada"**, mais 2 ajustes finos na UI.
+- **Task 1 (Pro window budget)**: `getProWindowProfileDailySpendUsd` in `src/lib/security/apify-budget.server.ts` already filters `.eq("reason", "confirm")` (line 240). Released reservations are no longer counted. ✅
+- **Task 2 (app_config seed)**: Migration `20260609093942_*.sql` already seeds `pro_window_90d_enabled='true'`, `apify_pro_window_profile_daily_cap_usd='5.50'`, `apify_90d_daily_cap_usd='20'` with `ON CONFLICT DO NOTHING`. ✅
 
-## 1. Cópia pt-PT / en (i18n)
+These two need verification only — no new work, just confirm tests pass.
 
-### Substituições em `src/i18n/locales/pt/report.json` e `en/report.json`
+## Remaining work
 
-| Chave | Atual | Nova |
-|---|---|---|
-| `nav.explore.consume_dialog.soon_note` | "está em fase beta — vais ser notificado quando a nova análise estiver pronta." | **remover chave + uso** (já não temos "novidade em preparação") |
-| `competitor_beta_note` | "Na fase beta, comparas 1 concorrente de cada vez. Em breve poderás comparar vários…" | "Podes comparar **1 concorrente de cada vez**." |
-| `free_in_beta_badge` | "grátis na beta" | **remover** (ou substituir por "incluído") |
-| `balance_hint*` | "Tens X crédito **beta** disponível." | "Tens X crédito disponível." |
-| `credit_use_label` | "Usa 1 crédito **beta**" | "Usa 1 crédito Pro" |
-| `period_coming_soon_title/body` | "Janela personalizada em preparação… ainda não está disponível nesta versão beta" | **remover** (chaves e qualquer fallback) — 30d/90d são Pro reais |
-| `period_action_body` | "pode consumir 1 crédito **se ainda não existir em cache**…" | "Esta ação consome 1 crédito Pro." |
-| `nav.tabs.coming_soon` + `coming_soon_detail` + `coming_soon_tooltip` | "Em breve · Julho 2026" | manter **apenas** para outras redes (TikTok/LinkedIn). Renomear chave-mãe para `nav.tabs.other_networks_soon` e garantir que **nenhuma** tab de 30d/90d/competitor a usa. |
-| `comparison.roadmap_*` (Em breve: outras redes) | manter | **manter** — refere-se a outras redes, não a 30d/90d |
-| `cache.expiring` ("A expirar em breve") | manter | manter — é estado real de cache, não roadmap |
+### 1. Cache TTL alignment (keep 24h, single source of truth)
 
-### Em `pricing.json` (pt) / `gate.json` (pt)
+Canonical constant: `CACHE_REUSE_MAX_HOURS = 24` in `src/lib/report/retention.ts`. Decision: **keep 24h**, align all copy.
 
-- `pricing_pending_note` "Pagamento brevemente disponível" → revisão fora de scope (não toca checkout); manter.
-- `tellUsBriefly` (formulário) → manter (não é tier).
+- Audit every user-facing string mentioning "24 horas" / "12 horas" / "24h" / "12h" in cache context (`rg -n "cache.*hora|hora.*cache|cached for"` in `src/i18n/` and `src/components/report-redesign/v2/`).
+- Replace any divergent values with the canonical `24` (already correct in `pt/report.json:677` and `en/report.json:677`).
+- For the consume-credit modal, ensure the three lines requested by the brief exist with `{{age}}` and `{{cacheHours}}` placeholders:
+  - "Existe uma análise recente gerada há {{age}}."
+  - "Podes abrir esta versão sem gastar créditos ou gerar uma nova pesquisa para atualizar os dados."
+  - "Depois de gerada, esta análise fica disponível em cache durante {{cacheHours}} horas."
+- Wire `{{cacheHours}}` from `CACHE_REUSE_MAX_HOURS` (export a small `getCacheHoursLabel()` helper in `retention.ts` if not present) so it cannot drift.
 
-### Componentes que precisam de ajuste pontual
+### 2. Remove remaining beta/private-beta user-facing language
 
-- `src/components/report-redesign/v2/consume-credit-dialog.tsx` (linha ~282): remover `competitor_beta_note` se ficar redundante após reescrita; rever `soon_note`.
-- `src/components/report-tier/tier-copy.ts` linha 12: "Relatório gratuito durante a fase beta" → "Relatório gratuito".
-- `src/components/report-share/share-copy.ts` linha 4: remover "durante a fase beta".
-- `src/components/report-redesign/report-shell.tsx` linha 195 (aria-label "Feedback durante a fase beta") + linha 47 (comentário): aria-label → "Feedback do relatório". Comentário interno pode ficar.
-- `src/components/report-redesign/report-pending-ai-notice.tsx`: substituir "em preparação" por "a gerar" / "a calcular".
-- `src/components/report-redesign/v2/cache-status-badge.tsx` (`expiring_soon`): manter (refere-se a expirar da cache).
-- `src/components/beta/beta-request-form.tsx` (linhas 371/383): rota sem links internos (vestigial). **Não tocar** — fora de scope (não é caminho ativo no produto).
-- `src/components/report-beta/beta-copy.ts` linha 13: revisão pendente. Se o componente é renderizado, substituir; se órfão, deixar.
+Confirmed still present (active surfaces):
 
-### Emails (templates ativos)
+| File | Key/line | Current | Replace with |
+|---|---|---|---|
+| `src/i18n/locales/pt/report.json` | `beta_credits_available` (623) | "{{count}} crédito beta disponível" | "{{count}} crédito Pro disponível" |
+| `src/i18n/locales/pt/report.json` | `beta_credits_available_plural` (624) | "{{count}} créditos beta disponíveis" | "{{count}} créditos Pro disponíveis" |
+| `src/i18n/locales/pt/report.json` | `consume_dialog.title` (627) | "Usar 1 crédito beta" | "Usar 1 crédito Pro" |
+| `src/i18n/locales/en/report.json` | mirror equivalents | "beta credit(s)" | "Pro credit(s)" / "Use 1 Pro credit" |
+| `src/components/report-redesign/v2/consume-credit-dialog.tsx` | comment line 73 | "consumir 1 crédito beta" | "consumir 1 crédito Pro" (comment, low-risk) |
+| `src/components/report-redesign/report-shell.tsx` | comment 47 | "leitura editorial em preparação" | rephrase comment without "em preparação" |
+| `src/components/report-redesign/report-pending-ai-notice.tsx` | text 16, aria 32 | "em preparação" | "ainda a ser gerada" |
+| `src/components/admin/v2/automacoes/automation-node.tsx` | `preparing` label | "Em preparação" | **keep** — admin-only state label, not a product readiness claim |
+| `src/i18n/locales/en/report.json` | `nav.tabs.coming_soon` (62) + roadmap_* (830-835) | "Coming soon" (other networks) | Rename to neutral "other_networks_soon" key + copy "Other networks soon" (already done in pt per memory — mirror in en) |
+| `src/i18n/locales/en/pricing.json:48` | `pending_note` | "Payment coming soon" | "Payment available shortly" |
 
-Auditar `src/lib/email/templates/*.ts`:
-- `payment-confirmed.ts` (linhas 132 e 171): "créditos extra por esta **fase beta**" → "créditos extra de **lançamento**". Atualizar teste em `__tests__/payment-confirmed.test.ts` ("2 créditos extra de lançamento").
-- `report-ready.ts` linha 51: "Esta é uma versão beta:" → remover linha ou neutralizar para "Notas sobre esta análise:".
-- `request-received.ts` linha 44: rephrase removendo "em fase beta", manter mensagem sobre utilidade.
-- `welcome-beta.ts`: template de signup beta (sem trigger ativo no produto). **Não tocar** — fora de scope.
-- Teste `src/lib/email/__tests__/templates.test.ts` linha 22 (`expect(...).toContain("fase beta")`): ajustar à nova cópia.
+**Explicitly NOT touched** (per "do not modify legal pages" / inactive legacy):
+- `src/routes/termos.tsx`, `src/routes/privacidade.tsx` — legal pages describing service maturity.
+- `src/routes/beta.request.tsx`, `src/routes/beta.submitted.$requestId.tsx`, `src/components/beta/beta-request-form.tsx` — legacy `/beta/request` flow. **Decision required from user**: these are still reachable. Default: leave them (legacy path), but note as deferred cleanup.
+- `src/styles/pdf-print.css` aria selector — cosmetic CSS targeting the legacy section.
 
-### Páginas legais (manter)
+Final acceptance gate:
+```
+rg -ni "beta privada|fase beta|crédito beta|em preparação|coming soon|janela personalizada" src \
+  | grep -v "routes/termos\|routes/privacidade\|routes/beta\.\|beta-request-form\|pdf-print\.css\|automation-node"
+```
+must return no hits.
 
-- `routes/termos.tsx` linhas 78, 160 e `routes/privacidade.tsx` linha 119: descrições legais de estado do serviço, não tier de acesso. **Manter inalteradas** — remover daria leitura jurídica errada.
+### 3. Fix the two failing credit-gate tests
 
-## 2. Gates server-side (verificar — sem alteração esperada)
+Current state of `src/routes/api/__tests__/analyze-public-v1-credit-gate.test.ts`:
+- 9/11 tests pass.
+- Failing tests: **#4** ("cache hit NOVO para o lead → consome 1 crédito + cria associação") and **#5** ("fresh success → consome/confirma 1 crédito + cria associação").
+- Failure mode: `state.leadReports` is empty (expected length 1).
+- The original "`supabaseAdmin.from(...).update is not a function`" error described in the brief is no longer the active failure — the test now fails further along (the `update` chain mock was likely partially repaired since the brief was written). Need to extend the in-memory Supabase mock so the `lead_reports` insert path used by `linkLeadToReport` (or equivalent) actually populates `state.leadReports`.
 
-Já confirmado em turnos anteriores em `src/routes/api/analyze-public-v1.ts`:
+Steps:
+1. Open the test file and locate the `state` shape + the mock `from()` switch.
+2. Identify the production code that inserts/upserts `lead_reports` after a successful credit confirm (likely in `analyze-public-v1.ts` post-confirm block).
+3. Add the missing branch in the mock: `from("lead_reports")` should support `.upsert(...)` / `.insert(...)` chains that push into `state.leadReports`.
+4. Confirm `backfillReserveEventId`'s `.update(...).eq(...).eq(...).is(...)` chain is supported in the same mock; add the no-op chain helper if needed.
+5. Re-run the suite — target green 11/11 without touching production credit semantics.
 
-- Free + 30d/90d → `WINDOW_REQUIRES_PRO` (linha ~661).
-- Free + competitor → `COMPETITORS_REQUIRE_PRO` (linha ~620).
-- 90d kill-switch lê `pro_window_90d_enabled` (linha ~644), default "true" e seedado em `app_config`.
-- Per-(lead, handle, window) cap via `assertProWindowProfileDailyBudgetAvailable` corre antes de reservar crédito; só conta `confirm` no ledger (R1 aplicado hoje).
-- 90d global cap via `assertApify90dDailyBudgetAvailable`.
+### 4. Validation pass
 
-Plano: **só re-correr os testes de contrato existentes** após edição de cópia; nenhum gate é alterado.
+Run, in order:
+1. `bunx vitest run src/lib/security/__tests__/apify-budget-pro-window.test.ts`
+2. `bunx vitest run src/routes/api/__tests__/analyze-public-v1-credit-gate.test.ts`
+3. `bunx vitest run src/routes/api/__tests__/analyze-public-v1-force-refresh.test.ts`
+4. `bunx vitest run src/lib/email/templates/__tests__ src/lib/email/__tests__`
+5. Final grep gate (see above).
 
-## 3. Visibilidade frontend
+## Files expected to change
 
-Verificar dois pontos:
+- `src/lib/report/retention.ts` — optional small `getCacheHoursLabel()` export.
+- `src/i18n/locales/pt/report.json` — beta_credits_*, consume_dialog.title.
+- `src/i18n/locales/en/report.json` — mirror PT keys + rename `coming_soon` roadmap keys.
+- `src/i18n/locales/en/pricing.json` — `pending_note`.
+- `src/components/report-redesign/v2/consume-credit-dialog.tsx` — JSDoc + ensure `{{cacheHours}}` interpolation.
+- `src/components/report-redesign/report-shell.tsx` — comment rewording.
+- `src/components/report-redesign/report-pending-ai-notice.tsx` — copy.
+- `src/routes/api/__tests__/analyze-public-v1-credit-gate.test.ts` — mock fix only.
 
-- **`report-block-nav.tsx`**: chips de 30d e 90d devem aparecer para Pro sem o rótulo "Em breve". Já usam `usePublicAppConfig().pro_window_90d_enabled` para o gate. Confirmar que o estado "locked" para Free mostra texto "Disponível no Pro" (já existe via `gate.json`), e não "Em preparação".
-- **`overview/comparison-header.tsx`**: o slot "roadmap_aria/title/card_badge" refere-se a **outras redes** (TikTok/LinkedIn) — manter mas confirmar pela leitura do componente que não está a marcar competitor IG como "em breve".
+## Explicitly not touched (per brief)
 
-## 4. Cache vs fresh UX
+Checkout, EuPago webhook, pricing amounts, competitor visual design, AI prompts, LinkedIn/TikTok research, public landing, `/report/example`, payment flow logic (copy excepted), legal pages, `/beta/request` legacy flow.
 
-Já implementado no turno anterior (`consume-credit-dialog.tsx` Casos A/B/C + `period_cache_body_*`). Apenas verificar:
+## Open question
 
-- `period_cache_body_minutes/hours` correspondem ao copy pedido pelo utilizador (linhas 669–670 — já estão alinhadas).
-- Botões "Abrir análise recente" / "Gerar nova análise · 1 crédito" / "Sem créditos disponíveis" estão presentes.
-
-## 5. Admin observability (verificar)
-
-Já implementado (`dataSourceLabel` com `fresh_forced`, `analysis_window`, `lead_entitlements` na drawer). Plano: rever rótulo de status de lead em `beta-leads/lead-detail-sheet.tsx` para usar "Free" / "Pro" em vez de qualquer "beta user" ou similar (se existir).
-
-## 6. Validação
-
-- Typecheck: `bunx tsc --noEmit` (executado pelo harness).
-- Testes: `bunx vitest run --reporter=basic` focado em `apify-budget-pro-window`, `analyze-public-v1-force-refresh`, `payment-confirmed`, `templates`.
-- Reler i18n: `rg -ni "beta privada|em preparação|coming soon|janela personalizada" src/i18n` → deve devolver vazio (excepto outras-redes).
-
-## Fora de scope (explícito)
-
-- Checkout / EuPago webhook.
-- Preço.
-- Schema DB.
-- Prompts IA.
-- Landing público (apenas correções de cópia se ainda tiverem "beta privada" como tier).
-- Rota `/beta/request` e `welcome-beta.ts` (vestigiais, sem trigger ativo).
-- Pesquisa LinkedIn/TikTok (continua roadmap legítimo).
+Want me to also retire the legacy `/beta/request` route + form in this pass, or keep it as a deferred separate task? Default in this plan: keep it.
