@@ -26,18 +26,12 @@ import { Trans, useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Check,
-  Briefcase,
   Eye,
   EyeOff,
-  LineChart,
   Loader2,
   Lock,
-  Scale,
   ShieldCheck,
   Sparkles,
-  Star,
-  TrendingUp,
-  User,
 } from "lucide-react";
 
 import {
@@ -70,7 +64,6 @@ import {
   LEAD_QUALIFICATION_LABELS_PT,
   type LeadQualification,
 } from "@/lib/leads/qualification";
-import { GridSelectField } from "@/components/onboarding/grid-select-field";
 import { supabase } from "@/integrations/supabase/client";
 import { parseFullName } from "@/lib/names/parse-full-name";
 import { useOnboardingDraft } from "@/lib/leads/use-onboarding-draft";
@@ -138,7 +131,6 @@ export interface OnboardingModalProps {
  */
 type View =
   | { kind: "entry" }
-  | { kind: "qualification"; email: string }
   | { kind: "final"; email: string }
   | { kind: "login"; email: string };
 
