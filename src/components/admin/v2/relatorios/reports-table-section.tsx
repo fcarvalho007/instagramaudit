@@ -18,6 +18,7 @@ import { ReportDrawer } from "../report-drawer";
 import { adminFetch } from "@/lib/admin/fetch";
 import {
   dataSourceBadgeVariant,
+  dataSourceLabel,
   deriveWindow,
   windowBadgeVariant,
   windowLabel,
@@ -203,7 +204,7 @@ export function ReportsTableSection({ period }: { period: AdminPeriod }) {
                     <td className="px-6 py-3.5 align-top">
                       {r.data_source ? (
                         <AdminBadge variant={dataSourceBadgeVariant(r.data_source)}>
-                          {r.data_source}
+                          {dataSourceLabel(r.data_source)}
                         </AdminBadge>
                       ) : (
                         <span className="text-[12px] text-admin-text-tertiary">—</span>

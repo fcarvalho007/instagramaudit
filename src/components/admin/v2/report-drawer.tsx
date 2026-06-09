@@ -55,6 +55,7 @@ import {
   windowBadgeVariant,
   windowLabel,
   dataSourceBadgeVariant,
+  dataSourceLabel,
 } from "@/lib/admin/analysis-window";
 
 interface ReportDrawerProps {
@@ -183,7 +184,7 @@ function DrawerHeader({ detail }: { detail: MockReportDetail }) {
           </AdminBadge>
           {ev.data_source ? (
             <AdminBadge variant={dataSourceBadgeVariant(ev.data_source)}>
-              {ev.data_source}
+              {dataSourceLabel(ev.data_source)}
             </AdminBadge>
           ) : null}
           <span
@@ -370,7 +371,7 @@ function AnalysisEventCard({
         <AEField label="Origem">
           {event.data_source ? (
             <AdminBadge variant={dataSourceBadgeVariant(event.data_source)}>
-              {event.data_source}
+              {dataSourceLabel(event.data_source)}
             </AdminBadge>
           ) : (
             <span className="text-admin-text-tertiary">—</span>

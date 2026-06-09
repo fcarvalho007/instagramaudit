@@ -136,6 +136,14 @@ const PayloadSchema = z.object({
     .enum(["baseline", "30d", "90d"])
     .optional()
     .default("baseline"),
+  /**
+   * Pro-only opt-in to bypass a fresh cache hit and force a new provider
+   * call for the same (handle, competitors, window) tuple. Ignored unless
+   * the lead has `report_full_9` AND the window is not baseline. Consumes
+   * 1 credit when it proceeds. Subject to all existing caps (Apify global,
+   * 90d, per-lead/profile/window/day).
+   */
+  force_refresh: z.boolean().optional().default(false),
 });
 
 const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
@@ -171,6 +179,8 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
     "A análise de 90 dias está temporariamente indisponível. Tenta 30 dias.",
   WINDOW_90D_BUDGET_EXCEEDED:
     "A análise de 90 dias está temporariamente indisponível por segurança operacional. Tenta novamente mais tarde ou usa a janela de 30 dias.",
+  PRO_WINDOW_BUDGET_EXCEEDED:
+    "Análise temporariamente indisponível por segurança operacional. Tenta novamente mais tarde ou usa outra janela de análise.",
   COMPETITORS_REQUIRE_PRO:
     "A análise de concorrentes está disponível no plano Pro.",
 };
@@ -193,6 +203,7 @@ const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
   WINDOW_REQUIRES_PRO: 403,
   WINDOW_90D_DISABLED: 403,
   WINDOW_90D_BUDGET_EXCEEDED: 503,
+  PRO_WINDOW_BUDGET_EXCEEDED: 503,
   COMPETITORS_REQUIRE_PRO: 403,
 };
 
@@ -525,6 +536,10 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         const url = new URL(request.url);
         const refreshRequested = url.searchParams.get("refresh") === "1";
         let forceRefresh = false;
+        // Tracks whether the fresh call was triggered by an explicit user
+        // `force_refresh:true` (vs internal admin `?refresh=1`). Drives
+        // `data_source = "fresh_forced"` so admin can tell the two apart.
+        let userForcedRefresh = false;
         if (refreshRequested) {
           const internalToken = process.env.INTERNAL_API_TOKEN;
           const authHeader = request.headers.get("authorization") ?? "";
@@ -656,10 +671,66 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               });
               return failure("WINDOW_REQUIRES_PRO");
             }
+            // ── Pro user-initiated force_refresh (cache bypass) ────
+            // Only honored for wide windows (30d/90d) AND when the lead
+            // is Pro (already verified above). Free leads are already
+            // rejected. Baseline never honors the flag (no wide-window
+            // cost to protect against). When forceRefresh flips on, the
+            // existing cache-fresh short-circuit below is skipped so the
+            // request walks the full reserve→Apify→confirm path.
+            if (parsed.data.force_refresh && !forceRefresh) {
+              forceRefresh = true;
+              userForcedRefresh = true;
+            }
           }
-          // Cache fresh + relatório já atribuído a este lead → 0 créditos.
-          const skipReserve = cacheFreshHit && alreadyAssociated;
+          // Cache fresh + relatório já atribuído a este lead → 0 créditos,
+          // EXCETO quando o utilizador pediu explicitamente force_refresh
+          // (Pro). Nesse caso reservamos crédito e bypassamos a cache.
+          const skipReserve =
+            cacheFreshHit && alreadyAssociated && !userForcedRefresh;
           if (!skipReserve) {
+            // ── Per-(lead, profile, window) daily cap ──────────────
+            // Protects per-paid-user margin on wide-window Pro analyses.
+            // Cache hits (cacheFreshHit && !userForcedRefresh) never get
+            // here. Runs BEFORE reserveCredit so a blocked call never
+            // writes credit_ledger and never triggers Apify.
+            if (isWideWindow(windowKind) && leadId) {
+              const {
+                assertProWindowProfileDailyBudgetAvailable,
+                ProWindowBudgetExceededError,
+              } = await import("@/lib/security/apify-budget.server");
+              try {
+                await assertProWindowProfileDailyBudgetAvailable({
+                  leadId,
+                  handle: primary,
+                  window: windowKind as "30d" | "90d",
+                });
+              } catch (e) {
+                if (e instanceof ProWindowBudgetExceededError) {
+                  console.warn(
+                    "[analyze-public-v1] PRO_WINDOW_BUDGET_EXCEEDED",
+                    JSON.stringify({
+                      leadId,
+                      handle: primary,
+                      window: windowKind,
+                      spent: e.spentUsd,
+                      cap: e.capUsd,
+                    }),
+                  );
+                  await logEvent({
+                    handle: primary,
+                    competitorHandles: competitors,
+                    cacheKey,
+                    dataSource: "none",
+                    outcome: "blocked_credits",
+                    errorCode: "PRO_WINDOW_BUDGET_EXCEEDED",
+                    estimatedCostUsd: 0,
+                  });
+                  return failure("PRO_WINDOW_BUDGET_EXCEEDED");
+                }
+                throw e;
+              }
+            }
             // 90d dedicated daily budget gate. Runs only on the fresh-fetch
             // path (cache hits stay free + unblocked). Sits BEFORE
             // reserveCredit so a blocked 90d call never writes credit_ledger
@@ -1398,7 +1469,9 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             handle: primary,
             competitorHandles: competitors,
             cacheKey,
-            dataSource: "fresh",
+            // `fresh_forced` distinguishes a user-initiated Pro
+            // `force_refresh:true` from a regular fresh run in admin UI.
+            dataSource: userForcedRefresh ? "fresh_forced" : "fresh",
             outcome: "success",
             analysisSnapshotId: snapshotId ?? null,
             providerCallLogId: providerCallIds[0] ?? null,

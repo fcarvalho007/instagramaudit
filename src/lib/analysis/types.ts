@@ -184,6 +184,7 @@ export type PublicAnalysisErrorCode =
   | "WINDOW_REQUIRES_PRO"
   | "WINDOW_90D_DISABLED"
   | "WINDOW_90D_BUDGET_EXCEEDED"
+  | "PRO_WINDOW_BUDGET_EXCEEDED"
   | "COMPETITORS_REQUIRE_PRO";
 
 export interface PublicAnalysisFailure {

@@ -17,7 +17,15 @@ const inflight = new Map<string, Promise<PublicAnalysisResponse>>();
 export async function fetchPublicAnalysis(
   username: string,
   competitorUsernames: string[] = [],
-  options: { window?: "baseline" | "30d" | "90d" } = {},
+  options: {
+    window?: "baseline" | "30d" | "90d";
+    /**
+     * Pro-only opt-in to bypass a fresh cache hit and force a new provider
+     * call. Server validates entitlement + window + budget caps before
+     * acting on it; safe to send from the client.
+     */
+    forceRefresh?: boolean;
+  } = {},
 ): Promise<PublicAnalysisResponse> {
   const cleaned = username.trim().replace(/^@/, "");
   const competitors = competitorUsernames
@@ -26,7 +34,8 @@ export async function fetchPublicAnalysis(
     .slice(0, 2);
 
   const windowKind = options.window ?? "baseline";
-  const key = `${cleaned.toLowerCase()}|${competitors.map((c) => c.toLowerCase()).join(",")}|${windowKind}`;
+  const force = !!options.forceRefresh;
+  const key = `${cleaned.toLowerCase()}|${competitors.map((c) => c.toLowerCase()).join(",")}|${windowKind}|f=${force ? 1 : 0}`;
   const existing = inflight.get(key);
   if (existing) return existing;
 
@@ -45,6 +54,7 @@ export async function fetchPublicAnalysis(
         instagram_username: cleaned,
         competitor_usernames: competitors,
         window: windowKind,
+        force_refresh: force,
       }),
     });
 

@@ -663,7 +663,21 @@
         "period_success_toast_fresh": "New analysis generated. 1 credit used.",
         "period_success_toast_neutral": "Period analysis loaded.",
         "period_error_requires_pro": "This window requires active Pro access.",
-        "period_error_window_90d_budget": "90-day analysis is temporarily unavailable for operational safety. Try again later or use the 30-day window."
+        "period_error_window_90d_budget": "90-day analysis is temporarily unavailable for operational safety. Try again later or use the 30-day window.",
+        "period_error_pro_window_budget": "Analysis temporarily unavailable for operational safety. Try again later or use another window.",
+        "period_cache_title": "Last {{days}}-day analysis already available",
+        "period_cache_body_minutes": "There's a recent analysis for this profile, generated {{minutes}} minutes ago. You can open this version at no cost or generate a new one to refresh the data.",
+        "period_cache_body_hours": "There's a recent analysis for this profile, generated {{hours}}h ago. You can open this version at no cost or generate a new one to refresh the data.",
+        "period_cache_open_cta": "Open recent analysis",
+        "period_cache_force_cta": "Generate new analysis · 1 credit",
+        "period_cache_note": "The new analysis will query the available public data again and may take a few more seconds.",
+        "period_new_title": "Generate last {{days}}-day analysis",
+        "period_new_body": "We'll query the available public data to generate a new last {{days}}-day analysis. This consumes 1 Pro credit.",
+        "period_new_cta": "Generate analysis · 1 credit",
+        "period_new_note": "Once generated, this analysis stays cached for 24 hours.",
+        "period_empty_title": "No credits available",
+        "period_empty_body": "To generate a new last {{days}}-day analysis, you need at least 1 credit available.",
+        "period_unavailable_toast": "Analysis temporarily unavailable"
       }
     },
     "status": {

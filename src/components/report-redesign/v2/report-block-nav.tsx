@@ -33,7 +33,9 @@ import { usePublicAppConfig } from "@/lib/config/use-app-config";
 import {
   ConsumeCreditDialog,
   type ConsumeCreditIntent,
+  type PeriodCacheStateUi,
 } from "./consume-credit-dialog";
+import { getPeriodCacheState } from "@/lib/analysis/period-cache.functions";
 
 /**
  * Hook: returns true once the user has scrolled past `threshold` px.
@@ -572,12 +574,15 @@ function ExploreSection({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [periodCacheState, setPeriodCacheState] =
+    useState<PeriodCacheStateUi | null>(null);
   const navigate = useNavigate();
   const { proWindow90dEnabled } = usePublicAppConfig();
   const premiumWindows = useMemo<readonly number[]>(
     () => (proWindow90dEnabled ? PREMIUM_WINDOWS_ALL : [30]),
     [proWindow90dEnabled],
   );
+  const probePeriodCache = useServerFn(getPeriodCacheState);
 
   // Carrega o saldo de créditos beta apenas no estado paid — nunca antes
   // da compra, para nunca revelar o bónus ao utilizador free.
@@ -609,6 +614,7 @@ function ExploreSection({
   const openConsumeDialog = useCallback((nextIntent: ConsumeCreditIntent) => {
     setIntent(nextIntent);
     setErrorMessage(null);
+    setPeriodCacheState(null);
     setDialogOpen(true);
     trackEvent({
       data: {
@@ -621,13 +627,37 @@ function ExploreSection({
         },
       },
     }).catch(() => {});
-  }, [balance]);
+    // Probe cache state for the period flow so the dialog can render
+    // Case A (fresh cache available) vs Case B (no fresh cache). Fail
+    // silently → dialog falls back to "Generate analysis · 1 credit".
+    if (nextIntent.kind === "period" && primaryHandle) {
+      const windowKind: "30d" | "90d" =
+        nextIntent.days === 90 ? "90d" : "30d";
+      probePeriodCache({
+        data: {
+          handle: primaryHandle,
+          competitors: existingCompetitors,
+          window: windowKind,
+        },
+      })
+        .then((state) => {
+          setPeriodCacheState({
+            hasFreshCache: state.hasFreshCache,
+            ageMs: state.ageMs,
+          });
+          // Keep balance in sync — the probe already read it server-side.
+          if (typeof state.balance === "number") setBalance(state.balance);
+        })
+        .catch(() => {});
+    }
+  }, [balance, existingCompetitors, primaryHandle, probePeriodCache]);
 
   const onConfirmConsume = useCallback(
-    async (nextIntent: ConsumeCreditIntent) => {
-      // Period: backend não suporta janela personalizada ainda — apenas
-      // regista intenção (NÃO consome crédito) e fecha o dialog. UI já
-      // mostra "em preparação".
+    async (
+      nextIntent: ConsumeCreditIntent,
+      opts: { forceRefresh?: boolean } = {},
+    ) => {
+      const forceRefresh = !!opts.forceRefresh;
       if (nextIntent.kind === "period") {
         const days = nextIntent.days;
         const windowKind: "30d" | "90d" = days === 90 ? "90d" : "30d";
@@ -640,11 +670,14 @@ function ExploreSection({
         setErrorMessage(null);
         trackEvent({
           data: {
-            eventType: "beta_credit_intent_period",
+            eventType: forceRefresh
+              ? "beta_period_force_refresh"
+              : "beta_credit_intent_period",
             metadata: {
               action_type: "period_analysis",
               days,
               window: windowKind,
+              force_refresh: forceRefresh,
             },
           },
         }).catch(() => {});
@@ -652,7 +685,7 @@ function ExploreSection({
           const result = await fetchPublicAnalysis(
             primaryHandle,
             existingCompetitors,
-            { window: windowKind },
+            { window: windowKind, forceRefresh },
           );
           if (result.success) {
             trackEvent({
@@ -663,6 +696,7 @@ function ExploreSection({
                   days,
                   window: windowKind,
                   credit_amount: 1,
+                  force_refresh: forceRefresh,
                 },
               },
             }).catch(() => {});
@@ -709,6 +743,7 @@ function ExploreSection({
                   days,
                   window: windowKind,
                   error_code: result.error_code,
+                  force_refresh: forceRefresh,
                 },
               },
             }).catch(() => {});
@@ -717,9 +752,22 @@ function ExploreSection({
               setErrorMessage(
                 t("nav.explore.consume_dialog.period_error_requires_pro"),
               );
-            } else if (result.error_code === "WINDOW_90D_BUDGET_EXCEEDED") {
+            } else if (
+              result.error_code === "WINDOW_90D_BUDGET_EXCEEDED" ||
+              result.error_code === "PRO_WINDOW_BUDGET_EXCEEDED"
+            ) {
+              // Friendly user-facing copy — never mention provider/cost.
+              toast.error(
+                t("nav.explore.consume_dialog.period_unavailable_toast"),
+              );
               setErrorMessage(
-                t("nav.explore.consume_dialog.period_error_window_90d_budget"),
+                result.error_code === "WINDOW_90D_BUDGET_EXCEEDED"
+                  ? t(
+                      "nav.explore.consume_dialog.period_error_window_90d_budget",
+                    )
+                  : t(
+                      "nav.explore.consume_dialog.period_error_pro_window_budget",
+                    ),
               );
             } else {
               setErrorMessage(
@@ -941,6 +989,8 @@ function ExploreSection({
             intent={intent}
             balance={balance}
             onConfirm={onConfirmConsume}
+            onOpenCached={(i) => onConfirmConsume(i, { forceRefresh: false })}
+            periodCacheState={periodCacheState}
             submitting={submitting}
             errorMessage={errorMessage}
             primaryHandle={primaryHandle}
@@ -1090,6 +1140,8 @@ function ExploreSection({
           intent={intent}
           balance={balance}
           onConfirm={onConfirmConsume}
+          onOpenCached={(i) => onConfirmConsume(i, { forceRefresh: false })}
+          periodCacheState={periodCacheState}
           submitting={submitting}
           errorMessage={errorMessage}
           primaryHandle={primaryHandle}

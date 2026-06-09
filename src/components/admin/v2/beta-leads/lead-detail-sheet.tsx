@@ -101,6 +101,7 @@ import {
   windowBadgeVariant,
   windowLabel,
   dataSourceBadgeVariant,
+  dataSourceLabel,
 } from "@/lib/admin/analysis-window";
 import type { AdminAccent } from "@/components/admin/v2/admin-tokens";
 
@@ -2562,7 +2563,7 @@ function LeadCreditsTab({ leadId, active }: { leadId: string; active: boolean })
                       <td className="px-3 py-2">
                         {ev.data_source ? (
                           <AdminBadge variant={dataSourceBadgeVariant(ev.data_source)}>
-                            {ev.data_source}
+                            {dataSourceLabel(ev.data_source)}
                           </AdminBadge>
                         ) : (
                           <span className="text-admin-text-tertiary">—</span>

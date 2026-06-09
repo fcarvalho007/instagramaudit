@@ -663,7 +663,21 @@
         "period_success_toast_fresh": "Nova análise gerada. 1 crédito consumido.",
         "period_success_toast_neutral": "Análise por período carregada.",
         "period_error_requires_pro": "Esta janela exige acesso Pro activo.",
-        "period_error_window_90d_budget": "A análise de 90 dias está temporariamente indisponível por segurança operacional. Tenta novamente mais tarde ou usa a janela de 30 dias."
+    "period_error_window_90d_budget": "A análise de 90 dias está temporariamente indisponível por segurança operacional. Tenta novamente mais tarde ou usa a janela de 30 dias.",
+    "period_error_pro_window_budget": "Análise temporariamente indisponível por segurança operacional. Tenta novamente mais tarde ou usa outra janela de análise.",
+    "period_cache_title": "Análise dos últimos {{days}} dias já disponível",
+    "period_cache_body_minutes": "Existe uma análise recente deste perfil, gerada há {{minutes}} minutos. Podes abrir esta versão sem gastar créditos ou gerar uma nova pesquisa para atualizar os dados.",
+    "period_cache_body_hours": "Existe uma análise recente deste perfil, gerada há {{hours}}h. Podes abrir esta versão sem gastar créditos ou gerar uma nova pesquisa para atualizar os dados.",
+    "period_cache_open_cta": "Abrir análise recente",
+    "period_cache_force_cta": "Gerar nova análise · 1 crédito",
+    "period_cache_note": "A nova análise volta a consultar os dados públicos disponíveis e pode demorar mais alguns segundos.",
+    "period_new_title": "Gerar análise dos últimos {{days}} dias",
+    "period_new_body": "Vamos consultar os dados públicos disponíveis para gerar uma nova análise dos últimos {{days}} dias. Esta ação consome 1 crédito Pro.",
+    "period_new_cta": "Gerar análise · 1 crédito",
+    "period_new_note": "Depois de gerada, esta análise fica disponível em cache durante 24 horas.",
+    "period_empty_title": "Sem créditos disponíveis",
+    "period_empty_body": "Para gerar uma nova análise dos últimos {{days}} dias, é necessário ter pelo menos 1 crédito disponível.",
+    "period_unavailable_toast": "Análise temporariamente indisponível"
       }
     },
     "status": {

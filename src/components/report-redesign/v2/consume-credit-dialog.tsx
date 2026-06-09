@@ -18,6 +18,19 @@ export type ConsumeCreditIntent =
   | { kind: "period"; days: number }
   | { kind: "competitor"; handle?: string };
 
+/**
+ * Cache-state probe result for the period flow. When provided AND
+ * `hasFreshCache` is true, the dialog renders two CTAs:
+ *   • "Open recent analysis" → no credit, no provider call
+ *   • "Generate new analysis · 1 credit" → force_refresh path
+ * When omitted or `hasFreshCache=false`, the dialog falls back to the
+ * single "generate new analysis · 1 credit" CTA.
+ */
+export interface PeriodCacheStateUi {
+  hasFreshCache: boolean;
+  ageMs: number | null;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -28,8 +41,18 @@ interface Props {
    * suficiente. Para `competitor`, o `handle` é preenchido a partir do
    * input deste dialog antes de chamar o caller. O caller é responsável
    * por reservar/consumir o crédito e disparar a análise.
+   * Para `period`, o segundo argumento indica se foi pedido force-refresh.
    */
-  onConfirm: (intent: ConsumeCreditIntent) => void;
+  onConfirm: (
+    intent: ConsumeCreditIntent,
+    opts?: { forceRefresh?: boolean },
+  ) => void;
+  /**
+   * Disparada quando o utilizador clica em "Abrir análise recente" no
+   * estado cache-fresh. Caller deve abrir o snapshot existente SEM
+   * consumir crédito (a chamada subsequente é guaranteed cache hit).
+   */
+  onOpenCached?: (intent: ConsumeCreditIntent) => void;
   /** Dispara quando o utilizador clica em "Enviar feedback" no estado vazio. */
   onEmptyFeedback?: () => void;
   /** Quando true, mostra spinner e desativa CTAs (submissão em curso). */
@@ -42,6 +65,8 @@ interface Props {
   existingCompetitors?: string[];
   /** Máximo de concorrentes permitido (defensivo; default 2). */
   competitorMax?: number;
+  /** Probed cache state for period intent. */
+  periodCacheState?: PeriodCacheStateUi | null;
 }
 
 /**
@@ -56,12 +81,14 @@ export function ConsumeCreditDialog({
   intent,
   balance,
   onConfirm,
+  onOpenCached,
   onEmptyFeedback,
   submitting = false,
   errorMessage = null,
   primaryHandle,
   existingCompetitors = [],
   competitorMax = 2,
+  periodCacheState = null,
 }: Props) {
   const { t } = useTranslation("report");
 
@@ -84,21 +111,59 @@ export function ConsumeCreditDialog({
   const isCompetitor = intent.kind === "competitor";
   const atCompetitorLimit =
     isCompetitor && existingCompetitors.length >= competitorMax;
-  const description =
-    isPeriod
-      ? t("nav.explore.consume_dialog.period_action_body", {
-          days: intent.kind === "period" ? intent.days : 30,
-        })
-      : t("nav.explore.consume_dialog.description_competitor");
-  const title =
-    isPeriod
-      ? t("nav.explore.consume_dialog.period_action_title", {
-          days: intent.kind === "period" ? intent.days : 30,
-        })
-      : t("nav.explore.consume_dialog.title_competitor");
-  const confirmCta = isPeriod
-    ? t("nav.explore.consume_dialog.cta_use_period")
-    : t("nav.explore.consume_dialog.cta_use_competitor");
+
+  // ── Period flow: cache-aware copy + CTA matrix ────────────────────
+  // Case A — fresh cache exists                   → two CTAs (open + force)
+  // Case B — no fresh cache (or unknown)          → single "generate" CTA
+  // Case C — balance < 1 + period                 → "Sem créditos" message
+  const periodDays = intent.kind === "period" ? intent.days : 30;
+  const periodHasFreshCache = isPeriod && !!periodCacheState?.hasFreshCache;
+  const ageMs = periodCacheState?.ageMs ?? null;
+  const periodAgeCopy = (() => {
+    if (!periodHasFreshCache || ageMs == null) return null;
+    const minutes = Math.max(1, Math.round(ageMs / 60_000));
+    if (minutes < 60) {
+      return t("nav.explore.consume_dialog.period_cache_body_minutes", {
+        minutes,
+      });
+    }
+    const hours = Math.max(1, Math.round(minutes / 60));
+    return t("nav.explore.consume_dialog.period_cache_body_hours", { hours });
+  })();
+
+  let title: string;
+  let description: string;
+  if (isPeriod) {
+    if (!hasCredit) {
+      // Case C — show explicit "no credits" period copy.
+      title = t("nav.explore.consume_dialog.period_empty_title");
+      description = t("nav.explore.consume_dialog.period_empty_body", {
+        days: periodDays,
+      });
+    } else if (periodHasFreshCache) {
+      // Case A
+      title = t("nav.explore.consume_dialog.period_cache_title", {
+        days: periodDays,
+      });
+      description =
+        periodAgeCopy ??
+        t("nav.explore.consume_dialog.period_cache_body_hours", { hours: 1 });
+    } else {
+      // Case B
+      title = t("nav.explore.consume_dialog.period_new_title", {
+        days: periodDays,
+      });
+      description = t("nav.explore.consume_dialog.period_new_body", {
+        days: periodDays,
+      });
+    }
+  } else {
+    title = t("nav.explore.consume_dialog.title_competitor");
+    description = t("nav.explore.consume_dialog.description_competitor");
+  }
+  const competitorConfirmCta = t(
+    "nav.explore.consume_dialog.cta_use_competitor",
+  );
 
   // Competitor handle validation (only used when isCompetitor + hasCredit).
   const normalized = normalizeInstagramHandle(competitorInput);
@@ -125,7 +190,10 @@ export function ConsumeCreditDialog({
       onConfirm({ kind: "competitor", handle: normalized });
       return;
     }
-    onConfirm(intent);
+    // Period: forceRefresh only when cache is fresh AND user clicked the
+    // explicit "generate new" secondary CTA — handled below. Single-CTA
+    // path (no fresh cache) defaults to forceRefresh=false.
+    onConfirm(intent, { forceRefresh: false });
   };
 
   return (
@@ -256,6 +324,11 @@ export function ConsumeCreditDialog({
                 {t("nav.explore.consume_dialog.balance_label")}: {balance}
               </span>
             </div>
+            <p className="text-[11px] text-content-tertiary">
+              {periodHasFreshCache
+                ? t("nav.explore.consume_dialog.period_cache_note")
+                : t("nav.explore.consume_dialog.period_new_note")}
+            </p>
           </>
         ) : null}
 
@@ -273,12 +346,63 @@ export function ConsumeCreditDialog({
           >
             {t("nav.explore.consume_dialog.cta_cancel")}
           </Button>
-          {atCompetitorLimit ? null : hasCredit ? (
+          {atCompetitorLimit ? null : !hasCredit ? (
+            isPeriod ? (
+              // Case C — period + balance 0: just a close button.
+              <Button onClick={() => onOpenChange(false)}>
+                {t("nav.explore.consume_dialog.cta_cancel")}
+              </Button>
+            ) : (
+              <Button
+                onClick={() => {
+                  onOpenChange(false);
+                  onEmptyFeedback?.();
+                }}
+              >
+                {t("nav.explore.consume_dialog.empty_cta")}
+              </Button>
+            )
+          ) : isPeriod && periodHasFreshCache ? (
+            <>
+              {/* Case A — primary "open cached" (0 credits), secondary
+                  "generate new" (1 credit, force_refresh). */}
+              <Button
+                onClick={() => {
+                  if (submitting) return;
+                  onOpenCached?.(intent);
+                }}
+                disabled={submitting}
+                className="gap-2"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                    {t("nav.explore.consume_dialog.submitting")}
+                  </>
+                ) : (
+                  <>
+                    {t("nav.explore.consume_dialog.period_cache_open_cta")}
+                    <ArrowRight className="size-4" aria-hidden="true" />
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (submitting) return;
+                  onConfirm(intent, { forceRefresh: true });
+                }}
+                disabled={submitting}
+                className="gap-2"
+              >
+                {t("nav.explore.consume_dialog.period_cache_force_cta")}
+              </Button>
+            </>
+          ) : (
+            // Case B (period, no fresh cache) OR competitor flow.
             <Button
               onClick={handleConfirmClick}
-              disabled={
-                submitting || (isCompetitor && !competitorReady)
-              }
+              disabled={submitting || (isCompetitor && !competitorReady)}
               className="gap-2"
             >
               {submitting ? (
@@ -288,19 +412,12 @@ export function ConsumeCreditDialog({
                 </>
               ) : (
                 <>
-                  {confirmCta}
+                  {isPeriod
+                    ? t("nav.explore.consume_dialog.period_new_cta")
+                    : competitorConfirmCta}
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </>
               )}
-            </Button>
-          ) : (
-            <Button
-              onClick={() => {
-                onOpenChange(false);
-                onEmptyFeedback?.();
-              }}
-            >
-              {t("nav.explore.consume_dialog.empty_cta")}
             </Button>
           )}
         </DialogFooter>
