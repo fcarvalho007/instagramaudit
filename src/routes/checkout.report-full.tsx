@@ -11,6 +11,10 @@ import { CheckoutPrimaryButton } from "@/components/checkout/checkout-primary-bu
 import { StepProgress } from "@/components/checkout/step-progress";
 import { ConfirmUnlockCard } from "@/components/checkout/confirm-unlock-card";
 import {
+  ReportPlanChooser,
+  type ReportPlanCode,
+} from "@/components/checkout/report-plan-chooser";
+import {
   BillingForm,
   EMPTY_BILLING,
   validateBilling,
@@ -30,7 +34,7 @@ import { getLeadSessionStatus } from "@/lib/leads/lead-session.functions";
 import { trackEvent } from "@/lib/tracking.functions";
 import type { ProductCode } from "@/lib/payments/products";
 
-const SOURCE_PRODUCT: ProductCode = "report_full_9";
+const SOURCE_PRODUCT = "report_full_9" satisfies ProductCode;
 const UPSELL_TARGET: ProductCode = "authority_diagnosis_97";
 
 const STEP_LABELS = [
@@ -115,6 +119,7 @@ function CheckoutSteps() {
   const [reportGoals, setReportGoals] = useState<ReportGoal[]>([]);
   const [selectedProduct, setSelectedProduct] =
     useState<ProductCode>(SOURCE_PRODUCT);
+  const [planCode, setPlanCode] = useState<ReportPlanCode>(SOURCE_PRODUCT);
   const [upsellPresented, setUpsellPresented] = useState(false);
   const [upsellAccepted, setUpsellAccepted] = useState(false);
   const [billing, setBilling] = useState<BillingValue>(EMPTY_BILLING);
@@ -216,7 +221,7 @@ function CheckoutSteps() {
   };
 
   const handleUpsellDecline = () => {
-    setSelectedProduct(SOURCE_PRODUCT);
+    setSelectedProduct(planCode);
     setUpsellAccepted(false);
     trackEvent({
       data: {
@@ -323,17 +328,34 @@ function CheckoutSteps() {
                 Obter relatório completo
               </h1>
               <p className="mt-2 text-sm text-content-secondary leading-relaxed">
-                Desbloqueia as secções premium e transforma a visão inicial
-                num diagnóstico completo.
+                Desbloqueia as secções premium agora — ou compra um pack para
+                desbloquear vários relatórios à medida que analisas novos perfis.
               </p>
             </header>
+            <ReportPlanChooser
+              value={planCode}
+              onChange={(code) => {
+                setPlanCode(code);
+                setSelectedProduct(code);
+                setUpsellAccepted(false);
+                trackEvent({
+                  data: {
+                    eventType: "checkout_plan_selected",
+                    metadata: {
+                      product_code: code,
+                      source_product: SOURCE_PRODUCT,
+                    },
+                  },
+                }).catch(() => {});
+              }}
+            />
             <ConfirmUnlockCard />
             <StepActions
               backLabel={search.return ? "Voltar" : "Cancelar"}
               onBack={goBack}
               nextLabel="Continuar"
               onNext={() => {
-                trackStepComplete();
+                trackStepComplete({ selected_plan: planCode });
                 goNext();
               }}
             />

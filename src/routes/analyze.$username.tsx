@@ -16,7 +16,10 @@ import { fetchPublicAnalysis } from "@/lib/analysis/client";
 import { getPublishedFeatures } from "@/lib/admin/variant-overrides.functions";
 import type { VariantFeatures } from "@/lib/report/report-variant";
 import { trackEvent } from "@/lib/tracking.functions";
-import { getMyReportEntitlement } from "@/lib/payments/entitlements.functions";
+import {
+  getMyReportEntitlement,
+  consumeReportUnlockForSnapshot,
+} from "@/lib/payments/entitlements.functions";
 import {
   snapshotToReportData,
   type AdapterResult,
@@ -398,11 +401,16 @@ function AnalyzeReady({
   // Premium real: entitlement `report_full_9` para o lead da sessão.
   // Default fail-closed a false; flip-on apenas depois do servidor confirmar.
   const [premiumUnlocked, setPremiumUnlocked] = useState<boolean>(false);
+  const [packBalance, setPackBalance] = useState<number>(0);
+  const [consuming, setConsuming] = useState(false);
+  const [consumeError, setConsumeError] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
-    getMyReportEntitlement()
+    getMyReportEntitlement({ data: { snapshotId } })
       .then((r) => {
-        if (!cancelled && r.premiumUnlocked) setPremiumUnlocked(true);
+        if (cancelled) return;
+        if (r.premiumUnlocked) setPremiumUnlocked(true);
+        setPackBalance(r.packBalance ?? 0);
       })
       .catch(() => {
         /* fail-closed: mantém free */
@@ -410,7 +418,35 @@ function AnalyzeReady({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [snapshotId]);
+
+  const handleConsumePackUnlock = async () => {
+    if (consuming || premiumUnlocked || packBalance < 1) return;
+    setConsuming(true);
+    setConsumeError(null);
+    try {
+      const username =
+        ((payload as any)?.instagram_username as string | undefined) ?? undefined;
+      const res = await consumeReportUnlockForSnapshot({
+        data: { snapshotId, instagramUsername: username },
+      });
+      if (res.ok) {
+        setPremiumUnlocked(true);
+        if ("balanceAfter" in res && typeof res.balanceAfter === "number") {
+          setPackBalance(res.balanceAfter);
+        }
+      } else if (res.reason === "insufficient") {
+        setConsumeError("Já não tens relatórios Pro disponíveis no pack.");
+        setPackBalance(0);
+      } else {
+        setConsumeError("Sessão expirada. Inicia sessão e tenta de novo.");
+      }
+    } catch {
+      setConsumeError("Não foi possível usar o desbloqueio. Tenta de novo.");
+    } finally {
+      setConsuming(false);
+    }
+  };
 
   // Rota pública usa SEMPRE `public_mvp`. Pro adiciona conteúdo premium
   // dentro dos blocos 01/02 (e gates de competitor/janela 30d/90d/créditos)
@@ -456,6 +492,31 @@ function AnalyzeReady({
 
   return (
     <>
+      {!premiumUnlocked && packBalance > 0 ? (
+        <div className="mb-4 rounded-xl border border-accent-primary/40 bg-accent-primary/5 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-content-primary">
+              Tens {packBalance} relatório{packBalance === 1 ? "" : "s"} Pro disponíve{packBalance === 1 ? "l" : "is"} no teu pack.
+            </p>
+            <p className="mt-0.5 text-xs text-content-secondary">
+              Desbloqueia este relatório agora — fica associado a este perfil para sempre.
+            </p>
+            {consumeError ? (
+              <p role="alert" className="mt-1 text-xs text-signal-error">
+                {consumeError}
+              </p>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={handleConsumePackUnlock}
+            disabled={consuming}
+            className="shrink-0 rounded-lg bg-accent-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-primary/90 disabled:opacity-60"
+          >
+            {consuming ? "A desbloquear…" : "Usar 1 relatório Pro"}
+          </button>
+        </div>
+      ) : null}
       <ReportShellV2
         result={result}
         snapshotId={snapshotId}

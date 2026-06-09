@@ -8,6 +8,8 @@
 export const PRODUCT_CODES = [
   "authority_diagnosis_97",
   "report_full_9",
+  "report_pack_5",
+  "report_pack_10",
   "credit_pack_1",
   "credits_3",
   "credits_10",
@@ -42,6 +44,22 @@ export const PUBLIC_PRODUCTS: Record<ProductCode, PublicProduct> = {
     namePt: "Relatório completo",
     priceLabel: "9€",
     priceNote: "por relatório · pagamento único",
+    exposed: true,
+  },
+  report_pack_5: {
+    code: "report_pack_5",
+    namePt: "Pack 5 relatórios Pro",
+    priceLabel: "40€",
+    strikePrice: "45€",
+    priceNote: "5 desbloqueios · poupa 5€ vs avulso",
+    exposed: true,
+  },
+  report_pack_10: {
+    code: "report_pack_10",
+    namePt: "Pack 10 relatórios Pro",
+    priceLabel: "72€",
+    strikePrice: "90€",
+    priceNote: "10 desbloqueios · poupa 18€ (-20%)",
     exposed: true,
   },
   credit_pack_1: {
