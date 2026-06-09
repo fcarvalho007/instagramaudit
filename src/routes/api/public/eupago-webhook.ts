@@ -36,6 +36,11 @@ import {
   enqueuePaidEnrichmentsForPayment,
   enqueueCommentScrapingForPayment,
 } from "@/lib/enrichment/enqueue-paid.server";
+import {
+  getReportPackAmount,
+  grantReportUnlockPack,
+  REPORT_PACK_KIND,
+} from "@/lib/payments/report-unlocks.server";
 import type { ProductCode } from "@/lib/payments/products";
 
 const UUID_RE =
@@ -267,6 +272,93 @@ export const Route = createFileRoute("/api/public/eupago-webhook")({
                 pack_amount: packAmount,
               },
             });
+
+            return new Response("ok", { status: 200 });
+          }
+
+          // ── Report-unlock packs (`report_pack_5` / `report_pack_10`) ──
+          // Concedem APENAS unlocks de relatório Pro. NÃO somam créditos
+          // de análise, NÃO disparam bónus beta e NÃO correm enrichments
+          // (não há `report_cache_key` específico no momento da compra —
+          // os enrichments correm quando cada unlock for consumido para
+          // um perfil concreto). Idempotente por payment_id.
+          const unlockPackAmount = getReportPackAmount(row.product);
+          if (unlockPackAmount != null) {
+            try {
+              const result = await grantReportUnlockPack({
+                leadId: row.lead_id,
+                paymentId: row.id,
+                productCode: row.product,
+                amount: unlockPackAmount,
+              });
+              if (result.granted) {
+                await recordProductEvent({
+                  eventType: "report_pack_granted",
+                  leadId: row.lead_id,
+                  metadata: {
+                    payment_id: row.id,
+                    product_code: row.product,
+                    delta: unlockPackAmount,
+                    kind: REPORT_PACK_KIND,
+                    source: "payment_confirmed",
+                  },
+                });
+              }
+            } catch (err) {
+              console.error(
+                "[eupago-webhook] grantReportUnlockPack failed",
+                err,
+              );
+            }
+
+            // Cupões: mantém a mesma lógica genérica caso lancemos
+            // promoções de pack mais tarde.
+            const couponCode =
+              (row.metadata?.coupon_code as string | null | undefined) ?? null;
+            if (couponCode) {
+              try {
+                const { redeemCouponForPayment } = await import(
+                  "@/lib/payments/coupons.server"
+                );
+                await redeemCouponForPayment({
+                  couponCode,
+                  paymentId: row.id,
+                  productCode: row.product,
+                  leadId: row.lead_id,
+                });
+              } catch (err) {
+                console.error(
+                  "[eupago-webhook] coupon redemption failed (report pack)",
+                  err,
+                );
+              }
+            }
+
+            await recordProductEvent({
+              eventType: "payment_webhook_paid",
+              leadId: row.lead_id,
+              metadata: {
+                payment_id: row.id,
+                product_code: row.product,
+                provider_payment_id: providerPaymentId,
+                report_pack_amount: unlockPackAmount,
+              },
+            });
+
+            // Email de confirmação (idempotente por payment_id).
+            void (async () => {
+              try {
+                const { sendPaymentConfirmedEmail } = await import(
+                  "@/lib/email/send-payment-confirmed.server"
+                );
+                await sendPaymentConfirmedEmail({ paymentId: row.id });
+              } catch (err) {
+                console.error(
+                  "[eupago-webhook] payment_confirmed dispatch error (pack)",
+                  err,
+                );
+              }
+            })();
 
             return new Response("ok", { status: 200 });
           }
