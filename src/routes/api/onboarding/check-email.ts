@@ -16,6 +16,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { getEmailVerificationMode } from "@/lib/config/email-verification.server";
+import { getBalance, grantInitialCredits } from "@/lib/credits/credits.server";
+import { setLeadCookie } from "@/lib/leads/lead-cookie.server";
+import { sendVerificationEmail } from "@/lib/email/send-verification.server";
 
 const Payload = z.object({
   email: z.string().trim().email().max(255),
@@ -30,20 +34,20 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-async function leadExists(emailNormalized: string): Promise<boolean> {
+async function findLead(
+  emailNormalized: string,
+): Promise<{ id: string; name: string | null } | null | "error"> {
   const { data, error } = await supabaseAdmin
     .from("leads")
-    .select("id")
+    .select("id, name")
     .eq("email_normalized", emailNormalized)
     .limit(1)
     .maybeSingle();
   if (error) {
     console.warn("[onboarding/check-email] db error", error.message);
-    // Fail closed: treat as "exists" so the flow falls into OTP rather than
-    // letting the attacker bypass verification on a transient error.
-    return true;
+    return "error";
   }
-  return Boolean(data);
+  return data ?? null;
 }
 
 export async function handleCheckEmail(request: Request): Promise<Response> {
@@ -58,13 +62,74 @@ export async function handleCheckEmail(request: Request): Promise<Response> {
   if (!parsed.success) {
     return json({ ok: false, error_code: "INVALID_PAYLOAD" }, 400);
   }
-  const exists = await leadExists(parsed.data.email.toLowerCase());
+  const mode = getEmailVerificationMode();
+  const emailNormalized = parsed.data.email.toLowerCase();
+  const lookup = await findLead(emailNormalized);
+
+  // Fail closed: erro transiente → comporta-te como "exists" na vertente
+  // segura (não emite cookie sem verificação).
+  const exists = lookup === "error" ? true : Boolean(lookup);
+
+  let body: Record<string, unknown> = {
+    ok: true,
+    exists,
+    verification_mode: mode,
+  };
+
+  if (exists && lookup && lookup !== "error") {
+    if (mode === "off") {
+      // Beta: claim imediato — emite cookie e garante grant inicial.
+      try {
+        await grantInitialCredits(lookup.id);
+      } catch (err) {
+        console.warn("[onboarding/check-email] grantInitialCredits warn:", err);
+      }
+      try {
+        setLeadCookie(lookup.id);
+      } catch (err) {
+        console.error("[onboarding/check-email] cookie write failed", err);
+        return json({ ok: false, error_code: "INTERNAL_ERROR" }, 500);
+      }
+      let credits = 0;
+      try {
+        credits = await getBalance(lookup.id);
+      } catch (err) {
+        console.warn("[onboarding/check-email] getBalance warn:", err);
+      }
+      console.info("[onboarding/check-email] beta no-verification claim", {
+        lead_id: lookup.id,
+      });
+      body = {
+        ok: true,
+        exists: true,
+        verification_mode: "off",
+        claimed: true,
+        lead_id: lookup.id,
+        credits,
+      };
+    } else if (mode === "magic_link") {
+      // Envia o magic link agora; cliente apenas mostra "verifica o email".
+      void sendVerificationEmail({
+        leadId: lookup.id,
+        toEmail: parsed.data.email,
+        firstName: lookup.name?.split(/\s+/)[0] ?? null,
+        instagramHandle: null,
+      });
+      body = {
+        ok: true,
+        exists: true,
+        verification_mode: "magic_link",
+        verification_sent: true,
+      };
+    }
+    // mode === "otp": cliente faz signInWithOtp legacy.
+  }
 
   const elapsed = Date.now() - startedAt;
   if (elapsed < FLOOR_MS) {
     await new Promise((r) => setTimeout(r, FLOOR_MS - elapsed));
   }
-  return json({ ok: true, exists });
+  return json(body);
 }
 
 export const Route = createFileRoute("/api/onboarding/check-email")({
