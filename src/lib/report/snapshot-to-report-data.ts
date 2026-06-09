@@ -1982,3 +1982,51 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
       input.benchmark?.externalReferences?.instagramByFormat ?? null,
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Comment intelligence — thumbnail join
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Hydrates `commentIntelligence.topConversationPosts` with `thumbnailUrl`
+ * and `postId` by matching on `shortcode` against the snapshot posts array.
+ * Pure: returns a new CI object if a join happened; otherwise the original.
+ */
+function enrichCommentIntelligenceWithThumbnails(
+  ci: CommentIntelligence | null,
+  posts: SnapshotPost[],
+): CommentIntelligence | null {
+  if (!ci || !ci.topConversationPosts || ci.topConversationPosts.length === 0) {
+    return ci;
+  }
+  // Build shortcode → post lookup once.
+  const byShortcode = new Map<string, SnapshotPost>();
+  for (const p of posts) {
+    const sc =
+      (typeof p.shortcode === "string" && p.shortcode.trim()) ||
+      extractShortcodeFromPermalink(p.permalink ?? null) ||
+      "";
+    if (sc) byShortcode.set(sc, p);
+  }
+  const hydrated = ci.topConversationPosts.map((entry) => {
+    const sc = entry.shortcode ?? extractShortcodeFromPermalink(entry.postUrl);
+    if (!sc) return entry;
+    const post = byShortcode.get(sc);
+    if (!post) return entry;
+    const thumb = pickThumbnailUrl(post) ?? undefined;
+    const postId = typeof post.id === "string" ? post.id : undefined;
+    return {
+      ...entry,
+      shortcode: entry.shortcode ?? sc,
+      ...(thumb ? { thumbnailUrl: thumb } : {}),
+      ...(postId ? { postId } : {}),
+    };
+  });
+  return { ...ci, topConversationPosts: hydrated };
+}
+
+function extractShortcodeFromPermalink(url: string | null): string | undefined {
+  if (!url) return undefined;
+  const m = url.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
+  return m?.[1];
+}
