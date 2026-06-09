@@ -833,7 +833,6 @@ function FinalStepBody({
   submitting,
   onBack,
   onSubmit,
-  onMissingQualification,
   honeypotRef,
 }: {
   handle: string;
@@ -843,41 +842,38 @@ function FinalStepBody({
   submitting: boolean;
   onBack: () => void;
   onSubmit: () => Promise<void> | void;
-  onMissingQualification: () => void;
   honeypotRef: React.RefObject<HTMLInputElement | null>;
 }) {
   const { t } = useTranslation("gate");
   const isCheckout = purpose === "checkout";
   const nameError = form.formState.errors.full_name?.message;
   const emailError = form.formState.errors.email?.message;
+  const qualificationError = form.formState.errors.qualification?.message;
   const passwordError = form.formState.errors.password?.message;
   const confirmError = form.formState.errors.confirm_password?.message;
   const consentError = form.formState.errors.gdpr_consent?.message;
   const consent = form.watch("gdpr_consent");
   const marketing = form.watch("marketing_consent");
   const emailValue = form.watch("email");
+  const qualification = form.watch("qualification");
+  const passwordValue = form.watch("password") ?? "";
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const strength = computePasswordStrength(passwordValue);
   const emailIsValid = !emailError && emailValue && EMAIL_RE.test(emailValue);
 
   const trySubmit = async () => {
-    const ok = await form.trigger();
-    if (!ok) {
-      const errs = form.formState.errors;
-      // Erros que vivem no passo 2 (qualificação) → manda o user para lá.
-      if (errs.profile_ownership || errs.goal || errs.goal_other_text) {
-        onMissingQualification();
-        return;
-      }
-      // Erros visíveis no passo 3 — react-hook-form já marca os campos.
+    if (!form.getValues("qualification")) {
+      form.setError("qualification", {
+        type: "manual",
+        message: "Escolhe uma opção",
+      });
       return;
     }
+    const ok = await form.trigger();
+    if (!ok) return;
     await onSubmit();
   };
-
-  // Defesa: se houver erros em campos que não renderizamos no passo 3,
-  // mostramos um alerta no topo para nunca falhar em silêncio.
-  const hiddenErrorKeys = (
-    ["profile_ownership", "goal", "goal_other_text", "user_type", "user_type_other_text"] as const
-  ).filter((k) => Boolean(form.formState.errors[k]));
 
   return (
     <form
