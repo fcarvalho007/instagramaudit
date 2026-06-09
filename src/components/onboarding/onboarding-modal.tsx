@@ -483,10 +483,11 @@ export function OnboardingModal({
           <OtpVerifyPanel
             email={view.email}
             sentAt={view.sentAt}
+            mode={view.mode}
             submitting={submitting}
             serverError={serverError}
             onVerify={(code) => handleOtpVerify(view.email, code)}
-            onResend={() => sendOtpAndGoToOtpView(view.email)}
+            onResend={() => sendOtpAndGoToOtpView(view.email, view.mode)}
             onBack={goBackToEntry}
           />
         )}
