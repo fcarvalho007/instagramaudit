@@ -1,112 +1,151 @@
-## Diagnóstico atual
+# Final action cards — diagnosis + plan
 
-**Dados disponíveis em `CommentIntelligence` (`src/lib/analysis/types.ts`):**
+## PHASE 1 — Diagnosis
 
-| Campo | Presente | Útil para Pro UI? |
-|---|---|---|
-| `samplePosts`, `sampleComments`, `sampleReplies` | ✅ | métricas |
-| `ownerRepliesCount`, `ownerReplyRatePct`, `postsWithOwnerReplyPct` | ✅ | métricas |
-| `questionsFromAudienceCount`, `praiseCount`, `complaintOrIssueCount`, `buyingIntentCount`, `spamOrLowQualityCount` | ✅ | sinais |
-| `dominantConversationSignals: string[]` | ✅ | pouco usado |
-| `classifiedExcerpts.{questions,praise,complaints,buyingIntent}` (até 5 por categoria, c/ username+texto) | ✅ | base para "Voz da audiência" |
-| `topConversationPost` (1 item: `postUrl`, `commentsCount`, `ownerRepliesCount`) | ✅ | URL apenas, **sem postId nem thumbnail** |
-| `topCommentPosts` (até 2: `postUrl`, `commentsCount`) | ✅ | URL apenas, **sem thumbnail nem ownerReplies** |
-| `postId`/`shortcode` por post de conversa | ❌ ausente | necessário p/ thumbnail join |
-| `thumbnailUrl` por post de conversa | ❌ ausente | necessário p/ cards visuais |
-| `topAudienceComment` por post | ❌ ausente | necessário p/ 1-line summary |
-| `summary` deterministico por post | ❌ ausente | necessário p/ 1-line summary |
-| `audienceVoiceInsights` derivados | ❌ ausente | necessário p/ "Voz da audiência" rica |
+**Where generated**
+- Deterministic rules: `src/lib/report/block02-diagnostic.ts` → `derivePriorities()` (lines 1090–1274). 7 rule blocks, fallback fillers, scored, deduped, cap 6.
+- AI priorities: `src/lib/insights/prompt-v2.ts` (system prompt + JSON schema, exactly 3 items) → `validate-v2.ts` → stored at `aiInsightsV2.priorities`.
+- Merge + render: `src/components/report-redesign/v2/report-diagnostic-block.tsx` (lines 122–162) prepends AI items, fills with deterministic, slices to 6. `prioritySource` is `"ai"` whenever AI returns ≥1, even if dedup leaves a mostly-deterministic list.
+- UI: `src/components/report-redesign/v2/report-diagnostic-priorities.tsx` — chip = level only, footer text = `it.resolves` (the raw "Resolve a Pergunta NN").
 
-**Snapshot atual `@frederico.m.carvalho`:** Free-origin, `enrichment_status.comments = disabled` — comment intelligence ausente. Sem auto-enqueue ainda (depende do plano de "enrichments Pro" anterior). Para esta tarefa: assumir que, quando o enrichment chegar, vamos ter o payload completo do aggregator; a melhoria de UI tem de funcionar com **dados presentes** e estado vazio honesto.
+**System type**: AI-first when present, deterministic fills to 3+. Cap 6.
 
-**UI actual (`report-comment-intelligence.tsx`):**
-- Título `<h4>` 13px, hierarquia fraca face a outros blocos Pro.
-- "Top conversation post" é uma linha de texto só, sem thumbnail.
-- "Voz da audiência" lista até 2 excertos por categoria, em grelha plana — sem leads/insights.
-- `topCommentPosts` não está a ser renderizado.
-- Pro-teaser dourado aparece em estado `unavailable` mesmo num viewer Pro real.
+**Data passed to deterministic generator (today)**
+- `contentType`, `funnel`, `caption`, `audience`, `integration`, `dominantFormatShare/Label`.
+- NOT passed: `commentIntel` (rich comment data already built in the diagnostic block), `coverAnalysis` (visual cover score + sub-scores already parsed in the same component), `cadence` from `result.data`, top-post specifics, caption intelligence themes.
 
----
+**Data passed to AI generator (today)** — via `buildInsightsUserPayload`
+- Available: cadence, benchmark, formats, top posts, caption_intelligence (themes/hashtags), `visual_cover` summary (consistency, visual_clarity, summary).
+- NOT available: comment intelligence (brand reply rate, audience questions, complaints, buying intent, classifiedExcerpts, topConversationPosts) — nowhere injected into the AI payload.
 
-## Plano de implementação
+**Why cards still feel generic**
+1. `derivePriorities` ignores the two richest enrichments (commentIntel, coverAnalysis) even when they exist on the same page.
+2. AI prompt never receives commentIntel, so AI cards cannot cite reply rate, complaints, buying intent.
+3. No `evidence`/`basedOn`/`source`/`category` on the item shape — UI can't show evidence chips or "Baseado em:" line.
+4. Footer shows internal copy like "Resolve a Pergunta 06" — leaks question numbers to the user.
+5. Fallback fillers ("Definir 2 rubricas editoriais recorrentes") fire generically; no gating against richer evidence-based rules.
 
-### 1. Extender a shape de dados (`src/lib/analysis/types.ts`)
-Adicionar (opcionais, retrocompatíveis):
+**Upstream blocks not feeding final cards**
+- Resposta do público (commentIntel: brandReplyRate, unansweredQuestions, complaints, buyingIntent, topConversationPosts).
+- Análise visual das capas (coverAnalysis: overall score, sub-scores recognisability/humanPresence/templateRepetition).
+- Frequência editorial / cadence reliability.
+- Caption intelligence themes (topThemes) beyond CTA share.
+
+## PHASE 2 — Extend the `PriorityItem` shape (additive)
+
+In `block02-diagnostic.ts`:
+
 ```ts
-topConversationPosts?: Array<{
-  postId?: string;
-  shortcode?: string;
-  postUrl: string;
-  thumbnailUrl?: string;
-  commentsCount: number;
-  ownerRepliesCount: number;
-  audienceCommentsCount: number;
-  dominantSignal: "questions" | "praise" | "complaints" | "buying_intent" | "mixed";
-  topAudienceComment?: { username: string; text: string };
-  summary: string; // determinística, 1 frase
-}>;
-audienceVoiceInsights?: Array<{
-  kind: "theme" | "question" | "praise" | "friction" | "buying_intent";
+export type PriorityCategory = "testar" | "corrigir" | "repetir" | "oportunidade";
+export type PrioritySourceTag = "ai" | "deterministic";
+export type PriorityBasis =
+  | "Resposta do público" | "Análise visual das capas"
+  | "Frequência editorial" | "Mix de formatos"
+  | "Publicações-chave" | "Padrão das captions"
+  | "Integração entre canais" | "Tipo de conteúdo dominante";
+
+export interface PriorityEvidence { label: string; value?: string }
+
+export interface PriorityItem {
+  level: PriorityLevel;              // urgency (existing)
+  category: PriorityCategory;        // NEW — type of action
   title: string;
-  text: string;
-  evidenceCount?: number;
-  excerpt?: { username: string; text: string };
-}>;
+  body: string;
+  basedOn: PriorityBasis[];          // NEW — readable sections
+  evidence?: PriorityEvidence[];     // NEW — real metric chips
+  source: PrioritySourceTag;         // NEW — "ai" | "deterministic"
+  /** @deprecated kept for snapshot backward compat — UI no longer renders */
+  resolves?: string;
+}
 ```
-Manter `topConversationPost` e `topCommentPosts` para retrocompat.
 
-### 2. Aggregator (`src/lib/analysis/comment-intelligence.ts`)
-- Ranquear posts por `ownerRepliesCount + audienceCommentsCount`; top 3 → `topConversationPosts`.
-- Para cada post: extrair `shortcode` do URL, calcular contagem por categoria, determinar `dominantSignal` (categoria com mais peso, ou `mixed`).
-- `topAudienceComment` = excerto não-spam mais longo do post (cap 140 chars).
-- `summary` determinístico (template grounded em counts): ex. `"5 perguntas e 2 comentários de compra; nenhuma resposta da marca."` — em PT.
-- `audienceVoiceInsights`: 2–3 entradas derivadas de `classifiedExcerpts` + counts:
-  - Tema dominante de perguntas (se ≥3).
-  - Padrão de elogio (se ≥3).
-  - Padrão de fricção (se ≥2) ou intenção de compra (se ≥2).
-- `postId`/`thumbnailUrl` ficam undefined no aggregator; são preenchidos no passo 3 (precisa do array de posts).
+All existing rules will be migrated to set `category`, `basedOn`, `evidence`, `source: "deterministic"`. Legacy `resolves` is no longer rendered (kept optional for snapshot/test compatibility).
 
-### 3. Join de thumbnails (`src/lib/report/snapshot-to-report-data.ts`)
-- Após sanitização, fazer lookup `shortcode → thumbnailUrl` a partir do array principal `topPosts`/posts do snapshot e injectar `thumbnailUrl`+`postId` em cada `topConversationPosts[i]`. Mesmo lookup aplicado a `topCommentPosts` legacy quando renderizados.
-- `sanitize-snapshot.ts`: passar pelos novos campos.
+## PHASE 3 — Add evidence-gated deterministic rules
 
-### 4. UI (`report-comment-intelligence.tsx`)
-- **Título**: trocar `<h4 text-[13px]>` por header alinhado com outros Pro blocks (display heading + eyebrow), igual a `VisualCoverAnalysisCard`.
-- **"Posts que geraram mais conversa"**: nova grid 3 colunas (responsiva 1→3) de cards compactos:
-  - Thumbnail 80–96px (rounded, fallback placeholder neutro com ícone `MessageCircle` quando ausente).
-  - Chip de `dominantSignal` (reutilizar paleta de `buildSignalChips`).
-  - Linha de métrica: `12 com.` · `3 resp.`.
-  - 1 linha: `summary` ou `topAudienceComment.text` truncado.
-  - Link sutil para o post.
-- **"Voz da audiência"**: lista 2–3 `audienceVoiceInsights` (ícone por kind + lead bold + 1 linha de suporte + chip opcional de evidência). Por baixo, grid compacta de excertos (cap 3 por categoria, máx 4 cards) — apenas se houver insights.
-- Fallback: se `topConversationPosts` ausente mas `topConversationPost` legacy presente, mapear 1 card. Se `topCommentPosts` legacy presente, mapear até 2 cards (sem `ownerRepliesCount`/summary). Se nada → não renderizar a secção.
-- Remover render directo de `dominantConversationSignals` (já refletido em chips).
+Extend `derivePriorities` args:
+```ts
+{ ..., commentIntel?: CommentIntelligence | null,
+       coverAnalysis?: VisualCoverAnalysis | null,
+       cadence?: { weekly?: number; sufficient?: boolean; method?: string } | null }
+```
+Wire from `report-diagnostic-block.tsx` (commentIntel + coverAnalysis are already in scope).
 
-### 5. Estados vazios e processing
-- Mantém `CommentIntelligenceUnavailable` para `available=false`.
-- Para viewer Pro com `reason="processing"` mostrar o estado "A gerar…" actual (não o teaser dourado). Detectar Pro via `useVariantFeatures` (já há `debugLabels==="hidden"` p/ public; condicionar teaser à ausência de entitlement Pro, não a `isPublic`).
-- Quando `available=true` mas sem `topConversationPosts` nem excertos: ocultar essas duas subsecções (não deixar caixas vazias); restantes métricas + transparency strip continuam.
+New rules (only fire when their data exists):
 
-### 6. Testes
-- Estender `src/lib/analysis/__tests__/comment-intelligence.test.ts`: `topConversationPosts` length, `dominantSignal` classification, `audienceVoiceInsights` deterministic output, retrocompat com payloads antigos.
-- Snapshot do componente: 3 estados (rico, legacy-only, vazio).
+**Comments**
+- Brand reply rate < 10% AND unanswered questions ≥ 3 → `corrigir` / `alta` · `Resposta do público` · evidence: `Resposta da marca X%`, `N perguntas sem resposta`.
+- Complaints/friction count ≥ 2 → `corrigir` / `alta` · evidence: `N comentários com fricção`.
+- Buying intent ≥ 2 AND CTA share < 20% → `oportunidade` / `media` · `Resposta do público` + `Integração entre canais`.
+- `topConversationPosts[0]` exists with comments ≥ 10 → `repetir` / `oportunidade` · `Publicações-chave` + `Resposta do público` · evidence: `N comentários no post âncora`.
 
-### 7. Out of scope
-- Pipeline de enrichment (auto-enqueue) — coberto pelo plano "enrichments Pro" anterior.
-- LLM para summaries — deterministico é a verdade.
-- Visual cover, prioridades, free tier, payments.
+**Visual cover**
+- Overall score < 50 → `corrigir` / `alta` · `Análise visual das capas` · evidence: `Score capas X/100`.
+- Template repetition score < 50 OR recognisability < 50 → `testar` / `media` · evidence sub-score.
+- Human-presence sub-score < 40 AND human content makes sense (creator profile) → `testar` / `oportunidade`.
 
----
+**Cadence**
+- `cadence.sufficient === false` OR weekly < 1 → `corrigir` / `media` · `Frequência editorial`.
+- Strong recurring dominant format + audience non-silent → `repetir` / `oportunidade` · `Mix de formatos`.
 
-## Validação esperada
+**Captions / CTA**
+- CTA share < 15% (existing rule) → `testar` (was unlabelled) · `Padrão das captions` · evidence: `CTA em X% das captions`.
+- Caption pattern dominant AND audience active → `repetir` / `oportunidade` · `Padrão das captions`.
 
-| Cenário | Resultado |
-|---|---|
-| Payload novo, completo | 3 cards com thumbnail + chip + summary; 2–3 voice insights |
-| Payload só legacy (`topConversationPost` + `topCommentPosts`) | Mapeamento → até 3 cards, sem summary; voice cai para excertos brutos |
-| `available=false`, viewer Pro, `processing` | Estado "A gerar…", sem teaser dourado |
-| `available=false`, viewer Free/public | Pro teaser actual |
-| Sem dados nenhuns | Secções de posts/voz omitidas, métricas + transparency permanecem |
-| `frederico.m.carvalho` após enrichment | 3 thumbnails + insights, sem hierarquia fraca |
+**Ranking**
+- Score boost (+5) for any rule with `evidence.length ≥ 1` from comments or visual cover.
+- Generic fallbacks (rubricas, repetir tema, ligação canais) only fire when ≤2 evidence-rich rules exist.
+- Guarantee: if `commentIntel.available` AND any non-neutral signal, at least one final card has `basedOn` including `Resposta do público`.
+- Guarantee: if `coverAnalysis` present AND any sub-score < 70, at least one card includes `Análise visual das capas`.
+- Final length 3–6. Dedup by title.
 
-Typecheck + `bun test src/lib/analysis` + `bun test src/lib/report` devem passar.
+## PHASE 4 — Feed AI priorities richer context
+
+In `src/lib/insights/build-context.ts` + `prompt.ts`:
+- Add optional `comment_intelligence` block to `InsightsContext` and `buildInsightsUserPayload` payload: `{ brand_reply_rate_pct, audience_questions_count, complaints_count, buying_intent_count, top_conversation_post: {comments, caption_excerpt} | null }`. Only included when commentIntel is available on the snapshot.
+- Add same labels to `EDITORIAL_VERDICT_EVIDENCE_ALLOWLIST` for `comment_intelligence.*`.
+- Prompt addition (priorities section only — does NOT change editorial verdict rules): "Quando `comment_intelligence` estiver presente, pelo menos 1 prioridade deve citar um número real dela (reply rate, perguntas, fricção, intenção de compra). Quando `visual_cover` estiver presente, pelo menos 1 prioridade pode citar o score ou sub-score real. Nunca inventar números fora do payload."
+- `validate-v2.ts`: when mapping AI priorities into `PriorityItem`, infer `category` (keyword heuristic on title verbs: testar/repetir/corrigir/oportunidade), set `source: "ai"`, derive `basedOn` from which payload keys appear in body text, attach `evidence` when numbers in body match payload values; **reject/downgrade** any AI priority whose body contains a `\d+%` or `\d+` number not present in the user payload (treat as hallucination → strip and let deterministic top-up fill).
+- No provider or budget changes.
+
+## PHASE 5 — UI overhaul (`report-diagnostic-priorities.tsx`)
+
+Per card:
+- Top row: urgency chip (`alta`/`media`/`oportunidade` — keep colour system) · category chip (`Testar`/`Corrigir`/`Repetir`/`Oportunidade` — neutral tone) · source pill (`IA` / `Regra` — small, tertiary).
+- Optional evidence chip row (max 2): small monospace-free chips like `Score capas 42/100`, `Resposta da marca 6%`.
+- Title (existing H4).
+- Body (2–3 sentences).
+- Footer: `Baseado em: <basedOn joined by " · ">`. Falls back to existing `resolves` only for legacy snapshots without `basedOn`.
+
+Remove from UI:
+- `it.resolves` rendering with "Resolve a Pergunta NN" — replaced by `basedOn`.
+- Drop the global `source` prop on the header (per-card pill replaces it) but keep the header subtitle.
+
+i18n: add `pt/report.json` keys for category labels, source pills, and "Baseado em:".
+
+## PHASE 6 — Validation
+
+- Extend `block02-priorities.test.ts`:
+  - Snapshot with commentIntel (low reply rate + questions) → ≥1 card with `basedOn` containing `Resposta do público` and evidence chip.
+  - Snapshot with coverAnalysis score 42 → ≥1 card with `basedOn` containing `Análise visual das capas` and evidence `Score capas 42/100`.
+  - Snapshot without either → no fabricated cover/comment cards, still ≥3 items.
+  - Ranking: evidence rules outrank fallback fillers.
+- New test in `validate-v2-priorities.test.ts`: AI priority with hallucinated number is stripped; AI priority gets `source: "ai"` and inferred `category`/`basedOn`.
+- Manual visual check in `/analyze/$username` preview: no "Pergunta NN" text remains; pills + chips render; cards feel specific.
+
+## Files to change
+
+- `src/lib/report/block02-diagnostic.ts` — extend `PriorityItem`, extend `derivePriorities` args, add rules.
+- `src/lib/insights/types.ts` — add `comment_intelligence` to `InsightsContext` + allowlist.
+- `src/lib/insights/build-context.ts` — derive comment intel summary when present.
+- `src/lib/insights/prompt.ts` — surface `comment_intelligence` in payload + signals.
+- `src/lib/insights/prompt-v2.ts` — extra prompt rule for priorities citing real numbers.
+- `src/lib/insights/validate-v2.ts` — map AI priorities into new shape, hallucination guard.
+- `src/components/report-redesign/v2/report-diagnostic-block.tsx` — pass commentIntel/coverAnalysis/cadence to `derivePriorities`; merge keeps per-item `source`.
+- `src/components/report-redesign/v2/report-diagnostic-priorities.tsx` — new card layout (urgency + category + source + evidence + basedOn).
+- `src/i18n/locales/pt/report.json` — new labels.
+- Tests as above.
+
+## Out of scope (explicit)
+
+Visual cover pipeline, comment scraping pipeline, payments, EuPago, checkout, credits, 30/90d gates, competitor gates, Free report structure, AI provider/budget caps, `/report.example`.
