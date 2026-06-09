@@ -144,8 +144,11 @@ export function ReportDiagnosticBlock({ result, payload, premiumUnlocked = false
         ? (result.enriched.commentIntelligence ?? null)
         : null,
     coverAnalysis: parseVisualCoverAnalysis(payload),
-    cadence: result.data.cadence
-      ? { weekly: result.data.cadence.weekly, sufficient: result.data.cadence.sufficient }
+    cadence: result.enriched.cadence
+      ? {
+          weekly: result.enriched.cadence.weekly,
+          sufficient: result.enriched.cadence.sufficient,
+        }
       : null,
   });
 
