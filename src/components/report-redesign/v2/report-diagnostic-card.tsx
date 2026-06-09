@@ -604,6 +604,7 @@ interface AudienceHighlightProps {
     date?: string | null;
     thumbnailUrl?: string | null;
     permalink?: string | null;
+    shortcode?: string | null;
   }>;
   status?: AudienceResponseStatus;
   commentIntel?: CommentIntelligence | null;
