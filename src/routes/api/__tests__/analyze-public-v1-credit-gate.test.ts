@@ -107,6 +107,17 @@ vi.mock("@/integrations/supabase/client.server", () => {
             });
             return Promise.resolve({ error: null });
           },
+          // backfillReserveEventId — chain: .update(...).eq().eq().is() → { error }
+          update: (_patch: Record<string, unknown>) => {
+            const chain: Record<string, unknown> = {
+              eq: () => chain,
+              is: () => Promise.resolve({ error: null }),
+              then: (
+                resolve: (v: { error: null }) => unknown,
+              ) => resolve({ error: null }),
+            };
+            return chain;
+          },
         };
       }
       if (table === "lead_reports") {

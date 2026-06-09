@@ -44,7 +44,7 @@ interface ReportShellProps {
   payload?: SnapshotPayload;
   /**
    * ISO timestamp de `meta.generated_at` — usado para mostrar o aviso
-   * "leitura editorial em preparação" apenas em snapshots recentes
+   * "leitura editorial a ser gerada" apenas em snapshots recentes
    * (< 5 min) sem `ai_insights_v1`.
    */
   analyzedAtIso?: string | null;

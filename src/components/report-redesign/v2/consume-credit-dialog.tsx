@@ -70,7 +70,7 @@ interface Props {
 }
 
 /**
- * Modal de confirmação para consumir 1 crédito beta — usado pelo sidebar
+ * Modal de confirmação para consumir 1 crédito Pro — usado pelo sidebar
  * paid state quando o utilizador clica num chip de período (30d/90d) ou
  * em "Adicionar concorrente". NUNCA mencionar os créditos antes da
  * compra: este componente só é montado em ramos `premiumUnlocked`.
