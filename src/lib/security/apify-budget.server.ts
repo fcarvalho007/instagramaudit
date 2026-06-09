@@ -227,14 +227,17 @@ export async function getProWindowProfileDailySpendUsd(input: {
 
   try {
     const sinceIso = startOfUtcDayIso(now);
-    // Step 1: gather analysis_event_ids linked to confirm/reserve rows for
-    // this lead since UTC midnight. `reserve` is included so an in-flight
-    // forced refresh that hasn't confirmed yet still counts (defensive).
+    // Step 1: gather analysis_event_ids linked to CONFIRMED ledger rows for
+    // this lead since UTC midnight. We deliberately exclude `reserve` because
+    // a released reservation (Apify error, profile private, etc.) leaves the
+    // `reserve` row in place and adds a sibling `release` row — counting it
+    // would let a Pro user block themselves out of the daily cap with a
+    // handful of failed attempts that consumed no real provider spend.
     const { data: ledgerRows, error: ledgerErr } = await (supabaseAdmin as any)
       .from("credit_ledger")
       .select("analysis_event_id")
       .eq("lead_id", input.leadId)
-      .in("reason", ["confirm", "reserve"])
+      .eq("reason", "confirm")
       .gte("created_at", sinceIso)
       .not("analysis_event_id", "is", null)
       .limit(2000);
