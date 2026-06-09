@@ -17,6 +17,41 @@ function assertNoBrokenPlaceholders(html: string, text: string) {
 }
 
 describe("renderReportSaved", () => {
+  it("includes security note + reset link only on welcome variant when resetPasswordUrl is provided", () => {
+    const welcome = renderReportSaved({
+      ...baseArgs,
+      variant: "welcome",
+      resetPasswordUrl: "https://auditprofiles.com/reset-password?email=a%40b.pt",
+    });
+    expect(welcome.html).toContain(
+      "nunca enviamos a tua palavra-passe por email",
+    );
+    expect(welcome.html).toContain("/reset-password");
+    expect(welcome.text).toContain(
+      "nunca enviamos a tua palavra-passe por email",
+    );
+    // Never expose any password value/hint
+    expect(welcome.html.toLowerCase()).not.toMatch(/palavra-passe:\s*\S/);
+    expect(welcome.text.toLowerCase()).not.toMatch(/palavra-passe:\s*\S/);
+
+    const returning = renderReportSaved({
+      ...baseArgs,
+      variant: "returning",
+      resetPasswordUrl: "https://auditprofiles.com/reset-password",
+    });
+    // returning variant should not include the security note
+    expect(returning.html).not.toContain(
+      "nunca enviamos a tua palavra-passe por email",
+    );
+  });
+
+  it("omits security note when resetPasswordUrl is not provided", () => {
+    const r = renderReportSaved({ ...baseArgs, variant: "welcome" });
+    expect(r.html).not.toContain(
+      "nunca enviamos a tua palavra-passe por email",
+    );
+  });
+
   it("renders full data with credit card, 3 insights and both CTAs", () => {
     const r = renderReportSaved({
       ...baseArgs,
