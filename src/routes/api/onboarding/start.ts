@@ -1,19 +1,29 @@
 /**
  * POST /api/onboarding/start
  *
- * Public boundary for the onboarding modal (Fase 5 — verification-gated
- * free credits).
+ * Public boundary for the onboarding modal under `AUTH_MODE=password`.
  *
- *  1. Validate payload (Zod). Phone is optional; `qualification` is required.
+ *  1. Validate payload (Zod). `qualification` and `password` are required
+ *     in `password` mode.
  *  2. Classify the email domain. Disposable / throwaway → reject 400.
- *  3. Upsert lead by `email_normalized` (service role) with the new
- *     `qualification` + `email_domain_class` columns.
- *  4. Issue signed `lead_session` cookie bound to the lead so the report
- *     opens immediately, but DO NOT grant the 2 free credits yet.
- *  5. Trigger Supabase Auth OTP (`signInWithOtp`, shouldCreateUser=true)
- *     so the user can verify the email and then activate the credits via
- *     `/api/onboarding/claim-existing`.
- *  6. Return `{ ok, lead_id, credits: 0, verification_required: true }`.
+ *  3. Create the Supabase auth user via
+ *     `supabaseAdmin.auth.admin.createUser({ email, password,
+ *     email_confirm: true })`. If the user already exists in
+ *     `auth.users`, reject with 409 `EMAIL_ALREADY_EXISTS` so the client
+ *     falls into the login flow — we never silently log a user in.
+ *  4. Upsert the lead row by `email_normalized` and link it to the new
+ *     auth user (`user_id`).
+ *  5. Issue the signed `lead_session` cookie + grant initial credits —
+ *     ONLY after the auth user is created (cookie ≠ proof-less session).
+ *  6. Send a friendly transactional email with the report link. Never
+ *     contains the password.
+ *  7. Return `{ ok, lead_id, credits, requires_email_verification: false }`.
+ *
+ *  In `AUTH_MODE=password_with_email_verification` we create with
+ *  `email_confirm: false`, skip cookie + credits, and require the user
+ *  to click the Supabase confirmation email before they can use the
+ *  product. The `magic_link` legacy mode is kept reachable via env
+ *  but is no longer exposed in the public UX.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -22,16 +32,25 @@ import { z, type ZodIssue } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { classifyEmailDomain } from "@/lib/leads/email-domain-class";
 import { LEAD_QUALIFICATIONS } from "@/lib/leads/qualification";
-import { getEmailVerificationMode } from "@/lib/config/email-verification.server";
+import { getAuthMode } from "@/lib/config/auth-mode.server";
 import { getBalance, grantInitialCredits } from "@/lib/credits/credits.server";
 import { setLeadCookie } from "@/lib/leads/lead-cookie.server";
-import { sendVerificationEmail } from "@/lib/email/send-verification.server";
 import { sendReportAccessEmail } from "@/lib/email/send-report-access.server";
 
 const PayloadSchema = z.object({
   name: z.string().trim().min(1).max(120),
   email: z.string().trim().email().max(255),
   phone: z.string().trim().max(40).optional(),
+  /**
+   * User-defined password. Required in `AUTH_MODE=password` and
+   * `AUTH_MODE=password_with_email_verification`. Min 8 chars. Server
+   * lets Supabase Auth enforce HIBP (configured globally).
+   */
+  password: z
+    .string()
+    .min(8, "password_too_short")
+    .max(72, "password_too_long")
+    .optional(),
   marketing_consent: z.boolean().optional().default(false),
   beta_consent: z.boolean().optional().default(false),
   user_type: z.string().trim().max(40).optional(),
@@ -57,18 +76,16 @@ type Payload = z.infer<typeof PayloadSchema>;
 
 interface OkBody {
   ok: true;
-  /**
-   * Só preenchido quando o `verification_mode` activo permite emitir o
-   * cookie `lead_session` imediatamente — i.e. modo `"off"` (beta sem
-   * verificação). Nos modos `"magic_link"` e `"otp"`, a sessão só é
-   * emitida depois do utilizador provar propriedade do email.
-   */
+  /** Sempre presente quando a conta foi criada com sucesso. Pode estar
+   *  ausente em `password_with_email_verification` enquanto o utilizador
+   *  ainda não confirmou o email. */
   lead_id?: string;
   credits: number;
-  /** `true` quando o cliente ainda tem de provar propriedade do email. */
-  verification_required: boolean;
-  /** Eco do modo activo — ajuda o cliente a decidir o próximo ecrã. */
-  verification_mode: "off" | "magic_link" | "otp";
+  /** `true` quando o cliente ainda tem de confirmar o email antes de
+   *  poder usar o produto (apenas `password_with_email_verification`). */
+  requires_email_verification: boolean;
+  /** Eco do modo activo. */
+  auth_mode: "password" | "password_with_email_verification" | "magic_link";
 }
 
 export interface FieldIssue {
@@ -81,7 +98,9 @@ interface FailBody {
   error_code:
     | "INVALID_PAYLOAD"
     | "PERSISTENCE_FAILED"
-    | "EMAIL_REQUIRES_VERIFICATION"
+    | "EMAIL_ALREADY_EXISTS"
+    | "PASSWORD_REQUIRED"
+    | "AUTH_USER_CREATE_FAILED"
     | "INTERNAL_ERROR";
   message: string;
   /** Lista determinística de campos com problema (sem valores, sem PII). */
@@ -98,6 +117,8 @@ const FIELD_MESSAGES_PT: Record<string, string> = {
   gdpr_consent: "Falta aceitar o tratamento de dados para continuar.",
   email: "O endereço de email indicado parece inválido.",
   name: "Falta indicar o teu nome.",
+  password:
+    "Define uma palavra-passe com pelo menos 8 caracteres para continuar.",
   qualification: "Escolhe o contexto que melhor te descreve.",
   purpose: "Volta ao passo anterior e escolhe o que queres perceber.",
   profile_ownership:
@@ -269,29 +290,8 @@ async function upsertLead(
 }
 
 /**
- * Fire-and-forget Supabase OTP email (modo `otp` — legacy). Falhas só são
- * registadas; o utilizador pode pedir o reenvio no painel do modal.
- */
-async function sendOtpEmail(email: string, leadId: string): Promise<void> {
-  try {
-    const { error } = await supabaseAdmin.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: true, data: { lead_id: leadId } },
-    });
-    if (error) {
-      console.warn(
-        "[onboarding/start] OTP send failed",
-        JSON.stringify({ status: error.status, message: error.message }),
-      );
-    }
-  } catch (err) {
-    console.warn("[onboarding/start] OTP send threw", err);
-  }
-}
-
-/**
- * Modo `off` (beta): claim imediato. Cookie `lead_session` + grant inicial
- * de créditos. Idempotente — cliques repetidos voltam a emitir o cookie.
+ * Emite cookie `lead_session` + grant inicial de créditos. Chamado APENAS
+ * depois de o Supabase auth user existir — nunca antes.
  */
 async function grantSessionAndCredits(leadId: string): Promise<number> {
   try {
@@ -309,6 +309,44 @@ async function grantSessionAndCredits(leadId: string): Promise<number> {
 }
 
 /**
+ * Cria o utilizador Supabase Auth via service-role. Devolve `userId` ou
+ * um dos códigos discriminados. Idempotência: se o email já existir em
+ * `auth.users` devolvemos `EMAIL_ALREADY_EXISTS` — o cliente cai no
+ * fluxo de login (signInWithPassword) sem nunca expor o status real da
+ * password antiga.
+ */
+async function createAuthUser(args: {
+  email: string;
+  password: string;
+  emailConfirm: boolean;
+}): Promise<
+  | { ok: true; userId: string }
+  | { ok: false; code: "EMAIL_ALREADY_EXISTS" | "AUTH_USER_CREATE_FAILED"; detail?: string }
+> {
+  const { data, error } = await supabaseAdmin.auth.admin.createUser({
+    email: args.email,
+    password: args.password,
+    email_confirm: args.emailConfirm,
+  });
+  if (!error && data?.user?.id) {
+    return { ok: true, userId: data.user.id };
+  }
+  const msg = error?.message ?? "";
+  if (
+    /already (registered|exists)/i.test(msg) ||
+    /user.+already/i.test(msg) ||
+    error?.status === 422
+  ) {
+    return { ok: false, code: "EMAIL_ALREADY_EXISTS" };
+  }
+  console.warn("[onboarding/start] admin.createUser failed", {
+    status: error?.status,
+    message: msg,
+  });
+  return { ok: false, code: "AUTH_USER_CREATE_FAILED", detail: msg };
+}
+
+/**
  * Pure handler — exported para permitir testes unitários sem montar o
  * router. Comportamento idêntico ao `POST` registado no `Route` abaixo.
  */
@@ -316,7 +354,7 @@ export async function handleOnboardingStart(
   request: Request,
 ): Promise<Response> {
   warnIfSecretMisconfigured();
-  const mode = getEmailVerificationMode();
+  const mode = getAuthMode();
   let raw: unknown;
   try {
     raw = await request.json();
@@ -347,6 +385,30 @@ export async function handleOnboardingStart(
         ok: false,
         error_code: "INVALID_PAYLOAD",
         message: messageForIssues(issues),
+        issues,
+      },
+      400,
+    );
+  }
+
+  // Password é obrigatória em ambos os modos password.* — falha cedo com
+  // mensagem específica antes de tocar na DB.
+  if (
+    (mode === "password" || mode === "password_with_email_verification") &&
+    (!parsed.data.password || parsed.data.password.length < 8)
+  ) {
+    const issues: FieldIssue[] = [{ field: "password", code: "missing" }];
+    await logServerOnboardingError({
+      errorCode: "INVALID_PAYLOAD",
+      issues,
+      handle: safeHandle(raw),
+      fieldsPresent: presentFieldNames(raw),
+    });
+    return json(
+      {
+        ok: false,
+        error_code: "PASSWORD_REQUIRED",
+        message: FIELD_MESSAGES_PT.password,
         issues,
       },
       400,
@@ -388,8 +450,9 @@ export async function handleOnboardingStart(
       {
         ok: true,
         credits: 0,
-        verification_required: mode !== "off",
-        verification_mode: mode,
+        requires_email_verification:
+          mode === "password_with_email_verification",
+        auth_mode: mode,
       },
       200,
     );
@@ -418,53 +481,83 @@ export async function handleOnboardingStart(
     }
   }
 
-  // Defense-in-depth ownership guard — só nos modos com verificação. Em
-  // modo `off` (beta) o claim acontece directamente abaixo.
-  if (mode !== "off") {
-    const emailNormalizedForGuard = parsed.data.email.toLowerCase();
-    const existingLead = await supabaseAdmin
-      .from("leads")
-      .select("id")
-      .eq("email_normalized", emailNormalizedForGuard)
-      .maybeSingle();
-    if (existingLead.data) {
+  // Em modos password.* o /start é EXCLUSIVAMENTE para criar conta.
+  // Se o email já tem auth user, devolve 409 e o cliente salta para o
+  // ecrã de login (signInWithPassword). Nunca se emite cookie sem
+  // password verificada.
+  if (mode === "password" || mode === "password_with_email_verification") {
+    const authCreate = await createAuthUser({
+      email: parsed.data.email,
+      password: parsed.data.password!,
+      emailConfirm: mode === "password",
+    });
+    if (!authCreate.ok) {
+      if (authCreate.code === "EMAIL_ALREADY_EXISTS") {
+        return json(
+          {
+            ok: false,
+            error_code: "EMAIL_ALREADY_EXISTS",
+            message:
+              "Já existe uma conta com este email. Entra com a tua palavra-passe.",
+          },
+          409,
+        );
+      }
       return json(
         {
           ok: false,
-          error_code: "EMAIL_REQUIRES_VERIFICATION",
-          message:
-            "Este email já tem conta. Confirma a tua identidade para abrir o relatório.",
+          error_code: "AUTH_USER_CREATE_FAILED",
+          message: GENERIC_FALLBACK_MESSAGE,
         },
-        403,
+        500,
       );
     }
-  }
 
-  const upserted = await upsertLead(parsed.data, emailDomainClass);
-  if ("error" in upserted) {
-    console.error("[onboarding/start] lead upsert failed", upserted.error);
-    return json(
-      {
-        ok: false,
-        error_code: "PERSISTENCE_FAILED",
-        message: GENERIC_FALLBACK_MESSAGE,
-      },
-      500,
-    );
-  }
+    const upserted = await upsertLead(parsed.data, emailDomainClass);
+    if ("error" in upserted) {
+      console.error("[onboarding/start] lead upsert failed", upserted.error);
+      return json(
+        {
+          ok: false,
+          error_code: "PERSISTENCE_FAILED",
+          message: GENERIC_FALLBACK_MESSAGE,
+        },
+        500,
+      );
+    }
 
-  // Branching por modo de verificação.
-  if (mode === "off") {
-    // Beta: sem verificação. Emite cookie + créditos imediatamente.
+    // Liga o lead ao novo auth user.
+    try {
+      await supabaseAdmin
+        .from("leads")
+        .update({ user_id: authCreate.userId })
+        .eq("id", upserted.leadId);
+    } catch (err) {
+      console.warn("[onboarding/start] lead user_id link warn", err);
+    }
+
+    // `password_with_email_verification` adia cookie + créditos para
+    // depois da confirmação por email (Supabase email + /reset-password
+    // page reaproveitam o fluxo). Apenas devolvemos lead_id.
+    if (mode === "password_with_email_verification") {
+      return json(
+        {
+          ok: true,
+          lead_id: upserted.leadId,
+          credits: 0,
+          requires_email_verification: true,
+          auth_mode: mode,
+        },
+        200,
+      );
+    }
+
     const credits = await grantSessionAndCredits(upserted.leadId);
-    console.info("[onboarding/start] beta no-verification claim", {
+    console.info("[onboarding/start] password account created", {
       lead_id: upserted.leadId,
       handle: parsed.data.handle ?? null,
       is_new: upserted.isNew,
     });
-    // Fire-and-forget: envia email contextual com o link do relatório e
-    // um magic link de re-acesso (TTL 14 dias). Falha não bloqueia o
-    // utilizador — o relatório já abriu na browser tab.
     if (upserted.isNew) {
       void sendReportAccessEmail({
         leadId: upserted.leadId,
@@ -485,41 +578,47 @@ export async function handleOnboardingStart(
         ok: true,
         lead_id: upserted.leadId,
         credits,
-        verification_required: false,
-        verification_mode: "off",
+        requires_email_verification: false,
+        auth_mode: "password",
       },
       200,
     );
   }
 
-  if (mode === "magic_link") {
-    // Envia link assinado pela nossa stack (Brevo → Resend). Cookie e
-    // créditos só após clique no link.
+  // Legacy `magic_link` fallback — mantido reachable só por env override.
+  // Não é usado no UX público. Re-importa dinamicamente para evitar
+  // dependência de runtime no path quente.
+  const upserted = await upsertLead(parsed.data, emailDomainClass);
+  if ("error" in upserted) {
+    console.error("[onboarding/start] lead upsert failed", upserted.error);
+    return json(
+      {
+        ok: false,
+        error_code: "PERSISTENCE_FAILED",
+        message: GENERIC_FALLBACK_MESSAGE,
+      },
+      500,
+    );
+  }
+  try {
+    const { sendVerificationEmail } = await import(
+      "@/lib/email/send-verification.server"
+    );
     void sendVerificationEmail({
       leadId: upserted.leadId,
       toEmail: parsed.data.email,
       firstName: parsed.data.name?.split(/\s+/)[0] ?? null,
       instagramHandle: parsed.data.handle ?? null,
     });
-    return json(
-      {
-        ok: true,
-        credits: 0,
-        verification_required: true,
-        verification_mode: "magic_link",
-      },
-      200,
-    );
+  } catch (err) {
+    console.warn("[onboarding/start] magic_link send unavailable", err);
   }
-
-  // modo `otp` — legacy Supabase Auth.
-  await sendOtpEmail(parsed.data.email, upserted.leadId);
   return json(
     {
       ok: true,
       credits: 0,
-      verification_required: true,
-      verification_mode: "otp",
+      requires_email_verification: true,
+      auth_mode: "magic_link",
     },
     200,
   );
