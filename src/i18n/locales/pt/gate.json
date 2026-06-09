@@ -186,18 +186,15 @@
     },
     "final": {
       "left": {
-        "eyebrow": "VAIS LER O RELATÓRIO DE",
-        "handle": "@{{handle}}",
-        "tagline": "Análise editorial, métricas e benchmarks — preparada em segundos.",
+        "eyebrow": "ÚLTIMO PASSO",
+        "title": "O teu relatório fica a um clique",
         "bullets": {
+          "report": "Relatório de @{{handle}}",
           "credits": "Conta privada com <strong>2 créditos</strong> grátis",
-          "save": "Todos os relatórios futuros guardados",
-          "privacy": "Apenas dados públicos · RGPD"
+          "save": "Todos os relatórios futuros guardados"
         }
       },
       "right": {
-        "title": "Últimos detalhes",
-        "subtitle": "Para te tratarmos pelo nome e guardarmos o relatório.",
         "nameLabel": "Nome",
         "namePlaceholder": "Ana Marques",
         "emailLabel": "Email",
@@ -205,11 +202,12 @@
         "phoneLabel": "Telemóvel",
         "phoneOptional": "opcional",
         "phonePlaceholder": "+351 912 345 678",
-        "consentText": "Aceito o <a>tratamento dos meus dados</a> para gerar, guardar e enviar este relatório, e li a <a2>política de privacidade</a2>.",
+        "consentText": "Aceito o <a>tratamento de dados</a>",
         "consentMandatory": "(obrigatório)",
-        "marketingText": "Quero receber novidades e benchmarks.",
-        "marketingOptional": "Opcional.",
-        "cta": "Abrir relatório  →",
+        "marketingText": "Quero dicas e benchmarks",
+        "marketingOptional": "(opcional)",
+        "cta": "Gerar o meu relatório  →",
+        "footnote": "RGPD · sem spam",
         "back": "Voltar"
       }
     },
