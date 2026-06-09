@@ -614,6 +614,7 @@ function ExploreSection({
   const openConsumeDialog = useCallback((nextIntent: ConsumeCreditIntent) => {
     setIntent(nextIntent);
     setErrorMessage(null);
+    setPeriodCacheState(null);
     setDialogOpen(true);
     trackEvent({
       data: {
@@ -626,7 +627,30 @@ function ExploreSection({
         },
       },
     }).catch(() => {});
-  }, [balance]);
+    // Probe cache state for the period flow so the dialog can render
+    // Case A (fresh cache available) vs Case B (no fresh cache). Fail
+    // silently → dialog falls back to "Generate analysis · 1 credit".
+    if (nextIntent.kind === "period" && primaryHandle) {
+      const windowKind: "30d" | "90d" =
+        nextIntent.days === 90 ? "90d" : "30d";
+      probePeriodCache({
+        data: {
+          handle: primaryHandle,
+          competitors: existingCompetitors,
+          window: windowKind,
+        },
+      })
+        .then((state) => {
+          setPeriodCacheState({
+            hasFreshCache: state.hasFreshCache,
+            ageMs: state.ageMs,
+          });
+          // Keep balance in sync — the probe already read it server-side.
+          if (typeof state.balance === "number") setBalance(state.balance);
+        })
+        .catch(() => {});
+    }
+  }, [balance, existingCompetitors, primaryHandle, probePeriodCache]);
 
   const onConfirmConsume = useCallback(
     async (nextIntent: ConsumeCreditIntent) => {
