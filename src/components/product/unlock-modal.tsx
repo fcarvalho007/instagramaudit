@@ -7,11 +7,15 @@ import {
   Briefcase,
   Check,
   CheckCircle2,
+  FileText,
   HelpCircle,
   Loader2,
   Lock,
+  Scale,
   Search,
+  ShieldCheck,
   Sparkles,
+  TrendingUp,
   Trophy,
   Users,
   Star,
@@ -73,6 +77,18 @@ export const PROFILE_OWNERSHIP_ICONS: Record<
     fg: "text-amber-700",
   },
   curiosity: { Icon: HelpCircle, bg: "bg-pink-100", fg: "text-pink-600" },
+};
+
+export const GOAL_ICONS: Record<
+  Goal,
+  { Icon: IconCmp; bg: string; fg: string }
+> = {
+  improve_content: { Icon: Sparkles, bg: "bg-blue-100", fg: "text-blue-600" },
+  benchmark_competitors: { Icon: Scale, bg: "bg-amber-100", fg: "text-amber-700" },
+  client_report: { Icon: FileText, bg: "bg-emerald-100", fg: "text-emerald-600" },
+  grow_audience: { Icon: TrendingUp, bg: "bg-purple-100", fg: "text-purple-600" },
+  validate_brand: { Icon: ShieldCheck, bg: "bg-cyan-100", fg: "text-cyan-600" },
+  other: { Icon: HelpCircle, bg: "bg-pink-100", fg: "text-pink-600" },
 };
 
 function extractServerError(

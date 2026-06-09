@@ -49,6 +49,7 @@ import {
   type ProfileOwnership,
 } from "@/lib/unlock-flow";
 import {
+  GOAL_ICONS,
   PROFILE_OWNERSHIP_ICONS,
   RadioCardField,
 } from "@/components/product/unlock-modal";
@@ -1192,6 +1193,7 @@ function QualificationStepBody({
           options={GOALS.map((v) => ({
             value: v,
             label: goalLabel(v),
+            icon: GOAL_ICONS[v],
           }))}
           value={goal}
           onChange={(v) => {
