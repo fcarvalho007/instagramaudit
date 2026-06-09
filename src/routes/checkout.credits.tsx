@@ -327,7 +327,14 @@ function PostPurchaseSuccessPanel({
 }) {
   const fetchBalance = useServerFn(getMyCreditBalance);
   const startedAt = useState(() => Date.now())[0];
-  const purchased = packId ? getPack(packId).credits : 0;
+  const purchased = packId ? getPack(packId).credits : 1;
+  // TEMPORARY LAUNCH OFFER — durante o lançamento, `credit_pack_1`
+  // recebe +2 créditos bónus aplicados pelo webhook
+  // (`grantCreditPackLaunchBonus`). A copy e o total esperado são
+  // específicos a este SKU; ver `credits.server.ts`.
+  const isLaunchOffer = packId === "credit_pack_1" || packId === null;
+  const launchBonus = isLaunchOffer ? LAUNCH_BONUS_CREDITS : 0;
+  const expectedTotal = purchased + launchBonus;
 
   useEffect(() => {
     trackEvent({
@@ -344,7 +351,7 @@ function PostPurchaseSuccessPanel({
 
   const target = returnPath.startsWith("/") ? returnPath : "/";
 
-  const EXPECTED_TOTAL = purchased > 0 ? purchased : 1;
+  const EXPECTED_TOTAL = expectedTotal > 0 ? expectedTotal : 1;
   const POLL_WINDOW_MS = 10_000;
 
   const balanceQuery = useQuery({
@@ -377,11 +384,22 @@ function PostPurchaseSuccessPanel({
         </h1>
         <p className="text-sm text-content-secondary leading-relaxed">
           Obrigado pela tua compra.{" "}
-          {purchased > 0
-            ? `Adicionámos ${purchased} créditos à tua conta.`
-            : "Os créditos já estão disponíveis na tua conta."}{" "}
+          {`Adicionámos ${purchased} crédito${purchased === 1 ? "" : "s"} à tua conta.`}{" "}
           Volta ao relatório e gera a tua análise quando quiseres.
         </p>
+        {isLaunchOffer ? (
+          <p className="inline-flex items-start gap-2 rounded-lg border border-accent-primary/30 bg-accent-primary/5 px-3 py-2 text-sm text-content-primary">
+            <Gift
+              className="size-4 text-accent-primary mt-0.5 shrink-0"
+              aria-hidden="true"
+            />
+            <span>
+              Oferta de lançamento aplicada: recebeste{" "}
+              <strong className="tabular-nums">{LAUNCH_BONUS_CREDITS}</strong>{" "}
+              créditos extra.
+            </span>
+          </p>
+        ) : null}
         <p
           className="text-sm text-content-secondary leading-relaxed tabular-nums"
           aria-live="polite"
