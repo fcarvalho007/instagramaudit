@@ -492,6 +492,14 @@ export function OnboardingModal({
             onSignInWithEmail={(email) => sendOtpAndGoToOtpView(email)}
             initialEmail={form.getValues("email")}
           />
+        ) : view.kind === "qualification" ? (
+          <QualificationStepBody
+            form={form}
+            submitting={submitting}
+            serverError={serverError}
+            onBack={goBackToEntry}
+            onContinue={() => setView({ kind: "final", email: view.email })}
+          />
         ) : view.kind === "final" ? (
           <FinalStepBody
             handle={handle}
@@ -499,7 +507,7 @@ export function OnboardingModal({
             form={form}
             serverError={serverError}
             submitting={submitting}
-            onBack={goBackToEntry}
+            onBack={() => goBackToQualification(view.email)}
             onSubmit={handleFinalSubmit}
             honeypotRef={honeypotRef}
           />
