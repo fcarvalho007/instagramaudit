@@ -129,22 +129,37 @@ export function ReportDiagnosticBlock({ result, payload, premiumUnlocked = false
     ? "ai"
     : "deterministic";
 
-  const priorityItems: PriorityItem[] = aiPriorities?.length
-    ? aiPriorities.map((p) => ({
-        level: p.level,
-        title: p.title,
-        body: p.body,
-        resolves: p.resolves,
-      }))
-    : derivePriorities({
-        contentType,
-        funnel,
-        caption,
-        audience,
-        integration,
-        dominantFormatShare: dominantFormat?.sharePct ?? 0,
-        dominantFormatLabel: dominantFormat?.label ?? null,
-      });
+  const deterministicPriorities = derivePriorities({
+    contentType,
+    funnel,
+    caption,
+    audience,
+    integration,
+    dominantFormatShare: dominantFormat?.sharePct ?? 0,
+    dominantFormatLabel: dominantFormat?.label ?? null,
+  });
+
+  // Always guarantee ≥3 priority cards: use AI when it returns enough,
+  // otherwise top up with deterministic items (deduped by title).
+  const aiMapped: PriorityItem[] = (aiPriorities ?? []).map((p) => ({
+    level: p.level,
+    title: p.title,
+    body: p.body,
+    resolves: p.resolves,
+  }));
+
+  const seenPriorityTitles = new Set(
+    aiMapped.map((p) => p.title.trim().toLowerCase()),
+  );
+  const priorityItems: PriorityItem[] = [
+    ...aiMapped,
+    ...deterministicPriorities.filter((p) => {
+      const key = p.title.trim().toLowerCase();
+      if (seenPriorityTitles.has(key)) return false;
+      seenPriorityTitles.add(key);
+      return true;
+    }),
+  ].slice(0, 6);
 
   // ── Enrichment pending / error placeholders (Pro + Lab only) ─────
   const coverAnalysis = parseVisualCoverAnalysis(payload);
