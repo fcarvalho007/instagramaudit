@@ -1567,6 +1567,7 @@ export function ReportBlockTopTabs({
   competitorCount = 0,
   competitorMax = 2,
   competitorHandles,
+  isAdminPreview = false,
 }: SidebarProps) {
   const { t } = useTranslation("report");
   const blocks = useBlocks();
@@ -1725,6 +1726,7 @@ export function ReportBlockTopTabs({
                 existingCompetitors={
                   competitorHandles ?? profileList.slice(1).map((p) => p.handle)
                 }
+                isAdminPreview={isAdminPreview}
               />
             </div>
           </SheetContent>
