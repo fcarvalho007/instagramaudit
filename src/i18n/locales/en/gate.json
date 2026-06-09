@@ -250,10 +250,10 @@
     "qualification": {
       "eyebrow": "STEP 2 OF 3",
       "title": "Tell us the context",
-      "subtitle": "Two quick picks — they help us tune the analysis.",
+      "subtitle": "Two quick picks to tune the analysis.",
       "eyebrowCheckout": "BEFORE YOU PAY",
       "titleCheckout": "Tell us the context",
-      "subtitleCheckout": "Two quick picks — they help us tune your experience.",
+      "subtitleCheckout": "Two quick picks to tune your experience.",
       "placeholder": "Pick one",
       "ownershipLegend": "What's the context?",
       "goalLegend": "What's your goal?",
@@ -349,16 +349,16 @@
     },
     "compactOptions": {
       "profileOwnership": {
-        "own_profile": "It's mine",
-        "client_profile": "A client's",
+        "own_profile": "Personal",
         "brand_profile": "My brand",
+        "client_profile": "A client",
         "competitor_research": "Competitor"
       },
       "goal": {
-        "improve_content": "Content",
-        "benchmark_competitors": "Competitors",
-        "grow_audience": "Audience",
-        "validate_brand": "Validate"
+        "improve_content": "Improve content",
+        "benchmark_competitors": "Compare competitors",
+        "client_report": "Client report",
+        "grow_audience": "Grow audience"
       }
     },
     "cta": {

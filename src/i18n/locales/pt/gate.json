@@ -250,10 +250,10 @@
     "qualification": {
       "eyebrow": "PASSO 2 DE 3",
       "title": "Conta-nos o contexto",
-      "subtitle": "Duas escolhas rápidas — ajudam-nos a ajustar a análise.",
+      "subtitle": "Duas escolhas rápidas para ajustarmos a análise.",
       "eyebrowCheckout": "ANTES DE PAGAR",
       "titleCheckout": "Conta-nos o contexto",
-      "subtitleCheckout": "Duas escolhas rápidas — ajudam-nos a ajustar a tua experiência.",
+      "subtitleCheckout": "Duas escolhas rápidas para ajustarmos a tua experiência.",
       "placeholder": "Escolhe uma opção",
       "ownershipLegend": "Qual é o contexto?",
       "goalLegend": "Qual é o teu objetivo?",
@@ -349,16 +349,16 @@
     },
     "compactOptions": {
       "profileOwnership": {
-        "own_profile": "É meu",
+        "own_profile": "Perfil pessoal",
+        "brand_profile": "A minha marca",
         "client_profile": "De um cliente",
-        "brand_profile": "Minha marca",
-        "competitor_research": "Concorrente"
+        "competitor_research": "Concorrência"
       },
       "goal": {
-        "improve_content": "Conteúdo",
-        "benchmark_competitors": "Concorrentes",
-        "grow_audience": "Audiência",
-        "validate_brand": "Validar"
+        "improve_content": "Melhorar conteúdo",
+        "benchmark_competitors": "Comparar concorrentes",
+        "client_report": "Analisar p/ cliente",
+        "grow_audience": "Crescer audiência"
       }
     },
     "cta": {
