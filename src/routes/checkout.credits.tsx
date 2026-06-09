@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { ArrowLeft, Coins, Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -19,6 +19,7 @@ import { OrderSummary } from "@/components/checkout/order-summary";
 import { MissingLeadSession } from "@/components/checkout/missing-lead-session";
 import { createEupagoCheckout } from "@/lib/payments/eupago.functions";
 import { getLeadSessionStatus } from "@/lib/leads/lead-session.functions";
+import { getMyCreditBalance } from "@/lib/credits/credits.functions";
 import { trackEvent } from "@/lib/tracking.functions";
 import { PUBLIC_PRODUCTS, type ProductCode } from "@/lib/payments/products";
 
