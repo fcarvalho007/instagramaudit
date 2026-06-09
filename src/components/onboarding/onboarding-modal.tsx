@@ -1052,7 +1052,7 @@ function FinalStepBody({
           ) : (
             <p className="text-[12px] text-content-secondary">
               {STRENGTH_LABELS[strength] ||
-                "Pelo menos 8 caracteres, com letra e número. Validamos contra palavras-passe comuns."}
+                "Mínimo 8 caracteres, com letras e números. Validamos contra palavras-passe comuns."}
             </p>
           )}
         </div>
