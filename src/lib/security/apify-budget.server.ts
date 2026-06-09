@@ -65,13 +65,53 @@ export class Window90dBudgetExceededError extends Error {
   }
 }
 
+/**
+ * Per-(lead, profile, window) daily cap (USD).
+ *
+ * Protects per-paid-user margin on wide-window Pro analyses (30d/90d).
+ * Defaults to ~€5/day (5.5 USD) and can be tuned via
+ * `APIFY_PRO_WINDOW_PROFILE_DAILY_CAP_USD`. Cache hits (no provider call)
+ * are NEVER gated by this cap — only fresh and `force_refresh` paths.
+ */
+export function getProWindowProfileDailyCapUsd(): number {
+  return readNumber("APIFY_PRO_WINDOW_PROFILE_DAILY_CAP_USD", 5.5);
+}
+
+export class ProWindowBudgetExceededError extends Error {
+  readonly spentUsd: number;
+  readonly capUsd: number;
+  readonly scope: { leadId: string; handle: string; window: "30d" | "90d" };
+  constructor(
+    spentUsd: number,
+    capUsd: number,
+    scope: { leadId: string; handle: string; window: "30d" | "90d" },
+  ) {
+    super(
+      `Pro window daily budget exceeded for lead=${scope.leadId} handle=${scope.handle} window=${scope.window}: $${spentUsd.toFixed(2)} >= $${capUsd}`,
+    );
+    this.name = "ProWindowBudgetExceededError";
+    this.spentUsd = spentUsd;
+    this.capUsd = capUsd;
+    this.scope = scope;
+  }
+}
+
 let cachedSpend: { value: number; at: number } | null = null;
 let cached90dSpend: { value: number; at: number } | null = null;
+const cachedProWindowSpend = new Map<
+  string,
+  { value: number; at: number }
+>();
 const TTL_MS = 60_000;
 
 export function invalidateApifyBudgetCache(): void {
   cachedSpend = null;
   cached90dSpend = null;
+  cachedProWindowSpend.clear();
+}
+
+export function invalidateProWindowBudgetCache(): void {
+  cachedProWindowSpend.clear();
 }
 
 function startOfUtcDayIso(now: Date = new Date()): string {
@@ -167,6 +207,102 @@ export async function assertApify90dDailyBudgetAvailable(): Promise<void> {
   if (spent >= cap) throw new Window90dBudgetExceededError(spent, cap);
 }
 
+/**
+ * Sum of estimated Apify spend (USD) for one lead × handle × window since
+ * 00:00 UTC today. Implementation walks `credit_ledger` (the only place
+ * lead_id meets analysis_event_id) and joins back to `analysis_events`
+ * filtered by handle + analysis_window. Cached per (lead, handle, window).
+ */
+export async function getProWindowProfileDailySpendUsd(input: {
+  leadId: string;
+  handle: string;
+  window: "30d" | "90d";
+  now?: Date;
+}): Promise<number> {
+  const now = input.now ?? new Date();
+  const ts = now.getTime();
+  const key = `${input.leadId}|${input.handle.toLowerCase()}|${input.window}`;
+  const hit = cachedProWindowSpend.get(key);
+  if (hit && ts - hit.at < TTL_MS) return hit.value;
+
+  try {
+    const sinceIso = startOfUtcDayIso(now);
+    // Step 1: gather analysis_event_ids linked to confirm/reserve rows for
+    // this lead since UTC midnight. `reserve` is included so an in-flight
+    // forced refresh that hasn't confirmed yet still counts (defensive).
+    const { data: ledgerRows, error: ledgerErr } = await (supabaseAdmin as any)
+      .from("credit_ledger")
+      .select("analysis_event_id")
+      .eq("lead_id", input.leadId)
+      .in("reason", ["confirm", "reserve"])
+      .gte("created_at", sinceIso)
+      .not("analysis_event_id", "is", null)
+      .limit(2000);
+    if (ledgerErr) {
+      console.error(
+        "[apify-budget] pro-window ledger query failed",
+        ledgerErr.message,
+      );
+      cachedProWindowSpend.set(key, { value: 0, at: ts });
+      return 0;
+    }
+    const eventIds = Array.from(
+      new Set(
+        (ledgerRows ?? [])
+          .map((r: { analysis_event_id: string | null }) => r.analysis_event_id)
+          .filter((v: string | null): v is string => !!v),
+      ),
+    );
+    if (eventIds.length === 0) {
+      cachedProWindowSpend.set(key, { value: 0, at: ts });
+      return 0;
+    }
+    // Step 2: sum estimated_cost_usd for matching events.
+    const { data: evRows, error: evErr } = await (supabaseAdmin as any)
+      .from("analysis_events")
+      .select("estimated_cost_usd")
+      .in("id", eventIds)
+      .eq("handle", input.handle.toLowerCase())
+      .eq("analysis_window", input.window)
+      .gte("created_at", sinceIso)
+      .limit(2000);
+    if (evErr) {
+      console.error(
+        "[apify-budget] pro-window events query failed",
+        evErr.message,
+      );
+      cachedProWindowSpend.set(key, { value: 0, at: ts });
+      return 0;
+    }
+    const total = (evRows ?? []).reduce((sum: number, r: any) => {
+      const raw = r.estimated_cost_usd ?? 0;
+      const v = typeof raw === "string" ? Number.parseFloat(raw) : Number(raw);
+      return sum + (Number.isFinite(v) ? v : 0);
+    }, 0);
+    cachedProWindowSpend.set(key, { value: total, at: ts });
+    return total;
+  } catch (err) {
+    console.error("[apify-budget] pro-window unexpected", err);
+    return 0;
+  }
+}
+
+/**
+ * Throws `ProWindowBudgetExceededError` when the per-(lead, handle, window)
+ * daily cap has been reached. Call ONLY on fresh/forced-refresh paths,
+ * never on cache hits.
+ */
+export async function assertProWindowProfileDailyBudgetAvailable(input: {
+  leadId: string;
+  handle: string;
+  window: "30d" | "90d";
+}): Promise<void> {
+  const cap = getProWindowProfileDailyCapUsd();
+  const spent = await getProWindowProfileDailySpendUsd(input);
+  if (spent >= cap) {
+    throw new ProWindowBudgetExceededError(spent, cap, input);
+  }
+}
 /**
  * Production-only Apify spend (USD) since 00:00 UTC today.
  *
