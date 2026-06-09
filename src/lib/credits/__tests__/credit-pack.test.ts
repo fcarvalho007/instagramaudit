@@ -89,6 +89,12 @@ describe("getCreditPackAmount", () => {
     expect(getCreditPackAmount("credit_pack_1")).toBe(1);
   });
 
+  it("maps credits_3 / credits_10 / credits_25 to their pack sizes", () => {
+    expect(getCreditPackAmount("credits_3")).toBe(3);
+    expect(getCreditPackAmount("credits_10")).toBe(10);
+    expect(getCreditPackAmount("credits_25")).toBe(25);
+  });
+
   it("returns null for unknown SKUs", () => {
     expect(getCreditPackAmount("report_full_9")).toBeNull();
     expect(getCreditPackAmount("authority_diagnosis_97")).toBeNull();
@@ -152,6 +158,29 @@ describe("grantCreditPack", () => {
     });
     expect(other.granted).toBe(true);
     expect(ledger).toHaveLength(2);
+  });
+
+  it("credits the exact pack amount for credits_3 / 10 / 25", async () => {
+    await grantCreditPack({
+      leadId: LEAD,
+      paymentId: "pay-3",
+      productCode: "credits_3",
+      amount: 3,
+    });
+    await grantCreditPack({
+      leadId: LEAD,
+      paymentId: "pay-10",
+      productCode: "credits_10",
+      amount: 10,
+    });
+    await grantCreditPack({
+      leadId: LEAD,
+      paymentId: "pay-25",
+      productCode: "credits_25",
+      amount: 25,
+    });
+    const total = ledger.reduce((acc, r) => acc + r.delta, 0);
+    expect(total).toBe(3 + 10 + 25);
   });
 
   it("rejects non-positive amounts", async () => {

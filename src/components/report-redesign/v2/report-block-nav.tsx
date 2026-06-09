@@ -929,6 +929,12 @@ function ExploreSection({
       typeof window !== "undefined"
         ? `${window.location.pathname}${window.location.search}`
         : "/";
+    const intendedAction =
+      intent?.kind === "period"
+        ? "period_change"
+        : intent?.kind === "competitor"
+          ? "competitor_add"
+          : "generic_pro_analysis";
     trackEvent({
       data: {
         eventType: "credits_pack_checkout_intent",
@@ -937,6 +943,7 @@ function ExploreSection({
           intent_kind: intent?.kind ?? null,
           intent_days:
             intent?.kind === "period" ? intent.days : undefined,
+          intended_action: intendedAction,
           return_path: returnPath,
         },
       },
@@ -947,6 +954,8 @@ function ExploreSection({
       search: {
         return: returnPath,
         source: "report_no_credits_modal",
+        intent: intendedAction,
+        pack: "credits_3",
       },
     }).catch(() => {
       // Defensive fallback for environments where the typed router
@@ -955,6 +964,8 @@ function ExploreSection({
         const qs = new URLSearchParams({
           return: returnPath,
           source: "report_no_credits_modal",
+          intent: intendedAction,
+          pack: "credits_3",
         }).toString();
         window.location.assign(`/checkout/credits?${qs}`);
       }

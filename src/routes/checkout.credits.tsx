@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { queryOptions, useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { ArrowLeft, Coins, Loader2, Lock } from "lucide-react";
+import { ArrowLeft, Check, Coins, Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -23,7 +23,25 @@ import { getMyCreditBalance } from "@/lib/credits/credits.functions";
 import { trackEvent } from "@/lib/tracking.functions";
 import { PUBLIC_PRODUCTS, type ProductCode } from "@/lib/payments/products";
 
-const PRODUCT: ProductCode = "credit_pack_1";
+const PACKS = [
+  { id: "credits_3", code: "credits_3" as ProductCode, credits: 3, priceEur: 9, priceLabel: "9€" },
+  { id: "credits_10", code: "credits_10" as ProductCode, credits: 10, priceEur: 25, priceLabel: "25€" },
+  { id: "credits_25", code: "credits_25" as ProductCode, credits: 25, priceEur: 49, priceLabel: "49€" },
+] as const;
+
+type PackId = (typeof PACKS)[number]["id"];
+const PACK_IDS = PACKS.map((p) => p.id) as readonly PackId[];
+const DEFAULT_PACK: PackId = "credits_3";
+
+function getPack(id: PackId) {
+  return PACKS.find((p) => p.id === id) ?? PACKS[0];
+}
+
+type IntendedAction =
+  | "period_change"
+  | "competitor_add"
+  | "force_refresh"
+  | "generic_pro_analysis";
 
 const searchSchema = z.object({
   return: z
@@ -34,6 +52,15 @@ const searchSchema = z.object({
     .optional(),
   source: z.string().trim().min(1).max(80).optional(),
   status: z.enum(["success"]).optional(),
+  pack: z.enum(PACK_IDS as unknown as [PackId, ...PackId[]]).optional(),
+  intent: z
+    .enum([
+      "period_change",
+      "competitor_add",
+      "force_refresh",
+      "generic_pro_analysis",
+    ])
+    .optional(),
 });
 
 const leadSessionQueryOptions = queryOptions({
@@ -59,7 +86,12 @@ function CheckoutCreditsFlow() {
   const { data: leadStatus } = useSuspenseQuery(leadSessionQueryOptions);
   const search = Route.useSearch();
   if (search.status === "success") {
-    return <PostPurchaseSuccessPanel returnPath={search.return ?? "/"} />;
+    return (
+      <PostPurchaseSuccessPanel
+        returnPath={search.return ?? "/"}
+        packId={search.pack ?? null}
+      />
+    );
   }
   if (!leadStatus.hasLead) {
     return (
@@ -77,6 +109,11 @@ function CheckoutSteps() {
   const navigate = useNavigate();
   const createCheckout = useServerFn(createEupagoCheckout);
 
+  const initialPackId: PackId = search.pack ?? DEFAULT_PACK;
+  const [selectedPackId, setSelectedPackId] = useState<PackId>(initialPackId);
+  const selectedPack = getPack(selectedPackId);
+  const intendedAction: IntendedAction = search.intent ?? "generic_pro_analysis";
+
   const [billing, setBilling] = useState<BillingValue>(EMPTY_BILLING);
   const [billingErrors, setBillingErrors] = useState<BillingErrors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -87,14 +124,18 @@ function CheckoutSteps() {
       data: {
         eventType: "credits_pack_checkout_started",
         metadata: {
-          product_code: PRODUCT,
+          product_code: selectedPack.code,
+          pack_id: selectedPack.id,
+          credits_quantity: selectedPack.credits,
+          amount_eur: selectedPack.priceEur,
+          intended_action: intendedAction,
           source_component: search.source ?? null,
           return_path: search.return ?? null,
         },
       },
     }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [selectedPack.code]);
 
   const goBack = () => {
     if (search.return) {
@@ -112,14 +153,16 @@ function CheckoutSteps() {
     setSubmitting(true);
     setSubmitError(null);
 
-    const returnPath = search.return
-      ? `/checkout/credits?status=success&return=${encodeURIComponent(search.return)}`
-      : "/checkout/credits?status=success";
+    const successParams = new URLSearchParams();
+    successParams.set("status", "success");
+    successParams.set("pack", selectedPack.id);
+    if (search.return) successParams.set("return", search.return);
+    const returnPath = `/checkout/credits?${successParams.toString()}`;
 
     try {
       const res = await createCheckout({
         data: {
-          product_code: PRODUCT,
+          product_code: selectedPack.code,
           return_path: returnPath,
           source_component: search.source ?? "report_no_credits_modal",
           billing: {
@@ -148,41 +191,76 @@ function CheckoutSteps() {
     }
   };
 
-  const product = PUBLIC_PRODUCTS[PRODUCT];
+  const product = PUBLIC_PRODUCTS[selectedPack.code];
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
       <div className="min-w-0 space-y-6">
         <header className="space-y-2">
           <span className="text-eyebrow-sm text-content-tertiary">
-            Comprar crédito
+            Comprar créditos
           </span>
           <h1 className="font-fraunces text-2xl sm:text-3xl font-medium text-content-primary leading-tight">
-            {product.namePt}
+            Escolhe o teu pack de créditos
           </h1>
           <p className="text-sm text-content-secondary leading-relaxed">
-            Adiciona 1 crédito à tua conta para gerar uma análise extra de
-            período ou adicionar um concorrente no relatório Pro.
+            Cada crédito permite gerar uma nova análise Pro — actualizar o
+            relatório, abrir 30 ou 90 dias, adicionar um concorrente ou
+            forçar uma nova recolha quando não há cache.
           </p>
         </header>
 
-        <div className="rounded-xl border border-border-default bg-white p-5 space-y-3">
-          <div className="flex items-center gap-3">
-            <div
-              aria-hidden="true"
-              className="flex size-9 items-center justify-center rounded-lg bg-accent-primary/10 text-accent-primary"
-            >
-              <Coins className="size-4" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-content-primary">
-                1 crédito adicional
-              </p>
-              <p className="text-xs text-content-tertiary">
-                Usável imediatamente após o pagamento. Não expira.
-              </p>
-            </div>
-          </div>
+        <div
+          role="radiogroup"
+          aria-label="Pack de créditos"
+          className="grid gap-3 sm:grid-cols-3"
+        >
+          {PACKS.map((pack) => {
+            const checked = pack.id === selectedPackId;
+            const perCredit = (pack.priceEur / pack.credits).toLocaleString(
+              "pt-PT",
+              { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+            );
+            return (
+              <button
+                key={pack.id}
+                type="button"
+                role="radio"
+                aria-checked={checked}
+                onClick={() => setSelectedPackId(pack.id)}
+                className={
+                  "relative text-left rounded-xl border bg-white p-4 transition-colors " +
+                  (checked
+                    ? "border-accent-primary ring-2 ring-accent-primary/30"
+                    : "border-border-default hover:border-content-tertiary")
+                }
+              >
+                {checked ? (
+                  <span
+                    aria-hidden="true"
+                    className="absolute top-3 right-3 inline-flex size-5 items-center justify-center rounded-full bg-accent-primary text-white"
+                  >
+                    <Check className="size-3" />
+                  </span>
+                ) : null}
+                <div className="flex items-center gap-2">
+                  <Coins
+                    className="size-4 text-accent-primary"
+                    aria-hidden="true"
+                  />
+                  <span className="text-sm font-semibold text-content-primary tabular-nums">
+                    {pack.credits} créditos
+                  </span>
+                </div>
+                <p className="mt-2 font-fraunces text-2xl font-medium text-content-primary tabular-nums leading-none">
+                  {pack.priceLabel}
+                </p>
+                <p className="mt-1 text-xs text-content-tertiary tabular-nums">
+                  ≈ {perCredit}€/crédito
+                </p>
+              </button>
+            );
+          })}
         </div>
 
         <section className="space-y-3">
@@ -203,7 +281,7 @@ function CheckoutSteps() {
         </section>
 
         <div className="lg:hidden">
-          <OrderSummary productCode={PRODUCT} />
+          <OrderSummary productCode={selectedPack.code} />
         </div>
 
         {submitError ? (
@@ -252,8 +330,8 @@ function CheckoutSteps() {
 
       <aside className="hidden lg:block">
         <OrderSummary
-          productCode={PRODUCT}
-          note="1 crédito · pagamento único"
+          productCode={selectedPack.code}
+          note={`${selectedPack.credits} créditos · pagamento único`}
           sticky
         />
       </aside>
@@ -261,22 +339,33 @@ function CheckoutSteps() {
   );
 }
 
-function PostPurchaseSuccessPanel({ returnPath }: { returnPath: string }) {
+function PostPurchaseSuccessPanel({
+  returnPath,
+  packId,
+}: {
+  returnPath: string;
+  packId: PackId | null;
+}) {
   const fetchBalance = useServerFn(getMyCreditBalance);
   const startedAt = useState(() => Date.now())[0];
+  const purchased = packId ? getPack(packId).credits : 0;
 
   useEffect(() => {
     trackEvent({
       data: {
         eventType: "credits_pack_post_purchase_view",
-        metadata: { product_code: PRODUCT },
+        metadata: {
+          pack_id: packId,
+          credits_quantity: purchased,
+        },
       },
     }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const target = returnPath.startsWith("/") ? returnPath : "/";
 
-  const EXPECTED_TOTAL = 3;
+  const EXPECTED_TOTAL = purchased > 0 ? purchased : 1;
   const POLL_WINDOW_MS = 10_000;
 
   const balanceQuery = useQuery({
@@ -308,11 +397,11 @@ function PostPurchaseSuccessPanel({ returnPath }: { returnPath: string }) {
           Créditos adicionados com sucesso
         </h1>
         <p className="text-sm text-content-secondary leading-relaxed">
-          Obrigado pela tua compra. Os créditos já estão disponíveis na
-          tua conta — podes voltar ao relatório e gerar a tua análise.
-        </p>
-        <p className="text-sm text-content-primary font-medium leading-relaxed">
-          Oferta de lançamento aplicada: recebeste 2 créditos extra.
+          Obrigado pela tua compra.{" "}
+          {purchased > 0
+            ? `Adicionámos ${purchased} créditos à tua conta.`
+            : "Os créditos já estão disponíveis na tua conta."}{" "}
+          Volta ao relatório e gera a tua análise quando quiseres.
         </p>
         <p
           className="text-sm text-content-secondary leading-relaxed tabular-nums"

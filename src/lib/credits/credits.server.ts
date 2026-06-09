@@ -54,6 +54,12 @@ export function getCreditPackAmount(productCode: string): number | null {
   switch (productCode) {
     case "credit_pack_1":
       return 1;
+    case "credits_3":
+      return 3;
+    case "credits_10":
+      return 10;
+    case "credits_25":
+      return 25;
     default:
       return null;
   }

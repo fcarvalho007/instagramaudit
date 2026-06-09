@@ -1,79 +1,171 @@
-# Modal "Sem créditos" + sucesso pós-pagamento — copy clarificada e saldo visível
+# Packs de crédito públicos (3/10/25) + modal "Sem créditos" action-aware
 
-## Backend (sem alterações necessárias)
+## Decisões de produto
 
-O ledger **já regista duas linhas separadas** para cada compra de pack — confirmado:
+- **Substituir** `credit_pack_1` (1 pago + 2 bónus oculto) por três packs públicos com quantidade anunciada igual à concedida:
+  - `credits_3` — 3 créditos · 9€
+  - `credits_10` — 10 créditos · 25€
+  - `credits_25` — 25 créditos · 49€
+- Default selecionado: `credits_3`.
+- Pós-pagamento: regresso manual ao relatório (toast + saldo actualizado), sem re-disparo automático.
+- O kind `credit_pack_launch_bonus` deixa de ser escrito; mantém-se em `credits.server.ts` apenas como constante referenciada por queries históricas, para não partir dashboards do passado.
+- `report_full_9` mantém-se inalterado (continua a conceder Pro + `purchase_included_credit` +1 + `post_purchase_beta_bonus` +2 = 3 créditos iniciais).
 
-- `+1 credit_ledger` · `reason='admin_adjust'` · `metadata.kind='credit_pack_purchased'` (via `grantCreditPack`)
-- `+2 credit_ledger` · `reason='admin_adjust'` · `metadata.kind='credit_pack_launch_bonus'` (via `grantCreditPackLaunchBonus`)
+## Fluxo alvo
 
-Ambos partilham o mesmo `payment_id` mas são linhas distintas, permitindo ao admin distinguir receita (kind=`credit_pack_purchased`) de oferta (kind=`credit_pack_launch_bonus`). Quando a oferta de lançamento terminar, basta deixar de chamar `grantCreditPackLaunchBonus` — o histórico mantém-se intacto e auditável.
-
-Único polimento sugerido: adicionar a `source` semântica `'launch_bonus'` ao metadata da linha de bónus (já existe `launch_bonus: true`, mas adicionar campo `source: 'launch_bonus'` em paralelo a `source: 'payment_confirmed'` ajuda queries de admin futuras). Opcional — confirmar com utilizador se quer.
-
-## Frontend — alterações de copy
-
-### 1. Modal "Sem créditos" (`consume-credit-dialog.tsx` + i18n)
-
-Substituir o atual `empty_body` curto por copy estruturada com lista de usos. Renderizar como bloco com título + parágrafo + bullet list dentro do dialog quando `!hasCredit`.
-
-Strings i18n novas (`pt/report.json` → `consume_dialog`):
-
-```json
-"empty_title": "Sem créditos disponíveis",
-"empty_body_intro": "O teu relatório Pro está activo, mas esta acção exige uma nova análise e consome 1 crédito.",
-"empty_body_usage_intro": "Cada crédito permite gerar uma nova análise Pro, como:",
-"empty_body_usage_refresh": "actualizar o relatório com as últimas publicações;",
-"empty_body_usage_window": "analisar 30 ou 90 dias;",
-"empty_body_usage_competitor": "adicionar um concorrente;",
-"empty_body_usage_fresh": "forçar uma nova análise quando não existe cache.",
-"empty_cta": "Comprar 1 crédito · 9€",
-"cta_cancel": "Cancelar"
+```text
+Pro com 0 créditos clica chip 30d/90d, concorrente ou fresh
+        │
+        ▼
+Modal "Sem créditos" com copy ciente da acção (period_change /
+competitor_add / force_refresh / generic_pro_analysis):
+  • lembra que Pro está activo
+  • explica que esta acção exige 1 crédito
+  • esclarece que abrir cache não consome
+  • CTA único: "Comprar créditos"
+        │
+        ▼
+/checkout/credits?return=<rota>&intent=<intended_action>&pack=credits_3
+  • Selector dos 3 packs (default credits_3)
+  • Resumo + dados de facturação
+  • Submit envia { purchase_type='credits_pack', pack_id,
+    credits_quantity, amount_eur, intended_action, username, return_url }
+        │
+        ▼
+EuPago → webhook valida HMAC, identifica pack pelo `product`,
+chama grantCreditPack(amount=N) idempotente por payment_id.
+Não toca em entitlements Pro, não dispara enrichments.
+        │
+        ▼
+/checkout/credits?status=success&return=<rota>&pack=<pack_id>
+  • Toast "Créditos adicionados com sucesso"
+  • Polling do saldo até bater no esperado (≤10s)
+  • CTA "Voltar ao relatório" → utilizador clica de novo manualmente
 ```
 
-Render no dialog (substitui o parágrafo único):
-- `<p>` intro
-- `<p>` usage_intro
-- `<ul>` com 4 bullets (semantic tokens, `text-sm text-content-secondary`)
+## Passos de implementação
 
-Espelhar no `en/report.json`.
+### 1. Catálogo de produtos
 
-### 2. Página de sucesso (`/checkout/credits?status=success`)
+- `src/lib/payments/products.ts`: adicionar `credits_3`, `credits_10`, `credits_25` em `PRODUCT_CODES`; `PUBLIC_PRODUCTS` com `namePt`, `priceLabel`, `priceNote` (todos `exposed: false` — só visíveis dentro do flow). Marcar `credit_pack_1` como deprecated mas manter no enum para back-compat dos pagamentos antigos.
+- `src/lib/payments/products.server.ts`: `SERVER_PRODUCTS` com `amountCents` 900 / 2500 / 4900.
 
-Adicionar **terceira linha** com saldo actualizado, lida via `getMyCreditBalance` (server fn já existente).
+### 2. Migração DB
 
-Como o webhook EuPago corre assíncrono ao redirect, o saldo pode ainda não estar actualizado quando o utilizador chega. Estratégia:
+- `lead_payments.product` CHECK aceita os novos códigos (mantendo os antigos).
+- `credit_ledger.metadata.kind = 'credit_pack_purchased'` continua a ser a única kind de receita; `pack_amount` no metadata reflecte a quantidade.
 
-- `useQuery({ queryKey: ['my-credit-balance', 'post-purchase'], queryFn: getMyCreditBalance, refetchInterval: balance < 3 ? 1500 : false, refetchIntervalInBackground: false })` durante ~10s.
-- Enquanto `balance < 3`, mostrar "A actualizar saldo…".
-- Quando `balance >= 3`, mostrar `"Saldo actualizado: {balance} créditos."`.
-- Após 10s, parar polling — mostrar saldo qualquer que seja.
+### 3. `getCreditPackAmount` + grant
 
-Copy final:
+Em `src/lib/credits/credits.server.ts`:
+- `getCreditPackAmount` mapeia `credits_3 → 3`, `credits_10 → 10`, `credits_25 → 25`, mantém `credit_pack_1 → 1` (back-compat).
+- `grantCreditPack` mantém-se idempotente por `(payment_id, kind)`; já aceita `amount` arbitrário.
+- Deixar de chamar `grantCreditPackLaunchBonus` no webhook para os novos códigos; manter a função exportada mas sem call site activo.
 
-```
-Créditos adicionados com sucesso.
+### 4. Webhook EuPago (`src/routes/api/public/eupago-webhook.ts`)
 
-Oferta de lançamento aplicada: recebeste 2 créditos extra.
-Saldo actualizado: 3 créditos.
-```
+- Branch `credit_pack_*` reconhece os três novos produtos via `getCreditPackAmount(product) != null`.
+- Concede só `grantCreditPack` com o `amount` correcto; sem entitlement Pro, sem enrichments, sem bónus.
+- `recordProductEvent('credits_pack_granted', { pack_id, credits_quantity, payment_id, amount_eur, intended_action })`.
+- `report_full_9` continua exactamente como hoje (entitlement + included + beta bonus + enrichments).
 
-CTA mantém-se "Voltar ao relatório".
+### 5. Server fn de checkout (`src/lib/payments/eupago.functions.ts` / `eupago.server.ts`)
+
+- `createEupagoCheckout` aceita os novos `product_code`s. O payload de criação grava em `lead_payments.metadata`:
+  ```json
+  {
+    "purchase_type": "credits_pack",
+    "pack_id": "credits_3",
+    "credits_quantity": 3,
+    "amount_eur": 9,
+    "intended_action": "period_change",
+    "username": "<handle>",
+    "return_url": "<absolute>"
+  }
+  ```
+- `return_path` ainda é o caminho relativo usado para o redirect EuPago.
+
+### 6. Página `/checkout/credits` (`src/routes/checkout.credits.tsx`)
+
+- Nova UI com **selector de 3 cards** (3 / 10 / 25 créditos), default `credits_3` lido de `?pack=` quando válido.
+- Mostra preço por crédito calculado (ex.: "≈ 2,50€/crédito"), sem linguagem de desconto agressiva — só claridade.
+- `?intent=` aceita `period_change | competitor_add | force_refresh | generic_pro_analysis` e é enviado ao server fn como `intended_action`.
+- Painel de sucesso (`?status=success`) mantém o polling de saldo já implementado, mas adapta o texto para mencionar a quantidade comprada (ex.: "Saldo actualizado: 7 créditos").
+- Toast/banner: "Créditos adicionados com sucesso".
+
+### 7. Modal `consume-credit-dialog.tsx` (action-aware)
+
+- Aceita prop `intent: 'period_change' | 'competitor_add' | 'force_refresh' | 'generic_pro_analysis'` (default `generic_pro_analysis`).
+- Quando `!hasCredit && !atCompetitorLimit`, render:
+  - **Título**: "Sem créditos disponíveis"
+  - **Parágrafo 1 (action-specific)**:
+    - period_change: "Esta análise de período exige uma nova recolha e consome 1 crédito."
+    - competitor_add: "Adicionar este concorrente exige uma nova análise e consome 1 crédito."
+    - force_refresh: "Forçar uma nova análise consome 1 crédito porque ignora o cache disponível."
+    - generic_pro_analysis (default): "Esta acção exige uma nova análise Pro e consome 1 crédito."
+  - **Parágrafo 2 (fixo)**: "O teu relatório Pro continua activo. Abrir análises em cache não consome créditos."
+  - **CTA primário**: "Comprar créditos" → navega para `/checkout/credits?return=<rota>&intent=<intent>&pack=credits_3`.
+  - **CTA secundário**: "Cancelar".
+- Em `report-block-nav.tsx`, passar `intent` ao dialog conforme o origem do clique (chip 30d/90d → `period_change`; botão concorrente → `competitor_add`; "forçar nova" → `force_refresh`).
+
+### 8. i18n (`src/i18n/locales/pt/report.json` + `en/report.json`)
+
+Novas chaves em `nav.explore.consume_dialog`:
+- `empty_title` (mantém)
+- `empty_body_period_change`, `empty_body_competitor_add`, `empty_body_force_refresh`, `empty_body_generic`
+- `empty_pro_active_note` ("O teu relatório Pro continua activo. Abrir análises em cache não consome créditos.")
+- `empty_cta` = "Comprar créditos"
+- `cta_cancel` (mantém)
+
+Strings da página checkout/credits:
+- `checkout.credits.pack_3_label`, `pack_10_label`, `pack_25_label`, `pack_3_note`, `pack_10_note`, `pack_25_note`
+- `checkout.credits.success_toast` = "Créditos adicionados com sucesso"
+
+### 9. Admin observability
+
+- `src/lib/admin/lead-credit-activity.ts`: bucket `pack_purchased` mostra `pack_id`, `credits_quantity`, `amount_eur` lidos de `credit_ledger.metadata` + `lead_payments.metadata`.
+- Admin de pagamentos: coluna mostra `pack_id` quando `purchase_type === 'credits_pack'`.
+- `product_events`: `credits_pack_checkout_started`, `credits_pack_granted` incluem `pack_id`, `credits_quantity`, `amount_eur`, `intended_action`.
+
+### 10. Testes (vitest)
+
+- `credit-pack.test.ts`:
+  - `getCreditPackAmount` mapeia 3/10/25 correctamente.
+  - `grantCreditPack` com amount=3, 10, 25 escreve linha única + idempotência por payment_id.
+- `eupago-webhook` (novo ou estendido):
+  - Pack `credits_10` → +10 no ledger, sem entitlement, sem enrichments.
+  - Re-entrega do mesmo `payment_id` não duplica.
+  - `report_full_9` mantém comportamento (entitlement + 3 créditos + enrichments) — regressão.
+- `checkout.credits` (smoke): selector default `credits_3`, click muda payload submetido com `pack_id` / `credits_quantity` / `amount_eur` / `intended_action`.
+- `consume-credit-dialog`: cada `intent` rende a frase correcta; CTA navega para `/checkout/credits` com o `intent` correcto.
 
 ## Ficheiros afectados
 
-- `src/components/report-redesign/v2/consume-credit-dialog.tsx` — render estruturado do estado sem créditos.
-- `src/i18n/locales/pt/report.json` e `en/report.json` — novas chaves de copy.
-- `src/routes/checkout.credits.tsx` — `PostPurchaseSuccessPanel` lê saldo com polling curto e mostra terceira linha.
-- (opcional) `src/lib/credits/credits.server.ts` — acrescentar `source: 'launch_bonus'` ao metadata da linha de bónus.
+- `src/lib/payments/products.ts`, `products.server.ts`
+- `src/lib/payments/eupago.functions.ts`, `eupago.server.ts`
+- `src/routes/api/public/eupago-webhook.ts`
+- `src/lib/credits/credits.server.ts` (apenas `getCreditPackAmount`; sem novo call site para launch bonus)
+- `src/routes/checkout.credits.tsx` (selector + intent + sucesso com quantidade)
+- `src/components/report-redesign/v2/consume-credit-dialog.tsx`
+- `src/components/report-redesign/v2/report-block-nav.tsx` (passar `intent`)
+- `src/i18n/locales/pt/report.json`, `en/report.json`
+- `src/lib/admin/lead-credit-activity.ts`, `tracking.server.ts`
+- Migração SQL para `lead_payments.product` CHECK
+- Testes em `src/lib/credits/__tests__/`, `src/lib/payments/__tests__/`, componente de modal/checkout
 
-## Riscos / decisões
+## Riscos / mitigação
 
-- **Polling do saldo**: limita a 10s para não criar requests infinitos. Se o webhook falhar/atrasar acima disso, mostra o saldo atual sem prometer 3 (evita inconsistência).
-- **Sem alteração ao backend**: a separação em duas linhas de ledger já está implementada e testada — apenas a UI melhora.
+- **Coexistência com `credit_pack_1` antigo**: mantemos o código no enum + mapeamento, mas sem CTA público. Pagamentos pendentes desse SKU continuam a funcionar.
+- **Webhook idempotente**: já existe verificação `(payment_id, kind)`; novos packs reaproveitam o mesmo kind `credit_pack_purchased`.
+- **`return` URL stale**: validar `startsWith('/')` (já implementado).
+- **`intent` malformado**: server fn aceita enum estrito; valores desconhecidos caem em `generic_pro_analysis`.
+- **Migrar copy sem partir testes existentes**: actualizar fixtures que referenciam "Comprar 1 crédito".
 
-## Fora de scopo
+## Fora de scopo (confirmado)
 
-- Não mexer no fluxo Pro inicial (`report_full_9`) — esses créditos continuam com os kinds `purchase_included_credit` e `post_purchase_beta_bonus`.
-- Não introduzir múltiplos packs nem seletor de quantidade.
-- Não auto-disparar a acção pendente após pagamento.
+- Sem alteração ao Pro inicial (`report_full_9`).
+- Sem alteração às regras de cache, 30d/90d, concorrente, force_refresh.
+- Sem alteração a enrichments visuais/comentários.
+- Sem subscrições.
+- Sem re-disparo automático da acção pendente.
+- Sem manter o bónus oculto de lançamento nos novos packs.
