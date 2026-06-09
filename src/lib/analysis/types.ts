@@ -182,7 +182,8 @@ export type PublicAnalysisErrorCode =
   | "ONBOARDING_REQUIRED"
   | "INSUFFICIENT_CREDITS"
   | "WINDOW_REQUIRES_PRO"
-  | "WINDOW_90D_DISABLED";
+  | "WINDOW_90D_DISABLED"
+  | "COMPETITORS_REQUIRE_PRO";
 
 export interface PublicAnalysisFailure {
   success: false;

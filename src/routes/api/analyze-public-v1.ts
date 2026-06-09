@@ -169,6 +169,8 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
     "A análise por período (30d/90d) está disponível no plano Pro.",
   WINDOW_90D_DISABLED:
     "A análise de 90 dias está temporariamente indisponível. Tenta 30 dias.",
+  COMPETITORS_REQUIRE_PRO:
+    "A análise de concorrentes está disponível no plano Pro.",
 };
 
 const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
@@ -188,6 +190,7 @@ const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
   INSUFFICIENT_CREDITS: 402,
   WINDOW_REQUIRES_PRO: 403,
   WINDOW_90D_DISABLED: 403,
+  COMPETITORS_REQUIRE_PRO: 403,
 };
 
 /**
@@ -586,6 +589,29 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             return failure("ONBOARDING_REQUIRED");
           }
           alreadyAssociated = await leadOwnsReport(leadId, cacheKey);
+          // ── Pro gate for competitor analysis ────────────────────
+          // Competitor enrichment can trigger extra Apify work, so it's
+          // restricted to leads with the `report_full_9` entitlement.
+          // Runs BEFORE reserveCredit / wide-window gate / provider so a
+          // Free lead is never charged and no provider is hit.
+          if (competitors.length > 0) {
+            const isProForCompetitors = await hasEntitlement(
+              leadId,
+              "report_full_9",
+            );
+            if (!isProForCompetitors) {
+              await logEvent({
+                handle: primary,
+                competitorHandles: competitors,
+                cacheKey,
+                dataSource: "none",
+                outcome: "blocked_credits",
+                errorCode: "COMPETITORS_REQUIRE_PRO",
+                estimatedCostUsd: 0,
+              });
+              return failure("COMPETITORS_REQUIRE_PRO");
+            }
+          }
           // ── Pro gate for wide windows (30d/90d) ─────────────────
           // Wide windows require the `report_full_9` entitlement. We
           // check BEFORE reserving credit so a Free lead is never
