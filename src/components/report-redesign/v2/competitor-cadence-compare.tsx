@@ -272,11 +272,6 @@ function SampleStrip({
           <Thumb key={`${p?.permalink ?? i}`} side={side} post={p} />
         ))}
       </div>
-      {allPlaceholders ? (
-        <p className="text-xs text-content-tertiary">
-          Miniaturas indisponíveis nesta amostra.
-        </p>
-      ) : null}
     </div>
   );
 }
