@@ -17,8 +17,6 @@ import { z } from "zod";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getEmailVerificationMode } from "@/lib/config/email-verification.server";
-import { getBalance, grantInitialCredits } from "@/lib/credits/credits.server";
-import { setLeadCookie } from "@/lib/leads/lead-cookie.server";
 import { sendVerificationEmail } from "@/lib/email/send-verification.server";
 
 const Payload = z.object({
@@ -77,38 +75,12 @@ export async function handleCheckEmail(request: Request): Promise<Response> {
   };
 
   if (exists && lookup && lookup !== "error") {
-    if (mode === "off") {
-      // Beta: claim imediato — emite cookie e garante grant inicial.
-      try {
-        await grantInitialCredits(lookup.id);
-      } catch (err) {
-        console.warn("[onboarding/check-email] grantInitialCredits warn:", err);
-      }
-      try {
-        setLeadCookie(lookup.id);
-      } catch (err) {
-        console.error("[onboarding/check-email] cookie write failed", err);
-        return json({ ok: false, error_code: "INTERNAL_ERROR" }, 500);
-      }
-      let credits = 0;
-      try {
-        credits = await getBalance(lookup.id);
-      } catch (err) {
-        console.warn("[onboarding/check-email] getBalance warn:", err);
-      }
-      console.info("[onboarding/check-email] beta no-verification claim", {
-        lead_id: lookup.id,
-      });
-      body = {
-        ok: true,
-        exists: true,
-        verification_mode: "off",
-        claimed: true,
-        lead_id: lookup.id,
-        credits,
-      };
-    } else if (mode === "magic_link") {
-      // Envia o magic link agora; cliente apenas mostra "verifica o email".
+    // Segurança: NUNCA emitir cookie/créditos só porque alguém escreveu
+    // um email conhecido. Email existente exige sempre prova de
+    // propriedade. Em modos `off` e `magic_link` enviamos um magic link
+    // assinado pela nossa stack (Brevo → Resend). Em `otp` deixamos o
+    // cliente fazer `signInWithOtp` legacy.
+    if (mode === "off" || mode === "magic_link") {
       void sendVerificationEmail({
         leadId: lookup.id,
         toEmail: parsed.data.email,
@@ -118,7 +90,7 @@ export async function handleCheckEmail(request: Request): Promise<Response> {
       body = {
         ok: true,
         exists: true,
-        verification_mode: "magic_link",
+        verification_mode: mode,
         verification_sent: true,
       };
     }
