@@ -104,7 +104,11 @@ export function setAdminCookie(email: string): void {
     `Path=/`,
     `HttpOnly`,
     `Secure`,
-    `SameSite=Lax`,
+    // SameSite=None é necessário para o preview do Lovable, que carrega a
+    // app dentro de um iframe (contexto cross-site). Com `Lax` o browser
+    // descarta o cookie em pedidos a partir do iframe e o admin nunca
+    // autentica. `Secure` é obrigatório com `None` (e já está aqui).
+    `SameSite=None`,
   ];
   setResponseHeader("set-cookie", parts.join("; "));
 }
