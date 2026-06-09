@@ -244,6 +244,20 @@ export function ConsumeCreditDialog({
           </p>
         ) : null}
 
+        {!hasCredit && !atCompetitorLimit ? (
+          <div className="space-y-2 rounded-lg border border-border-default bg-surface-muted/60 p-3">
+            <p className="text-sm text-content-secondary">
+              {t("nav.explore.consume_dialog.empty_usage_intro")}
+            </p>
+            <ul className="list-disc space-y-1 pl-5 text-sm text-content-secondary">
+              <li>{t("nav.explore.consume_dialog.empty_usage_refresh")}</li>
+              <li>{t("nav.explore.consume_dialog.empty_usage_window")}</li>
+              <li>{t("nav.explore.consume_dialog.empty_usage_competitor")}</li>
+              <li>{t("nav.explore.consume_dialog.empty_usage_fresh")}</li>
+            </ul>
+          </div>
+        ) : null}
+
         {hasCredit && isCompetitor && !atCompetitorLimit ? (
           <>
             <div className="space-y-1.5">
