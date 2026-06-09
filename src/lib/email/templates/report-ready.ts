@@ -48,9 +48,9 @@ export function getReportReadyParts(input: ReportReadyInput): EmailTemplateParts
     "",
     "Tira uns minutos a explorar. Não é um dashboard de métricas — é uma leitura editorial dos dados públicos do perfil, cruzada com referências de mercado. Alguns blocos podem surpreender, no bom e no mau sentido.",
     "",
-    "Esta é uma versão beta:",
-    "· pode ainda haver pontas soltas — se vires algo estranho, dá-nos sinal;",
-    "· vai melhorar nas próximas semanas com base em quem a usa.",
+    "Notas sobre esta análise:",
+    "· se algo te parecer estranho, dá-nos sinal;",
+    "· o relatório continua a melhorar com base em quem o usa.",
     "",
     "Daqui a uns dias, vamos pedir-te 2 minutos de feedback. O input de quem usa agora é o que define o caminho.",
     "",
@@ -68,7 +68,7 @@ export function getReportReadyParts(input: ReportReadyInput): EmailTemplateParts
       "Tira uns minutos a explorar. Não é um <em>dashboard</em> de métricas — é uma leitura editorial dos dados públicos do perfil, cruzada com referências de mercado. Alguns blocos podem surpreender, no bom e no mau sentido.",
     ),
     pMuted(
-      "Esta é uma versão <strong style=\"color:#0a0e1a;\">beta</strong>:<br/>· pode ainda haver pontas soltas — se vires algo estranho, dá-nos sinal;<br/>· vai melhorar nas próximas semanas com base em quem a usa.",
+      "Notas sobre esta análise:<br/>· se algo te parecer estranho, dá-nos sinal;<br/>· o relatório continua a melhorar com base em quem o usa.",
     ),
     pMuted(
       "Daqui a uns dias, vamos pedir-te 2 minutos de feedback. O <em>input</em> de quem usa agora é o que define o caminho.",
