@@ -1163,3 +1163,204 @@ function AudienceVoiceBreakdown({ commentIntel }: { commentIntel: CommentIntelli
     </div>
   );
 }
+
+// ─── Z4: Top conversation posts — compact thumbnail cards ──────────
+
+type DominantSignal = "questions" | "praise" | "complaints" | "buying_intent" | "mixed";
+
+const SIGNAL_CHIP: Record<DominantSignal, {
+  label: string;
+  Icon: typeof HelpCircle;
+  className: string;
+}> = {
+  questions: { label: "Perguntas", Icon: HelpCircle, className: "text-accent-primary bg-tint-primary border-accent-primary/20" },
+  praise: { label: "Elogios", Icon: ThumbsUp, className: "text-signal-success bg-tint-success border-signal-success/20" },
+  complaints: { label: "Queixas", Icon: AlertTriangle, className: "text-signal-warning bg-tint-warning border-signal-warning/20" },
+  buying_intent: { label: "Intenção de compra", Icon: ShoppingCart, className: "text-accent-primary bg-tint-primary border-accent-primary/20" },
+  mixed: { label: "Conversa mista", Icon: MessageCircle, className: "text-content-secondary bg-surface-muted border-border-default" },
+};
+
+interface LegacyTopPost {
+  index: number;
+  comments: number;
+  captionExcerpt: string;
+  format?: string | null;
+  date?: string | null;
+  thumbnailUrl?: string | null;
+  permalink?: string | null;
+  shortcode?: string | null;
+}
+
+function extractShortcodeFromUrl(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  const m = url.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
+  return m?.[1];
+}
+
+function TopConversationPostsGrid({
+  topCommentPosts,
+  commentIntel,
+}: {
+  topCommentPosts?: LegacyTopPost[];
+  commentIntel?: CommentIntelligence | null;
+}) {
+  // Build a shortcode → enriched-entry lookup from commentIntel when available
+  const ciByShortcode = new Map<
+    string,
+    NonNullable<CommentIntelligence["topConversationPosts"]>[number]
+  >();
+  if (commentIntel?.available && commentIntel.topConversationPosts) {
+    for (const entry of commentIntel.topConversationPosts) {
+      const sc = entry.shortcode ?? extractShortcodeFromUrl(entry.postUrl);
+      if (sc) ciByShortcode.set(sc, entry);
+    }
+  }
+
+  // Compose card list: prefer commentIntel.topConversationPosts when present
+  // (richer per-post signal data + thumbnails joined via shortcode), else
+  // fall back to legacy `topCommentPosts` derived from comment volume.
+  type Card = {
+    key: string;
+    permalink: string | null;
+    thumbnailUrl: string | null;
+    format: string | null;
+    date: string | null;
+    captionExcerpt: string;
+    commentsCount: number;
+    ownerReplies?: number;
+    signal?: DominantSignal;
+    summary?: string;
+    topAudienceComment?: { username: string; text: string };
+  };
+
+  const legacyByShortcode = new Map<string, LegacyTopPost>();
+  for (const p of topCommentPosts ?? []) {
+    const sc = p.shortcode ?? extractShortcodeFromUrl(p.permalink);
+    if (sc) legacyByShortcode.set(sc, p);
+  }
+
+  let cards: Card[] = [];
+  if (commentIntel?.available && commentIntel.topConversationPosts && commentIntel.topConversationPosts.length > 0) {
+    cards = commentIntel.topConversationPosts.slice(0, 3).map((entry, idx) => {
+      const sc = entry.shortcode ?? extractShortcodeFromUrl(entry.postUrl);
+      const legacy = sc ? legacyByShortcode.get(sc) : undefined;
+      return {
+        key: sc ?? `ci-${idx}`,
+        permalink: entry.postUrl || legacy?.permalink || null,
+        thumbnailUrl: entry.thumbnailUrl ?? legacy?.thumbnailUrl ?? null,
+        format: legacy?.format ?? null,
+        date: legacy?.date ?? null,
+        captionExcerpt: legacy?.captionExcerpt ?? "",
+        commentsCount: entry.audienceCommentsCount || entry.commentsCount || legacy?.comments || 0,
+        ownerReplies: entry.ownerRepliesCount,
+        signal: entry.dominantSignal,
+        summary: entry.summary,
+        topAudienceComment: entry.topAudienceComment,
+      };
+    });
+  } else if (topCommentPosts && topCommentPosts.length > 0) {
+    cards = topCommentPosts.slice(0, 3).map((p, idx) => ({
+      key: p.shortcode ?? `legacy-${idx}`,
+      permalink: p.permalink ?? null,
+      thumbnailUrl: p.thumbnailUrl ?? null,
+      format: p.format ?? null,
+      date: p.date ?? null,
+      captionExcerpt: p.captionExcerpt,
+      commentsCount: p.comments,
+    }));
+  }
+
+  if (cards.length === 0) return null;
+
+  return (
+    <div className="space-y-2.5">
+      <div className="flex items-baseline justify-between gap-3">
+        <h4 className="text-[14px] sm:text-[15px] font-semibold text-content-primary leading-tight">
+          Posts que geraram mais conversa
+        </h4>
+        <span className="text-xs text-content-tertiary tabular-nums">
+          Top {cards.length}
+        </span>
+      </div>
+      <p className="text-xs text-content-tertiary">
+        Ranking por volume de conversa pública{commentIntel?.available ? " e respostas da marca" : ""}.
+      </p>
+      <ul className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        {cards.map((card) => {
+          const Wrapper = (card.permalink ? "a" : "div") as "a" | "div";
+          const wrapperProps = card.permalink
+            ? { href: card.permalink, target: "_blank" as const, rel: "noopener noreferrer" }
+            : {};
+          const chip = card.signal ? SIGNAL_CHIP[card.signal] : null;
+          return (
+            <li key={card.key} className="contents">
+              <Wrapper
+                {...wrapperProps}
+                className="group flex gap-2.5 rounded-xl border border-border-default bg-surface-secondary p-2.5 transition-all duration-200 hover:ring-1 hover:ring-accent-primary/30 hover:border-accent-primary/40"
+              >
+                {/* Compact square thumbnail */}
+                <div className="relative size-[88px] shrink-0 overflow-hidden rounded-lg bg-surface-muted">
+                  {card.thumbnailUrl ? (
+                    <img
+                      src={card.thumbnailUrl}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => { e.currentTarget.style.display = "none"; }}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <MessageCircle className="size-6 text-content-tertiary/40" strokeWidth={1.5} />
+                    </div>
+                  )}
+                  {card.permalink && (
+                    <span className="absolute top-1 right-1 z-10 flex items-center justify-center size-5 rounded-full bg-black/40 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                      <ExternalLink className="size-2.5 text-white" />
+                    </span>
+                  )}
+                </div>
+                {/* Content */}
+                <div className="flex flex-1 min-w-0 flex-col gap-1">
+                  {chip ? (
+                    <span className={cn(
+                      "inline-flex items-center gap-1 self-start rounded-full border px-1.5 py-0.5 text-[10.5px] font-medium",
+                      chip.className,
+                    )}>
+                      <chip.Icon className="size-2.5 shrink-0" aria-hidden="true" />
+                      <span className="truncate max-w-[100px]">{chip.label}</span>
+                    </span>
+                  ) : (
+                    card.date && (
+                      <span className="text-[10.5px] uppercase tracking-wide text-content-tertiary">
+                        {new Date(card.date).toLocaleDateString("pt-PT", { day: "numeric", month: "short" })}
+                      </span>
+                    )
+                  )}
+                  <p className="text-[12px] text-content-secondary leading-snug line-clamp-2">
+                    {card.summary ?? card.topAudienceComment?.text ?? card.captionExcerpt ?? "Sem detalhe textual disponível."}
+                  </p>
+                  <div className="mt-auto flex items-center gap-2 text-[11.5px] text-content-tertiary tabular-nums">
+                    <span className="inline-flex items-center gap-1">
+                      <MessageCircle className="size-3 text-accent-primary" strokeWidth={1.5} />
+                      <span className="font-semibold text-content-primary">{card.commentsCount.toLocaleString("pt-PT")}</span>
+                      <span>com.</span>
+                    </span>
+                    {typeof card.ownerReplies === "number" && (
+                      <span className="inline-flex items-center gap-1">
+                        <MessageCircleReply className="size-3" strokeWidth={1.5} />
+                        <span className="font-semibold text-content-primary">{card.ownerReplies}</span>
+                        <span>resp.</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </Wrapper>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
