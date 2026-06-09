@@ -23,6 +23,7 @@ import {
   ArrowLeft,
   Check,
   Loader2,
+  Lock,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
@@ -495,6 +496,7 @@ export function OnboardingModal({
         ) : view.kind === "qualification" ? (
           <QualificationStepBody
             form={form}
+            purpose={purpose}
             submitting={submitting}
             serverError={serverError}
             onBack={goBackToEntry}
@@ -516,6 +518,7 @@ export function OnboardingModal({
             email={view.email}
             sentAt={view.sentAt}
             mode={view.mode}
+            purpose={purpose}
             submitting={submitting}
             serverError={serverError}
             onVerify={(code) => handleOtpVerify(view.email, code)}
