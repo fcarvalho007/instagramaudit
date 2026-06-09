@@ -107,7 +107,7 @@ export function VisualCoverAnalysisCard({ posts, analysis }: Props) {
             {t("cover.ai_badge")}
           </span>
         </div>
-        <h3 className="text-lg md:text-xl font-semibold text-content-primary leading-snug">
+        <h3 className="font-display text-[1.5rem] md:text-[1.75rem] font-semibold leading-tight tracking-tight text-content-primary">
           {t("cover.title")}
         </h3>
         <p className="text-[13px] text-content-secondary leading-relaxed max-w-2xl">
@@ -343,10 +343,10 @@ function VisualAnalysisFallback() {
   return (
     <div className="rounded-xl border border-dashed border-border-default bg-surface-muted px-4 py-5 text-center">
       <p className="text-[13px] text-content-secondary leading-relaxed">
-        {isPublic ? t("cover.fallback.public_title") : t("cover.fallback.dev_title")}
+        {isPublic ? t("cover.fallback.public_title") : t("cover.fallback.pro_title")}
       </p>
       <p className="text-xs text-content-tertiary mt-1">
-        {isPublic ? t("cover.fallback.public_body") : t("cover.fallback.dev_body")}
+        {isPublic ? t("cover.fallback.public_body") : t("cover.fallback.pro_body")}
       </p>
     </div>
   );
@@ -360,10 +360,10 @@ function ScorePanelUnavailable() {
     <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border-default bg-surface-muted p-6 text-center space-y-2">
       <Eye className="size-8 text-content-tertiary/30" aria-hidden />
       <p className="text-[13px] text-content-secondary font-medium">
-        {isPublic ? t("cover.fallback.score_public_title") : t("cover.fallback.score_dev_title")}
+        {isPublic ? t("cover.fallback.score_public_title") : t("cover.fallback.score_pro_title")}
       </p>
       <p className="text-xs text-content-tertiary max-w-[16rem] leading-relaxed">
-        {isPublic ? t("cover.fallback.score_public_body") : t("cover.fallback.score_dev_body")}
+        {isPublic ? t("cover.fallback.score_public_body") : t("cover.fallback.score_pro_body")}
       </p>
     </div>
   );
