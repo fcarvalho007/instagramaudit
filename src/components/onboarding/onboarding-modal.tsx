@@ -155,10 +155,12 @@ export function OnboardingModal({
       phone: "",
       password: "",
       confirm_password: "",
-      // The qualification step (2 perguntas em cartões) define estes valores
-      // antes do submit; deixamos undefined para validar a escolha do user.
-      profile_ownership: undefined as unknown as never,
-      goal: undefined as unknown as never,
+      // O single-step signup recolhe apenas `qualification`. Mantemos
+      // valores neutros para `profile_ownership`/`goal` (campos legados,
+      // ainda presentes no schema) — o server deriva o que precisa de
+      // `qualification`.
+      profile_ownership: "curiosity" as ProfileOwnership,
+      goal: "improve_content" as Goal,
       user_type: "creator",
       goal_other_text: "",
       user_type_other_text: "",
