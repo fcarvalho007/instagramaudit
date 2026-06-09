@@ -14,6 +14,7 @@ import type { LeadQualification } from "@/lib/leads/qualification";
 export interface OnboardingStartPayload {
   name: string;
   email: string;
+  phone?: string;
   marketing_consent: boolean;
   beta_consent: false;
   purpose?: UnlockFormValues["goal"];
@@ -45,6 +46,8 @@ export function buildStartPayload(
     _t: formStartedAt,
     ...(handle ? { handle } : {}),
   };
+  const phone = values.phone?.trim();
+  if (phone) base.phone = phone;
   // Optional context fields — kept as nullable columns on `leads`; we only
   // send them when the (legacy) UI happens to collect them. The new
   // entry-modal flow drops the dedicated step that used to ask for them.

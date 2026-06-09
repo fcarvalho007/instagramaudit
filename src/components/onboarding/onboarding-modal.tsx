@@ -93,6 +93,7 @@ export interface OnboardingModalProps {
  */
 type View =
   | { kind: "entry" }
+  | { kind: "qualification"; email: string }
   | { kind: "final"; email: string }
   | { kind: "otp"; email: string; sentAt: number; mode: "new" | "existing" };
 
@@ -130,6 +131,7 @@ export function OnboardingModal({
     defaultValues: {
       full_name: "",
       email: "",
+      phone: "",
       // The dedicated step that asked for these is gone. We keep safe
       // defaults so the (legacy) schema validates; the payload builder
       // omits them when the form was never asked.
@@ -166,7 +168,14 @@ export function OnboardingModal({
   const handleClose = (next: boolean) => {
     if (submitting) return;
     if (!next && open && !succeededRef.current) {
-      const step = view.kind === "entry" ? 0 : view.kind === "final" ? 1 : 2;
+      const step =
+        view.kind === "entry"
+          ? 0
+          : view.kind === "qualification"
+            ? 1
+            : view.kind === "final"
+              ? 2
+              : 3;
       trackOnboardingEvent({
         event_type: "onboarding_abandon",
         step: step as 0 | 1 | 2 | 3,
@@ -179,6 +188,11 @@ export function OnboardingModal({
   const goBackToEntry = useCallback(() => {
     setServerError(null);
     setView({ kind: "entry" });
+  }, []);
+
+  const goBackToQualification = useCallback((email: string) => {
+    setServerError(null);
+    setView({ kind: "qualification", email });
   }, []);
 
   /**
@@ -249,7 +263,7 @@ export function OnboardingModal({
           return;
         }
         form.setValue("email", email, { shouldValidate: true });
-        setView({ kind: "final", email });
+        setView({ kind: "qualification", email });
       } catch {
         setServerError(t("onboarding.errors.network"));
       } finally {
@@ -478,6 +492,14 @@ export function OnboardingModal({
             onSignInWithEmail={(email) => sendOtpAndGoToOtpView(email)}
             initialEmail={form.getValues("email")}
           />
+        ) : view.kind === "qualification" ? (
+          <QualificationStepBody
+            form={form}
+            submitting={submitting}
+            serverError={serverError}
+            onBack={goBackToEntry}
+            onContinue={() => setView({ kind: "final", email: view.email })}
+          />
         ) : view.kind === "final" ? (
           <FinalStepBody
             handle={handle}
@@ -485,7 +507,7 @@ export function OnboardingModal({
             form={form}
             serverError={serverError}
             submitting={submitting}
-            onBack={goBackToEntry}
+            onBack={() => goBackToQualification(view.email)}
             onSubmit={handleFinalSubmit}
             honeypotRef={honeypotRef}
           />
@@ -691,12 +713,11 @@ function FinalStepBody({
   const { t } = useTranslation("gate");
   const nameError = form.formState.errors.full_name?.message;
   const emailError = form.formState.errors.email?.message;
-  const qualificationError = form.formState.errors.qualification?.message;
+  const phoneError = form.formState.errors.phone?.message;
   const consentError = form.formState.errors.gdpr_consent?.message;
   const consent = form.watch("gdpr_consent");
   const marketing = form.watch("marketing_consent");
   const emailValue = form.watch("email");
-  const qualificationValue = form.watch("qualification");
   const emailIsValid = !emailError && emailValue && EMAIL_RE.test(emailValue);
 
   return (
@@ -818,37 +839,27 @@ function FinalStepBody({
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="onb-qualification" className="text-[13.5px] font-medium text-content-primary">
-            {t("onboarding.final.right.qualificationLabel")}
-          </Label>
-          <Select
-            value={qualificationValue ?? undefined}
-            onValueChange={(v) =>
-              form.setValue("qualification", v as LeadQualification, {
-                shouldValidate: true,
-              })
-            }
+          <Label
+            htmlFor="onb-phone"
+            className="text-[13.5px] font-medium text-content-primary"
           >
-            <SelectTrigger
-              id="onb-qualification"
-              aria-invalid={Boolean(qualificationError)}
-              className="text-base"
-              data-testid="onboarding-qualification"
-            >
-              <SelectValue
-                placeholder={t("onboarding.final.right.qualificationPlaceholder")}
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {LEAD_QUALIFICATIONS.map((q) => (
-                <SelectItem key={q} value={q}>
-                  {t(`onboarding.final.right.qualificationOptions.${q}`)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {qualificationError ? (
-            <p className="text-[12.5px] text-destructive">{qualificationError}</p>
+            {t("onboarding.final.right.phoneLabel")}{" "}
+            <span className="text-content-tertiary font-normal">
+              {t("onboarding.final.right.phoneOptional")}
+            </span>
+          </Label>
+          <Input
+            id="onb-phone"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder={t("onboarding.final.right.phonePlaceholder")}
+            aria-invalid={Boolean(phoneError)}
+            className="text-base"
+            {...form.register("phone")}
+          />
+          {phoneError ? (
+            <p className="text-[12.5px] text-destructive">{phoneError}</p>
           ) : null}
         </div>
 
@@ -978,6 +989,116 @@ function FinalBullet({ children }: { children: React.ReactNode }) {
       />
       <span>{children}</span>
     </li>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Qualification step — single select between entry and final                 */
+/* -------------------------------------------------------------------------- */
+
+function QualificationStepBody({
+  form,
+  submitting,
+  serverError,
+  onBack,
+  onContinue,
+}: {
+  form: ReturnType<typeof useForm<UnlockFormValues>>;
+  submitting: boolean;
+  serverError: string | null;
+  onBack: () => void;
+  onContinue: () => void;
+}) {
+  const { t } = useTranslation("gate");
+  const value = form.watch("qualification");
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  const handleContinue = () => {
+    if (!value) {
+      setLocalError(t("onboarding.qualification.error"));
+      return;
+    }
+    setLocalError(null);
+    onContinue();
+  };
+
+  return (
+    <div
+      className="px-6 py-7 sm:px-10 sm:py-9"
+      data-testid="onboarding-qualification-step"
+    >
+      <DialogHeader className="text-left space-y-2.5">
+        <p className="text-eyebrow text-content-tertiary">
+          {t("onboarding.qualification.eyebrow")}
+        </p>
+        <DialogTitle className="font-display text-[28px] sm:text-[32px] leading-[1.08] tracking-[-0.015em] text-content-primary text-balance">
+          {t("onboarding.qualification.title")}
+        </DialogTitle>
+        <DialogDescription className="text-[15px] text-content-secondary leading-[1.55]">
+          {t("onboarding.qualification.subtitle")}
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="mt-6 space-y-3">
+        <Select
+          value={value ?? undefined}
+          onValueChange={(v) => {
+            form.setValue("qualification", v as LeadQualification, {
+              shouldValidate: true,
+            });
+            setLocalError(null);
+          }}
+        >
+          <SelectTrigger
+            id="onb-qualification"
+            aria-invalid={Boolean(localError)}
+            className="text-base h-12"
+            data-testid="onboarding-qualification"
+          >
+            <SelectValue
+              placeholder={t("onboarding.qualification.placeholder")}
+            />
+          </SelectTrigger>
+          <SelectContent>
+            {LEAD_QUALIFICATIONS.map((q) => (
+              <SelectItem key={q} value={q}>
+                {t(`onboarding.final.right.qualificationOptions.${q}`)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {localError || serverError ? (
+          <Alert variant="destructive">
+            <AlertDescription>{localError ?? serverError}</AlertDescription>
+          </Alert>
+        ) : null}
+      </div>
+
+      <div className="mt-6 flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          onClick={onBack}
+          disabled={submitting}
+          className="w-full sm:w-auto sm:flex-shrink-0 rounded-lg"
+        >
+          <ArrowLeft className="size-4" aria-hidden />
+          {t("onboarding.qualification.back")}
+        </Button>
+        <Button
+          type="button"
+          size="lg"
+          onClick={handleContinue}
+          disabled={submitting}
+          className="w-full sm:flex-1 rounded-lg font-medium"
+          data-testid="onboarding-qualification-continue"
+        >
+          {t("onboarding.qualification.cta")}
+        </Button>
+      </div>
+    </div>
   );
 }
 

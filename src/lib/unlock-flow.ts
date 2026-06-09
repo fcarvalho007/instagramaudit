@@ -95,6 +95,9 @@ export const unlockFormSchema = z
       .max(120, "Nome demasiado longo")
       .regex(/\S/, "Indica o teu nome"),
     email: z.string().trim().toLowerCase().email("Email inválido").max(255),
+    // Optional phone (Fase 6 modal — reintroduced as optional). Free-form;
+    // server route may normalize later.
+    phone: z.string().trim().max(40).optional(),
     // Qualification (Fase 5 modal). Optional at the shared-schema level so
     // legacy callers (old unlock flow, tests) still validate; the new
     // onboarding modal enforces it client-side and the server route

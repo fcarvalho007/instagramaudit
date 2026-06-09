@@ -1,124 +1,70 @@
-# /precos → checkout: eliminar o dead-end
+## Goal
 
-## Problema
+Realinhar o `OnboardingModal` (purpose=`checkout`) aos dois mockups: passo 1 só email (mockup 2), passo 2 pergunta de qualificação isolada, passo 3 painel final 2-col com email pré-preenchido (mockup 1).
 
-Hoje `/precos` → "Obter relatório completo" → `/checkout/report-full?return=/precos`. O loader corre `getLeadSessionStatus()`; se não há cookie `lead_session`, renderiza `MissingLeadSession` com:
+## Fluxo actual vs. desejado
 
-- Título: "Para desbloquear o relatório, começa por criar a tua conta gratuita."
-- Botões: **"Voltar aos preços"** (loop) + **"Analisar perfil"** (volta ao home).
+Actual: `entry (email)` → `final (nome + email + qualificação + GDPR + marketing)` → `OTP`.
+Desejado:
+1. `entry` — só email. Visual igual à imagem 2 ("Cria conta e vê o relatório").
+2. `qualification` (novo passo dedicado) — pergunta "Qual o contexto que melhor te descreve?" com as 6 opções já existentes (`LEAD_QUALIFICATIONS`). Botão "Continuar". Voltar ao passo 1.
+3. `final` — painel 2-col (igual à imagem 1):
+   - Esquerda navy: eyebrow "ÚLTIMO PASSO", título "O teu relatório fica a um clique", bullets ("Relatório de @handle" só quando `purpose=analyze`; em `checkout` usar bullet genérico já existente, "Conta privada com 2 créditos grátis", "Todos os relatórios futuros guardados").
+   - Direita branco: Nome, Email (pré-preenchido, readOnly visual mas editável se clicar), Telemóvel (opcional, novo), checkbox GDPR (obrigatório), checkbox marketing (opcional), CTA "Gerar o meu relatório".
 
-Não há forma de criar conta a partir deste ecrã — é literalmente um beco sem saída. Os 3 checkouts (`report-full`, `authority-diagnosis`, `credits`) usam o mesmo componente e têm o mesmo problema.
+## Mudanças
 
-**Causa raiz:** o único caminho actual para obter `lead_session` é via `OnboardingModal`, aberto apenas em `/analyze/$username` depois de uma análise. Quem chega a `/precos` direto nunca passou por aí.
+### `src/components/onboarding/onboarding-modal.tsx`
+- Acrescentar `View` `{ kind: "qualification"; email: string }` entre `entry` e `final`.
+- `handleEntrySubmit` (novo email) passa a navegar para `qualification` em vez de `final`. Caminho OTP (email existente) permanece igual.
+- Novo `QualificationStepBody` (componente local): título + subtítulo curtos, `Select` com `LEAD_QUALIFICATIONS`, botões Voltar / Continuar. Ao continuar guarda em `form.setValue("qualification", ...)` e avança para `final`.
+- `FinalStepBody`:
+  - Remover o `Select` de qualificação (já preenchida no passo 2).
+  - Adicionar campo Telemóvel opcional (`form.register("phone")`, `inputMode="tel"`, `autoComplete="tel"`, placeholder "+351 …").
+  - Email passa a aparecer com estado "preenchido" (mantém input editável + ícone check; label igual ao mockup).
+  - Reordenar campos para Nome → Email → Telemóvel → consents.
+  - Eyebrow esquerdo: usar "ÚLTIMO PASSO" via key `onboarding.final.left.eyebrow` (ajustar copy).
+- `handleClose` step tracking: actualizar mapeamento `entry=0 / qualification=1 / final=2 / otp=3`.
 
-## Objectivo
+### `src/lib/unlock-flow.ts`
+- Adicionar campo opcional `phone: z.string().trim().max(40).optional()` no `unlockFormSchema`.
+- Tornar `qualification` obrigatória client-side (manter `.optional()` no schema partilhado para legacy, mas passo 2 valida antes de avançar; já funciona assim hoje).
 
-Quando o utilizador clica num plano em `/precos`, o checkout abre — sempre. Se já tem sessão, vai direto à confirmação/faturação. Se não tem, **a criação de conta acontece dentro do próprio checkout** (sem voltar para `/precos` nem para `/`), e segue depois para o resto do fluxo de pagamento sem perder contexto (produto, cupão, source, return).
+### `src/lib/leads/build-start-payload.ts`
+- Acrescentar `phone?: string` ao `OnboardingStartPayload` e propagar quando `values.phone` não estiver vazio (`trim().length > 0`).
+- Actualizar `__tests__/build-start-payload.test.ts`: substituir o teste "never includes phone" por "envia phone quando preenchido / omite quando vazio".
 
-## Verificações que já fiz
+### `src/routes/api/onboarding/start.ts`
+- Aceitar `phone: z.string().trim().max(40).optional()` no `PayloadSchema`.
+- No upsert (`leads` insert/update) gravar `phone` quando presente. `phone_normalized` fica nulo (normalização fora de scope deste plano).
+- Actualizar comentário do header ("Phone is no longer accepted" → "Phone optional").
 
-- `src/routes/api/onboarding/start.ts` aceita payload **sem `handle`** (linha 50: `handle: z.string().optional()` e apenas tracking-only — não persiste).
-- `OnboardingModal` usa `handle` só como metadata (drafts + tracking events) — passar string vazia é seguro funcionalmente.
-- `lead_session` cookie é setado no fim do `/start` (ou `/claim-existing` para OTP); o `getLeadSessionStatus` query pode ser invalidada e o loader re-corre.
-- `MissingLeadSession` é usado por 3 rotas: `checkout.report-full.tsx:94`, `checkout.authority-diagnosis.tsx:82`, `checkout.credits.tsx:119`.
+### i18n `src/i18n/locales/{pt,en}/gate.json`
+- Adicionar bloco `onboarding.qualification.{eyebrow,title,subtitle,placeholder,back,cta,error}`.
+- Adicionar `onboarding.final.right.{phoneLabel,phonePlaceholder,phoneOptional}`.
+- Ajustar `onboarding.final.left.eyebrow` para "Último passo" / "Last step" e `title` para os textos do mockup ("O teu relatório fica a um clique").
+- Ajustar `onboarding.final.right.cta` para "Gerar o meu relatório" (PT) / "Generate my report" (EN).
+- Bullet "report" no painel navy: já existe versão com `@handle`; manter para `purpose=analyze` e reutilizar `reportCheckout` para `purpose=checkout`.
 
-## Solução
+### Tracking
+- `trackOnboardingEvent` step indexes (`0..3`) revistos para reflectir 4 vistas: entry, qualification, final, otp. Sem mudança de nomes de eventos.
 
-**Substituir `MissingLeadSession` por um passo de onboarding inline** dentro do próprio checkout. Em vez de mostrar um dead-end, mostra o mesmo formulário do `OnboardingModal` (entry + final + OTP) embebido na coluna principal da página de checkout. Quando termina com sucesso, invalida a query da sessão e a página re-renderiza `CheckoutSteps` no estado normal.
+## Visual / styling (matching mockups)
 
-### Componente novo
+- Passo 1 (entry): manter card actual mas reduzir saturação do realce primário, aumentar arredondamento (`rounded-2xl`), eyebrow "Novo por aqui" como pill sobre a borda, conforme mockup 2 (já próximo).
+- Passo 3 (final): painel esquerdo navy puro (`bg-content-primary`), bullets com check cyan-300 finas, título Fraunces 28-32px. Direita: inputs com `h-12`, label 13.5px Inter medium, CTA `bg-primary` full-width, footer "RGPD · sem spam".
 
-`src/components/checkout/checkout-onboarding-inline.tsx` — variante "inline" do onboarding (não Dialog). Reutiliza:
-- `EntryStep` + `FinalStep` + `OtpStep` extraídos da modal (já são sub-componentes; tornar exports nomeados).
-- `useOnboardingDraft`, `buildStartPayload`, `trackOnboardingEvent`, `unlockFormSchema` — sem alterações.
-- Recebe props: `source` (`"pricing_page"` etc.), `productCode`, `onSuccess` (callback que invalida `leadSessionQueryOptions` e segue).
-- Passa `handle=""` ao chamar o endpoint (server já aceita).
+## Fora de scope
 
-### Wiring nas 3 rotas de checkout
+- Não alterar `/api/onboarding/check-email`, `claim-existing`, OTP, server-side credit grant.
+- Não alterar fluxo `purpose=analyze` (continua a funcionar com nova ordem; qualification vira passo intermédio também).
+- Não normalizar telefone, não validar formato (livre, opcional).
+- Não mexer em `/precos`, `CheckoutAccountGate`, ou rotas de checkout.
 
-Em `checkout.report-full.tsx`, `checkout.authority-diagnosis.tsx`, `checkout.credits.tsx`, substituir:
+## QA manual
 
-```tsx
-if (!leadStatus.hasLead) {
-  return <MissingLeadSession ... />;
-}
-```
-
-por:
-
-```tsx
-if (!leadStatus.hasLead) {
-  return (
-    <CheckoutOnboardingInline
-      source={search.source ?? "checkout_direct"}
-      productCode={SOURCE_PRODUCT}
-      onSuccess={() => queryClient.invalidateQueries(leadSessionQueryOptions)}
-    />
-  );
-}
-```
-
-O `useSuspenseQuery` re-faz fetch automaticamente quando a query é invalidada e o cookie já foi setado pelo `/start` (ou `/claim-existing`), portanto a página transita para `CheckoutSteps` sem reload completo nem perda dos query-params (`source`, `return`, `coupon`).
-
-### Copy do header inline (PT-PT)
-
-- Eyebrow: "Antes de pagar" (Inter uppercase)
-- H1 (Fraunces): "Cria a tua conta para continuar"
-- Subtítulo: "Em ~30 segundos. Usamos o teu email para enviar o recibo e dar acesso ao relatório."
-- Caixa de confiança (Inter, pequena): "Sem subscrição. Sem cobrança automática. Apagas a conta quando quiseres."
-
-Mantém a coluna lateral `OrderSummary` visível em `lg:` para o utilizador ver sempre o produto que está a comprar e o preço — reforça que o checkout não foi abandonado.
-
-### Manter `MissingLeadSession`?
-
-Não é eliminado, mas deixa de ser usado pelas 3 rotas de checkout. Fica disponível como fallback para situações em que invalidar a sessão (por ex. logout no meio do checkout) — pode ser removido num passo de cleanup futuro. Sem mudança nesse componente neste plano.
-
-## Ficheiros a tocar
-
-1. **`src/components/onboarding/onboarding-modal.tsx`** — extrair `EntryStep`, `FinalStep`, `OtpStep` como exports nomeados (já são componentes internos). Sem mudança de comportamento.
-2. **`src/components/checkout/checkout-onboarding-inline.tsx`** (novo) — variante inline, reutiliza os 3 steps + a lógica de submit / OTP da modal.
-3. **`src/routes/checkout.report-full.tsx`** — trocar `<MissingLeadSession ...>` por `<CheckoutOnboardingInline ...>`.
-4. **`src/routes/checkout.authority-diagnosis.tsx`** — idem.
-5. **`src/routes/checkout.credits.tsx`** — idem.
-6. **`src/i18n/locales/{pt,en}/gate.json`** — adicionar `onboarding.checkoutInline.{eyebrow,title,subtitle,trust}` (sem mexer nas existentes).
-7. **Tracking** — adicionar evento `checkout_onboarding_shown` com `{ source, product_code }` para medir quantos chegam ao checkout sem sessão. Reutiliza `trackOnboardingEvent`.
-
-## Comportamentos invariantes (não mudam)
-
-- `OnboardingModal` em `/analyze/$username` continua igual (com handle real).
-- Servidor `/api/onboarding/start` e `/api/onboarding/claim-existing` — zero mudanças.
-- Verificação por OTP, créditos só após verificação, idempotência — tudo intacto.
-- Lead criado sem handle: campo `handle` continua a ser opcional em `leads`. O utilizador pode mais tarde gerar análises e o lead fica naturalmente associado ao primeiro snapshot que crie.
-- `/checkout/credits` (compra de pack) com lead já existente — sem mudança, continua a abrir directamente o billing form.
-
-## Riscos e edge-cases
-
-1. **Email já existente** — o `/start` rejeita com `EMAIL_REQUIRES_VERIFICATION` e a UI tem de cair no passo OTP. Já está suportado no modal; herdamos o mesmo handler.
-2. **Cookie não chega a tempo de re-render** — `invalidateQueries` força refetch via `useSuspenseQuery`; o `getLeadSessionStatus` lê o cookie da request. Como o `/start` já setou o `Set-Cookie` antes de devolver, a próxima request server-fn já o envia. Cobrir com toast "A preparar checkout…" durante o refetch.
-3. **Coupon / return / source nos query-params** — não tocamos no URL; `Route.useSearch()` mantém-nos disponíveis no re-render do `CheckoutSteps`.
-4. **OTP modal abre como overlay** — para o passo OTP usamos a mesma UI da modal mas renderizada inline (sem `<Dialog>`). Verificar que `verifyOtp` + `claim-existing` continuam a funcionar sem mudar o ciclo de vida do form.
-5. **Falta de handle no lead** — alguns reports/listas admin assumem `handle` presente; verificar `admin/leads` e `lead-context-labels` não quebram quando o campo é `null`. Spot-check rápido na build.
-
-## Plano de implementação (build mode)
-
-1. Extrair `EntryStep`/`FinalStep`/`OtpStep` como exports nomeados em `onboarding-modal.tsx` (sem alterar interna).
-2. Criar `checkout-onboarding-inline.tsx` reaproveitando o submit handler / OTP handler da modal — mover a lógica partilhada para um hook `useOnboardingSubmit({ handle: "" })`.
-3. Trocar `MissingLeadSession` pelas 3 rotas de checkout.
-4. Adicionar copy i18n.
-5. Adicionar `trackOnboardingEvent("checkout_onboarding_shown", { source, product_code })`.
-6. Run vitest nos ficheiros tocados + smoke manual em `/precos` → cada um dos 3 CTAs.
-
-## QA manual (após implementação)
-
-1. Sessão limpa (cookies apagados), abrir `/precos` em incógnito → clicar "Obter relatório completo" → ver formulário inline (não dead-end). Confirmar que o card lateral mostra "Relatório completo · 9€".
-2. Submeter email novo → entrar no passo final (2-col) → submeter → ver `CheckoutSteps` (Step 1 — confirmar desbloqueio). Sem redirect para `/precos` nem para `/`.
-3. Repetir com email já registado → ver passo OTP inline → introduzir código → seguir para checkout.
-4. Repetir cliques em "Reservar diagnóstico" (97€) e (com sessão existente) "Comprar 1 crédito" (vindo de outra origem) — confirmar que utilizadores com sessão saltam o passo inline.
-5. Confirmar que `?source=pricing_page&return=/precos&coupon=XPTO` são preservados depois da criação de conta.
-
-## Não inclui
-
-- Não removo `MissingLeadSession` (fica como fallback defensivo).
-- Não toco em `OnboardingModal` para além de extrair sub-componentes.
-- Não mudo nada no servidor, schema, RLS, webhooks, créditos.
-- Não adiciono campo "Instagram username" no checkout — não é necessário para criar a conta nem para pagar.
+1. `/precos` em incógnito → "Obter relatório completo" → modal abre no passo 1 (só email).
+2. Submeter email novo → passo 2 (qualificação) → escolher opção → passo 3 (nome + email pré-preenchido + telemóvel opcional + GDPR) → submit → OTP → conta criada + 2 créditos.
+3. Submeter email existente no passo 1 → vai directo para OTP (sem qualificação, comportamento legacy preservado).
+4. Voltar no passo 2 mantém email; voltar no passo 3 mantém qualificação.
+5. Telemóvel deixado em branco não falha; preenchido grava em `leads.phone`.
