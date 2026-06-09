@@ -99,10 +99,11 @@ export const unlockFormSchema = z
     // Kept as `optional()` in the schema so legacy callers (admin, tests)
     // that still pass a value don't break; the new form never sets it.
     phone: z.string().trim().max(40).optional(),
-    // Required qualification — single select asked on the final step.
-    qualification: z.enum(LEAD_QUALIFICATIONS, {
-      required_error: "Escolhe uma opção",
-    }),
+    // Qualification (Fase 5 modal). Optional at the shared-schema level so
+    // legacy callers (old unlock flow, tests) still validate; the new
+    // onboarding modal enforces it client-side and the server route
+    // (`/api/onboarding/start`) requires it via its own Zod schema.
+    qualification: z.enum(LEAD_QUALIFICATIONS).optional(),
     profile_ownership: z.enum(PROFILE_OWNERSHIPS, {
       required_error: "Escolhe uma opção",
     }),
