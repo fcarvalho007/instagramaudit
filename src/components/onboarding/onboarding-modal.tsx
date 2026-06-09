@@ -1040,22 +1040,64 @@ function FinalStepBody({
           >
             Palavra-passe
           </Label>
-          <Input
-            id="onb-password"
-            type="password"
-            autoComplete="new-password"
-            placeholder="Mínimo 8 caracteres"
-            aria-invalid={Boolean(passwordError)}
-            className="text-base"
-            {...form.register("password")}
-            data-testid="onboarding-password"
-          />
+          <div className="relative">
+            <Input
+              id="onb-password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
+              placeholder="Mínimo 8 caracteres"
+              aria-invalid={Boolean(passwordError)}
+              className="pr-10 text-base"
+              {...form.register("password")}
+              data-testid="onboarding-password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-pressed={showPassword}
+              aria-label={
+                showPassword ? "Esconder palavra-passe" : "Mostrar palavra-passe"
+              }
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-content-tertiary hover:text-content-primary"
+              data-testid="onboarding-password-toggle"
+            >
+              {showPassword ? (
+                <EyeOff className="size-4" aria-hidden />
+              ) : (
+                <Eye className="size-4" aria-hidden />
+              )}
+            </button>
+          </div>
+          {passwordValue ? (
+            <div className="flex items-center gap-2" aria-live="polite">
+              <div className="h-1 flex-1 rounded-full bg-border-default overflow-hidden">
+                <div
+                  className={`h-full transition-all ${STRENGTH_TONE[strength]}`}
+                  style={{
+                    width:
+                      strength === "strong"
+                        ? "100%"
+                        : strength === "fair"
+                          ? "66%"
+                          : "33%",
+                  }}
+                />
+              </div>
+              <span className="text-[11.5px] text-content-tertiary">
+                {strength === "strong"
+                  ? "Forte"
+                  : strength === "fair"
+                    ? "Aceitável"
+                    : "Curta"}
+              </span>
+            </div>
+          ) : null}
           {passwordError ? (
             <p className="text-[12.5px] text-destructive">{passwordError}</p>
           ) : (
             <p className="text-[12px] text-content-secondary">
-              Usa pelo menos 8 caracteres. Vamos validar contra palavras-passe
-              comuns para te proteger.
+              {STRENGTH_LABELS[strength] ||
+                "Pelo menos 8 caracteres, com letra e número. Validamos contra palavras-passe comuns."}
             </p>
           )}
         </div>
@@ -1067,15 +1109,32 @@ function FinalStepBody({
           >
             Confirmar palavra-passe
           </Label>
-          <Input
-            id="onb-confirm-password"
-            type="password"
-            autoComplete="new-password"
-            aria-invalid={Boolean(confirmError)}
-            className="text-base"
-            {...form.register("confirm_password")}
-            data-testid="onboarding-confirm-password"
-          />
+          <div className="relative">
+            <Input
+              id="onb-confirm-password"
+              type={showConfirm ? "text" : "password"}
+              autoComplete="new-password"
+              aria-invalid={Boolean(confirmError)}
+              className="pr-10 text-base"
+              {...form.register("confirm_password")}
+              data-testid="onboarding-confirm-password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirm((v) => !v)}
+              aria-pressed={showConfirm}
+              aria-label={
+                showConfirm ? "Esconder palavra-passe" : "Mostrar palavra-passe"
+              }
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-content-tertiary hover:text-content-primary"
+            >
+              {showConfirm ? (
+                <EyeOff className="size-4" aria-hidden />
+              ) : (
+                <Eye className="size-4" aria-hidden />
+              )}
+            </button>
+          </div>
           {confirmError ? (
             <p className="text-[12.5px] text-destructive">{confirmError}</p>
           ) : null}
