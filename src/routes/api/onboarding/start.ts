@@ -526,15 +526,11 @@ export async function handleOnboardingStart(
       );
     }
 
-    // Liga o lead ao novo auth user.
-    try {
-      await supabaseAdmin
-        .from("leads")
-        .update({ user_id: authCreate.userId })
-        .eq("id", upserted.leadId);
-    } catch (err) {
-      console.warn("[onboarding/start] lead user_id link warn", err);
-    }
+    // O trigger `handle_new_user` em `auth.users` corre
+    // `link_user_to_existing_reports`, que liga `profiles.lead_id` ao
+    // lead com o mesmo `email_normalized`. Não precisamos de coluna
+    // dedicada em `leads`.
+    void authCreate.userId; // referenced for clarity; trigger does the work
 
     // `password_with_email_verification` adia cookie + créditos para
     // depois da confirmação por email (Supabase email + /reset-password
