@@ -403,12 +403,10 @@ export function OnboardingModal({
         });
         return;
       }
-      // `password_with_email_verification`: precisa de clicar no email.
-      // Tratamos com a mesma cópia que o login pendente — neste momento
-      // este modo não está activo no UX público, só por env override.
-      setServerError(
-        "Verifica o teu email para activar a conta antes de continuar.",
-      );
+      // Em `AUTH_MODE=password` o servidor NUNCA devolve um estado
+      // pendente. Se chegarmos aqui é um erro de protocolo — mostrar
+      // erro genérico em vez de painel de verificação por email.
+      setServerError(t("onboarding.errors.generic"));
     } catch {
       setServerError(t("onboarding.errors.network"));
       trackOnboardingEvent({
