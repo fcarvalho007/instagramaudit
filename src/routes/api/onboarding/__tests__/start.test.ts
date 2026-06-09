@@ -140,6 +140,25 @@ vi.mock("@/lib/leads/lead-cookie.server", () => ({
   setLeadCookie: (leadId: string) => setLeadCookieMock(leadId),
 }));
 
+// Mock dos emails transactional disparados em fire-and-forget — evita
+// chamadas reais ao Brevo/Resend nos testes.
+const sendReportAccessEmailMock = vi.fn(async () => ({
+  ok: true as const,
+  messageId: "mock-msg-id",
+  provider: "brevo" as const,
+}));
+vi.mock("@/lib/email/send-report-access.server", () => ({
+  sendReportAccessEmail: (args: unknown) => sendReportAccessEmailMock(args),
+}));
+const sendVerificationEmailMock = vi.fn(async () => ({
+  ok: true as const,
+  messageId: "mock-msg-id",
+  provider: "brevo" as const,
+}));
+vi.mock("@/lib/email/send-verification.server", () => ({
+  sendVerificationEmail: (args: unknown) => sendVerificationEmailMock(args),
+}));
+
 // Import AFTER mocks.
 import { handleOnboardingStart } from "@/routes/api/onboarding/start";
 
