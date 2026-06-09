@@ -1011,35 +1011,50 @@ function FinalStepBody({
           <p className="text-[12.5px] text-destructive">{consentError}</p>
         ) : null}
 
+        {hiddenErrorKeys.length > 0 ? (
+          <Alert variant="destructive" aria-live="polite">
+            <AlertDescription className="flex items-center justify-between gap-3">
+              <span>{t("onboarding.final.right.missingQualification")}</span>
+              <button
+                type="button"
+                onClick={onMissingQualification}
+                className="font-semibold underline shrink-0"
+              >
+                {t("onboarding.final.right.back")}
+              </button>
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
         {serverError ? (
-          <Alert variant="destructive">
+          <Alert variant="destructive" aria-live="polite">
             <AlertDescription>{serverError}</AlertDescription>
           </Alert>
         ) : null}
 
-        <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 pt-1 min-w-0">
+        <div className="flex flex-col-reverse md:flex-row gap-2 md:gap-3 pt-1 min-w-0">
           <Button
             type="button"
-            variant="outline"
-            size="lg"
+            variant="ghost"
+            size="default"
             onClick={onBack}
             disabled={submitting}
-            className="w-full sm:w-auto sm:flex-shrink-0 rounded-lg min-w-0"
+            className="w-full md:w-auto md:flex-shrink-0 rounded-lg min-w-0 text-content-secondary"
           >
-            <ArrowLeft className="size-4" aria-hidden />
+            <ArrowLeft className="size-4 hidden md:inline" aria-hidden />
             {t("onboarding.final.right.back")}
           </Button>
           <Button
             type="submit"
             size="lg"
             disabled={submitting}
-            className="w-full sm:flex-1 sm:min-w-0 rounded-lg font-medium"
+            className="w-full md:flex-1 md:min-w-0 rounded-lg font-medium"
             data-testid="onboarding-final-submit"
           >
             {submitting ? (
               <>
                 <Loader2 className="size-4 animate-spin" aria-hidden />
-                <span className="truncate">{t("onboarding.submitting")}</span>
+                <span>{t("onboarding.submitting")}</span>
               </>
             ) : (
               <>
@@ -1048,7 +1063,7 @@ function FinalStepBody({
                 ) : (
                   <Sparkles className="size-4" aria-hidden />
                 )}
-                <span className="truncate">
+                <span>
                   {t(isCheckout ? "onboarding.final.right.ctaCheckout" : "onboarding.final.right.cta")}
                 </span>
               </>
