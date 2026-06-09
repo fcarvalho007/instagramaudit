@@ -10,6 +10,8 @@
 
 import type { SnapshotPost } from "./snapshot-to-report-data";
 import type { ReportData } from "@/components/report/report-mock-data";
+import type { CommentIntelligence } from "@/lib/analysis/types";
+import type { VisualCoverAnalysis } from "@/lib/report/visual-cover-types";
 
 /**
  * Forma mínima da entrada `aiInsightsV2.sections.language` que este
