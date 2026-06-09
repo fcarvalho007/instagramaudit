@@ -169,6 +169,70 @@
       "haveAccount": "Já tens conta?",
       "haveAccountCta": "Entrar"
     },
+    "entry": {
+      "eyebrow": "RELATÓRIO GRATUITO",
+      "title": "Cria conta e vê o relatório",
+      "subtitle": "Vais analisar <1>@{{handle}}</1> — é grátis.",
+      "newBadge": "Novo por aqui",
+      "newTitle": "Criar conta grátis",
+      "newPromise": "Recebes 2 análises grátis e o relatório fica guardado.",
+      "emailPlaceholder": "o teu email",
+      "emailInvalid": "Confirma o teu email — parece inválido.",
+      "newCta": "Criar conta e abrir relatório",
+      "checking": "A verificar…",
+      "haveAccount": "Já tens conta?",
+      "haveAccountCta": "Entrar com email  →",
+      "trustLine": "Respeitamos o RGPD · sem spam"
+    },
+    "final": {
+      "left": {
+        "eyebrow": "VAIS LER O RELATÓRIO DE",
+        "handle": "@{{handle}}",
+        "tagline": "Análise editorial, métricas e benchmarks — preparada em segundos.",
+        "bullets": {
+          "credits": "Conta privada com <strong>2 créditos</strong> grátis",
+          "save": "Todos os relatórios futuros guardados",
+          "privacy": "Apenas dados públicos · RGPD"
+        }
+      },
+      "right": {
+        "title": "Últimos detalhes",
+        "subtitle": "Para te tratarmos pelo nome e guardarmos o relatório.",
+        "nameLabel": "Nome",
+        "namePlaceholder": "Ana Marques",
+        "emailLabel": "Email",
+        "emailPlaceholder": "ana@empresa.pt",
+        "phoneLabel": "Telemóvel",
+        "phoneOptional": "opcional",
+        "phonePlaceholder": "+351 912 345 678",
+        "consentText": "Aceito o <a>tratamento dos meus dados</a> para gerar, guardar e enviar este relatório, e li a <a2>política de privacidade</a2>.",
+        "consentMandatory": "(obrigatório)",
+        "marketingText": "Quero receber novidades e benchmarks.",
+        "marketingOptional": "Opcional.",
+        "cta": "Abrir relatório  →",
+        "back": "Voltar"
+      }
+    },
+    "otp": {
+      "eyebrow": "CONFIRMA QUE É A TUA CONTA",
+      "title": "Enviámos um código para {{maskedEmail}}",
+      "subtitle": "Abre o email e indica o código de 6 dígitos para abrir o relatório.",
+      "codeLabel": "Código de 6 dígitos",
+      "codePlaceholder": "123456",
+      "cta": "Confirmar e abrir  →",
+      "verifying": "A confirmar…",
+      "sending": "A enviar código…",
+      "resend": "Reenviar código",
+      "resendIn": "Reenviar em {{seconds}}s",
+      "back": "Voltar",
+      "errors": {
+        "invalid": "Código inválido. Confirma os 6 dígitos.",
+        "expired": "Código expirado. Pede um novo.",
+        "sendFailed": "Não conseguimos enviar o código. Tenta novamente.",
+        "network": "Erro de ligação. Verifica a internet e tenta novamente.",
+        "claimFailed": "Não conseguimos abrir o relatório. Tenta de novo."
+      }
+    },
     "login": {
       "eyebrow": "BEM-VINDO DE VOLTA",
       "title": "Entra e abre o relatório",
