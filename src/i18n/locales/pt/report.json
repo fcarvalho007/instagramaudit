@@ -662,7 +662,8 @@
         "period_success_toast_cache": "Análise reutilizada sem novo consumo.",
         "period_success_toast_fresh": "Nova análise gerada. 1 crédito consumido.",
         "period_success_toast_neutral": "Análise por período carregada.",
-        "period_error_requires_pro": "Esta janela exige acesso Pro activo."
+        "period_error_requires_pro": "Esta janela exige acesso Pro activo.",
+        "period_error_window_90d_budget": "A análise de 90 dias está temporariamente indisponível por segurança operacional. Tenta novamente mais tarde ou usa a janela de 30 dias."
       }
     },
     "status": {

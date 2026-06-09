@@ -33,7 +33,7 @@ export const PUBLIC_APP_CONFIG_DEFAULTS: PublicAppConfig = {
   freeMonthlyReportLimit: 3,
   contactEmail: "hello@auditprofiles.com",
   compareEnabled: false,
-  proWindow90dEnabled: false,
+  proWindow90dEnabled: true,
 };
 
 export const getPublicAppConfig = createServerFn({ method: "GET" }).handler(

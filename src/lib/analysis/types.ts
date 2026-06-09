@@ -183,6 +183,7 @@ export type PublicAnalysisErrorCode =
   | "INSUFFICIENT_CREDITS"
   | "WINDOW_REQUIRES_PRO"
   | "WINDOW_90D_DISABLED"
+  | "WINDOW_90D_BUDGET_EXCEEDED"
   | "COMPETITORS_REQUIRE_PRO";
 
 export interface PublicAnalysisFailure {

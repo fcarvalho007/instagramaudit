@@ -717,6 +717,10 @@ function ExploreSection({
               setErrorMessage(
                 t("nav.explore.consume_dialog.period_error_requires_pro"),
               );
+            } else if (result.error_code === "WINDOW_90D_BUDGET_EXCEEDED") {
+              setErrorMessage(
+                t("nav.explore.consume_dialog.period_error_window_90d_budget"),
+              );
             } else {
               setErrorMessage(
                 t("nav.explore.consume_dialog.error_generic_with_code", {
