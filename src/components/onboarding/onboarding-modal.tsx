@@ -1233,13 +1233,21 @@ function QualificationStepBody({
           type="button"
           size="lg"
           onClick={handleContinue}
-          disabled={submitting}
+          disabled={submitting || !ownership || !goal}
           className="w-full sm:flex-1 sm:min-w-0 rounded-lg font-medium"
           data-testid="onboarding-qualification-continue"
         >
           <span className="truncate">{t("onboarding.qualification.cta")}</span>
         </Button>
       </div>
+      {!submitting && (!ownership || !goal) ? (
+        <p
+          className="mt-2 text-xs text-content-tertiary text-center sm:text-right"
+          aria-live="polite"
+        >
+          {t("onboarding.qualification.missingHint")}
+        </p>
+      ) : null}
     </div>
   );
 }
