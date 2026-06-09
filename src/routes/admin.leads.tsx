@@ -27,7 +27,7 @@ import { OrphanAccountsPanel } from "@/components/admin/v2/beta-leads/orphan-acc
 import type { EnrichedLead } from "@/lib/admin/kanban-columns";
 import { adminFetch } from "@/lib/admin/fetch";
 
-type PipelineView = "pipeline" | "tabela";
+type PipelineView = "pipeline" | "tabela" | "diagnostico";
 
 export const Route = createFileRoute("/admin/leads")({
   component: LeadsPage,
@@ -36,7 +36,9 @@ export const Route = createFileRoute("/admin/leads")({
   ): { lead?: string; view?: PipelineView } => ({
     lead: typeof search.lead === "string" ? search.lead : undefined,
     view:
-      search.view === "tabela" || search.view === "pipeline"
+      search.view === "tabela" ||
+      search.view === "pipeline" ||
+      search.view === "diagnostico"
         ? search.view
         : undefined,
   }),
@@ -141,7 +143,12 @@ function LeadsPage() {
 
   const setView = useCallback(
     (next: string) => {
-      const v: PipelineView = next === "tabela" ? "tabela" : "pipeline";
+      const v: PipelineView =
+        next === "tabela"
+          ? "tabela"
+          : next === "diagnostico"
+            ? "diagnostico"
+            : "pipeline";
       navigate({
         to: "/admin/leads",
         search: {
