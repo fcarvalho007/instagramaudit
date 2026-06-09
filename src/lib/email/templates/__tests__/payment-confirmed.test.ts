@@ -20,7 +20,7 @@ describe("renderPaymentConfirmed", () => {
     expect(html).toContain("Créditos ativados");
     expect(html).toContain("<strong style=\"color:#0a0e1a;\">3 créditos</strong>");
     expect(html).toContain("1 incluído na compra");
-    expect(html).toContain("2 créditos extra por esta fase beta");
+    expect(html).toContain("2 créditos extra de lançamento");
     expect(text).toContain("— Créditos ativados —");
     expect(text).toContain("ativámos 3 créditos");
   });
