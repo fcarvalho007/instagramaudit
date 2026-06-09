@@ -284,26 +284,18 @@ export const Route = createFileRoute("/api/admin/leads-bulk")({
 
         // 6) lead_payments / credit_ledger / lead_entitlements /
         //    lead_report_unlocks / coupon_redemptions / lead_reports
-        const cascadeTables: Array<keyof typeof details> = [
-          "payments",
-          "credit_ledger",
-          "entitlements",
-          "report_unlocks",
-          "coupon_redemptions",
-          "lead_reports",
+        const cascade: Array<{ key: keyof typeof details; table: string }> = [
+          { key: "payments", table: "lead_payments" },
+          { key: "credit_ledger", table: "credit_ledger" },
+          { key: "entitlements", table: "lead_entitlements" },
+          { key: "report_unlocks", table: "lead_report_unlocks" },
+          { key: "coupon_redemptions", table: "coupon_redemptions" },
+          { key: "lead_reports", table: "lead_reports" },
         ];
-        const tableMap: Record<(typeof cascadeTables)[number], string> = {
-          payments: "lead_payments",
-          credit_ledger: "credit_ledger",
-          entitlements: "lead_entitlements",
-          report_unlocks: "lead_report_unlocks",
-          coupon_redemptions: "coupon_redemptions",
-          lead_reports: "lead_reports",
-        };
-        for (const key of cascadeTables) {
-          const table = tableMap[key];
+        for (const { key, table } of cascade) {
           const { error, count } = await supabaseAdmin
-            .from(table)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .from(table as any)
             .delete({ count: "exact" })
             .in("lead_id", ids);
           if (error) {
