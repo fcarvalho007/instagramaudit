@@ -29,6 +29,7 @@ import { PUBLIC_PRODUCTS } from "@/lib/payments/products";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyCreditBalance } from "@/lib/credits/credits.functions";
 import { fetchPublicAnalysis } from "@/lib/analysis/client";
+import { usePublicAppConfig } from "@/lib/config/use-app-config";
 import {
   ConsumeCreditDialog,
   type ConsumeCreditIntent,
