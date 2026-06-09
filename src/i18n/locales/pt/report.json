@@ -769,6 +769,17 @@
       "media": "PRIORIDADE MÉDIA",
       "oportunidade": "OPORTUNIDADE"
     },
+    "priorities_category": {
+      "testar": "Testar",
+      "corrigir": "Corrigir",
+      "repetir": "Repetir",
+      "oportunidade": "Oportunidade"
+    },
+    "priorities_source": {
+      "ai": "IA",
+      "deterministic": "Regra"
+    },
+    "priorities_based_on": "Baseado em:",
     "cta_aria": "Ver análise completa",
     "cta_lead": "Quer aprofundar?",
     "cta_body": "A versão completa abre cada pergunta em análise por post, exemplos de captions e plano de execução a 30 dias.",
