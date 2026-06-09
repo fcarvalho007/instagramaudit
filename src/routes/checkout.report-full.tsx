@@ -328,17 +328,34 @@ function CheckoutSteps() {
                 Obter relatório completo
               </h1>
               <p className="mt-2 text-sm text-content-secondary leading-relaxed">
-                Desbloqueia as secções premium e transforma a visão inicial
-                num diagnóstico completo.
+                Desbloqueia as secções premium agora — ou compra um pack para
+                desbloquear vários relatórios à medida que analisas novos perfis.
               </p>
             </header>
+            <ReportPlanChooser
+              value={planCode}
+              onChange={(code) => {
+                setPlanCode(code);
+                setSelectedProduct(code);
+                setUpsellAccepted(false);
+                trackEvent({
+                  data: {
+                    eventType: "checkout_plan_selected",
+                    metadata: {
+                      product_code: code,
+                      source_product: SOURCE_PRODUCT,
+                    },
+                  },
+                }).catch(() => {});
+              }}
+            />
             <ConfirmUnlockCard />
             <StepActions
               backLabel={search.return ? "Voltar" : "Cancelar"}
               onBack={goBack}
               nextLabel="Continuar"
               onNext={() => {
-                trackStepComplete();
+                trackStepComplete({ selected_plan: planCode });
                 goNext();
               }}
             />
