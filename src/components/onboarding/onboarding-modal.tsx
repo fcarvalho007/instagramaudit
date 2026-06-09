@@ -1036,7 +1036,7 @@ function FinalStepBody({
           <Button
             type="button"
             variant="ghost"
-            size="default"
+            size="md"
             onClick={onBack}
             disabled={submitting}
             className="w-full md:w-auto md:flex-shrink-0 rounded-lg min-w-0 text-content-secondary"
