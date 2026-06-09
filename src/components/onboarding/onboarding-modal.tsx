@@ -1046,44 +1046,6 @@ function FinalStepBody({
           )}
         </div>
 
-        <div className="space-y-1.5">
-          <Label
-            htmlFor="onb-confirm-password"
-            className="text-[13.5px] font-medium text-content-primary"
-          >
-            Confirmar palavra-passe
-          </Label>
-          <div className="relative">
-            <Input
-              id="onb-confirm-password"
-              type={showConfirm ? "text" : "password"}
-              autoComplete="new-password"
-              aria-invalid={Boolean(confirmError)}
-              className="pr-10 text-base"
-              {...form.register("confirm_password")}
-              data-testid="onboarding-confirm-password"
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirm((v) => !v)}
-              aria-pressed={showConfirm}
-              aria-label={
-                showConfirm ? "Esconder palavra-passe" : "Mostrar palavra-passe"
-              }
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-content-tertiary hover:text-content-primary"
-            >
-              {showConfirm ? (
-                <EyeOff className="size-4" aria-hidden />
-              ) : (
-                <Eye className="size-4" aria-hidden />
-              )}
-            </button>
-          </div>
-          {confirmError ? (
-            <p className="text-[12.5px] text-destructive">{confirmError}</p>
-          ) : null}
-        </div>
-
         <div className="rounded-xl border border-border-default/40 bg-surface-muted/40 p-3 space-y-2.5">
           <label htmlFor="onb-gdpr" className="flex items-start gap-2.5 cursor-pointer">
             <Checkbox
