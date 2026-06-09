@@ -33,6 +33,11 @@ import {
   assertOpenAiDailyBudgetAvailable,
   OpenAiBudgetExceededError,
 } from "@/lib/security/openai-budget.server";
+import { isLovableAiAllowed } from "@/lib/security/lovable-ai-allowlist";
+import {
+  assertLovableAiDailyBudgetAvailable,
+  LovableAiBudgetExceededError,
+} from "@/lib/security/lovable-ai-budget.server";
 import { buildMarketSignals } from "@/lib/dataforseo/market-signals";
 import {
   buildPersistedSummary,
@@ -100,7 +105,7 @@ export async function runEnrichment(
     case "caption_semantic":
       return runCaptionSemantic(ctx, analysisEventId);
     case "comparison_readings":
-      return runComparisonReadings(ctx);
+      return runComparisonReadings(ctx, analysisEventId);
     default:
       return { ok: false, payloadPatch: null, error: `unknown type: ${type}` };
   }
@@ -112,8 +117,33 @@ export async function runEnrichment(
 
 async function runComparisonReadings(
   ctx: SnapshotContext,
+  analysisEventId: string | null,
 ): Promise<EnrichmentResult> {
   try {
+    if (!isLovableAiAllowed(ctx.profile.username)) {
+      console.info(`${LOG} comparison_readings: Lovable AI disabled or not allowed — skipping`);
+      return {
+        ok: true,
+        payloadPatch: null,
+        skipReason: "LOVABLE_AI_DISABLED_OR_NOT_ALLOWED",
+      };
+    }
+    try {
+      await assertLovableAiDailyBudgetAvailable();
+    } catch (err) {
+      if (err instanceof LovableAiBudgetExceededError) {
+        console.warn(
+          `${LOG} comparison_readings skipped — daily Lovable AI budget exhausted`,
+          { spent: err.spentUsd, cap: err.capUsd },
+        );
+        return {
+          ok: true,
+          payloadPatch: null,
+          skipReason: "LOVABLE_AI_BUDGET_EXCEEDED",
+        };
+      }
+      throw err;
+    }
     const usable = ctx.competitors.filter(
       (c) => c && (c as { success?: boolean }).success !== false,
     );
@@ -123,6 +153,7 @@ async function runComparisonReadings(
     }
     return await generateComparisonReadingsForSnapshot(
       ctx.previousPayload as Record<string, unknown>,
+      { handle: ctx.profile.username, analysisEventId },
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
