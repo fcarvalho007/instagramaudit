@@ -385,14 +385,6 @@ function AnalyzeReady({
 }) {
   const shareActions = useReportShareActions({ snapshotId });
 
-  // Load published module visibility overrides (silent fallback to static defaults)
-  const [featuresOverride, setFeaturesOverride] = useState<VariantFeatures | null>(null);
-  useEffect(() => {
-    getPublishedFeatures({ data: { variant: "public_mvp" } })
-      .then((features) => setFeaturesOverride(features))
-      .catch(() => { /* silent fallback — static defaults used */ });
-  }, []);
-
   // Onboarding-first flow: chegar a este componente já implica
   // `lead_session` cookie válido (o servidor devolve ONBOARDING_REQUIRED
   // caso contrário em `/api/analyze-public-v1`). Logo, todos os
@@ -420,6 +412,30 @@ function AnalyzeReady({
     };
   }, []);
 
+  // Variant efectiva: comuta para `pro_preview` assim que o servidor confirma
+  // o entitlement `report_full_9`. Sem este switch, as feature flags do shell
+  // mantêm `blockPerformance: "hidden"` (config de `public_mvp`) e o Bloco 03
+  // nunca renderiza — mesmo com premiumUnlocked=true.
+  const effectiveVariant: "public_mvp" | "pro_preview" = premiumUnlocked
+    ? "pro_preview"
+    : "public_mvp";
+
+  // Load published module visibility overrides (silent fallback to static
+  // defaults). Refetch quando a variant efectiva muda.
+  const [featuresOverride, setFeaturesOverride] = useState<VariantFeatures | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setFeaturesOverride(null);
+    getPublishedFeatures({ data: { variant: effectiveVariant } })
+      .then((features) => {
+        if (!cancelled) setFeaturesOverride(features);
+      })
+      .catch(() => { /* silent fallback — static defaults used */ });
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveVariant]);
+
   // Track report view (fire-and-forget). Guarded por module-level Set +
   // sessionStorage para sobreviver a StrictMode double-invokes, remounts entre
   // route changes e refreshes dentro do mesmo tab.
@@ -432,7 +448,7 @@ function AnalyzeReady({
         eventType: "report_viewed",
         snapshotId,
         handle: (payload as any).instagram_username ?? undefined,
-        metadata: { variant: "public_mvp" },
+        metadata: { variant: effectiveVariant },
       },
     }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -446,7 +462,7 @@ function AnalyzeReady({
         payload={payload}
         analyzedAtIso={analyzedAtIso}
         expiresAtIso={expiresAtIso}
-        variant="public_mvp"
+        variant={effectiveVariant}
         featuresOverride={featuresOverride}
         lockBoundary="engagement"
         unlocked={unlocked}
