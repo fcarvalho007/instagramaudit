@@ -60,7 +60,7 @@ const FORMAT_STYLE: Record<string, { dot: string; iconColor: string; icon: typeo
   Carousels: { dot: "bg-emerald-300", iconColor: "text-emerald-600", icon: GalleryHorizontalEnd },
   Imagens: { dot: "bg-amber-300", iconColor: "text-amber-600", icon: Image },
   Video: { dot: "bg-sky-300", iconColor: "text-sky-600", icon: Play },
-  unknown: { dot: "bg-slate-300", iconColor: "text-slate-500", icon: Image },
+  unknown: { dot: "bg-content-tertiary", iconColor: "text-content-tertiary", icon: Image },
 };
 
 const FORMAT_HEX: Record<FormatKey, string> = {
