@@ -160,7 +160,7 @@ export function ReportEngagementBenchmarkChart({
               >
                 <div className="flex items-center gap-2 sm:gap-3">
                   {/* Label — no numbering */}
-                  <div className="flex flex-col leading-tight min-w-[56px] sm:min-w-[100px] shrink-0">
+                  <div className="flex flex-col leading-tight min-w-[44px] sm:min-w-[100px] shrink-0">
                     <span className="text-[13px] font-bold text-content-primary">
                       {tier.tierLabel}
                     </span>
@@ -235,7 +235,7 @@ export function ReportEngagementBenchmarkChart({
                   {/* Value — tier reference (consistent with inactive rows) */}
                   <span
                     className={cn(
-                      "tabular-nums text-[14px] sm:text-[15px] font-bold shrink-0 min-w-[48px] sm:min-w-[64px] text-right",
+                      "tabular-nums text-[14px] sm:text-[15px] font-bold shrink-0 min-w-[40px] sm:min-w-[64px] text-right",
                       isPositive ? "text-signal-success" : "text-signal-danger"
                     )}
                   >
@@ -256,7 +256,7 @@ export function ReportEngagementBenchmarkChart({
             >
               <div className="flex items-center gap-2 sm:gap-3">
                 {/* Label — no numbering */}
-                <div className="flex flex-col leading-tight min-w-[56px] sm:min-w-[100px] shrink-0">
+                <div className="flex flex-col leading-tight min-w-[44px] sm:min-w-[100px] shrink-0">
                   <span className="text-[13px] sm:text-[14px] font-semibold text-content-secondary">
                     {tier.tierLabel}
                   </span>
@@ -279,7 +279,7 @@ export function ReportEngagementBenchmarkChart({
                 </div>
 
                 {/* Value */}
-                <span className="text-[14px] sm:text-[15px] tabular-nums font-semibold shrink-0 min-w-[48px] sm:min-w-[64px] text-right text-content-secondary">
+                <span className="text-[14px] sm:text-[15px] tabular-nums font-semibold shrink-0 min-w-[40px] sm:min-w-[64px] text-right text-content-secondary">
                   {fmtRate(tier.engagementRatePct)}
                 </span>
               </div>
@@ -290,7 +290,7 @@ export function ReportEngagementBenchmarkChart({
 
       {/* X-axis footer */}
       <div
-        className="flex justify-between ml-[calc(12px+64px+8px)] sm:ml-[calc(16px+100px+12px)] mr-[calc(12px+56px+8px)] sm:mr-[calc(16px+60px+12px)]"
+        className="flex justify-between ml-[calc(12px+44px+8px)] sm:ml-[calc(16px+100px+12px)] mr-[calc(12px+40px+8px)] sm:mr-[calc(16px+60px+12px)]"
         aria-hidden="true"
       >
         {axisSteps.map((v) => (
