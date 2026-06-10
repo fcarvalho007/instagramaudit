@@ -478,7 +478,7 @@ function FormatProportionBar({
         </div>
 
         {/* Right — cinematic vertical proportion column */}
-        <div className="flex flex-col w-[88px] sm:w-[104px] md:w-[128px] h-[156px] md:h-[180px] rounded-xl overflow-hidden border border-border-subtle/60 shadow-sm">
+        <div className="flex flex-col w-[80px] sm:w-[104px] md:w-[128px] h-[156px] md:h-[180px] rounded-xl overflow-hidden border border-border-subtle/60 shadow-sm">
           {segments.map((seg, idx) => {
             const label = tFormatPlural(t, seg.key);
             const showInline = seg.pct >= 14;

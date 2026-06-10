@@ -100,15 +100,15 @@ function SignalCard({ signal }: { signal: Signal }) {
             dot: "bg-amber-500",
           }
         : {
-            accent: "border-l-slate-200",
-            icon: "bg-slate-100 text-slate-600 ring-slate-200",
-            dot: "bg-slate-400",
+            accent: "border-l-border-default",
+            icon: "bg-surface-muted text-content-secondary ring-border-default",
+            dot: "bg-content-tertiary",
           };
 
   return (
     <article
       className={cn(
-        "rounded-2xl border border-slate-200 border-l-2 bg-white p-3.5 md:p-4 flex items-start gap-3 min-w-0",
+        "rounded-2xl border border-border-default border-l-2 bg-white p-3.5 md:p-4 flex items-start gap-3 min-w-0",
         "shadow-[0_1px_2px_rgba(15,23,42,0.03)]",
         toneCls.accent,
       )}
@@ -123,14 +123,14 @@ function SignalCard({ signal }: { signal: Signal }) {
         <Icon className="h-3.5 w-3.5" />
       </span>
       <div className="min-w-0 space-y-1">
-        <h4 className="flex items-center gap-2 font-display text-[0.95rem] font-semibold tracking-tight text-slate-900 leading-snug">
+        <h4 className="flex items-center gap-2 font-display text-[0.95rem] font-semibold tracking-tight text-content-primary leading-snug">
           <span
             aria-hidden="true"
             className={cn("size-1.5 rounded-full shrink-0", toneCls.dot)}
           />
           <span className="min-w-0">{signal.title}</span>
         </h4>
-        <p className="text-[12.5px] text-slate-600 leading-relaxed">
+        <p className="text-[12.5px] text-content-secondary leading-relaxed">
           {signal.body}
         </p>
       </div>

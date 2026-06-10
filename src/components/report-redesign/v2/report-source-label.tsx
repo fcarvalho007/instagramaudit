@@ -56,7 +56,7 @@ export function ReportSourceLabel({
       className={cn(
         "inline-flex items-center",
         "text-[10px] font-medium tracking-[0.08em] leading-none",
-        "text-slate-500 opacity-50",
+        "text-content-tertiary opacity-50",
         "whitespace-nowrap",
         className,
       )}

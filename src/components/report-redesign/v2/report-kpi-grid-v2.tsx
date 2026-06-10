@@ -153,7 +153,7 @@ function FormatChip({ label, tone }: { label: string; tone: FormatTone }) {
         ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
         : tone === "warning"
           ? "bg-amber-50 text-amber-700 ring-amber-200"
-          : "bg-slate-100 text-slate-600 ring-slate-200";
+          : "bg-surface-muted text-content-secondary ring-border-default";
   const dot =
     tone === "primary"
       ? "bg-blue-500"
@@ -161,7 +161,7 @@ function FormatChip({ label, tone }: { label: string; tone: FormatTone }) {
         ? "bg-emerald-500"
         : tone === "warning"
           ? "bg-amber-500"
-          : "bg-slate-400";
+          : "bg-content-tertiary";
   return (
     <span
       className={cn(

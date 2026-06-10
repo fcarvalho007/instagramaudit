@@ -72,13 +72,13 @@ const TONE: Record<
     dot: "bg-blue-500",
     iconWrap: "bg-blue-50 ring-blue-100",
     icon: "text-blue-600",
-    primary: "text-slate-900",
+    primary: "text-content-primary",
   },
   amber: {
     dot: "bg-amber-500",
     iconWrap: "bg-amber-50 ring-amber-100",
     icon: "text-amber-600",
-    primary: "text-slate-900",
+    primary: "text-content-primary",
   },
   rose: {
     dot: "bg-rose-500",
@@ -135,7 +135,7 @@ function DiagnosticCard({ card }: { card: CardModel }) {
     <article
       className={cn(
         "h-full flex flex-col gap-3",
-        "rounded-2xl border border-slate-200/70 bg-white",
+        "rounded-2xl border border-border-default bg-white",
         "p-5 md:p-6",
         "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-16px_rgba(15,23,42,0.08)]",
       )}
@@ -145,10 +145,10 @@ function DiagnosticCard({ card }: { card: CardModel }) {
           aria-hidden="true"
           className={cn("size-1.5 rounded-full shrink-0", tone.dot)}
         />
-        <span className="text-eyebrow-sm text-slate-500">
+        <span className="text-eyebrow-sm text-content-tertiary">
           {card.eyebrow}
         </span>
-        <span className="ml-auto tabular-nums text-xs tabular-nums text-slate-400">
+        <span className="ml-auto tabular-nums text-xs tabular-nums text-content-tertiary">
           {String(card.index).padStart(2, "0")} / 06
         </span>
       </div>
@@ -166,7 +166,7 @@ function DiagnosticCard({ card }: { card: CardModel }) {
         </div>
         <h3
           className={cn(
-            "font-display text-[1.05rem] md:text-[1.125rem] font-semibold leading-snug tracking-tight text-slate-900",
+            "font-display text-[1.05rem] md:text-[1.125rem] font-semibold leading-snug tracking-tight text-content-primary",
             "min-w-0",
           )}
         >
@@ -184,12 +184,12 @@ function DiagnosticCard({ card }: { card: CardModel }) {
       </p>
 
       {card.micro ? (
-        <p className="text-eyebrow-sm text-slate-500">
+        <p className="text-eyebrow-sm text-content-tertiary">
           {card.micro}
         </p>
       ) : null}
 
-      <p className="text-sm text-slate-600 leading-relaxed mt-auto">
+      <p className="text-sm text-content-secondary leading-relaxed mt-auto">
         {card.body}
       </p>
     </article>

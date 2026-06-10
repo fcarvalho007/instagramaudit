@@ -190,7 +190,7 @@ export function ReportShellV2({
           {/* Top bar: identity + actions à esquerda, selector de período
               à direita (desktop). Em mobile/tablet, empilhado. */}
           <div className="w-full pt-3 pb-2 sm:pt-4 sm:pb-3">
-            <div className="mx-auto max-w-[1520px] px-5 md:px-6 lg:px-8">
+            <div className="mx-auto max-w-[1520px] px-4 sm:px-5 md:px-6 lg:px-8">
               <div className="flex rounded-xl sm:rounded-2xl border border-border-default bg-white shadow-card overflow-hidden">
                 <ReportHeroV2
                   result={result}
@@ -219,7 +219,7 @@ export function ReportShellV2({
         />
 
         {/* Layout 2-col a partir do bloco 01 */}
-        <div className="mx-auto max-w-[1520px] px-5 md:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1520px] px-4 sm:px-5 md:px-6 lg:px-8">
           <div className="flex gap-8 lg:gap-10 pt-3 lg:pt-4">
             <ReportBlockSidebar
               variant={variant}

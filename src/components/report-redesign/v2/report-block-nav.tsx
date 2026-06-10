@@ -227,7 +227,7 @@ function ProfileAvatar({
 }) {
   const { t } = useTranslation("report");
   const handle = formatHandle(profile.handle);
-  const sizeCls = size === "md" ? "size-10 text-sm" : "size-7 text-[11px]";
+  const sizeCls = size === "md" ? "size-10 text-sm" : "size-7 text-xs";
   const ringCls = ringOffset
     ? "ring-1 ring-border-default ring-offset-2 ring-offset-white"
     : "ring-2 ring-white";
@@ -322,7 +322,7 @@ function ProfileHeader({
         <p
           className={cn(
             "inline-flex items-center gap-1.5 font-medium text-emerald-700",
-            compact ? "mt-1 text-[11px]" : "mt-2 text-xs",
+            compact ? "mt-1 text-xs" : "mt-2 text-xs",
           )}
         >
           <CheckCircle2 className="size-3.5" aria-hidden="true" />
@@ -426,7 +426,7 @@ function ItemRow({
       {showBadge && !compact ? (
         <span
           className={cn(
-            "ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.06em] ring-1",
+            "ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.06em] ring-1",
             badgeClass,
           )}
         >
@@ -1010,7 +1010,7 @@ function ExploreSection({
           onClick={onPeriodCompact}
           aria-label={t("nav.explore.period_label")}
           className={cn(
-            "inline-flex items-center justify-center gap-1.5 h-9 rounded-md border text-[11px] font-medium transition-colors",
+            "inline-flex items-center justify-center gap-1.5 h-9 rounded-md border text-xs font-medium transition-colors",
             "border-border-default bg-white text-content-secondary",
             "hover:border-border-strong hover:text-content-primary",
           )}
@@ -1028,7 +1028,7 @@ function ExploreSection({
           aria-label={t("nav.explore.add_competitor_aria")}
           title={atMax ? t("nav.explore.competitor_limit_reached") : undefined}
           className={cn(
-            "inline-flex items-center justify-center gap-1.5 h-9 rounded-md border text-[11px] font-medium transition-colors",
+            "inline-flex items-center justify-center gap-1.5 h-9 rounded-md border text-xs font-medium transition-colors",
             "border-border-default bg-white text-content-secondary",
             atMax
               ? "opacity-50 cursor-not-allowed"
@@ -1074,7 +1074,7 @@ function ExploreSection({
           {!premiumUnlocked ? (
             <Lock className="size-3 text-[rgb(var(--accent-gold))]" aria-hidden="true" />
           ) : observedDays > 0 ? (
-            <span className="text-[11px] text-content-tertiary tabular-nums">
+            <span className="text-xs text-content-tertiary tabular-nums">
               {t("nav.explore.period_observed", { days: observedDays })}
             </span>
           ) : null}
@@ -1083,7 +1083,7 @@ function ExploreSection({
           <span
             className={cn(
               "inline-flex items-center gap-1 rounded-full px-2 py-0.5",
-              "bg-content-primary text-white text-[11px] font-semibold",
+              "bg-content-primary text-white text-xs font-semibold",
             )}
             aria-current="true"
           >
@@ -1104,7 +1104,7 @@ function ExploreSection({
               aria-disabled={premiumUnlocked ? undefined : "true"}
               className={cn(
                 "inline-flex items-center gap-1 rounded-full px-2 py-0.5",
-                "border border-border-default text-[11px] font-medium",
+                "border border-border-default text-xs font-medium",
                 "transition-colors duration-150",
                 premiumUnlocked
                   ? "bg-white text-content-secondary hover:border-border-strong hover:text-content-primary cursor-pointer"
@@ -1155,14 +1155,14 @@ function ExploreSection({
         </button>
         {premiumUnlocked ? (
           competitorCount >= COMPETITOR_MAX ? (
-            <p className="text-[11px] text-content-tertiary leading-snug">
+            <p className="text-xs text-content-tertiary leading-snug">
               <span className="font-medium text-content-secondary">
                 {t("nav.explore.competitor_limit_reached")}
               </span>{" "}
               {t("nav.explore.competitor_limit_hint")}
             </p>
           ) : (
-            <p className="text-[11px] text-content-tertiary tabular-nums">
+            <p className="text-xs text-content-tertiary tabular-nums">
               {t("nav.explore.competitors_count", {
                 count: competitorCount,
                 max: competitorMax,
@@ -1175,7 +1175,7 @@ function ExploreSection({
       {premiumUnlocked ? (
         <div className="px-2">
           <p
-            className="text-[11px] text-content-tertiary tabular-nums"
+            className="text-xs text-content-tertiary tabular-nums"
             title={
               balance >= 3
                 ? "1 incluído na compra + 2 bónus beta"
@@ -1189,12 +1189,12 @@ function ExploreSection({
               : t("nav.explore.beta_credits_empty")}
           </p>
           {!isAdminPreview && balance >= 3 ? (
-            <p className="mt-0.5 text-[10px] text-content-tertiary">
+            <p className="mt-0.5 text-xs text-content-tertiary">
               1 incluído na compra + 2 bónus beta
             </p>
           ) : null}
           {isAdminPreview ? (
-            <p className="mt-0.5 text-[10px] text-amber-700">
+            <p className="mt-0.5 text-xs text-amber-700">
               Não consome créditos reais.
             </p>
           ) : null}
@@ -1267,7 +1267,7 @@ function UnlockPromoCard({
         {t("nav.access.cta")}
         <ArrowRight className="size-3.5" aria-hidden="true" />
       </button>
-      <p className="text-center text-[11px] leading-relaxed text-content-tertiary">
+      <p className="text-center text-xs leading-relaxed text-content-tertiary">
         {t("nav.unlock.subcopy", { count: premiumCount })}
       </p>
     </div>
@@ -1422,7 +1422,7 @@ function SidebarList({
                   </div>
                   {showSubs && <DiagnosticSubList activeSub={activeSub} />}
                   {isDiag && !compact && !diagExpanded && (
-                    <p className="pl-9 pr-3 pb-1 -mt-0.5 text-[11px] text-content-tertiary">
+                    <p className="pl-9 pr-3 pb-1 -mt-0.5 text-xs text-content-tertiary">
                       {t("nav.diagnostic_subitems.note")}
                     </p>
                   )}
@@ -1482,7 +1482,7 @@ function SidebarList({
                         compact={compact}
                       />
                       {isDiag && !compact && (
-                        <p className="pl-9 pr-3 pb-1 -mt-0.5 text-[11px] text-content-tertiary">
+                        <p className="pl-9 pr-3 pb-1 -mt-0.5 text-xs text-content-tertiary">
                           {t("nav.diagnostic_subitems.note")}
                         </p>
                       )}
@@ -1717,7 +1717,7 @@ export function ReportBlockTopTabs({
                 />
                 <span
                   className={cn(
-                    "text-xs leading-tight truncate max-w-full px-1",
+                    "hidden min-[360px]:inline text-xs leading-tight truncate max-w-full px-1",
                     isActive
                       ? "text-[rgb(var(--accent-primary))] font-semibold"
                       : "text-content-secondary font-medium",
@@ -1745,7 +1745,7 @@ export function ReportBlockTopTabs({
               )}
             >
               <Menu className="size-7" strokeWidth={1.6} aria-hidden="true" />
-              <span className="text-xs font-medium leading-tight text-content-secondary">
+              <span className="hidden min-[360px]:inline text-xs font-medium leading-tight text-content-secondary">
                 {t("nav.menu")}
               </span>
             </button>

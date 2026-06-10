@@ -20,15 +20,15 @@ export function ReportPositioningBanner() {
   return (
     <section
       aria-label={t("positioning.aria")}
-      className={cn("w-full", REDESIGN_TOKENS.bandWhite, "border-y border-slate-200/70")}
+      className={cn("w-full", REDESIGN_TOKENS.bandWhite, "border-y border-border-default")}
     >
       <div className="mx-auto max-w-7xl px-5 md:px-6 py-6 md:py-7 space-y-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <p className="text-sm md:text-[15px] text-slate-700 leading-relaxed max-w-3xl">
+          <p className="text-sm md:text-[15px] text-content-secondary leading-relaxed max-w-3xl">
             <Trans
               i18nKey="positioning.lead"
               t={t}
-              components={[<strong key="0" className="text-slate-900" />]}
+              components={[<strong key="0" className="text-content-primary" />]}
             />
           </p>
           <ul
@@ -51,9 +51,9 @@ export function ReportPositioningBanner() {
           </ul>
         </div>
 
-        <p className="text-eyebrow-sm text-[10.5px] text-slate-500 leading-relaxed">
+        <p className="text-eyebrow-sm text-[10.5px] text-content-tertiary leading-relaxed">
           {t("positioning.source_note")}{" "}
-          <span className="normal-case tracking-normal font-sans text-[12px] text-slate-500">
+          <span className="normal-case tracking-normal font-sans text-[12px] text-content-tertiary">
             {t("positioning.benchmark_note")}
           </span>
         </p>

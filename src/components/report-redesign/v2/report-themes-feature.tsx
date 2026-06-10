@@ -29,7 +29,7 @@ export function ReportThemesFeature({ themes }: Props) {
   if (!themes.available) {
     return (
       <ThemesShell>
-        <p className="text-sm text-slate-600 leading-relaxed max-w-xl">
+        <p className="text-sm text-content-secondary leading-relaxed max-w-xl">
           {t("themes.empty")}
         </p>
       </ThemesShell>
@@ -73,9 +73,9 @@ export function ReportThemesFeature({ themes }: Props) {
           >
             <div className="inline-flex items-center gap-2">
               <ReportSourceLabel type="ia" />
-              <span className="text-eyebrow-sm text-slate-500">{t("themes.interpretation")}</span>
+              <span className="text-eyebrow-sm text-content-tertiary">{t("themes.interpretation")}</span>
             </div>
-            <p className="text-[14px] text-slate-700 leading-relaxed italic">
+            <p className="text-[14px] text-content-secondary leading-relaxed italic">
               <Quote
                 aria-hidden
                 className="inline size-3.5 -mt-1 mr-1 text-blue-400"
@@ -86,10 +86,10 @@ export function ReportThemesFeature({ themes }: Props) {
         ) : null}
       </div>
 
-      <p className="text-[12.5px] text-slate-500 leading-relaxed border-t border-slate-100 pt-4 mt-2">
+      <p className="text-[12.5px] text-content-tertiary leading-relaxed border-t border-border-subtle pt-4 mt-2">
         {t("themes.footer_note_part1")}{" "}
         <span className="inline-flex items-center gap-1 align-middle">
-          <Hash aria-hidden className="size-3 text-slate-400" />
+          <Hash aria-hidden className="size-3 text-content-tertiary" />
           {t("themes.footer_note_hashtags")}
         </span>{" "}
         {t("themes.footer_note_part2")}
@@ -112,7 +112,7 @@ function ThemesShell({
     <section
       aria-label={t("themes.aria")}
       className={cn(
-        "rounded-2xl border border-slate-200/70 bg-white",
+        "rounded-2xl border border-border-default bg-white",
         "p-7 md:p-9",
         "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-16px_rgba(15,23,42,0.08)]",
         "flex flex-col gap-6",
@@ -135,7 +135,7 @@ function ThemesShell({
           className={cn(
             "self-start inline-flex items-center rounded-full px-2.5 py-1",
             "text-eyebrow-sm ring-1",
-            "bg-slate-50 text-slate-600 ring-slate-200",
+            "bg-surface-muted text-content-secondary ring-border-default",
           )}
         >
           {sampleHint ?? t("themes.sample_default")}
@@ -166,7 +166,7 @@ function ThemesRanking({
   const { t } = useTranslation("report");
   const max = Math.max(1, ...items.map((it) => it.weight));
   return (
-    <ol className="flex flex-col divide-y divide-slate-100">
+    <ol className="flex flex-col divide-y divide-border-subtle">
       {items.map((it, idx) => {
         const pct = Math.max(8, (it.weight / max) * 100);
         const rank = String(idx + 1).padStart(2, "0");
@@ -178,16 +178,16 @@ function ThemesRanking({
             )}
           >
             <div className="flex items-baseline gap-3 min-w-0">
-              <span className="tabular-nums text-xs tabular-nums text-slate-400 shrink-0">
+              <span className="tabular-nums text-xs tabular-nums text-content-tertiary shrink-0">
                 {rank}
               </span>
-              <span className="text-[15px] md:text-[16px] font-semibold text-slate-900 truncate">
+              <span className="text-[15px] md:text-[16px] font-semibold text-content-primary truncate">
                 {it.text}
               </span>
-              <span className="ml-auto tabular-nums text-xs tabular-nums text-slate-500 shrink-0">
+              <span className="ml-auto tabular-nums text-xs tabular-nums text-content-tertiary shrink-0">
                 {it.weight}×
                 {it.postsCount > 0 ? (
-                  <span className="text-slate-400">
+                  <span className="text-content-tertiary">
                     {" · "}
                     {t("themes.post", { count: it.postsCount })}
                   </span>
@@ -195,7 +195,7 @@ function ThemesRanking({
               </span>
             </div>
             <div
-              className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100"
+              className="h-1.5 w-full overflow-hidden rounded-full bg-surface-muted"
               aria-hidden
             >
               <div
@@ -208,7 +208,7 @@ function ThemesRanking({
                 {it.snippets.map((sn, snIdx) => (
                   <li
                     key={snIdx}
-                    className="text-[13px] text-slate-600 italic leading-relaxed"
+                    className="text-[13px] text-content-secondary italic leading-relaxed"
                   >
                     {sn}
                   </li>

@@ -74,31 +74,31 @@ export function ReportBenchmarkEvidence({
       <p
         className={cn(
           "text-eyebrow-sm text-[10.5px] leading-snug",
-          "text-slate-500",
+          "text-content-tertiary",
         )}
       >
         {segments.map((s, i) => (
           <span key={i}>
-            {i > 0 ? <span className="mx-1.5 text-slate-300">·</span> : null}
+            {i > 0 ? <span className="mx-1.5 text-content-tertiary">·</span> : null}
             <span>{s}</span>
           </span>
         ))}
         {sources.length > 0 ? (
           <>
-            <span className="mx-1.5 text-slate-300">·</span>
-            <span className="text-slate-400 normal-case tracking-normal">
+            <span className="mx-1.5 text-content-tertiary">·</span>
+            <span className="text-content-tertiary normal-case tracking-normal">
               {t("benchmarkEvidence.sources_label")}
             </span>{" "}
             {sources.map((name, i) => (
               <span key={name}>
-                {i > 0 ? <span className="text-slate-300">, </span> : null}
+                {i > 0 ? <span className="text-content-tertiary">, </span> : null}
                 <span
-                  className="text-slate-600 normal-case tracking-normal"
+                  className="text-content-secondary normal-case tracking-normal"
                   title={`${name} — ${SOURCE_CONTEXT[name]}`}
                   aria-label={`${name} — ${SOURCE_CONTEXT[name]}`}
                 >
                   {name}
-                  <span className="text-slate-400 ml-0.5">
+                  <span className="text-content-tertiary ml-0.5">
                     ({SOURCE_CONTEXT[name]})
                   </span>
                 </span>
@@ -108,7 +108,7 @@ export function ReportBenchmarkEvidence({
         ) : null}
       </p>
       {aboveBufferRangeHint && aboveBufferRangeHint.trim().length > 0 ? (
-        <p className="text-eyebrow-sm leading-snug text-slate-400">
+        <p className="text-eyebrow-sm leading-snug text-content-tertiary">
           {aboveBufferRangeHint}
         </p>
       ) : null}
