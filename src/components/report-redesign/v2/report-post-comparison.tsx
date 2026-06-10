@@ -762,7 +762,7 @@ function ScatterTooltip({
     return (
       <div
         role="tooltip"
-        className="pointer-events-none absolute z-20 -translate-y-[calc(100%+8px)] rounded-lg border border-border-subtle bg-white px-3 py-2 shadow-lg max-w-[220px]"
+        className="pointer-events-none absolute z-20 -translate-y-[calc(100%+8px)] rounded-lg border border-border-subtle bg-white px-3 py-2 shadow-lg max-w-[min(220px,calc(100vw-2rem))]"
         style={{ left: leftPct, top: topPct, transform: `translate(${translateX}, calc(-100% - 8px))` }}
       >
         <p className="text-xs text-content-secondary leading-snug">
@@ -789,7 +789,7 @@ function ScatterTooltip({
       className={cn(
         "pointer-events-none absolute z-20 rounded-lg bg-white shadow-lg border border-border-default border-l-2",
         borderCls,
-        "px-3 py-2.5 w-[240px]",
+        "px-3 py-2.5 w-[240px] max-w-[calc(100vw-2rem)]",
       )}
       style={{ left: leftPct, top: topPct, transform: `translate(${translateX}, ${verticalTransform})` }}
     >
