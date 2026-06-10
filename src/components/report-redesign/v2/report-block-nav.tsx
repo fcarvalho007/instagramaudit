@@ -1717,7 +1717,7 @@ export function ReportBlockTopTabs({
                 />
                 <span
                   className={cn(
-                    "text-xs leading-tight truncate max-w-full px-1",
+                    "hidden min-[360px]:inline text-xs leading-tight truncate max-w-full px-1",
                     isActive
                       ? "text-[rgb(var(--accent-primary))] font-semibold"
                       : "text-content-secondary font-medium",
@@ -1745,7 +1745,7 @@ export function ReportBlockTopTabs({
               )}
             >
               <Menu className="size-7" strokeWidth={1.6} aria-hidden="true" />
-              <span className="text-xs font-medium leading-tight text-content-secondary">
+              <span className="hidden min-[360px]:inline text-xs font-medium leading-tight text-content-secondary">
                 {t("nav.menu")}
               </span>
             </button>
