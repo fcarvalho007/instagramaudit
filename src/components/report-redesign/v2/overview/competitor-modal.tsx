@@ -28,15 +28,15 @@ export function CompetitorModal({ open, onOpenChange }: CompetitorModalProps) {
           <DialogTitle className="font-display text-lg font-medium">
             {t("competitor.title")}
           </DialogTitle>
-          <DialogDescription className="text-[13px] text-slate-500">
+          <DialogDescription className="text-sm text-content-secondary">
             {t("competitor.description")}
           </DialogDescription>
         </DialogHeader>
 
         {/* Ghost preview chart */}
-        <div className="mt-4 rounded-xl border border-slate-200/60 bg-slate-50/50 p-4 animate-fade-in">
+        <div className="mt-4 rounded-xl border border-border-default bg-surface-muted/50 p-4 animate-fade-in">
           <GhostChart />
-          <p className="mt-3 text-[12px] text-slate-500 leading-relaxed text-center">
+          <p className="mt-3 text-xs text-content-tertiary leading-relaxed text-center">
             {t("competitor.preview_caption")}
           </p>
         </div>
@@ -44,8 +44,8 @@ export function CompetitorModal({ open, onOpenChange }: CompetitorModalProps) {
         {/* Benefits */}
         <ul className="mt-5 space-y-2.5">
           {benefits.map((b) => (
-            <li key={b} className="flex items-start gap-3 text-[13px] text-slate-700">
-              <Check className="size-[18px] text-emerald-500 shrink-0 mt-0.5" aria-hidden="true" />
+            <li key={b} className="flex items-start gap-3 text-sm text-content-secondary">
+              <Check className="size-[18px] text-signal-success shrink-0 mt-0.5" aria-hidden="true" />
               {b}
             </li>
           ))}
@@ -53,7 +53,7 @@ export function CompetitorModal({ open, onOpenChange }: CompetitorModalProps) {
 
         {/* CTAs */}
         <div className="mt-6 flex flex-col gap-2">
-          <Button className="w-full bg-gradient-to-r from-amber-500 to-amber-600 text-white hover:from-amber-600 hover:to-amber-700 shadow-[0_2px_8px_-2px_rgba(245,158,11,0.4)]">
+          <Button className="w-full bg-accent-primary text-white hover:bg-accent-primary/90">
             {t("competitor.cta_pro")}
           </Button>
           <Button
@@ -85,12 +85,12 @@ function GhostChart() {
         <div key={t.label} className="flex flex-col items-center gap-1">
           <div className="flex items-end gap-1">
             <div
-              className={`w-5 rounded-sm ${t.active ? "bg-slate-400" : "bg-slate-200"}`}
+              className={`w-5 rounded-sm ${t.active ? "bg-content-tertiary" : "bg-surface-muted"}`}
               style={{ height: t.h }}
             />
             {t.active && (
               <div
-                className="w-5 rounded-sm border-2 border-dashed border-amber-500/60 bg-transparent"
+                className="w-5 rounded-sm border-2 border-dashed border-accent-primary/60 bg-transparent"
                 style={{ height: t.h * 0.7 }}
               />
             )}

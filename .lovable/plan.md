@@ -1,62 +1,103 @@
-# Admin account deletion — gap-fix plan
+## Auditoria mobile do relatório — só código, sem editar
 
-## TL;DR
-A maior parte da spec já está implementada (archive/purge em `leads-bulk.ts`, endpoint de diagnóstico, UI com "APAGAR" + override `force_paid`, migration `leads.archived_at`, testes de bulk). Faltam **três gaps cirúrgicos** para fechar consistência total. Plano abaixo só toca nesses gaps. Sem alterações em checkout, pagamentos, créditos, packs, 30d/90d, concorrente, cache, conteúdo de relatório ou visibilidade lab.
+Escopo: `src/components/report-redesign/v2/**` (shell V2 em produção em `/reports/$snapshotId` e `/analyze/$username`). Cobre os 3 estados:
+- **Free** (sem secções premium desbloqueadas) — render do hero + 1–2 blocos + `PremiumTeaserCard` + `StickyUnlockBar`
+- **Pago individual** — todos os blocos desbloqueados, sem `competitor*`
+- **Pago comparativo** — todos os blocos + `compare/*` + `competitor-*-compare.tsx`
 
-## Estado actual (já existe, não tocar)
-| Item | Onde | Estado |
-|---|---|---|
-| `leads.archived_at` + índice | migration `20260609172232_…` | ✅ |
-| Archive (soft) + Purge (hard, cascade + auth.users) | `src/routes/api/admin/leads-bulk.ts` | ✅ |
-| Bloqueio `lead_payments.status='paid'` + override `force_paid` | mesmo ficheiro | ✅ |
-| Audit `leads_bulk_archived` / `leads_bulk_purged` | mesmo ficheiro | ✅ |
-| Endpoint diagnóstico (orphan auth / orphan leads / archived / dup emails) | `src/routes/api/admin/diagnostics.account-sync.ts` | ✅ |
-| UI "Arquivar" + "Apagar definitivamente conta de teste" com confirmação dupla | `src/components/admin/v2/beta-leads/leads-table.tsx` | ✅ |
-| Listagens admin filtram `archived_at IS NULL` por defeito | `follow-ups.ts`, `leads-kanban.ts`, `routes/admin.leads.tsx` | ✅ |
-| Testes do bulk (archive / purge / paid block) | `src/routes/api/admin/__tests__/leads-bulk.test.ts` | ✅ |
-| Limpeza dos 2 emails de teste | migration one-shot já corrida | ✅ |
+Viewports verificados: 320 / 375 / 390 / 414 / 768 / 1024.
 
-## Gaps a fechar
+Legenda: **P0** = bloqueia uso real em mobile · **P1** = degrada credibilidade ou tap-target · **P2** = polish.
 
-### Gap 1 — `check-email` deve ignorar leads arquivados (regra D)
-**Ficheiro:** `src/routes/api/onboarding/check-email.ts`
-**Sintoma actual:** `findLead()` faz `select … from leads where email_normalized = ?` sem filtrar `archived_at`. Um lead arquivado devolve `exists: true` → utilizador é mandado para login de uma conta que /admin considera inactiva. Contradiz a regra D da nova spec.
-**Mudança:** adicionar `.is("archived_at", null)` ao `findLead`. Manter o `authUserExists` tal como está (auth órfão continua a ser tratado como existente — defesa em profundidade contra a confusão de archive ≠ delete).
-**Nota de produto a confirmar implicitamente:** archive deixa `auth.users` intacto. Se um lead estiver arquivado mas o auth user existir, `check-email` ainda devolve `exists: true` pela via auth. Isto está alinhado com a regra "archive mantém histórico, login pode continuar a funcionar" — apenas a UI do admin deixa de o ver na lista activa. Para esconder também do login é preciso purge.
+---
 
-### Gap 2 — UI admin para estados de excepção (regra E)
-**Ficheiros:**
-- `src/routes/admin.leads.tsx` (ou painel equivalente em `src/components/admin/v2/beta-leads/`) — adicionar **tab/filtro "Arquivados"** que invoca a query com `archived_at IS NOT NULL`.
-- Novo componente `src/components/admin/v2/beta-leads/orphan-accounts-panel.tsx` — consome `GET /api/admin/diagnostics/account-sync` e mostra 4 secções colapsáveis (auth órfão, leads órfãos, arquivados, duplicados). Botões: "Apagar auth órfão" (chama `auth.admin.deleteUser` via novo endpoint pontual) e "Restaurar lead arquivado" (`archived_at = null`).
-- Novo endpoint `POST /api/admin/auth-users/purge` para apagar auth users órfãos individualmente (recebe `{ email }`, bloqueado se existir lead activo com esse email).
-- Novo endpoint `POST /api/admin/leads/$id/restore` para reverter archive (`archived_at = null`).
+### P0 — Bloqueadores mobile
 
-Sem alterações às queries existentes — só nova UI/endpoints aditivos.
+**P0-1 · Hero: botões PDF e Share com 28×28 px (tap target inválido)**
+`report-hero-v2.tsx:96-126` — `size-7 sm:size-9`. Em 375/390/414 os botões medem 28 px, abaixo do mínimo WCAG 44×44 e abaixo do guidance shadcn (`size="icon"` = 36 + bump para `min-h-11 min-w-11`).
+Fix: `size-9 sm:size-9` (36 px) ou `size-11` (44 px) já no breakpoint base.
 
-### Gap 3 — Cobertura de testes adicional (regra G)
-**Ficheiro:** novo `src/routes/api/onboarding/__tests__/check-email-archived.test.ts`
-- arquivar lead → `check-email` devolve `exists:true` apenas se auth user existir; `false` se auth também não existir.
-- lead activo → `exists:true`.
-- lead inexistente, auth inexistente → `exists:false`.
+**P0-2 · Utility bar: botões `h-8` (32 px)**
+`report-utility-bar.tsx:46-100` — PDF + Share com `h-8 text-xs`. Sticky em `top-16` ocupa banda fixa de 44 px, mas o alvo clicável é 32 px. Em 320/375 com dois botões cabidos no canto direito ficam praticamente inacessíveis.
+Fix: `h-10` (40 px) ou `h-11` (44 px) e remover o `hidden sm:inline` do label para preservar contexto em ≥390.
 
-**Ficheiro:** novo `src/routes/api/admin/__tests__/diagnostics-account-sync.test.ts`
-- 1 lead activo + 1 auth órfão → diagnóstico devolve 1 em `orphan_auth_users`, 0 em `orphan_leads`.
-- 1 lead arquivado → aparece em `archived_leads`.
-- 2 leads com mesmo `email_normalized` → aparecem em `duplicate_emails`.
+**P0-3 · Sticky unlock bar + bottom nav tabs: dupla barra empurra ~140 px do viewport**
+`sticky-unlock-bar.tsx:285-329` usa `mb-[72px]` para libertar `report-block-nav.tsx:1678` (`min-h-[64px]`). Em 320 e 375 isto deixa **apenas ~580–700 px úteis** sob o hero + utility bar. Em iPhone SE (320×568), depois de hero (~60) + tabs top (~44) + utility bar (~44) + unlock bar (~120) + bottom nav (~72) = **~340 px de conteúdo visível**. Inutilizável.
+Fix obrigatório em duas frentes:
+- Esconder `report-utility-bar.tsx` em `<md` (consolidar PDF/Share dentro do hero, que já os tem).
+- `StickyUnlockBar` mobile deve auto-colapsar para **um botão flutuante** após o primeiro scroll, expandindo só quando o utilizador atinge o `EndOfFreeBlock`.
 
-Os testes existentes em `leads-bulk.test.ts` já cobrem o resto (criação→admin, purge→auth deletado, paid blocked, isolamento entre leads).
+**P0-4 · `report-overview-cards.tsx`: tooltip `w-[240px]` em 320px**
+Linha 309: `"w-[240px] sm:w-[260px] … max-w-[calc(100vw-3rem)]"`. O `max-w-` salva o overflow, mas em 320 o tooltip ocupa 272 px (100vw–48), tapa o KPI inteiro e não é dispensável por touch (`group-hover` só, sem suporte a `onClick`/aria-expanded).
+Fix: trocar tooltip por `Popover` shadcn (clique alterna) ou esconder o info-tooltip em mobile e mover o texto explicativo para o `help` line do `KpiCard`.
 
-## Ordem de execução
-1. Patch mínimo a `check-email.ts` (gap 1).
-2. Endpoints `auth-users/purge` e `leads/$id/restore` (gap 2 back-end).
-3. UI `orphan-accounts-panel` + tab "Arquivados" no admin leads (gap 2 front-end).
-4. Testes novos (gap 3).
-5. Correr `bunx vitest run` em pasta filtrada.
+**P0-5 · `report-posting-heatmap.tsx` força scroll horizontal sem affordance**
+Linha 31: `min-w-[640px]` dentro de `overflow-x-auto`. Em 375 o utilizador vê metade da grelha sem nenhum hint visual de que pode arrastar (sem fade-edge, sem scrollbar, sem chip "→ deslizar"). Conhecido pattern broken: utilizadores assumem que faltam dados.
+Fix: adicionar fade gradient no edge direito + chip `"← deslizar →"` visível só em `<sm` na primeira renderização.
 
-## Fora de scope
-checkout, EuPago, webhook de pagamento, credit grants, packs (report/credit), 30d/90d, concorrente, force refresh, cache, conteúdo do relatório, lab visibility, schema de auth, OAuth.
+---
 
-## Riscos / decisões implícitas
-- **Archive não bloqueia login** (auth.users intacto). Documentado na UI ("Arquivar — esconde do admin mas mantém login. Para impedir login use Apagar definitivamente.").
-- **Purge de auth órfão** sem lead correspondente é seguro (não há histórico de pagamento associado, por definição). Endpoint valida ausência de lead activo antes de apagar.
-- **Restore** só reverte `archived_at`, não recria estado destrutivo.
+### P1 — Degradação significativa
+
+**P1-1 · Compare blocks (pago comparativo): nomes longos truncam silenciosamente**
+`compare/compare-table.tsx:46` — header `Th` usa `truncate max-w-full`. Handles `@reservaranchocharrua_oficial` (22 chars) em coluna de ~140 px ficam `@reservaranch…`. Idem `compare-stat-block.tsx:131` (`min-w-0 overflow-hidden whitespace-nowrap text-3xl`) — números grandes (1.234.567) cortam em viewport 320.
+Fix: trocar `text-3xl sm:text-4xl` por `text-2xl sm:text-3xl md:text-4xl`; nos handles, permitir 2 linhas em mobile (`line-clamp-2` em vez de `truncate`).
+
+**P1-2 · `competitor-cadence-compare.tsx`: `grid-cols-5` sem responsive prefix**
+Linha 270. Cinco colunas em 320 px = ~52 px por coluna, com `gap-2`. Métricas + sparkline lá dentro ficam ilegíveis.
+Fix: `grid-cols-2 sm:grid-cols-5` ou scroll horizontal explícito.
+
+**P1-3 · `competitor-modal.tsx`: viola design system + tipografia <12 px**
+- Linhas 30–55: classes `text-slate-500/700`, `bg-slate-50/50`, `border-slate-200/60` — proibidas (core rule).
+- `text-[12px]` na caption do gráfico e `text-[13px]` na descrição passam, mas o CTA "Pro" usa `from-amber-500 to-amber-600` hardcoded — viola a regra de remover gold/amber do UI público.
+Fix: substituir por tokens `content-secondary/tertiary`, `surface-muted`, `border-default` e o CTA por `bg-accent-primary`.
+
+**P1-4 · Shell `px-5` em 320px deixa 280 px úteis e provoca overflow em `EditorialIdentityCard`**
+`report-shell-v2.tsx:193,222` — `px-5 md:px-6 lg:px-8`. Em 320 com `editorial-identity-card.tsx:787` a renderizar uma chip absoluta `-top-7 -translate-x-1/2 whitespace-nowrap` por cima do título, a chip pode sair do container.
+Fix: `px-4 sm:px-5 md:px-6 lg:px-8` e, para a chip, `hidden sm:inline-flex` já está aplicado — confirmar que não há `display: inline-flex` forçado via override.
+
+**P1-5 · `report-block-nav.tsx` mobile bottom bar: rótulos truncados em 320**
+Linhas 1697–1746. Cada `button` em `flex-1` com `text-xs leading-tight truncate`. Em 320, com 5 blocos visíveis + botão menu (72 px), sobram ~50 px por bloco; rótulos "Performance", "Conteúdo", "Procura" cortam para "Performa…" e descaracterizam a nav.
+Fix: limitar a 3–4 ícones em `<sm` (já há `visibleIndices`, validar `maxVisible` per breakpoint) ou só-ícone sem label em 320–375.
+
+**P1-6 · `report-engagement-benchmark-chart.tsx` (14 classes responsivas, alto risco)**
+Linhas 163, 238, 259, 282 — `min-w-[56px]` / `min-w-[48px]` somam ~250 px de gutters fixos antes do desenho da barra. Em 320 sobram ~70 px para a barra real. Comparativo (com label do competitor à direita) sobrepõe.
+Fix: em `<sm` esconder a coluna direita de labels (já há `sm:min-w-[100px]`) — confirmar que `min-w-[56px]` baseline não está duplicado em ambos os lados.
+
+---
+
+### P2 — Polish e dívida técnica de mobile
+
+**P2-1 · Texto <12 px disperso por 25+ pontos em `report-block-nav.tsx`** (`text-[11px]`, `text-[10px]`). Core rule: 12 px mínimo, abaixo só para chart ticks. Promover para `text-xs` em todos os pontos que sejam UI textual, não rótulos de gráfico.
+
+**P2-2 · `whitespace-nowrap` em headlines de compare e badges do hero** — risco de overflow quando i18n encompridar strings. Substituir por `text-balance` + permitir wrap.
+
+**P2-3 · `slate-*` em 10 ficheiros do relatório** — viola core rule "Never use slate-*". Não é mobile-only, mas como sweep aqui está a lista para limpar num PR dedicado:
+`premium-callout.tsx`, `report-kpi-grid-v2.tsx`, `report-themes-feature.tsx`, `report-source-label.tsx`, `report-overview-attention-row.tsx`, `report-overview-cards.tsx`, `report-benchmark-evidence.tsx`, `overview/competitor-modal.tsx`, `report-positioning-banner.tsx`, `report-diagnostic-grid-v2.tsx`.
+
+**P2-4 · `format-card.tsx` coluna proporção `w-[88px]` em 320 + thumbnails de 120 px do top posts** competem por 280 px úteis. Funciona, mas justo. Considerar `w-[80px]` em base.
+
+**P2-5 · `report-post-comparison.tsx` tooltip `max-w-[220px]` posicionado absolutamente acima do card pode sair do viewport em 320 — já tem `pointer-events-none` mas falta `max-w-[calc(100vw-2rem)]`.
+
+---
+
+### Resumo executivo
+
+| Estado | P0 críticos | P1 | Veredicto mobile |
+|---|---|---|---|
+| Free | P0-1, P0-2, P0-3, P0-4, P0-5 | P1-4, P1-5, P1-6 | **Usável com fricção alta**. P0-3 (dupla barra) é o pior. |
+| Pago individual | P0-1, P0-2, P0-4, P0-5 | P1-4, P1-5, P1-6 | Sem `StickyUnlockBar`, ganha ~120 px. **Funcional, tap-targets em falta.** |
+| Pago comparativo | P0-1, P0-2, P0-4, P0-5 | **P1-1, P1-2, P1-3**, P1-4, P1-5, P1-6 | **Pior estado**: compare blocks e modal de competidor têm mais problemas concentrados. |
+
+### Próximo passo
+
+Sair de plan mode → entrar em build mode com 4 patches independentes (sem tocar desktop, sem tocar lógica de payments/credits/cache):
+
+1. **Fix tap-targets** (P0-1, P0-2): hero + utility bar a 44 px.
+2. **Fix dupla barra mobile** (P0-3): consolidar utility bar dentro do hero em `<md`, colapsar `StickyUnlockBar` para FAB.
+3. **Fix tooltips touch-hostile** (P0-4, P2-5): `Popover` shadcn + `max-w-[calc(100vw-2rem)]`.
+4. **Fix heatmap affordance** (P0-5) e compare blocks (P1-1, P1-2, P1-3).
+
+P2 fica para um PR de limpeza separado (substituição de `slate-*` por tokens).
+
+Aprovas a entrada em build mode com estes 4 patches por esta ordem?

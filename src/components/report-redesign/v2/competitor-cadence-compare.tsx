@@ -267,7 +267,7 @@ function SampleStrip({
             : `${realCount} ${realCount === 1 ? "mais recente" : "mais recentes"}`}
         </span>
       </div>
-      <div className="grid grid-cols-5 gap-2 sm:gap-2.5">
+      <div className="grid grid-cols-5 gap-1.5 sm:gap-2.5">
         {tiles.map((p, i) => (
           <Thumb key={`${p?.permalink ?? i}`} side={side} post={p} />
         ))}

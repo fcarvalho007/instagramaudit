@@ -27,8 +27,18 @@ export function ReportPostingHeatmap() {
       subtitle="Mapa de intensidade de envolvimento por dia da semana e hora do dia."
     >
       <div className="bg-surface-secondary border border-border-default rounded-2xl shadow-card p-6 md:p-8">
-        <div className="overflow-x-auto">
-          <div className="min-w-[640px]">
+        {/* Mobile affordance: visible hint shown only on <sm */}
+        <p className="sm:hidden mb-3 text-xs text-content-tertiary text-center">
+          ← deslize para ver todas as horas →
+        </p>
+        <div className="relative">
+          {/* Right-edge fade hint, mobile only */}
+          <div
+            aria-hidden="true"
+            className="sm:hidden pointer-events-none absolute top-0 right-0 bottom-0 w-8 z-10 bg-gradient-to-l from-surface-secondary to-transparent"
+          />
+          <div className="overflow-x-auto">
+            <div className="min-w-[640px]">
             {/* Hour labels row */}
             <div className="grid grid-cols-[40px_1fr] gap-2 mb-2">
               <div />
@@ -94,6 +104,7 @@ export function ReportPostingHeatmap() {
               <span className="text-eyebrow-sm text-content-tertiary">
                 Mais
               </span>
+            </div>
             </div>
           </div>
         </div>

@@ -41,7 +41,7 @@ export function ReportUtilityBar({
       )}
     >
       <div className="mx-auto max-w-[1520px] px-3 sm:px-6">
-        <div className="flex items-center justify-end gap-1.5 sm:gap-2 h-11">
+        <div className="flex items-center justify-end gap-1.5 sm:gap-2 h-12 sm:h-11">
           <button
             type="button"
             onClick={actions.onExportPdf}
@@ -52,7 +52,7 @@ export function ReportUtilityBar({
             className={cn(
               "inline-flex items-center gap-1.5 rounded-lg",
               "border border-border-default bg-white text-content-secondary",
-              "px-2.5 sm:px-3 h-8 text-xs sm:text-sm font-medium",
+              "px-3 h-10 sm:h-8 text-sm sm:text-sm font-medium",
               "transition-colors duration-150",
               "hover:bg-surface-muted hover:border-border-strong hover:text-content-primary",
               "disabled:cursor-not-allowed disabled:opacity-50",
@@ -63,7 +63,7 @@ export function ReportUtilityBar({
             ) : (
               <Download className="size-3.5" aria-hidden="true" />
             )}
-            <span className="hidden sm:inline">{t("hero.actions.pdf")}</span>
+            <span className="hidden xs:inline sm:inline">{t("hero.actions.pdf")}</span>
           </button>
           <ShareReportPopover
             result={result}
@@ -75,13 +75,13 @@ export function ReportUtilityBar({
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-lg",
                   "border border-border-default bg-white text-content-secondary",
-                  "px-2.5 sm:px-3 h-8 text-xs sm:text-sm font-medium",
+                  "px-3 h-10 sm:h-8 text-sm sm:text-sm font-medium",
                   "transition-colors duration-150",
                   "hover:bg-surface-muted hover:border-border-strong hover:text-content-primary",
                 )}
               >
                 <Share2 className="size-3.5" aria-hidden="true" />
-                <span className="hidden sm:inline">
+                <span className="hidden xs:inline sm:inline">
                   {t("hero.actions.share")}
                 </span>
               </button>

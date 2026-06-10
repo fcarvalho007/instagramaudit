@@ -128,7 +128,7 @@ function Side({
         @{side.handle}
       </span>
       <span
-        className="tabular-nums font-semibold text-content-primary leading-[1.05] min-w-0 overflow-hidden whitespace-nowrap text-3xl sm:text-4xl"
+        className="tabular-nums font-semibold text-content-primary leading-[1.05] min-w-0 overflow-hidden whitespace-nowrap text-2xl sm:text-3xl md:text-4xl"
         title={side.title ?? side.formatted}
       >
         {side.formatted}

@@ -296,19 +296,23 @@ function fmtPpCard(n: number): string {
 
 function EngagementInfoTooltip() {
   return (
-    <span
-      className="relative group/info inline-flex"
-      tabIndex={0}
-      aria-label="Como é calculada a taxa de engagement"
-    >
-      <Info className="size-3.5 text-slate-400 cursor-help" aria-hidden />
+    // Touch-friendly: button toggles via :focus (click on touch devices),
+    // and hover on pointer devices. Width clamped to viewport on mobile.
+    <span className="relative group/info inline-flex">
+      <button
+        type="button"
+        tabIndex={0}
+        aria-label="Como é calculada a taxa de engagement"
+        className="inline-flex items-center justify-center size-6 -m-1 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
+      >
+        <Info className="size-3.5 text-content-tertiary cursor-help" aria-hidden />
+      </button>
       <span
         role="tooltip"
         className={cn(
           "absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-20",
-          "w-[240px] sm:w-[260px] rounded-lg bg-white shadow-lg ring-1 ring-slate-200/80",
-          "max-w-[calc(100vw-3rem)]",
-          "px-3 py-2.5 text-[11.5px] text-slate-600 leading-relaxed font-normal tracking-normal",
+          "w-[260px] max-w-[calc(100vw-2rem)] rounded-lg bg-white shadow-lg ring-1 ring-border-default/60",
+          "px-3 py-2.5 text-xs text-content-secondary leading-relaxed font-normal tracking-normal",
           "pointer-events-none opacity-0 scale-95",
           "group-hover/info:opacity-100 group-hover/info:scale-100",
           "group-focus-within/info:opacity-100 group-focus-within/info:scale-100",

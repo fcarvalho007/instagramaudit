@@ -91,7 +91,7 @@ export function ReportHeroV2({
           aria-label={t("hero.actions.pdf")}
           title={t("hero.actions.pdf")}
           className={cn(
-            "inline-flex items-center justify-center size-7 sm:size-9 rounded-lg",
+            "inline-flex items-center justify-center size-10 sm:size-9 rounded-lg",
             "border border-border-default bg-white text-content-secondary",
             "transition-colors duration-150",
             "hover:bg-surface-muted hover:border-border-strong hover:text-content-primary",
@@ -99,9 +99,9 @@ export function ReportHeroV2({
           )}
         >
           {actions.pdfBusy ? (
-            <Loader2 className="size-3 sm:size-4 animate-spin" aria-hidden="true" />
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
           ) : (
-            <Download className="size-3 sm:size-4" aria-hidden="true" />
+            <Download className="size-4" aria-hidden="true" />
           )}
         </button>
         <ShareReportPopover
@@ -112,13 +112,13 @@ export function ReportHeroV2({
               aria-label={t("hero.actions.share")}
               title={t("hero.actions.share")}
               className={cn(
-                "inline-flex items-center justify-center size-7 sm:size-9 rounded-lg",
+                "inline-flex items-center justify-center size-10 sm:size-9 rounded-lg",
                 "border border-border-default bg-white text-content-secondary",
                 "transition-colors duration-150",
                 "hover:bg-surface-muted hover:border-border-strong hover:text-content-primary",
               )}
             >
-              <Share2 className="size-3 sm:size-4" aria-hidden="true" />
+              <Share2 className="size-4" aria-hidden="true" />
             </button>
           }
         />
