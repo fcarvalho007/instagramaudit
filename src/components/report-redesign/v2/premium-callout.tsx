@@ -68,10 +68,10 @@ export function PremiumCallout({
             PRO
           </span>
         </div>
-        <p className="text-[13px] text-slate-600 font-medium mt-1.5">
+        <p className="text-[13px] text-content-secondary font-medium mt-1.5">
           {title}
         </p>
-        <p className="text-[12px] text-slate-500 leading-relaxed mt-0.5">
+        <p className="text-[12px] text-content-tertiary leading-relaxed mt-0.5">
           {description}
         </p>
         {children ? (

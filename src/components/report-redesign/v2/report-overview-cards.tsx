@@ -108,7 +108,7 @@ function PremiumCard({
         ? "bg-amber-50 text-amber-700 ring-amber-100"
         : interpretationTone === "bad"
           ? "bg-rose-50 text-rose-700 ring-rose-100"
-          : "bg-slate-50 text-slate-700 ring-slate-200";
+          : "bg-surface-muted text-content-secondary ring-border-default";
   const dotCls =
     interpretationTone === "good"
       ? "bg-emerald-500"
@@ -116,7 +116,7 @@ function PremiumCard({
         ? "bg-amber-500"
         : interpretationTone === "bad"
           ? "bg-rose-500"
-          : "bg-slate-400";
+          : "bg-content-tertiary";
 
   const accentCls = accentTone
     ? ({
@@ -124,7 +124,7 @@ function PremiumCard({
         green: "border-t-2 border-t-emerald-400/60",
         rose: "border-t-2 border-t-rose-400/60",
         gold: "border-t-2 border-t-amber-400/60",
-        slate: "border-t-2 border-t-slate-300/60",
+        slate: "border-t-2 border-t-border-default",
       })[accentTone]
     : "";
 
@@ -134,8 +134,8 @@ function PremiumCard({
       : "p-4 md:p-5";
   const titleCls =
     emphasis === "primary"
-      ? "font-display text-[1.15rem] md:text-[1.3rem] font-semibold tracking-tight text-slate-900 leading-tight"
-      : "font-display text-[1rem] md:text-[1.05rem] font-semibold tracking-tight text-slate-900 leading-tight";
+      ? "font-display text-[1.15rem] md:text-[1.3rem] font-semibold tracking-tight text-content-primary leading-tight"
+      : "font-display text-[1rem] md:text-[1.05rem] font-semibold tracking-tight text-content-primary leading-tight";
 
   return (
     <article
@@ -177,7 +177,7 @@ function PremiumCard({
       ) : null}
 
       {sourceSlot ? (
-        <div className="pt-3 mt-1 border-t border-slate-100">{sourceSlot}</div>
+        <div className="pt-3 mt-1 border-t border-border-subtle">{sourceSlot}</div>
       ) : null}
     </article>
   );
@@ -260,24 +260,24 @@ function EngagementComparison({
       ? "text-emerald-600"
       : gapTone === "bad"
         ? "text-rose-600"
-        : "text-slate-600";
+        : "text-content-secondary";
 
   return (
     <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
       <div className="flex flex-col">
-        <span className="text-eyebrow-sm text-slate-500">Este perfil</span>
-        <span className="tabular-nums text-[2.25rem] md:text-[2.5rem] font-semibold tracking-[-0.02em] text-slate-900 leading-none tabular-nums">
+        <span className="text-eyebrow-sm text-content-tertiary">Este perfil</span>
+        <span className="tabular-nums text-[2.25rem] md:text-[2.5rem] font-semibold tracking-[-0.02em] text-content-primary leading-none tabular-nums">
           {formatPct(engagement)}
         </span>
       </div>
       <div className="flex flex-col">
-        <span className="text-eyebrow-sm text-slate-400">% Média de perfis semelhantes</span>
-        <span className="tabular-nums text-[1.1rem] md:text-[1.25rem] font-medium tracking-[-0.01em] text-slate-600 leading-none tabular-nums">
+        <span className="text-eyebrow-sm text-content-tertiary">% Média de perfis semelhantes</span>
+        <span className="tabular-nums text-[1.1rem] md:text-[1.25rem] font-medium tracking-[-0.01em] text-content-secondary leading-none tabular-nums">
           {formatPct(benchmark)}
         </span>
       </div>
       <div className="flex flex-col">
-        <span className="text-eyebrow-sm text-slate-400">Gap</span>
+        <span className="text-eyebrow-sm text-content-tertiary">Gap</span>
         <span className={cn("tabular-nums text-[1.1rem] md:text-[1.25rem] font-medium tracking-[-0.01em] leading-none tabular-nums", gapColor)}>
           {fmtPpCard(gapPp)} p.p.
         </span>
@@ -411,12 +411,12 @@ function PostingRhythmCard({
       sourceSlot={
         <div className="space-y-1.5">
           {formulaNote ? (
-            <p className="text-xs text-slate-400 leading-relaxed">{formulaNote}</p>
+            <p className="text-xs text-content-tertiary leading-relaxed">{formulaNote}</p>
           ) : null}
-          <p className="text-xs text-slate-400 leading-relaxed">
-            <a href="https://later.com/blog/how-often-post-to-instagram" target="_blank" rel="noopener noreferrer" aria-label="Later — referência por escalão" className="underline decoration-slate-300 hover:text-slate-600 transition-colors">[1]</a>{" "}
+          <p className="text-xs text-content-tertiary leading-relaxed">
+            <a href="https://later.com/blog/how-often-post-to-instagram" target="_blank" rel="noopener noreferrer" aria-label="Later — referência por escalão" className="underline decoration-content-tertiary hover:text-content-secondary transition-colors">[1]</a>{" "}
             referência por escalão{" · "}
-            <a href="https://buffer.com/resources/how-often-to-post-on-instagram" target="_blank" rel="noopener noreferrer" aria-label="Buffer — intervalo geral" className="underline decoration-slate-300 hover:text-slate-600 transition-colors">[2]</a>{" "}
+            <a href="https://buffer.com/resources/how-often-to-post-on-instagram" target="_blank" rel="noopener noreferrer" aria-label="Buffer — intervalo geral" className="underline decoration-content-tertiary hover:text-content-secondary transition-colors">[2]</a>{" "}
             intervalo geral
           </p>
         </div>
@@ -425,31 +425,31 @@ function PostingRhythmCard({
       {/* Main metric */}
       <div className="flex items-end gap-3 flex-wrap">
         {sufficient ? (
-          <span className="text-eyebrow text-slate-400 pb-1">≈</span>
+          <span className="text-eyebrow text-content-tertiary pb-1">≈</span>
         ) : null}
-        <span className="tabular-nums text-[1.85rem] md:text-[2.1rem] font-semibold tracking-[-0.015em] text-slate-900 leading-none tabular-nums">
+        <span className="tabular-nums text-[1.85rem] md:text-[2.1rem] font-semibold tracking-[-0.015em] text-content-primary leading-none tabular-nums">
           {sufficient ? weekly.toFixed(1).replace(".", ",") : "—"}
         </span>
-        <span className="text-eyebrow text-slate-500 pb-1">
+        <span className="text-eyebrow text-content-tertiary pb-1">
           /semana
         </span>
       </div>
       {!sufficient ? (
-        <p className="text-[13px] text-slate-600 leading-relaxed">
+        <p className="text-[13px] text-content-secondary leading-relaxed">
           Dados recentes insuficientes para estimar ritmo.
         </p>
       ) : null}
 
       {/* Window context */}
       {summaryLine ? (
-        <p className="text-[13px] text-slate-600 leading-relaxed">
+        <p className="text-[13px] text-content-secondary leading-relaxed">
           {summaryLine}
         </p>
       ) : null}
 
       {/* Format transparency note */}
       {sufficient && (
-        <p className="text-xs text-slate-400 leading-relaxed">
+        <p className="text-xs text-content-tertiary leading-relaxed">
           Inclui imagens, carrosséis e Reels publicados no feed.
         </p>
       )}
@@ -502,7 +502,7 @@ function FrequencyBenchmarkBars({
         ? "bg-amber-500/80"
         : gapTone === "bad"
           ? "bg-rose-400/80"
-          : "bg-slate-400/80";
+          : "bg-content-tertiary/80";
 
   const gap = profileValue - benchmarkValue;
   const GapIcon = gap > 0 ? ArrowUp : gap < 0 ? ArrowDown : Minus;
@@ -526,12 +526,12 @@ function FrequencyBenchmarkBars({
       {/* Buffer general range band */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-slate-400">Intervalo geral</span>
-          <span className="tabular-nums text-xs text-slate-400 tabular-nums">
+          <span className="text-xs font-medium text-content-tertiary">Intervalo geral</span>
+          <span className="tabular-nums text-xs text-content-tertiary tabular-nums">
             {bufferRange.min}–{bufferRange.max}/sem
           </span>
         </div>
-        <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden relative">
+        <div className="h-2 w-full rounded-full bg-surface-muted overflow-hidden relative">
           <div
             className="absolute h-full rounded-full bg-blue-100/70"
             style={{ left: `${bufMinPct}%`, width: `${bufMaxPct - bufMinPct}%` }}
@@ -543,12 +543,12 @@ function FrequencyBenchmarkBars({
       {/* Profile bar */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-slate-600">Perfil</span>
-          <span className="tabular-nums text-xs text-slate-700 tabular-nums">
+          <span className="text-xs font-medium text-content-secondary">Perfil</span>
+          <span className="tabular-nums text-xs text-content-secondary tabular-nums">
             {profileValue.toFixed(1).replace(".", ",")}/sem
           </span>
         </div>
-        <div className="h-2.5 w-full rounded-full bg-slate-100 overflow-hidden">
+        <div className="h-2.5 w-full rounded-full bg-surface-muted overflow-hidden">
           <div
             className={cn("h-full rounded-full transition-all", barColor)}
             style={{ width: `${profilePct}%` }}
@@ -559,16 +559,16 @@ function FrequencyBenchmarkBars({
       {/* Benchmark bar */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-slate-500">
+          <span className="text-xs font-medium text-content-tertiary">
             Escalão {tierRange}
           </span>
-          <span className="tabular-nums text-xs text-slate-500 tabular-nums">
+          <span className="tabular-nums text-xs text-content-tertiary tabular-nums">
             {benchmarkValue}/sem
           </span>
         </div>
-        <div className="h-2.5 w-full rounded-full bg-slate-100 overflow-hidden">
+        <div className="h-2.5 w-full rounded-full bg-surface-muted overflow-hidden">
           <div
-            className="h-full rounded-full bg-slate-300/70 transition-all"
+            className="h-full rounded-full bg-content-tertiary/70 transition-all"
             style={{ width: `${benchPct}%` }}
           />
         </div>
@@ -581,19 +581,19 @@ function FrequencyBenchmarkBars({
           gapTone === "good" ? "text-emerald-600" :
           gapTone === "warn" ? "text-amber-600" :
           gapTone === "bad" ? "text-rose-500" :
-          "text-slate-400"
+          "text-content-tertiary"
         )} />
         <span className={cn(
           "tabular-nums text-xs tabular-nums",
           gapTone === "good" ? "text-emerald-600" :
           gapTone === "warn" ? "text-amber-600" :
           gapTone === "bad" ? "text-rose-500" :
-          "text-slate-500"
+          "text-content-tertiary"
         )}>
           {gapLabel} posts/sem vs escalão
         </span>
       </div>
-      <p className="text-xs text-slate-400 italic">
+      <p className="text-xs text-content-tertiary italic">
         {bufferStatus}
       </p>
     </div>
@@ -642,7 +642,7 @@ function DominantFormatCard({
       }
     >
       <div className="flex items-end gap-3 flex-wrap min-w-0">
-        <span className="tabular-nums text-[1.85rem] md:text-[2.1rem] font-semibold tracking-[-0.015em] text-slate-900 leading-none tabular-nums">
+        <span className="tabular-nums text-[1.85rem] md:text-[2.1rem] font-semibold tracking-[-0.015em] text-content-primary leading-none tabular-nums">
           {dominantShare > 0 ? `${dominantShare}%` : "—"}
         </span>
         {dominantLabel ? (
@@ -650,10 +650,10 @@ function DominantFormatCard({
         ) : null}
       </div>
 
-      <p className="text-[13px] text-slate-600 leading-relaxed">
+      <p className="text-[13px] text-content-secondary leading-relaxed">
         formato mais frequente na amostra
       </p>
-      <p className="text-[12px] text-slate-500 leading-relaxed italic">
+      <p className="text-[12px] text-content-tertiary leading-relaxed italic">
         {formatStrategicNote(dominantLabel)}
       </p>
 
@@ -674,7 +674,7 @@ function FormatStackedBar({
   const items = breakdown.filter((b) => (b.sharePct || 0) > 0);
   return (
     <div className="space-y-2">
-      <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+      <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-surface-muted">
         {items.map((b) => {
           const tone = formatChipTone(FORMAT_PT[b.format] ?? b.format);
           const cls =
@@ -684,7 +684,7 @@ function FormatStackedBar({
                 ? "bg-emerald-500"
                 : tone === "warning"
                   ? "bg-amber-500"
-                  : "bg-slate-400";
+                  : "bg-content-tertiary";
           return (
             <div
               key={b.format}
@@ -695,7 +695,7 @@ function FormatStackedBar({
           );
         })}
       </div>
-      <ul className="text-eyebrow-sm flex flex-wrap gap-x-3 gap-y-1 text-slate-500">
+      <ul className="text-eyebrow-sm flex flex-wrap gap-x-3 gap-y-1 text-content-tertiary">
         {items.map((b) => {
           const label = FORMAT_PT[b.format] ?? b.format;
           const tone = formatChipTone(label);
@@ -706,7 +706,7 @@ function FormatStackedBar({
                 ? "bg-emerald-500"
                 : tone === "warning"
                   ? "bg-amber-500"
-                  : "bg-slate-400";
+                  : "bg-content-tertiary";
           return (
             <li key={b.format} className="inline-flex items-center gap-1.5">
               <span className={cn("size-1.5 rounded-full", dot)} aria-hidden="true" />
@@ -761,7 +761,7 @@ function FormatChipContextual({
         ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
         : tone === "warning"
           ? "bg-amber-50 text-amber-700 ring-amber-200"
-          : "bg-slate-100 text-slate-600 ring-slate-200";
+          : "bg-surface-muted text-content-secondary ring-border-default";
   const dot =
     tone === "primary"
       ? "bg-blue-500"
@@ -769,7 +769,7 @@ function FormatChipContextual({
         ? "bg-emerald-500"
         : tone === "warning"
           ? "bg-amber-500"
-          : "bg-slate-400";
+          : "bg-content-tertiary";
   return (
     <span
       className={cn(
