@@ -214,3 +214,16 @@
   );
   pointer-events: none;
 }
+
+/* Hand-drawn arrow hint pointing at the input bar. */
+@keyframes hero-hint-bounce {
+  0%, 100% { transform: rotate(8deg) translateY(0); }
+  50%      { transform: rotate(8deg) translateY(5px); }
+}
+.hero-hint-arrow {
+  transform: rotate(8deg);
+  animation: hero-hint-bounce 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-hint-arrow { animation: none; }
+}
