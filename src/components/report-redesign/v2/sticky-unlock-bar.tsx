@@ -236,7 +236,7 @@ export function StickyUnlockBar() {
             </p>
             {viewed === 0 ? (
               <p className="text-xs text-white/60 truncate">
-                frequência, formatos, publicações-chave, diagnóstico e prioridades
+                cadência semanal, mix de formatos, publicações-chave, diagnóstico editorial e prioridades
               </p>
             ) : (
               <p className="text-xs text-white/60 truncate">
