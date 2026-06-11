@@ -67,7 +67,6 @@ export function HeroActionBar() {
       {/* The bar — glass card with input + button inline */}
       <div
         className="hero-input-zone relative rounded-2xl border overflow-hidden hero-bar-breathe transition-colors"
-        className="relative rounded-2xl border overflow-hidden hero-bar-breathe transition-colors"
         style={{
           borderColor: "rgba(15, 23, 42, 0.08)",
           backgroundColor: "#FFFFFF",

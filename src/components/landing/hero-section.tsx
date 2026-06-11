@@ -26,7 +26,7 @@ export function HeroSection() {
             <BlurRevealText
               text={t("hero.headline")}
               as="h1"
-              className="font-display text-[2.5rem] sm:text-5xl md:text-6xl lg:text-7xl tracking-[-0.02em] font-medium leading-[1.05] sm:leading-[1.02] text-balance max-w-[16ch] sm:max-w-[20ch] lg:max-w-[22ch] mx-auto lg:mx-0 text-[color:rgb(var(--hero-text-primary))]"
+              className="font-display text-[2.5rem] sm:text-5xl md:text-6xl lg:text-7xl tracking-[-0.02em] font-medium leading-[1.12] sm:leading-[1.08] lg:leading-[1.06] pb-[0.12em] text-balance max-w-[16ch] sm:max-w-[20ch] lg:max-w-[22ch] mx-auto lg:mx-0 text-[color:rgb(var(--hero-text-primary))]"
               delayMs={150}
               highlightTailWords={2}
               highlightClassName="bg-gradient-to-r from-[rgb(var(--hero-cyan-soft))] via-[rgb(var(--hero-cyan))] to-[rgb(var(--hero-violet))] bg-clip-text text-transparent"
@@ -35,7 +35,7 @@ export function HeroSection() {
             <BlurRevealText
               text={t("hero.subtitle")}
               as="p"
-              className="font-sans text-[1.125rem] md:text-xl leading-[1.6] max-w-xl mx-auto lg:mx-0 text-[color:rgb(var(--hero-text-secondary))]"
+              className="font-sans text-base md:text-[1.0625rem] leading-[1.55] max-w-xl lg:max-w-none lg:whitespace-nowrap mx-auto lg:mx-0 text-[color:rgb(var(--hero-text-secondary))]"
               delayMs={500}
             />
 
@@ -45,12 +45,12 @@ export function HeroSection() {
           </div>
 
           {/* Right — report preview */}
-          <div className="order-2 lg:order-2 w-full mt-10 sm:mt-12 lg:mt-0">
+          <div className="hero-preview-zone order-2 lg:order-2 w-full mt-20 sm:mt-16 lg:mt-0">
             <TiltCard
               className="rounded-3xl"
-              tiltLimit={8}
-              scale={1.02}
-              perspective={1400}
+              tiltLimit={5}
+              scale={1.01}
+              perspective={1600}
               effect="gravitate"
               spotlight
             >
@@ -62,8 +62,8 @@ export function HeroSection() {
                   backgroundImage: `url(${instagramLogoAsset.url})`,
                   backgroundSize: "contain",
                   backgroundRepeat: "no-repeat",
-                  opacity: 0.12,
-                  filter: "blur(2px) saturate(1.15)",
+                  opacity: 0.07,
+                  filter: "blur(4px) saturate(1.1)",
                   mixBlendMode: "screen",
                   WebkitMaskImage:
                     "radial-gradient(circle at top right, black 40%, transparent 75%)",
