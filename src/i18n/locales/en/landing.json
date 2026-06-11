@@ -24,10 +24,10 @@
     }
   },
   "actionBar": {
-    "microLabel": "Public Instagram profile",
+    "microLabel": "Enter a public Instagram profile",
     "placeholder": "@profile or Instagram URL",
     "ariaInput": "Instagram profile username or URL",
-    "submit": "Analyze",
+    "submit": "Analyse for free",
     "trustInline": {
       "freeReports": "2 free reports included"
     },
