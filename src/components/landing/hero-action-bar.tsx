@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { InstagramGlyph } from "./instagram-glyph";
 import { normalizeInstagramHandle } from "@/lib/instagram/normalize-handle";
 import { OnboardingModal } from "@/components/onboarding/onboarding-modal";
+import arrowAsset from "@/assets/handdrawn-arrow.png.asset.json";
 
 /**
  * Re-export do helper canónico em `@/lib/instagram/normalize-handle`,
@@ -45,11 +46,23 @@ export function HeroActionBar() {
     <div className="relative w-full max-w-3xl mx-auto">
       {/* Micro-label above the bar */}
       <div
-        className="mb-3 flex items-center gap-2"
+        className="relative mb-3 flex items-center gap-2"
         style={{ color: "rgb(var(--hero-cyan-soft))" }}
       >
         <InstagramGlyph className="size-[18px]" />
         <span className="text-eyebrow-sm">{t("actionBar.microLabel")}</span>
+        <img
+          src={arrowAsset.url}
+          alt=""
+          aria-hidden="true"
+          className="hero-hint-arrow hidden sm:block pointer-events-none absolute -top-2 w-14 h-auto select-none"
+          style={{
+            left: "calc(18px + 0.5rem + 21ch)",
+            filter:
+              "invert(1) brightness(1.15) drop-shadow(0 0 12px rgba(56, 189, 248, 0.45))",
+          }}
+          draggable={false}
+        />
       </div>
 
       {/* The bar — glass card with input + button inline */}

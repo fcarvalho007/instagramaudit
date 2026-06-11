@@ -25,3 +25,23 @@ mas não é renderizada no hero.
 Microlabel acima da caixa: "Inserir perfil público do Instagram" (pt) /
 "Enter a public Instagram profile" (en). Botão: "Analisar grátis" (pt) /
 "Analyse for free" (en).
+
+Subtitle: "Diagnósticos profissionais para melhorar a presença digital." (pt) /
+"Professional diagnostics to improve your digital presence." (en).
+
+Preview do relatório (lado direito) envolto em `<TiltCard>`
+(`src/components/landing/tilt-card.tsx`): tiltLimit 8°, scale 1.02,
+perspective 1400, effect="gravitate", spotlight cyan (rgba 56,189,248,.22)
+em mix-blend screen. Respeita prefers-reduced-motion.
+
+Logo do Instagram (asset CDN `src/assets/instagram-logo.png.asset.json`)
+aparece como background fosco no canto superior-direito do TiltCard:
+340×340, opacity 0.12, blur 2px, mix-blend screen, mask radial que
+desvanece para o centro. translateZ(-40px) para ganhar profundidade
+no tilt. Decorativo (aria-hidden).
+
+Seta manuscrita (asset CDN `src/assets/handdrawn-arrow.png.asset.json`)
+aparece à direita do microlabel apenas em `sm:` para cima, rotate 8°,
+filter invert + drop-shadow cyan, animação `hero-hint-bounce`
+(1.8s loop, desligada com prefers-reduced-motion). Decorativa
+(aria-hidden, alt="").

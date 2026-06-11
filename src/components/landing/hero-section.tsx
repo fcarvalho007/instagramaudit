@@ -6,6 +6,8 @@ import { HeroActionBar } from "@/components/landing/hero-action-bar";
 import { HeroAuroraBackground } from "@/components/landing/hero-aurora-background";
 import { HeroReportPreview } from "@/components/landing/hero-report-preview";
 import { ScrollIndicator } from "@/components/landing/scroll-indicator";
+import { TiltCard } from "@/components/landing/tilt-card";
+import instagramLogoAsset from "@/assets/instagram-logo.png.asset.json";
 
 export function HeroSection() {
   const { t } = useTranslation("landing");
@@ -44,7 +46,36 @@ export function HeroSection() {
 
           {/* Right — report preview */}
           <div className="order-2 lg:order-2 w-full mt-10 sm:mt-12 lg:mt-0">
-            <HeroReportPreview />
+            <TiltCard
+              className="rounded-3xl"
+              tiltLimit={8}
+              scale={1.02}
+              perspective={1400}
+              effect="gravitate"
+              spotlight
+            >
+              {/* Foggy Instagram brand mark, peeking from the top-right corner */}
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -top-12 -right-12 w-[340px] h-[340px] z-0"
+                style={{
+                  backgroundImage: `url(${instagramLogoAsset.url})`,
+                  backgroundSize: "contain",
+                  backgroundRepeat: "no-repeat",
+                  opacity: 0.12,
+                  filter: "blur(2px) saturate(1.15)",
+                  mixBlendMode: "screen",
+                  WebkitMaskImage:
+                    "radial-gradient(circle at top right, black 40%, transparent 75%)",
+                  maskImage:
+                    "radial-gradient(circle at top right, black 40%, transparent 75%)",
+                  transform: "translateZ(-40px)",
+                }}
+              />
+              <div className="relative z-10">
+                <HeroReportPreview />
+              </div>
+            </TiltCard>
           </div>
         </div>
       </Container>
