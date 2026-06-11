@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowRight, AtSign, Check } from "lucide-react";
+import { ArrowRight, AtSign } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
@@ -39,10 +39,6 @@ export function HeroActionBar() {
     setPendingNav({ username });
     setOnboardingOpen(true);
   };
-
-  const trustInline = [
-    t("actionBar.trustInline.freeReports"),
-  ];
 
   return (
     <>
@@ -114,27 +110,7 @@ export function HeroActionBar() {
         >
           {error}
         </p>
-      ) : (
-        <ul
-          className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5"
-          aria-label="Trust"
-        >
-          {trustInline.map((item) => (
-            <li
-              key={item}
-              className="flex items-center gap-1.5 font-sans text-xs"
-              style={{ color: "rgb(var(--hero-text-tertiary))" }}
-            >
-              <Check
-                className="size-3.5"
-                style={{ color: "rgb(var(--hero-cyan))" }}
-                aria-hidden="true"
-              />
-              {item}
-            </li>
-          ))}
-        </ul>
-      )}
+      ) : null}
 
       <style>{`
         .hero-bar-breathe {

@@ -28,6 +28,37 @@
   border-radius: 8px;
 }
 
+/* Cinematic vignette: deep corner falloff + soft cyan halo behind the
+ * headline. Sits above the aurora background but below content (z-0). */
+.hero-cinematic-vignette::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(
+      ellipse at 50% 28%,
+      rgba(var(--hero-cyan), 0.14),
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse at 50% 100%,
+      rgba(0, 0, 0, 0.55),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse at 0% 0%,
+      rgba(0, 0, 0, 0.45),
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse at 100% 0%,
+      rgba(0, 0, 0, 0.45),
+      transparent 55%
+    );
+}
+
 /* Pré-visualização do relatório: fade-edge à direita para indicar overflow
  * nas chips temporais em mobile (resolve o clipping do "60 dias…"). */
 .hero-chips-scroll {

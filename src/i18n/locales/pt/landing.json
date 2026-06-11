@@ -24,10 +24,10 @@
     }
   },
   "actionBar": {
-    "microLabel": "Perfil público do Instagram",
+    "microLabel": "Inserir perfil público do Instagram",
     "placeholder": "@perfil ou URL do Instagram",
     "ariaInput": "Username ou URL do perfil do Instagram",
-    "submit": "Analisar",
+    "submit": "Analisar grátis",
     "trustInline": {
       "freeReports": "Oferta de 2 relatórios grátis"
     },
