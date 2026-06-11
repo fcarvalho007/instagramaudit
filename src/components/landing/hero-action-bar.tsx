@@ -40,10 +40,6 @@ export function HeroActionBar() {
     setOnboardingOpen(true);
   };
 
-  const trustInline = [
-    t("actionBar.trustInline.freeReports"),
-  ];
-
   return (
     <>
     <div className="relative w-full max-w-3xl mx-auto">
@@ -114,27 +110,7 @@ export function HeroActionBar() {
         >
           {error}
         </p>
-      ) : (
-        <ul
-          className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5"
-          aria-label="Trust"
-        >
-          {trustInline.map((item) => (
-            <li
-              key={item}
-              className="flex items-center gap-1.5 font-sans text-xs"
-              style={{ color: "rgb(var(--hero-text-tertiary))" }}
-            >
-              <Check
-                className="size-3.5"
-                style={{ color: "rgb(var(--hero-cyan))" }}
-                aria-hidden="true"
-              />
-              {item}
-            </li>
-          ))}
-        </ul>
-      )}
+      ) : null}
 
       <style>{`
         .hero-bar-breathe {
