@@ -1,79 +1,59 @@
-# Homepage — ajustes ao hero
+## Problema
 
-Mudanças pedidas, todas no hero da `/` (sem mexer no resto da landing dark, sem mexer no input branco que está bloqueado por memória).
+Hoje os 5 cards bloqueados no relatório gratuito mostram títulos em forma de pergunta editorial ("Com que ritmo publica este perfil?", "Que posts puxam o perfil para cima?"...) que não coincidem com os títulos reais dos cards que aparecem depois do pagamento ("Cadência semanal", "Publicação em destaque", "Mix de formatos", "Diagnóstico editorial comparativo"...). O cliente paga e não reconhece o que viu bloqueado, sentindo-se defraudado. A sidebar tem outra variação ainda ("Frequência editorial", "Publicações-chave"...), criando 3 nomes para a mesma secção.
 
-## 1. Copy (i18n pt + en)
+## Objectivo
 
-Ficheiros: `src/i18n/locales/pt/landing.json` e `src/i18n/locales/en/landing.json`.
+3-way consistency: **sidebar (TOC) ↔ teaser bloqueado ↔ card desbloqueado** usam o mesmo nome e descrevem o mesmo conteúdo. O subtítulo do teaser passa a anunciar o que vai aparecer, não uma pergunta abstracta.
 
-- `hero.eyebrow` — manter a key mas deixar de a renderizar (ver passo 2). Não apagar a key para não partir EN/outros consumers.
-- `actionBar.microLabel`:
-  - pt: `"Inserir perfil público do Instagram"`
-  - en: equivalente (`"Enter a public Instagram profile"`).
-- `actionBar.submit`:
-  - pt: `"Analisar grátis"`
-  - en: `"Analyse for free"`.
-- `actionBar.trustInline.freeReports` — manter a key (usada noutros sítios? confirmar), mas remover do array `trustInline` no componente.
+## Alinhamento final (secções 03–07)
 
-## 2. Hero — remover chip e ampliar título
+| # | Sidebar (shortLabel) | Teaser eyebrow | Teaser título | Card pago (existente) |
+|---|----------------------|----------------|---------------|------------------------|
+| 03 | Cadência semanal | CADÊNCIA SEMANAL | Cadência semanal e ritmo por dia | `CompetitorCadenceCompare` ("Cadência semanal") + `CompetitorWeekdayCompare` |
+| 04 | Mix de formatos | MIX DE FORMATOS | Mix de formatos | `CompetitorFormatCompare` ("Mix de formatos") |
+| 05 | Melhor vs pior publicação | PUBLICAÇÕES-CHAVE | Melhor vs pior publicação | `PostComparisonBlock` + `CompetitorTopPostCompare` ("Publicação em destaque") |
+| 06 | Diagnóstico editorial | DIAGNÓSTICO EDITORIAL | Diagnóstico editorial comparativo | `ReportDiagnosticBlock` + `CompetitorEditorialDiagnostic` ("Diagnóstico editorial comparativo") |
+| 07 | Prioridades de acção | PRIORIDADES DE ACÇÃO | Prioridades de acção | `ReportDiagnosticPriorities` |
 
-Ficheiro: `src/components/landing/hero-section.tsx`.
+As secções 01 Visão geral e 02 Engagement já são free e não mudam.
 
-- Remover o bloco do eyebrow ("• BENCHMARK DE INSTAGRAM") inteiro — `<div className="flex justify-center lg:justify-start"> … </div>`.
-- Aumentar a escala do H1 no `BlurRevealText` da headline:
-  - de `text-[2.125rem] sm:text-4xl md:text-5xl lg:text-6xl` →
-    `text-[2.5rem] sm:text-5xl md:text-6xl lg:text-7xl`
-  - apertar leading: `leading-[1.05] sm:leading-[1.02]`
-  - tracking ligeiramente mais fechado: `tracking-[-0.02em]`
-  - manter `text-balance` e `font-medium`.
-- Compensar espaço removido pelo chip: ajustar `space-y-6 md:space-y-7` → `space-y-7 md:space-y-8` para o título respirar.
+## Subitens do teaser (preview do que abre)
 
-## 3. Action bar — sem trust list, botão "Analisar grátis"
+Acrescentar `subItems` (lista de chips com cadeado) em **todas** as 5 teasers — hoje só a 06 tem. Cada chip = nome de um card/sub-bloco real do pago, para o cliente perceber a densidade do que vai destrancar:
 
-Ficheiro: `src/components/landing/hero-action-bar.tsx`.
+- **03** Cadência semanal: "Cadência semanal", "Ritmo por dia da semana", "Comparação com concorrente"
+- **04** Mix de formatos: "Reels vs Carrosséis vs Imagens", "Formato dominante", "Comparação com concorrente"
+- **05** Publicações-chave: "Top publicações", "Piores publicações", "Publicação em destaque vs concorrente"
+- **06** Diagnóstico editorial: mantém os 7 já existentes (Natureza, Funil, Hashtags, Legendas, Capas, Audiência, Integração) + "Diagnóstico comparativo"
+- **07** Prioridades: "O que testar", "O que corrigir", "O que repetir"
 
-- Remover o array `trustInline` e o `<ul>` correspondente quando não há erro. Manter o `<p role="alert">` para o estado de erro.
-- O label do botão já vem de `t("actionBar.submit")` — basta a alteração em i18n. Confirmar visualmente que cabe ("Analisar grátis" + seta).
-- O microLabel acima da barra (Instagram glyph + texto) também já vem de `t("actionBar.microLabel")` — fica "Inserir perfil público do Instagram".
+## Subtítulo
 
-## 4. Toque mais cinematográfico (scoped, sem libs novas)
+Reescrever cada `description` para descrever o card real (e não a pergunta editorial):
 
-Tudo via tokens / CSS existente, sem mexer em `hero-action-bar.tsx` para além do passo 3.
+- 03: "Cadência semanal observada, ritmo por dia da semana e comparação com o concorrente."
+- 04: "Distribuição entre Reels, Carrosséis e Imagens e como difere do concorrente."
+- 05: "Melhor e pior publicação do período e duelo lado-a-lado com a melhor do concorrente."
+- 06: "7 perguntas estratégicas + diagnóstico editorial comparado ao concorrente."
+- 07: "Lista priorizada do que testar, corrigir e repetir nas próximas 4 semanas."
 
-a. **Headline com gradiente subtil** em `hero-section.tsx`:
-  - manter `highlightTailWords={2}` ("em segundos.") mas trocar `highlightClassName` para um gradiente cyan→violet usando os tokens já presentes em `hero-dark`:
-    `"bg-gradient-to-r from-[rgb(var(--hero-cyan-soft))] via-[rgb(var(--hero-cyan))] to-[rgb(var(--hero-violet))] bg-clip-text text-transparent"`.
+## Ficheiros a alterar
 
-b. **Vignette mais profunda + halo cyan no topo** em `src/styles/hero-dark.css`:
-  - Adicionar classe utilitária `.hero-cinematic-vignette` (radial gradient escuro nos cantos + halo cyan suave atrás do título) e aplicá-la ao `<section id="hero">`. Respeita `prefers-reduced-motion`. Não substitui o `HeroAuroraBackground`, sobrepõe.
+1. `src/components/report-redesign/v2/report-overview-block.tsx` — actualizar `PREMIUM_TEASERS` (eyebrow, title, description, subItems) para os 5 entries.
+2. `src/components/report-redesign/v2/block-config.ts` — actualizar `COMMERCIAL_SECTIONS[2]` shortLabel "Frequência editorial" → "Cadência semanal" e `[4]` "Publicações-chave" → "Melhor vs pior publicação".
+3. `src/components/report-redesign/v2/sticky-unlock-bar.tsx` — actualizar a linha "frequência, formatos, publicações-chave, diagnóstico e prioridades" para "cadência semanal, mix de formatos, publicações-chave, diagnóstico editorial e prioridades".
+4. `mem/design/iconosquare-style.md` (ou criar `mem/features/free-pro-card-mirror.md`) — anotar a regra: "Toda teaser bloqueada deve usar o mesmo título e eyebrow do card desbloqueado equivalente, com `subItems` que listam os sub-blocos reais."
 
-c. **Subtítulo mais respirado**: `text-[1.0625rem] md:text-lg` → `text-[1.125rem] md:text-xl`, `leading-relaxed` → `leading-[1.6]`, cor mantém-se `--hero-text-secondary`.
+## Fora de âmbito
 
-d. **Padding vertical maior em mobile** no `<Container>` do hero: `py-12 md:py-24 lg:py-28` → `py-16 md:py-28 lg:py-32` para dar o ar editorial / cinemático que o utilizador pede.
+- Não mexe em lógica de checkout, entitlements ou `premiumUnlocked`.
+- Não muda layout/skeleton (`previewVariant`) dos teasers — só copy + subItems.
+- Não toca em `ReportDiagnosticBlock`, `CompetitorCadenceCompare`, etc. (cards pagos ficam intactos).
+- i18n: as strings vivem hoje como literais nos próprios componentes (`PREMIUM_TEASERS`), não em ficheiros JSON, por isso mantém-se inline (sem novas chaves a criar).
 
-Nenhum destes ajustes mexe em fontes (continua Fraunces + Inter), nem em cores hardcoded fora de tokens, nem na caixa branca do input (locked).
+## Validação
 
-## 5. Memória do projecto
-
-Ficheiro: `mem/design/hero-homepage.md`.
-
-- Atualizar a regra da trust list: "Sem trust list por baixo da caixa — apenas mensagem de erro quando aplicável."
-- Acrescentar: "Hero sem chip eyebrow. H1 maior, cinematic vignette aplicada via `.hero-cinematic-vignette`."
-
-## Detalhes técnicos
-
-- Não tocar em `LOCKED_FILES.md` nem em ficheiros listados como bloqueados.
-- A `FinalCtaBand` reutiliza `HeroActionBar`; o botão passa a "Analisar grátis" também lá, o que é coerente. Confirmar no preview.
-- Sem mudanças em rotas, servidor, ou data.
-
-## Checkpoint
-
-- ☐ Chip "Benchmark de Instagram" removido do hero
-- ☐ H1 maior + tracking/leading apertados + gradiente cyan→violet em "em segundos."
-- ☐ Subtítulo ligeiramente maior e mais arejado
-- ☐ MicroLabel: "Inserir perfil público do Instagram"
-- ☐ Botão: "Analisar grátis" (pt) / "Analyse for free" (en)
-- ☐ Trust list "Oferta de 2 relatórios grátis" removida
-- ☐ Vignette cinemática aplicada ao section do hero
-- ☐ `mem/design/hero-homepage.md` actualizada
-- ☐ Verificado no preview a 411×742 (mobile actual do utilizador) e 1280 desktop
+- Free: as 5 teasers passam a mostrar nomes idênticos aos cards do pago, com chips de subitens.
+- Sidebar (desktop + mobile bottom nav): items 03 e 05 com os novos nomes.
+- Pago: anchors `frequencia`, `formatos`, `publicacoes-chave`, `diagnostico-editorial`, `prioridades` continuam a funcionar (não mexemos nos ids).
