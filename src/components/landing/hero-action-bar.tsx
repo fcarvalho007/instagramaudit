@@ -46,7 +46,7 @@ export function HeroActionBar() {
     <div className="relative w-full max-w-3xl mx-auto">
       {/* Micro-label above the bar */}
       <div
-        className="relative mb-3 flex items-center gap-2"
+        className="relative mb-3 flex items-center gap-2 flex-wrap"
         style={{ color: "rgb(var(--hero-cyan-soft))" }}
       >
         <InstagramGlyph className="size-[18px]" />
@@ -55,11 +55,10 @@ export function HeroActionBar() {
           src={arrowAsset.url}
           alt=""
           aria-hidden="true"
-          className="hero-hint-arrow hidden sm:block pointer-events-none absolute -top-2 w-14 h-auto select-none"
+          className="hero-hint-arrow hidden sm:inline-block pointer-events-none w-9 h-auto select-none -ml-1 relative -top-1"
           style={{
-            left: "calc(18px + 0.5rem + 21ch)",
             filter:
-              "invert(1) brightness(1.15) drop-shadow(0 0 12px rgba(56, 189, 248, 0.45))",
+              "invert(1) brightness(1.1) drop-shadow(0 0 10px rgba(56, 189, 248, 0.25))",
           }}
           draggable={false}
         />
@@ -67,6 +66,7 @@ export function HeroActionBar() {
 
       {/* The bar — glass card with input + button inline */}
       <div
+        className="hero-input-zone relative rounded-2xl border overflow-hidden hero-bar-breathe transition-colors"
         className="relative rounded-2xl border overflow-hidden hero-bar-breathe transition-colors"
         style={{
           borderColor: "rgba(15, 23, 42, 0.08)",

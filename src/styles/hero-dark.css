@@ -217,13 +217,27 @@
 
 /* Hand-drawn arrow hint pointing at the input bar. */
 @keyframes hero-hint-bounce {
-  0%, 100% { transform: rotate(8deg) translateY(0); }
-  50%      { transform: rotate(8deg) translateY(5px); }
+  0%, 100% { transform: rotate(-15deg) translate(0, 0); }
+  50%      { transform: rotate(-15deg) translate(0, 3px); }
 }
 .hero-hint-arrow {
-  transform: rotate(8deg);
-  animation: hero-hint-bounce 1.8s ease-in-out infinite;
+  transform: rotate(-15deg);
+  animation: hero-hint-bounce 2s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {
   .hero-hint-arrow { animation: none; }
+}
+
+/* Preview atenua quando o input do hero está em foco — direciona a
+ * atenção para o gesto principal (colar perfil). */
+.hero-preview-zone {
+  opacity: 0.94;
+  transition: opacity 250ms ease, transform 400ms ease;
+}
+.hero-dark:has(.hero-input-zone:focus-within) .hero-preview-zone {
+  opacity: 0.78;
+}
+.hero-dark:has(.hero-input-zone:focus-within) .hero-hint-arrow {
+  opacity: 0;
+  transition: opacity 200ms ease;
 }
