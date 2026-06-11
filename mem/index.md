@@ -17,4 +17,5 @@ LOCKED_FILES.md tracks protected foundation files.
 - [Admin typography](mem://design/admin-typography) — Admin cockpit typography scale, density rules, utility classes
 - [Locked files](mem://constraints/locked-files) — Foundation files that must not be modified without permission
 - [Cost source of truth](mem://features/cost-source-of-truth) — provider_call_logs é fonte única; cost_daily só reconciliação Apify e saldo DFS
+- [Free↔Pro card mirror](mem://features/free-pro-card-mirror) — teasers bloqueados espelham títulos/sub-blocos dos cards pagos; sidebar alinhada
 - [Hero homepage rules](mem://design/hero-homepage) — Homepage `/` hero é dark; caixa do @ é branca com texto navy; trust list só mostra "freeReports"
