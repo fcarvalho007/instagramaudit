@@ -52,37 +52,52 @@ function tierLabelFromFollowers(n: number | null | undefined): string | null {
 const PREMIUM_TEASERS = [
   {
     number: "03",
-    eyebrow: "FREQUÊNCIA EDITORIAL",
-    title: "Com que ritmo publica este perfil?",
+    eyebrow: "CADÊNCIA SEMANAL",
+    title: "Cadência semanal e ritmo por dia",
     description:
-      "Percebe se o perfil publica com consistência suficiente e onde existem quebras de ritmo.",
+      "Cadência semanal observada, ritmo por dia da semana e comparação com o concorrente.",
     anchorId: "frequencia",
     previewVariant: "frequency",
+    subItems: [
+      "Cadência semanal",
+      "Ritmo por dia da semana",
+      "Comparação com concorrente",
+    ],
   },
   {
     number: "04",
     eyebrow: "MIX DE FORMATOS",
-    title: "Que formatos dominam a estratégia?",
+    title: "Mix de formatos",
     description:
-      "Vê se o perfil depende demasiado de um formato ou se há espaço para variar.",
+      "Distribuição entre Reels, Carrosséis e Imagens e como difere do concorrente.",
     anchorId: "formatos",
     previewVariant: "format",
+    subItems: [
+      "Reels vs Carrosséis vs Imagens",
+      "Formato dominante",
+      "Comparação com concorrente",
+    ],
   },
   {
     number: "05",
     eyebrow: "PUBLICAÇÕES-CHAVE",
-    title: "Que posts puxam o perfil para cima?",
+    title: "Melhor vs pior publicação",
     description:
-      "Identifica os melhores e piores conteúdos e percebe onde estão os padrões.",
+      "Melhor e pior publicação do período e duelo lado-a-lado com a melhor do concorrente.",
     anchorId: "publicacoes-chave",
     previewVariant: "publications",
+    subItems: [
+      "Top publicações",
+      "Piores publicações",
+      "Publicação em destaque vs concorrente",
+    ],
   },
   {
     number: "06",
     eyebrow: "DIAGNÓSTICO EDITORIAL",
-    title: "O que explica estes resultados?",
+    title: "Diagnóstico editorial comparativo",
     description:
-      "Desbloqueia 7 perguntas estratégicas sobre conteúdo, funil, hashtags, legendas, capas, audiência e integração.",
+      "7 perguntas estratégicas + diagnóstico editorial comparado ao concorrente.",
     anchorId: "diagnostico-editorial",
     previewVariant: "diagnostic",
     subItems: [
@@ -93,16 +108,18 @@ const PREMIUM_TEASERS = [
       "Capas",
       "Audiência",
       "Integração",
+      "Diagnóstico comparativo",
     ],
   },
   {
     number: "07",
     eyebrow: "PRIORIDADES DE ACÇÃO",
-    title: "O que testar, corrigir ou repetir?",
+    title: "Prioridades de acção",
     description:
-      "Recebe recomendações práticas para transformar dados em decisões.",
+      "Lista priorizada do que testar, corrigir e repetir nas próximas 4 semanas.",
     anchorId: "prioridades",
     previewVariant: "priorities",
+    subItems: ["O que testar", "O que corrigir", "O que repetir"],
   },
 ] as const;
 
