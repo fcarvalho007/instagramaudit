@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowRight, AtSign, Check } from "lucide-react";
+import { ArrowRight, AtSign } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
