@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowRight, AtSign } from "lucide-react";
+import { ArrowDown, ArrowRight, AtSign } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { InstagramGlyph } from "./instagram-glyph";
 import { normalizeInstagramHandle } from "@/lib/instagram/normalize-handle";
 import { OnboardingModal } from "@/components/onboarding/onboarding-modal";
-import arrowAsset from "@/assets/handdrawn-arrow.png.asset.json";
 
 /**
  * Re-export do helper canónico em `@/lib/instagram/normalize-handle`,
@@ -51,22 +50,12 @@ export function HeroActionBar() {
       >
         <InstagramGlyph className="size-[18px]" />
         <span className="text-eyebrow-sm">{t("actionBar.microLabel")}</span>
-        <img
-          src={arrowAsset.url}
-          alt=""
-          aria-hidden="true"
-          className="hero-hint-arrow hidden sm:inline-block pointer-events-none w-9 h-auto select-none -ml-1 relative -top-1"
-          style={{
-            filter:
-              "invert(1) brightness(1.1) drop-shadow(0 0 10px rgba(56, 189, 248, 0.25))",
-          }}
-          draggable={false}
-        />
       </div>
 
       {/* The bar — glass card with input + button inline */}
       <div
-        className="hero-input-zone relative rounded-2xl border overflow-hidden hero-bar-breathe transition-colors"
+        data-has-value={value.trim() ? "true" : "false"}
+        className="hero-input-zone relative rounded-2xl border overflow-visible hero-bar-breathe transition-colors"
         style={{
           borderColor: "rgba(15, 23, 42, 0.08)",
           backgroundColor: "#FFFFFF",
@@ -74,6 +63,13 @@ export function HeroActionBar() {
             "0 18px 40px -22px rgba(8, 14, 32, 0.45), 0 1px 0 rgba(15, 23, 42, 0.04) inset",
         }}
       >
+        {/* Vertical arrow hint pointing at the input */}
+        <ArrowDown
+          aria-hidden="true"
+          strokeWidth={2.25}
+          className="hero-hint-arrow hidden sm:block pointer-events-none absolute -top-7 left-5 size-[22px]"
+          style={{ color: "rgb(var(--hero-cyan))" }}
+        />
         <form
           onSubmit={handleSubmit}
           className="flex flex-col sm:flex-row items-stretch gap-0"

@@ -215,17 +215,58 @@
   pointer-events: none;
 }
 
-/* Hand-drawn arrow hint pointing at the input bar. */
+/* Vertical arrow hint pointing down at the input bar. */
 @keyframes hero-hint-bounce {
-  0%, 100% { transform: rotate(-15deg) translate(0, 0); }
-  50%      { transform: rotate(-15deg) translate(0, 3px); }
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(4px); }
 }
 .hero-hint-arrow {
-  transform: rotate(-15deg);
-  animation: hero-hint-bounce 2s ease-in-out infinite;
+  animation: hero-hint-bounce 1.8s ease-in-out infinite;
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.45));
+  transition: opacity 200ms ease;
 }
 @media (prefers-reduced-motion: reduce) {
   .hero-hint-arrow { animation: none; }
+}
+
+/* Input zone — permanent subtle ring that intensifies on hover/focus,
+ * plus a single attract pulse on page load to grab the eye. */
+.hero-input-zone {
+  box-shadow:
+    0 18px 40px -22px rgba(8, 14, 32, 0.45),
+    0 0 0 1px rgba(56, 189, 248, 0.28),
+    0 0 32px -8px rgba(56, 189, 248, 0.22) !important;
+  transition: box-shadow 260ms ease, transform 260ms ease;
+  animation: hero-input-attract 2.2s cubic-bezier(0.16, 1, 0.3, 1) 1.4s 1 both;
+}
+.hero-input-zone:hover {
+  box-shadow:
+    0 18px 40px -22px rgba(8, 14, 32, 0.5),
+    0 0 0 2px rgba(56, 189, 248, 0.45),
+    0 0 40px -8px rgba(56, 189, 248, 0.32) !important;
+}
+.hero-input-zone:focus-within {
+  box-shadow:
+    0 18px 40px -22px rgba(8, 14, 32, 0.5),
+    0 0 0 2px rgba(56, 189, 248, 0.6),
+    0 0 48px -8px rgba(56, 189, 248, 0.4) !important;
+}
+@keyframes hero-input-attract {
+  0%   { box-shadow:
+           0 18px 40px -22px rgba(8, 14, 32, 0.45),
+           0 0 0 1px rgba(56, 189, 248, 0.28),
+           0 0 32px -8px rgba(56, 189, 248, 0.22); }
+  50%  { box-shadow:
+           0 18px 40px -22px rgba(8, 14, 32, 0.45),
+           0 0 0 4px rgba(56, 189, 248, 0.45),
+           0 0 56px -4px rgba(56, 189, 248, 0.42); }
+  100% { box-shadow:
+           0 18px 40px -22px rgba(8, 14, 32, 0.45),
+           0 0 0 1px rgba(56, 189, 248, 0.28),
+           0 0 32px -8px rgba(56, 189, 248, 0.22); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-input-zone { animation: none; }
 }
 
 /* Preview atenua quando o input do hero está em foco — direciona a
@@ -237,7 +278,7 @@
 .hero-dark:has(.hero-input-zone:focus-within) .hero-preview-zone {
   opacity: 0.78;
 }
-.hero-dark:has(.hero-input-zone:focus-within) .hero-hint-arrow {
+.hero-dark:has(.hero-input-zone:focus-within) .hero-hint-arrow,
+.hero-dark .hero-input-zone[data-has-value="true"] .hero-hint-arrow {
   opacity: 0;
-  transition: opacity 200ms ease;
 }
