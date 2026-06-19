@@ -1925,6 +1925,7 @@ export type Database = {
     }
     Functions: {
       credit_balance: { Args: { p_lead_id: string }; Returns: number }
+      current_user_lead_id: { Args: never; Returns: string }
       get_knowledge_context: {
         Args: { p_format: string; p_tier: string; p_vertical?: string }
         Returns: Json
