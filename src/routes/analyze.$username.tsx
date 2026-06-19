@@ -20,6 +20,8 @@ import {
   getMyReportEntitlement,
   consumeReportUnlockForSnapshot,
 } from "@/lib/payments/entitlements.functions";
+import { enqueueReportForCurrentSnapshot } from "@/lib/rpc/reports.functions";
+import { supabase } from "@/integrations/supabase/client";
 import {
   snapshotToReportData,
   type AdapterResult,
