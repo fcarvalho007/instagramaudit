@@ -80,11 +80,25 @@ export const Route = createFileRoute("/api/generate-report-pdf")({
           headers: {
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Headers": "Content-Type, x-internal-token",
           },
         }),
 
       POST: async ({ request }) => {
+        // 0) Auth — endpoint só pode ser chamado pelo orchestrator interno.
+        const expectedToken = process.env.INTERNAL_API_TOKEN;
+        const providedToken = request.headers.get("x-internal-token");
+        if (!expectedToken || providedToken !== expectedToken) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error_code: "INVALID_PAYLOAD",
+              message: "Unauthorized.",
+            }),
+            { status: 401, headers: { "Content-Type": "application/json" } },
+          );
+        }
+
         // 1) Parse + validate payload.
         let raw: unknown;
         try {
