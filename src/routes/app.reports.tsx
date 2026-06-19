@@ -1,6 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { getUserReports, type UserReport } from "@/lib/rpc/reports.functions";
+import {
+  getUserReports,
+  enqueueReportForHandle,
+  type UserReport,
+} from "@/lib/rpc/reports.functions";
 import {
   FileText,
   CheckCircle2,
@@ -297,6 +301,30 @@ function ReportsPage() {
   const [reports, setReports] = useState<UserReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Consume intent_handle gravado em /analyze/$username quando o user
+  // ainda não tinha sessão. Idempotente: server fn rejeita duplicados.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let handle: string | null = null;
+    try {
+      handle = window.localStorage.getItem("ib:intent_handle");
+    } catch {
+      return;
+    }
+    if (!handle) return;
+    enqueueReportForHandle({ data: { handle } })
+      .catch(() => {
+        /* fail-soft */
+      })
+      .finally(() => {
+        try {
+          window.localStorage.removeItem("ib:intent_handle");
+        } catch {
+          /* noop */
+        }
+      });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
