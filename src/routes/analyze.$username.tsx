@@ -20,6 +20,8 @@ import {
   getMyReportEntitlement,
   consumeReportUnlockForSnapshot,
 } from "@/lib/payments/entitlements.functions";
+import { enqueueReportForCurrentSnapshot } from "@/lib/rpc/reports.functions";
+import { supabase } from "@/integrations/supabase/client";
 import {
   snapshotToReportData,
   type AdapterResult,
@@ -419,6 +421,35 @@ function AnalyzeReady({
       cancelled = true;
     };
   }, [snapshotId]);
+
+  // Rede de segurança: se houver utilizador autenticado e este snapshot
+  // ainda não tem report_request associado, enfileira-o para que apareça
+  // em /app/reports com PDF + email. Idempotente — server faz o lookup.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getUser();
+        if (cancelled || !data.user) return;
+        const username =
+          ((payload as { instagram_username?: string })?.instagram_username) ||
+          null;
+        if (!username) return;
+        await enqueueReportForCurrentSnapshot({
+          data: {
+            snapshotId,
+            instagramUsername: username,
+            competitors,
+          },
+        });
+      } catch {
+        /* fail-soft */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [snapshotId, payload, competitors]);
 
   const handleConsumePackUnlock = async () => {
     if (consuming || premiumUnlocked || packBalance < 1) return;

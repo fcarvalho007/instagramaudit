@@ -36,6 +36,7 @@ import { getAuthMode } from "@/lib/config/auth-mode.server";
 import { getBalance, grantInitialCredits } from "@/lib/credits/credits.server";
 import { setLeadCookie } from "@/lib/leads/lead-cookie.server";
 import { sendReportAccessEmail } from "@/lib/email/send-report-access.server";
+import { enqueueReportForSnapshot } from "@/lib/orchestration/enqueue-report-for-snapshot.server";
 
 const PayloadSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -253,6 +254,7 @@ async function upsertLead(
         pricing_preference: data.pricing_preference ?? null,
         gdpr_consent_at: consentTimestamp,
         gdpr_consent_version: "v1",
+        instagram_handle: data.handle ?? null,
       })
       .eq("id", existing.data.id);
     if (update.error) return { error: update.error.message };
@@ -279,6 +281,7 @@ async function upsertLead(
       gdpr_consent_at: consentTimestamp,
       gdpr_consent_version: "v1",
       source: "onboarding_modal",
+      instagram_handle: data.handle ?? null,
     })
     .select("id")
     .single();
@@ -343,7 +346,72 @@ async function createAuthUser(args: {
     status: error?.status,
     message: msg,
   });
+  try {
+    await supabaseAdmin.from("product_events").insert([
+      {
+        event_type: "onboarding_auth_create_failed",
+        metadata: {
+          status: error?.status ?? null,
+          message_excerpt: msg.slice(0, 200),
+        },
+      },
+    ]);
+  } catch (e) {
+    console.warn("[onboarding/start] auth_create_failed event insert failed", e);
+  }
   return { ok: false, code: "AUTH_USER_CREATE_FAILED", detail: msg };
+}
+
+/**
+ * Tenta enfileirar imediatamente o report_request para o handle
+ * indicado, ligando-o ao snapshot mais recente. Fail-soft — nunca
+ * bloqueia a resposta do onboarding.
+ */
+async function tryEnqueueReportForHandle(args: {
+  handle: string | null;
+  leadId: string;
+  userId: string | null;
+  origin: string;
+}): Promise<void> {
+  const handle = args.handle?.trim().toLowerCase();
+  if (!handle) return;
+
+  try {
+    const { data: snap } = await supabaseAdmin
+      .from("analysis_snapshots")
+      .select("id")
+      .ilike("instagram_username", handle)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!snap?.id) {
+      console.info("[onboarding/start] no snapshot yet for handle, skip enqueue", {
+        handle,
+        lead_id: args.leadId,
+      });
+      return;
+    }
+
+    const res = await enqueueReportForSnapshot({
+      leadId: args.leadId,
+      userId: args.userId,
+      instagramUsername: handle,
+      analysisSnapshotId: snap.id,
+      origin: args.origin,
+      source: "onboarding_signup",
+    });
+    console.info("[onboarding/start] report enqueue", {
+      handle,
+      lead_id: args.leadId,
+      ok: res.ok,
+      created: res.created,
+      reason: res.reason ?? null,
+      report_request_id: res.reportRequestId ?? null,
+    });
+  } catch (err) {
+    console.warn("[onboarding/start] enqueue report failed (soft)", err);
+  }
 }
 
 /**
@@ -553,6 +621,14 @@ export async function handleOnboardingStart(
       lead_id: upserted.leadId,
       handle: parsed.data.handle ?? null,
       is_new: upserted.isNew,
+    });
+    // Fire-and-forget: cria o report_request + dispara pipeline PDF+email
+    // para que /app/reports não apareça vazio após registo. Idempotente.
+    void tryEnqueueReportForHandle({
+      handle: parsed.data.handle ?? null,
+      leadId: upserted.leadId,
+      userId: authCreate.userId,
+      origin: new URL(request.url).origin,
     });
     if (upserted.isNew) {
       void sendReportAccessEmail({

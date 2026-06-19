@@ -166,3 +166,70 @@ export const getReportPdfUrl = createServerFn({ method: "POST" })
 
     return { url: signedData.signedUrl };
   });
+
+/**
+ * Rede de segurança client-side: garante que existe um report_request
+ * para `(lead do user, snapshotId)`. Chamada por `/analyze/$username`
+ * após o snapshot estar pronto. Idempotente — não cria duplicados.
+ */
+export const enqueueReportForCurrentSnapshot = createServerFn({ method: "POST" })
+  .middleware([withSupabaseHeaders, requireSupabaseAuth])
+  .inputValidator((data: {
+    snapshotId: string;
+    instagramUsername: string;
+    competitors?: string[];
+  }) => {
+    if (!data.snapshotId || typeof data.snapshotId !== "string") {
+      throw new Error("snapshotId is required");
+    }
+    if (!data.instagramUsername || typeof data.instagramUsername !== "string") {
+      throw new Error("instagramUsername is required");
+    }
+    return {
+      snapshotId: data.snapshotId,
+      instagramUsername: data.instagramUsername,
+      competitors: Array.isArray(data.competitors) ? data.competitors : [],
+    };
+  })
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    // 1) resolve lead_id via profile
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("lead_id")
+      .eq("id", userId)
+      .maybeSingle();
+
+    const leadId = profile?.lead_id ?? null;
+    if (!leadId) {
+      return { ok: false as const, reason: "no_lead" as const };
+    }
+
+    const { enqueueReportForSnapshot } = await import(
+      "@/lib/orchestration/enqueue-report-for-snapshot.server"
+    );
+
+    // origin: usado pelo pipeline para chamar /api/generate-report-pdf
+    const origin =
+      process.env.PUBLIC_APP_BASE_URL ??
+      process.env.APP_BASE_URL ??
+      "https://instagramaudit.lovable.app";
+
+    const res = await enqueueReportForSnapshot({
+      leadId,
+      userId,
+      instagramUsername: data.instagramUsername.toLowerCase(),
+      analysisSnapshotId: data.snapshotId,
+      competitorUsernames: data.competitors,
+      origin,
+      source: "analyze_autosave",
+    });
+
+    return {
+      ok: res.ok,
+      created: res.created,
+      reportRequestId: res.reportRequestId ?? null,
+      reason: res.reason ?? null,
+    };
+  });

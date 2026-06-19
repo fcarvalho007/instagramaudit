@@ -377,7 +377,7 @@ function ReportsPage() {
             Ainda não há relatórios
           </h2>
           <p className="mx-auto mt-2 max-w-xs text-[13px] leading-relaxed text-content-tertiary">
-            Analisar um perfil público para começar a construir o histórico de análises.
+            O relatório fica disponível depois de concluíres a primeira análise de um perfil público. Demora cerca de 1 minuto.
           </p>
           <Link
             to="/"
