@@ -430,11 +430,24 @@ function AnalyzeReady({
     (async () => {
       try {
         const { data } = await supabase.auth.getUser();
-        if (cancelled || !data.user) return;
         const username =
           ((payload as { instagram_username?: string })?.instagram_username) ||
           null;
         if (!username) return;
+        // Se o user ainda não tem sessão, grava o handle em localStorage
+        // para que `/signup` ou OAuth callback possa enfileirar o report
+        // após o registo concluir. Idempotente.
+        if (!data.user) {
+          try {
+            if (typeof window !== "undefined") {
+              window.localStorage.setItem("ib:intent_handle", username);
+            }
+          } catch {
+            /* localStorage indisponível */
+          }
+          return;
+        }
+        if (cancelled) return;
         await enqueueReportForCurrentSnapshot({
           data: {
             snapshotId,
@@ -442,6 +455,14 @@ function AnalyzeReady({
             competitors,
           },
         });
+        // Limpa intent_handle: o snapshot já está enfileirado para este user.
+        try {
+          if (typeof window !== "undefined") {
+            window.localStorage.removeItem("ib:intent_handle");
+          }
+        } catch {
+          /* noop */
+        }
       } catch {
         /* fail-soft */
       }
