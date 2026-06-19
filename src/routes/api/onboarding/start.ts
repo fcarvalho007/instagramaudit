@@ -36,6 +36,7 @@ import { getAuthMode } from "@/lib/config/auth-mode.server";
 import { getBalance, grantInitialCredits } from "@/lib/credits/credits.server";
 import { setLeadCookie } from "@/lib/leads/lead-cookie.server";
 import { sendReportAccessEmail } from "@/lib/email/send-report-access.server";
+import { enqueueReportForSnapshot } from "@/lib/orchestration/enqueue-report-for-snapshot.server";
 
 const PayloadSchema = z.object({
   name: z.string().trim().min(1).max(120),
