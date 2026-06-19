@@ -622,6 +622,14 @@ export async function handleOnboardingStart(
       handle: parsed.data.handle ?? null,
       is_new: upserted.isNew,
     });
+    // Fire-and-forget: cria o report_request + dispara pipeline PDF+email
+    // para que /app/reports não apareça vazio após registo. Idempotente.
+    void tryEnqueueReportForHandle({
+      handle: parsed.data.handle ?? null,
+      leadId: upserted.leadId,
+      userId: authCreate.userId,
+      origin: new URL(request.url).origin,
+    });
     if (upserted.isNew) {
       void sendReportAccessEmail({
         leadId: upserted.leadId,
