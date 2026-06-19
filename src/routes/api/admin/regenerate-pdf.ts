@@ -60,9 +60,13 @@ export const Route = createFileRoute("/api/admin/regenerate-pdf")({
           .eq("id", reportRequestId);
 
         try {
+          const internalToken = process.env.INTERNAL_API_TOKEN ?? "";
           const res = await fetch(`${origin}/api/generate-report-pdf`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              "x-internal-token": internalToken,
+            },
             body: JSON.stringify({ report_request_id: reportRequestId, force: true }),
           });
           const body = await res.json().catch(() => ({}));
