@@ -1,58 +1,90 @@
-## Objetivo
+## Auditoria — geração do relatório após registo
 
-Após auditoria, o registo via modal de onboarding **nunca cria** `report_requests` nem dispara `runReportPipeline`. O utilizador vê o snapshot em `/analyze/$username` mas `/app/reports` fica vazio e não recebe email com PDF. Este plano corrige a cadeia de geração e remove inconsistências relacionadas.
+Inspecionei pipeline end-to-end + dados reais em produção. Resultado em checklist (✅ OK · ⚠️ risco · ❌ partido).
 
-## Alterações
+### Cadeia de criação de `report_requests`
 
-### 1. `/api/onboarding/start` — enfileirar relatório no registo
-- Persistir `instagram_handle` em `leads` (campo enviado pelo modal, hoje ignorado).
-- Após sucesso de `createAuthUser` + `upsertLead`, inserir linha em `report_requests` com:
-  - `request_source = 'onboarding_signup'`
-  - `is_free_request = true`
-  - `lead_id` + `user_id` recém-criados
-  - `instagram_handle` normalizado
-- Disparar `runInBackground(runReportPipeline)` (fire-and-forget, não bloqueia resposta).
-- Registar `AUTH_USER_CREATE_FAILED` em `product_events` com motivo real (hoje é mascarado).
+- ✅ `/api/onboarding/start` persiste `instagram_handle` e chama `tryEnqueueReportForHandle` após `createAuthUser` + `upsertLead`.
+- ✅ Helper `enqueueReportForSnapshot` é idempotente (lookup + `23505` race guard) e dispara `runReportPipeline` em background.
+- ✅ Safety net em `analyze.$username` (`enqueueReportForCurrentSnapshot`) corre quando há sessão activa.
+- ❌ **`/signup` e Google OAuth NÃO passam por `/api/onboarding/start`.** Usam `supabase.auth.signUp` direto → trigger `handle_new_user` cria lead com `source='auth_signup'` e `instagram_handle=NULL`. Todos os 8 leads dos últimos 7 dias estão neste caminho. Nenhum `report_requests` foi criado nos últimos 7 dias, apesar de existir snapshot novo para `frederico.m.carvalho` (19 Jun) e 8 signups (13–19 Jun).
+- ⚠️ A safety net depende do utilizador navegar manualmente para `/analyze/$username` *autenticado* após registo. Quem se regista em `/signup` directo nunca dispara enqueue.
 
-### 2. `analyze.$username` — rede de segurança
-- Nova server fn `enqueueReportForSnapshot` (`requireSupabaseAuth`):
-  - Resolve `lead_id` via `profiles.lead_id`.
-  - Insere `report_requests` **idempotente** (ON CONFLICT por `user_id + instagram_handle` em estado pendente/processing das últimas 24h → noop).
-  - Chama `runReportPipeline` em background.
-- Componente chama-a quando snapshot fica pronto e há sessão ativa. Cobre fluxos antigos (signup direto, retomadas, etc.).
+### Estado canónico (`pdf_status`, `request_status`, `delivery_status`)
 
-### 3. RLS em `report_requests`
-- Política atual: `user_id = auth.uid()`. Falha para linhas pré-signup com `user_id NULL` mas `lead_id` ligado ao utilizador.
-- Adicionar política SELECT extra: `lead_id IN (SELECT lead_id FROM profiles WHERE id = auth.uid())`.
-- Migração inclui `GRANT` (já existe) + nova policy.
+Colunas são `text` livre (não enum). Cada componente escreve valores diferentes — UI nunca mostra "Pronto".
 
-### 4. Migração — `leads.instagram_handle`
-- Adicionar coluna `instagram_handle text` se não existir + índice parcial `WHERE instagram_handle IS NOT NULL`.
+- ❌ **`pdf_status` divergente:**
+  - `generate-report-pdf` escreve `'ready' | 'generating' | 'failed'`
+  - `app.reports.tsx` + `reports.functions.ts` esperam `'generated' | 'generating' | 'pending' | 'failed'`
+  - Resultado: badge "PDF pronto" e status "Pronto" nunca disparam mesmo quando o PDF foi gerado com sucesso.
+- ❌ **`request_status` divergente:**
+  - Orchestrator usa `pending|processing|completed|failed_pdf|failed_email`
+  - DB ainda tem rows com `'unlocked'` (legacy do `public_unlock`)
+  - UI compara contra `completed` / `processing` / `failed` — `unlocked` cai sempre no "Pendente".
+- ⚠️ Orchestrator `runReportPipeline` só skipa `completed` e `processing`. Linhas com `'unlocked'` re-enfileiradas seriam reescritas para `processing`.
 
-### 5. `/app/reports` — empty state
-- Refinar copy: "O teu relatório aparece aqui após a primeira análise (~1 min). Recebes também por email."
-- Polling leve (a cada 5s) enquanto houver request em `pending`/`processing` para refletir progresso sem reload manual.
+### Pipeline interno
 
-## Fora de âmbito
-- Reescrita do gate premium / unlock antigo.
-- Backfill de leads existentes (faz-se manual se necessário).
-- Alterações ao hero, pagamentos, design tokens.
+- ✅ `INTERNAL_API_TOKEN`, `PDFSHIFT_API_KEY`, `RESEND_API_KEY` presentes em secrets.
+- ✅ `runInBackground` tem catch defensivo.
+- ⚠️ `runReportPipeline` chama `fetch(${origin}/api/generate-report-pdf)` sem qualquer header de auth. `generate-report-pdf` é exposta como rota pública sem `INTERNAL_API_TOKEN`. Funciona, mas é um endpoint público que aceita qualquer `report_request_id`.
+- ✅ `send-report-email` exige header `x-internal-token`.
 
-## Ficheiros tocados
-- `src/routes/api/onboarding/start.ts`
-- `src/routes/analyze.$username.tsx` (+ nova `src/lib/enqueue-report.functions.ts`)
-- `src/routes/_authenticated/app.reports.tsx`
-- Nova migração: `leads.instagram_handle` + policy SELECT em `report_requests`
+### RLS / leitura em `/app/reports`
 
-## Validação
-1. Registar conta nova via modal com handle `frederico.m.carvalho`.
-2. `/app/reports` deve mostrar cartão "A processar" → "Pronto" em <2 min.
-3. Email com PDF chega ao endereço usado.
-4. Repetir registo/análise do mesmo handle não duplica `report_requests` (idempotência).
+- ✅ Migração de hoje adicionou policy `Users can view reports via lead` + `current_user_lead_id()`.
+- ✅ `getUserReports` faz `.or(user_id, lead_id)`.
+- ✅ Polling a cada 5s enquanto houver `pending`/`processing`/`generating`.
+
+### Trigger `handle_new_user` / `link_user_to_existing_reports`
+
+- ✅ Cria `profiles` + lead idempotente por `email_normalized`.
+- ✅ Faz backfill de `report_requests.user_id` quando o user assina depois.
+- ⚠️ Lead criado por trigger fica com `source='auth_signup'` e `instagram_handle=NULL` — perde-se a relação com o handle que o user estava a analisar.
+
+### Diagnóstico em dados reais
+
+- 8 leads em 7 dias, 0 `report_requests` criados, 0 eventos `onboarding_auth_create_failed`.
+- Snapshot mais recente: `frederico.m.carvalho` (19 Jun) — sem report_request associado.
+- Indica que o fluxo dominante hoje é `/signup` direto, não o modal de onboarding.
+
+---
+
+## Plano de correcção (P0 → P1)
+
+### P0 — Unificar vocabulário de status (1 migração + 3 ficheiros)
+
+1. **Migração**: backfill `pdf_status='ready' → 'generated'` e `request_status='unlocked' → 'completed'` para todas as rows existentes. Adicionar CHECK constraint suave (via trigger) que normalize `ready→generated` em INSERT/UPDATE para defender o futuro.
+2. **`generate-report-pdf.ts`**: trocar todos os `pdf_status: "ready"` por `"generated"`.
+3. **Verificar**: `send-report-email.ts` compara contra `"ready"` — actualizar para `"generated"`.
+4. **`reports.functions.ts`** + **`app.reports.tsx`**: já esperam `generated`; nada a mudar.
+
+### P0 — Cobrir signup directo (`/signup` + Google OAuth)
+
+1. **`/signup`**: depois de `supabase.auth.signUp` com sucesso, ler `localStorage.getItem('intent_handle')` (a gravar em `analyze.$username` quando o user chega sem sessão) e chamar uma nova server fn `enqueueReportForHandle({ handle })` que:
+   - resolve `lead_id` via `profiles`
+   - procura snapshot mais recente para esse handle
+   - chama `enqueueReportForSnapshot` (idempotente)
+2. **OAuth callback**: aplicar a mesma lógica no destino pós-OAuth (`/app/reports` já está carregando — disparar a partir daí se houver `intent_handle`).
+3. **`analyze.$username`**: ao detectar `!user`, gravar `intent_handle` em `localStorage` para futuro consumo.
+
+### P1 — Segurança de `generate-report-pdf`
+
+- Exigir `x-internal-token` à semelhança do `send-report-email`. Actualizar `run-report-pipeline.ts` para enviar o header.
+
+### P1 — Robustez orchestrator
+
+- Adicionar `'unlocked'` à lista de "early return" do guard (tratar como `completed` legacy) OU normalizar na migração de backfill (já o fazemos no P0).
+
+### Fora de âmbito desta auditoria
+- Rewrite do gate premium / `lead_report_unlocks`.
+- Backfill manual dos 8 leads existentes (o utilizador pode fazer com 1 query após o P0 estar live).
 
 ## Checkpoint
-- ☐ Migração aplicada (`instagram_handle` + policy)
-- ☐ `/api/onboarding/start` enfileira relatório + persiste handle
-- ☐ `enqueueReportForSnapshot` ativa em `analyze.$username`
-- ☐ Empty state + polling em `/app/reports`
-- ☐ Teste E2E manual com conta nova OK
+- ☐ Migração de backfill `ready→generated` / `unlocked→completed`
+- ☐ `generate-report-pdf` + `send-report-email` escrevem/leem `generated`
+- ☐ `/signup` e fluxo OAuth chamam `enqueueReportForHandle({handle})` quando `intent_handle` existe
+- ☐ `analyze.$username` grava `intent_handle` no localStorage para users anónimos
+- ☐ `generate-report-pdf` exige `x-internal-token`
+- ☐ Teste E2E: novo signup via `/signup` com handle pendente → row em `report_requests` em <10s

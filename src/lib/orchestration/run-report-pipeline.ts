@@ -52,11 +52,15 @@ async function setRequestStatus(
 async function callPdfRoute(
   origin: string,
   reportRequestId: string,
+  internalToken: string,
 ): Promise<{ ok: boolean; detail: string }> {
   try {
     const res = await fetch(`${origin}/api/generate-report-pdf`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-internal-token": internalToken,
+      },
       body: JSON.stringify({ report_request_id: reportRequestId }),
     });
     if (!res.ok) {
@@ -151,7 +155,7 @@ export async function runReportPipeline(
     await setRequestStatus(reportRequestId, "processing");
 
     // Step 1 — generate PDF
-    const pdfResult = await callPdfRoute(origin, reportRequestId);
+    const pdfResult = await callPdfRoute(origin, reportRequestId, internalToken);
     if (!pdfResult.ok) {
       console.error(
         `${LOG_PREFIX} PDF step failed for ${reportRequestId}: ${pdfResult.detail}`,

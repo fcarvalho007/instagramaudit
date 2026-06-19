@@ -150,7 +150,7 @@ export const Route = createFileRoute("/api/send-report-email")({
 
         // 5. PDF readiness
         if (
-          reportRequest.pdf_status !== "ready" ||
+          reportRequest.pdf_status !== "generated" ||
           !reportRequest.pdf_storage_path
         ) {
           return errorResponse(
