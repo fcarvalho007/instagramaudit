@@ -300,14 +300,30 @@ function ReportsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      setLoading(true);
-      setError(null);
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    async function load(initial: boolean) {
+      if (initial) setLoading(true);
       try {
         const data = await getUserReports();
-        if (!cancelled) setReports(data);
+        if (cancelled) return;
+        setReports(data);
+        setError(null);
+
+        // Auto-refresh enquanto houver relatórios em pendente/processamento.
+        const hasInFlight = data.some(
+          (r) =>
+            r.requestStatus === "pending" ||
+            r.requestStatus === "processing" ||
+            r.pdfStatus === "pending" ||
+            r.pdfStatus === "generating",
+        );
+        if (hasInFlight) {
+          timer = setTimeout(() => load(false), 5_000);
+        }
       } catch (err) {
-        if (!cancelled) {
+        if (cancelled) return;
+        if (initial) {
           setError(
             err instanceof Error
               ? err.message
@@ -315,11 +331,14 @@ function ReportsPage() {
           );
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && initial) setLoading(false);
       }
     }
-    load();
-    return () => { cancelled = true; };
+    load(true);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, []);
 
   const stats = computeStats(reports);
