@@ -346,7 +346,72 @@ async function createAuthUser(args: {
     status: error?.status,
     message: msg,
   });
+  try {
+    await supabaseAdmin.from("product_events").insert([
+      {
+        event_type: "onboarding_auth_create_failed",
+        metadata: {
+          status: error?.status ?? null,
+          message_excerpt: msg.slice(0, 200),
+        },
+      },
+    ]);
+  } catch (e) {
+    console.warn("[onboarding/start] auth_create_failed event insert failed", e);
+  }
   return { ok: false, code: "AUTH_USER_CREATE_FAILED", detail: msg };
+}
+
+/**
+ * Tenta enfileirar imediatamente o report_request para o handle
+ * indicado, ligando-o ao snapshot mais recente. Fail-soft — nunca
+ * bloqueia a resposta do onboarding.
+ */
+async function tryEnqueueReportForHandle(args: {
+  handle: string | null;
+  leadId: string;
+  userId: string | null;
+  origin: string;
+}): Promise<void> {
+  const handle = args.handle?.trim().toLowerCase();
+  if (!handle) return;
+
+  try {
+    const { data: snap } = await supabaseAdmin
+      .from("analysis_snapshots")
+      .select("id")
+      .ilike("instagram_username", handle)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!snap?.id) {
+      console.info("[onboarding/start] no snapshot yet for handle, skip enqueue", {
+        handle,
+        lead_id: args.leadId,
+      });
+      return;
+    }
+
+    const res = await enqueueReportForSnapshot({
+      leadId: args.leadId,
+      userId: args.userId,
+      instagramUsername: handle,
+      analysisSnapshotId: snap.id,
+      origin: args.origin,
+      source: "onboarding_signup",
+    });
+    console.info("[onboarding/start] report enqueue", {
+      handle,
+      lead_id: args.leadId,
+      ok: res.ok,
+      created: res.created,
+      reason: res.reason ?? null,
+      report_request_id: res.reportRequestId ?? null,
+    });
+  } catch (err) {
+    console.warn("[onboarding/start] enqueue report failed (soft)", err);
+  }
 }
 
 /**
