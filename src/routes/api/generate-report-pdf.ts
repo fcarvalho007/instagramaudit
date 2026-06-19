@@ -27,7 +27,7 @@ const PayloadSchema = z.object({
 type SuccessBody = {
   success: true;
   report_request_id: string;
-  pdf_status: "ready";
+  pdf_status: "generated";
   pdf_storage_path: string;
   pdf_generated_at: string;
   regenerated: boolean;
@@ -148,7 +148,7 @@ export const Route = createFileRoute("/api/generate-report-pdf")({
         // 3) Idempotency — short-circuit if already generated and not forcing.
         if (
           !force &&
-          reqRow.pdf_status === "ready" &&
+          reqRow.pdf_status === "generated" &&
           reqRow.pdf_storage_path &&
           reqRow.pdf_generated_at
         ) {
@@ -156,7 +156,7 @@ export const Route = createFileRoute("/api/generate-report-pdf")({
             {
               success: true,
               report_request_id: reqRow.id,
-              pdf_status: "ready",
+              pdf_status: "generated",
               pdf_storage_path: reqRow.pdf_storage_path,
               pdf_generated_at: reqRow.pdf_generated_at,
               regenerated: false,
@@ -292,7 +292,7 @@ export const Route = createFileRoute("/api/generate-report-pdf")({
         const { error: updError } = await supabaseAdmin
           .from("report_requests")
           .update({
-            pdf_status: "ready",
+            pdf_status: "generated",
             pdf_storage_path: storagePath,
             pdf_generated_at: generatedAt,
             pdf_error_message: null,
@@ -317,10 +317,10 @@ export const Route = createFileRoute("/api/generate-report-pdf")({
           {
             success: true,
             report_request_id: reqRow.id,
-            pdf_status: "ready",
+            pdf_status: "generated",
             pdf_storage_path: storagePath,
             pdf_generated_at: generatedAt,
-            regenerated: reqRow.pdf_status === "ready",
+            regenerated: reqRow.pdf_status === "generated",
           },
           200,
         );
