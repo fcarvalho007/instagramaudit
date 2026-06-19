@@ -233,3 +233,80 @@ export const enqueueReportForCurrentSnapshot = createServerFn({ method: "POST" }
       reason: res.reason ?? null,
     };
   });
+
+/**
+ * Variante por handle: dado um username, procura o snapshot mais recente
+ * e enfileira o report. Usada após `/signup` ou OAuth para utilizadores
+ * que entraram sem passar pelo modal de onboarding mas tinham um handle
+ * pendente gravado em `localStorage` (intent_handle).
+ *
+ * Idempotente — server faz o lookup e o helper rejeita duplicados.
+ */
+export const enqueueReportForHandle = createServerFn({ method: "POST" })
+  .middleware([withSupabaseHeaders, requireSupabaseAuth])
+  .inputValidator((data: { handle: string }) => {
+    if (!data.handle || typeof data.handle !== "string") {
+      throw new Error("handle is required");
+    }
+    const cleaned = data.handle.trim().toLowerCase().replace(/^@/, "");
+    if (!cleaned || cleaned.length > 60) {
+      throw new Error("handle invalid");
+    }
+    return { handle: cleaned };
+  })
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    // 1) resolve lead_id via profile
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("lead_id")
+      .eq("id", userId)
+      .maybeSingle();
+
+    const leadId = profile?.lead_id ?? null;
+    if (!leadId) {
+      return { ok: false as const, reason: "no_lead" as const };
+    }
+
+    // 2) procura snapshot mais recente para o handle
+    const { supabaseAdmin } = await import(
+      "@/integrations/supabase/client.server"
+    );
+    const { data: snap } = await supabaseAdmin
+      .from("analysis_snapshots")
+      .select("id")
+      .ilike("instagram_username", data.handle)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!snap?.id) {
+      return { ok: false as const, reason: "no_snapshot" as const };
+    }
+
+    const { enqueueReportForSnapshot } = await import(
+      "@/lib/orchestration/enqueue-report-for-snapshot.server"
+    );
+
+    const origin =
+      process.env.PUBLIC_APP_BASE_URL ??
+      process.env.APP_BASE_URL ??
+      "https://instagramaudit.lovable.app";
+
+    const res = await enqueueReportForSnapshot({
+      leadId,
+      userId,
+      instagramUsername: data.handle,
+      analysisSnapshotId: snap.id,
+      origin,
+      source: "signup_intent",
+    });
+
+    return {
+      ok: res.ok,
+      created: res.created,
+      reportRequestId: res.reportRequestId ?? null,
+      reason: res.reason ?? null,
+    };
+  });
