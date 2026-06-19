@@ -1063,6 +1063,7 @@ export type Database = {
           gdpr_consent_at: string | null
           gdpr_consent_version: string | null
           id: string
+          instagram_handle: string | null
           internal_notes: string | null
           marketing_consent: boolean
           marketing_consent_at: string | null
@@ -1091,6 +1092,7 @@ export type Database = {
           gdpr_consent_at?: string | null
           gdpr_consent_version?: string | null
           id?: string
+          instagram_handle?: string | null
           internal_notes?: string | null
           marketing_consent?: boolean
           marketing_consent_at?: string | null
@@ -1119,6 +1121,7 @@ export type Database = {
           gdpr_consent_at?: string | null
           gdpr_consent_version?: string | null
           id?: string
+          instagram_handle?: string | null
           internal_notes?: string | null
           marketing_consent?: boolean
           marketing_consent_at?: string | null
