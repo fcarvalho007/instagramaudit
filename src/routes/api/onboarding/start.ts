@@ -254,6 +254,7 @@ async function upsertLead(
         pricing_preference: data.pricing_preference ?? null,
         gdpr_consent_at: consentTimestamp,
         gdpr_consent_version: "v1",
+        instagram_handle: data.handle ?? null,
       })
       .eq("id", existing.data.id);
     if (update.error) return { error: update.error.message };
@@ -280,6 +281,7 @@ async function upsertLead(
       gdpr_consent_at: consentTimestamp,
       gdpr_consent_version: "v1",
       source: "onboarding_modal",
+      instagram_handle: data.handle ?? null,
     })
     .select("id")
     .single();
