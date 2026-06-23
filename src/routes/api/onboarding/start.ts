@@ -622,28 +622,40 @@ export async function handleOnboardingStart(
       handle: parsed.data.handle ?? null,
       is_new: upserted.isNew,
     });
-    // Fire-and-forget: cria o report_request + dispara pipeline PDF+email
-    // para que /app/reports não apareça vazio após registo. Idempotente.
-    void tryEnqueueReportForHandle({
-      handle: parsed.data.handle ?? null,
-      leadId: upserted.leadId,
-      userId: authCreate.userId,
-      origin: new URL(request.url).origin,
-    });
-    if (upserted.isNew) {
-      void sendReportAccessEmail({
+    // AWAIT (não fire-and-forget): o Cloudflare Worker termina
+    // promessas soltas ao devolver o Response, o que estava a deixar
+    // o INSERT em `report_requests` por fazer. O enqueue é rápido
+    // (~1 SELECT + 1 INSERT) e a pipeline (PDF+email) é disparada
+    // via subrequest HTTP a `/api/internal/run-report-pipeline`,
+    // cujo isolate é independente.
+    try {
+      await tryEnqueueReportForHandle({
+        handle: parsed.data.handle ?? null,
         leadId: upserted.leadId,
-        toEmail: parsed.data.email,
-        firstName: parsed.data.name?.split(/\s+/)[0] ?? null,
-        instagramHandle: parsed.data.handle ?? null,
-      }).then((r) => {
+        userId: authCreate.userId,
+        origin: new URL(request.url).origin,
+      });
+    } catch (err) {
+      console.warn("[onboarding/start] enqueue report failed (soft)", err);
+    }
+    if (upserted.isNew) {
+      // AWAIT — email é rápido (~300ms) e crítico para o utilizador.
+      try {
+        const r = await sendReportAccessEmail({
+          leadId: upserted.leadId,
+          toEmail: parsed.data.email,
+          firstName: parsed.data.name?.split(/\s+/)[0] ?? null,
+          instagramHandle: parsed.data.handle ?? null,
+        });
         if (!r.ok) {
           console.warn("[onboarding/start] report-access email failed", {
             lead_id: upserted.leadId,
             reason: r.reason,
           });
         }
-      });
+      } catch (err) {
+        console.warn("[onboarding/start] sendReportAccessEmail threw", err);
+      }
     }
     return json(
       {

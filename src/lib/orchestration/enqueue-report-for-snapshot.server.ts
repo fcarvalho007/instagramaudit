@@ -17,10 +17,6 @@
  */
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import {
-  runInBackground,
-  runReportPipeline,
-} from "@/lib/orchestration/run-report-pipeline";
 import { ensureReportSnapshotForRequest } from "@/lib/report-snapshots/persist-report-snapshot.server";
 
 export interface EnqueueArgs {
@@ -124,15 +120,55 @@ export async function enqueueReportForSnapshot(
 
   reportRequestId = inserted.data.id;
 
-  // 3) Persist immutable report snapshot (fail-soft)
-  await ensureReportSnapshotForRequest(reportRequestId, "beta_request", {
-    handle: instagramUsername,
-    leadId,
-    snapshotId: analysisSnapshotId,
-  });
+  // 3) Persist immutable report snapshot (awaited — fail-soft).
+  //    Tem de estar feito ANTES de devolver, senão report_snapshot_id
+  //    fica para sempre a NULL quando o caller é uma fire-and-forget
+  //    no Cloudflare Worker (a promise é terminada após o response).
+  try {
+    await ensureReportSnapshotForRequest(reportRequestId, "beta_request", {
+      handle: instagramUsername,
+      leadId,
+      snapshotId: analysisSnapshotId,
+    });
+  } catch (err) {
+    console.warn("[enqueue-report] ensureReportSnapshot warn (soft)", err);
+  }
 
-  // 4) Kick off pipeline (PDF → email)
-  runInBackground(runReportPipeline(reportRequestId, origin));
+  // 4) Kick off pipeline via internal endpoint (NOT via in-process
+  //    promise). No Cloudflare Workers as promessas soltas com `void`
+  //    são terminadas ao devolver o Response; um subrequest HTTP
+  //    inicia um novo isolate cujo lifecycle é independente.
+  triggerPipelineSubrequest(reportRequestId, origin);
 
   return { ok: true, reportRequestId, created: true };
+}
+
+function triggerPipelineSubrequest(
+  reportRequestId: string,
+  origin: string,
+): void {
+  const token = process.env.INTERNAL_API_TOKEN;
+  if (!token) {
+    console.error(
+      "[enqueue-report] INTERNAL_API_TOKEN missing — pipeline will not run",
+    );
+    return;
+  }
+  // Initiate the subrequest but don't await: the worker stays alive
+  // until the parent handler returns Response, which is long enough to
+  // open the outbound TCP connection. The target endpoint runs the
+  // pipeline synchronously in its own isolate.
+  fetch(`${origin}/api/internal/run-report-pipeline`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-internal-token": token,
+    },
+    body: JSON.stringify({ report_request_id: reportRequestId, origin }),
+  }).catch((err) => {
+    const msg = err instanceof Error ? err.message : "unknown";
+    console.warn(
+      `[enqueue-report] pipeline subrequest failed for ${reportRequestId}: ${msg}`,
+    );
+  });
 }
