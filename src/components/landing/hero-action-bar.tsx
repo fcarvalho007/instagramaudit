@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { InstagramGlyph } from "./instagram-glyph";
 import { normalizeInstagramHandle } from "@/lib/instagram/normalize-handle";
 import { OnboardingModal } from "@/components/onboarding/onboarding-modal";
+import { useAuthSession } from "@/hooks/use-auth-session";
 
 /**
  * Re-export do helper canónico em `@/lib/instagram/normalize-handle`,
@@ -19,6 +20,7 @@ export function extractUsername(raw: string): string {
 export function HeroActionBar() {
   const { t } = useTranslation("landing");
   const navigate = useNavigate();
+  const { user } = useAuthSession();
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
@@ -32,6 +34,18 @@ export function HeroActionBar() {
       return;
     }
     setError(null);
+
+    // Utilizadores autenticados saltam o onboarding modal — vão directos
+    // à análise. A pipeline em /analyze/$username já enfileira o
+    // report_request automaticamente quando há sessão activa.
+    if (user) {
+      navigate({
+        to: "/analyze/$username",
+        params: { username },
+        search: {},
+      });
+      return;
+    }
 
     // Fase 3: NÃO navegar directamente — abrir onboarding modal primeiro.
     // O modal vai submeter a /api/onboarding/start (cookie + créditos)
