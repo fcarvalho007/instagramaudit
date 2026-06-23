@@ -1,107 +1,44 @@
 ## Diagnóstico
 
-Os fixes anteriores estão no sítio certo (`/api/onboarding/start` persiste o `instagram_handle`, chama `tryEnqueueReportForHandle`, RLS por `lead_id` está aplicada, `enqueueReportForHandle` existe para o fluxo `/signup`/OAuth, normalização de estados em DB). O problema é de **runtime no Cloudflare Workers**, não de lógica.
+Dois problemas distintos no mesmo ecrã (hero / onboarding modal):
 
-### Causa raiz
+### 1. "Entrar com email" exige email válido antes de avançar
+`onboarding-modal.tsx` (linha 638-646) bloqueia o clique no link "Entrar com email →" se o campo de email da entry step não passar `EMAIL_RE`. Resultado: o utilizador clica no link de login, mas em vez de ir para o ecrã de palavra-passe vê o erro "o teu email — parece inválido" (exatamente o do print). Comportamento errado — o link de login devia abrir o ecrã de palavra-passe sem barreira (o utilizador escreve email + password lá dentro).
 
-Em `src/routes/api/onboarding/start.ts` (linhas ~625-647):
+### 2. Utilizadores autenticados são forçados a passar pelo onboarding modal
+`HeroActionBar` (e o fluxo via `/analyze/$username`) abre sempre o `OnboardingModal` quando o utilizador submete o handle, mesmo quando já existe sessão Supabase activa. Para quem já tem conta:
+- O modal pede email/conta que já existe → confusão.
+- O fluxo natural devia ser: clica → `/analyze/<handle>` → snapshot + report aparecem no painel (`/app/reports`).
 
-```ts
-const credits = await grantSessionAndCredits(upserted.leadId);
-void tryEnqueueReportForHandle({ ... });   // fire-and-forget
-if (upserted.isNew) {
-  void sendReportAccessEmail({ ... });     // fire-and-forget
-}
-return json({ ok: true, ... }, 200);
-```
+A rede de segurança em `analyze.$username.tsx` (linhas 425-473) já enfileira o `report_request` quando há sessão e snapshot, portanto basta saltar o modal.
 
-E em `src/lib/orchestration/run-report-pipeline.ts` (linha 199):
+## Alterações
 
-```ts
-export function runInBackground(promise, ctx?) {
-  if (ctx?.waitUntil) { ctx.waitUntil(safe); return; }
-  void safe;   // sem waitUntil → promessa abandonada
-}
-```
+### A. Skip do modal para sessão activa
+- `src/components/landing/hero-action-bar.tsx`: ler sessão com `useAuthSession()`. Se `user` existe, no `handleSubmit` navegar directamente para `/analyze/$username` em vez de abrir o `OnboardingModal`.
+- Aplicar o mesmo padrão em qualquer outro entry point que abra o modal sem verificar sessão (revisar e ajustar se necessário em `checkout-account-gate.tsx` — provavelmente já está correcto, mas confirmo).
 
-Nenhum caller passa um `ctx.waitUntil`. No Cloudflare Workers, depois do `return Response`, qualquer promessa pendente é terminada (a runtime fecha o I/O do request). Logo:
+### B. "Entrar com email" passa a abrir o login sem validar email primeiro
+- `src/components/onboarding/onboarding-modal.tsx`, função `goSignIn` (linha 638): remover o early-return da validação. Passar o email só se for válido (caso contrário passar string vazia) e deixar o `LoginView` pedir email + palavra-passe.
+- `EntryStepBody`: muda o label para algo mais claro ("Já tens conta? **Entrar →**") e mantém o `onSignInWithEmail` a chamar `goToLoginView(emailOuVazio)`.
 
-1. O `INSERT` em `report_requests` dentro de `tryEnqueueReportForHandle` não chega a fazer commit.
-2. Mesmo que chegasse, o `runInBackground(runReportPipeline(...))` dentro de `enqueueReportForSnapshot` perde-se (sem `waitUntil`), e os relatórios ficavam para sempre em `pending`.
-3. O `sendReportAccessEmail` desaparece pelo mesmo motivo (sem email de boas-vindas).
+### C. Pequena melhoria de copy
+- pt: `"haveAccountCta": "Entrar  →"` (sem "com email") — o login screen já indica o email field.
+- en: equivalente `"Sign in →"`.
 
-Dados confirmam: 3 leads em 7 dias, 0 `report_requests`, 0 emails enviados, 0 eventos `onboarding_auth_create_failed`.
+## O que NÃO toco
 
-### Inconsistências secundárias (corrigir no mesmo passo)
+- `/report.example` (locked).
+- Pipeline de PDF, allowlist (já abriste com `APIFY_TESTING_MODE=false`), middleware de auth, `report_requests` schema.
+- Lógica de `enqueueReportForCurrentSnapshot` em `/analyze` — já trata o caso de sessão activa.
 
-- **Fluxo `/signup` + Google OAuth não passa por `/api/onboarding/start`.** A única forma de gerar relatório nesses casos é o utilizador ter visitado `/analyze/$username` antes (deixa `ib:intent_handle` em `localStorage`) e depois aterrar em `/app/reports`. Se entrar diretamente, nada acontece.
-- **`/app/reports`** consome `intent_handle` mas só uma vez no `useEffect` inicial. Funciona, mas só serve se o handle estiver lá.
-- **`report_snapshot_id` fica sempre `null`** nas 8 linhas existentes — `ensureReportSnapshotForRequest` também é chamada fire-and-forget no caminho atual. Sintoma menor (a coluna deve ficar preenchida para imutabilidade do PDF).
+## Checklist final
 
-## Plano de correção (P0 — fiabilidade do enqueue)
+☐ Logged-in user no hero → vai direto a `/analyze/<handle>` (sem modal)  
+☐ Anonymous user no hero → continua a ver o modal (igual a hoje)  
+☐ Clicar "Entrar" abre login view, independentemente do que está no campo email  
+☐ Login view permite escrever email + password e autenticar  
+☐ Copy pt-PT actualizada ("Entrar →")  
+☐ Tests `onboarding-copy.test.ts` ainda passam (a chave continua a existir, só muda o valor)
 
-### 1. Tornar o enqueue do `report_request` síncrono em `/api/onboarding/start`
-
-Em `handleOnboardingStart` (ramo `mode === "password"`), substituir os `void` por `await` para a parte que **cria** a linha. A pipeline (PDF + email) continua em background, mas a linha em `report_requests` passa a ficar garantidamente criada antes do `return`.
-
-```ts
-// antes do return json(...)
-const enq = await tryEnqueueReportForHandle({...});  // agora awaited
-if (upserted.isNew) {
-  // email também awaited (rápido, ~300ms) para garantia de entrega
-  await sendReportAccessEmail({...}).catch(err => console.warn(...));
-}
-return json({ ok: true, ... }, 200);
-```
-
-Custo: +200–500 ms no handler. Aceitável para o fluxo de signup.
-
-### 2. Garantir que `enqueueReportForSnapshot` faz await do `INSERT` antes de devolver
-
-Já faz (`inserted` é awaited). A única peça fire-and-forget lá dentro é `runInBackground(runReportPipeline(...))` e `ensureReportSnapshotForRequest(...)` — ver passo 3.
-
-### 3. Disparar a pipeline de forma persistente, não via promessa solta
-
-Duas opções, escolher uma:
-
-**Opção A (recomendada, mais simples)** — usar `fetch` keepalive contra um endpoint interno:
-
-- Substituir `runInBackground(runReportPipeline(reportRequestId, origin))` por:
-  ```ts
-  void fetch(`${origin}/api/internal/run-report-pipeline`, {
-    method: "POST",
-    headers: { "x-internal-token": process.env.INTERNAL_API_TOKEN!, "content-type": "application/json" },
-    body: JSON.stringify({ reportRequestId, origin }),
-    // keepalive: true,  // ajuda em runtimes que suportam
-  });
-  ```
-- Criar `src/routes/api/internal/run-report-pipeline.ts` (protegido por `x-internal-token`) que apenas chama `await runReportPipeline(...)` e responde. Cloudflare honra fetches outbound iniciados antes do response (`subrequest`), porque o `subrequest` corre no isolate do worker invocado, prolongando o lifecycle.
-
-**Opção B (mais limpa mas requer mais código)** — adicionar um worker dedicado (cron `pg_cron` a cada minuto) que apanha `report_requests` em `pending` há >30 s e processa.
-
-Para v1 (volume baixo), proponho **Opção A**.
-
-### 4. Backfill no `/app/reports` (rede de segurança)
-
-Em `getUserReports` (server fn), se detectar rows em `pending` há mais de 60 s, reinvocar a pipeline (via mesmo endpoint do passo 3). Garante recuperação para qualquer linha órfã.
-
-### 5. (P1) `ensureReportSnapshotForRequest` também awaited
-
-Mover para dentro do `enqueueReportForSnapshot` antes do `runInBackground`, com `await`. Garante que `report_snapshot_id` fica preenchido.
-
-## Ficheiros a tocar
-
-- `src/routes/api/onboarding/start.ts` — trocar `void` por `await` no enqueue + email (passo 1).
-- `src/lib/orchestration/enqueue-report-for-snapshot.server.ts` — substituir `runInBackground(runReportPipeline(...))` por `fetch` para `/api/internal/run-report-pipeline` + `await ensureReportSnapshotForRequest(...)` (passos 3 e 5).
-- `src/routes/api/internal/run-report-pipeline.ts` — **novo**, protegido por `INTERNAL_API_TOKEN`, corre `runReportPipeline` em await (passo 3).
-- `src/lib/rpc/reports.functions.ts` (`getUserReports`) — backfill defensivo (passo 4).
-
-Nenhuma migração nova é necessária. Não toca em `LOCKED_FILES.md` (verificar antes de editar).
-
-## Checkpoint
-
-☐ Passo 1 aplicado (enqueue awaited em `/api/onboarding/start`)  
-☐ Passo 3 aplicado (endpoint interno + `fetch` outbound substitui `runInBackground` solto)  
-☐ Passo 4 aplicado (backfill em `getUserReports`)  
-☐ Passo 5 aplicado (`ensureReportSnapshotForRequest` awaited)  
-☐ Verificação manual: criar conta de teste → confirmar linha em `report_requests` + PDF gerado em <60 s + email entregue
+Confirma e avanço para build.
