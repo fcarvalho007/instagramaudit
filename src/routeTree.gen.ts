@@ -77,6 +77,7 @@ import { Route as ApiPublicEnrichCommentsRouteImport } from './routes/api/public
 import { Route as ApiOnboardingStartRouteImport } from './routes/api/onboarding/start'
 import { Route as ApiOnboardingClaimExistingRouteImport } from './routes/api/onboarding/claim-existing'
 import { Route as ApiOnboardingCheckEmailRouteImport } from './routes/api/onboarding/check-email'
+import { Route as ApiInternalRunReportPipelineRouteImport } from './routes/api/internal/run-report-pipeline'
 import { Route as ApiDebugLeadSessionStatusRouteImport } from './routes/api/debug/lead-session-status'
 import { Route as ApiAnalyzeRefreshRouteImport } from './routes/api/analyze/refresh'
 import { Route as ApiAdminWhoamiRouteImport } from './routes/api/admin/whoami'
@@ -519,6 +520,12 @@ const ApiOnboardingCheckEmailRoute = ApiOnboardingCheckEmailRouteImport.update({
   path: '/api/onboarding/check-email',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiInternalRunReportPipelineRoute =
+  ApiInternalRunReportPipelineRouteImport.update({
+    id: '/api/internal/run-report-pipeline',
+    path: '/api/internal/run-report-pipeline',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiDebugLeadSessionStatusRoute =
   ApiDebugLeadSessionStatusRouteImport.update({
     id: '/api/debug/lead-session-status',
@@ -1144,6 +1151,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/analyze/refresh': typeof ApiAnalyzeRefreshRoute
   '/api/debug/lead-session-status': typeof ApiDebugLeadSessionStatusRoute
+  '/api/internal/run-report-pipeline': typeof ApiInternalRunReportPipelineRoute
   '/api/onboarding/check-email': typeof ApiOnboardingCheckEmailRoute
   '/api/onboarding/claim-existing': typeof ApiOnboardingClaimExistingRoute
   '/api/onboarding/start': typeof ApiOnboardingStartRoute
@@ -1307,6 +1315,7 @@ export interface FileRoutesByTo {
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/analyze/refresh': typeof ApiAnalyzeRefreshRoute
   '/api/debug/lead-session-status': typeof ApiDebugLeadSessionStatusRoute
+  '/api/internal/run-report-pipeline': typeof ApiInternalRunReportPipelineRoute
   '/api/onboarding/check-email': typeof ApiOnboardingCheckEmailRoute
   '/api/onboarding/claim-existing': typeof ApiOnboardingClaimExistingRoute
   '/api/onboarding/start': typeof ApiOnboardingStartRoute
@@ -1473,6 +1482,7 @@ export interface FileRoutesById {
   '/api/admin/whoami': typeof ApiAdminWhoamiRoute
   '/api/analyze/refresh': typeof ApiAnalyzeRefreshRoute
   '/api/debug/lead-session-status': typeof ApiDebugLeadSessionStatusRoute
+  '/api/internal/run-report-pipeline': typeof ApiInternalRunReportPipelineRoute
   '/api/onboarding/check-email': typeof ApiOnboardingCheckEmailRoute
   '/api/onboarding/claim-existing': typeof ApiOnboardingClaimExistingRoute
   '/api/onboarding/start': typeof ApiOnboardingStartRoute
@@ -1640,6 +1650,7 @@ export interface FileRouteTypes {
     | '/api/admin/whoami'
     | '/api/analyze/refresh'
     | '/api/debug/lead-session-status'
+    | '/api/internal/run-report-pipeline'
     | '/api/onboarding/check-email'
     | '/api/onboarding/claim-existing'
     | '/api/onboarding/start'
@@ -1803,6 +1814,7 @@ export interface FileRouteTypes {
     | '/api/admin/whoami'
     | '/api/analyze/refresh'
     | '/api/debug/lead-session-status'
+    | '/api/internal/run-report-pipeline'
     | '/api/onboarding/check-email'
     | '/api/onboarding/claim-existing'
     | '/api/onboarding/start'
@@ -1968,6 +1980,7 @@ export interface FileRouteTypes {
     | '/api/admin/whoami'
     | '/api/analyze/refresh'
     | '/api/debug/lead-session-status'
+    | '/api/internal/run-report-pipeline'
     | '/api/onboarding/check-email'
     | '/api/onboarding/claim-existing'
     | '/api/onboarding/start'
@@ -2111,6 +2124,7 @@ export interface RootRouteChildren {
   ApiAdminWhoamiRoute: typeof ApiAdminWhoamiRoute
   ApiAnalyzeRefreshRoute: typeof ApiAnalyzeRefreshRoute
   ApiDebugLeadSessionStatusRoute: typeof ApiDebugLeadSessionStatusRoute
+  ApiInternalRunReportPipelineRoute: typeof ApiInternalRunReportPipelineRoute
   ApiOnboardingCheckEmailRoute: typeof ApiOnboardingCheckEmailRoute
   ApiOnboardingClaimExistingRoute: typeof ApiOnboardingClaimExistingRoute
   ApiOnboardingStartRoute: typeof ApiOnboardingStartRoute
@@ -2644,6 +2658,13 @@ declare module '@tanstack/react-router' {
       path: '/api/onboarding/check-email'
       fullPath: '/api/onboarding/check-email'
       preLoaderRoute: typeof ApiOnboardingCheckEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/internal/run-report-pipeline': {
+      id: '/api/internal/run-report-pipeline'
+      path: '/api/internal/run-report-pipeline'
+      fullPath: '/api/internal/run-report-pipeline'
+      preLoaderRoute: typeof ApiInternalRunReportPipelineRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/debug/lead-session-status': {
@@ -3630,6 +3651,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminWhoamiRoute: ApiAdminWhoamiRoute,
   ApiAnalyzeRefreshRoute: ApiAnalyzeRefreshRoute,
   ApiDebugLeadSessionStatusRoute: ApiDebugLeadSessionStatusRoute,
+  ApiInternalRunReportPipelineRoute: ApiInternalRunReportPipelineRoute,
   ApiOnboardingCheckEmailRoute: ApiOnboardingCheckEmailRoute,
   ApiOnboardingClaimExistingRoute: ApiOnboardingClaimExistingRoute,
   ApiOnboardingStartRoute: ApiOnboardingStartRoute,
@@ -3698,3 +3720,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

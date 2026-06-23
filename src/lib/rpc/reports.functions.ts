@@ -51,6 +51,12 @@ export const getUserReports = createServerFn({ method: "GET" })
       throw new Error("Não foi possível carregar os relatórios.");
     }
 
+    // Rede de segurança: se houver linhas em `pending` há >30 s,
+    // re-dispara a pipeline via endpoint interno. Cobre o caso em que
+    // o subrequest original foi perdido pelo runtime do Worker.
+    // Best-effort, fire-and-forget — não bloqueia a resposta.
+    void retriggerStalePipelines(data ?? []);
+
     return (data ?? []).map((r) => ({
       id: r.id,
       instagramUsername: r.instagram_username,
@@ -67,6 +73,52 @@ export const getUserReports = createServerFn({ method: "GET" })
       reportSnapshotId: (r as { report_snapshot_id: string | null }).report_snapshot_id ?? null,
     }));
   });
+
+/**
+ * Re-dispara pipeline para rows em estado `pending` há >30 s. Usado
+ * apenas como rede de segurança contra promises perdidas no runtime
+ * Cloudflare Workers (subrequest inicial pode ter sido terminado).
+ * Idempotente — `runReportPipeline` faz short-circuit em `processing`
+ * e `completed`.
+ */
+async function retriggerStalePipelines(
+  rows: Array<{
+    id: string;
+    request_status: string;
+    created_at: string;
+  }>,
+): Promise<void> {
+  const token = process.env.INTERNAL_API_TOKEN;
+  if (!token) return;
+
+  const origin =
+    process.env.PUBLIC_APP_BASE_URL ??
+    process.env.APP_BASE_URL ??
+    "https://instagramaudit.lovable.app";
+
+  const cutoff = Date.now() - 30_000;
+  const stale = rows.filter(
+    (r) =>
+      r.request_status === "pending" &&
+      new Date(r.created_at).getTime() < cutoff,
+  );
+  if (stale.length === 0) return;
+
+  await Promise.allSettled(
+    stale.map((r) =>
+      fetch(`${origin}/api/internal/run-report-pipeline`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-internal-token": token,
+        },
+        body: JSON.stringify({ report_request_id: r.id, origin }),
+      }).catch(() => {
+        /* fail-soft */
+      }),
+    ),
+  );
+}
 
 /**
  * Fetch a single report request owned by the current user.

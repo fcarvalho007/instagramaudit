@@ -1,90 +1,107 @@
-## Auditoria — geração do relatório após registo
+## Diagnóstico
 
-Inspecionei pipeline end-to-end + dados reais em produção. Resultado em checklist (✅ OK · ⚠️ risco · ❌ partido).
+Os fixes anteriores estão no sítio certo (`/api/onboarding/start` persiste o `instagram_handle`, chama `tryEnqueueReportForHandle`, RLS por `lead_id` está aplicada, `enqueueReportForHandle` existe para o fluxo `/signup`/OAuth, normalização de estados em DB). O problema é de **runtime no Cloudflare Workers**, não de lógica.
 
-### Cadeia de criação de `report_requests`
+### Causa raiz
 
-- ✅ `/api/onboarding/start` persiste `instagram_handle` e chama `tryEnqueueReportForHandle` após `createAuthUser` + `upsertLead`.
-- ✅ Helper `enqueueReportForSnapshot` é idempotente (lookup + `23505` race guard) e dispara `runReportPipeline` em background.
-- ✅ Safety net em `analyze.$username` (`enqueueReportForCurrentSnapshot`) corre quando há sessão activa.
-- ❌ **`/signup` e Google OAuth NÃO passam por `/api/onboarding/start`.** Usam `supabase.auth.signUp` direto → trigger `handle_new_user` cria lead com `source='auth_signup'` e `instagram_handle=NULL`. Todos os 8 leads dos últimos 7 dias estão neste caminho. Nenhum `report_requests` foi criado nos últimos 7 dias, apesar de existir snapshot novo para `frederico.m.carvalho` (19 Jun) e 8 signups (13–19 Jun).
-- ⚠️ A safety net depende do utilizador navegar manualmente para `/analyze/$username` *autenticado* após registo. Quem se regista em `/signup` directo nunca dispara enqueue.
+Em `src/routes/api/onboarding/start.ts` (linhas ~625-647):
 
-### Estado canónico (`pdf_status`, `request_status`, `delivery_status`)
+```ts
+const credits = await grantSessionAndCredits(upserted.leadId);
+void tryEnqueueReportForHandle({ ... });   // fire-and-forget
+if (upserted.isNew) {
+  void sendReportAccessEmail({ ... });     // fire-and-forget
+}
+return json({ ok: true, ... }, 200);
+```
 
-Colunas são `text` livre (não enum). Cada componente escreve valores diferentes — UI nunca mostra "Pronto".
+E em `src/lib/orchestration/run-report-pipeline.ts` (linha 199):
 
-- ❌ **`pdf_status` divergente:**
-  - `generate-report-pdf` escreve `'ready' | 'generating' | 'failed'`
-  - `app.reports.tsx` + `reports.functions.ts` esperam `'generated' | 'generating' | 'pending' | 'failed'`
-  - Resultado: badge "PDF pronto" e status "Pronto" nunca disparam mesmo quando o PDF foi gerado com sucesso.
-- ❌ **`request_status` divergente:**
-  - Orchestrator usa `pending|processing|completed|failed_pdf|failed_email`
-  - DB ainda tem rows com `'unlocked'` (legacy do `public_unlock`)
-  - UI compara contra `completed` / `processing` / `failed` — `unlocked` cai sempre no "Pendente".
-- ⚠️ Orchestrator `runReportPipeline` só skipa `completed` e `processing`. Linhas com `'unlocked'` re-enfileiradas seriam reescritas para `processing`.
+```ts
+export function runInBackground(promise, ctx?) {
+  if (ctx?.waitUntil) { ctx.waitUntil(safe); return; }
+  void safe;   // sem waitUntil → promessa abandonada
+}
+```
 
-### Pipeline interno
+Nenhum caller passa um `ctx.waitUntil`. No Cloudflare Workers, depois do `return Response`, qualquer promessa pendente é terminada (a runtime fecha o I/O do request). Logo:
 
-- ✅ `INTERNAL_API_TOKEN`, `PDFSHIFT_API_KEY`, `RESEND_API_KEY` presentes em secrets.
-- ✅ `runInBackground` tem catch defensivo.
-- ⚠️ `runReportPipeline` chama `fetch(${origin}/api/generate-report-pdf)` sem qualquer header de auth. `generate-report-pdf` é exposta como rota pública sem `INTERNAL_API_TOKEN`. Funciona, mas é um endpoint público que aceita qualquer `report_request_id`.
-- ✅ `send-report-email` exige header `x-internal-token`.
+1. O `INSERT` em `report_requests` dentro de `tryEnqueueReportForHandle` não chega a fazer commit.
+2. Mesmo que chegasse, o `runInBackground(runReportPipeline(...))` dentro de `enqueueReportForSnapshot` perde-se (sem `waitUntil`), e os relatórios ficavam para sempre em `pending`.
+3. O `sendReportAccessEmail` desaparece pelo mesmo motivo (sem email de boas-vindas).
 
-### RLS / leitura em `/app/reports`
+Dados confirmam: 3 leads em 7 dias, 0 `report_requests`, 0 emails enviados, 0 eventos `onboarding_auth_create_failed`.
 
-- ✅ Migração de hoje adicionou policy `Users can view reports via lead` + `current_user_lead_id()`.
-- ✅ `getUserReports` faz `.or(user_id, lead_id)`.
-- ✅ Polling a cada 5s enquanto houver `pending`/`processing`/`generating`.
+### Inconsistências secundárias (corrigir no mesmo passo)
 
-### Trigger `handle_new_user` / `link_user_to_existing_reports`
+- **Fluxo `/signup` + Google OAuth não passa por `/api/onboarding/start`.** A única forma de gerar relatório nesses casos é o utilizador ter visitado `/analyze/$username` antes (deixa `ib:intent_handle` em `localStorage`) e depois aterrar em `/app/reports`. Se entrar diretamente, nada acontece.
+- **`/app/reports`** consome `intent_handle` mas só uma vez no `useEffect` inicial. Funciona, mas só serve se o handle estiver lá.
+- **`report_snapshot_id` fica sempre `null`** nas 8 linhas existentes — `ensureReportSnapshotForRequest` também é chamada fire-and-forget no caminho atual. Sintoma menor (a coluna deve ficar preenchida para imutabilidade do PDF).
 
-- ✅ Cria `profiles` + lead idempotente por `email_normalized`.
-- ✅ Faz backfill de `report_requests.user_id` quando o user assina depois.
-- ⚠️ Lead criado por trigger fica com `source='auth_signup'` e `instagram_handle=NULL` — perde-se a relação com o handle que o user estava a analisar.
+## Plano de correção (P0 — fiabilidade do enqueue)
 
-### Diagnóstico em dados reais
+### 1. Tornar o enqueue do `report_request` síncrono em `/api/onboarding/start`
 
-- 8 leads em 7 dias, 0 `report_requests` criados, 0 eventos `onboarding_auth_create_failed`.
-- Snapshot mais recente: `frederico.m.carvalho` (19 Jun) — sem report_request associado.
-- Indica que o fluxo dominante hoje é `/signup` direto, não o modal de onboarding.
+Em `handleOnboardingStart` (ramo `mode === "password"`), substituir os `void` por `await` para a parte que **cria** a linha. A pipeline (PDF + email) continua em background, mas a linha em `report_requests` passa a ficar garantidamente criada antes do `return`.
 
----
+```ts
+// antes do return json(...)
+const enq = await tryEnqueueReportForHandle({...});  // agora awaited
+if (upserted.isNew) {
+  // email também awaited (rápido, ~300ms) para garantia de entrega
+  await sendReportAccessEmail({...}).catch(err => console.warn(...));
+}
+return json({ ok: true, ... }, 200);
+```
 
-## Plano de correcção (P0 → P1)
+Custo: +200–500 ms no handler. Aceitável para o fluxo de signup.
 
-### P0 — Unificar vocabulário de status (1 migração + 3 ficheiros)
+### 2. Garantir que `enqueueReportForSnapshot` faz await do `INSERT` antes de devolver
 
-1. **Migração**: backfill `pdf_status='ready' → 'generated'` e `request_status='unlocked' → 'completed'` para todas as rows existentes. Adicionar CHECK constraint suave (via trigger) que normalize `ready→generated` em INSERT/UPDATE para defender o futuro.
-2. **`generate-report-pdf.ts`**: trocar todos os `pdf_status: "ready"` por `"generated"`.
-3. **Verificar**: `send-report-email.ts` compara contra `"ready"` — actualizar para `"generated"`.
-4. **`reports.functions.ts`** + **`app.reports.tsx`**: já esperam `generated`; nada a mudar.
+Já faz (`inserted` é awaited). A única peça fire-and-forget lá dentro é `runInBackground(runReportPipeline(...))` e `ensureReportSnapshotForRequest(...)` — ver passo 3.
 
-### P0 — Cobrir signup directo (`/signup` + Google OAuth)
+### 3. Disparar a pipeline de forma persistente, não via promessa solta
 
-1. **`/signup`**: depois de `supabase.auth.signUp` com sucesso, ler `localStorage.getItem('intent_handle')` (a gravar em `analyze.$username` quando o user chega sem sessão) e chamar uma nova server fn `enqueueReportForHandle({ handle })` que:
-   - resolve `lead_id` via `profiles`
-   - procura snapshot mais recente para esse handle
-   - chama `enqueueReportForSnapshot` (idempotente)
-2. **OAuth callback**: aplicar a mesma lógica no destino pós-OAuth (`/app/reports` já está carregando — disparar a partir daí se houver `intent_handle`).
-3. **`analyze.$username`**: ao detectar `!user`, gravar `intent_handle` em `localStorage` para futuro consumo.
+Duas opções, escolher uma:
 
-### P1 — Segurança de `generate-report-pdf`
+**Opção A (recomendada, mais simples)** — usar `fetch` keepalive contra um endpoint interno:
 
-- Exigir `x-internal-token` à semelhança do `send-report-email`. Actualizar `run-report-pipeline.ts` para enviar o header.
+- Substituir `runInBackground(runReportPipeline(reportRequestId, origin))` por:
+  ```ts
+  void fetch(`${origin}/api/internal/run-report-pipeline`, {
+    method: "POST",
+    headers: { "x-internal-token": process.env.INTERNAL_API_TOKEN!, "content-type": "application/json" },
+    body: JSON.stringify({ reportRequestId, origin }),
+    // keepalive: true,  // ajuda em runtimes que suportam
+  });
+  ```
+- Criar `src/routes/api/internal/run-report-pipeline.ts` (protegido por `x-internal-token`) que apenas chama `await runReportPipeline(...)` e responde. Cloudflare honra fetches outbound iniciados antes do response (`subrequest`), porque o `subrequest` corre no isolate do worker invocado, prolongando o lifecycle.
 
-### P1 — Robustez orchestrator
+**Opção B (mais limpa mas requer mais código)** — adicionar um worker dedicado (cron `pg_cron` a cada minuto) que apanha `report_requests` em `pending` há >30 s e processa.
 
-- Adicionar `'unlocked'` à lista de "early return" do guard (tratar como `completed` legacy) OU normalizar na migração de backfill (já o fazemos no P0).
+Para v1 (volume baixo), proponho **Opção A**.
 
-### Fora de âmbito desta auditoria
-- Rewrite do gate premium / `lead_report_unlocks`.
-- Backfill manual dos 8 leads existentes (o utilizador pode fazer com 1 query após o P0 estar live).
+### 4. Backfill no `/app/reports` (rede de segurança)
+
+Em `getUserReports` (server fn), se detectar rows em `pending` há mais de 60 s, reinvocar a pipeline (via mesmo endpoint do passo 3). Garante recuperação para qualquer linha órfã.
+
+### 5. (P1) `ensureReportSnapshotForRequest` também awaited
+
+Mover para dentro do `enqueueReportForSnapshot` antes do `runInBackground`, com `await`. Garante que `report_snapshot_id` fica preenchido.
+
+## Ficheiros a tocar
+
+- `src/routes/api/onboarding/start.ts` — trocar `void` por `await` no enqueue + email (passo 1).
+- `src/lib/orchestration/enqueue-report-for-snapshot.server.ts` — substituir `runInBackground(runReportPipeline(...))` por `fetch` para `/api/internal/run-report-pipeline` + `await ensureReportSnapshotForRequest(...)` (passos 3 e 5).
+- `src/routes/api/internal/run-report-pipeline.ts` — **novo**, protegido por `INTERNAL_API_TOKEN`, corre `runReportPipeline` em await (passo 3).
+- `src/lib/rpc/reports.functions.ts` (`getUserReports`) — backfill defensivo (passo 4).
+
+Nenhuma migração nova é necessária. Não toca em `LOCKED_FILES.md` (verificar antes de editar).
 
 ## Checkpoint
-- ☐ Migração de backfill `ready→generated` / `unlocked→completed`
-- ☐ `generate-report-pdf` + `send-report-email` escrevem/leem `generated`
-- ☐ `/signup` e fluxo OAuth chamam `enqueueReportForHandle({handle})` quando `intent_handle` existe
-- ☐ `analyze.$username` grava `intent_handle` no localStorage para users anónimos
-- ☐ `generate-report-pdf` exige `x-internal-token`
-- ☐ Teste E2E: novo signup via `/signup` com handle pendente → row em `report_requests` em <10s
+
+☐ Passo 1 aplicado (enqueue awaited em `/api/onboarding/start`)  
+☐ Passo 3 aplicado (endpoint interno + `fetch` outbound substitui `runInBackground` solto)  
+☐ Passo 4 aplicado (backfill em `getUserReports`)  
+☐ Passo 5 aplicado (`ensureReportSnapshotForRequest` awaited)  
+☐ Verificação manual: criar conta de teste → confirmar linha em `report_requests` + PDF gerado em <60 s + email entregue
