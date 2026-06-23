@@ -637,12 +637,11 @@ function EntryStepBody({
 
   const goSignIn = async () => {
     const value = email.trim();
-    if (!EMAIL_RE.test(value)) {
-      setLocalError(t("onboarding.entry.emailInvalid"));
-      return;
-    }
+    // Não validamos email aqui — o ecrã de login pede email + palavra-passe.
+    // Se o utilizador já tiver escrito um email válido, passamo-lo como
+    // pre-fill; caso contrário abrimos o login limpo.
     setLocalError(null);
-    await onSignInWithEmail(value);
+    await onSignInWithEmail(EMAIL_RE.test(value) ? value : "");
   };
 
   return (
