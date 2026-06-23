@@ -328,7 +328,32 @@ export const Route = createFileRoute("/api/request-full-report")({
         // The client receives the success response immediately; the orchestrator
         // updates `request_status` as it progresses.
         const origin = new URL(request.url).origin;
-        runInBackground(runReportPipeline(reqRow.id, origin));
+        // Subrequest a endpoint interno em vez de runInBackground: no
+        // Cloudflare Workers, promessas soltas com `void` são terminadas
+        // assim que o Response é devolvido. O subrequest abre um novo
+        // isolate cujo lifecycle é independente.
+        const internalToken = process.env.INTERNAL_API_TOKEN;
+        if (internalToken) {
+          fetch(`${origin}/api/internal/run-report-pipeline`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-internal-token": internalToken,
+            },
+            body: JSON.stringify({ report_request_id: reqRow.id, origin }),
+          }).catch((err) => {
+            console.warn(
+              "[request-full-report] pipeline subrequest failed:",
+              err instanceof Error ? err.message : err,
+            );
+          });
+        } else {
+          console.error(
+            "[request-full-report] INTERNAL_API_TOKEN missing — pipeline will not run",
+          );
+          // Fallback fire-and-forget (likely lost on Workers, but better than nothing)
+          runInBackground(runReportPipeline(reqRow.id, origin));
+        }
 
         return json(
           {
