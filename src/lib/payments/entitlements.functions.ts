@@ -23,10 +23,10 @@ export const getMyReportEntitlement = createServerFn({ method: "GET" })
   .inputValidator((raw: unknown) => entitlementInput.parse(raw))
   .handler(async ({ data }) => {
     try {
-      const { getLeadFromCookie } = await import(
-        "@/lib/leads/lead-cookie.server"
+      const { resolveCurrentLeadId } = await import(
+        "@/lib/leads/resolve-lead.server"
       );
-      const leadId = getLeadFromCookie();
+      const leadId = await resolveCurrentLeadId();
       if (!leadId) {
         return {
           hasLead: false as const,
@@ -88,10 +88,10 @@ const consumeInput = z.object({
 export const consumeReportUnlockForSnapshot = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => consumeInput.parse(raw))
   .handler(async ({ data }) => {
-    const { getLeadFromCookie } = await import(
-      "@/lib/leads/lead-cookie.server"
+    const { resolveCurrentLeadId } = await import(
+      "@/lib/leads/resolve-lead.server"
     );
-    const leadId = getLeadFromCookie();
+    const leadId = await resolveCurrentLeadId();
     if (!leadId) {
       return { ok: false as const, reason: "no_lead" as const };
     }
