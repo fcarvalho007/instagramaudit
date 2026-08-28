@@ -85,7 +85,7 @@ export function ProfilesPanel({ data }: Props) {
       header: "Relatório",
       render: (r) => (
         <Link
-          to="/admin_/report-preview/$username"
+          to="/admin/report-preview/$username"
           params={{ username: r.handle }}
           className="inline-flex items-center gap-1 font-mono text-xs text-accent-primary hover:underline"
         >
