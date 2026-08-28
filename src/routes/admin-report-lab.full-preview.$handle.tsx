@@ -20,7 +20,7 @@ function AliasRedirect() {
   const { handle } = Route.useParams();
   return (
     <Navigate
-      to="/admin_/report-preview/$username"
+      to="/admin/report-preview/$username"
       params={{ username: handle }}
       search={{ variant: "internal_lab", draft: false }}
       replace

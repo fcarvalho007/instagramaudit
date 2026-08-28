@@ -5,6 +5,8 @@
   "PROFILE_PRIVATE": "This profile appears to be private.",
   "PROFILE_PERSONAL_NO_FEED": "Works best with public Creator or Business profiles. Some personal profiles may not return enough posts for analysis. This profile appears public, but we couldn't retrieve recent posts from our data source.",
   "PROVIDER_DISABLED": "Automatic analysis is temporarily turned off.",
+  "PROVIDER_BILLING_BLOCKED": "Our Instagram data source is temporarily blocked due to a provider billing issue. It is not a problem with this profile or your account — analysis resumes once it is settled.",
+
   "BUDGET_EXCEEDED": "Today's free analyses have reached the limit.",
   "RATE_LIMITED": "Too many analyses were made. Please try again later.",
   "RATE_LIMITED_IP": "Too many analyses were made. Please try again later.",

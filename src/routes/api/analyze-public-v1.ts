@@ -158,14 +158,17 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
     "O perfil parece estar público, mas não conseguimos obter publicações recentes através da nossa fonte de dados. Isto pode acontecer com alguns perfis pessoais ou contas sem feed acessível para análise. A ferramenta funciona melhor com perfis públicos Creator ou Empresa.",
   PROVIDER_DISABLED:
     "A análise automática ainda não está ativa. O sistema está preparado, mas a ligação ao fornecedor de dados está desligada.",
+  PROVIDER_BILLING_BLOCKED:
+    "A nossa fonte de dados do Instagram está temporariamente bloqueada por uma questão de faturação do lado do fornecedor. Não é um problema com o perfil nem com a tua conta — a equipa já foi notificada e a análise volta a funcionar assim que estiver regularizado.",
   BUDGET_EXCEEDED:
     "O limite diário de análises foi atingido. Voltar amanhã.",
   RATE_LIMITED:
     "Muitos pedidos recentes. Aguardar uns minutos antes de nova análise.",
   UPSTREAM_UNAVAILABLE:
-    "Serviço de análise temporariamente indisponível. Tentar novamente dentro de instantes.",
+    "O serviço de análise está temporariamente indisponível. Tentar novamente dentro de alguns minutos.",
   UPSTREAM_FAILED:
-    "Não foi possível analisar este perfil neste momento. Tentar novamente dentro de instantes.",
+    "Falha técnica ao processar este perfil. Se voltar a acontecer, contactar hello@auditprofiles.com.",
+
   NETWORK_ERROR: "Falha de ligação. Tentar novamente.",
   CACHE_ONLY_NO_DATA:
     "Sem snapshot disponível em modo cache-only. Ative o modo Fresh para gerar dados novos.",
@@ -192,6 +195,8 @@ const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
   PROFILE_PRIVATE: 404,
   PROFILE_PERSONAL_NO_FEED: 422,
   PROVIDER_DISABLED: 503,
+  PROVIDER_BILLING_BLOCKED: 503,
+
   BUDGET_EXCEEDED: 503,
   RATE_LIMITED: 429,
   UPSTREAM_UNAVAILABLE: 503,
@@ -1701,15 +1706,38 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               });
               return failure("PROFILE_NOT_FOUND");
             }
+            // Provider account blocked for billing (Apify 403
+            // platform-feature-disabled / outstanding invoices). Needs an
+            // operator action, not a user retry — surface it as its own code.
+            if (err.code === "apify_billing_blocked") {
+              await logEvent({
+                handle: primary,
+                competitorHandles: competitors,
+                cacheKey,
+                dataSource: "fresh",
+                outcome: "provider_error",
+                errorCode: "PROVIDER_BILLING_BLOCKED",
+              });
+              return failure("PROVIDER_BILLING_BLOCKED");
+            }
+            // Transient: 5xx, timeouts and network faults are worth retrying.
+            const transient =
+              err.status >= 500 ||
+              err.code === "apify_timeout" ||
+              err.code === "apify_network_error";
+            const resolvedCode = transient
+              ? "UPSTREAM_UNAVAILABLE"
+              : "UPSTREAM_FAILED";
             await logEvent({
               handle: primary,
               competitorHandles: competitors,
               cacheKey,
               dataSource: "fresh",
               outcome: "provider_error",
-              errorCode: "UPSTREAM_FAILED",
+              errorCode: resolvedCode,
             });
-            return failure("UPSTREAM_FAILED");
+            return failure(resolvedCode);
+
           }
           console.error("[analyze-public-v1] unexpected", err);
           await logEvent({

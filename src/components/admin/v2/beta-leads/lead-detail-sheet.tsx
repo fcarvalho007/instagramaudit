@@ -2062,7 +2062,7 @@ function LeadReportsList({
                     </a>
                     {hasSnapshot ? (
                       <Link
-                        to="/admin_/report-preview/snapshot/$snapshotId"
+                        to="/admin/report-preview/snapshot/$snapshotId"
                         params={{ snapshotId: r.analysis_snapshot_id! }}
                         target="_blank"
                         title="Abrir snapshot"

@@ -11,9 +11,9 @@ import { Loader2, LogIn } from "lucide-react";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
-  validateSearch: (search: Record<string, unknown>) => ({
-    email: typeof search.email === "string" ? search.email : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): { email?: string } =>
+    typeof search.email === "string" ? { email: search.email } : {},
+
   head: () => ({
     meta: [
       { title: "Entrar — AuditProfiles" },
