@@ -40,8 +40,13 @@ const COMMENT_ACTOR = "apify/instagram-comment-scraper";
 // Pricing assumption
 // ─────────────────────────────────────────────────────────────────────
 
-/** Estimated cost per result (comment) based on Apify pricing ~$1.90/1K */
-const COST_PER_RESULT_USD = 0.0019;
+/**
+ * Estimated cost per result (comment).
+ * Apify Free-plan pricing for `apify/instagram-comment-scraper` is
+ * $2.30 / 1,000 comments → $0.0023/result. Keeping this in sync with the
+ * real price is what prevents the hard cap from being silently overshot.
+ */
+const COST_PER_RESULT_USD = 0.0023;
 
 /** Target cost per analysis — informational, used in budget planning (8 comments × 12 posts). */
 export const COMMENT_SCRAPER_TARGET_COST_USD = 0.15;
@@ -49,36 +54,48 @@ export const COMMENT_SCRAPER_TARGET_COST_USD = 0.15;
 /** Absolute hard cap — env vars above this are clamped down with a warning. Capped at $0.20. */
 const HARD_MAX_CHARGE_CEILING = 0.20;
 
+
 /**
  * Fixed per-post comment limit sent to the actor.
- * Override via COMMENT_SCRAPER_PER_POST_LIMIT env var. Default: 10.
+ * Override via COMMENT_SCRAPER_PER_POST_LIMIT env var.
+ * Default: 5 (Apify Free profile — see COMMENT_SCRAPER_MAX_POSTS).
  */
 export const COMMENT_SCRAPER_PER_POST_LIMIT = clampInt(
-  process.env.COMMENT_SCRAPER_PER_POST_LIMIT, 10, 1, 50,
+  process.env.COMMENT_SCRAPER_PER_POST_LIMIT, 5, 1, 50,
 );
 
 /**
  * Max posts to send to the comment scraper per analysis.
- * Override via COMMENT_SCRAPER_MAX_POSTS env var. Default: 12 (all base actor posts).
+ * Override via COMMENT_SCRAPER_MAX_POSTS env var.
+ * Default: 3 (Apify Free profile → 3 × 5 = 15 results ≈ $0.0345/análise).
  */
 export const COMMENT_SCRAPER_MAX_POSTS = clampInt(
-  process.env.COMMENT_SCRAPER_MAX_POSTS, 12, 1, 12,
+  process.env.COMMENT_SCRAPER_MAX_POSTS, 3, 1, 12,
 );
 
 /**
  * Max total results (comments) across all posts — theoretical ceiling.
- * Override via COMMENT_SCRAPER_MAX_TOTAL_RESULTS env var. Default: 120 (10 × 12 posts).
- * Hard-capped at ~105 (~$0.20).
+ * Override via COMMENT_SCRAPER_MAX_TOTAL_RESULTS env var. Default: 15 (5 × 3 posts).
+ * Hard-capped at ~86 (~$0.20 at $0.0023/result).
  */
 export const COMMENT_SCRAPER_MAX_TOTAL_RESULTS = clampInt(
   process.env.COMMENT_SCRAPER_MAX_TOTAL_RESULTS,
-  120,
+  15,
   5,
-  Math.floor(HARD_MAX_CHARGE_CEILING / COST_PER_RESULT_USD), // ~105
+  Math.floor(HARD_MAX_CHARGE_CEILING / COST_PER_RESULT_USD), // ~86
 );
 
-/** Whether to include nested replies in comment results. */
-export const COMMENT_SCRAPER_INCLUDE_REPLIES = true;
+/**
+ * Whether to include nested replies in comment results.
+ *
+ * `includeNestedComments` is a paying-plan feature of the actor, so the
+ * default is OFF. When disabled, owner-reply metrics are not measurable and
+ * the aggregation flags them instead of reporting a misleading zero.
+ * Override via COMMENT_SCRAPER_INCLUDE_REPLIES=true.
+ */
+export const COMMENT_SCRAPER_INCLUDE_REPLIES =
+  (process.env.COMMENT_SCRAPER_INCLUDE_REPLIES ?? "false").toLowerCase() === "true";
+
 
 /**
  * Hard USD cap per comment scraper run.
@@ -159,6 +176,8 @@ export interface CommentScraperResult extends CommentBudgetPlan {
   postsRequested: number;
   /** True if per-post grouping was available; false if all comments fell into a single aggregated bucket. */
   groupedByPost: boolean;
+  /** Whether nested replies were requested from the actor (paid-plan feature). */
+  repliesIncluded: boolean;
 }
 
 /**
@@ -234,6 +253,7 @@ export async function fetchCommentsForPosts(
       repliesReturned: 0,
       postsRequested: 0,
       groupedByPost: false,
+      repliesIncluded: COMMENT_SCRAPER_INCLUDE_REPLIES,
       selectedPostCount: 0,
       validPostUrlsCount: 0,
       maxTotalResults: COMMENT_SCRAPER_MAX_TOTAL_RESULTS,
@@ -261,6 +281,7 @@ export async function fetchCommentsForPosts(
       repliesReturned: 0,
       postsRequested: urls.length,
       groupedByPost: false,
+      repliesIncluded: COMMENT_SCRAPER_INCLUDE_REPLIES,
       ...budget,
     };
   }
@@ -379,7 +400,8 @@ export async function fetchCommentsForPosts(
     repliesReturned: totalRepliesReturned,
     postsRequested: urls.length,
     groupedByPost,
-      ...budget,
+    repliesIncluded: COMMENT_SCRAPER_INCLUDE_REPLIES,
+    ...budget,
   };
 }
 

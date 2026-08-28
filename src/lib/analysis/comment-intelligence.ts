@@ -71,6 +71,17 @@ const BASE_LIMITATIONS: string[] = [
 const LIMITATION_NO_PER_POST =
   "Granularidade por publicação indisponível — métricas agregadas globalmente.";
 
+const LIMITATION_NO_REPLIES =
+  "Respostas em thread não recolhidas — a taxa de resposta da marca não é medível nesta amostra.";
+
+const LIMITATION_LOW_CONFIDENCE =
+  "Amostra reduzida — as percentagens são indicativas e não estatisticamente robustas.";
+
+/** Minimum sampled posts for percentages to be considered robust. */
+const MIN_CONFIDENT_POSTS = 5;
+/** Minimum sampled comments for percentages to be considered robust. */
+const MIN_CONFIDENT_COMMENTS = 20;
+
 function normalizeUsername(u: string): string {
   return u.toLowerCase().trim().replace(/^@/, "");
 }
@@ -78,6 +89,12 @@ function normalizeUsername(u: string): string {
 export interface AggregateOptions {
   /** Whether comments were successfully grouped per post. Default true. */
   groupedByPost?: boolean;
+  /**
+   * Whether nested replies were requested from the actor. Default true.
+   * When false, owner-reply metrics are reported as not measurable instead
+   * of a misleading zero.
+   */
+  repliesIncluded?: boolean;
 }
 
 /**
@@ -119,6 +136,7 @@ export function aggregateCommentIntelligence(
 ): CommentIntelligence {
   const owner = normalizeUsername(profileUsername);
   const groupedByPost = options?.groupedByPost ?? true;
+  const repliesIncluded = options?.repliesIncluded ?? true;
 
   let totalComments = 0;
   let totalReplies = 0;
@@ -348,7 +366,9 @@ export function aggregateCommentIntelligence(
     .map(([label]) => label);
 
   // Recommended action
-  const recommendedConversationAction = deriveRecommendation(
+  const recommendedConversationAction = !repliesIncluded
+    ? "Respostas em thread não recolhidas nesta amostra — a taxa de resposta da marca não pode ser avaliada."
+    : deriveRecommendation(
     ownerReplyRatePct,
     totalAudienceComments,
     questionsCount,
@@ -361,9 +381,19 @@ export function aggregateCommentIntelligence(
   if (!groupedByPost) {
     limitations.push(LIMITATION_NO_PER_POST);
   }
+  if (!repliesIncluded) {
+    limitations.push(LIMITATION_NO_REPLIES);
+  }
+  const lowConfidence =
+    samplePosts < MIN_CONFIDENT_POSTS || totalComments < MIN_CONFIDENT_COMMENTS;
+  if (lowConfidence) {
+    limitations.push(LIMITATION_LOW_CONFIDENCE);
+  }
 
   return {
     available: true,
+    repliesMeasurable: repliesIncluded,
+    lowConfidence,
     source: "apify_comments",
     samplePosts,
     sampleComments: totalComments,

@@ -206,6 +206,15 @@ export type PublicAnalysisResponse =
 export interface CommentIntelligence {
   available: boolean;
   source: "apify_comments";
+  /**
+   * Whether nested replies were collected. When false, owner-reply metrics
+   * (ownerRepliesCount, ownerReplyRatePct, postsWithOwnerReplyPct,
+   * postsWithConversationPct) are NOT measurable and must not be shown as 0.
+   */
+  repliesMeasurable?: boolean;
+  /** True when the sample is too small for robust percentages (<5 posts or <20 comments). */
+  lowConfidence?: boolean;
+
   /** Reason the feature is unavailable (only when available=false). */
   reason?:
     | "comment_scraper_failed"

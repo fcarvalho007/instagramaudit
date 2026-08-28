@@ -241,7 +241,53 @@ async function apifyFetch(
  * Throws ApifyUpstreamError if the run did not succeed. The thrown error
  * carries `.runId` so the caller can still log the partial run.
  */
+/**
+ * Local concurrency guard for the Apify Free plan (max 5 concurrent Actor
+ * runs). We keep one slot of headroom (4) for admin/manual runs. This is an
+ * in-isolate semaphore — best effort, but it stops the common case where a
+ * burst of requests hitting the same worker fans out into parallel runs.
+ */
+const APIFY_MAX_CONCURRENT_RUNS = clampConcurrency(
+  process.env.APIFY_MAX_CONCURRENT_RUNS,
+);
+let apifyRunsInFlight = 0;
+const apifyRunWaitQueue: Array<() => void> = [];
+
+function clampConcurrency(raw: string | undefined): number {
+  const n = raw ? parseInt(raw, 10) : NaN;
+  if (Number.isNaN(n)) return 4;
+  return Math.max(1, Math.min(5, n));
+}
+
+async function acquireApifyRunSlot(): Promise<void> {
+  if (apifyRunsInFlight < APIFY_MAX_CONCURRENT_RUNS) {
+    apifyRunsInFlight++;
+    return;
+  }
+  await new Promise<void>((resolve) => apifyRunWaitQueue.push(resolve));
+  apifyRunsInFlight++;
+}
+
+function releaseApifyRunSlot(): void {
+  apifyRunsInFlight = Math.max(0, apifyRunsInFlight - 1);
+  const next = apifyRunWaitQueue.shift();
+  if (next) next();
+}
+
 export async function runActorWithMetadata<T = unknown>(
+  actorId: string,
+  input: Record<string, unknown>,
+  options: RunActorOptions = {},
+): Promise<RunActorWithMetadataResult<T>> {
+  await acquireApifyRunSlot();
+  try {
+    return await runActorWithMetadataInner<T>(actorId, input, options);
+  } finally {
+    releaseApifyRunSlot();
+  }
+}
+
+async function runActorWithMetadataInner<T = unknown>(
   actorId: string,
   input: Record<string, unknown>,
   options: RunActorOptions = {},

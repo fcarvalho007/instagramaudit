@@ -588,6 +588,20 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         //     BUDGET_EXCEEDED, validação, exceções).
         //   • Bypass com Authorization: Bearer $INTERNAL_API_TOKEN (admin /
         //     /api/analyze/refresh / /api/admin/refresh-profile).
+        // ── Nível 1 anónimo (staged product) ───────────────────────────
+        // Quando PUBLIC_BASELINE_NO_EMAIL=true, a auditoria base (janela
+        // baseline, sem concorrentes) corre sem lead/email. O gate de email
+        // passa a proteger apenas o nível 2 (Comment Intelligence) e as
+        // funcionalidades Pro (concorrentes / janelas 30d-90d).
+        const anonymousBaselineEnabled =
+          (process.env.PUBLIC_BASELINE_NO_EMAIL ?? "false").toLowerCase() === "true";
+        const anonymousBaseline =
+          anonymousBaselineEnabled &&
+          !isInternalBypass &&
+          competitors.length === 0 &&
+          !isWideWindow(windowKind) &&
+          readLeadIdFromRequest(request) === null;
+
         let leadId: string | null = null;
         let reservation: { reservationId: string } | null = null;
         let duplicateInFlight = false;
@@ -597,7 +611,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         const existingEarly = await lookupSnapshot(cacheKey);
         const cacheFreshHit =
           !!existingEarly && !forceRefresh && isFresh(existingEarly);
-        if (!isInternalBypass) {
+        if (!isInternalBypass && !anonymousBaseline) {
           leadId = readLeadIdFromRequest(request);
           if (!leadId) {
             await logEvent({
@@ -1555,12 +1569,24 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               (process.env.COMMENT_SCRAPER_ENABLED ?? "false").toLowerCase() === "true";
             const commentScraperInternalTest =
               (process.env.COMMENT_SCRAPER_INTERNAL_TEST ?? "false").toLowerCase() === "true";
-            const runComments = shouldRunCommentScraper({
-              featureEnabled: commentScraperEnabled,
-              isInternalTest: commentScraperInternalTest,
-            });
+            // Nível 2: por defeito o comment scraper NÃO corre junto com a
+            // análise base. É disparado depois, por
+            // POST /api/public/unlock-comments, quando o utilizador submete
+            // nome + email. Assim a auditoria base custa 1 Actor run.
+            const deferCommentsToLevel2 =
+              (process.env.COMMENT_SCRAPER_DEFER_TO_LEVEL_2 ?? "true").toLowerCase() === "true";
+            const runComments =
+              !deferCommentsToLevel2 &&
+              shouldRunCommentScraper({
+                featureEnabled: commentScraperEnabled,
+                isInternalTest: commentScraperInternalTest,
+              });
 
-            if (runComments) {
+            if (deferCommentsToLevel2) {
+              // Bloqueio explícito: a UI mostra Comment Intelligence como
+              // desbloqueável em vez de "indisponível".
+              if (snapshotId) await setEnrichmentStatusAtomic(snapshotId, "comments", "locked");
+            } else if (runComments) {
               const postsWithUrl = primaryEnriched.posts
                 .filter((p) => !!p.permalink)
                 .sort((a, b) => {
