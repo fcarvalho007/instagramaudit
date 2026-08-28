@@ -22,12 +22,39 @@ const DEFAULT_TIMEOUT_MS = 60_000;
 export type ApifySemanticCode =
   | "apify_token_missing"
   | "apify_token_invalid"
+  | "apify_billing_blocked"
   | "apify_actor_failed"
   | "apify_dataset_empty"
   | "apify_timeout"
   | "apify_http_error"
   | "apify_parse_failed"
   | "apify_network_error";
+
+/**
+ * Apify replies 403 with `platform-feature-disabled` / "Too many outstanding
+ * invoices" when the account is blocked for billing reasons. This is not a
+ * transient upstream failure — it needs an operator action on the Apify side,
+ * so it gets its own semantic code and its own user-facing message.
+ */
+export function classifyApifyHttpError(
+  status: number,
+  body: string,
+): ApifySemanticCode {
+  if (status === 401) return "apify_token_invalid";
+  if (status === 403) {
+    const lowered = body.toLowerCase();
+    if (
+      lowered.includes("platform-feature-disabled") ||
+      lowered.includes("outstanding invoices") ||
+      lowered.includes("payment") ||
+      lowered.includes("invoice")
+    ) {
+      return "apify_billing_blocked";
+    }
+  }
+  return "apify_http_error";
+}
+
 
 export class ApifyConfigError extends Error {
   code: ApifySemanticCode;
