@@ -1706,15 +1706,38 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               });
               return failure("PROFILE_NOT_FOUND");
             }
+            // Provider account blocked for billing (Apify 403
+            // platform-feature-disabled / outstanding invoices). Needs an
+            // operator action, not a user retry — surface it as its own code.
+            if (err.code === "apify_billing_blocked") {
+              await logEvent({
+                handle: primary,
+                competitorHandles: competitors,
+                cacheKey,
+                dataSource: "fresh",
+                outcome: "provider_error",
+                errorCode: "PROVIDER_BILLING_BLOCKED",
+              });
+              return failure("PROVIDER_BILLING_BLOCKED");
+            }
+            // Transient: 5xx, timeouts and network faults are worth retrying.
+            const transient =
+              err.status >= 500 ||
+              err.code === "apify_timeout" ||
+              err.code === "apify_network_error";
+            const resolvedCode = transient
+              ? "UPSTREAM_UNAVAILABLE"
+              : "UPSTREAM_FAILED";
             await logEvent({
               handle: primary,
               competitorHandles: competitors,
               cacheKey,
               dataSource: "fresh",
               outcome: "provider_error",
-              errorCode: "UPSTREAM_FAILED",
+              errorCode: resolvedCode,
             });
-            return failure("UPSTREAM_FAILED");
+            return failure(resolvedCode);
+
           }
           console.error("[analyze-public-v1] unexpected", err);
           await logEvent({
