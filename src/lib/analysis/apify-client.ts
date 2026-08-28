@@ -288,14 +288,13 @@ export async function runActorWithMetadata<T = unknown>(
 
   if (!startRes.ok) {
     const text = await startRes.text().catch(() => "");
-    const startCode: ApifySemanticCode =
-      startRes.status === 401 ? "apify_token_invalid" : "apify_http_error";
     throw new ApifyUpstreamError(
       `Apify actor ${actorId} start returned ${startRes.status}: ${text.slice(0, 200)}`,
       startRes.status,
-      startCode,
+      classifyApifyHttpError(startRes.status, text),
     );
   }
+
 
   const startBody = (await startRes.json()) as { data?: ApifyRun };
   const runId = startBody.data?.id;
