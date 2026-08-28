@@ -11,9 +11,9 @@ import { Loader2, CheckCircle2 } from "lucide-react";
 
 export const Route = createFileRoute("/signup")({
   component: SignupPage,
-  validateSearch: (search: Record<string, unknown>) => ({
-    email: typeof search.email === "string" ? search.email : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): { email?: string } =>
+    typeof search.email === "string" ? { email: search.email } : {},
+
   head: () => ({
     meta: [
       { title: "Criar conta — AuditProfiles" },
