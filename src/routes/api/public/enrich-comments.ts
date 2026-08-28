@@ -149,7 +149,11 @@ async function processJob(job: JobRow): Promise<{ ok: boolean; error?: string }>
     commentIntelligence = aggregateCommentIntelligence(
       job.handle,
       commentResult.batches,
-      { groupedByPost: commentResult.groupedByPost },
+      {
+        groupedByPost: commentResult.groupedByPost,
+        repliesIncluded: commentResult.repliesIncluded,
+      },
+
     );
 
     console.info(LOG, "comment intelligence ready", {

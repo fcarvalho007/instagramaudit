@@ -13,6 +13,7 @@
  * the payment webhook never fails because of enrichment plumbing.
  */
 
+import { COMMENT_SCRAPER_MAX_POSTS } from "@/lib/analysis/comment-scraper.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   ENRICHMENT_PRIORITY,
@@ -179,22 +180,33 @@ function isValidInstagramPostUrl(url: string): boolean {
   }
 }
 
-export async function enqueueCommentScrapingForPayment(args: {
-  reportCacheKey: string | null | undefined;
+/**
+ * Enqueue comment scraping for an EXISTING snapshot, identified either by
+ * `cacheKey` or by `snapshotId`. Used both by the post-payment top-up and by
+ * the free level-2 unlock (name + email), so the base scraping is never
+ * repeated — only the comment actor runs.
+ *
+ * Idempotent and best-effort: never throws.
+ */
+export async function enqueueCommentScrapingForSnapshot(args: {
+  cacheKey?: string | null;
+  snapshotId?: string | null;
   origin: string;
 }): Promise<void> {
-  if (!args.reportCacheKey) {
-    console.info(`${COMMENT_LOG} payment has no report_cache_key; nothing to enqueue`);
+  if (!args.cacheKey && !args.snapshotId) {
+    console.info(`${COMMENT_LOG} no cacheKey/snapshotId provided; nothing to enqueue`);
     return;
   }
   try {
-    const { data: snap, error: snapErr } = await supabaseAdmin
+    const query = supabaseAdmin
       .from("analysis_snapshots")
-      .select("id, instagram_username, normalized_payload")
-      .eq("cache_key", args.reportCacheKey)
-      .maybeSingle();
+      .select("id, instagram_username, normalized_payload");
+    const { data: snap, error: snapErr } = await (args.snapshotId
+      ? query.eq("id", args.snapshotId)
+      : query.eq("cache_key", args.cacheKey!)
+    ).maybeSingle();
     if (snapErr || !snap?.id) {
-      console.info(`${COMMENT_LOG} no snapshot for cache_key`, args.reportCacheKey);
+      console.info(`${COMMENT_LOG} no snapshot for`, args.snapshotId ?? args.cacheKey);
       return;
     }
 
@@ -218,7 +230,8 @@ export async function enqueueCommentScrapingForPayment(args: {
       return;
     }
 
-    // Select up to 12 post permalinks ranked by comments, then engagement.
+    // Select post permalinks ranked by comments, then engagement (capped by
+    // COMMENT_SCRAPER_MAX_POSTS so the Free plan budget holds).
     type PostLike = {
       permalink?: string | null;
       comments?: number | null;
@@ -237,7 +250,7 @@ export async function enqueueCommentScrapingForPayment(args: {
         if (eb !== ea) return eb - ea;
         return (b.taken_at_iso ?? "").localeCompare(a.taken_at_iso ?? "");
       })
-      .slice(0, 12)
+      .slice(0, COMMENT_SCRAPER_MAX_POSTS)
       .map((p) => p.permalink!)
       .filter((u): u is string => typeof u === "string" && isValidInstagramPostUrl(u));
 
@@ -281,4 +294,20 @@ export async function enqueueCommentScrapingForPayment(args: {
   } catch (err) {
     console.error(`${COMMENT_LOG} unexpected failure`, err);
   }
+}
+/**
+ * Post-payment top-up wrapper kept for call-site compatibility.
+ */
+export async function enqueueCommentScrapingForPayment(args: {
+  reportCacheKey: string | null | undefined;
+  origin: string;
+}): Promise<void> {
+  if (!args.reportCacheKey) {
+    console.info(`${COMMENT_LOG} payment has no report_cache_key; nothing to enqueue`);
+    return;
+  }
+  await enqueueCommentScrapingForSnapshot({
+    cacheKey: args.reportCacheKey,
+    origin: args.origin,
+  });
 }

@@ -63,6 +63,7 @@ import { Route as ReportPrintSnapshotIdRouteImport } from './routes/report.print
 import { Route as BetaSubmittedRequestIdRouteImport } from './routes/beta.submitted.$requestId'
 import { Route as AppReportsIdRouteImport } from './routes/app.reports.$id'
 import { Route as ApiPublicVerifyEmailRouteImport } from './routes/api/public/verify-email'
+import { Route as ApiPublicUnlockCommentsRouteImport } from './routes/api/public/unlock-comments'
 import { Route as ApiPublicUnlockCheckRouteImport } from './routes/api/public/unlock-check'
 import { Route as ApiPublicReportUnlockRouteImport } from './routes/api/public/report-unlock'
 import { Route as ApiPublicPublicReportPdfRouteImport } from './routes/api/public/public-report-pdf'
@@ -443,6 +444,11 @@ const AppReportsIdRoute = AppReportsIdRouteImport.update({
 const ApiPublicVerifyEmailRoute = ApiPublicVerifyEmailRouteImport.update({
   id: '/api/public/verify-email',
   path: '/api/public/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicUnlockCommentsRoute = ApiPublicUnlockCommentsRouteImport.update({
+  id: '/api/public/unlock-comments',
+  path: '/api/public/unlock-comments',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicUnlockCheckRoute = ApiPublicUnlockCheckRouteImport.update({
@@ -1166,6 +1172,7 @@ export interface FileRoutesByFullPath {
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/api/public/report-unlock': typeof ApiPublicReportUnlockRoute
   '/api/public/unlock-check': typeof ApiPublicUnlockCheckRoute
+  '/api/public/unlock-comments': typeof ApiPublicUnlockCommentsRoute
   '/api/public/verify-email': typeof ApiPublicVerifyEmailRoute
   '/app/reports/$id': typeof AppReportsIdRoute
   '/beta/submitted/$requestId': typeof BetaSubmittedRequestIdRoute
@@ -1330,6 +1337,7 @@ export interface FileRoutesByTo {
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/api/public/report-unlock': typeof ApiPublicReportUnlockRoute
   '/api/public/unlock-check': typeof ApiPublicUnlockCheckRoute
+  '/api/public/unlock-comments': typeof ApiPublicUnlockCommentsRoute
   '/api/public/verify-email': typeof ApiPublicVerifyEmailRoute
   '/app/reports/$id': typeof AppReportsIdRoute
   '/beta/submitted/$requestId': typeof BetaSubmittedRequestIdRoute
@@ -1497,6 +1505,7 @@ export interface FileRoutesById {
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
   '/api/public/report-unlock': typeof ApiPublicReportUnlockRoute
   '/api/public/unlock-check': typeof ApiPublicUnlockCheckRoute
+  '/api/public/unlock-comments': typeof ApiPublicUnlockCommentsRoute
   '/api/public/verify-email': typeof ApiPublicVerifyEmailRoute
   '/app/reports/$id': typeof AppReportsIdRoute
   '/beta/submitted/$requestId': typeof BetaSubmittedRequestIdRoute
@@ -1665,6 +1674,7 @@ export interface FileRouteTypes {
     | '/api/public/public-report-pdf'
     | '/api/public/report-unlock'
     | '/api/public/unlock-check'
+    | '/api/public/unlock-comments'
     | '/api/public/verify-email'
     | '/app/reports/$id'
     | '/beta/submitted/$requestId'
@@ -1829,6 +1839,7 @@ export interface FileRouteTypes {
     | '/api/public/public-report-pdf'
     | '/api/public/report-unlock'
     | '/api/public/unlock-check'
+    | '/api/public/unlock-comments'
     | '/api/public/verify-email'
     | '/app/reports/$id'
     | '/beta/submitted/$requestId'
@@ -1995,6 +2006,7 @@ export interface FileRouteTypes {
     | '/api/public/public-report-pdf'
     | '/api/public/report-unlock'
     | '/api/public/unlock-check'
+    | '/api/public/unlock-comments'
     | '/api/public/verify-email'
     | '/app/reports/$id'
     | '/beta/submitted/$requestId'
@@ -2139,6 +2151,7 @@ export interface RootRouteChildren {
   ApiPublicPublicReportPdfRoute: typeof ApiPublicPublicReportPdfRoute
   ApiPublicReportUnlockRoute: typeof ApiPublicReportUnlockRoute
   ApiPublicUnlockCheckRoute: typeof ApiPublicUnlockCheckRoute
+  ApiPublicUnlockCommentsRoute: typeof ApiPublicUnlockCommentsRoute
   ApiPublicVerifyEmailRoute: typeof ApiPublicVerifyEmailRoute
   BetaSubmittedRequestIdRoute: typeof BetaSubmittedRequestIdRoute
   ReportPrintSnapshotIdRoute: typeof ReportPrintSnapshotIdRoute
@@ -2560,6 +2573,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/verify-email'
       fullPath: '/api/public/verify-email'
       preLoaderRoute: typeof ApiPublicVerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/unlock-comments': {
+      id: '/api/public/unlock-comments'
+      path: '/api/public/unlock-comments'
+      fullPath: '/api/public/unlock-comments'
+      preLoaderRoute: typeof ApiPublicUnlockCommentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/unlock-check': {
@@ -3666,6 +3686,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicPublicReportPdfRoute: ApiPublicPublicReportPdfRoute,
   ApiPublicReportUnlockRoute: ApiPublicReportUnlockRoute,
   ApiPublicUnlockCheckRoute: ApiPublicUnlockCheckRoute,
+  ApiPublicUnlockCommentsRoute: ApiPublicUnlockCommentsRoute,
   ApiPublicVerifyEmailRoute: ApiPublicVerifyEmailRoute,
   BetaSubmittedRequestIdRoute: BetaSubmittedRequestIdRoute,
   ReportPrintSnapshotIdRoute: ReportPrintSnapshotIdRoute,
