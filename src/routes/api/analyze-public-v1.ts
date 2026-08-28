@@ -158,14 +158,17 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
     "O perfil parece estar público, mas não conseguimos obter publicações recentes através da nossa fonte de dados. Isto pode acontecer com alguns perfis pessoais ou contas sem feed acessível para análise. A ferramenta funciona melhor com perfis públicos Creator ou Empresa.",
   PROVIDER_DISABLED:
     "A análise automática ainda não está ativa. O sistema está preparado, mas a ligação ao fornecedor de dados está desligada.",
+  PROVIDER_BILLING_BLOCKED:
+    "A nossa fonte de dados do Instagram está temporariamente bloqueada por uma questão de faturação do lado do fornecedor. Não é um problema com o perfil nem com a tua conta — a equipa já foi notificada e a análise volta a funcionar assim que estiver regularizado.",
   BUDGET_EXCEEDED:
     "O limite diário de análises foi atingido. Voltar amanhã.",
   RATE_LIMITED:
     "Muitos pedidos recentes. Aguardar uns minutos antes de nova análise.",
   UPSTREAM_UNAVAILABLE:
-    "Serviço de análise temporariamente indisponível. Tentar novamente dentro de instantes.",
+    "O serviço de análise está temporariamente indisponível. Tentar novamente dentro de alguns minutos.",
   UPSTREAM_FAILED:
-    "Não foi possível analisar este perfil neste momento. Tentar novamente dentro de instantes.",
+    "Falha técnica ao processar este perfil. Se voltar a acontecer, contactar hello@auditprofiles.com.",
+
   NETWORK_ERROR: "Falha de ligação. Tentar novamente.",
   CACHE_ONLY_NO_DATA:
     "Sem snapshot disponível em modo cache-only. Ative o modo Fresh para gerar dados novos.",
