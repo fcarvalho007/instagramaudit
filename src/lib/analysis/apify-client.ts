@@ -150,8 +150,10 @@ export async function runActor<T = unknown>(
       throw new ApifyUpstreamError(
         `Apify actor ${actorId} returned ${res.status}: ${text.slice(0, 200)}`,
         res.status,
+        classifyApifyHttpError(res.status, text),
       );
     }
+
 
     const data = (await res.json()) as unknown;
     if (!Array.isArray(data)) {
