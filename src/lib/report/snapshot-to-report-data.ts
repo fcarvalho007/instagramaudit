@@ -129,6 +129,10 @@ export interface SnapshotPayload {
    */
   analysis_window?: "baseline" | "30d" | "90d" | null;
   analysis_window_label?: string | null;
+  /** Days actually covered by the collected sample (0 when empty). */
+  analysis_window_observed_days?: number | null;
+  /** True when the provider cut the window short at its result limit. */
+  analysis_window_truncated?: boolean | null;
   /**
    * Optional AI insights block written by the analyze route when the OpenAI
    * insights flow is allowed for this handle. Loose typing on purpose —
@@ -1647,6 +1651,18 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   if (analysisWindow !== "baseline") {
     const days = analysisWindow === "30d" ? 30 : 90;
     const empty = keyMetrics.postsAnalyzed === 0;
+    // Honest coverage: when the provider truncated the window we report the
+    // period actually observed instead of claiming the full 30/90 days.
+    const observedDays =
+      typeof payload.analysis_window_observed_days === "number" &&
+      payload.analysis_window_observed_days > 0
+        ? payload.analysis_window_observed_days
+        : null;
+    const truncated =
+      payload.analysis_window_truncated === true && observedDays !== null;
+    const coverageNote = truncated
+      ? ` Amostra parcial: ${keyMetrics.postsAnalyzed} publicações, ${observedDays} dias observados.`
+      : "";
     windowLabelFinal = `últimos ${days} dias`;
     windowShortLabelFinal = `${days} dias`;
     kpiSubtitleFinal = empty
@@ -1658,7 +1674,14 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
     temporalLabelFinal = `Evolução temporal · últimos ${days} dias`;
     topPostsSubtitleFinal = empty
       ? `Sem publicações nos últimos ${days} dias.`
-      : `Ordenadas por envolvimento. Janela observada: últimos ${days} dias.`;
+      : `Ordenadas por envolvimento. Janela observada: ${
+          truncated ? `${observedDays} dias` : `últimos ${days} dias`
+        }.`;
+    if (truncated) {
+      windowShortLabelFinal = `${observedDays} dias`;
+      kpiSubtitleFinal = `${keyMetrics.postsAnalyzed} publicações em ${observedDays} dias`;
+      sampleCaptionFinal = `Análise baseada nas ${keyMetrics.postsAnalyzed} publicações recolhidas.${coverageNote}`;
+    }
   }
 
   // Views are only populated for Reels; if every post has 0 views, hide the
