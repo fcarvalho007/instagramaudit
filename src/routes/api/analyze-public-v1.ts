@@ -57,7 +57,10 @@ import {
 } from "@/lib/security/apify-allowlist";
 import {
   assertApifyDailyBudgetAvailable,
+  assertApifyMonthlyBudgetAvailable,
+  isApifyMonthlySoftCapReached,
   BudgetExceededError,
+  MonthlyBudgetExceededError,
 } from "@/lib/security/apify-budget.server";
 import {
   assertWithinPublicRateLimit,
@@ -1089,9 +1092,15 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         // for the trailing UTC day; if at or above `APIFY_HARD_CAP_USD`,
         // refuse fresh calls and serve stale when possible.
         try {
+          // Monthly hard cap (Apify Free: $5/cycle) is checked first — it is
+          // the ceiling that actually matters on the Free plan.
+          await assertApifyMonthlyBudgetAvailable();
           await assertApifyDailyBudgetAvailable();
         } catch (err) {
-          if (err instanceof BudgetExceededError) {
+          if (
+            err instanceof BudgetExceededError ||
+            err instanceof MonthlyBudgetExceededError
+          ) {
             console.warn(
               "[analyze-public-v1] BUDGET_EXCEEDED",
               `spent=${err.spentUsd.toFixed(2)}`,
@@ -1575,14 +1584,19 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             // nome + email. Assim a auditoria base custa 1 Actor run.
             const deferCommentsToLevel2 =
               (process.env.COMMENT_SCRAPER_DEFER_TO_LEVEL_2 ?? "true").toLowerCase() === "true";
+            // Soft monthly cap: quando o ciclo Free está quase esgotado,
+            // Comment Intelligence (trabalho opcional) é degradado em vez de
+            // consumir os últimos créditos. O relatório base continua a servir.
+            const monthlySoftCapReached = await isApifyMonthlySoftCapReached();
             const runComments =
               !deferCommentsToLevel2 &&
+              !monthlySoftCapReached &&
               shouldRunCommentScraper({
                 featureEnabled: commentScraperEnabled,
                 isInternalTest: commentScraperInternalTest,
               });
 
-            if (deferCommentsToLevel2) {
+            if (deferCommentsToLevel2 || monthlySoftCapReached) {
               // Bloqueio explícito: a UI mostra Comment Intelligence como
               // desbloqueável em vez de "indisponível".
               if (snapshotId) await setEnrichmentStatusAtomic(snapshotId, "comments", "locked");

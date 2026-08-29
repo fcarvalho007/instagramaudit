@@ -58,29 +58,32 @@ const HARD_MAX_CHARGE_CEILING = 0.20;
 /**
  * Fixed per-post comment limit sent to the actor.
  * Override via COMMENT_SCRAPER_PER_POST_LIMIT env var.
- * Default: 5 (Apify Free profile — see COMMENT_SCRAPER_MAX_POSTS).
+ * Default: 4 (Apify Free profile — see COMMENT_SCRAPER_MAX_POSTS).
  */
 export const COMMENT_SCRAPER_PER_POST_LIMIT = clampInt(
-  process.env.COMMENT_SCRAPER_PER_POST_LIMIT, 5, 1, 50,
+  process.env.COMMENT_SCRAPER_PER_POST_LIMIT, 4, 1, 50,
 );
 
 /**
  * Max posts to send to the comment scraper per analysis.
  * Override via COMMENT_SCRAPER_MAX_POSTS env var.
- * Default: 3 (Apify Free profile → 3 × 5 = 15 results ≈ $0.0345/análise).
+ * Default: 5 (Apify Free profile → 5 × 4 = 20 results ≈ $0.046/análise).
+ * 5 posts / 20 comments is exactly the confidence threshold used by
+ * `aggregateCommentIntelligence` (MIN_CONFIDENT_POSTS / MIN_CONFIDENT_COMMENTS),
+ * so a fully-returned Free sample is NOT flagged as low confidence.
  */
 export const COMMENT_SCRAPER_MAX_POSTS = clampInt(
-  process.env.COMMENT_SCRAPER_MAX_POSTS, 3, 1, 12,
+  process.env.COMMENT_SCRAPER_MAX_POSTS, 5, 1, 12,
 );
 
 /**
  * Max total results (comments) across all posts — theoretical ceiling.
- * Override via COMMENT_SCRAPER_MAX_TOTAL_RESULTS env var. Default: 15 (5 × 3 posts).
+ * Override via COMMENT_SCRAPER_MAX_TOTAL_RESULTS env var. Default: 20 (4 × 5 posts).
  * Hard-capped at ~86 (~$0.20 at $0.0023/result).
  */
 export const COMMENT_SCRAPER_MAX_TOTAL_RESULTS = clampInt(
   process.env.COMMENT_SCRAPER_MAX_TOTAL_RESULTS,
-  15,
+  20,
   5,
   Math.floor(HARD_MAX_CHARGE_CEILING / COST_PER_RESULT_USD), // ~86
 );
@@ -99,12 +102,13 @@ export const COMMENT_SCRAPER_INCLUDE_REPLIES =
 
 /**
  * Hard USD cap per comment scraper run.
- * Override via COMMENT_SCRAPER_MAX_CHARGE_USD env var. Default: $0.20.
+ * Override via COMMENT_SCRAPER_MAX_CHARGE_USD env var. Default: $0.05
+ * (Apify Free profile: 20 comments × $0.0023 ≈ $0.046).
  * CRITICAL: Clamped to $0.20 ceiling — env values above are reduced with a warning.
  */
 export const COMMENT_SCRAPER_MAX_CHARGE_USD = (() => {
   const raw = process.env.COMMENT_SCRAPER_MAX_CHARGE_USD;
-  const parsed = clampFloat(raw, HARD_MAX_CHARGE_CEILING, 0.05, HARD_MAX_CHARGE_CEILING);
+  const parsed = clampFloat(raw, 0.05, 0.02, HARD_MAX_CHARGE_CEILING);
   if (raw && parseFloat(raw) > HARD_MAX_CHARGE_CEILING) {
     console.warn(
       `[comment-scraper] COMMENT_SCRAPER_MAX_CHARGE_USD env (${raw}) exceeds hard ceiling $${HARD_MAX_CHARGE_CEILING}. Clamped to $${HARD_MAX_CHARGE_CEILING}.`,

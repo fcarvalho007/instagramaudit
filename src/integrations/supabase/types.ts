@@ -215,6 +215,30 @@ export type Database = {
         }
         Relationships: []
       }
+      apify_run_leases: {
+        Row: {
+          acquired_at: string
+          context: string | null
+          expires_at: string
+          id: string
+          lease_key: string
+        }
+        Insert: {
+          acquired_at?: string
+          context?: string | null
+          expires_at: string
+          id?: string
+          lease_key: string
+        }
+        Update: {
+          acquired_at?: string
+          context?: string | null
+          expires_at?: string
+          id?: string
+          lease_key?: string
+        }
+        Relationships: []
+      }
       app_config: {
         Row: {
           key: string
@@ -1924,6 +1948,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      acquire_apify_run_lease: {
+        Args: { p_lease_key: string; p_max?: number; p_ttl_seconds?: number }
+        Returns: boolean
+      }
       credit_balance: { Args: { p_lead_id: string }; Returns: number }
       current_user_lead_id: { Args: never; Returns: string }
       get_knowledge_context: {
@@ -1980,6 +2008,10 @@ export type Database = {
             }
             Returns: string
           }
+      release_apify_run_lease: {
+        Args: { p_lease_key: string }
+        Returns: undefined
+      }
       report_unlocks_balance: { Args: { p_lead_id: string }; Returns: number }
       set_admin_email_session: { Args: { p_email: string }; Returns: undefined }
       set_enrichment_status: {

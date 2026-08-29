@@ -279,9 +279,15 @@ export async function runActorWithMetadata<T = unknown>(
   input: Record<string, unknown>,
   options: RunActorOptions = {},
 ): Promise<RunActorWithMetadataResult<T>> {
+  // Local semaphore first (cheap, filters same-isolate bursts), then the
+  // Postgres-backed global lease which is the authoritative limit.
   await acquireApifyRunSlot();
   try {
-    return await runActorWithMetadataInner<T>(actorId, input, options);
+    const { withApifyRunLease } = await import("./apify-run-lease.server");
+    return await withApifyRunLease(
+      () => runActorWithMetadataInner<T>(actorId, input, options),
+      actorId,
+    );
   } finally {
     releaseApifyRunSlot();
   }
