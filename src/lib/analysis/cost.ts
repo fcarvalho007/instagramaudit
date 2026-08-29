@@ -1,14 +1,18 @@
 /**
  * Apify cost estimation + privacy-safe request fingerprinting (server-only).
  *
- * Heuristic v1: cost is derived from result volume, configurable via env so
- * we can tune without code changes. This is intentionally a heuristic — the
- * `provider_call_logs.actual_cost_usd` column is reserved for a later pass
- * that fetches Apify's real `usageTotalUsd` per run.
+ * Pricing model (v2 — aligned with the real Apify Free price list):
+ * the Instagram scraper is billed PER DATASET RESULT, not per profile/post.
  *
- *   estimated_cost_usd =
- *     profiles_returned × APIFY_COST_PER_PROFILE_USD
- *     + posts_returned   × APIFY_COST_PER_POST_USD
+ *   estimated_cost_usd = billed_results × APIFY_COST_PER_RESULT_USD
+ *
+ * `billed_results` is the number of dataset items the run actually produced:
+ *   - `details` mode → 1 item (the profile row; its posts are embedded and
+ *     are NOT billed separately);
+ *   - `posts` mode   → 1 item per post.
+ * Callers that know the real item count pass `billedResults`. When they do
+ * not, we fall back to `profilesReturned + postsReturned`, which is the
+ * conservative (over-estimating) reading.
  *
  * Cache hits cost 0. Failures cost 0 unless the provider returned a partial
  * dataset (then count what was returned).
@@ -17,8 +21,8 @@
  * user-agent family extraction so we never persist raw IPs or full UAs.
  */
 
-const DEFAULT_COST_PER_PROFILE_USD = 0.005;
-const DEFAULT_COST_PER_POST_USD = 0.0005;
+/** Apify Free — Instagram Scraper list price, USD per dataset result. */
+const DEFAULT_COST_PER_RESULT_USD = 0.0027;
 
 function readEnvNumber(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -27,32 +31,32 @@ function readEnvNumber(name: string, fallback: number): number {
   return Number.isFinite(n) && n >= 0 ? n : fallback;
 }
 
-export function getCostRates(): {
-  perProfile: number;
-  perPost: number;
-} {
-  return {
-    perProfile: readEnvNumber(
-      "APIFY_COST_PER_PROFILE_USD",
-      DEFAULT_COST_PER_PROFILE_USD,
-    ),
-    perPost: readEnvNumber("APIFY_COST_PER_POST_USD", DEFAULT_COST_PER_POST_USD),
-  };
+export function getApifyCostPerResultUsd(): number {
+  return readEnvNumber(
+    "APIFY_COST_PER_RESULT_USD",
+    DEFAULT_COST_PER_RESULT_USD,
+  );
 }
 
 /**
- * Estimate the USD cost of a single provider call given how many profiles
- * and posts came back. Rounded to 5 decimals to match the DB column scale.
+ * Estimate the USD cost of a single provider call.
+ *
+ * Prefer passing `billedResults` (the real dataset item count). The
+ * profile/post split is kept only as a fallback for callers that do not
+ * know the item count.
  */
 export function estimateApifyCost(input: {
   profilesReturned: number;
   postsReturned: number;
+  /** Real dataset item count for this run, when the caller knows it. */
+  billedResults?: number;
 }): number {
-  const { perProfile, perPost } = getCostRates();
-  const raw =
-    Math.max(0, input.profilesReturned) * perProfile +
-    Math.max(0, input.postsReturned) * perPost;
-  return Math.round(raw * 1e5) / 1e5;
+  const perResult = getApifyCostPerResultUsd();
+  const results =
+    typeof input.billedResults === "number"
+      ? Math.max(0, input.billedResults)
+      : Math.max(0, input.profilesReturned) + Math.max(0, input.postsReturned);
+  return Math.round(results * perResult * 1e5) / 1e5;
 }
 
 /**
