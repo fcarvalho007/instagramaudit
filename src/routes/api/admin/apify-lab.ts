@@ -346,7 +346,7 @@ export const Route = createFileRoute("/api/admin/apify-lab")({
             postsReturned: posts.length,
             // `details` bills 1 item per run; `posts` bills 1 per post.
             billedResults:
-              results_type === "posts"
+              labMeta.results_type === "posts"
                 ? posts.length
                 : profileRow
                   ? 1
