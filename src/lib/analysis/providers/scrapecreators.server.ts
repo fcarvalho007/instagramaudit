@@ -187,11 +187,7 @@ function hasMore(payload: Record<string, unknown>): boolean {
 
 /** ScrapeCreators media item → Apify post row. */
 export function mapPost(raw: Record<string, unknown>): ProviderPostRow {
-  const caption =
-    str(asRecord(raw.caption)?.text) ??
-    str(raw.caption) ??
-    str(asRecord(asRecord(raw.edge_media_to_caption)?.edges) ? null : null) ??
-    null;
+  const caption = str(asRecord(raw.caption)?.text) ?? str(raw.caption);
   const takenAt = num(raw.taken_at) ?? num(raw.taken_at_timestamp);
   const shortcode = str(raw.code) ?? str(raw.shortcode);
   const mediaType = num(raw.media_type);
