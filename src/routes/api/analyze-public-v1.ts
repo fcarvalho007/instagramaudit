@@ -57,7 +57,9 @@ import {
 } from "@/lib/security/apify-allowlist";
 import {
   assertApifyDailyBudgetAvailable,
+  assertApifyMonthlyBudgetAvailable,
   BudgetExceededError,
+  MonthlyBudgetExceededError,
 } from "@/lib/security/apify-budget.server";
 import {
   assertWithinPublicRateLimit,
@@ -1089,9 +1091,15 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         // for the trailing UTC day; if at or above `APIFY_HARD_CAP_USD`,
         // refuse fresh calls and serve stale when possible.
         try {
+          // Monthly hard cap (Apify Free: $5/cycle) is checked first — it is
+          // the ceiling that actually matters on the Free plan.
+          await assertApifyMonthlyBudgetAvailable();
           await assertApifyDailyBudgetAvailable();
         } catch (err) {
-          if (err instanceof BudgetExceededError) {
+          if (
+            err instanceof BudgetExceededError ||
+            err instanceof MonthlyBudgetExceededError
+          ) {
             console.warn(
               "[analyze-public-v1] BUDGET_EXCEEDED",
               `spent=${err.spentUsd.toFixed(2)}`,
