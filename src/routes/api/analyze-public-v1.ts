@@ -114,6 +114,12 @@ import {
   type PublicWindowKind,
 } from "@/lib/analysis/window-configs";
 import { PUBLIC_INSTAGRAM_POSTS_LIMIT } from "@/lib/analysis/constants";
+import {
+  fallbackProviderFor,
+  isProviderSideFailure,
+  scrapeCreatorsProvider,
+  selectProvider,
+} from "@/lib/analysis/providers/index.server";
 import { hasEntitlement } from "@/lib/payments/entitlements.server";
 
 // Unified Apify actor — returns profile details with `latestPosts[]` embedded
@@ -275,6 +281,24 @@ function competitorFailure(
 }
 
 /**
+ * Convert an Apify-style relative window ("30 days") into an epoch-ms
+ * cutoff so non-Apify providers can apply the same boundary.
+ */
+function windowCutoffMs(spec: string | undefined): number | undefined {
+  if (!spec) return undefined;
+  const match = /^(\d+)\s*(day|days|week|weeks|month|months)$/i.exec(spec.trim());
+  if (!match) return undefined;
+  const amount = Number.parseInt(match[1]!, 10);
+  const unit = match[2]!.toLowerCase();
+  const days = unit.startsWith("week")
+    ? amount * 7
+    : unit.startsWith("month")
+      ? amount * 30
+      : amount;
+  return Date.now() - days * 86_400_000;
+}
+
+/**
  * Fetch profile + posts for one handle.
  *
  * Baseline: ONE `details` run (profile row with up to 12 embedded posts).
@@ -337,6 +361,37 @@ async function fetchProfileWithPosts(
   // ---- Run B: posts inside the window ----------------------------------
   // Runs sequentially (never in parallel) so a single analysis holds at most
   // one global Apify lease at a time.
+  const sinceMs = windowCutoffMs(cfg.onlyPostsNewerThan);
+
+  // ScrapeCreators path: cursor pagination genuinely walks the window back,
+  // instead of stopping at the actor's page limit.
+  if (selectProvider("posts") === "scrapecreators") {
+    try {
+      const sc = await scrapeCreatorsProvider.fetchPosts(username, {
+        sinceMs,
+        maxPosts: cfg.resultsLimit,
+        timeoutMs: cfg.timeoutMs,
+      });
+      if (sc.rows.length > 0) {
+        row.latestPosts = sc.rows;
+        return {
+          row,
+          runId: detailsResult.runId,
+          actualCostUsd,
+          billedResults: billedResults + sc.billedResults,
+        };
+      }
+    } catch (err) {
+      if (!isProviderSideFailure(err) || fallbackProviderFor("scrapecreators") !== "apify") {
+        throw err;
+      }
+      console.warn(
+        "[providers] ScrapeCreators posts failed, falling back to Apify:",
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+  }
+
   const postsResult = await runActorWithMetadata<Record<string, unknown>>(
     UNIFIED_ACTOR,
     {
