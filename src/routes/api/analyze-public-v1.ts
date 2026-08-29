@@ -274,8 +274,17 @@ function competitorFailure(
 }
 
 /**
- * Single unified call: returns the profile details with `latestPosts[]`
- * embedded. Replaces the previous two-step (profile then posts) flow.
+ * Fetch profile + posts for one handle.
+ *
+ * Baseline: ONE `details` run (profile row with up to 12 embedded posts).
+ *
+ * Wide windows (30d/90d): TWO runs, because the actor ignores
+ * `onlyPostsNewerThan` in `details` mode and `details.latestPosts` is capped
+ * at ~12 items regardless of `resultsLimit`:
+ *   A) `details` → profile fields (followers, bio, verification, …)
+ *   B) `posts`   → the real list of posts inside the window
+ * The two datasets are recombined into a single row so every downstream
+ * normalizer keeps working unchanged.
  */
 async function fetchProfileWithPosts(
   username: string,
@@ -284,53 +293,81 @@ async function fetchProfileWithPosts(
   row: Record<string, unknown> | null;
   runId: string | null;
   actualCostUsd: number | null;
+  /** Real dataset item count across every run made for this handle. */
+  billedResults: number;
 }> {
-  const actorInput: Record<string, unknown> = {
-    directUrls: [`https://www.instagram.com/${username}/`],
-    // PR1 fix: keep `details` mode for ALL windows. In `posts` mode the
-    // actor returns post rows (no `username`/`followersCount`), which
-    // breaks `normalizeProfile` and produced false PROFILE_NOT_FOUND for
-    // 30d/90d. Window filtering is now applied client-side over the
-    // embedded `latestPosts[]`. `onlyPostsNewerThan` is still passed
-    // through for diagnostic parity even though the actor ignores it in
-    // details mode.
+  const profileUrl = `https://www.instagram.com/${username}/`;
+  const wide = cfg.costTier === "wide" && Boolean(cfg.onlyPostsNewerThan);
+
+  // ---- Run A: profile details ------------------------------------------
+  const detailsInput: Record<string, unknown> = {
+    directUrls: [profileUrl],
     resultsType: "details",
-    // `resultsLimit` controls the size of `latestPosts[]` inside the
-    // single profile row returned by the actor. It is NOT the number of
-    // profiles per run (see `maxItems` below).
-    resultsLimit: cfg.resultsLimit,
+    // For wide windows the embedded posts are discarded (run B supersedes
+    // them), so keep this small. Baseline still needs the full sample.
+    resultsLimit: wide ? PUBLIC_INSTAGRAM_POSTS_LIMIT : cfg.resultsLimit,
     addParentData: false,
   };
-  if (cfg.onlyPostsNewerThan) {
-    actorInput.onlyPostsNewerThan = cfg.onlyPostsNewerThan;
-  }
-  const result = await runActorWithMetadata<Record<string, unknown>>(
+  const detailsResult = await runActorWithMetadata<Record<string, unknown>>(
     UNIFIED_ACTOR,
-    actorInput,
+    detailsInput,
+    {
+      timeoutMs: wide ? 60_000 : cfg.timeoutMs,
+      apifyTimeoutSecs: wide ? 55 : cfg.apifyTimeoutSecs,
+      // `maxItems: 1` → one profile ROW. `resultsLimit` → posts inside that
+      // row. `maxTotalChargeUsd` is the final per-call USD safety net.
+      maxItems: 1,
+      maxTotalChargeUsd: wide ? 0.05 : cfg.maxTotalChargeUsd,
+    },
+  );
+  const row = detailsResult.items[0] ?? null;
+  let billedResults = detailsResult.items.length;
+  let actualCostUsd = detailsResult.actualCostUsd;
+
+  if (!wide || !row) {
+    return {
+      row,
+      runId: detailsResult.runId,
+      actualCostUsd,
+      billedResults,
+    };
+  }
+
+  // ---- Run B: posts inside the window ----------------------------------
+  // Runs sequentially (never in parallel) so a single analysis holds at most
+  // one global Apify lease at a time.
+  const postsResult = await runActorWithMetadata<Record<string, unknown>>(
+    UNIFIED_ACTOR,
+    {
+      directUrls: [profileUrl],
+      resultsType: "posts",
+      resultsLimit: cfg.resultsLimit,
+      onlyPostsNewerThan: cfg.onlyPostsNewerThan,
+      addParentData: false,
+    },
     {
       timeoutMs: cfg.timeoutMs,
       apifyTimeoutSecs: cfg.apifyTimeoutSecs,
-      // Cost guards for the smoke-test phase.
-      //
-      // Apify input contract (do not confuse the two limits):
-      //   - `directUrls`: 1 URL  → 1 Instagram profile per run.
-      //   - `maxItems: 1`        → at most 1 profile ROW returned per run.
-      //   - `resultsLimit: N`    → up to N POSTS inside that profile's
-      //                            `latestPosts[]` array. Baseline uses
-      //                            PUBLIC_INSTAGRAM_POSTS_LIMIT; wide
-      //                            windows (30d/90d) bump this and add
-      //                            `onlyPostsNewerThan`.
-      // This call therefore returns ONE profile with UP TO 12 recent
-      // posts — never 12 profiles. `maxTotalChargeUsd` is a hard USD cap
-      // per call as a final safety net.
-      maxItems: 1,
+      maxItems: cfg.resultsLimit,
       maxTotalChargeUsd: cfg.maxTotalChargeUsd,
     },
   );
+  billedResults += postsResult.items.length;
+  if (typeof postsResult.actualCostUsd === "number") {
+    actualCostUsd = (actualCostUsd ?? 0) + postsResult.actualCostUsd;
+  }
+  // Replace the 12-post `details` sample with the real window dataset.
+  // If run B returned nothing we keep the details sample rather than
+  // pretending the profile has no activity.
+  if (postsResult.items.length > 0) {
+    row.latestPosts = postsResult.items;
+  }
+
   return {
-    row: result.items[0] ?? null,
-    runId: result.runId,
-    actualCostUsd: result.actualCostUsd,
+    row,
+    runId: postsResult.runId ?? detailsResult.runId,
+    actualCostUsd,
+    billedResults,
   };
 }
 
@@ -349,7 +386,8 @@ async function fetchProfileWithPostsLogged(
 }> {
   const startedAt = Date.now();
   try {
-    const { row, runId, actualCostUsd } = await fetchProfileWithPosts(username, cfg);
+    const { row, runId, actualCostUsd, billedResults } =
+      await fetchProfileWithPosts(username, cfg);
     const posts = Array.isArray((row as { latestPosts?: unknown })?.latestPosts)
       ? ((row as { latestPosts: unknown[] }).latestPosts.length as number)
       : 0;
@@ -359,7 +397,7 @@ async function fetchProfileWithPostsLogged(
       postsReturned: posts,
       // `details` mode bills ONE dataset item per run — the embedded
       // `latestPosts[]` are not billed separately.
-      billedResults: profilesReturned,
+      billedResults,
     });
     const providerCallLogId = await recordProviderCall({
       actor: UNIFIED_ACTOR,
