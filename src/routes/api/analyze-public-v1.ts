@@ -1334,6 +1334,28 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             });
             return failure(errorCode);
           }
+          // Truncation / coverage detection. `posts` mode stops at
+          // `resultsLimit`, so a full page of results means the window was
+          // very likely cut short — the report must say what it observed
+          // instead of claiming the full 30/90 days.
+          const primaryPostTimestamps = primaryPosts
+            .map((p) => postTimestampMs(p as never))
+            .filter((t): t is number => typeof t === "number");
+          const oldestPostMs =
+            primaryPostTimestamps.length > 0
+              ? Math.min(...primaryPostTimestamps)
+              : null;
+          const primaryWindowObservedDays =
+            oldestPostMs !== null
+              ? Math.max(
+                  1,
+                  Math.round((Date.now() - oldestPostMs) / 86_400_000),
+                )
+              : 0;
+          const primaryWindowTruncated =
+            windowMs !== null &&
+            primaryPosts.length >= primaryWindowCfg.resultsLimit;
+
           const primarySummary = computeContentSummary(
             primaryPosts,
             primaryProfile.followers_count,
@@ -1480,6 +1502,10 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             // baseline snapshots (no key) are treated as baseline downstream.
             analysis_window: windowKind,
             analysis_window_label: primaryWindowCfg.label,
+            // Honest window reporting: how many days the sample actually
+            // covers, and whether the provider truncated the window.
+            analysis_window_observed_days: primaryWindowObservedDays,
+            analysis_window_truncated: primaryWindowTruncated,
             profile: primaryProfile,
             content_summary: primarySummary,
             competitors: competitorResults,
