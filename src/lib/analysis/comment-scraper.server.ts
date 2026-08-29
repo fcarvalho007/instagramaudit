@@ -43,10 +43,15 @@ const COMMENT_ACTOR = "apify/instagram-comment-scraper";
 /**
  * Estimated cost per result (comment).
  * Apify Free-plan pricing for `apify/instagram-comment-scraper` is
- * $2.30 / 1,000 comments → $0.0023/result. Keeping this in sync with the
+ * $2.60 / 1,000 comments → $0.0026/result. Keeping this in sync with the
  * real price is what prevents the hard cap from being silently overshot.
+ * Override via COMMENT_SCRAPER_COST_PER_RESULT_USD when Apify repricing.
  */
-const COST_PER_RESULT_USD = 0.0023;
+const COST_PER_RESULT_USD = (() => {
+  const raw = process.env.COMMENT_SCRAPER_COST_PER_RESULT_USD;
+  const parsed = raw ? Number.parseFloat(raw) : Number.NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0.0026;
+})();
 
 /** Target cost per analysis — informational, used in budget planning (8 comments × 12 posts). */
 export const COMMENT_SCRAPER_TARGET_COST_USD = 0.15;
@@ -79,7 +84,7 @@ export const COMMENT_SCRAPER_MAX_POSTS = clampInt(
 /**
  * Max total results (comments) across all posts — theoretical ceiling.
  * Override via COMMENT_SCRAPER_MAX_TOTAL_RESULTS env var. Default: 20 (4 × 5 posts).
- * Hard-capped at ~86 (~$0.20 at $0.0023/result).
+ * Hard-capped at ~76 (~$0.20 at $0.0026/result).
  */
 export const COMMENT_SCRAPER_MAX_TOTAL_RESULTS = clampInt(
   process.env.COMMENT_SCRAPER_MAX_TOTAL_RESULTS,
@@ -102,13 +107,13 @@ export const COMMENT_SCRAPER_INCLUDE_REPLIES =
 
 /**
  * Hard USD cap per comment scraper run.
- * Override via COMMENT_SCRAPER_MAX_CHARGE_USD env var. Default: $0.05
- * (Apify Free profile: 20 comments × $0.0023 ≈ $0.046).
+ * Override via COMMENT_SCRAPER_MAX_CHARGE_USD env var. Default: $0.06
+ * (Apify Free profile: 20 comments × $0.0026 ≈ $0.052, plus margin).
  * CRITICAL: Clamped to $0.20 ceiling — env values above are reduced with a warning.
  */
 export const COMMENT_SCRAPER_MAX_CHARGE_USD = (() => {
   const raw = process.env.COMMENT_SCRAPER_MAX_CHARGE_USD;
-  const parsed = clampFloat(raw, 0.05, 0.02, HARD_MAX_CHARGE_CEILING);
+  const parsed = clampFloat(raw, 0.06, 0.02, HARD_MAX_CHARGE_CEILING);
   if (raw && parseFloat(raw) > HARD_MAX_CHARGE_CEILING) {
     console.warn(
       `[comment-scraper] COMMENT_SCRAPER_MAX_CHARGE_USD env (${raw}) exceeds hard ceiling $${HARD_MAX_CHARGE_CEILING}. Clamped to $${HARD_MAX_CHARGE_CEILING}.`,

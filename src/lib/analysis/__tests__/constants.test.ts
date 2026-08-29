@@ -19,7 +19,9 @@ describe("PUBLIC_INSTAGRAM_POSTS_LIMIT", () => {
       "utf8",
     );
     expect(src).toContain('from "@/lib/analysis/constants"');
-    expect(src).toContain("resultsLimit: PUBLIC_INSTAGRAM_POSTS_LIMIT");
+    // Wide windows fetch posts in a dedicated run, so the details run keeps
+    // the constant as its sample size.
+    expect(src).toMatch(/resultsLimit:[^\n]*PUBLIC_INSTAGRAM_POSTS_LIMIT/);
     // Defensive: ensure the old hardcoded duplicate is gone.
     expect(src).not.toMatch(/^const POSTS_LIMIT = 12;$/m);
   });

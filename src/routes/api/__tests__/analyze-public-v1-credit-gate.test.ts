@@ -267,6 +267,7 @@ vi.mock("@/lib/benchmark/engine", () => ({
 }));
 
 vi.mock("@/lib/analysis/normalize", () => ({
+  postTimestampMs: vi.fn(() => Date.now()),
   normalizeProfile: vi.fn(() => state.normalizeProfileResult),
   computeContentSummary: vi.fn(() => ({
     posts_analyzed: 12,
@@ -557,6 +558,8 @@ describe("analyze-public-v1 · Phase 2 credit gate contract", () => {
     expect(state.leadReports).toHaveLength(1);
   });
 
+  // 5xx é transitório → UPSTREAM_UNAVAILABLE (503). 502/UPSTREAM_FAILED fica
+  // reservado a falhas não recuperáveis do provider.
   it("6. provider error (ApifyUpstreamError 500) → liberta reserva, saldo intacto", async () => {
     await credits.grantInitialCredits(LEAD_ID);
     const balanceBefore = await credits.getBalance(LEAD_ID);
@@ -569,9 +572,9 @@ describe("analyze-public-v1 · Phase 2 credit gate contract", () => {
 
     const cookie = encodeLeadCookie(LEAD_ID);
     const res = await postHandler({ request: buildRequest({ withCookie: cookie }) });
-    expect(res.status).toBe(502);
+    expect(res.status).toBe(503);
     const body = (await res.json()) as { error_code: string };
-    expect(body.error_code).toBe("UPSTREAM_FAILED");
+    expect(body.error_code).toBe("UPSTREAM_UNAVAILABLE");
     expect(state.apifyCallCount).toBe(1);
     expect(await credits.getBalance(LEAD_ID)).toBe(balanceBefore);
     // Houve reserve seguida de release (delta +1).
