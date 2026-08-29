@@ -90,6 +90,45 @@ function pickString(...values: Array<unknown>): string | null {
   return null;
 }
 
+/**
+ * Instagram timestamps are UTC. Cadence/heatmap blocks are read by a pt-PT
+ * audience, so weekday and hour must be expressed in Europe/Lisbon (which
+ * is UTC+0 in winter and UTC+1 in summer). Falls back to UTC if the
+ * runtime lacks the timezone data.
+ */
+const LISBON_PARTS = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Europe/Lisbon",
+  weekday: "short",
+  hour: "2-digit",
+  hour12: false,
+});
+
+const WEEKDAY_INDEX: Record<string, number> = {
+  Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+};
+
+function lisbonParts(date: Date): { weekday: number; hour: number } | null {
+  try {
+    const parts = LISBON_PARTS.formatToParts(date);
+    const weekdayLabel = parts.find((p) => p.type === "weekday")?.value ?? "";
+    const hourRaw = parts.find((p) => p.type === "hour")?.value ?? "";
+    const weekday = WEEKDAY_INDEX[weekdayLabel];
+    const hour = Number.parseInt(hourRaw, 10);
+    if (weekday === undefined || !Number.isFinite(hour)) return null;
+    return { weekday, hour: hour % 24 };
+  } catch {
+    return null;
+  }
+}
+
+export function lisbonWeekday(date: Date): number {
+  return lisbonParts(date)?.weekday ?? date.getUTCDay();
+}
+
+export function lisbonHour(date: Date): number {
+  return lisbonParts(date)?.hour ?? date.getUTCHours();
+}
+
 export function normalizeProfile(raw: RawProfile): PublicAnalysisProfile | null {
   const username = pickString(raw.username);
   const followers = pickNumber(raw.followersCount, raw.followers);
@@ -586,8 +625,8 @@ export function enrichPosts(
       mentions: extractMentions(caption),
       taken_at: takenAt,
       taken_at_iso: takenIso,
-      weekday: date ? date.getUTCDay() : null,
-      hour_local: date ? date.getUTCHours() : null,
+      weekday: date ? lisbonWeekday(date) : null,
+      hour_local: date ? lisbonHour(date) : null,
       likes,
       comments,
       video_views: pickVideoViews(raw),
