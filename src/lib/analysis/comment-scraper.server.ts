@@ -107,13 +107,13 @@ export const COMMENT_SCRAPER_INCLUDE_REPLIES =
 
 /**
  * Hard USD cap per comment scraper run.
- * Override via COMMENT_SCRAPER_MAX_CHARGE_USD env var. Default: $0.05
- * (Apify Free profile: 20 comments × $0.0026 ≈ $0.052).
+ * Override via COMMENT_SCRAPER_MAX_CHARGE_USD env var. Default: $0.06
+ * (Apify Free profile: 20 comments × $0.0026 ≈ $0.052, plus margin).
  * CRITICAL: Clamped to $0.20 ceiling — env values above are reduced with a warning.
  */
 export const COMMENT_SCRAPER_MAX_CHARGE_USD = (() => {
   const raw = process.env.COMMENT_SCRAPER_MAX_CHARGE_USD;
-  const parsed = clampFloat(raw, 0.05, 0.02, HARD_MAX_CHARGE_CEILING);
+  const parsed = clampFloat(raw, 0.06, 0.02, HARD_MAX_CHARGE_CEILING);
   if (raw && parseFloat(raw) > HARD_MAX_CHARGE_CEILING) {
     console.warn(
       `[comment-scraper] COMMENT_SCRAPER_MAX_CHARGE_USD env (${raw}) exceeds hard ceiling $${HARD_MAX_CHARGE_CEILING}. Clamped to $${HARD_MAX_CHARGE_CEILING}.`,
