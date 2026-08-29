@@ -113,6 +113,7 @@ import {
   type PublicWindowConfig,
   type PublicWindowKind,
 } from "@/lib/analysis/window-configs";
+import { PUBLIC_INSTAGRAM_POSTS_LIMIT } from "@/lib/analysis/constants";
 import { hasEntitlement } from "@/lib/payments/entitlements.server";
 
 // Unified Apify actor — returns profile details with `latestPosts[]` embedded
