@@ -22,7 +22,7 @@ import {
   isApifyEnabled,
   isTestingModeActive,
 } from "@/lib/security/apify-allowlist";
-import { getCostRates } from "@/lib/analysis/cost";
+import { getApifyCostPerResultUsd } from "@/lib/analysis/cost";
 import { getAlertThresholds } from "@/lib/admin/alerts";
 import {
   getApifyDailyCapUsd,
@@ -537,7 +537,7 @@ export const Route = createFileRoute("/api/admin/diagnostics")({
           loadAlerts(),
         ]);
 
-        const costRates = getCostRates();
+        const costPerResultUsd = getApifyCostPerResultUsd();
         const alertThresholds = getAlertThresholds();
 
         // Bloco "Estado para smoke test" — verificação inequívoca da config
@@ -605,8 +605,7 @@ export const Route = createFileRoute("/api/admin/diagnostics")({
           },
           apify: {
             enabled: isApifyEnabled(),
-            cost_per_profile_usd: costRates.perProfile,
-            cost_per_post_usd: costRates.perPost,
+            cost_per_result_usd: costPerResultUsd,
             public_mode: isApifyEnabled() && !isTestingModeActive(),
           },
           testing_mode: {

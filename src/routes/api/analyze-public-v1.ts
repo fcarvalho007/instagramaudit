@@ -357,6 +357,9 @@ async function fetchProfileWithPostsLogged(
     const estimatedCostUsd = estimateApifyCost({
       profilesReturned,
       postsReturned: posts,
+      // `details` mode bills ONE dataset item per run — the embedded
+      // `latestPosts[]` are not billed separately.
+      billedResults: profilesReturned,
     });
     const providerCallLogId = await recordProviderCall({
       actor: UNIFIED_ACTOR,
@@ -1488,6 +1491,8 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           const estimatedCost = estimateApifyCost({
             profilesReturned: totalProfiles,
             postsReturned: totalPosts,
+            // One `details` run per profile → one billed item per profile.
+            billedResults: totalProfiles,
           });
 
           // Record the success event immediately. This guarantees that a

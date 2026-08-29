@@ -344,6 +344,13 @@ export const Route = createFileRoute("/api/admin/apify-lab")({
           const estimated = estimateApifyCost({
             profilesReturned: profileRow ? 1 : 0,
             postsReturned: posts.length,
+            // `details` bills 1 item per run; `posts` bills 1 per post.
+            billedResults:
+              results_type === "posts"
+                ? posts.length
+                : profileRow
+                  ? 1
+                  : 0,
           });
 
           const row = await persistRun({
