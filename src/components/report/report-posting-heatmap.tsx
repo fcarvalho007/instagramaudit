@@ -24,7 +24,7 @@ export function ReportPostingHeatmap() {
     <ReportSection
       label="Melhores horários de publicação"
       title="Quando o público responde mais"
-      subtitle="Mapa de intensidade de envolvimento por dia da semana e hora do dia."
+      subtitle="Mapa de intensidade de envolvimento por dia da semana e hora do dia (hora de Lisboa)."
     >
       <div className="bg-surface-secondary border border-border-default rounded-2xl shadow-card p-6 md:p-8">
         {/* Mobile affordance: visible hint shown only on <sm */}
