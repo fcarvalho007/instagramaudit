@@ -267,6 +267,7 @@ vi.mock("@/lib/benchmark/engine", () => ({
 }));
 
 vi.mock("@/lib/analysis/normalize", () => ({
+  postTimestampMs: vi.fn(() => Date.now()),
   normalizeProfile: vi.fn(() => state.normalizeProfileResult),
   computeContentSummary: vi.fn(() => ({
     posts_analyzed: 12,
