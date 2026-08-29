@@ -341,3 +341,99 @@ export async function getApifyProductionDailySpendUsd(
     return 0;
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Monthly caps (Apify Free plan: $5 free usage per billing cycle)
+// ─────────────────────────────────────────────────────────────────────
+
+export class MonthlyBudgetExceededError extends Error {
+  readonly spentUsd: number;
+  readonly capUsd: number;
+  constructor(spentUsd: number, capUsd: number) {
+    super(
+      `Apify monthly budget exceeded: $${spentUsd.toFixed(3)} >= $${capUsd}`,
+    );
+    this.name = "MonthlyBudgetExceededError";
+    this.spentUsd = spentUsd;
+    this.capUsd = capUsd;
+  }
+}
+
+/** Soft cap — stop launching NEW optional work (Comment Intelligence). */
+export function getApifyMonthlySoftCapUsd(): number {
+  return readNumber("APIFY_MONTHLY_SOFT_CAP_USD", 4.25);
+}
+
+/** Hard cap — stop starting ANY new paid Actor run. */
+export function getApifyMonthlyHardCapUsd(): number {
+  return readNumber("APIFY_MONTHLY_HARD_CAP_USD", 4.75);
+}
+
+let cachedMonthlySpend: { value: number; at: number } | null = null;
+
+export function invalidateApifyMonthlyBudgetCache(): void {
+  cachedMonthlySpend = null;
+}
+
+function startOfUtcMonthIso(now: Date = new Date()): string {
+  const d = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0),
+  );
+  return d.toISOString();
+}
+
+/**
+ * Total Apify spend (USD) since the 1st of the current UTC month.
+ *
+ * Same source of truth as the daily gate: `provider_call_logs` with
+ * `COALESCE(actual_cost_usd, estimated_cost_usd)`. Reconciled Apify billing
+ * (cost_daily / sync-apify-costs) is untouched and keeps flowing into
+ * `actual_cost_usd`, so this number improves as reconciliation lands.
+ */
+export async function getApifyMonthlySpendUsd(
+  now: Date = new Date(),
+): Promise<number> {
+  const ts = now.getTime();
+  if (cachedMonthlySpend && ts - cachedMonthlySpend.at < TTL_MS) {
+    return cachedMonthlySpend.value;
+  }
+  try {
+    const { data, error } = await (supabaseAdmin as any)
+      .from("provider_call_logs")
+      .select("estimated_cost_usd, actual_cost_usd")
+      .eq("provider", "apify")
+      .gte("created_at", startOfUtcMonthIso(now))
+      .limit(20000);
+    if (error) {
+      console.error("[apify-budget] monthly sum query failed", error.message);
+      cachedMonthlySpend = { value: 0, at: ts };
+      return 0;
+    }
+    const total = (data ?? []).reduce((sum: number, r: any) => {
+      const raw = r.actual_cost_usd ?? r.estimated_cost_usd ?? 0;
+      const v = typeof raw === "string" ? Number.parseFloat(raw) : Number(raw);
+      return sum + (Number.isFinite(v) ? v : 0);
+    }, 0);
+    cachedMonthlySpend = { value: total, at: ts };
+    return total;
+  } catch (err) {
+    console.error("[apify-budget] monthly unexpected", err);
+    return 0;
+  }
+}
+
+/** True when optional/deferrable Apify work must be skipped this cycle. */
+export async function isApifyMonthlySoftCapReached(
+  now: Date = new Date(),
+): Promise<boolean> {
+  return (await getApifyMonthlySpendUsd(now)) >= getApifyMonthlySoftCapUsd();
+}
+
+/** Throws `MonthlyBudgetExceededError` when the monthly hard cap is reached. */
+export async function assertApifyMonthlyBudgetAvailable(
+  now: Date = new Date(),
+): Promise<void> {
+  const cap = getApifyMonthlyHardCapUsd();
+  const spent = await getApifyMonthlySpendUsd(now);
+  if (spent >= cap) throw new MonthlyBudgetExceededError(spent, cap);
+}
