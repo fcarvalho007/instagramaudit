@@ -61,15 +61,15 @@ function Header({ variant = "light" }: HeaderProps = {}) {
       style={{ zIndex: "var(--z-sticky)" } as React.CSSProperties}
     >
       <Container size="xl">
-        <div className="flex h-16 md:h-20 items-center justify-between gap-6">
+        <div className="flex h-16 md:h-20 items-center justify-between gap-2 sm:gap-6">
           {/* Left: Brand */}
-          <Link to="/" className="flex items-center gap-3 group">
+          <Link to="/" className="flex min-w-0 items-center gap-2 sm:gap-3 group">
             <span className="inline-flex shadow-[0_6px_18px_-6px_rgba(99,102,241,0.45)] rounded-[10px] transition-transform duration-200 group-hover:-translate-y-px">
               <BrandMark size={32} />
             </span>
             <span
               className={cn(
-                "font-display text-xl font-semibold tracking-tight",
+                "font-display text-lg sm:text-xl font-semibold tracking-tight truncate",
                 isDark ? "text-white" : "text-content-primary",
               )}
             >
@@ -114,7 +114,7 @@ function Header({ variant = "light" }: HeaderProps = {}) {
           </nav>
 
           {/* Right: Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <LanguageSwitcher
               variant="compact"
               className={cn(

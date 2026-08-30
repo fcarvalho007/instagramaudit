@@ -1,16 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { MessagesSquare } from "lucide-react";
 
 import { trackAnonymousEvent } from "@/lib/analytics/anonymous-funnel";
 
 /**
- * Ronda 3 — placeholders de conversão B e C.
+ * Ronda 3.5 — bloco contextual "Aprofundar a análise".
  *
- * Bloco contextual "Aprofundar a análise", onde entrará o Comment
- * Intelligence (Level 2). Não chama providers nem pede email.
+ * Bloco informativo, sem botão: em staging externo não pode existir uma
+ * acção aparentemente funcional que termine apenas em "disponível em breve".
  *
- * Ronda 4: ligar `onClick` ao fluxo de captura de email + unlock de
- * Comment Intelligence (`/api/public/unlock-comments`).
+ * Ronda 4: acrescentar aqui o botão de desbloqueio, ligado à captura de
+ * email + Comment Intelligence (`/api/public/unlock-comments`), emitindo
+ * `level2_cta_clicked`.
  */
 export function DeepenAnalysisCta({
   handle,
@@ -19,7 +20,6 @@ export function DeepenAnalysisCta({
   handle: string;
   snapshotId: string;
 }) {
-  const [notified, setNotified] = useState(false);
   const ref = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -53,32 +53,19 @@ export function DeepenAnalysisCta({
       </span>
       <h2
         id="deepen-analysis-title"
-        className="mt-2 font-display text-xl sm:text-2xl text-content-primary"
+        className="mt-2 flex items-center gap-2 font-display text-xl sm:text-2xl text-content-primary"
       >
+        <MessagesSquare
+          className="size-5 shrink-0 text-accent-primary"
+          aria-hidden="true"
+        />
         Aprofundar a análise
       </h2>
       <p className="mt-2 max-w-2xl font-sans text-sm leading-relaxed text-content-secondary">
         A análise de comentários acrescenta leitura de audiência: temas
         recorrentes, tom das reacções e sinais de intenção nas publicações com
-        melhor desempenho de @{handle}.
+        melhor desempenho de @{handle}. Em preparação.
       </p>
-      <button
-        type="button"
-        onClick={() => {
-          setNotified(true);
-          // Ronda 4: abrir captura de email + desbloqueio de Comment Intelligence.
-          trackAnonymousEvent("level2_cta_clicked", { handle, snapshotId });
-        }}
-        className="mt-5 inline-flex items-center gap-2 rounded-lg bg-accent-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-primary/90"
-      >
-        <MessagesSquare className="size-4" aria-hidden="true" />
-        Aprofundar a análise
-      </button>
-      {notified ? (
-        <p role="status" className="mt-2 text-xs text-content-tertiary">
-          Disponível em breve.
-        </p>
-      ) : null}
     </section>
   );
 }

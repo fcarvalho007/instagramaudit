@@ -259,7 +259,10 @@ function AnalyzePage() {
       return remaining > 0 ? new Promise<void>((r) => setTimeout(r, remaining)) : Promise.resolve();
     };
 
-    trackAnonymousEvent("anonymous_analysis_started", { handle: cleaned });
+    trackAnonymousEvent("anonymous_analysis_started", {
+      handle: cleaned,
+      dedupeKey: `${cleaned}:${windowKind ?? "baseline"}`,
+    });
 
     // Step 1 — trigger the public analyze pipeline.
     const analysis = await fetchPublicAnalysis(cleaned, competitors, {
@@ -290,6 +293,7 @@ function AnalyzePage() {
       trackAnonymousEvent("anonymous_analysis_failed", {
         handle: cleaned,
         metadata: { error_code: analysis.error_code ?? "UNKNOWN" },
+        dedupeKey: `${cleaned}:${analysis.error_code ?? "UNKNOWN"}`,
       });
       setState({
         status: "error",
@@ -560,7 +564,9 @@ function AnalyzeReady({
       data: {
         eventType: "report_viewed",
         snapshotId,
-        handle: (payload as any).instagram_username ?? undefined,
+        handle:
+          (payload as { profile?: { username?: string } })?.profile?.username ??
+          undefined,
         metadata: { variant: effectiveVariant },
       },
     }).catch(() => {});
@@ -569,7 +575,9 @@ function AnalyzeReady({
 
   // Ronda 3 — marcos de scroll da Auditoria Instantânea (uma vez por snapshot).
   const auditHandle =
-    ((payload as { instagram_username?: string })?.instagram_username) ?? "";
+    (payload as { profile?: { username?: string } })?.profile?.username ??
+    (payload as { instagram_username?: string })?.instagram_username ??
+    "";
   useEffect(() => {
     if (!snapshotId) return;
     return observeScrollMilestones({ handle: auditHandle, snapshotId });
