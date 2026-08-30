@@ -63,19 +63,29 @@ export const Route = createFileRoute("/api/public/report-relationship")({
         });
 
         // Qualificação derivada para CRM — só preenche se ainda estiver vazia.
+        // `instagram_handle` só é escrito quando a pessoa declara que a conta
+        // é dela; nunca a partir do perfil que se limitou a analisar.
         try {
           const { data: lead } = await supabaseAdmin
             .from("leads")
-            .select("id, qualification")
+            .select("id, qualification, instagram_handle")
             .eq("id", leadId)
             .maybeSingle();
+          const patch: Record<string, string> = {};
           if (lead && !lead.qualification) {
-            await supabaseAdmin
-              .from("leads")
-              .update({
-                qualification: RELATIONSHIP_TO_QUALIFICATION[parsed.data.relationship],
-              })
-              .eq("id", leadId);
+            patch['qualification'] = RELATIONSHIP_TO_QUALIFICATION[parsed.data.relationship];
+          }
+          if (lead && !lead.instagram_handle && parsed.data.relationship === "owner") {
+            const { data: report } = await supabaseAdmin
+              .from("lead_reports")
+              .select("handle")
+              .eq("lead_id", leadId)
+              .eq("cache_key", cacheKey)
+              .maybeSingle();
+            if (report?.handle) patch['instagram_handle'] = report.handle;
+          }
+          if (Object.keys(patch).length > 0) {
+            await supabaseAdmin.from("leads").update(patch).eq("id", leadId);
           }
         } catch (err) {
           console.warn("[report-relationship] qualification skipped", err);
