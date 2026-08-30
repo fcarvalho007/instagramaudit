@@ -16,7 +16,7 @@ const {
   fetchProfile,
 } = await import("../router.server");
 const { scrapeCreatorsProvider } = await import("../scrapecreators.server");
-const { normalizeProfile, normalizePost } = await import("../../normalize");
+const { normalizeProfile, enrichPosts } = await import("../../normalize");
 
 describe("LIVE provider validation", () => {
   it(
@@ -35,17 +35,19 @@ describe("LIVE provider validation", () => {
       expect(profile.provider).toBe("scrapecreators");
       expect(profile.row).toBeTruthy();
 
-      const normalized = normalizeProfile(profile.row as Record<string, unknown>);
+      const normalized = normalizeProfile(profile.row as any);
+      expect(normalized).not.toBeNull();
       log("normalized profile", {
-        username: normalized.username,
-        followers: normalized.followers_count,
-        posts_count: normalized.posts_count,
+        username: normalized!.username,
+        followers: normalized!.followers_count,
+        posts_count: normalized!.posts_count,
         latestPosts: Array.isArray((profile.row as any)?.latestPosts)
           ? (profile.row as any).latestPosts.length
           : 0,
       });
-      expect(normalized.username?.toLowerCase()).toBe(HANDLE);
-      expect(normalized.followers_count).toBeGreaterThan(0);
+      expect(normalized!.username?.toLowerCase()).toBe(HANDLE);
+      expect(normalized!.followers_count).toBeGreaterThan(0);
+      (globalThis as any).__liveFollowers = normalized!.followers_count;
     },
     LONG,
   );
@@ -72,16 +74,17 @@ describe("LIVE provider validation", () => {
       expect(posts.provider).toBe("scrapecreators");
       expect(posts.rows.length).toBeGreaterThan(0);
 
-      const normalized = posts.rows.map((r) => normalizePost(r));
+      const followers = (globalThis as any).__liveFollowers ?? 1000;
+      const normalized = enrichPosts(posts.rows, followers).posts;
       const since30 = Date.now() - 30 * 86_400_000;
       const in30 = normalized.filter(
-        (p) => p.timestamp && Date.parse(p.timestamp) >= since30,
+        (p) => p.taken_at_iso !== null && Date.parse(p.taken_at_iso) >= since30,
       );
       const in90 = normalized.filter(
-        (p) => p.timestamp && Date.parse(p.timestamp) >= since90,
+        (p) => p.taken_at_iso !== null && Date.parse(p.taken_at_iso) >= since90,
       );
       const plays = normalized.filter(
-        (p) => typeof (p as any).video_plays === "number",
+        (p) => typeof p.video_plays === "number",
       );
       log("windows", {
         posts_90d: in90.length,
@@ -89,19 +92,20 @@ describe("LIVE provider validation", () => {
         with_video_plays: plays.length,
         sample: normalized.slice(0, 3).map((p) => ({
           shortcode: p.shortcode,
-          type: p.media_type,
-          likes: p.likes_count,
-          comments: p.comments_count,
-          video_plays: (p as any).video_plays ?? null,
-          video_views: (p as any).video_views ?? null,
-          is_pinned: (p as any).is_pinned ?? null,
-          timestamp: p.timestamp,
+          format: p.format,
+          likes: p.likes,
+          comments: p.comments,
+          engagement_pct: p.engagement_pct,
+          video_plays: p.video_plays ?? null,
+          video_views: p.video_views ?? null,
+          is_pinned: p.is_pinned ?? null,
+          taken_at_iso: p.taken_at_iso,
         })),
       });
       expect(in90.length).toBeGreaterThanOrEqual(in30.length);
       (globalThis as any).__livePostUrls = normalized
-        .map((p) => p.url)
-        .filter(Boolean)
+        .map((p) => p.permalink)
+        .filter((u): u is string => Boolean(u))
         .slice(0, 5);
     },
     LONG,
