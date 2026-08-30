@@ -583,9 +583,79 @@ function AnalyzeReady({
     return observeScrollMilestones({ handle: auditHandle, snapshotId });
   }, [snapshotId, auditHandle]);
 
+  // Ronda 4 — motor único de conversão pós-valor.
+  const [conversionOpen, setConversionOpen] = useState(false);
+  const [entryPoint, setEntryPoint] =
+    useState<ConversionEntryPoint>("save_audit");
+  const [unlockStatus, setUnlockStatus] = useState<UnlockStatusCode | null>(
+    null,
+  );
+  const [livePayload, setLivePayload] = useState<{
+    result: AdapterResult;
+    payload: SnapshotPayload;
+  } | null>(null);
+
+  const openConversion = useCallback((point: ConversionEntryPoint) => {
+    setEntryPoint(point);
+    setConversionOpen(true);
+  }, []);
+
+  // Depois do desbloqueio, refrescamos o snapshot sem reload integral.
+  const handleUnlockStarted = useCallback(() => {
+    setUnlockStatus("pending");
+    if (!auditHandle) return;
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      attempts += 1;
+      void (async () => {
+        try {
+          const res = await fetch(
+            `/api/public/analysis-snapshot/${encodeURIComponent(auditHandle)}`,
+          );
+          const body = (await res.json().catch(() => null)) as
+            | SnapshotResponse
+            | null;
+          const nextPayload = body?.snapshot?.payload;
+          if (
+            nextPayload &&
+            (nextPayload as { comment_intelligence?: unknown })
+              .comment_intelligence
+          ) {
+            setLivePayload({
+              payload: nextPayload,
+              result: snapshotToReportData({
+                payload: nextPayload,
+                meta: body?.snapshot?.meta ?? undefined,
+                benchmark: body?.snapshot?.benchmark,
+                isAdminPreview: false,
+              }),
+            });
+            setUnlockStatus("already_available");
+            trackAnonymousEvent("comment_intelligence_success", {
+              handle: auditHandle,
+              snapshotId,
+              dedupeKey: snapshotId,
+            });
+            window.clearInterval(timer);
+          }
+        } catch {
+          /* poll silencioso */
+        }
+      })();
+      if (attempts >= 20) window.clearInterval(timer);
+    }, 9000);
+  }, [auditHandle, snapshotId]);
+
+  const shownPayload = livePayload?.payload ?? payload;
+  const shownResult = livePayload?.result ?? result;
+
   return (
     <>
-      <InstantAuditBar handle={auditHandle} snapshotId={snapshotId} />
+      <InstantAuditBar
+        handle={auditHandle}
+        snapshotId={snapshotId}
+        onConvert={() => openConversion("save_audit")}
+      />
       {!premiumUnlocked && packBalance > 0 ? (
         <div className="mb-4 rounded-xl border border-accent-primary/40 bg-accent-primary/5 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="min-w-0">
