@@ -6,10 +6,11 @@
  * fecha a conversão e devolve valor imediato:
  *
  *   1. cria/actualiza o lead (idempotente por `email_normalized`);
- *   2. lead novo → emite cookie `lead_session`;
- *      lead existente → NÃO emite cookie (um email não pode dar acesso ao
- *      histórico de outra pessoa); devolve grant de âmbito restrito ao
- *      relatório corrente e envia link de acesso por email;
+ *   2. emite `report_capture_session` — cookie assinado de âmbito restrito
+ *      ao par (lead, cache_key) e válido 24 h. Nunca `lead_session`: um
+ *      email não verificado não pode dar acesso ao histórico de ninguém.
+ *      Leads já existentes recebem também um link de acesso por email,
+ *      cuja verificação é que promove a sessão completa;
  *   3. associa o snapshot anónimo ao lead (ponte já existente);
  *   4. arranca o Comment Intelligence com os mesmos guardas do endpoint
  *      `/api/public/unlock-comments` (idempotente, cap mensal, limites).
@@ -19,15 +20,17 @@
  */
 
 import { createFileRoute } from "@tanstack/react-router";
-import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { setLeadCookie } from "@/lib/leads/lead-cookie.server";
+import { setCaptureSessionCookie } from "@/lib/leads/report-capture-session.server";
 import { signScopedGrant } from "@/lib/leads/scoped-grant.server";
 import { claimAnonymousBaselineReport } from "@/lib/credits/lead-reports.server";
 import { clientIp, runCommentUnlock } from "@/lib/enrichment/unlock-comments.server";
-import { CONVERSION_ENTRY_POINTS, MARKETING_CONSENT_VERSION } from "@/lib/leads/lead-capture";
+import {
+  CONVERSION_ENTRY_POINTS,
+  OPERATIONAL_CONSENT_VERSION,
+} from "@/lib/leads/lead-capture";
 
 const BodySchema = z.object({
   email: z.string().trim().min(5).max(255).email(),
@@ -59,10 +62,6 @@ function rateLimited(ip: string): boolean {
   hits.set(ip, list);
   if (hits.size > 5000) hits.clear();
   return false;
-}
-
-function hashIp(ip: string): string {
-  return createHash("sha256").update(ip).digest("hex").slice(0, 24);
 }
 
 export const Route = createFileRoute("/api/public/lead-capture")({
@@ -121,8 +120,11 @@ export const Route = createFileRoute("/api/public/lead-capture")({
               instagram_handle: handle,
               marketing_consent: parsed.data.marketing_consent,
               marketing_consent_at: parsed.data.marketing_consent ? consentAt : null,
+              // Consentimento operacional (necessário para guardar/entregar
+              // a auditoria). O opt-in de marketing acima é independente e
+              // tem o seu próprio timestamp.
               gdpr_consent_at: consentAt,
-              gdpr_consent_version: MARKETING_CONSENT_VERSION,
+              gdpr_consent_version: OPERATIONAL_CONSENT_VERSION,
             })
             .select("id")
             .single();
@@ -134,30 +136,35 @@ export const Route = createFileRoute("/api/public/lead-capture")({
           leadStatus = "created";
         }
 
-        // 2. sessão apenas para leads novos (ver cabeçalho).
-        if (leadStatus === "created") {
-          try {
-            setLeadCookie(leadId);
-          } catch (err) {
-            console.warn("[lead-capture] cookie issue failed", err);
-          }
-        }
-
-        // 3. ponte snapshot anónimo → lead.
+        // 2. ponte snapshot anónimo → lead (idempotente).
         let claimed = false;
+        let associated = false;
         let cacheKey: string | null = null;
         try {
           const claim = await claimAnonymousBaselineReport({ leadId, handle });
-          claimed = claim.claimed;
+          claimed = claim.created;
+          associated = claim.associated;
           cacheKey = claim.cacheKey;
         } catch (err) {
           console.warn("[lead-capture] claim failed", err);
         }
 
+        // 3. acesso scoped ao relatório corrente — nunca sessão global.
+        if (associated && cacheKey) {
+          try {
+            setCaptureSessionCookie(leadId, cacheKey);
+          } catch (err) {
+            console.warn("[lead-capture] capture cookie failed", err);
+          }
+        }
+
         // 4. Comment Intelligence — a falha de associação não bloqueia a
-        // conversão, apenas o desbloqueio.
-        let unlock: Record<string, unknown> = { status: "unavailable" };
-        if (claimed && cacheKey) {
+        // conversão, apenas o desbloqueio. Corre também em submissões
+        // repetidas: `runCommentUnlock` é idempotente.
+        let unlock: Record<string, unknown> = {
+          status: associated ? "unavailable" : "snapshot_missing",
+        };
+        if (associated && cacheKey) {
           const outcome = await runCommentUnlock({
             leadId,
             cacheKey,
@@ -190,12 +197,12 @@ export const Route = createFileRoute("/api/public/lead-capture")({
         return json({
           ok: true,
           lead_status: leadStatus,
-          scoped: leadStatus === "existing",
+          scoped: true,
           claimed,
+          associated,
           cache_key: cacheKey,
           grant: cacheKey ? signScopedGrant(leadId, cacheKey) : null,
           unlock,
-          actor_hash: hashIp(ip),
         });
       },
     },
