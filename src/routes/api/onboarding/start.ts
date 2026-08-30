@@ -32,6 +32,10 @@ import { z, type ZodIssue } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { classifyEmailDomain } from "@/lib/leads/email-domain-class";
 import { LEAD_QUALIFICATIONS } from "@/lib/leads/qualification";
+import {
+  PROFILE_RELATIONSHIPS,
+  RELATIONSHIP_TO_QUALIFICATION,
+} from "@/lib/leads/profile-relationship";
 import { getAuthMode } from "@/lib/config/auth-mode.server";
 import { getBalance, grantInitialCredits } from "@/lib/credits/credits.server";
 import { setLeadCookie } from "@/lib/leads/lead-cookie.server";
