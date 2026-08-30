@@ -269,7 +269,11 @@
       "goalOtherHint": "Mínimo 2 caracteres",
       "back": "Voltar",
       "cta": "Continuar  →",
-      "error": "Escolhe o contexto que melhor te descreve."
+      "error": "Escolhe o contexto que melhor te descreve.",
+      "relationshipTitle": "Só para personalizarmos melhor a análise",
+      "relationshipSubtitle": "Qual é a tua relação com @{{handle}}?",
+      "relationshipSubtitleCheckout": "Qual é a tua relação com o perfil que queres analisar?",
+      "relationshipError": "Escolhe uma opção"
     },
     "otp": {
       "eyebrow": "CONFIRMA O TEU EMAIL",
@@ -365,6 +369,13 @@
         "benchmark_competitors": "Comparar com outros",
         "client_report": "Apresentar a um cliente",
         "grow_audience": "Crescer a audiência"
+      },
+      "profileRelationship": {
+        "owner": "É a minha conta",
+        "manages": "Trabalho com esta conta",
+        "client": "É de um cliente",
+        "competitor": "É um concorrente",
+        "research": "Estou apenas a explorar"
       }
     },
     "cta": {
