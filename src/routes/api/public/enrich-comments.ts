@@ -100,15 +100,25 @@ async function processJob(job: JobRow): Promise<{ ok: boolean; error?: string }>
     return { ok: false, error: "max_attempts_exceeded" };
   }
 
-  // Mark as processing
-  await supabaseAdmin
+  // Atomic claim: only ONE caller may move the job out of `pending`. Without
+  // the status predicate, the fire-and-forget trigger and the cron sweep can
+  // both process the same job and pay for the comments twice.
+  const { data: claimed } = await supabaseAdmin
     .from("comment_enrichment_jobs")
     .update({
       status: "processing",
       attempts: job.attempts + 1,
       started_at: new Date().toISOString(),
     } as never)
-    .eq("id", job.id);
+    .eq("id", job.id)
+    .eq("status", "pending")
+    .select("id");
+
+  if (!claimed || claimed.length === 0) {
+    console.info(LOG, "job already claimed by another worker", job.id);
+    return { ok: true };
+  }
+
 
   const postUrls = (Array.isArray(job.post_urls) ? job.post_urls : [])
     .slice(0, COMMENT_SCRAPER_MAX_POSTS);

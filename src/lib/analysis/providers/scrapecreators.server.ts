@@ -220,10 +220,17 @@ export function mapProfile(
       countOf(user.edge_follow) ??
       num(user.following_count) ??
       num(user.following),
+    // `edge_owner_to_timeline_media.count` is the size of the first page when
+    // the connection is paginated (has_next_page), NOT the profile total —
+    // trusting it would report "12 publicações" for large accounts.
     postsCount:
-      countOf(user.edge_owner_to_timeline_media) ??
       num(user.media_count) ??
-      num(user.posts_count),
+      num(user.posts_count) ??
+      (asRecord(asRecord(user.edge_owner_to_timeline_media)?.page_info)
+        ?.has_next_page === true
+        ? null
+        : countOf(user.edge_owner_to_timeline_media)),
+
     verified: Boolean(user.is_verified ?? user.verified ?? false),
     profilePicUrlHD: str(user.profile_pic_url_hd) ?? str(user.profile_pic_url),
     profilePicUrl: str(user.profile_pic_url),
@@ -335,7 +342,10 @@ export function mapPost(raw: Record<string, unknown>): ProviderPostRow {
     isPaidPartnership: Boolean(
       raw.is_paid_partnership ?? raw.paid_partnership ?? false,
     ),
-    carouselMediaCount: carousel,
+    // Normalizer reads `carouselItemCount` / `carousel_media_count`.
+    carouselItemCount: carousel,
+    carousel_media_count: carousel,
+
     coauthorProducers: usernameList(raw.coauthor_producers),
     taggedUsers: usernameList(
       asRecord(raw.usertags)?.in ?? raw.usertags ?? raw.tagged_users,

@@ -319,6 +319,12 @@ async function fetchProfileWithPosts(
   actualCostUsd: number | null;
   /** Real dataset item count across every run made for this handle. */
   billedResults: number;
+  /** Provider that actually served the data (last call wins). */
+  provider: "apify" | "scrapecreators";
+  creditsCharged: number | null;
+  creditsRemaining: number | null;
+  cached: boolean;
+  endpoint: string | null;
 }> {
   const wide = cfg.costTier === "wide" && Boolean(cfg.onlyPostsNewerThan);
 
@@ -328,9 +334,47 @@ async function fetchProfileWithPosts(
   let billedResults = profileResult.billedResults;
   let actualCostUsd = profileResult.actualCostUsd;
   let runId = profileResult.runId;
+  let provider = profileResult.provider;
+  let creditsCharged = profileResult.creditsConsumed;
+  let creditsRemaining = profileResult.creditsRemaining;
+  let cached = profileResult.cached;
+  let endpoint = profileResult.endpoint;
 
-  if (!wide || !row) {
-    return { row, runId, actualCostUsd, billedResults };
+  if (!row) {
+    return {
+      row,
+      runId,
+      actualCostUsd,
+      billedResults,
+      provider,
+      creditsCharged,
+      creditsRemaining,
+      cached,
+      endpoint,
+    };
+  }
+
+  // Providers that do not embed a post sample in the profile payload
+  // (ScrapeCreators) need an explicit posts call even for baseline, or the
+  // analysis would look like a profile with no feed. An EMPTY array means the
+  // provider did answer "no posts" — no second (paid) call in that case.
+  const embedsPosts = Array.isArray(
+    (row as { latestPosts?: unknown }).latestPosts,
+  );
+
+  if (!wide && embedsPosts) {
+
+    return {
+      row,
+      runId,
+      actualCostUsd,
+      billedResults,
+      provider,
+      creditsCharged,
+      creditsRemaining,
+      cached,
+      endpoint,
+    };
   }
 
   // ---- Step B: posts inside the window -----------------------------------
@@ -343,11 +387,20 @@ async function fetchProfileWithPosts(
     timeoutMs: cfg.timeoutMs,
   });
 
+
   billedResults += postsResult.billedResults;
   if (typeof postsResult.actualCostUsd === "number") {
     actualCostUsd = (actualCostUsd ?? 0) + postsResult.actualCostUsd;
   }
   runId = postsResult.runId ?? runId;
+  provider = postsResult.provider;
+  creditsCharged =
+    postsResult.creditsConsumed === null && creditsCharged === null
+      ? null
+      : (creditsCharged ?? 0) + (postsResult.creditsConsumed ?? 0);
+  creditsRemaining = postsResult.creditsRemaining ?? creditsRemaining;
+  cached = cached && postsResult.cached;
+  endpoint = postsResult.endpoint ?? endpoint;
 
   // Replace the embedded sample with the real window dataset. If the posts
   // call returned nothing we keep the sample rather than pretending the
@@ -357,8 +410,19 @@ async function fetchProfileWithPosts(
     row.analysis_window_truncated = postsResult.truncated;
   }
 
-  return { row, runId, actualCostUsd, billedResults };
+  return {
+    row,
+    runId,
+    actualCostUsd,
+    billedResults,
+    provider,
+    creditsCharged,
+    creditsRemaining,
+    cached,
+    endpoint,
+  };
 }
+
 
 
 /**
@@ -376,31 +440,51 @@ async function fetchProfileWithPostsLogged(
 }> {
   const startedAt = Date.now();
   try {
-    const { row, runId, actualCostUsd, billedResults } =
-      await fetchProfileWithPosts(username, cfg);
+    const {
+      row,
+      runId,
+      actualCostUsd,
+      billedResults,
+      provider,
+      creditsCharged,
+      creditsRemaining,
+      cached,
+      endpoint,
+    } = await fetchProfileWithPosts(username, cfg);
     const posts = Array.isArray((row as { latestPosts?: unknown })?.latestPosts)
       ? ((row as { latestPosts: unknown[] }).latestPosts.length as number)
       : 0;
     const profilesReturned = row ? 1 : 0;
-    const estimatedCostUsd = estimateApifyCost({
-      profilesReturned,
-      postsReturned: posts,
-      // `details` mode bills ONE dataset item per run — the embedded
-      // `latestPosts[]` are not billed separately.
-      billedResults,
-    });
+    // Apify bills per dataset item; ScrapeCreators bills credits and the
+    // monetary cost is carried by `actualCostUsd`.
+    const estimatedCostUsd =
+      provider === "apify"
+        ? estimateApifyCost({
+            profilesReturned,
+            postsReturned: posts,
+            // `details` mode bills ONE dataset item per run — the embedded
+            // `latestPosts[]` are not billed separately.
+            billedResults,
+          })
+        : (actualCostUsd ?? 0);
     const providerCallLogId = await recordProviderCall({
-      actor: UNIFIED_ACTOR,
+      provider,
+      actor: provider === "apify" ? UNIFIED_ACTOR : (endpoint ?? "scrapecreators"),
       handle: username,
       status: "success",
       durationMs: Date.now() - startedAt,
       postsReturned: posts,
       estimatedCostUsd,
       actualCostUsd,
-      apifyRunId: runId,
+      apifyRunId: provider === "apify" ? runId : null,
       httpStatus: 200,
       sourceContext: "public_analysis",
+      creditsCharged,
+      creditsRemaining,
+      cached,
+      endpoint,
     });
+
     return { row, error: null, providerCallLogId };
   } catch (err) {
     let status: "timeout" | "http_error" | "config_error" | "network_error" =
