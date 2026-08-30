@@ -15,6 +15,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
 import { fetchExpense30d } from "@/lib/admin/system-queries.server";
+import { fetchScrapeCreatorsCosts } from "@/lib/admin/scrapecreators-costs.server";
 import { computeKpis, type MarginStatus } from "@/lib/admin/overview-formulas";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
