@@ -95,10 +95,10 @@ export function CostSummaryCard() {
         <>
           <div className="flex flex-col gap-4">
             <Row
-              label="Apify"
+              label="Apify (fallback)"
               value={data.providers.apify.total}
               color={PROVIDER_COLOR.apify}
-              capLabel={`${pctLabel(data.providers.apify.total, data.providers.apify.cap)} do limite $${data.providers.apify.cap}`}
+              capLabel={`${pctLabel(data.providers.apify.total, data.providers.apify.cap)} do hard cap $${data.providers.apify.cap} · Free Plan $5/ciclo`}
               pct={data.providers.apify.cap > 0 ? data.providers.apify.total / data.providers.apify.cap : 0}
             />
             <Row
