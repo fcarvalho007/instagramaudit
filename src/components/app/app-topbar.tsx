@@ -22,7 +22,9 @@ export function AppTopbar({ userEmail }: AppTopbarProps) {
   });
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    // Termina ambos os caminhos de sessão: Supabase Auth (histórico) e
+    // `lead_session` (passwordless). Sair tem de sair mesmo.
+    await Promise.allSettled([supabase.auth.signOut(), endLeadSession()]);
     window.location.href = "/login";
   };
 
