@@ -31,7 +31,7 @@ export async function recordAccessEvent(input: {
   metadata?: Record<string, unknown>;
 }): Promise<void> {
   try {
-    await supabaseAdmin.from("product_events").insert({
+    await supabaseAdmin.from("product_events").insert([
       {
         event_type: input.eventType,
         lead_id: input.leadId ?? null,
