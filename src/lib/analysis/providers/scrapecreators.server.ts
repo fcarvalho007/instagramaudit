@@ -357,17 +357,19 @@ export function mapPost(raw: Record<string, unknown>): ProviderPostRow {
 
 /** ScrapeCreators comment item → provider-agnostic comment row. */
 export function mapComment(raw: Record<string, unknown>): ProviderCommentRow {
-  const createdAt = num(raw.created_at) ?? num(raw.created_at_utc);
+  // v1 returned epoch seconds; v2 returns an ISO string. Accept both.
+  const createdAtNum = num(raw.created_at) ?? num(raw.created_at_utc);
+  const createdAtIso =
+    createdAtNum !== null
+      ? new Date(createdAtNum * 1000).toISOString()
+      : (str(raw.created_at) ?? str(raw.timestamp) ?? undefined);
   return {
     id: String(str(raw.pk) ?? str(raw.id) ?? ""),
     text: str(raw.text) ?? undefined,
     ownerUsername:
       str(asRecord(raw.user)?.username) ?? str(raw.username) ?? undefined,
-    timestamp:
-      createdAt !== null
-        ? new Date(createdAt * 1000).toISOString()
-        : (str(raw.timestamp) ?? undefined),
-    likesCount:
+    timestamp: createdAtIso,
+
       num(raw.comment_like_count) ?? num(raw.like_count) ?? undefined,
     repliesCount:
       num(raw.child_comment_count) ?? num(raw.reply_count) ?? undefined,
