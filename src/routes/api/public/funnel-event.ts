@@ -54,6 +54,12 @@ export const ANONYMOUS_FUNNEL_EVENTS = [
   "report_reopened",
   "access_email_resend_requested",
   "access_email_resend_rate_limited",
+  // Ronda 6A — estados A/B/C do relatório
+  "deepen_cta_viewed",
+  "deepen_cta_clicked",
+  "comment_intelligence_viewed",
+  "pro_cta_viewed",
+  "pro_cta_clicked",
 ] as const;
 
 export type AnonymousFunnelEvent = (typeof ANONYMOUS_FUNNEL_EVENTS)[number];
