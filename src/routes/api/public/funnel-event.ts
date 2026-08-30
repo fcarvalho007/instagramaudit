@@ -41,6 +41,19 @@ export const ANONYMOUS_FUNNEL_EVENTS = [
   "comment_intelligence_started",
   "comment_intelligence_success",
   "comment_intelligence_failed",
+  // Ronda 5B — magic link, verificação e área privada
+  "access_email_queued",
+  "access_email_sent",
+  "access_email_failed",
+  "magic_link_clicked",
+  "email_verified",
+  "magic_link_invalid",
+  "magic_link_expired",
+  "full_session_created",
+  "private_area_viewed",
+  "report_reopened",
+  "access_email_resend_requested",
+  "access_email_resend_rate_limited",
 ] as const;
 
 export type AnonymousFunnelEvent = (typeof ANONYMOUS_FUNNEL_EVENTS)[number];

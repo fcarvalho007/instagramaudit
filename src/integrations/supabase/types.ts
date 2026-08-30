@@ -511,6 +511,38 @@ export type Database = {
           },
         ]
       }
+      email_access_tokens: {
+        Row: {
+          consumed_at: string
+          created_at: string
+          expires_at: string
+          jti: string
+          lead_id: string
+        }
+        Insert: {
+          consumed_at?: string
+          created_at?: string
+          expires_at: string
+          jti: string
+          lead_id: string
+        }
+        Update: {
+          consumed_at?: string
+          created_at?: string
+          expires_at?: string
+          jti?: string
+          lead_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_access_tokens_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_template_history: {
         Row: {
           action: string
