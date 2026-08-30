@@ -105,3 +105,34 @@ export async function assertWithinPublicRateLimit(
     }
   }
 }
+
+/**
+ * Limite dedicado ao baseline anónimo (PUBLIC_BASELINE_NO_EMAIL=true).
+ *
+ * Sem email não há lead nem crédito a travar o custo do provider: o único
+ * limitador seria o cap global. Aplicamos um tecto por IP mais apertado do
+ * que o limite geral, contando análises FRESH bem-sucedidas nas últimas 24h.
+ *
+ * `PUBLIC_ANON_MAX_FRESH_PER_IP_DAY` (default 3).
+ */
+export function getAnonymousMaxFreshPerIpDay(): number {
+  return readNumber("PUBLIC_ANON_MAX_FRESH_PER_IP_DAY", 3);
+}
+
+export async function assertWithinAnonymousBaselineRateLimit(input: {
+  ipHash: string | null | undefined;
+  now?: Date;
+}): Promise<void> {
+  if (!input.ipHash) return;
+  const now = input.now ?? new Date();
+  const sinceIso = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+  const limit = getAnonymousMaxFreshPerIpDay();
+  const count = await countFreshSuccess({
+    column: "request_ip_hash",
+    value: input.ipHash,
+    sinceIso,
+  });
+  if (count >= limit) {
+    throw new RateLimitError("ip", count, limit);
+  }
+}
