@@ -127,20 +127,31 @@ async function processJob(job: JobRow): Promise<{ ok: boolean; error?: string }>
   let commentIntelligence: CommentIntelligence;
 
   try {
-    const commentResult = await fetchCommentsForPosts(postUrls);
+    const commentResult = await fetchComments(postUrls, {
+      perPostLimit: COMMENT_SCRAPER_PER_POST_LIMIT,
+      includeReplies: COMMENT_SCRAPER_INCLUDE_REPLIES,
+    });
+    const commentsReturned = commentResult.batches.reduce(
+      (sum, b) => sum + b.comments.length,
+      0,
+    );
 
     // Record provider call with analysis_event_id linkage
     await recordProviderCall({
-      provider: "apify",
-      actor: "apify/instagram-comment-scraper",
+      provider: commentResult.provider,
+      actor: commentResult.endpoint,
       network: "instagram",
       handle: job.handle,
       status: "success",
       httpStatus: 200,
-      durationMs: commentResult.durationMs,
-      postsReturned: commentResult.commentsReturned,
+      durationMs: Date.now() - startMs,
+      postsReturned: commentsReturned,
       apifyRunId: commentResult.runId ?? undefined,
-      actualCostUsd: commentResult.actualCostUsd ?? undefined,
+      actualCostUsd: commentResult.monetaryCostUsd ?? undefined,
+      creditsCharged: commentResult.creditsConsumed,
+      creditsRemaining: commentResult.creditsRemaining,
+      cached: commentResult.cached,
+      endpoint: commentResult.endpoint,
       errorMessage: undefined,
       analysisEventId: job.analysis_event_id ?? undefined,
       sourceContext: "enrich_comments",
@@ -151,10 +162,11 @@ async function processJob(job: JobRow): Promise<{ ok: boolean; error?: string }>
       commentResult.batches,
       {
         groupedByPost: commentResult.groupedByPost,
-        repliesIncluded: commentResult.repliesIncluded,
+        repliesIncluded: COMMENT_SCRAPER_INCLUDE_REPLIES,
       },
 
     );
+
 
     console.info(LOG, "comment intelligence ready", {
       jobId: job.id,
