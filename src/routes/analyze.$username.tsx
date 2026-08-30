@@ -9,8 +9,8 @@ import "@/styles/analyze-header-collapse.css";
 import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
 import { ReportShellV2 } from "@/components/report-redesign/v2/report-shell-v2";
 import { useReportShareActions } from "@/components/report-share/use-report-share-actions";
-import { UnlockModal } from "@/components/product/unlock-modal";
 import { InstantAuditBar } from "@/components/product/instant-audit-bar";
+import { StickyFreeCtaBar } from "@/components/product/sticky-free-cta-bar";
 import { ConversionSheet } from "@/components/conversion/conversion-sheet";
 import type {
   ConversionEntryPoint,
@@ -431,8 +431,7 @@ function AnalyzeReady({
   // criada) e têm direito a Bloco 1 completo — sem LockGatePremium,
   // sem StickyUnlockBar. O UnlockModal só permanece como fallback para
   // fluxos legados que entrem com o snapshot já cacheado em outro tab.
-  const [unlocked, setUnlocked] = useState<boolean>(true);
-  const [unlockOpen, setUnlockOpen] = useState(false);
+  const [unlocked] = useState<boolean>(true);
 
   // Premium real: entitlement `report_full_9` para o lead da sessão.
   // Default fail-closed a false; flip-on apenas depois do servidor confirmar.
@@ -595,8 +594,9 @@ function AnalyzeReady({
   const [unlockStatus, setUnlockStatus] = useState<UnlockStatusCode | null>(
     null,
   );
-  /** Nível 1: email já capturado nesta sessão (ou desbloqueio já pedido). */
-  const leadCaptured = unlockStatus !== null;
+  /** Estado B (Análise Aprofundada) detectado no servidor, para quem
+   *  regressa ao relatório numa nova sessão de página. */
+  const [serverLeadCaptured, setServerLeadCaptured] = useState(false);
 
   const [livePayload, setLivePayload] = useState<{
     result: AdapterResult;
@@ -654,8 +654,39 @@ function AnalyzeReady({
     }, 9000);
   }, [auditHandle, snapshotId]);
 
+  useEffect(() => {
+    if (!snapshotId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/public/report-access-state?snapshotId=${encodeURIComponent(snapshotId)}`,
+        );
+        const body = (await res.json().catch(() => null)) as
+          | { leadCaptured?: boolean }
+          | null;
+        if (!cancelled && body?.leadCaptured) setServerLeadCaptured(true);
+      } catch {
+        /* estado A por omissão */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [snapshotId]);
+
   const shownPayload = livePayload?.payload ?? payload;
   const shownResult = livePayload?.result ?? result;
+
+  // Estado B: email já capturado nesta sessão, snapshot já enriquecido com
+  // Comment Intelligence, ou cookie de captura/lead válido no servidor.
+  const leadCaptured =
+    unlockStatus !== null ||
+    serverLeadCaptured ||
+    Boolean(
+      (shownPayload as { comment_intelligence?: unknown })
+        ?.comment_intelligence,
+    );
 
   return (
     <>
@@ -706,9 +737,10 @@ function AnalyzeReady({
         // via `getMyReportEntitlement`. Fail-closed em erro/sessão ausente.
         premiumUnlocked={premiumUnlocked}
         competitorHandles={competitors}
-        // Lead-capture flow ONLY (UnlockModal). Premium CTAs vão pelo
-        // PremiumCtaProvider dentro do shell — não passam por aqui.
-        onUnlockClick={() => setUnlockOpen(true)}
+        // Estado A: a sidebar aponta para o mesmo motor gratuito
+        // (ConversionSheet). Os CTAs Premium (Estado B) passam pelo
+        // PremiumCtaProvider dentro do shell — não por aqui.
+        onUnlockClick={() => openConversion("comment_intelligence")}
         actions={{
           onExportPdf: () => {
             void shareActions.exportPdf();
@@ -733,44 +765,13 @@ function AnalyzeReady({
         snapshotId={snapshotId}
         onUnlockStarted={handleUnlockStarted}
       />
-      <UnlockModal
-        open={unlockOpen}
-        onOpenChange={setUnlockOpen}
-        snapshotId={snapshotId}
-        instagramUsername={
-          (payload as any).instagram_username ??
-          (payload as any).profile?.username ??
-          ""
-        }
-        onUnlock={(result) => {
-          try {
-            if (snapshotId) {
-              window.sessionStorage.setItem(`ib_unlock:${snapshotId}`, "1");
-              window.sessionStorage.setItem(
-                `ib_unlock_lead:${snapshotId}`,
-                result.leadId,
-              );
-            }
-          } catch {
-            /* ignore */
-          }
-          setUnlocked(true);
-          // Pequena confirmação visual: scroll suave + flash subtil
-          // no primeiro bloco previamente bloqueado quando o utilizador
-          // fecha o modal de sucesso.
-          window.setTimeout(() => {
-            const target =
-              document.getElementById("report-locked-section") ??
-              document.querySelector<HTMLElement>("[data-locked-anchor]");
-            if (!target) return;
-            target.scrollIntoView({ behavior: "smooth", block: "start" });
-            target.classList.add("ring-2", "ring-primary/40", "ring-offset-4", "ring-offset-surface-base", "rounded-2xl", "transition-all");
-            window.setTimeout(() => {
-              target.classList.remove("ring-2", "ring-primary/40", "ring-offset-4", "ring-offset-surface-base");
-            }, 1400);
-          }, 350);
-        }}
-      />
+      {!leadCaptured && !premiumUnlocked ? (
+        <StickyFreeCtaBar
+          handle={auditHandle}
+          snapshotId={snapshotId}
+          onConvert={() => openConversion("comment_intelligence")}
+        />
+      ) : null}
     </>
   );
 }

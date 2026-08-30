@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import { trackEvent } from "@/lib/tracking.functions";
+import { trackAnonymousEvent } from "@/lib/analytics/anonymous-funnel";
 
 import { PremiumInterestDialog } from "./premium-interest-dialog";
 import { scrollToBlock } from "./use-active-block";
@@ -107,6 +108,13 @@ export function PremiumCtaProvider({
           },
         },
       }).catch(() => {});
+
+      // Funil Estado B → Estado C (separado do funil gratuito).
+      trackAnonymousEvent("pro_cta_clicked", {
+        ...(handle ? { handle } : {}),
+        ...(snapshotId ? { snapshotId } : {}),
+        metadata: { source_component: nextSource },
+      });
 
       if (premiumUnlocked) {
         // Defensive no-op + soft scroll to the first premium block.

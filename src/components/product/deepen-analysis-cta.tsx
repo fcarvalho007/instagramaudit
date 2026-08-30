@@ -33,10 +33,13 @@ export function DeepenAnalysisCta({
     const io = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) {
-          trackAnonymousEvent("lead_cta_viewed", {
+          trackAnonymousEvent("deepen_cta_viewed", {
             handle,
             snapshotId,
-            metadata: { conversion_entry_point: "comment_intelligence" },
+            metadata: {
+              conversion_entry_point: "comment_intelligence",
+              surface: "inline",
+            },
             dedupeKey: `${snapshotId}:comment_intelligence`,
           });
           io.disconnect();
@@ -92,10 +95,13 @@ export function DeepenAnalysisCta({
         <button
           type="button"
           onClick={() => {
-            trackAnonymousEvent("lead_cta_clicked", {
+            trackAnonymousEvent("deepen_cta_clicked", {
               handle,
               snapshotId,
-              metadata: { conversion_entry_point: "comment_intelligence" },
+              metadata: {
+                conversion_entry_point: "comment_intelligence",
+                surface: "inline",
+              },
             });
             onConvert();
           }}

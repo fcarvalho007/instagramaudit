@@ -67,6 +67,7 @@ import { Route as ApiPublicUnlockCommentsRouteImport } from './routes/api/public
 import { Route as ApiPublicUnlockCheckRouteImport } from './routes/api/public/unlock-check'
 import { Route as ApiPublicReportUnlockRouteImport } from './routes/api/public/report-unlock'
 import { Route as ApiPublicReportRelationshipRouteImport } from './routes/api/public/report-relationship'
+import { Route as ApiPublicReportAccessStateRouteImport } from './routes/api/public/report-access-state'
 import { Route as ApiPublicPublicReportPdfRouteImport } from './routes/api/public/public-report-pdf'
 import { Route as ApiPublicPricingInterestRouteImport } from './routes/api/public/pricing-interest'
 import { Route as ApiPublicPricingFeedbackRouteImport } from './routes/api/public/pricing-feedback'
@@ -470,6 +471,12 @@ const ApiPublicReportRelationshipRoute =
   ApiPublicReportRelationshipRouteImport.update({
     id: '/api/public/report-relationship',
     path: '/api/public/report-relationship',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicReportAccessStateRoute =
+  ApiPublicReportAccessStateRouteImport.update({
+    id: '/api/public/report-access-state',
+    path: '/api/public/report-access-state',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicPublicReportPdfRoute =
@@ -1205,6 +1212,7 @@ export interface FileRoutesByFullPath {
   '/api/public/pricing-feedback': typeof ApiPublicPricingFeedbackRoute
   '/api/public/pricing-interest': typeof ApiPublicPricingInterestRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
+  '/api/public/report-access-state': typeof ApiPublicReportAccessStateRoute
   '/api/public/report-relationship': typeof ApiPublicReportRelationshipRoute
   '/api/public/report-unlock': typeof ApiPublicReportUnlockRoute
   '/api/public/unlock-check': typeof ApiPublicUnlockCheckRoute
@@ -1375,6 +1383,7 @@ export interface FileRoutesByTo {
   '/api/public/pricing-feedback': typeof ApiPublicPricingFeedbackRoute
   '/api/public/pricing-interest': typeof ApiPublicPricingInterestRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
+  '/api/public/report-access-state': typeof ApiPublicReportAccessStateRoute
   '/api/public/report-relationship': typeof ApiPublicReportRelationshipRoute
   '/api/public/report-unlock': typeof ApiPublicReportUnlockRoute
   '/api/public/unlock-check': typeof ApiPublicUnlockCheckRoute
@@ -1548,6 +1557,7 @@ export interface FileRoutesById {
   '/api/public/pricing-feedback': typeof ApiPublicPricingFeedbackRoute
   '/api/public/pricing-interest': typeof ApiPublicPricingInterestRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
+  '/api/public/report-access-state': typeof ApiPublicReportAccessStateRoute
   '/api/public/report-relationship': typeof ApiPublicReportRelationshipRoute
   '/api/public/report-unlock': typeof ApiPublicReportUnlockRoute
   '/api/public/unlock-check': typeof ApiPublicUnlockCheckRoute
@@ -1722,6 +1732,7 @@ export interface FileRouteTypes {
     | '/api/public/pricing-feedback'
     | '/api/public/pricing-interest'
     | '/api/public/public-report-pdf'
+    | '/api/public/report-access-state'
     | '/api/public/report-relationship'
     | '/api/public/report-unlock'
     | '/api/public/unlock-check'
@@ -1892,6 +1903,7 @@ export interface FileRouteTypes {
     | '/api/public/pricing-feedback'
     | '/api/public/pricing-interest'
     | '/api/public/public-report-pdf'
+    | '/api/public/report-access-state'
     | '/api/public/report-relationship'
     | '/api/public/report-unlock'
     | '/api/public/unlock-check'
@@ -2064,6 +2076,7 @@ export interface FileRouteTypes {
     | '/api/public/pricing-feedback'
     | '/api/public/pricing-interest'
     | '/api/public/public-report-pdf'
+    | '/api/public/report-access-state'
     | '/api/public/report-relationship'
     | '/api/public/report-unlock'
     | '/api/public/unlock-check'
@@ -2214,6 +2227,7 @@ export interface RootRouteChildren {
   ApiPublicPricingFeedbackRoute: typeof ApiPublicPricingFeedbackRoute
   ApiPublicPricingInterestRoute: typeof ApiPublicPricingInterestRoute
   ApiPublicPublicReportPdfRoute: typeof ApiPublicPublicReportPdfRoute
+  ApiPublicReportAccessStateRoute: typeof ApiPublicReportAccessStateRoute
   ApiPublicReportRelationshipRoute: typeof ApiPublicReportRelationshipRoute
   ApiPublicReportUnlockRoute: typeof ApiPublicReportUnlockRoute
   ApiPublicUnlockCheckRoute: typeof ApiPublicUnlockCheckRoute
@@ -2669,6 +2683,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/report-relationship'
       fullPath: '/api/public/report-relationship'
       preLoaderRoute: typeof ApiPublicReportRelationshipRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/report-access-state': {
+      id: '/api/public/report-access-state'
+      path: '/api/public/report-access-state'
+      fullPath: '/api/public/report-access-state'
+      preLoaderRoute: typeof ApiPublicReportAccessStateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/public-report-pdf': {
@@ -3789,6 +3810,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicPricingFeedbackRoute: ApiPublicPricingFeedbackRoute,
   ApiPublicPricingInterestRoute: ApiPublicPricingInterestRoute,
   ApiPublicPublicReportPdfRoute: ApiPublicPublicReportPdfRoute,
+  ApiPublicReportAccessStateRoute: ApiPublicReportAccessStateRoute,
   ApiPublicReportRelationshipRoute: ApiPublicReportRelationshipRoute,
   ApiPublicReportUnlockRoute: ApiPublicReportUnlockRoute,
   ApiPublicUnlockCheckRoute: ApiPublicUnlockCheckRoute,

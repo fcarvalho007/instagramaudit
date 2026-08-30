@@ -56,6 +56,7 @@ import { StickyUnlockBar } from "./sticky-unlock-bar";
 import { ReportShortcutDialog } from "./report-shortcut-dialog";
 import { useReportKeyboardShortcuts } from "./use-report-keyboard-shortcuts";
 import { scrollToBlock } from "./use-active-block";
+import { useTrackOnceInView } from "./use-track-once-in-view";
 
 interface ReportShellV2Props {
   result: AdapterResult;
@@ -129,6 +130,17 @@ export function ReportShellV2({
     avatarUrl: result.enriched.profile?.avatarUrl ?? null,
     displayName: result.data.profile.fullName ?? null,
   };
+
+  const conversasRef = useTrackOnceInView<HTMLElement>(
+    "comment_intelligence_viewed",
+    leadCaptured && !premiumUnlocked,
+    { handle: result.data.profile.username, snapshotId: snapshotId ?? null },
+  );
+  const proOfferRef = useTrackOnceInView<HTMLElement>(
+    "pro_cta_viewed",
+    leadCaptured && !premiumUnlocked,
+    { handle: result.data.profile.username, snapshotId: snapshotId ?? null },
+  );
 
   const scrollToCofre = () => {
     if (typeof document === "undefined") return;
@@ -218,6 +230,7 @@ export function ReportShellV2({
           profile={sidebarProfile}
           unlocked={unlocked}
           premiumUnlocked={premiumUnlocked}
+          leadCaptured={leadCaptured}
           onUnlockClick={handleUnlockClick}
           sampleSize={result.data.profile.postsAnalyzed ?? 0}
           observedDays={result.coverage.windowDays ?? 0}
@@ -235,6 +248,7 @@ export function ReportShellV2({
               profile={sidebarProfile}
               unlocked={unlocked}
               premiumUnlocked={premiumUnlocked}
+              leadCaptured={leadCaptured}
               onUnlockClick={handleUnlockClick}
               sampleSize={result.data.profile.postsAnalyzed ?? 0}
               observedDays={result.coverage.windowDays ?? 0}
@@ -277,6 +291,7 @@ export function ReportShellV2({
                   id="conversas"
                   aria-label="Análise das conversas"
                   className="scroll-mt-24 mt-8 sm:mt-10"
+                  ref={conversasRef}
                 >
                   {result.enriched.commentIntelligence ? (
                     <CommentIntelligenceSection
@@ -411,6 +426,7 @@ export function ReportShellV2({
                 <section
                   id="lead-magnet-card"
                   className="mt-12 sm:mt-16 mb-16 sm:mb-20"
+                  ref={proOfferRef}
                 >
                   <ReportEndOfFreeBlock />
                   <EndFeedbackStrip

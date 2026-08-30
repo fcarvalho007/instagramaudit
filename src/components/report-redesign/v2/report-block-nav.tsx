@@ -70,7 +70,7 @@ function useSidebarCompact(threshold = 220): boolean {
 
 type AccessState = "accessible" | "locked";
 type Group = "incluido" | "premium";
-type AccessBadge = "free" | "included" | "premium";
+type AccessBadge = "free" | "free_email" | "included" | "premium";
 
 interface SidebarItem {
   block: BlockConfig;
@@ -96,7 +96,10 @@ interface SidebarProps {
   /** True only when the user has paid Pro access. Commercial sidebar
    *  uses this to unlock items 03–07. Defaults to false. */
   premiumUnlocked?: boolean;
-  /** Handler that opens the existing UnlockModal (lead-magnet flow). */
+  /** True once the visitor gave an email (Análise Aprofundada / Estado B).
+   *  Unlocks the free `Conversas` section in the sidebar. */
+  leadCaptured?: boolean;
+  /** Handler for the free deepen flow (ConversionSheet) in State A. */
   onUnlockClick?: () => void;
   /** Free sample size used by the Explorar period chip. */
   sampleSize?: number;
@@ -147,14 +150,26 @@ function buildSidebarItems(
 function commercialToSidebarItem(
   s: CommercialSection,
   premiumUnlocked: boolean,
+  leadCaptured: boolean,
 ): SidebarItem {
-  const accessBadge: AccessBadge = s.tier === "free" ? "free" : "premium";
-  const access: AccessState =
-    s.tier === "free" || premiumUnlocked ? "accessible" : "locked";
+  // `free_email` = Análise Aprofundada (Conversas): gratuito, mas só
+  // acessível depois da captura de email.
+  const unlockedForUser =
+    s.tier === "free" ||
+    premiumUnlocked ||
+    (s.tier === "free_email" && leadCaptured);
+  const accessBadge: AccessBadge =
+    s.tier === "free"
+      ? "free"
+      : s.tier === "free_email"
+        ? leadCaptured
+          ? "free"
+          : "free_email"
+        : "premium";
+  const access: AccessState = unlockedForUser ? "accessible" : "locked";
   // When Pro is unlocked, every section sits in the "available now" list.
   // Otherwise, premium-tier sections move into the locked Premium card.
-  const group: Group =
-    s.tier === "free" || premiumUnlocked ? "incluido" : "premium";
+  const group: Group = unlockedForUser ? "incluido" : "premium";
   const pseudoBlock = {
     id: s.id,
     number: s.number,
@@ -170,9 +185,10 @@ function commercialToSidebarItem(
 
 function buildCommercialSidebarItems(
   premiumUnlocked: boolean,
+  leadCaptured: boolean,
 ): SidebarItem[] {
   return COMMERCIAL_SECTIONS.map((s) =>
-    commercialToSidebarItem(s, premiumUnlocked),
+    commercialToSidebarItem(s, premiumUnlocked, leadCaptured),
   );
 }
 
@@ -351,6 +367,7 @@ function ProgressSummary({ items }: { items: SidebarItem[] }) {
             className={cn(
               "h-[5px] flex-1 rounded-sm",
               item.accessBadge === "free" && "bg-emerald-500",
+              item.accessBadge === "free_email" && "bg-emerald-300",
               item.accessBadge === "included" && "bg-[rgb(var(--accent-primary))]",
               item.access === "locked" && "bg-border-default",
             )}
@@ -376,12 +393,16 @@ function ItemRow({
 }) {
   const { t } = useTranslation("report");
   const isFree = item.accessBadge === "free";
-  const badgeLabel = isFree
-    ? t("nav.access.badge_free")
-    : t("nav.access.badge_premium");
-  const badgeClass = isFree
-    ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-    : "bg-surface-muted text-content-secondary ring-border-default";
+  const isFreeEmail = item.accessBadge === "free_email";
+  const badgeLabel = isFreeEmail
+    ? t("nav.access.badge_free_email")
+    : isFree
+      ? t("nav.access.badge_free")
+      : t("nav.access.badge_premium");
+  const badgeClass =
+    isFree || isFreeEmail
+      ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+      : "bg-surface-muted text-content-secondary ring-border-default";
   return (
     <button
       type="button"
@@ -1527,6 +1548,7 @@ export function ReportBlockSidebar({
   profiles,
   unlocked,
   premiumUnlocked = false,
+  leadCaptured = false,
   onUnlockClick,
   sampleSize = 0,
   observedDays = 0,
@@ -1545,8 +1567,8 @@ export function ReportBlockSidebar({
     () =>
       variant === "internal_lab"
         ? buildSidebarItems(blocks, variant, features)
-        : buildCommercialSidebarItems(premiumUnlocked),
-    [blocks, variant, features, premiumUnlocked],
+        : buildCommercialSidebarItems(premiumUnlocked, leadCaptured),
+    [blocks, variant, features, premiumUnlocked, leadCaptured],
   );
   // Scroll-spy across ALL sections — locked teaser cards still own a
   // matching DOM anchor (`#frequencia`, `#publicacoes-chave`, …), so they
@@ -1618,6 +1640,7 @@ export function ReportBlockTopTabs({
   profiles,
   unlocked,
   premiumUnlocked = false,
+  leadCaptured = false,
   onUnlockClick,
   sampleSize = 0,
   observedDays = 0,
@@ -1636,8 +1659,8 @@ export function ReportBlockTopTabs({
     () =>
       variant === "internal_lab"
         ? buildSidebarItems(blocks, variant, features)
-        : buildCommercialSidebarItems(premiumUnlocked),
-    [blocks, variant, features, premiumUnlocked],
+        : buildCommercialSidebarItems(premiumUnlocked, leadCaptured),
+    [blocks, variant, features, premiumUnlocked, leadCaptured],
   );
   const accessible = items.filter((i) => i.access !== "locked");
   const accessibleIds = accessible.map((i) => i.block.id);
