@@ -369,8 +369,9 @@ export function mapComment(raw: Record<string, unknown>): ProviderCommentRow {
     ownerUsername:
       str(asRecord(raw.user)?.username) ?? str(raw.username) ?? undefined,
     timestamp: createdAtIso,
-
+    likesCount:
       num(raw.comment_like_count) ?? num(raw.like_count) ?? undefined,
+
     repliesCount:
       num(raw.child_comment_count) ?? num(raw.reply_count) ?? undefined,
   };
