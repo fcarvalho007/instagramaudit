@@ -122,6 +122,35 @@ export function CostSummaryCard() {
             />
           </div>
 
+          {/* ScrapeCreators é contabilizado em créditos, não em USD — bloco
+              separado para não misturar unidades. */}
+          <div className="mt-5 pt-4 border-t border-admin-border">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="flex items-center gap-2 text-[13px] font-medium text-admin-text-primary">
+                <span
+                  className="inline-block h-2 w-2 rounded-full shrink-0"
+                  style={{ backgroundColor: PROVIDER_COLOR.scrapecreators }}
+                />
+                ScrapeCreators · primário
+              </span>
+              <span className="text-[14px] font-medium tabular-nums text-admin-text-primary">
+                {data.providers.scrapecreators.credits_30d} créditos
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-admin-text-tertiary">
+              {data.providers.scrapecreators.promotional
+                ? "Promocional — custo efectivo $0"
+                : `Custo efectivo $${data.providers.scrapecreators.actual_cash_cost_usd_30d.toFixed(2)}`}
+              {" · "}
+              equivalente ao tarifário $
+              {data.providers.scrapecreators.equivalent_cost_usd_30d.toFixed(4)}
+              {" · "}
+              {data.providers.scrapecreators.balance_credits !== null
+                ? `saldo ${data.providers.scrapecreators.balance_credits} créditos`
+                : "saldo desconhecido"}
+            </p>
+          </div>
+
           <div className="mt-5 pt-4 border-t border-admin-border flex items-baseline justify-between gap-3">
             <div>
               <p className="m-0 text-[12px] uppercase tracking-wider text-admin-text-tertiary font-medium">
