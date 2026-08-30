@@ -35,6 +35,7 @@ export interface ProviderCostBucketView {
 
 export interface CostSummaryView {
   apify: ProviderCostBucketView;
+  scrapecreators?: ProviderCostBucketView;
   dataforseo: ProviderCostBucketView;
   openai: ProviderCostBucketView;
   total_actual_usd: number;
@@ -222,7 +223,13 @@ export function CostBreakdownPanel({
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {summary.scrapecreators ? (
+            <ProviderCard
+              provider="scrapecreators"
+              bucket={summary.scrapecreators}
+            />
+          ) : null}
           <ProviderCard provider="apify" bucket={summary.apify} />
           <ProviderCard provider="dataforseo" bucket={summary.dataforseo} />
           <ProviderCard provider="openai" bucket={summary.openai} />

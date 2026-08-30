@@ -73,6 +73,7 @@ export const ADMIN_LITERAL = {
   expenseChartApify: "#BA7517",
   expenseChartOpenAI: "#185FA5",
   expenseChartDataForSeo: "#534AB7",
+  expenseChartScrapeCreators: "#0F8B7E",
   capLine: "#A32D2D",
   heroGradient: "linear-gradient(135deg, #E1F5EE 0%, #EAF3DE 100%)",
   heroGradientBorder: "#5DCAA5",
