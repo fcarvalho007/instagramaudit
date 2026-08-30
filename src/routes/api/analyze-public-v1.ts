@@ -113,7 +113,6 @@ import {
   type PublicWindowConfig,
   type PublicWindowKind,
 } from "@/lib/analysis/window-configs";
-import { PUBLIC_INSTAGRAM_POSTS_LIMIT } from "@/lib/analysis/constants";
 import {
   fetchPosts,
   fetchProfile,
