@@ -476,18 +476,22 @@ function ScrapeCreatorsProviderCard({ data }: { data: Expense30d }) {
   const promotional = data.scrapecreators_promotional;
   return (
     <AdminCard className="relative" variant="accent-left" accent="neutral">
-      <div className="flex items-center gap-2 mb-2">
-        <span
-          className="h-2 w-2 rounded-full shrink-0"
-          style={{ backgroundColor: ADMIN_LITERAL.expenseChartScrapeCreators }}
-        />
-        <span className="text-[12px] font-medium uppercase tracking-wider text-admin-text-tertiary">
-          SCRAPECREATORS
-        </span>
-        <span className="ml-auto rounded bg-admin-neutral-50 px-1.5 py-0.5 text-[12px] font-medium text-admin-text-tertiary">
+      <div className="mb-2 space-y-1">
+        <div className="flex items-center gap-2">
+          <span
+            className="h-2 w-2 rounded-full shrink-0"
+            style={{ backgroundColor: ADMIN_LITERAL.expenseChartScrapeCreators }}
+          />
+          <span className="whitespace-nowrap text-[12px] font-medium uppercase tracking-wide text-admin-text-tertiary">
+            SCRAPECREATORS
+          </span>
+        </div>
+        <span className="inline-block rounded bg-admin-neutral-50 px-1.5 py-0.5 text-[12px] font-medium text-admin-text-tertiary">
           PRIMÁRIO
         </span>
       </div>
+
+
       <div className="flex items-baseline gap-1.5 mb-2">
         <span className="font-mono text-[2rem] font-medium tracking-[-0.03em] leading-none text-admin-text-primary">
           {data.scrapecreators_credits.toFixed(0)}
