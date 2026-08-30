@@ -17,7 +17,6 @@ import type {
   UnlockStatusCode,
 } from "@/lib/leads/lead-capture";
 import { DeepenAnalysisCta } from "@/components/product/deepen-analysis-cta";
-import { ReportEndCta } from "@/components/product/report-end-cta";
 import { OnboardingModal } from "@/components/onboarding/onboarding-modal";
 import { Toaster } from "@/components/ui/sonner";
 import { fetchPublicAnalysis } from "@/lib/analysis/client";
