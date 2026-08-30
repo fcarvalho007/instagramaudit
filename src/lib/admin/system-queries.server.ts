@@ -6,6 +6,24 @@
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { resolveCallCost, hasReportedActualCost } from "./cost-resolution";
+import { SCRAPECREATORS_LIST_COST_PER_CREDIT_USD } from "./scrapecreators-costs";
+
+/**
+ * Equivalente USD por crédito ScrapeCreators. Enquanto os créditos forem
+ * promocionais o custo efectivo é $0 — este valor serve só para comparar
+ * com o tarifário do provider.
+ */
+function scrapeCreatorsCostPerCredit(): number {
+  const raw = process.env.SCRAPECREATORS_COST_PER_CREDIT_USD;
+  const parsed = raw ? Number.parseFloat(raw) : Number.NaN;
+  return Number.isFinite(parsed) && parsed >= 0
+    ? parsed
+    : SCRAPECREATORS_LIST_COST_PER_CREDIT_USD;
+}
+
+function scrapeCreatorsPromotional(): boolean {
+  return !process.env.SCRAPECREATORS_COST_PER_CREDIT_USD;
+}
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
@@ -65,6 +83,10 @@ export interface AlertRow {
 export interface ExpenseDailyPoint {
   day: string;
   apify: number;
+  /** Custo equivalente ScrapeCreators (créditos × tarifário) */
+  scrapecreators: number;
+  /** Créditos ScrapeCreators consumidos nesse dia */
+  scrapecreators_credits?: number;
   openai: number;
   dataforseo: number;
   /** Per-actor Apify breakdown for chart sub-bars */
@@ -75,6 +97,16 @@ export interface ExpenseDailyPoint {
 
 export interface Expense30d {
   apify_total: number;
+  /**
+   * ScrapeCreators é credit-based. `scrapecreators_total` é o equivalente
+   * ao tarifário; o custo efectivo é $0 enquanto `scrapecreators_promotional`
+   * for true. Por isso NÃO entra em `total` (que agrega apenas custo em USD).
+   */
+  scrapecreators_total: number;
+  scrapecreators_credits: number;
+  scrapecreators_calls: number;
+  scrapecreators_promotional: boolean;
+  scrapecreators_balance_credits: number | null;
   openai_total: number;
   dataforseo_total: number;
   total: number;
@@ -441,6 +473,9 @@ const SECRET_NAMES = [
   "INTERNAL_API_TOKEN",
   "ADMIN_ALLOWED_EMAILS",
   "SUPABASE_SERVICE_ROLE_KEY",
+  "SCRAPECREATORS_API_KEY",
+  "SCRAPECREATORS_ENABLED",
+  "SCRAPECREATORS_COST_PER_CREDIT_USD",
   "COMMENT_SCRAPER_ENABLED",
   "COMMENT_SCRAPER_INTERNAL_TEST",
 ] as const;
@@ -472,10 +507,11 @@ async function lastCallStatus(
 }
 
 export async function fetchSystemHealth(): Promise<HealthChip[]> {
-  const [apify, openai, dfs] = await Promise.all([
+  const [apify, openai, dfs, scrapecreators] = await Promise.all([
     lastCallStatus("apify"),
     lastCallStatus("openai"),
     lastCallStatus("dataforseo"),
+    lastCallStatus("scrapecreators"),
   ]);
 
   const resendApiKeyOk = Boolean(process.env.RESEND_API_KEY);
@@ -484,6 +520,7 @@ export async function fetchSystemHealth(): Promise<HealthChip[]> {
   const supabaseOk = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
   return [
+    { service: "ScrapeCreators", ...scrapecreators },
     { service: "Apify", ...apify },
     { service: "OpenAI", ...openai },
     { service: "DataForSEO", ...dfs },
@@ -590,22 +627,31 @@ export function fetchRuntimeChecks(): RuntimeCheck[] {
  */
 export async function aggregateCostsFromLogs(sinceIso: string): Promise<{
   totals: Record<
-    "apify" | "openai" | "dataforseo",
+    "apify" | "openai" | "dataforseo" | "scrapecreators",
     { amount_usd: number; calls: number }
   >;
   daily: ExpenseDailyPoint[];
   apifyFreshSum: number;
   apifyFreshCount: number;
+  scrapeCreatorsCredits: number;
+  scrapeCreatorsBalance: number | null;
 }> {
   const { data: logs } = await supabaseAdmin
     .from("provider_call_logs")
-    .select("provider, actor, actual_cost_usd, estimated_cost_usd, status, created_at")
+    .select(
+      "provider, actor, actual_cost_usd, estimated_cost_usd, credits_charged, credits_remaining, status, created_at",
+    )
     .gte("created_at", sinceIso);
+
+  const perCredit = scrapeCreatorsCostPerCredit();
+  let scrapeCreatorsCredits = 0;
+  let scrapeCreatorsBalance: number | null = null;
 
   const totals = {
     apify: { amount_usd: 0, calls: 0 },
     openai: { amount_usd: 0, calls: 0 },
     dataforseo: { amount_usd: 0, calls: 0 },
+    scrapecreators: { amount_usd: 0, calls: 0 },
   };
   const dayMap = new Map<string, ExpenseDailyPoint>();
   let apifyFreshSum = 0;
@@ -617,13 +663,29 @@ export async function aggregateCostsFromLogs(sinceIso: string): Promise<{
     const status = String(row.status);
     if (status !== "success" && status !== "cache") continue;
 
-    const cost = resolveCallCost(row);
+    const credits =
+      provider === "scrapecreators"
+        ? Number((row as Record<string, unknown>).credits_charged ?? 0) || 0
+        : 0;
+    const cost =
+      provider === "scrapecreators"
+        ? credits * perCredit
+        : resolveCallCost(row);
     totals[provider].amount_usd += cost;
     totals[provider].calls += 1;
 
     const day = String(row.created_at).slice(0, 10);
-    const point = dayMap.get(day) ?? { day, apify: 0, openai: 0, dataforseo: 0, apify_by_actor: {}, openai_by_actor: {} };
+    const point = dayMap.get(day) ?? { day, apify: 0, openai: 0, dataforseo: 0, scrapecreators: 0, scrapecreators_credits: 0, apify_by_actor: {}, openai_by_actor: {} };
     point[provider] = Number((point[provider] + cost).toFixed(6));
+
+    if (provider === "scrapecreators") {
+      scrapeCreatorsCredits += credits;
+      point.scrapecreators_credits = Number(
+        ((point.scrapecreators_credits ?? 0) + credits).toFixed(2),
+      );
+      const remaining = (row as Record<string, unknown>).credits_remaining;
+      if (typeof remaining === "number") scrapeCreatorsBalance = remaining;
+    }
 
     if (provider === "apify") {
       const actor = String((row as Record<string, unknown>).actor ?? "unknown");
@@ -649,7 +711,14 @@ export async function aggregateCostsFromLogs(sinceIso: string): Promise<{
     a.day.localeCompare(b.day),
   );
 
-  return { totals, daily, apifyFreshSum, apifyFreshCount };
+  return {
+    totals,
+    daily,
+    apifyFreshSum,
+    apifyFreshCount,
+    scrapeCreatorsCredits,
+    scrapeCreatorsBalance,
+  };
 }
 
 /**
@@ -817,7 +886,8 @@ export async function fetchExpense30d(
   // este helper com janelas diferentes de 30d (default).
   const sinceIso =
     sinceIsoOverride ?? new Date(Date.now() - 30 * DAY_MS).toISOString();
-  const { totals, daily } = await aggregateCostsFromLogs(sinceIso);
+  const { totals, daily, scrapeCreatorsCredits, scrapeCreatorsBalance } =
+    await aggregateCostsFromLogs(sinceIso);
 
   // Cost split by source_context (production / lab / other).
   // Done as a single small query against the same window so admin views
@@ -853,6 +923,11 @@ export async function fetchExpense30d(
 
   return {
     apify_total: Number(totals.apify.amount_usd.toFixed(4)),
+    scrapecreators_total: Number(totals.scrapecreators.amount_usd.toFixed(4)),
+    scrapecreators_credits: Number(scrapeCreatorsCredits.toFixed(2)),
+    scrapecreators_calls: totals.scrapecreators.calls,
+    scrapecreators_promotional: scrapeCreatorsPromotional(),
+    scrapecreators_balance_credits: scrapeCreatorsBalance,
     openai_total: Number(totals.openai.amount_usd.toFixed(4)),
     dataforseo_total: Number(totals.dataforseo.amount_usd.toFixed(4)),
     total: Number(
