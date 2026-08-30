@@ -30,6 +30,18 @@ function profileUrlFor(handle: string): string {
   return `https://www.instagram.com/${handle}/`;
 }
 
+/**
+ * Monthly hard cap guard. Lives in the adapter (not only in the route) so the
+ * router can treat "Apify is budget-blocked" as a provider-side failure and
+ * fall back to ScrapeCreators instead of failing the audit.
+ */
+async function assertBudget(): Promise<void> {
+  const { assertApifyMonthlyBudgetAvailable } = await import(
+    "@/lib/security/apify-budget.server"
+  );
+  await assertApifyMonthlyBudgetAvailable();
+}
+
 export const apifyProvider: SocialDataProvider = {
   id: "apify",
 
@@ -39,6 +51,8 @@ export const apifyProvider: SocialDataProvider = {
   },
 
   async fetchProfile(handle: string): Promise<ProviderProfileResult> {
+    await assertBudget();
+
     const result = await runActorWithMetadata<Record<string, unknown>>(
       UNIFIED_ACTOR,
       {
@@ -63,7 +77,9 @@ export const apifyProvider: SocialDataProvider = {
     handle: string,
     options: FetchPostsOptions,
   ): Promise<ProviderPostsResult> {
+    await assertBudget();
     const input: Record<string, unknown> = {
+
       directUrls: [profileUrlFor(handle)],
       resultsType: "posts",
       resultsLimit: options.maxPosts,
@@ -99,7 +115,9 @@ export const apifyProvider: SocialDataProvider = {
     postUrls: string[],
     _options: FetchCommentsOptions,
   ): Promise<ProviderCommentsResult> {
+    await assertBudget();
     const { fetchCommentsForPosts } = await import("../comment-scraper.server");
+
     const result = await fetchCommentsForPosts(postUrls);
     const served = new Set(result.batches.map((b) => b.postUrl));
     return {

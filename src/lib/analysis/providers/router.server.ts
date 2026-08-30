@@ -125,7 +125,8 @@ export function isProviderSideFailure(error: unknown): boolean {
 
   const status = (error as { status?: unknown }).status;
   if (typeof status === "number") {
-    if (status === 402 || status === 403 || status === 429) return true;
+    if (status === 401 || status === 402 || status === 403 || status === 429)
+      return true;
     if (status >= 500) return true;
   }
 
@@ -258,10 +259,14 @@ export function mergeCommentResults(
   const sum = (x: number | null, y: number | null) =>
     x === null && y === null ? null : (x ?? 0) + (y ?? 0);
 
+  // Label the merged result after whichever provider actually served data,
+  // so telemetry never credits comments to a provider that returned nothing.
+  const lead = a.batches.length > 0 ? a : b;
+
   return {
-    provider: a.provider,
+    provider: lead.provider,
     runId: a.runId ?? b.runId,
-    endpoint: a.endpoint,
+    endpoint: lead.endpoint,
     billedResults: a.billedResults + b.billedResults,
     creditsConsumed: sum(a.creditsConsumed, b.creditsConsumed),
     creditsRemaining: b.creditsRemaining ?? a.creditsRemaining,

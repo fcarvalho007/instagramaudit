@@ -4,7 +4,7 @@
  * Endpoints used:
  *   GET /v1/instagram/profile?handle=<h>
  *   GET /v2/instagram/user/posts?handle=<h>[&next_max_id=<cursor>]
- *   GET /v1/instagram/post/comments?url=<post url>&amount=<n>
+ *   GET /v2/instagram/post/comments?url=<post url>&amount=<n>
  *
  * The posts endpoint paginates by cursor, which is the reason this provider
  * exists: unlike the Apify actor in `details` mode, it can walk back a real
@@ -356,19 +356,34 @@ export function mapPost(raw: Record<string, unknown>): ProviderPostRow {
 }
 
 /** ScrapeCreators comment item → provider-agnostic comment row. */
+/** Epoch seconds only when the value really is numeric — an ISO date string
+ * must never be coerced (parseFloat("2026-08-21…") would yield year 1970). */
+function epochSeconds(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && /^\d+$/.test(value.trim())) {
+    return Number.parseInt(value, 10);
+  }
+  return null;
+}
+
 export function mapComment(raw: Record<string, unknown>): ProviderCommentRow {
-  const createdAt = num(raw.created_at) ?? num(raw.created_at_utc);
+  // v1 returned epoch seconds; v2 returns an ISO string. Accept both.
+  const createdAtNum =
+    epochSeconds(raw.created_at) ?? epochSeconds(raw.created_at_utc);
+  const createdAtIso =
+    createdAtNum !== null
+      ? new Date(createdAtNum * 1000).toISOString()
+      : (str(raw.created_at) ?? str(raw.timestamp) ?? undefined);
+
   return {
     id: String(str(raw.pk) ?? str(raw.id) ?? ""),
     text: str(raw.text) ?? undefined,
     ownerUsername:
       str(asRecord(raw.user)?.username) ?? str(raw.username) ?? undefined,
-    timestamp:
-      createdAt !== null
-        ? new Date(createdAt * 1000).toISOString()
-        : (str(raw.timestamp) ?? undefined),
+    timestamp: createdAtIso,
     likesCount:
       num(raw.comment_like_count) ?? num(raw.like_count) ?? undefined,
+
     repliesCount:
       num(raw.child_comment_count) ?? num(raw.reply_count) ?? undefined,
   };
@@ -494,7 +509,7 @@ export const scrapeCreatorsProvider: SocialDataProvider = {
     postUrls: string[],
     options: FetchCommentsOptions,
   ): Promise<ProviderCommentsResult> {
-    const endpoint = "/v1/instagram/post/comments";
+    const endpoint = "/v2/instagram/post/comments";
     const deadline = Date.now() + options.timeoutMs;
     const batches: ProviderCommentBatch[] = [];
     const failedPostUrls: string[] = [];
