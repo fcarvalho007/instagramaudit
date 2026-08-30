@@ -38,6 +38,12 @@ export function DeepenAnalysisCta({
             snapshotId,
             dedupeKey: snapshotId,
           });
+          trackAnonymousEvent("lead_cta_viewed", {
+            handle,
+            snapshotId,
+            metadata: { conversion_entry_point: "comment_intelligence" },
+            dedupeKey: `${snapshotId}:comment_intelligence`,
+          });
           io.disconnect();
         }
       },

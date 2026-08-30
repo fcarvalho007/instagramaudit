@@ -106,6 +106,11 @@ export function ConversionSheet({
       const value = email.trim();
       if (!EMAIL_RE.test(value)) {
         setError(t("errors.invalid_email"));
+        trackAnonymousEvent("email_validation_failed", {
+          handle,
+          snapshotId,
+          metadata: { conversion_entry_point: entryPoint },
+        });
         return;
       }
       setError(null);
@@ -168,6 +173,12 @@ export function ConversionSheet({
 
         const status = body.unlock?.status;
         if (status === "queued" || status === "pending") {
+          trackAnonymousEvent("level2_unlock_started", {
+            handle,
+            snapshotId,
+            metadata: { conversion_entry_point: entryPoint },
+            dedupeKey: snapshotId,
+          });
           trackAnonymousEvent("comment_intelligence_started", {
             handle,
             snapshotId,
