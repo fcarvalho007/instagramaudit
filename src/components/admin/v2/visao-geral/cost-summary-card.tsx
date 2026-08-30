@@ -18,10 +18,14 @@ import { SectionError, SectionSkeleton } from "../section-state";
 import { adminFetch } from "@/lib/admin/fetch";
 import type { OverviewKpis } from "@/routes/api/admin/overview-kpis";
 
-const PROVIDER_COLOR: Record<"apify" | "openai" | "dataforseo", string> = {
+const PROVIDER_COLOR: Record<
+  "apify" | "openai" | "dataforseo" | "scrapecreators",
+  string
+> = {
   apify: "#BA7517",
   openai: "#378ADD",
   dataforseo: "#534AB7",
+  scrapecreators: "#3772E5",
 };
 
 function Row({
