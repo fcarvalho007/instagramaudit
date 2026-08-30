@@ -638,6 +638,30 @@ export async function handleOnboardingStart(
       handle: parsed.data.handle ?? null,
       is_new: upserted.isNew,
     });
+    // Ponte "snapshot anónimo → lead": quando a auditoria base correu sem
+    // email (PUBLIC_BASELINE_NO_EMAIL), não existe `lead_reports`. Aqui
+    // associamos retroactivamente o snapshot baseline que a pessoa acabou
+    // de ver, para que ownership, Level 2 e área privada funcionem sem
+    // repetir scraping. Idempotente e não-fatal.
+    if (parsed.data.handle) {
+      try {
+        const { claimAnonymousBaselineReport } = await import(
+          "@/lib/credits/lead-reports.server"
+        );
+        const claim = await claimAnonymousBaselineReport({
+          leadId: upserted.leadId,
+          handle: parsed.data.handle,
+          profileRelationship: parsed.data.profile_relationship ?? null,
+        });
+        console.info("[onboarding/start] anonymous baseline claim", {
+          lead_id: upserted.leadId,
+          handle: parsed.data.handle,
+          claimed: claim.claimed,
+        });
+      } catch (err) {
+        console.warn("[onboarding/start] baseline claim failed (soft)", err);
+      }
+    }
     // AWAIT (não fire-and-forget): o Cloudflare Worker termina
     // promessas soltas ao devolver o Response, o que estava a deixar
     // o INSERT em `report_requests` por fazer. O enqueue é rápido
