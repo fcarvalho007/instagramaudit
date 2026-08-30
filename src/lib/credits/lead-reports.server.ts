@@ -38,6 +38,8 @@ export async function upsertLeadReport(input: {
   cacheKey: string;
   analysisSnapshotId?: string | null;
   source?: string;
+  /** Relação declarada pelo utilizador com o perfil analisado. */
+  profileRelationship?: string | null;
 }): Promise<void> {
   const { error } = await supabaseAdmin
     .from("lead_reports")
@@ -48,6 +50,12 @@ export async function upsertLeadReport(input: {
         cache_key: input.cacheKey,
         analysis_snapshot_id: input.analysisSnapshotId ?? null,
         source: input.source ?? "analyze_public_v1",
+        ...(input.profileRelationship
+          ? {
+              profile_relationship: input.profileRelationship,
+              relationship_source: "user_declared",
+            }
+          : {}),
       },
       { onConflict: "lead_id,cache_key", ignoreDuplicates: true },
     );
