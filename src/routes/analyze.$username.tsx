@@ -595,8 +595,9 @@ function AnalyzeReady({
   const [unlockStatus, setUnlockStatus] = useState<UnlockStatusCode | null>(
     null,
   );
-  /** Nível 1: email já capturado nesta sessão (ou desbloqueio já pedido). */
-  const leadCaptured = unlockStatus !== null;
+  /** Estado B (Análise Aprofundada) detectado no servidor, para quem
+   *  regressa ao relatório numa nova sessão de página. */
+  const [serverLeadCaptured, setServerLeadCaptured] = useState(false);
 
   const [livePayload, setLivePayload] = useState<{
     result: AdapterResult;
@@ -654,8 +655,39 @@ function AnalyzeReady({
     }, 9000);
   }, [auditHandle, snapshotId]);
 
+  useEffect(() => {
+    if (!snapshotId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/public/report-access-state?snapshotId=${encodeURIComponent(snapshotId)}`,
+        );
+        const body = (await res.json().catch(() => null)) as
+          | { leadCaptured?: boolean }
+          | null;
+        if (!cancelled && body?.leadCaptured) setServerLeadCaptured(true);
+      } catch {
+        /* estado A por omissão */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [snapshotId]);
+
   const shownPayload = livePayload?.payload ?? payload;
   const shownResult = livePayload?.result ?? result;
+
+  // Estado B: email já capturado nesta sessão, snapshot já enriquecido com
+  // Comment Intelligence, ou cookie de captura/lead válido no servidor.
+  const leadCaptured =
+    unlockStatus !== null ||
+    serverLeadCaptured ||
+    Boolean(
+      (shownPayload as { comment_intelligence?: unknown })
+        ?.comment_intelligence,
+    );
 
   return (
     <>
