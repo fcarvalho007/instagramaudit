@@ -591,3 +591,38 @@ export function ReportOverviewBlock({
   );
 }
 
+
+/**
+ * Nível 0 → Nível 1. Único convite visível ao visitante anónimo:
+ * aprofundar gratuitamente com email. Nada de preço nesta fase.
+ */
+function FreeDeepenTeaser() {
+  const scrollToDeepen = () => {
+    if (typeof document === "undefined") return;
+    document
+      .getElementById("deepen-analysis")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  return (
+    <div className="rounded-2xl border border-accent-primary/25 bg-accent-primary/5 p-5 sm:p-6">
+      <p className="text-eyebrow-sm text-accent-primary">Próximo passo · gratuito</p>
+      <h3 className="mt-2 text-base sm:text-lg font-semibold text-content-primary">
+        Aprofundar esta auditoria
+      </h3>
+      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-content-secondary">
+        A análise das conversas — temas recorrentes, tom das reacções e sinais
+        de intenção — fica disponível gratuitamente com o teu email. Sem
+        pagamento e sem password.
+      </p>
+      <button
+        type="button"
+        onClick={scrollToDeepen}
+        className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-primary/90"
+      >
+        Aprofundar gratuitamente
+        <span aria-hidden="true">↓</span>
+      </button>
+    </div>
+  );
+}
