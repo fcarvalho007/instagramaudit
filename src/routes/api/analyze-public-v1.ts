@@ -438,31 +438,51 @@ async function fetchProfileWithPostsLogged(
 }> {
   const startedAt = Date.now();
   try {
-    const { row, runId, actualCostUsd, billedResults } =
-      await fetchProfileWithPosts(username, cfg);
+    const {
+      row,
+      runId,
+      actualCostUsd,
+      billedResults,
+      provider,
+      creditsCharged,
+      creditsRemaining,
+      cached,
+      endpoint,
+    } = await fetchProfileWithPosts(username, cfg);
     const posts = Array.isArray((row as { latestPosts?: unknown })?.latestPosts)
       ? ((row as { latestPosts: unknown[] }).latestPosts.length as number)
       : 0;
     const profilesReturned = row ? 1 : 0;
-    const estimatedCostUsd = estimateApifyCost({
-      profilesReturned,
-      postsReturned: posts,
-      // `details` mode bills ONE dataset item per run — the embedded
-      // `latestPosts[]` are not billed separately.
-      billedResults,
-    });
+    // Apify bills per dataset item; ScrapeCreators bills credits and the
+    // monetary cost is carried by `actualCostUsd`.
+    const estimatedCostUsd =
+      provider === "apify"
+        ? estimateApifyCost({
+            profilesReturned,
+            postsReturned: posts,
+            // `details` mode bills ONE dataset item per run — the embedded
+            // `latestPosts[]` are not billed separately.
+            billedResults,
+          })
+        : (actualCostUsd ?? 0);
     const providerCallLogId = await recordProviderCall({
-      actor: UNIFIED_ACTOR,
+      provider,
+      actor: provider === "apify" ? UNIFIED_ACTOR : (endpoint ?? "scrapecreators"),
       handle: username,
       status: "success",
       durationMs: Date.now() - startedAt,
       postsReturned: posts,
       estimatedCostUsd,
       actualCostUsd,
-      apifyRunId: runId,
+      apifyRunId: provider === "apify" ? runId : null,
       httpStatus: 200,
       sourceContext: "public_analysis",
+      creditsCharged,
+      creditsRemaining,
+      cached,
+      endpoint,
     });
+
     return { row, error: null, providerCallLogId };
   } catch (err) {
     let status: "timeout" | "http_error" | "config_error" | "network_error" =
