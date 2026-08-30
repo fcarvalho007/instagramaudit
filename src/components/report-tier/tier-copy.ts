@@ -18,14 +18,14 @@ export const TIER_COPY = {
     subtitle: "Do diagnóstico rápido à leitura estratégica.",
     columns: {
       essential: {
-        tag: "Visão essencial",
-        heading: "Incluído no gratuito",
+        tag: "Gratuito",
+        heading: "Incluído sem pagamento",
         items: [
-          "Resumo do perfil e métricas principais",
-          "Benchmark de envolvimento por escalão",
-          "Top publicações e padrão de conteúdo",
-          "1 sinal de mercado de pesquisa",
-          "3 insights estratégicos curtos",
+          "Índice do perfil e veredicto editorial",
+          "Envolvimento comparado com o benchmark do escalão",
+          "Metodologia visível: amostra e janela observada",
+          "Com email: análise das conversas (comentários)",
+          "Com email: histórico guardado e acesso por link",
         ],
       },
       complete: {
