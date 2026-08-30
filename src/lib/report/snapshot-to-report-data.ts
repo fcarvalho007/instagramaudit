@@ -102,6 +102,7 @@ export interface SnapshotPost {
   likes?: number | null;
   comments?: number | null;
   video_views?: number | null;
+  video_plays?: number | null;
   thumbnail_url?: string | null;
   thumbnail_storage_url?: string | null;
   is_video?: boolean | null;
@@ -921,7 +922,7 @@ function buildTemporalSeries(
     const cur = byDate.get(key) ?? { likes: 0, comments: 0, views: 0 };
     cur.likes += num(p.likes, 0);
     cur.comments += num(p.comments, 0);
-    cur.views += num(p.video_views, 0);
+    cur.views += num(p.video_plays ?? p.video_views, 0);
     byDate.set(key, cur);
   }
 
@@ -1687,7 +1688,10 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   // Views are only populated for Reels; if every post has 0 views, hide the
   // series in the temporal chart.
   const viewsAvailable = posts.some(
-    (p) => typeof p.video_views === "number" && p.video_views > 0,
+    (p) => {
+      const v = p.video_plays ?? p.video_views;
+      return typeof v === "number" && v > 0;
+    },
   );
 
   // Benchmark coverage: real when both the engagement positioning and at

@@ -40,6 +40,7 @@ const PostSchema = z.object({
   likes: z.number().nullable().optional(),
   comments: z.number().nullable().optional(),
   video_views: z.number().nullable().optional(),
+  video_plays: z.number().nullable().optional(),
   video_duration: z.number().nullable().optional(),
   engagement_pct: z.number().nullable().optional(),
   thumbnail_url: httpsUrl.nullable().optional(),

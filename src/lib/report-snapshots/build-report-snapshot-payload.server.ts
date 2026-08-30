@@ -127,6 +127,7 @@ export function buildReportSnapshotPayload(
       likes: asNumber(p.likes) ?? null,
       comments: asNumber(p.comments) ?? null,
       video_views: asNumber(p.video_views) ?? null,
+      video_plays: asNumber(p.video_plays) ?? null,
       video_duration: asNumber(p.video_duration) ?? null,
       engagement_pct: asNumber(p.engagement_pct) ?? null,
       thumbnail_url: sanitizeUrl(p.thumbnail_url, `posts[${idx}].thumbnail_url`),
