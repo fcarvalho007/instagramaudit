@@ -356,12 +356,14 @@ async function fetchProfileWithPosts(
 
   // Providers that do not embed a post sample in the profile payload
   // (ScrapeCreators) need an explicit posts call even for baseline, or the
-  // analysis would look like a profile with no feed.
-  const embedded = Array.isArray((row as { latestPosts?: unknown }).latestPosts)
-    ? ((row as { latestPosts: unknown[] }).latestPosts.length as number)
-    : 0;
+  // analysis would look like a profile with no feed. An EMPTY array means the
+  // provider did answer "no posts" — no second (paid) call in that case.
+  const embedsPosts = Array.isArray(
+    (row as { latestPosts?: unknown }).latestPosts,
+  );
 
-  if (!wide && embedded > 0) {
+  if (!wide && embedsPosts) {
+
     return {
       row,
       runId,
