@@ -70,6 +70,7 @@ import {
   LEAD_QUALIFICATION_LABELS_PT,
   type LeadQualification,
 } from "@/lib/leads/qualification";
+import type { ProfileRelationship } from "@/lib/leads/profile-relationship";
 import { GridSelectField } from "@/components/onboarding/grid-select-field";
 import { supabase } from "@/integrations/supabase/client";
 import { parseFullName } from "@/lib/names/parse-full-name";
@@ -326,9 +327,7 @@ export function OnboardingModal({
         credentials: "include",
         body: JSON.stringify(payload),
       });
-      const data = (await res
-        .json()
-        .catch(() => null)) as OnboardingApiResponse | null;
+      const data = (await res.json().catch(() => null)) as OnboardingApiResponse | null;
       // Race condition: o utilizador acabou de criar conta noutro
       // separador OU a conta já existia e o /check-email falhou silenciosa.
       // Redirige para o ecrã de login para o user introduzir a password.
@@ -343,18 +342,11 @@ export function OnboardingModal({
         return;
       }
       if (!res.ok || !data || data.ok !== true) {
-        const msg =
-          (data && "message" in data && data.message) ||
-          t("onboarding.errors.generic");
+        const msg = (data && "message" in data && data.message) || t("onboarding.errors.generic");
         setServerError(msg);
         const code =
-          data && "error_code" in data && data.error_code
-            ? data.error_code
-            : `HTTP_${res.status}`;
-        const issues =
-          data && data.ok === false && Array.isArray(data.issues)
-            ? data.issues
-            : [];
+          data && "error_code" in data && data.error_code ? data.error_code : `HTTP_${res.status}`;
+        const issues = data && data.ok === false && Array.isArray(data.issues) ? data.issues : [];
         const fieldErrorMap: Record<string, keyof UnlockFormValues> = {
           name: "full_name",
           email: "email",
@@ -379,8 +371,7 @@ export function OnboardingModal({
             // setFocus silently fails if the input isn't mounted.
           }
         }
-        const errorCode =
-          issues.length > 0 ? `${code}_${issues[0].field}` : code;
+        const errorCode = issues.length > 0 ? `${code}_${issues[0].field}` : code;
         trackOnboardingEvent({
           event_type: "onboarding_error",
           step: 3,
@@ -437,8 +428,10 @@ export function OnboardingModal({
       setSubmitting(true);
       setServerError(null);
       try {
-        const { data: verified, error } =
-          await supabase.auth.signInWithPassword({ email, password });
+        const { data: verified, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
         if (error || !verified.session) {
           setServerError("Email ou palavra-passe incorretos.");
           trackOnboardingEvent({
@@ -463,15 +456,8 @@ export function OnboardingModal({
           lead_id?: string;
           credits?: number;
         } | null;
-        if (
-          !claim.ok ||
-          !claimData ||
-          claimData.ok !== true ||
-          !claimData.lead_id
-        ) {
-          setServerError(
-            "Não conseguimos preparar o acesso ao relatório. Tenta novamente.",
-          );
+        if (!claim.ok || !claimData || claimData.ok !== true || !claimData.lead_id) {
+          setServerError("Não conseguimos preparar o acesso ao relatório. Tenta novamente.");
           trackOnboardingEvent({
             event_type: "onboarding_error",
             step: 2,
@@ -519,6 +505,7 @@ export function OnboardingModal({
         ) : view.kind === "qualification" ? (
           <QualificationStepBody
             form={form}
+            handle={handle}
             purpose={purpose}
             submitting={submitting}
             serverError={serverError}
@@ -556,13 +543,7 @@ export function OnboardingModal({
 /* -------------------------------------------------------------------------- */
 
 /* Step indicator shared across entry → qualification → final */
-function OnboardingStepHeader({
-  current,
-  className,
-}: {
-  current: 1 | 2 | 3;
-  className?: string;
-}) {
+function OnboardingStepHeader({ current, className }: { current: 1 | 2 | 3; className?: string }) {
   const { t } = useTranslation("gate");
   const steps: Array<{ id: 1 | 2 | 3; key: "entry" | "qualification" | "final" }> = [
     { id: 1, key: "entry" },
@@ -576,8 +557,7 @@ function OnboardingStepHeader({
     >
       <ol className="flex items-center gap-1.5" aria-label={`Passo ${current} de 3`}>
         {steps.map((s) => {
-          const state =
-            s.id < current ? "done" : s.id === current ? "active" : "future";
+          const state = s.id < current ? "done" : s.id === current ? "active" : "future";
           return (
             <li
               key={s.id}
@@ -585,8 +565,8 @@ function OnboardingStepHeader({
                 state === "active"
                   ? "bg-primary"
                   : state === "done"
-                  ? "bg-primary/40"
-                  : "bg-border-default"
+                    ? "bg-primary/40"
+                    : "bg-border-default"
               }`}
               aria-current={state === "active" ? "step" : undefined}
             />
@@ -645,10 +625,7 @@ function EntryStepBody({
   };
 
   return (
-    <div
-      className="px-6 py-7 sm:px-10 sm:py-9"
-      data-testid="onboarding-entry-step"
-    >
+    <div className="px-6 py-7 sm:px-10 sm:py-9" data-testid="onboarding-entry-step">
       <OnboardingStepHeader current={1} className="mb-5" />
       <DialogHeader className="text-left space-y-2.5">
         <p className="text-eyebrow text-content-tertiary">
@@ -659,11 +636,7 @@ function EntryStepBody({
           )}
         </p>
         <DialogTitle className="font-display text-[28px] sm:text-[32px] leading-[1.08] tracking-[-0.015em] text-content-primary text-balance">
-          {t(
-            purpose === "checkout"
-              ? "onboarding.entry.titleCheckout"
-              : "onboarding.entry.title",
-          )}
+          {t(purpose === "checkout" ? "onboarding.entry.titleCheckout" : "onboarding.entry.title")}
         </DialogTitle>
         <DialogDescription className="text-[15px] text-content-secondary leading-[1.55]">
           {purpose === "checkout" ? (
@@ -755,7 +728,11 @@ function EntryStepBody({
           className="text-[13.5px] font-semibold text-primary hover:underline disabled:opacity-60"
           data-testid="onboarding-entry-signin"
         >
-          {t(isCheckout ? "onboarding.entry.haveAccountCtaCheckout" : "onboarding.entry.haveAccountCta")}
+          {t(
+            isCheckout
+              ? "onboarding.entry.haveAccountCtaCheckout"
+              : "onboarding.entry.haveAccountCta",
+          )}
         </button>
       </div>
 
@@ -794,26 +771,17 @@ function FinalStepBody({
   const isCheckout = purpose === "checkout";
   const nameError = form.formState.errors.full_name?.message;
   const emailError = form.formState.errors.email?.message;
-  const qualificationError = form.formState.errors.qualification?.message;
   const passwordError = form.formState.errors.password?.message;
   const consentError = form.formState.errors.gdpr_consent?.message;
   const consent = form.watch("gdpr_consent");
   const marketing = form.watch("marketing_consent");
   const emailValue = form.watch("email");
-  const qualification = form.watch("qualification");
   const passwordValue = form.watch("password") ?? "";
   const [showPassword, setShowPassword] = useState(false);
   const strength = computePasswordStrength(passwordValue);
   const emailIsValid = !emailError && emailValue && EMAIL_RE.test(emailValue);
 
   const trySubmit = async () => {
-    if (!form.getValues("qualification")) {
-      form.setError("qualification", {
-        type: "manual",
-        message: "Escolhe uma opção",
-      });
-      return;
-    }
     const ok = await form.trigger();
     if (!ok) return;
     await onSubmit();
@@ -829,10 +797,7 @@ function FinalStepBody({
       className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.25fr)] min-w-0"
     >
       {/* Honeypot — invisible to humans, attracts bots */}
-      <div
-        className="absolute -left-[9999px] top-auto h-0 w-0 overflow-hidden"
-        aria-hidden
-      >
+      <div className="absolute -left-[9999px] top-auto h-0 w-0 overflow-hidden" aria-hidden>
         <label htmlFor="onb-website">Website</label>
         <input
           id="onb-website"
@@ -868,44 +833,27 @@ function FinalStepBody({
         ) : null}
         <ul className="space-y-3 pt-2">
           <FinalBullet>
-            {purpose === "checkout" ? (
-              t("onboarding.final.left.bullets.reportCheckout")
-            ) : (
-              t("onboarding.final.left.bullets.save")
-            )}
+            {purpose === "checkout"
+              ? t("onboarding.final.left.bullets.reportCheckout")
+              : t("onboarding.final.left.bullets.save")}
           </FinalBullet>
           {isCheckout ? (
             <>
-              <FinalBullet>
-                {t("onboarding.final.left.bullets.receiptCheckout")}
-              </FinalBullet>
-              <FinalBullet>
-                {t("onboarding.final.left.bullets.returnCheckout")}
-              </FinalBullet>
-              <FinalBullet>
-                {t("onboarding.final.left.bullets.noSubCheckout")}
-              </FinalBullet>
+              <FinalBullet>{t("onboarding.final.left.bullets.receiptCheckout")}</FinalBullet>
+              <FinalBullet>{t("onboarding.final.left.bullets.returnCheckout")}</FinalBullet>
+              <FinalBullet>{t("onboarding.final.left.bullets.noSubCheckout")}</FinalBullet>
             </>
           ) : (
             <>
-              <FinalBullet>
-                {t("onboarding.final.left.bullets.passwordProtected")}
-              </FinalBullet>
-              <FinalBullet>
-                {t("onboarding.final.left.bullets.privateData")}
-              </FinalBullet>
-              <FinalBullet>
-                {t("onboarding.final.left.bullets.returnAny")}
-              </FinalBullet>
+              <FinalBullet>{t("onboarding.final.left.bullets.passwordProtected")}</FinalBullet>
+              <FinalBullet>{t("onboarding.final.left.bullets.privateData")}</FinalBullet>
+              <FinalBullet>{t("onboarding.final.left.bullets.returnAny")}</FinalBullet>
             </>
           )}
         </ul>
         {!isCheckout ? (
           <div className="mt-auto flex items-start gap-2.5 rounded-lg border border-white/10 bg-white/5 p-3">
-            <ShieldCheck
-              className="size-4 text-cyan-300 shrink-0 mt-0.5"
-              aria-hidden
-            />
+            <ShieldCheck className="size-4 text-cyan-300 shrink-0 mt-0.5" aria-hidden />
             <p className="text-[12.5px] leading-[1.5] text-white/70">
               {t("onboarding.final.left.securityNote")}
             </p>
@@ -930,9 +878,7 @@ function FinalStepBody({
             className="text-base"
             {...form.register("full_name")}
           />
-          {nameError ? (
-            <p className="text-[12.5px] text-destructive">{nameError}</p>
-          ) : null}
+          {nameError ? <p className="text-[12.5px] text-destructive">{nameError}</p> : null}
         </div>
 
         <div className="space-y-1.5">
@@ -966,49 +912,7 @@ function FinalStepBody({
         </div>
 
         <div className="space-y-1.5">
-          <Label
-            htmlFor="onb-qualification"
-            className="text-[13.5px] font-medium text-content-primary"
-          >
-            {t("onboarding.final.right.qualificationLabel")}
-          </Label>
-          <Select
-            value={qualification ?? ""}
-            onValueChange={(v) => {
-              form.setValue("qualification", v as LeadQualification, {
-                shouldValidate: true,
-              });
-              form.clearErrors("qualification");
-            }}
-          >
-            <SelectTrigger
-              id="onb-qualification"
-              aria-invalid={Boolean(qualificationError)}
-              data-testid="onboarding-qualification"
-              className="text-base"
-            >
-              <SelectValue
-                placeholder={t("onboarding.final.right.qualificationPlaceholder")}
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {LEAD_QUALIFICATIONS.map((q) => (
-                <SelectItem key={q} value={q}>
-                  {LEAD_QUALIFICATION_LABELS_PT[q]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {qualificationError ? (
-            <p className="text-[12.5px] text-destructive">{qualificationError}</p>
-          ) : null}
-        </div>
-
-        <div className="space-y-1.5">
-          <Label
-            htmlFor="onb-password"
-            className="text-[13.5px] font-medium text-content-primary"
-          >
+          <Label htmlFor="onb-password" className="text-[13.5px] font-medium text-content-primary">
             Palavra-passe
           </Label>
           <div className="relative">
@@ -1026,9 +930,7 @@ function FinalStepBody({
               type="button"
               onClick={() => setShowPassword((v) => !v)}
               aria-pressed={showPassword}
-              aria-label={
-                showPassword ? "Esconder palavra-passe" : "Mostrar palavra-passe"
-              }
+              aria-label={showPassword ? "Esconder palavra-passe" : "Mostrar palavra-passe"}
               className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-content-tertiary hover:text-content-primary"
               data-testid="onboarding-password-toggle"
             >
@@ -1045,21 +947,12 @@ function FinalStepBody({
                 <div
                   className={`h-full transition-all ${STRENGTH_TONE[strength]}`}
                   style={{
-                    width:
-                      strength === "strong"
-                        ? "100%"
-                        : strength === "fair"
-                          ? "66%"
-                          : "33%",
+                    width: strength === "strong" ? "100%" : strength === "fair" ? "66%" : "33%",
                   }}
                 />
               </div>
               <span className="text-[11.5px] text-content-tertiary">
-                {strength === "strong"
-                  ? "Forte"
-                  : strength === "fair"
-                    ? "Aceitável"
-                    : "Curta"}
+                {strength === "strong" ? "Forte" : strength === "fair" ? "Aceitável" : "Curta"}
               </span>
             </div>
           ) : null}
@@ -1079,11 +972,9 @@ function FinalStepBody({
               id="onb-gdpr"
               checked={consent === true}
               onCheckedChange={(v) =>
-                form.setValue(
-                  "gdpr_consent",
-                  v === true ? true : (false as unknown as true),
-                  { shouldValidate: true },
-                )
+                form.setValue("gdpr_consent", v === true ? true : (false as unknown as true), {
+                  shouldValidate: true,
+                })
               }
               aria-invalid={Boolean(consentError)}
               className="mt-0.5"
@@ -1139,9 +1030,7 @@ function FinalStepBody({
           </label>
         </div>
 
-        {consentError ? (
-          <p className="text-[12.5px] text-destructive">{consentError}</p>
-        ) : null}
+        {consentError ? <p className="text-[12.5px] text-destructive">{consentError}</p> : null}
 
         {serverError ? (
           <Alert variant="destructive" aria-live="polite">
@@ -1181,14 +1070,22 @@ function FinalStepBody({
                   <Sparkles className="size-4" aria-hidden />
                 )}
                 <span>
-                  {t(isCheckout ? "onboarding.final.right.ctaCheckout" : "onboarding.final.right.cta")}
+                  {t(
+                    isCheckout
+                      ? "onboarding.final.right.ctaCheckout"
+                      : "onboarding.final.right.cta",
+                  )}
                 </span>
               </>
             )}
           </Button>
         </div>
         <p className="text-center text-[12px] text-content-tertiary mt-1">
-          {t(isCheckout ? "onboarding.final.right.footnoteCheckout" : "onboarding.final.right.footnote")}
+          {t(
+            isCheckout
+              ? "onboarding.final.right.footnoteCheckout"
+              : "onboarding.final.right.footnote",
+          )}
         </p>
       </div>
     </form>
@@ -1198,16 +1095,11 @@ function FinalStepBody({
 function FinalBullet({ children }: { children: React.ReactNode }) {
   return (
     <li className="flex items-start gap-2.5 text-[13.5px] text-white/85 leading-[1.5]">
-      <Check
-        className="size-4 mt-0.5 text-white/70 shrink-0"
-        aria-hidden
-        strokeWidth={2.25}
-      />
+      <Check className="size-4 mt-0.5 text-white/70 shrink-0" aria-hidden strokeWidth={2.25} />
       <span>{children}</span>
     </li>
   );
 }
-
 
 /* -------------------------------------------------------------------------- */
 /* Login panel — email + password sign-in for existing accounts               */
@@ -1245,14 +1137,9 @@ function LoginPanel({
   };
 
   return (
-    <div
-      className="px-5 py-7 sm:px-9 sm:py-9"
-      data-testid="onboarding-login-step"
-    >
+    <div className="px-5 py-7 sm:px-9 sm:py-9" data-testid="onboarding-login-step">
       <DialogHeader className="text-left space-y-2.5">
-        <p className="text-eyebrow-sm text-content-tertiary">
-          ENTRAR NA CONTA
-        </p>
+        <p className="text-eyebrow-sm text-content-tertiary">ENTRAR NA CONTA</p>
         <DialogTitle className="font-display text-[24px] sm:text-[28px] leading-[1.1] tracking-[-0.015em] text-content-primary text-balance break-words">
           Já existe uma conta com este email
         </DialogTitle>
@@ -1323,8 +1210,7 @@ function LoginPanel({
         >
           {submitting ? (
             <>
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-              A entrar…
+              <Loader2 className="size-4 animate-spin" aria-hidden />A entrar…
             </>
           ) : (
             <>
@@ -1335,10 +1221,7 @@ function LoginPanel({
         </Button>
 
         <div className="flex items-start gap-2 rounded-lg border border-border-default/40 bg-surface-muted/40 p-2.5">
-          <ShieldCheck
-            className="size-3.5 text-content-tertiary shrink-0 mt-0.5"
-            aria-hidden
-          />
+          <ShieldCheck className="size-3.5 text-content-tertiary shrink-0 mt-0.5" aria-hidden />
           <p className="text-[12px] leading-[1.5] text-content-tertiary">
             Só o titular da conta consegue aceder aos relatórios guardados.
           </p>
@@ -1368,12 +1251,18 @@ function LoginPanel({
       </form>
     </div>
   );
-}/* -------------------------------------------------------------------------- */
+} /* -------------------------------------------------------------------------- */
 /* Qualification step — single select between entry and final                 */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Ronda 2 do onboarding: em vez de um "questionário de qualificação",
+ * uma única pergunta contextual e casual sobre a relação com o perfil
+ * analisado. A qualificação de CRM é derivada server-side.
+ */
 function QualificationStepBody({
   form,
+  handle,
   purpose,
   submitting,
   serverError,
@@ -1381,6 +1270,7 @@ function QualificationStepBody({
   onContinue,
 }: {
   form: ReturnType<typeof useForm<UnlockFormValues>>;
+  handle: string;
   purpose: "analyze" | "checkout";
   submitting: boolean;
   serverError: string | null;
@@ -1389,100 +1279,65 @@ function QualificationStepBody({
 }) {
   const { t } = useTranslation("gate");
   const isCheckout = purpose === "checkout";
-  const ownership = form.watch("profile_ownership") as
-    | ProfileOwnership
-    | undefined;
-  const goal = form.watch("goal") as Goal | undefined;
-  const [ownershipError, setOwnershipError] = useState<string | null>(null);
-  const [goalError, setGoalError] = useState<string | null>(null);
+  const relationship = form.watch("profile_relationship") as ProfileRelationship | undefined;
+  const [relationshipError, setRelationshipError] = useState<string | null>(null);
 
-  const OWNERSHIP_OPTIONS: Array<{
-    value: ProfileOwnership;
+  const RELATIONSHIP_OPTIONS: Array<{
+    value: ProfileRelationship;
     Icon: typeof User;
   }> = [
-    { value: "own_profile", Icon: User },
-    { value: "brand_profile", Icon: Star },
-    { value: "client_profile", Icon: Briefcase },
-    { value: "competitor_research", Icon: Eye },
-  ];
-
-  const GOAL_OPTIONS: Array<{ value: Goal; Icon: typeof User }> = [
-    { value: "improve_content", Icon: Sparkles },
-    { value: "benchmark_competitors", Icon: Scale },
-    { value: "client_report", Icon: LineChart },
-    { value: "grow_audience", Icon: TrendingUp },
+    { value: "owner", Icon: User },
+    { value: "manages", Icon: Sparkles },
+    { value: "client", Icon: Briefcase },
+    { value: "competitor", Icon: Eye },
+    { value: "research", Icon: Star },
   ];
 
   const handleContinue = () => {
-    let hasError = false;
-    if (!ownership) {
-      setOwnershipError(t("onboarding.qualification.ownershipError"));
-      hasError = true;
-    } else {
-      setOwnershipError(null);
+    if (!relationship) {
+      setRelationshipError(t("onboarding.qualification.relationshipError"));
+      return;
     }
-    if (!goal) {
-      setGoalError(t("onboarding.qualification.goalError"));
-      hasError = true;
-    } else {
-      setGoalError(null);
-    }
-    if (hasError) return;
+    setRelationshipError(null);
     onContinue();
   };
 
   return (
-    <div
-      className="px-6 py-6 sm:px-10 sm:py-8"
-      data-testid="onboarding-qualification-step"
-    >
+    <div className="px-6 py-6 sm:px-10 sm:py-8" data-testid="onboarding-qualification-step">
       <OnboardingStepHeader current={2} className="mb-5" />
       <DialogHeader className="text-left space-y-2.5">
         <p className="text-eyebrow text-content-tertiary">
-          {t(isCheckout ? "onboarding.qualification.eyebrowCheckout" : "onboarding.qualification.eyebrow")}
+          {t("onboarding.qualification.eyebrow")}
         </p>
         <DialogTitle className="font-display text-[28px] sm:text-[32px] leading-[1.08] tracking-[-0.015em] text-content-primary text-balance">
-          {t(isCheckout ? "onboarding.qualification.titleCheckout" : "onboarding.qualification.title")}
+          {t("onboarding.qualification.relationshipTitle")}
         </DialogTitle>
         <DialogDescription className="text-[15px] text-content-secondary leading-[1.55]">
-          {t(isCheckout ? "onboarding.qualification.subtitleCheckout" : "onboarding.qualification.subtitle")}
+          {isCheckout
+            ? t("onboarding.qualification.relationshipSubtitleCheckout")
+            : t("onboarding.qualification.relationshipSubtitle", {
+                handle,
+              })}
         </DialogDescription>
       </DialogHeader>
 
       <div className="mt-5 space-y-5" data-testid="onboarding-qualification">
         <GridSelectField
-          legend={t("onboarding.qualification.ownershipLegend")}
-          name="profile_ownership"
-          options={OWNERSHIP_OPTIONS.map((o) => ({
+          legend=""
+          name="profile_relationship"
+          options={RELATIONSHIP_OPTIONS.map((o) => ({
             value: o.value,
-            label: t(`onboarding.compactOptions.profileOwnership.${o.value}`),
+            label: t(`onboarding.compactOptions.profileRelationship.${o.value}`),
             Icon: o.Icon,
           }))}
-          value={ownership}
+          value={relationship}
           onChange={(v) => {
-            form.setValue("profile_ownership", v as ProfileOwnership, {
+            form.setValue("profile_relationship", v as ProfileRelationship, {
               shouldValidate: true,
             });
-            setOwnershipError(null);
+            setRelationshipError(null);
           }}
-          error={ownershipError ?? undefined}
-        />
-
-        <GridSelectField
-          legend={t("onboarding.qualification.goalLegend")}
-          name="goal"
-          options={GOAL_OPTIONS.map((o) => ({
-            value: o.value,
-            label: t(`onboarding.compactOptions.goal.${o.value}`),
-            Icon: o.Icon,
-          }))}
-          value={goal}
-          onChange={(v) => {
-            form.setValue("goal", v as Goal, { shouldValidate: true });
-            form.setValue("goal_other_text", "", { shouldValidate: false });
-            setGoalError(null);
-          }}
-          error={goalError ?? undefined}
+          error={relationshipError ?? undefined}
         />
 
         {serverError ? (
@@ -1508,23 +1363,13 @@ function QualificationStepBody({
           type="button"
           size="lg"
           onClick={handleContinue}
-          disabled={submitting || !ownership || !goal}
+          disabled={submitting || !relationship}
           className="w-full sm:flex-1 sm:min-w-0 rounded-lg font-medium"
           data-testid="onboarding-qualification-continue"
         >
           <span className="truncate">{t("onboarding.qualification.cta")}</span>
         </Button>
       </div>
-      {!submitting && (!ownership || !goal) ? (
-        <p
-          className="mt-2 text-xs text-content-tertiary text-center sm:text-right"
-          aria-live="polite"
-        >
-          {t("onboarding.qualification.missingHint")}
-        </p>
-      ) : null}
     </div>
   );
 }
-
-

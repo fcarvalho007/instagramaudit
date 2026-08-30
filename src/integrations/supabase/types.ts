@@ -1050,6 +1050,8 @@ export type Database = {
           handle: string
           id: string
           lead_id: string
+          profile_relationship: string | null
+          relationship_source: string | null
           source: string
         }
         Insert: {
@@ -1059,6 +1061,8 @@ export type Database = {
           handle: string
           id?: string
           lead_id: string
+          profile_relationship?: string | null
+          relationship_source?: string | null
           source?: string
         }
         Update: {
@@ -1068,6 +1072,8 @@ export type Database = {
           handle?: string
           id?: string
           lead_id?: string
+          profile_relationship?: string | null
+          relationship_source?: string | null
           source?: string
         }
         Relationships: []

@@ -64,19 +64,14 @@ async function countFreshSuccess(opts: {
   if (opts.network) q = q.eq("network", opts.network);
   const { count, error } = await q;
   if (error) {
-    console.error(
-      `[public-rate-limit] count query failed (${opts.column})`,
-      error.message,
-    );
+    console.error(`[public-rate-limit] count query failed (${opts.column})`, error.message);
     return 0;
   }
   return count ?? 0;
 }
 
 /** Throws RateLimitError when IP or handle exceeds its 24h fresh quota. */
-export async function assertWithinPublicRateLimit(
-  input: AssertInput,
-): Promise<void> {
+export async function assertWithinPublicRateLimit(input: AssertInput): Promise<void> {
   const now = input.now ?? new Date();
   const sinceIso = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
   const network = (input.network ?? "instagram").toLowerCase();
@@ -103,5 +98,36 @@ export async function assertWithinPublicRateLimit(
     if (ipCount >= ipLimit) {
       throw new RateLimitError("ip", ipCount, ipLimit);
     }
+  }
+}
+
+/**
+ * Limite dedicado ao baseline anónimo (PUBLIC_BASELINE_NO_EMAIL=true).
+ *
+ * Sem email não há lead nem crédito a travar o custo do provider: o único
+ * limitador seria o cap global. Aplicamos um tecto por IP mais apertado do
+ * que o limite geral, contando análises FRESH bem-sucedidas nas últimas 24h.
+ *
+ * `PUBLIC_ANON_MAX_FRESH_PER_IP_DAY` (default 3).
+ */
+export function getAnonymousMaxFreshPerIpDay(): number {
+  return readNumber("PUBLIC_ANON_MAX_FRESH_PER_IP_DAY", 3);
+}
+
+export async function assertWithinAnonymousBaselineRateLimit(input: {
+  ipHash: string | null | undefined;
+  now?: Date;
+}): Promise<void> {
+  if (!input.ipHash) return;
+  const now = input.now ?? new Date();
+  const sinceIso = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+  const limit = getAnonymousMaxFreshPerIpDay();
+  const count = await countFreshSuccess({
+    column: "request_ip_hash",
+    value: input.ipHash,
+    sinceIso,
+  });
+  if (count >= limit) {
+    throw new RateLimitError("ip", count, limit);
   }
 }

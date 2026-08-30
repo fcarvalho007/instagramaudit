@@ -264,7 +264,11 @@
       "goalOtherHint": "Minimum 2 characters",
       "back": "Back",
       "cta": "Continue  →",
-      "error": "Pick the context that best describes you."
+      "error": "Pick the context that best describes you.",
+      "relationshipTitle": "Just so we can tailor the analysis",
+      "relationshipSubtitle": "What is your relationship with @{{handle}}?",
+      "relationshipSubtitleCheckout": "What is your relationship with the profile you want to analyse?",
+      "relationshipError": "Pick an option"
     },
     "otp": {
       "eyebrow": "CONFIRM YOUR EMAIL",
@@ -360,6 +364,13 @@
         "benchmark_competitors": "Compare with others",
         "client_report": "Present to a client",
         "grow_audience": "Grow my audience"
+      },
+      "profileRelationship": {
+        "owner": "It is my account",
+        "manages": "I work with this account",
+        "client": "It belongs to a client",
+        "competitor": "It is a competitor",
+        "research": "Just exploring"
       }
     },
     "cta": {

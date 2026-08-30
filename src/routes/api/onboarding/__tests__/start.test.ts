@@ -330,26 +330,32 @@ describe("POST /api/onboarding/start", () => {
     expect(setLeadCookieMock).not.toHaveBeenCalled();
   });
 
-  it("missing qualification → 400 INVALID_PAYLOAD (qualification field)", async () => {
+  // Ronda 2: `qualification` deixou de ser recolhida na UI. O payload é
+  // aceite sem ela e a qualificação de CRM é derivada de
+  // `profile_relationship` quando presente.
+  it("missing qualification → 200 (derivada de profile_relationship)", async () => {
     const res = await handleOnboardingStart(
       post({
         name: "Ana",
         email: "noqual@example.com",
         qualification: undefined,
+        profile_relationship: "client",
       }),
     );
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as {
-      ok: boolean;
-      error_code: string;
-      issues?: { field: string; code: string }[];
-    };
-    expect(body.error_code).toBe("INVALID_PAYLOAD");
-    expect(body.issues).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ field: "qualification" }),
-      ]),
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { ok: boolean };
+    expect(body.ok).toBe(true);
+  });
+
+  it("payload sem qualification nem relação → 200", async () => {
+    const res = await handleOnboardingStart(
+      post({
+        name: "Ana",
+        email: "norel@example.com",
+        qualification: undefined,
+      }),
     );
+    expect(res.status).toBe(200);
   });
 
   it("missing gdpr_consent → 400 INVALID_PAYLOAD", async () => {
