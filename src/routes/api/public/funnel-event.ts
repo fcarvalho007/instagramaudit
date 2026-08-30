@@ -26,6 +26,20 @@ export const ANONYMOUS_FUNNEL_EVENTS = [
   "save_audit_cta_clicked",
   "level2_cta_viewed",
   "level2_cta_clicked",
+  // Ronda 4 — captura pós-valor e desbloqueio do Nível 2
+  "lead_cta_clicked",
+  "lead_modal_viewed",
+  "email_started",
+  "email_submitted",
+  "lead_created",
+  "existing_lead_detected",
+  "snapshot_claimed",
+  "relationship_question_viewed",
+  "relationship_answered",
+  "relationship_skipped",
+  "comment_intelligence_started",
+  "comment_intelligence_success",
+  "comment_intelligence_failed",
 ] as const;
 
 export type AnonymousFunnelEvent = (typeof ANONYMOUS_FUNNEL_EVENTS)[number];
