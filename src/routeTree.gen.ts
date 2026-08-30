@@ -136,6 +136,7 @@ import { Route as ApiAdminSnapshotByIdSnapshotIdRouteImport } from './routes/api
 import { Route as ApiAdminSistemaVisualCoverDebugRouteImport } from './routes/api/admin/sistema.visual-cover-debug'
 import { Route as ApiAdminSistemaSyncNowRouteImport } from './routes/api/admin/sistema.sync-now'
 import { Route as ApiAdminSistemaSecretsRouteImport } from './routes/api/admin/sistema.secrets'
+import { Route as ApiAdminSistemaScrapecreatorsRouteImport } from './routes/api/admin/sistema.scrapecreators'
 import { Route as ApiAdminSistemaRuntimeChecksRouteImport } from './routes/api/admin/sistema.runtime-checks'
 import { Route as ApiAdminSistemaProviderCallsRouteImport } from './routes/api/admin/sistema.provider-calls'
 import { Route as ApiAdminSistemaHealthRouteImport } from './routes/api/admin/sistema.health'
@@ -848,6 +849,12 @@ const ApiAdminSistemaSecretsRoute = ApiAdminSistemaSecretsRouteImport.update({
   path: '/api/admin/sistema/secrets',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminSistemaScrapecreatorsRoute =
+  ApiAdminSistemaScrapecreatorsRouteImport.update({
+    id: '/api/admin/sistema/scrapecreators',
+    path: '/api/admin/sistema/scrapecreators',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminSistemaRuntimeChecksRoute =
   ApiAdminSistemaRuntimeChecksRouteImport.update({
     id: '/api/admin/sistema/runtime-checks',
@@ -1232,6 +1239,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/sistema/health': typeof ApiAdminSistemaHealthRoute
   '/api/admin/sistema/provider-calls': typeof ApiAdminSistemaProviderCallsRoute
   '/api/admin/sistema/runtime-checks': typeof ApiAdminSistemaRuntimeChecksRoute
+  '/api/admin/sistema/scrapecreators': typeof ApiAdminSistemaScrapecreatorsRoute
   '/api/admin/sistema/secrets': typeof ApiAdminSistemaSecretsRoute
   '/api/admin/sistema/sync-now': typeof ApiAdminSistemaSyncNowRoute
   '/api/admin/sistema/visual-cover-debug': typeof ApiAdminSistemaVisualCoverDebugRoute
@@ -1400,6 +1408,7 @@ export interface FileRoutesByTo {
   '/api/admin/sistema/health': typeof ApiAdminSistemaHealthRoute
   '/api/admin/sistema/provider-calls': typeof ApiAdminSistemaProviderCallsRoute
   '/api/admin/sistema/runtime-checks': typeof ApiAdminSistemaRuntimeChecksRoute
+  '/api/admin/sistema/scrapecreators': typeof ApiAdminSistemaScrapecreatorsRoute
   '/api/admin/sistema/secrets': typeof ApiAdminSistemaSecretsRoute
   '/api/admin/sistema/sync-now': typeof ApiAdminSistemaSyncNowRoute
   '/api/admin/sistema/visual-cover-debug': typeof ApiAdminSistemaVisualCoverDebugRoute
@@ -1571,6 +1580,7 @@ export interface FileRoutesById {
   '/api/admin/sistema/health': typeof ApiAdminSistemaHealthRoute
   '/api/admin/sistema/provider-calls': typeof ApiAdminSistemaProviderCallsRoute
   '/api/admin/sistema/runtime-checks': typeof ApiAdminSistemaRuntimeChecksRoute
+  '/api/admin/sistema/scrapecreators': typeof ApiAdminSistemaScrapecreatorsRoute
   '/api/admin/sistema/secrets': typeof ApiAdminSistemaSecretsRoute
   '/api/admin/sistema/sync-now': typeof ApiAdminSistemaSyncNowRoute
   '/api/admin/sistema/visual-cover-debug': typeof ApiAdminSistemaVisualCoverDebugRoute
@@ -1743,6 +1753,7 @@ export interface FileRouteTypes {
     | '/api/admin/sistema/health'
     | '/api/admin/sistema/provider-calls'
     | '/api/admin/sistema/runtime-checks'
+    | '/api/admin/sistema/scrapecreators'
     | '/api/admin/sistema/secrets'
     | '/api/admin/sistema/sync-now'
     | '/api/admin/sistema/visual-cover-debug'
@@ -1911,6 +1922,7 @@ export interface FileRouteTypes {
     | '/api/admin/sistema/health'
     | '/api/admin/sistema/provider-calls'
     | '/api/admin/sistema/runtime-checks'
+    | '/api/admin/sistema/scrapecreators'
     | '/api/admin/sistema/secrets'
     | '/api/admin/sistema/sync-now'
     | '/api/admin/sistema/visual-cover-debug'
@@ -2081,6 +2093,7 @@ export interface FileRouteTypes {
     | '/api/admin/sistema/health'
     | '/api/admin/sistema/provider-calls'
     | '/api/admin/sistema/runtime-checks'
+    | '/api/admin/sistema/scrapecreators'
     | '/api/admin/sistema/secrets'
     | '/api/admin/sistema/sync-now'
     | '/api/admin/sistema/visual-cover-debug'
@@ -2218,6 +2231,7 @@ export interface RootRouteChildren {
   ApiAdminSistemaHealthRoute: typeof ApiAdminSistemaHealthRoute
   ApiAdminSistemaProviderCallsRoute: typeof ApiAdminSistemaProviderCallsRoute
   ApiAdminSistemaRuntimeChecksRoute: typeof ApiAdminSistemaRuntimeChecksRoute
+  ApiAdminSistemaScrapecreatorsRoute: typeof ApiAdminSistemaScrapecreatorsRoute
   ApiAdminSistemaSecretsRoute: typeof ApiAdminSistemaSecretsRoute
   ApiAdminSistemaSyncNowRoute: typeof ApiAdminSistemaSyncNowRoute
   ApiAdminSistemaVisualCoverDebugRoute: typeof ApiAdminSistemaVisualCoverDebugRoute
@@ -3126,6 +3140,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminSistemaSecretsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/sistema/scrapecreators': {
+      id: '/api/admin/sistema/scrapecreators'
+      path: '/api/admin/sistema/scrapecreators'
+      fullPath: '/api/admin/sistema/scrapecreators'
+      preLoaderRoute: typeof ApiAdminSistemaScrapecreatorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/sistema/runtime-checks': {
       id: '/api/admin/sistema/runtime-checks'
       path: '/api/admin/sistema/runtime-checks'
@@ -3781,6 +3802,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminSistemaHealthRoute: ApiAdminSistemaHealthRoute,
   ApiAdminSistemaProviderCallsRoute: ApiAdminSistemaProviderCallsRoute,
   ApiAdminSistemaRuntimeChecksRoute: ApiAdminSistemaRuntimeChecksRoute,
+  ApiAdminSistemaScrapecreatorsRoute: ApiAdminSistemaScrapecreatorsRoute,
   ApiAdminSistemaSecretsRoute: ApiAdminSistemaSecretsRoute,
   ApiAdminSistemaSyncNowRoute: ApiAdminSistemaSyncNowRoute,
   ApiAdminSistemaVisualCoverDebugRoute: ApiAdminSistemaVisualCoverDebugRoute,
