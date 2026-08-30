@@ -13,7 +13,7 @@
  * Eight scenarios — see the per-`it` headers below.
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // ─── Hoisted mutable state shared with vi.mock factories ───────────────
 const state = vi.hoisted(() => {
@@ -695,5 +695,97 @@ describe("analyze-public-v1 · Phase 2 credit gate contract", () => {
       const args = spy.mock.calls[0][0];
       expect(args.analysisWindow ?? null).toBeNull();
     });
+  });
+});
+
+// ─── Baseline gratuita (PUBLIC_BASELINE_NO_EMAIL=true) ─────────────────
+describe("analyze-public-v1 · baseline gratuita", () => {
+  beforeEach(() => {
+    process.env.PUBLIC_BASELINE_NO_EMAIL = "true";
+  });
+  afterEach(() => {
+    process.env.PUBLIC_BASELINE_NO_EMAIL = "false";
+  });
+
+  it("A. sem cookie de lead → baseline devolve 200 e não escreve no ledger", async () => {
+    state.snapshot = freshSnapshot();
+    state.snapshotIsFresh = true;
+    const res = await postHandler({ request: buildRequest() });
+    expect(res.status).toBe(200);
+    expect(state.ledger).toHaveLength(0);
+  });
+
+  it("B. lead com saldo 0 → baseline devolve 200, saldo intacto, zero débitos", async () => {
+    await credits.grantInitialCredits(LEAD_ID);
+    for (let i = 0; i < 2; i += 1) {
+      const r = await credits.reserveCredit({ leadId: LEAD_ID });
+      if (r.kind !== "reserved") throw new Error("expected reserved");
+      await credits.confirmReservation({ leadId: LEAD_ID, reservationId: r.reservationId });
+    }
+    expect(await credits.getBalance(LEAD_ID)).toBe(0);
+    const ledgerBefore = state.ledger.length;
+
+    state.snapshot = freshSnapshot();
+    state.snapshotIsFresh = true;
+    const res = await postHandler({
+      request: buildRequest({ withCookie: encodeLeadCookie(LEAD_ID) }),
+    });
+    expect(res.status).toBe(200);
+    expect(await credits.getBalance(LEAD_ID)).toBe(0);
+    expect(state.ledger).toHaveLength(ledgerBefore);
+    // Histórico continua a ser associado ao lead.
+    expect(state.leadReports).toHaveLength(1);
+  });
+
+  it("C. lead com saldo 0 + cache miss → fresh 200 sem débito", async () => {
+    await credits.grantInitialCredits(LEAD_ID);
+    for (let i = 0; i < 2; i += 1) {
+      const r = await credits.reserveCredit({ leadId: LEAD_ID });
+      if (r.kind !== "reserved") throw new Error("expected reserved");
+      await credits.confirmReservation({ leadId: LEAD_ID, reservationId: r.reservationId });
+    }
+    const ledgerBefore = state.ledger.length;
+
+    state.snapshot = null;
+    state.apifyRowFactory = () =>
+      fullProfileRow({
+        postsCount: 12,
+        latestPosts: Array.from({ length: 12 }, (_, i) => ({ id: `p${i}`, shortcode: `s${i}` })),
+      });
+    state.normalizeProfileResult = fakeNormalizedProfile({ postsCount: 12, isProfessional: true });
+
+    const res = await postHandler({
+      request: buildRequest({ withCookie: encodeLeadCookie(LEAD_ID) }),
+    });
+    expect(res.status).toBe(200);
+    expect(state.apifyCallCount).toBe(1);
+    expect(await credits.getBalance(LEAD_ID)).toBe(0);
+    expect(state.ledger).toHaveLength(ledgerBefore);
+  });
+
+  it("G. concorrentes continuam gated mesmo com a baseline gratuita activa", async () => {
+    await credits.grantInitialCredits(LEAD_ID);
+    const res = await postHandler({
+      request: buildRequest({
+        withCookie: encodeLeadCookie(LEAD_ID),
+        body: { instagram_username: HANDLE, competitor_usernames: ["outro"] },
+      }),
+    });
+    const body = (await res.json()) as { error_code?: string };
+    expect(body.error_code).toBe("COMPETITORS_REQUIRE_PRO");
+    expect(state.apifyCallCount).toBe(0);
+  });
+
+  it("H. janela 30d sem Pro continua gated", async () => {
+    await credits.grantInitialCredits(LEAD_ID);
+    const res = await postHandler({
+      request: buildRequest({
+        withCookie: encodeLeadCookie(LEAD_ID),
+        body: { instagram_username: HANDLE, window: "30d" },
+      }),
+    });
+    const body = (await res.json()) as { error_code?: string };
+    expect(body.error_code).toBe("WINDOW_REQUIRES_PRO");
+    expect(state.apifyCallCount).toBe(0);
   });
 });
