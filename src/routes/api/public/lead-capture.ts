@@ -65,6 +65,20 @@ function rateLimited(ip: string): boolean {
   return false;
 }
 
+// Guarda de reenvio: 1 email de acesso por (lead, cache_key) por hora.
+const ACCESS_EMAIL_WINDOW_MS = 60 * 60 * 1000;
+const accessEmailSends = new Map<string, number>();
+
+function accessEmailThrottled(leadId: string, cacheKey: string): boolean {
+  const key = `${leadId}:${cacheKey}`;
+  const now = Date.now();
+  const last = accessEmailSends.get(key);
+  if (last && now - last < ACCESS_EMAIL_WINDOW_MS) return true;
+  accessEmailSends.set(key, now);
+  if (accessEmailSends.size > 5000) accessEmailSends.clear();
+  return false;
+}
+
 export const Route = createFileRoute("/api/public/lead-capture")({
   server: {
     handlers: {
