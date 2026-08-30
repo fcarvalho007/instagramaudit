@@ -123,7 +123,7 @@ async function getJson(
     const payload = (await res.json()) as Record<string, unknown>;
     const cached =
       payload.cached === true ||
-      (res.headers.get("x-cache") ?? "").toLowerCase() === "hit";
+      (res.headers?.get("x-cache") ?? "").toLowerCase() === "hit";
     const chargedHeader = headerNumber(
       res,
       "x-credits-charged",
