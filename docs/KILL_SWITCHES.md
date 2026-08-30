@@ -35,3 +35,10 @@ relatório público nem o unlock — são apenas side effects.
   - `src/lib/email/transactional-email.server.ts` → `sendViaBrevo` + bloco fallback
   - `src/lib/email/lead-magnet-sequence.server.ts` → `sendLeadMagnetSequence`
   - `src/lib/security/apify-allowlist.ts`, `openai-allowlist.ts`, `dataforseo-allowlist.ts`, `analysis/comment-scraper.server.ts`
+## Baseline anónimo (Ronda 3)
+
+| Variável | Default | Efeito |
+| --- | --- | --- |
+| `PUBLIC_BASELINE_NO_EMAIL` | `false` | `true` permite a auditoria inicial sem email/registo. Manter `false` em produção até autorização explícita. |
+| `PUBLIC_ANON_MAX_FRESH_PER_IP_DAY` | `10` | Análises FRESH com sucesso por IP em 24h. Cache hits não contam. |
+| `PUBLIC_ANON_MAX_FRESH_PER_IP_HOUR` | `4` | Tecto horário por IP, para travar rajadas. |
