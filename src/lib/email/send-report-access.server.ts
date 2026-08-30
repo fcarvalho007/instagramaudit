@@ -45,6 +45,8 @@ export interface SendReportAccessArgs {
   toEmail: string;
   firstName?: string | null;
   instagramHandle?: string | null;
+  /** `cache_key` do relatório que originou o email (destino canónico). */
+  reportRef?: string | null;
 }
 
 export type SendReportAccessResult =
@@ -61,6 +63,8 @@ export async function sendReportAccessEmail(
         leadId: args.leadId,
         email: args.toEmail,
         handle: args.instagramHandle ?? null,
+        purpose: "report_access",
+        reportRef: args.reportRef ?? null,
       },
       undefined,
       ACCOUNT_ACCESS_TTL_SECONDS,
