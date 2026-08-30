@@ -24,9 +24,9 @@ function num(value: number | null | undefined): number {
 export interface PostAveragesOptions {
   /**
    * Exclude pinned posts (`is_pinned === true`) from the calculation.
-   * Defaults to `true` so Block 1 (Visão Geral) and Block 2 (P05) stay
-   * aligned with `buildBlock01Sample` (the official sample). Callers that
-   * want the legacy behaviour can pass `false`.
+   * Defaults to `false`: a post is not an outlier merely for being pinned.
+   * Temporal filtering is done by timestamp elsewhere. Callers that
+   * explicitly need the legacy behaviour can pass `true`.
    *
    * When every post is pinned the function falls back to using all of
    * them, so the report never returns null just because the only posts
@@ -49,7 +49,7 @@ export function computePostAverages(
 ): PostAverages | null {
   if (!Array.isArray(posts) || posts.length === 0) return null;
 
-  const excludePinned = options.excludePinned ?? true;
+  const excludePinned = options.excludePinned ?? false;
   const nonPinned = excludePinned
     ? posts.filter((p) => p?.is_pinned !== true)
     : posts;

@@ -335,6 +335,11 @@ vi.mock("@/lib/enrichment/types", () => ({
 // ─── Test setup ────────────────────────────────────────────────────────
 
 process.env.SESSION_SECRET = "test-secret-at-least-16-chars-long";
+// This suite exercises the Apify path specifically (mocked actor client).
+process.env.APIFY_TOKEN = "test-apify-token";
+process.env.SOCIAL_PROVIDER_PROFILE = "apify";
+process.env.SOCIAL_PROVIDER_POSTS = "apify";
+process.env.SOCIAL_PROVIDER_FALLBACK = "false";
 process.env.INTERNAL_API_TOKEN = "internal-token-for-tests";
 
 const LEAD_ID = "11111111-2222-3333-4444-555555555555";

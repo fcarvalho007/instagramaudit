@@ -30,7 +30,7 @@ describe("computeCadence", () => {
     expect(r.sufficient).toBe(true);
   });
 
-  it("robs.cortez fixture: 2 pinned from 2023 + 10 recent → ignores pinned", () => {
+  it("robs.cortez fixture: 2 pinned from 2023 + 10 recent → old posts dropped by date", () => {
     const posts = [
       p("2023-09-05T19:22:49.000Z", { pinned: true }),
       p("2023-05-11T18:18:10.000Z", { pinned: true }),
@@ -141,13 +141,13 @@ describe("computeCadence", () => {
     expect(r.sampleSize).toBe(3);
   });
 
-  it("only pinned posts → insufficient", () => {
+  it("only pinned posts → analysed by timestamp, never dropped for being pinned", () => {
     const posts = [
       p("2023-05-11T18:18:10.000Z", { pinned: true }),
       p("2023-09-05T19:22:49.000Z", { pinned: true }),
     ];
     const r = computeCadence(posts, { now: NOW });
-    expect(r.method).toBe("insufficient");
-    expect(r.sampleSize).toBe(0);
+    expect(r.excludedPinned).toBe(0);
+    expect(r.sampleSize).toBe(2);
   });
 });

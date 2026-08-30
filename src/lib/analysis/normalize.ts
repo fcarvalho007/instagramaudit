@@ -338,6 +338,12 @@ export interface EnrichedPost {
   likes: number;
   comments: number;
   video_views: number | null;
+  /** Canonical play count (Reels/vídeo). Distinct from `video_views`. */
+  video_plays?: number | null;
+  /** Branded-content flag, when the provider exposes it. */
+  is_paid_partnership?: boolean | null;
+  /** Number of items in a carousel post. */
+  carousel_item_count?: number | null;
   thumbnail_url: string | null;
   /**
    * Persisted Supabase Storage URL for the thumbnail. `null` until persistence
@@ -397,6 +403,11 @@ type RawPostExtended = RawPost & {
   edge_media_to_caption?: { edges?: Array<{ node?: { text?: string } }> };
   videoViewCount?: number;
   videoPlayCount?: number;
+  play_count?: number;
+  isPaidPartnership?: boolean;
+  is_paid_partnership?: boolean;
+  carouselItemCount?: number;
+  carousel_media_count?: number;
   video_views?: number;
   views?: number;
   taken_at?: number;
@@ -476,13 +487,18 @@ function pickThumbnail(raw: RawPostExtended): string | null {
   );
 }
 
+/**
+ * Canonical PLAY count. Only true play signals feed it:
+ * Apify `videoPlayCount` / ScrapeCreators `play_count`. Never `videoViewCount`
+ * — views and plays are different metrics and must not be conflated.
+ */
+function pickVideoPlays(raw: RawPostExtended): number | null {
+  return pickNumber(raw.videoPlayCount, raw.play_count);
+}
+
+/** View count, kept separate from plays. Null when the provider omits it. */
 function pickVideoViews(raw: RawPostExtended): number | null {
-  return pickNumber(
-    raw.videoViewCount,
-    raw.videoPlayCount,
-    raw.video_views,
-    raw.views,
-  );
+  return pickNumber(raw.videoViewCount, raw.video_views, raw.views);
 }
 
 function extractHandleList(
@@ -630,6 +646,11 @@ export function enrichPosts(
       likes,
       comments,
       video_views: pickVideoViews(raw),
+      video_plays: pickVideoPlays(raw),
+      is_paid_partnership:
+        raw.isPaidPartnership ?? raw.is_paid_partnership ?? null,
+      carousel_item_count:
+        pickNumber(raw.carouselItemCount, raw.carousel_media_count),
       thumbnail_url: pickThumbnail(raw),
       thumbnail_storage_url: null,
       is_video: isVideo,

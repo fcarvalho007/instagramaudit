@@ -1496,9 +1496,13 @@ export type Database = {
           actual_cost_usd: number | null
           analysis_event_id: string | null
           apify_run_id: string | null
+          cached: boolean | null
           completion_tokens: number | null
           created_at: string
+          credits_charged: number | null
+          credits_remaining: number | null
           duration_ms: number | null
+          endpoint: string | null
           error_excerpt: string | null
           estimated_cost_usd: number | null
           handle: string
@@ -1518,9 +1522,13 @@ export type Database = {
           actual_cost_usd?: number | null
           analysis_event_id?: string | null
           apify_run_id?: string | null
+          cached?: boolean | null
           completion_tokens?: number | null
           created_at?: string
+          credits_charged?: number | null
+          credits_remaining?: number | null
           duration_ms?: number | null
+          endpoint?: string | null
           error_excerpt?: string | null
           estimated_cost_usd?: number | null
           handle: string
@@ -1540,9 +1548,13 @@ export type Database = {
           actual_cost_usd?: number | null
           analysis_event_id?: string | null
           apify_run_id?: string | null
+          cached?: boolean | null
           completion_tokens?: number | null
           created_at?: string
+          credits_charged?: number | null
+          credits_remaining?: number | null
           duration_ms?: number | null
+          endpoint?: string | null
           error_excerpt?: string | null
           estimated_cost_usd?: number | null
           handle?: string

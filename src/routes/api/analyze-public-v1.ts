@@ -113,13 +113,12 @@ import {
   type PublicWindowConfig,
   type PublicWindowKind,
 } from "@/lib/analysis/window-configs";
-import { PUBLIC_INSTAGRAM_POSTS_LIMIT } from "@/lib/analysis/constants";
 import {
-  fallbackProviderFor,
-  isProviderSideFailure,
-  scrapeCreatorsProvider,
-  selectProvider,
+  fetchPosts,
+  fetchProfile,
 } from "@/lib/analysis/providers/index.server";
+
+
 import { hasEntitlement } from "@/lib/payments/entitlements.server";
 
 // Unified Apify actor — returns profile details with `latestPosts[]` embedded
@@ -299,17 +298,17 @@ function windowCutoffMs(spec: string | undefined): number | undefined {
 }
 
 /**
- * Fetch profile + posts for one handle.
+ * Fetch profile + posts for one handle, through the provider router.
  *
- * Baseline: ONE `details` run (profile row with up to 12 embedded posts).
+ * Baseline: one profile call (the row already carries the latest posts when
+ * the provider embeds them).
  *
- * Wide windows (30d/90d): TWO runs, because the actor ignores
- * `onlyPostsNewerThan` in `details` mode and `details.latestPosts` is capped
- * at ~12 items regardless of `resultsLimit`:
- *   A) `details` → profile fields (followers, bio, verification, …)
- *   B) `posts`   → the real list of posts inside the window
- * The two datasets are recombined into a single row so every downstream
- * normalizer keeps working unchanged.
+ * Wide windows (30d/90d): a second posts call, because embedded samples stop
+ * at ~12 items. The two datasets are recombined into a single row so every
+ * downstream normalizer keeps working unchanged.
+ *
+ * Provider selection and fallback live in the router — this function is
+ * provider-agnostic.
  */
 async function fetchProfileWithPosts(
   username: string,
@@ -321,111 +320,46 @@ async function fetchProfileWithPosts(
   /** Real dataset item count across every run made for this handle. */
   billedResults: number;
 }> {
-  const profileUrl = `https://www.instagram.com/${username}/`;
   const wide = cfg.costTier === "wide" && Boolean(cfg.onlyPostsNewerThan);
 
-  // ---- Run A: profile details ------------------------------------------
-  const detailsInput: Record<string, unknown> = {
-    directUrls: [profileUrl],
-    resultsType: "details",
-    // For wide windows the embedded posts are discarded (run B supersedes
-    // them), so keep this small. Baseline still needs the full sample.
-    resultsLimit: wide ? PUBLIC_INSTAGRAM_POSTS_LIMIT : cfg.resultsLimit,
-    addParentData: false,
-  };
-  const detailsResult = await runActorWithMetadata<Record<string, unknown>>(
-    UNIFIED_ACTOR,
-    detailsInput,
-    {
-      timeoutMs: wide ? 60_000 : cfg.timeoutMs,
-      apifyTimeoutSecs: wide ? 55 : cfg.apifyTimeoutSecs,
-      // `maxItems: 1` → one profile ROW. `resultsLimit` → posts inside that
-      // row. `maxTotalChargeUsd` is the final per-call USD safety net.
-      maxItems: 1,
-      maxTotalChargeUsd: wide ? 0.05 : cfg.maxTotalChargeUsd,
-    },
-  );
-  const row = detailsResult.items[0] ?? null;
-  let billedResults = detailsResult.items.length;
-  let actualCostUsd = detailsResult.actualCostUsd;
+  // ---- Step A: profile ---------------------------------------------------
+  const profileResult = await fetchProfile(username);
+  const row = profileResult.row;
+  let billedResults = profileResult.billedResults;
+  let actualCostUsd = profileResult.actualCostUsd;
+  let runId = profileResult.runId;
 
   if (!wide || !row) {
-    return {
-      row,
-      runId: detailsResult.runId,
-      actualCostUsd,
-      billedResults,
-    };
+    return { row, runId, actualCostUsd, billedResults };
   }
 
-  // ---- Run B: posts inside the window ----------------------------------
+  // ---- Step B: posts inside the window -----------------------------------
   // Runs sequentially (never in parallel) so a single analysis holds at most
   // one global Apify lease at a time.
   const sinceMs = windowCutoffMs(cfg.onlyPostsNewerThan);
+  const postsResult = await fetchPosts(username, {
+    sinceMs,
+    maxPosts: cfg.resultsLimit,
+    timeoutMs: cfg.timeoutMs,
+  });
 
-  // ScrapeCreators path: cursor pagination genuinely walks the window back,
-  // instead of stopping at the actor's page limit.
-  if (selectProvider("posts") === "scrapecreators") {
-    try {
-      const sc = await scrapeCreatorsProvider.fetchPosts(username, {
-        sinceMs,
-        maxPosts: cfg.resultsLimit,
-        timeoutMs: cfg.timeoutMs,
-      });
-      if (sc.rows.length > 0) {
-        row.latestPosts = sc.rows;
-        return {
-          row,
-          runId: detailsResult.runId,
-          actualCostUsd,
-          billedResults: billedResults + sc.billedResults,
-        };
-      }
-    } catch (err) {
-      if (!isProviderSideFailure(err) || fallbackProviderFor("scrapecreators") !== "apify") {
-        throw err;
-      }
-      console.warn(
-        "[providers] ScrapeCreators posts failed, falling back to Apify:",
-        err instanceof Error ? err.message : String(err),
-      );
-    }
-  }
-
-  const postsResult = await runActorWithMetadata<Record<string, unknown>>(
-    UNIFIED_ACTOR,
-    {
-      directUrls: [profileUrl],
-      resultsType: "posts",
-      resultsLimit: cfg.resultsLimit,
-      onlyPostsNewerThan: cfg.onlyPostsNewerThan,
-      addParentData: false,
-    },
-    {
-      timeoutMs: cfg.timeoutMs,
-      apifyTimeoutSecs: cfg.apifyTimeoutSecs,
-      maxItems: cfg.resultsLimit,
-      maxTotalChargeUsd: cfg.maxTotalChargeUsd,
-    },
-  );
-  billedResults += postsResult.items.length;
+  billedResults += postsResult.billedResults;
   if (typeof postsResult.actualCostUsd === "number") {
     actualCostUsd = (actualCostUsd ?? 0) + postsResult.actualCostUsd;
   }
-  // Replace the 12-post `details` sample with the real window dataset.
-  // If run B returned nothing we keep the details sample rather than
-  // pretending the profile has no activity.
-  if (postsResult.items.length > 0) {
-    row.latestPosts = postsResult.items;
+  runId = postsResult.runId ?? runId;
+
+  // Replace the embedded sample with the real window dataset. If the posts
+  // call returned nothing we keep the sample rather than pretending the
+  // profile has no activity.
+  if (postsResult.rows.length > 0) {
+    row.latestPosts = postsResult.rows;
+    row.analysis_window_truncated = postsResult.truncated;
   }
 
-  return {
-    row,
-    runId: postsResult.runId ?? detailsResult.runId,
-    actualCostUsd,
-    billedResults,
-  };
+  return { row, runId, actualCostUsd, billedResults };
 }
+
 
 /**
  * Wraps `fetchProfileWithPosts` to emit one `provider_call_logs` row per

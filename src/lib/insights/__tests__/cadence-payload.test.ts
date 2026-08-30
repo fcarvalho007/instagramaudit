@@ -97,7 +97,7 @@ describe("cadence in OpenAI payload", () => {
     expect(payload.allowed_evidence_paths).toContain("cadence.sufficient");
   });
 
-  it("fixture robs.cortez: 2 pinned antigos + 10 recentes → window_30d, pinnedExcluded=2", () => {
+  it("fixture robs.cortez: 2 pinned antigos + 10 recentes → window_30d, excluídos por data", () => {
     const pinned: Post[] = [
       {
         format: "Reels",
@@ -127,8 +127,9 @@ describe("cadence in OpenAI payload", () => {
     expect(payload.cadence.method).toBe("window_30d");
     expect(payload.cadence.sampleSize).toBe(10);
     expect(payload.cadence.sufficient).toBe(true);
-    expect(payload.cadence.pinnedExcluded).toBe(2);
-    expect(payload.allowed_evidence_paths).toContain("cadence.pinnedExcluded");
+    // Pinned posts are no longer excluded for being pinned; the two 2023
+    // entries drop out as date outliers instead.
+    expect(payload.cadence.pinnedExcluded).toBeUndefined();
     // weekly ≈ 10 / 4.345 ≈ 2.3
     expect(payload.cadence.weekly).toBeGreaterThan(2);
     expect(payload.cadence.weekly).toBeLessThan(3);

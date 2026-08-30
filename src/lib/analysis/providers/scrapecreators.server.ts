@@ -4,6 +4,7 @@
  * Endpoints used:
  *   GET /v1/instagram/profile?handle=<h>
  *   GET /v2/instagram/user/posts?handle=<h>[&next_max_id=<cursor>]
+ *   GET /v1/instagram/post/comments?url=<post url>&amount=<n>
  *
  * The posts endpoint paginates by cursor, which is the reason this provider
  * exists: unlike the Apify actor in `details` mode, it can walk back a real
@@ -11,27 +12,44 @@
  *
  * Every row returned here is translated into the Apify row shape consumed by
  * `normalizeProfile` / `normalizePost`. Fields ScrapeCreators does not expose
- * (collaborators, tagged users, location, music) are omitted so downstream
- * blocks flag them as not measurable instead of showing a fake zero.
+ * are omitted so downstream blocks flag them as not measurable instead of
+ * showing a fake zero.
+ *
+ * Cost model: ScrapeCreators bills CREDITS, not USD. While the promotional
+ * credits are in use `monetaryCostUsd` is 0 and only `creditsConsumed` moves.
+ * Set SCRAPECREATORS_COST_PER_CREDIT_USD once a real pack is purchased.
  */
 
-import type {
-  FetchPostsOptions,
-  ProviderPostRow,
-  ProviderPostsResult,
-  ProviderProfileResult,
-  SocialDataProvider,
+import {
+  emptyMeta,
+  type FetchCommentsOptions,
+  type FetchPostsOptions,
+  type ProviderCommentBatch,
+  type ProviderCommentRow,
+  type ProviderCommentsResult,
+  type ProviderPostRow,
+  type ProviderPostsResult,
+  type ProviderProfileResult,
+  type SocialDataProvider,
 } from "./types";
 
-const BASE_URL =
-  process.env.SCRAPECREATORS_BASE_URL ?? "https://api.scrapecreators.com";
+function baseUrl(): string {
+  return process.env.SCRAPECREATORS_BASE_URL ?? "https://api.scrapecreators.com";
+}
 
-/** Credits consumed per request, used only for cost telemetry. */
-const COST_PER_REQUEST_USD = (() => {
-  const raw = process.env.SCRAPECREATORS_COST_PER_REQUEST_USD;
+/** USD per credit. Zero (promotional credits) until explicitly configured. */
+export function getCostPerCreditUsd(): number {
+  const raw = process.env.SCRAPECREATORS_COST_PER_CREDIT_USD;
   const parsed = raw ? Number.parseFloat(raw) : Number.NaN;
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
-})();
+}
+
+/** Acceptable provider-side cache age, in seconds. 0/absent → live data. */
+function cacheMaxAgeSeconds(): number {
+  const raw = process.env.SCRAPECREATORS_CACHE_MAX_AGE_SECONDS;
+  const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
 
 /** Safety net so a broken cursor can never loop forever. */
 const MAX_PAGES = 12;
@@ -51,17 +69,43 @@ function apiKey(): string | null {
   return key && key.trim().length > 0 ? key.trim() : null;
 }
 
+export interface CallTelemetry {
+  creditsCharged: number | null;
+  creditsRemaining: number | null;
+  cached: boolean;
+}
+
+interface CallResult {
+  payload: Record<string, unknown>;
+  telemetry: CallTelemetry;
+}
+
+function headerNumber(res: Response, ...names: string[]): number | null {
+  for (const name of names) {
+    const raw = res.headers?.get(name) ?? null;
+    if (raw === null) continue;
+    const n = Number.parseFloat(raw);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
+
 async function getJson(
   path: string,
   params: Record<string, string>,
   timeoutMs: number,
-): Promise<Record<string, unknown>> {
+): Promise<CallResult> {
   const key = apiKey();
   if (!key) {
     throw new ScrapeCreatorsError("SCRAPECREATORS_API_KEY em falta", null);
   }
-  const url = new URL(path, BASE_URL);
+  const url = new URL(path, baseUrl());
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+  const maxAge = cacheMaxAgeSeconds();
+  if (maxAge > 0 && !url.searchParams.has("cache_max_age")) {
+    url.searchParams.set("cache_max_age", String(maxAge));
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -77,7 +121,41 @@ async function getJson(
         res.status,
       );
     }
-    return (await res.json()) as Record<string, unknown>;
+    const payload = (await res.json()) as Record<string, unknown>;
+    const cached =
+      payload.cached === true ||
+      (res.headers?.get("x-cache") ?? "").toLowerCase() === "hit";
+    const chargedHeader = headerNumber(
+      res,
+      "x-credits-charged",
+      "x-credits-used",
+    );
+    const charged =
+      num(payload.credits_charged) ??
+      chargedHeader ??
+      (cached ? 0 : null);
+    return {
+      payload,
+      telemetry: {
+        creditsCharged: charged,
+        creditsRemaining:
+          num(payload.credits_remaining) ??
+          headerNumber(res, "x-credits-remaining", "x-credits-left"),
+        cached,
+      },
+    };
+  } catch (err) {
+    if (err instanceof ScrapeCreatorsError) throw err;
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new ScrapeCreatorsError(
+        `ScrapeCreators timeout após ${timeoutMs}ms`,
+        504,
+      );
+    }
+    throw new ScrapeCreatorsError(
+      `ScrapeCreators falhou: ${(err as Error).message}`,
+      502,
+    );
   } finally {
     clearTimeout(timer);
   }
@@ -185,6 +263,19 @@ function hasMore(payload: Record<string, unknown>): boolean {
   return flag === undefined ? cursorOf(payload) !== null : Boolean(flag);
 }
 
+function usernameList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const out: string[] = [];
+  for (const item of value) {
+    const rec = asRecord(item);
+    const handle =
+      str(item) ??
+      (rec ? (str(rec.username) ?? str(asRecord(rec.user)?.username)) : null);
+    if (handle) out.push(handle.replace(/^@/, ""));
+  }
+  return out;
+}
+
 /** ScrapeCreators media item → Apify post row. */
 export function mapPost(raw: Record<string, unknown>): ProviderPostRow {
   const caption = str(asRecord(raw.caption)?.text) ?? str(raw.caption);
@@ -201,6 +292,14 @@ export function mapPost(raw: Record<string, unknown>): ProviderPostRow {
       : isVideo
         ? "Video"
         : (str(raw.__typename) ?? "Image");
+
+  const carousel = Array.isArray(raw.carousel_media)
+    ? raw.carousel_media.length
+    : num(raw.carousel_media_count);
+
+  const music = asRecord(asRecord(raw.clips_metadata)?.music_info) ??
+    asRecord(raw.music_info);
+  const songInfo = asRecord(music?.music_asset_info);
 
   return {
     id: str(raw.id) ?? str(raw.pk) ?? shortcode,
@@ -221,14 +320,68 @@ export function mapPost(raw: Record<string, unknown>): ProviderPostRow {
       num(raw.comment_count) ??
       num(raw.comments) ??
       null,
+    // Canonical plays signal. Never map an Apify-style `videoViewCount` here.
     videoPlayCount:
-      num(raw.play_count) ?? num(raw.ig_play_count) ?? num(raw.view_count),
+      num(raw.play_count) ?? num(raw.ig_play_count) ?? null,
     videoDuration: num(raw.video_duration),
     displayUrl:
       str(raw.display_url) ??
       str(raw.thumbnail_url) ??
       str(asRecord(asRecord(raw.image_versions2)?.candidates)?.[0]),
+    isPinned:
+      raw.is_pinned === true ||
+      (Array.isArray(raw.timeline_pinned_user_ids) &&
+        raw.timeline_pinned_user_ids.length > 0),
+    isPaidPartnership: Boolean(
+      raw.is_paid_partnership ?? raw.paid_partnership ?? false,
+    ),
+    carouselMediaCount: carousel,
+    coauthorProducers: usernameList(raw.coauthor_producers),
+    taggedUsers: usernameList(
+      asRecord(raw.usertags)?.in ?? raw.usertags ?? raw.tagged_users,
+    ),
+    locationName: str(asRecord(raw.location)?.name),
+    musicInfo: music
+      ? {
+          song_name:
+            str(songInfo?.title) ?? str(music.song_name) ?? null,
+          artist_name:
+            str(songInfo?.display_artist) ?? str(music.artist_name) ?? null,
+        }
+      : null,
+    // Experimental / internal only — never surfaced as a user-facing claim.
+    genAiDetection:
+      raw.is_gen_ai_content ?? asRecord(raw.gen_ai_detection_method) ?? null,
   };
+}
+
+/** ScrapeCreators comment item → provider-agnostic comment row. */
+export function mapComment(raw: Record<string, unknown>): ProviderCommentRow {
+  const createdAt = num(raw.created_at) ?? num(raw.created_at_utc);
+  return {
+    id: String(str(raw.pk) ?? str(raw.id) ?? ""),
+    text: str(raw.text) ?? undefined,
+    ownerUsername:
+      str(asRecord(raw.user)?.username) ?? str(raw.username) ?? undefined,
+    timestamp:
+      createdAt !== null
+        ? new Date(createdAt * 1000).toISOString()
+        : (str(raw.timestamp) ?? undefined),
+    likesCount:
+      num(raw.comment_like_count) ?? num(raw.like_count) ?? undefined,
+    repliesCount:
+      num(raw.child_comment_count) ?? num(raw.reply_count) ?? undefined,
+  };
+}
+
+function commentArray(payload: Record<string, unknown>): unknown[] {
+  const candidates = [
+    payload.comments,
+    asRecord(payload.data)?.comments,
+    payload.items,
+  ];
+  for (const c of candidates) if (Array.isArray(c)) return c;
+  return [];
 }
 
 export const scrapeCreatorsProvider: SocialDataProvider = {
@@ -239,16 +392,17 @@ export const scrapeCreatorsProvider: SocialDataProvider = {
   },
 
   async fetchProfile(handle: string): Promise<ProviderProfileResult> {
-    const payload = await getJson(
-      "/v1/instagram/profile",
-      { handle },
-      30_000,
-    );
+    const endpoint = "/v1/instagram/profile";
+    const { payload, telemetry } = await getJson(endpoint, { handle }, 30_000);
+    const credits = telemetry.creditsCharged ?? (telemetry.cached ? 0 : 1);
     return {
-      provider: "scrapecreators",
-      runId: null,
-      actualCostUsd: COST_PER_REQUEST_USD || null,
+      ...emptyMeta("scrapecreators", endpoint),
       billedResults: 1,
+      creditsConsumed: credits,
+      creditsRemaining: telemetry.creditsRemaining,
+      cached: telemetry.cached,
+      actualCostUsd: credits * getCostPerCreditUsd(),
+      monetaryCostUsd: credits * getCostPerCreditUsd(),
       row: mapProfile(payload),
     };
   },
@@ -257,10 +411,14 @@ export const scrapeCreatorsProvider: SocialDataProvider = {
     handle: string,
     options: FetchPostsOptions,
   ): Promise<ProviderPostsResult> {
+    const endpoint = "/v2/instagram/user/posts";
     const deadline = Date.now() + options.timeoutMs;
     const rows: ProviderPostRow[] = [];
     let cursor: string | null = null;
     let pages = 0;
+    let credits = 0;
+    let creditsRemaining: number | null = null;
+    let allCached = true;
     let reachedCutoff = false;
     let exhausted = false;
 
@@ -269,12 +427,17 @@ export const scrapeCreatorsProvider: SocialDataProvider = {
       const params: Record<string, string> = { handle };
       if (cursor) params.next_max_id = cursor;
 
-      const payload: Record<string, unknown> = await getJson(
-        "/v2/instagram/user/posts",
+      const { payload, telemetry }: CallResult = await getJson(
+        endpoint,
         params,
         Math.max(5_000, deadline - Date.now()),
       );
       pages += 1;
+      credits += telemetry.creditsCharged ?? (telemetry.cached ? 0 : 1);
+      if (telemetry.creditsRemaining !== null) {
+        creditsRemaining = telemetry.creditsRemaining;
+      }
+      if (!telemetry.cached) allCached = false;
 
       const items = postArray(payload);
       if (items.length === 0) {
@@ -311,17 +474,81 @@ export const scrapeCreatorsProvider: SocialDataProvider = {
       }
     }
 
+    const cost = credits * getCostPerCreditUsd();
     return {
-      provider: "scrapecreators",
-      runId: null,
-      actualCostUsd: COST_PER_REQUEST_USD
-        ? COST_PER_REQUEST_USD * pages
-        : null,
+      ...emptyMeta("scrapecreators", endpoint),
       billedResults: pages,
+      creditsConsumed: credits,
+      creditsRemaining,
+      cached: pages > 0 && allCached,
+      actualCostUsd: cost,
+      monetaryCostUsd: cost,
       rows,
       // Only truncated if we stopped for our own limits, not because the
       // window was genuinely covered or the feed ended.
       truncated: !reachedCutoff && !exhausted,
+    };
+  },
+
+  async fetchComments(
+    postUrls: string[],
+    options: FetchCommentsOptions,
+  ): Promise<ProviderCommentsResult> {
+    const endpoint = "/v1/instagram/post/comments";
+    const deadline = Date.now() + options.timeoutMs;
+    const batches: ProviderCommentBatch[] = [];
+    const failedPostUrls: string[] = [];
+    let credits = 0;
+    let creditsRemaining: number | null = null;
+    let calls = 0;
+    let allCached = true;
+
+    for (const postUrl of postUrls) {
+      if (Date.now() >= deadline) {
+        failedPostUrls.push(postUrl);
+        continue;
+      }
+      try {
+        const { payload, telemetry } = await getJson(
+          endpoint,
+          { url: postUrl, amount: String(options.perPostLimit) },
+          Math.max(5_000, deadline - Date.now()),
+        );
+        calls += 1;
+        credits += telemetry.creditsCharged ?? (telemetry.cached ? 0 : 1);
+        if (telemetry.creditsRemaining !== null) {
+          creditsRemaining = telemetry.creditsRemaining;
+        }
+        if (!telemetry.cached) allCached = false;
+
+        const comments = commentArray(payload)
+          .map((item) => asRecord(item))
+          .filter((rec): rec is Record<string, unknown> => rec !== null)
+          .map(mapComment)
+          .filter((c) => c.id.length > 0)
+          .slice(0, options.perPostLimit);
+        batches.push({ postUrl, comments });
+      } catch (err) {
+        console.warn(
+          "[scrapecreators] comments failed for post:",
+          err instanceof Error ? err.message : String(err),
+        );
+        failedPostUrls.push(postUrl);
+      }
+    }
+
+    const cost = credits * getCostPerCreditUsd();
+    return {
+      ...emptyMeta("scrapecreators", endpoint),
+      billedResults: calls,
+      creditsConsumed: credits,
+      creditsRemaining,
+      cached: calls > 0 && allCached,
+      actualCostUsd: cost,
+      monetaryCostUsd: cost,
+      batches,
+      failedPostUrls,
+      groupedByPost: true,
     };
   },
 };

@@ -2,7 +2,7 @@
  * Cadence — defensive outlier and reliability guard tests.
  *
  * Extends `cadence.test.ts` to cover the cases the audit flagged:
- *  - pinned posts surface a `pinned_excluded` warning
+ *  - pinned posts are kept; stale ones are dropped as date outliers
  *  - posts without `is_pinned` but with extreme date offsets are dropped
  *  - reliability is downgraded when warnings stack
  */
@@ -17,7 +17,7 @@ function p(iso: string, opts: { pinned?: boolean } = {}) {
 }
 
 describe("computeCadence — outlier + reliability guard", () => {
-  it("(1) 2 pinned from 2023 + 10 recent → excludedPinned=2, no outlier warning, reliability high", () => {
+  it("(1) 2 pinned from 2023 + 10 recent → dropped as date outliers, not as pinned", () => {
     const posts = [
       p("2023-05-11T18:18:10.000Z", { pinned: true }),
       p("2023-09-05T19:22:49.000Z", { pinned: true }),
@@ -34,11 +34,11 @@ describe("computeCadence — outlier + reliability guard", () => {
     ];
     const r = computeCadence(posts, { now: NOW });
     expect(r.method).toBe("window_30d");
-    expect(r.excludedPinned).toBe(2);
-    expect(r.excludedOutliers).toBe(0);
-    expect(r.warnings).toContain("pinned_excluded");
-    expect(r.warnings).not.toContain("date_outlier_detected");
-    // pinned_excluded is 1 warning → reliability medium (rule)
+    expect(r.excludedPinned).toBe(0);
+    expect(r.excludedOutliers).toBe(2);
+    expect(r.warnings).toContain("date_outlier_detected");
+    expect(r.warnings).not.toContain("pinned_excluded");
+    // one warning → reliability medium (rule)
     expect(r.reliability).toBe("medium");
   });
 

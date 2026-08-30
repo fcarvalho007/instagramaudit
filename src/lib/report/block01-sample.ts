@@ -9,7 +9,7 @@
  * `PUBLIC_INSTAGRAM_POSTS_LIMIT` upstream in `normalize.ts`.
  *
  * Rules:
- *   - Pinned posts (`is_pinned === true`) are excluded from every Block 1
+ *   - Pinned posts are kept; only date outliers are pruned in Block 1
  *     statistic (performance, cadence, format). Pinned posts may be months
  *     or years older than the live feed and would distort current signals.
  *     Fallback: when 100% of the returned posts are pinned, we keep them
@@ -125,8 +125,11 @@ export function buildBlock01Sample(
   const all: SnapshotPost[] = Array.isArray(posts) ? [...posts] : [];
   const totalReturned = all.length;
 
-  const nonPinned = all.filter((p) => p?.is_pinned !== true);
-  const pinnedExcluded = totalReturned - nonPinned.length;
+  // Pinned posts stay in the sample — `is_pinned` is an analytical
+  // attribute. Stale pinned posts are removed by the date-outlier pruning
+  // below, i.e. strictly by timestamp.
+  const nonPinned = all;
+  const pinnedExcluded = 0;
 
   // Fallback: if every post is pinned, keep them so the report still has
   // a sample to render — but no statistic should claim "current performance".

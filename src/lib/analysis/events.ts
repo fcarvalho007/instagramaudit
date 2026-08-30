@@ -165,6 +165,18 @@ export interface RecordProviderCallInput {
    * the right admin bucket (production vs lab vs other).
    */
   sourceContext?: SourceContext;
+  /**
+   * Credit-based providers (currently ScrapeCreators). `creditsConsumed` is
+   * the billable unit; `monetaryCostUsd` stays in `actual_cost_usd` and is 0
+   * while promotional credits are being used.
+   */
+  creditsCharged?: number | null;
+  creditsRemaining?: number | null;
+  /** True when the provider served the response from its own cache. */
+  cached?: boolean | null;
+  /** Provider endpoint path, for per-endpoint cost breakdowns. */
+  endpoint?: string | null;
+
 }
 
 /**
@@ -201,6 +213,11 @@ export async function recordProviderCall(
     if (input.completionTokens != null) row.completion_tokens = input.completionTokens;
     if (input.totalTokens != null) row.total_tokens = input.totalTokens;
     if (input.analysisEventId != null) row.analysis_event_id = input.analysisEventId;
+    if (input.creditsCharged != null) row.credits_charged = input.creditsCharged;
+    if (input.creditsRemaining != null) row.credits_remaining = input.creditsRemaining;
+    if (input.cached != null) row.cached = input.cached;
+    if (input.endpoint != null) row.endpoint = input.endpoint;
+
 
     const { data, error } = await supabaseAdmin
       .from("provider_call_logs")

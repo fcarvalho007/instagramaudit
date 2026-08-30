@@ -17,7 +17,7 @@ function makePost(iso: string, opts: { pinned?: boolean } = {}): SnapshotPost {
 }
 
 describe("buildBlock01Sample", () => {
-  it("excludes pinned posts from performance + cadence", () => {
+  it("keeps pinned posts in the sample (only timestamps filter)", () => {
     const posts = [
       makePost("2026-05-20T10:00:00Z", { pinned: true }),
       makePost("2026-05-21T10:00:00Z"),
@@ -25,20 +25,20 @@ describe("buildBlock01Sample", () => {
       makePost("2026-05-23T10:00:00Z"),
     ];
     const s = buildBlock01Sample(posts);
-    expect(s.pinnedPostsExcluded).toBe(1);
-    expect(s.analyzedPosts).toHaveLength(3);
-    expect(s.performancePosts).toHaveLength(3);
-    expect(s.cadencePosts).toHaveLength(3);
+    expect(s.pinnedPostsExcluded).toBe(0);
+    expect(s.analyzedPosts).toHaveLength(4);
+    expect(s.performancePosts).toHaveLength(4);
+    expect(s.cadencePosts).toHaveLength(4);
   });
 
-  it("falls back to all posts when every post is pinned", () => {
+  it("keeps every post when all of them are pinned", () => {
     const posts = [
       makePost("2026-05-20T10:00:00Z", { pinned: true }),
       makePost("2026-05-22T10:00:00Z", { pinned: true }),
     ];
     const s = buildBlock01Sample(posts);
     expect(s.analyzedPosts).toHaveLength(2);
-    expect(s.pinnedPostsExcluded).toBe(2);
+    expect(s.pinnedPostsExcluded).toBe(0);
   });
 
   it("computes observedPeriodDays from actual analysed posts", () => {
@@ -87,12 +87,12 @@ describe("computeGlobalScore (interaction removed)", () => {
 });
 
 describe("Block 1 sample — avg likes/comments aligned with engagement rate (P1 #1)", () => {
-  it("computePostAverages over performancePosts excludes pinned AND date outliers", async () => {
+  it("computePostAverages over performancePosts drops date outliers, pinned or not", async () => {
     const { computePostAverages } = await import("../post-aggregates");
     // 1 pinned (2023, likes 9999) + 1 stale outlier (2024, likes 9999)
-    // + 3 recent posts with likes 10. The canonical sample should leave
-    // only the 3 recent posts, so the average is 10 — not skewed by the
-    // two contaminated entries.
+    // + 3 recent posts with likes 10. Both old entries are dropped for
+    // being date outliers — the pinned flag plays no part — so the
+    // average stays 10.
     const posts: SnapshotPost[] = [
       {
         id: "pinned",
@@ -146,7 +146,7 @@ describe("Block 1 sample — avg likes/comments aligned with engagement rate (P1
       },
     ];
     const sample = buildBlock01Sample(posts);
-    expect(sample.pinnedPostsExcluded).toBe(1);
+    expect(sample.pinnedPostsExcluded).toBe(0);
     // Stale 2024 post is > 180 days older than the May 2026 cluster.
     expect(sample.dateOutliersExcluded).toBeGreaterThanOrEqual(1);
     const avg = computePostAverages(sample.performancePosts, {
