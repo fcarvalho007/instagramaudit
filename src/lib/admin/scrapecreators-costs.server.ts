@@ -32,8 +32,6 @@ function isPromotional(): boolean {
 export async function fetchScrapeCreatorsCosts(): Promise<
   ScrapeCreatorsCostSummary & { configured: boolean }
 > {
-  const since = new Date(Date.now() - 90 * DAY_MS).toISOString();
-
   const [logsRes, freshRes, unlocksRes] = await Promise.all([
     supabaseAdmin
       .from("provider_call_logs")
@@ -55,8 +53,6 @@ export async function fetchScrapeCreatorsCosts(): Promise<
       .eq("status", "completed")
       .gte("created_at", new Date(Date.now() - 30 * DAY_MS).toISOString()),
   ]);
-
-  void since;
 
   const rows = (logsRes.data ?? []) as unknown as ScrapeCreatorsLogRow[];
 
