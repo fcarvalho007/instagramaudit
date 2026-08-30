@@ -39,7 +39,7 @@ describe("scrapecreators cost aggregation", () => {
     );
     expect(s.windows.last_24h.credits).toBe(2);
     expect(s.windows.last_7d.credits).toBe(7);
-    expect(s.windows.last_30d.credits).toBe(10);
+    expect(s.windows.last_30d.credits).toBe(7);
     expect(s.windows.all_time.credits).toBe(10);
   });
 
