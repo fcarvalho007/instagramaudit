@@ -180,8 +180,9 @@ export const Route = createFileRoute("/api/public/lead-capture")({
             : { status: "error", error: outcome.error };
         }
 
-        // 5. link de acesso para leads existentes (sem cookie emitido).
-        if (leadStatus === "existing") {
+        // 5. link de acesso para leads existentes, apenas quando há uma
+        // associação nova — evita reenviar o email em cada re-submissão.
+        if (leadStatus === "existing" && claimed) {
           try {
             const { sendReportAccessEmail } = await import(
               "@/lib/email/send-report-access.server"
