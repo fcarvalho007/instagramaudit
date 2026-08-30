@@ -179,7 +179,7 @@ describe("LIVE provider validation", () => {
     "5B. Apify primary but monthly hard cap reached → ScrapeCreators fallback",
     async () => {
       process.env.SOCIAL_PROVIDER_PROFILE = "apify";
-      process.env.APIFY_MONTHLY_HARD_CAP_USD = "0";
+      process.env.APIFY_MONTHLY_HARD_CAP_USD = "0.000001";
       const { invalidateApifyMonthlyBudgetCache } = await import(
         "@/lib/security/apify-budget.server"
       );

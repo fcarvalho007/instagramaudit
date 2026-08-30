@@ -4,7 +4,7 @@
  * Endpoints used:
  *   GET /v1/instagram/profile?handle=<h>
  *   GET /v2/instagram/user/posts?handle=<h>[&next_max_id=<cursor>]
- *   GET /v1/instagram/post/comments?url=<post url>&amount=<n>
+ *   GET /v2/instagram/post/comments?url=<post url>&amount=<n>
  *
  * The posts endpoint paginates by cursor, which is the reason this provider
  * exists: unlike the Apify actor in `details` mode, it can walk back a real
@@ -494,7 +494,7 @@ export const scrapeCreatorsProvider: SocialDataProvider = {
     postUrls: string[],
     options: FetchCommentsOptions,
   ): Promise<ProviderCommentsResult> {
-    const endpoint = "/v1/instagram/post/comments";
+    const endpoint = "/v2/instagram/post/comments";
     const deadline = Date.now() + options.timeoutMs;
     const batches: ProviderCommentBatch[] = [];
     const failedPostUrls: string[] = [];
