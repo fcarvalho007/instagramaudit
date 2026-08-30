@@ -8,9 +8,9 @@
 
 export const TIER_COPY = {
   scope: {
-    eyebrow: "Relatório gratuito · visão essencial",
-    title: "Relatório gratuito",
-    body: "Este relatório combina dados públicos do Instagram, sinais de pesquisa e leitura assistida por IA. A versão Pro aprofunda concorrentes, pesquisa e plano de ação.",
+    eyebrow: "Auditoria instantânea · gratuita",
+    title: "Auditoria instantânea",
+    body: "Esta leitura é gratuita e não exige email. Com o teu email, acrescentamos gratuitamente a análise das conversas e guardamos o histórico. O relatório completo aprofunda janelas de 30/90 dias, concorrentes e plano de acção.",
   },
   comparison: {
     eyebrow: "Próximo nível",
