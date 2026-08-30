@@ -5,7 +5,7 @@
   "PROFILE_PRIVATE": "Este perfil parece ser privado.",
   "PROFILE_PERSONAL_NO_FEED": "Funciona melhor com perfis públicos Creator ou Empresa. Alguns perfis pessoais podem não devolver publicações suficientes para análise. Este perfil parece público, mas não conseguimos obter publicações recentes através da nossa fonte de dados.",
   "PROVIDER_DISABLED": "A análise automática está temporariamente desligada.",
-  "PROVIDER_BILLING_BLOCKED": "A fonte de dados do Instagram está temporariamente bloqueada por uma questão de faturação do fornecedor. Não é um problema com o perfil nem com a tua conta — a análise volta a funcionar assim que estiver regularizado.",
+  "PROVIDER_BILLING_BLOCKED": "A fonte de dados do Instagram está temporariamente bloqueada por uma questão de faturação do fornecedor. Não é um problema com o perfil analisado — a análise volta a funcionar assim que estiver regularizado.",
   "BUDGET_EXCEEDED": "As análises gratuitas de hoje atingiram o limite.",
   "RATE_LIMITED": "Foram feitas demasiadas análises. Tenta novamente mais tarde.",
   "RATE_LIMITED_IP": "Foram feitas demasiadas análises. Tenta novamente mais tarde.",

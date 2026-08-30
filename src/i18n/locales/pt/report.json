@@ -586,7 +586,7 @@
       "section_free": "Leitura gratuita",
       "section_premium": "Relatório completo",
       "section_paid": "Secções",
-      "progress": "Auditoria Instantânea · {{accessible}} secções disponíveis",
+      "progress": "Auditoria Instantânea · {{accessible}} secções analisadas",
       "premium_count": "{{count}} por desbloquear",
       "cta": "Desbloquear relatório",
       "cta_aria": "Desbloquear relatório",
@@ -595,7 +595,7 @@
     "access_locked": {
       "cta": "Continuar leitura gratuita",
       "cta_aria": "Continuar leitura gratuita",
-      "trust": "Guarda a tua visão geral antes de veres as opções premium."
+      "trust": "Guarda esta visão geral antes de veres as opções premium."
     },
     "lead_magnet": {
       "eyebrow": "Continuação gratuita",
