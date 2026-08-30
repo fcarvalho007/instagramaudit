@@ -1,40 +1,72 @@
-# Baseline gratuita bloqueada por créditos — correcção
+# Ronda 5B — Magic link e área privada sem password
 
-## O que aconteceu (confirmado)
+Plano mínimo derivado da auditoria 5A. Reutiliza toda a infraestrutura existente; não cria uma segunda arquitectura de autenticação.
 
-Não é uma avaria. É a configuração actual do produto.
+## 1. Email de acesso para todos os leads
 
-- Às 15:06 UTC o evento registado para `frederico.m.carvalho` foi `blocked_credits` / `INSUFFICIENT_CREDITS`. Todas as análises anteriores (14:52–14:54) tinham corrido com sucesso a partir de cache, com outro lead.
-- A flag `PUBLIC_BASELINE_NO_EMAIL` não está definida em lado nenhum, logo assume `false`. Com ela desactivada, o endpoint público exige sessão de lead e cobra 1 crédito por análise, mesmo na auditoria base.
-- O lead associado à sessão do browser tem saldo 0 (a tabela de leads mostra vários leads já a 0 depois de gastarem os 2 créditos iniciais).
+`/api/public/lead-capture` passa a enviar o email de acesso em todas as capturas (lead novo e lead existente), imediatamente após `email_submitted` — opção A. O Comment Intelligence continua assíncrono; uma falha nunca impede a verificação. A resposta HTTP mantém-se indistinguível entre email novo e existente.
 
-Ou seja: as Rondas 3 e 4 construíram a auditoria anónima de nível 1, mas nunca foi ligada em produção — continua tudo a passar pelo gate de créditos antigo.
+Guarda: no máximo 1 envio por (lead, cache_key) por hora, para evitar reenvios em submissões repetidas.
 
-## Incoerência adicional encontrada
+## 2. Token de acesso endurecido
 
-Mesmo activando a flag, a baseline anónima só corre quando **não existe** cookie de lead:
+Em `verification-token.server`: acrescentar `purpose: "report_access"` e `jti` ao payload, mantendo HMAC-SHA256 e o formato actual. Acrescentar `reportRef` (a `cache_key` do relatório que originou o email).
 
-```text
-anonymousBaseline = flag && sem concorrentes && janela baseline && lead_session === null
-```
+Consumo one-time: registar o `jti` consumido numa tabela dedicada (`email_access_tokens`, com `expires_at`) e recusar reutilização. Cliques repetidos passam a devolver uma página neutra com opção de pedir novo link, em vez de reemitirem sessão.
 
-Quem já se registou (e ficou com 0 créditos) continua bloqueado na auditoria base — exactamente o cenário reportado. Um utilizador identificado ficaria com menos acesso do que um visitante anónimo.
+## 3. verify-email
 
-## Alterações propostas
+- Rate limiting por IP (por exemplo 20/hora) antes de qualquer trabalho.
+- `Cache-Control: no-store` também nas respostas de erro.
+- Redirect canónico: resolver o destino a partir de `reportRef` (`cache_key` → `lead_reports` → snapshot). Sem `reportRef`, cair em `/app/reports`. Nunca aceitar destino vindo do cliente; se existir `return_to`, restringir a uma allowlist de caminhos internos.
+- Após emitir `lead_session`, limpar o cookie `report_capture_session`.
+- Emitir os eventos de acesso descritos abaixo.
 
-1. **Activar a baseline sem email em produção**: definir `PUBLIC_BASELINE_NO_EMAIL=true`.
-2. **Tornar a baseline gratuita também para leads identificados**: em `src/routes/api/analyze-public-v1.ts`, deixar de exigir `lead_session === null`. A condição passa a ser: flag activa, sem concorrentes, janela baseline, sem bypass interno. Se existir lead, continua a ser lido e o snapshot associado (para histórico em `/app/reports`), mas sem reserva nem consumo de crédito.
-3. **Manter os gates onde importa**: créditos e email continuam a proteger o nível 2 (Comment Intelligence), concorrentes e janelas 30d/90d. Nada muda nesses caminhos.
-4. **Limites de abuso**: a baseline passa a depender apenas do rate limiting público já existente (10/dia e 4/hora por IP) e do cache de 24h, que já estão implementados.
-5. **Testes**: cobrir que a baseline com lead de saldo 0 devolve sucesso e não escreve em `credit_ledger`, e que concorrentes/30d/90d continuam a exigir crédito e entitlement.
+## 4. Área privada acessível com lead_session
 
-## Notas técnicas
+Adicionar um caminho de leitura baseado em `lead_session`, sem tocar no caminho Supabase Auth existente:
 
-- Ficheiro principal: `src/routes/api/analyze-public-v1.ts`, bloco do gate de créditos (~linhas 663-700).
-- O caminho de reserva/confirmação/libertação de crédito mantém-se intacto para os restantes casos.
-- Sem alterações a `/report.example`, pagamentos, Pro ou ao onboarding visual.
-- Custo por análise base não muda; a protecção passa a ser cache + rate limit por IP + caps mensais de provider já existentes.
+- Novo servidor de dados que resolve o lead pelo cookie (reutilizando `resolve-lead.server`) e lista `lead_reports` + `report_requests` do lead.
+- `/app` passa a aceitar sessão de lead **ou** sessão Supabase; sem nenhuma delas, redirecciona para a homepage.
+- `/app/reports` mostra as auditorias de `lead_reports` (hoje ausentes), com estado real do Comment Intelligence.
+- Logout limpa `lead_session` e, quando existir, termina a sessão Supabase.
 
-## Alternativa mais conservadora
+Utilizadores antigos com Supabase Auth continuam a funcionar sem alteração.
 
-Se preferires não abrir já a baseline gratuita, a opção mínima é apenas atribuir créditos adicionais ao teu lead de teste. Resolve o teste imediato, mas mantém o funil antigo (email obrigatório antes de qualquer valor) e o mesmo bloqueio para leads reais que gastem os 2 créditos.
+## 5. Créditos
+
+Manter `grantInitialCredits` (+2, idempotente) na verificação. Os créditos deixam de ser o gate da auditoria base assim que a baseline gratuita for activada, e passam a cobrir apenas concorrentes e janelas 30d/90d.
+
+## 6. Analytics
+
+Acrescentar a `ANONYMOUS_FUNNEL_EVENTS`: `access_email_queued`, `access_email_sent`, `access_email_failed`, `magic_link_clicked`, `email_verified`, `magic_link_invalid`, `magic_link_expired`, `full_session_created`, `private_area_viewed`, `report_reopened`, `access_email_resend_requested`, `access_email_resend_rate_limited`. Nenhum evento transporta token nem email em claro — apenas `lead_id`, `handle` e hash de `cache_key`.
+
+## 7. Copy do email (proposta, sem implementar)
+
+PT — Assunto: `A auditoria de @handle está pronta`. Preheader: `Guarda o acesso e consulta a análise quando quiseres.`
+Corpo: identificação de `@handle`; 2–3 indicadores da Auditoria Instantânea; nota de que a análise aprofundada está disponível ou em processamento; CTA `Ver a minha auditoria`; frase final a explicar que o botão confirma o endereço e dá acesso seguro às auditorias associadas a esse email. Sem linguagem de posse do perfil, sem dados de outros relatórios.
+
+EN — Subject: `The audit for @handle is ready`. Preheader: `Save your access and open the analysis whenever you want.` CTA: `View my audit`.
+
+A promessa "recebe um link para voltares quando quiseres" só entra na UI depois do E2E validado. Até lá a copy da Ronda 4 mantém-se.
+
+## Ficheiros que seriam alterados
+
+- `src/lib/email/verification-token.server.ts`
+- `src/lib/email/send-report-access.server.ts`, `src/lib/email/templates/report-access.ts`
+- `src/routes/api/public/verify-email.ts`
+- `src/routes/api/public/lead-capture.ts`
+- `src/routes/api/public/funnel-event.ts`
+- `src/lib/leads/report-capture-session.server.ts` (limpeza pós-verificação)
+- `src/lib/credits/lead-reports.server.ts` (listagem por lead)
+- `src/routes/app.tsx`, `src/routes/app.reports.tsx`
+- Nova migração: `email_access_tokens`, com GRANTs e RLS
+- Novos testes: token one-time, allowlist de redirect, envio unificado, listagem por `lead_session`
+
+## Riscos
+
+- Consumo one-time exige escrita em base de dados no caminho do clique; em falha de BD a decisão tem de ser fail-closed.
+- Sessão de 90 dias sem revogação continua a ser o ponto mais fraco; mitigação futura é uma tabela de sessões revogáveis, fora do âmbito da 5B.
+- A área privada dual (lead vs auth) tem de ter regras de precedência claras para não misturar históricos.
+
+READY FOR ONBOARDING ROUND 5B — não existe bloqueio estrutural que obrigue a redesenhar a autenticação.
