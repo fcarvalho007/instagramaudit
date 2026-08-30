@@ -177,7 +177,11 @@ export const Route = createFileRoute("/api/public/lead-capture")({
             const { sendReportAccessEmail } = await import(
               "@/lib/email/send-report-access.server"
             );
-            await sendReportAccessEmail({ email, handle });
+            await sendReportAccessEmail({
+              leadId,
+              toEmail: email,
+              instagramHandle: handle,
+            });
           } catch (err) {
             console.info("[lead-capture] access email skipped", err);
           }
