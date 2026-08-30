@@ -22,7 +22,6 @@ import { AdminCard } from "../admin-card";
 import { ProgressBar } from "../progress-bar";
 import { ADMIN_LITERAL } from "../admin-tokens";
 import { SectionError, SectionSkeleton } from "../section-state";
-import { DAILY_COST_LIMIT } from "@/lib/admin/mock-data";
 import { adminFetch } from "@/lib/admin/fetch";
 
 import type {
@@ -101,7 +100,7 @@ async function fetchJson<T>(url: string): Promise<T> {
 
 const MONTH_DAYS = 30;
 
-const PROVIDER_SHORT: Record<string, string> = { apify: "Apify", openai: "OpenAI", dataforseo: "DFS" };
+const PROVIDER_SHORT: Record<string, string> = { apify: "Apify", openai: "OpenAI", dataforseo: "DFS", scrapecreators: "ScrapeCreators" };
 function providerShortName(p: string): string { return PROVIDER_SHORT[p] ?? p; }
 
 const COST_SOURCE_LABEL: Record<ApifyActorBreakdown["cost_source"], { text: string; cls: string }> = {
@@ -171,6 +170,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
         apify: Number(d.apify ?? 0),
         openai: Number(d.openai ?? 0),
         dataforseo: Number(d.dataforseo ?? 0),
+        scrapecreators: Number(d.scrapecreators ?? 0),
       };
       if (hasActorBreakdown && d.apify_by_actor) {
         for (const actor of allActorKeys) row[`apify_${actor}`] = Number(d.apify_by_actor[actor] ?? 0);
@@ -259,14 +259,15 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
       {/* ════ ZONA 1 — CUSTO INTERNO ATRIBUÍDO ═════════════════════════ */}
       <div>
         <ZoneLabel symbol="⊙" label={`CUSTO INTERNO ATRIBUÍDO · ÚLTIMOS ${MONTH_DAYS} DIAS`} />
-        <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <ScrapeCreatorsProviderCard data={data} />
           <ProviderCard
             color={ADMIN_LITERAL.expenseChartApify}
             label="APIFY"
             pctLabel={`${Math.round((data.apify_total / c.apify) * 100)}%`}
             value={data.apify_total}
             capLabel={`/$${c.apify} limite`}
-            note="scrapers de Instagram"
+            note="fallback de scraping"
             progressValue={data.apify_total}
             progressMax={c.apify}
             progressColor="expense"
@@ -377,6 +378,7 @@ export function ExpenseSection({ period = "30d" }: { period?: string }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <ReconciliationCompact rows={reconRows} pendingCount={pendingCount} />
         <DailyEvolutionCompact
+          dailyLimit={c.apify / MONTH_DAYS}
           chartData={chartData}
           hasChartData={hasChartData}
           hasActorBreakdown={hasActorBreakdown}
@@ -557,6 +559,7 @@ function buildReconRows(data: Expense30d, reconByProvider: ProviderBreakdown[]):
     { key: "apify", label: "Apify", color: ADMIN_LITERAL.expenseChartApify, internal: data.apify_total },
     { key: "openai", label: "OpenAI", color: ADMIN_LITERAL.expenseChartOpenAI, internal: data.openai_total },
     { key: "dataforseo", label: "DataForSEO", color: ADMIN_LITERAL.expenseChartDataForSeo, internal: data.dataforseo_total },
+    { key: "scrapecreators", label: "ScrapeCreators", color: ADMIN_LITERAL.expenseChartScrapeCreators, internal: data.scrapecreators_total },
   ];
 
   return providers.map((p) => {
@@ -929,6 +932,7 @@ function ReconciliationCompact({ rows, pendingCount }: { rows: ReconRow[]; pendi
 }
 
 function DailyEvolutionCompact({
+  dailyLimit,
   chartData,
   hasChartData,
   hasActorBreakdown,
@@ -936,6 +940,7 @@ function DailyEvolutionCompact({
   hasOpenaiActorBreakdown,
   allOpenaiActorKeys,
 }: {
+  dailyLimit: number;
   chartData: Array<Record<string, string | number>>;
   hasChartData: boolean;
   hasActorBreakdown: boolean;
@@ -948,7 +953,7 @@ function DailyEvolutionCompact({
       <header className="flex items-baseline justify-between gap-2 mb-1">
         <h4 className="text-[14px] font-semibold text-admin-text-primary">Evolução diária</h4>
         <span className="text-[11px] uppercase tracking-wider text-admin-text-tertiary">
-          limite ${DAILY_COST_LIMIT.toFixed(2)}/dia
+          limite ${dailyLimit.toFixed(2)}/dia
         </span>
       </header>
       <div className="flex flex-wrap items-center gap-3 text-[11px] text-admin-text-secondary mb-2">
@@ -996,7 +1001,7 @@ function DailyEvolutionCompact({
                 <Bar dataKey="openai" stackId="c" fill={ADMIN_LITERAL.expenseChartOpenAI} />
               )}
               <Bar dataKey="dataforseo" stackId="c" fill={ADMIN_LITERAL.expenseChartDataForSeo} radius={[3, 3, 0, 0]} />
-              <ReferenceLine y={DAILY_COST_LIMIT} stroke={ADMIN_LITERAL.capLine} strokeDasharray="5 4" strokeWidth={1.2} />
+              <ReferenceLine y={dailyLimit} stroke={ADMIN_LITERAL.capLine} strokeDasharray="5 4" strokeWidth={1.2} />
             </BarChart>
           </ResponsiveContainer>
         </div>
