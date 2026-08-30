@@ -14,9 +14,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
-  fetchCommentsForPosts,
+  COMMENT_SCRAPER_INCLUDE_REPLIES,
   COMMENT_SCRAPER_MAX_POSTS,
+  COMMENT_SCRAPER_PER_POST_LIMIT,
 } from "@/lib/analysis/comment-scraper.server";
+import { fetchComments } from "@/lib/analysis/providers/index.server";
+
 import {
   aggregateCommentIntelligence,
   buildUnavailableCommentIntelligence,
