@@ -77,7 +77,9 @@ export const apifyProvider: SocialDataProvider = {
     handle: string,
     options: FetchPostsOptions,
   ): Promise<ProviderPostsResult> {
+    await assertBudget();
     const input: Record<string, unknown> = {
+
       directUrls: [profileUrlFor(handle)],
       resultsType: "posts",
       resultsLimit: options.maxPosts,
@@ -113,7 +115,9 @@ export const apifyProvider: SocialDataProvider = {
     postUrls: string[],
     _options: FetchCommentsOptions,
   ): Promise<ProviderCommentsResult> {
+    await assertBudget();
     const { fetchCommentsForPosts } = await import("../comment-scraper.server");
+
     const result = await fetchCommentsForPosts(postUrls);
     const served = new Set(result.batches.map((b) => b.postUrl));
     return {
