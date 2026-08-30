@@ -180,8 +180,11 @@ function aggregateConfidence(
   apify: ProviderCostBucket,
   dataforseo: ProviderCostBucket,
   openai: ProviderCostBucket,
+  scrapecreators?: ProviderCostBucket,
 ): CostConfidence {
-  const considered = [apify, dataforseo, openai].filter(
+  const considered = [apify, dataforseo, openai, scrapecreators]
+    .filter((b): b is ProviderCostBucket => Boolean(b))
+    .filter(
     (b) => b.source !== "not_used",
   );
   if (considered.length === 0) return "sem_custos";
@@ -248,7 +251,7 @@ export function summarizeCallLogs(
     openai,
     total_actual_usd: Math.round(total_actual_usd * 1e5) / 1e5,
     total_estimated_usd: Math.round(total_estimated_usd * 1e5) / 1e5,
-    confidence: aggregateConfidence(apify, dataforseo, openai),
+    confidence: aggregateConfidence(apify, dataforseo, openai, scrapecreators),
   };
 }
 
