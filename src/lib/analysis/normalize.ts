@@ -645,7 +645,7 @@ export function enrichPosts(
       hour_local: date ? lisbonHour(date) : null,
       likes,
       comments,
-    video_views: pickVideoViews(raw),
+      video_views: pickVideoViews(raw),
       video_plays: pickVideoPlays(raw),
       is_paid_partnership:
         raw.isPaidPartnership ?? raw.is_paid_partnership ?? null,
