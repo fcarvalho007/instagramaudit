@@ -1,26 +1,26 @@
 import { useEffect, useRef } from "react";
 import { Sparkles } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { trackAnonymousEvent } from "@/lib/analytics/anonymous-funnel";
 
 /**
- * Ronda 3.5 — cabeçalho da "Auditoria Instantânea".
+ * Cabeçalho da "Auditoria Instantânea".
  *
- * O botão "Guardar esta auditoria" foi retirado da interface: em staging
- * externo não pode existir uma acção aparentemente funcional que termine
- * apenas em "disponível em breve". O ponto de integração fica em código.
- *
- * Ronda 4: reintroduzir aqui a acção "Guardar esta auditoria", ligada ao
- * fluxo de captura de email/Level 2, e emitir `save_audit_cta_clicked`.
+ * Ronda 4 — a acção "Guardar esta auditoria" abre o motor único de
+ * conversão (`ConversionSheet`) com `conversion_entry_point = save_audit`.
  */
 export function InstantAuditBar({
   handle,
   snapshotId,
+  onConvert,
 }: {
   handle: string;
   snapshotId: string;
+  onConvert?: () => void;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
+  const { t } = useTranslation("conversion");
 
   useEffect(() => {
     const el = ref.current;
@@ -45,13 +45,13 @@ export function InstantAuditBar({
   return (
     <div
       ref={ref}
-      className="mb-4 flex items-center gap-2 rounded-xl border border-border-default bg-surface-secondary px-4 py-3 sm:px-5"
+      className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-border-default bg-surface-secondary px-4 py-3 sm:flex-nowrap sm:px-5"
     >
       <Sparkles
         className="size-4 shrink-0 text-accent-primary"
         aria-hidden="true"
       />
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-content-primary">
           Auditoria Instantânea
         </p>
@@ -59,6 +59,27 @@ export function InstantAuditBar({
           Leitura imediata de @{handle} com base em dados públicos.
         </p>
       </div>
+      {onConvert ? (
+        <button
+          type="button"
+          onClick={() => {
+            trackAnonymousEvent("save_audit_cta_clicked", {
+              handle,
+              snapshotId,
+              metadata: { conversion_entry_point: "save_audit" },
+            });
+            trackAnonymousEvent("lead_cta_clicked", {
+              handle,
+              snapshotId,
+              metadata: { conversion_entry_point: "save_audit" },
+            });
+            onConvert();
+          }}
+          className="w-full shrink-0 rounded-lg border border-accent-primary/50 px-3 py-2 text-sm font-semibold text-accent-primary transition hover:bg-accent-primary/10 sm:w-auto"
+        >
+          {t("cta.save_audit")}
+        </button>
+      ) : null}
     </div>
   );
 }
