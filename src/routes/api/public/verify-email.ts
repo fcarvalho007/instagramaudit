@@ -236,7 +236,7 @@ async function handleGet(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const token = url.searchParams.get("token") ?? "";
   if (rateLimited(clientIp(request))) {
-    await recordAccessEvent({ eventType: "access_email_resend_rate_limited" });
+    await recordAccessEvent({ eventType: "magic_link_invalid" });
     return failureHtml("rate_limited");
   }
   await recordAccessEvent({ eventType: "magic_link_clicked" });
