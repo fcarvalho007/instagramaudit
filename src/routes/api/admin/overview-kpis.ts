@@ -85,6 +85,7 @@ export const Route = createFileRoute("/api/admin/overview-kpis")({
           paidAllTimeRes,
           expense,
           caps,
+          scrapecreators,
         ] = await Promise.all([
           supabaseAdmin
             .from("leads")
