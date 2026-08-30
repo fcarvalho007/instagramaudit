@@ -403,24 +403,28 @@ export function ReportOverviewBlock({
           <div id="engagement" className="scroll-mt-24">
             <EngagementCardRefined result={result} />
           </div>
-          <div className="space-y-5 md:space-y-6">
-            <p className="text-eyebrow-sm text-content-tertiary">
-              Relatório completo · 5 secções premium
-            </p>
-            {PREMIUM_TEASERS.map((teaser) => (
-              <PremiumTeaserCard
-                key={teaser.anchorId}
-                number={teaser.number}
-                eyebrow={teaser.eyebrow}
-                title={teaser.title}
-                description={teaser.description}
-                anchorId={teaser.anchorId}
-                source="overview_pro_teaser"
-                subItems={"subItems" in teaser ? teaser.subItems : undefined}
-                previewVariant={teaser.previewVariant}
-              />
-            ))}
-          </div>
+          {showPremiumTeasers ? (
+            <div className="space-y-5 md:space-y-6">
+              <p className="text-eyebrow-sm text-content-tertiary">
+                Relatório completo · 5 secções premium
+              </p>
+              {PREMIUM_TEASERS.map((teaser) => (
+                <PremiumTeaserCard
+                  key={teaser.anchorId}
+                  number={teaser.number}
+                  eyebrow={teaser.eyebrow}
+                  title={teaser.title}
+                  description={teaser.description}
+                  anchorId={teaser.anchorId}
+                  source="overview_pro_teaser"
+                  subItems={"subItems" in teaser ? teaser.subItems : undefined}
+                  previewVariant={teaser.previewVariant}
+                />
+              ))}
+            </div>
+          ) : (
+            <FreeDeepenTeaser />
+          )}
         </>
       )}
 
