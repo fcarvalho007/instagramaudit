@@ -82,13 +82,14 @@ interface CallResult {
 
 function headerNumber(res: Response, ...names: string[]): number | null {
   for (const name of names) {
-    const raw = res.headers.get(name);
+    const raw = res.headers?.get(name) ?? null;
     if (raw === null) continue;
     const n = Number.parseFloat(raw);
     if (Number.isFinite(n)) return n;
   }
   return null;
 }
+
 
 async function getJson(
   path: string,
