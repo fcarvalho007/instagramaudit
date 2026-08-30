@@ -470,6 +470,45 @@ function ProviderCard({
   );
 }
 
+/* ── ScrapeCreators (credit-based) ────────────────────────────────── */
+
+function ScrapeCreatorsProviderCard({ data }: { data: Expense30d }) {
+  const promotional = data.scrapecreators_promotional;
+  return (
+    <AdminCard className="relative" variant="accent-left" accent="neutral">
+      <div className="flex items-center gap-2 mb-2">
+        <span
+          className="h-2 w-2 rounded-full shrink-0"
+          style={{ backgroundColor: ADMIN_LITERAL.expenseChartScrapeCreators }}
+        />
+        <span className="text-[12px] font-medium uppercase tracking-wider text-admin-text-tertiary">
+          SCRAPECREATORS
+        </span>
+        <span className="ml-auto rounded bg-admin-neutral-50 px-1.5 py-0.5 text-[12px] font-medium text-admin-text-tertiary">
+          PRIMÁRIO
+        </span>
+      </div>
+      <div className="flex items-baseline gap-1.5 mb-2">
+        <span className="font-mono text-[2rem] font-medium tracking-[-0.03em] leading-none text-admin-text-primary">
+          {data.scrapecreators_credits.toFixed(0)}
+        </span>
+        <span className="text-[12px] text-admin-text-tertiary">créditos · 30 dias</span>
+      </div>
+      <p className="text-[12px] text-admin-text-tertiary">
+        {promotional ? "Custo efectivo $0 (promocional)" : `Custo $${data.scrapecreators_total.toFixed(2)}`}
+        {" · "}
+        equivalente ${data.scrapecreators_total.toFixed(2)}
+      </p>
+      <p className="mt-1 text-[12px] text-admin-text-tertiary">
+        {data.scrapecreators_calls} chamadas
+        {data.scrapecreators_balance_credits != null
+          ? ` · saldo ${data.scrapecreators_balance_credits} créditos`
+          : " · saldo desconhecido"}
+      </p>
+    </AdminCard>
+  );
+}
+
 /* ── Cost Per Analysis Card (Zona 2) ──────────────────────────────── */
 
 function CostPerAnalysisCard({ title, badge, value, sub, suffix }: {
@@ -708,7 +747,8 @@ function DarkTooltip({
   const openaiTotal = payload.filter((p) => p.dataKey.startsWith("openai")).reduce((s, p) => s + (p.value || 0), 0);
   const dfsEntry = payload.find((p) => p.dataKey === "dataforseo");
   const dfsVal = dfsEntry?.value ?? 0;
-  const total = apifyTotal + openaiTotal + dfsVal;
+  const scVal = payload.find((p) => p.dataKey === "scrapecreators")?.value ?? 0;
+  const total = apifyTotal + openaiTotal + dfsVal + scVal;
 
   return (
     <div className="rounded-lg bg-gray-900 px-3 py-2.5 shadow-lg text-white" style={{ fontSize: 12, minWidth: 200 }}>
@@ -738,6 +778,15 @@ function DarkTooltip({
             DFS
           </span>
           <span className="tabular-nums font-semibold">${dfsVal.toFixed(2)}</span>
+        </div>
+      )}
+      {scVal > 0 && (
+        <div className="flex items-center justify-between gap-4 mb-0.5">
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2 w-2 rounded-sm" style={{ backgroundColor: ADMIN_LITERAL.expenseChartScrapeCreators }} />
+            ScrapeCreators (equiv.)
+          </span>
+          <span className="tabular-nums font-semibold">${scVal.toFixed(2)}</span>
         </div>
       )}
       {total > 0 && (
@@ -960,6 +1009,7 @@ function DailyEvolutionCompact({
         <LegendDot color={ADMIN_LITERAL.expenseChartApify} label="Apify" />
         <LegendDot color={ADMIN_LITERAL.expenseChartOpenAI} label="OpenAI" />
         <LegendDot color={ADMIN_LITERAL.expenseChartDataForSeo} label="DFS" />
+        <LegendDot color={ADMIN_LITERAL.expenseChartScrapeCreators} label="ScrapeCreators (equiv.)" />
       </div>
 
       {!hasChartData ? (
@@ -1000,7 +1050,8 @@ function DailyEvolutionCompact({
               ) : (
                 <Bar dataKey="openai" stackId="c" fill={ADMIN_LITERAL.expenseChartOpenAI} />
               )}
-              <Bar dataKey="dataforseo" stackId="c" fill={ADMIN_LITERAL.expenseChartDataForSeo} radius={[3, 3, 0, 0]} />
+              <Bar dataKey="dataforseo" stackId="c" fill={ADMIN_LITERAL.expenseChartDataForSeo} />
+              <Bar dataKey="scrapecreators" stackId="c" fill={ADMIN_LITERAL.expenseChartScrapeCreators} radius={[3, 3, 0, 0]} />
               <ReferenceLine y={dailyLimit} stroke={ADMIN_LITERAL.capLine} strokeDasharray="5 4" strokeWidth={1.2} />
             </BarChart>
           </ResponsiveContainer>
