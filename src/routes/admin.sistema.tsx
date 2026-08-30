@@ -20,6 +20,7 @@ import { AdminActionButton } from "@/components/admin/v2/admin-action-button";
 import { HealthSection } from "@/components/admin/v2/sistema/health-section";
 import { SecretsConfigSection } from "@/components/admin/v2/sistema/secrets-config-section";
 import { CostsDetailSection } from "@/components/admin/v2/sistema/costs-detail-section";
+import { ScrapeCreatorsCostsCard } from "@/components/admin/v2/sistema/scrapecreators-costs-card";
 import { LegacyAccessSection } from "@/components/admin/v2/sistema/legacy-access-section";
 import { AnalysisCostBreakdown } from "@/components/admin/v2/sistema/analysis-cost-breakdown";
 import { adminFetch } from "@/lib/admin/fetch";
@@ -144,6 +145,7 @@ function SistemaPage() {
         <OnboardingFunnelCard />
         <ApifyActualCostBackfillCard />
         <SecretsConfigSection />
+        <ScrapeCreatorsCostsCard />
         <CostsDetailSection />
         <AnalysisCostBreakdown />
         <LegacyAccessSection />

@@ -1040,7 +1040,8 @@ export async function fetchCostCaps(): Promise<CostCaps> {
     .like("key", "cost_cap_%");
   const map = new Map((data ?? []).map((r) => [String(r.key), String(r.value)]));
   return {
-    apify: Number(map.get("cost_cap_apify_usd") ?? 29),
+    // Apify em Free Plan: $5/ciclo, soft 4.25 / hard 4.75.
+    apify: Number(map.get("cost_cap_apify_usd") ?? 4.75),
     openai: Number(map.get("cost_cap_openai_usd") ?? 25),
     dataforseo: Number(map.get("cost_cap_dataforseo_usd") ?? 50),
   };

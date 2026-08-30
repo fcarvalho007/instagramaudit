@@ -15,6 +15,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdminSession } from "@/lib/admin/session";
 import { fetchExpense30d } from "@/lib/admin/system-queries.server";
+import { fetchScrapeCreatorsCosts } from "@/lib/admin/scrapecreators-costs.server";
 import { computeKpis, type MarginStatus } from "@/lib/admin/overview-formulas";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -48,6 +49,16 @@ export interface OverviewKpis {
     apify: { total: number; cap: number };
     openai: { total: number; cap: number };
     dataforseo: { total: number; balance: number | null };
+    /** Provider primário — contabilizado em créditos, não em USD. */
+    scrapecreators: {
+      credits_30d: number;
+      calls_30d: number;
+      balance_credits: number | null;
+      balance_age_seconds: number | null;
+      equivalent_cost_usd_30d: number;
+      actual_cash_cost_usd_30d: number;
+      promotional: boolean;
+    };
   };
 }
 
@@ -75,6 +86,7 @@ export const Route = createFileRoute("/api/admin/overview-kpis")({
           paidAllTimeRes,
           expense,
           caps,
+          scrapecreators,
         ] = await Promise.all([
           supabaseAdmin
             .from("leads")
@@ -110,7 +122,8 @@ export const Route = createFileRoute("/api/admin/overview-kpis")({
             .select("id", { count: "exact", head: true })
             .eq("status", "paid"),
           fetchExpense30d(),
-          // Reads cost_cap_* from app_config (default 29/25/50).
+          // Reads cost_cap_* from app_config. Apify está em Free Plan
+          // ($5/ciclo, soft 4.25 / hard 4.75) — default alinhado com isso.
           (async () => {
             const { data } = await supabaseAdmin
               .from("app_config")
@@ -118,12 +131,14 @@ export const Route = createFileRoute("/api/admin/overview-kpis")({
               .like("key", "cost_cap_%");
             const map = new Map((data ?? []).map((r) => [String(r.key), String(r.value)]));
             return {
-              apify: Number(map.get("cost_cap_apify_usd") ?? 29),
+              apify: Number(map.get("cost_cap_apify_usd") ?? 4.75),
               openai: Number(map.get("cost_cap_openai_usd") ?? 25),
               dataforseo: Number(map.get("cost_cap_dataforseo_usd") ?? 50),
             };
           })(),
+          fetchScrapeCreatorsCosts(),
         ]);
+
 
         const leads_30d = leads30Res.count ?? 0;
         const leads_7d = leads7Res.count ?? 0;
@@ -197,6 +212,15 @@ export const Route = createFileRoute("/api/admin/overview-kpis")({
             dataforseo: {
               total: Number(expense.dataforseo_total ?? 0),
               balance: expense.dataforseo_balance ?? null,
+            },
+            scrapecreators: {
+              credits_30d: scrapecreators.windows.last_30d.credits,
+              calls_30d: scrapecreators.windows.last_30d.calls,
+              balance_credits: scrapecreators.last_known_balance?.credits_remaining ?? null,
+              balance_age_seconds: scrapecreators.last_known_balance?.age_seconds ?? null,
+              equivalent_cost_usd_30d: scrapecreators.windows.last_30d.equivalent_cost_usd,
+              actual_cash_cost_usd_30d: scrapecreators.windows.last_30d.actual_cash_cost_usd,
+              promotional: scrapecreators.promotional,
             },
           },
         };
