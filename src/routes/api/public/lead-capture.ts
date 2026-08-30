@@ -203,8 +203,10 @@ export const Route = createFileRoute("/api/public/lead-capture")({
           scoped: true,
           claimed,
           associated,
-          cache_key: cacheKey,
-          grant: cacheKey ? signScopedGrant(leadId, cacheKey) : null,
+          cache_key: associated ? cacheKey : null,
+          // Fallback ao cookie (contextos em que `Secure`/`SameSite=None`
+          // não é aceite). Nunca emitido sem associação real.
+          grant: associated && cacheKey ? signScopedGrant(leadId, cacheKey) : null,
           unlock,
         });
       },
