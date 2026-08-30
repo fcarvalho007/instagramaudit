@@ -27,6 +27,7 @@ import { setCaptureSessionCookie } from "@/lib/leads/report-capture-session.serv
 import { signScopedGrant } from "@/lib/leads/scoped-grant.server";
 import { claimAnonymousBaselineReport } from "@/lib/credits/lead-reports.server";
 import { clientIp, runCommentUnlock } from "@/lib/enrichment/unlock-comments.server";
+import { recordAccessEvent } from "@/lib/leads/access-events.server";
 import {
   CONVERSION_ENTRY_POINTS,
   OPERATIONAL_CONSENT_VERSION,
