@@ -407,7 +407,7 @@ export function ReportShellV2({
                   `lead-magnet-card` que servia de âncora ao antigo
                   ReportLockGate, para deep-links e scrolls existentes.
                   Só renderiza em estado B (lead capturado, sem premium). */}
-              {unlocked && !premiumUnlocked && (
+              {leadCaptured && !premiumUnlocked && (
                 <section
                   id="lead-magnet-card"
                   className="mt-12 sm:mt-16 mb-16 sm:mb-20"

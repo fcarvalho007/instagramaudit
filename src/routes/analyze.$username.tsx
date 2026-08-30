@@ -596,6 +596,9 @@ function AnalyzeReady({
   const [unlockStatus, setUnlockStatus] = useState<UnlockStatusCode | null>(
     null,
   );
+  /** Nível 1: email já capturado nesta sessão (ou desbloqueio já pedido). */
+  const leadCaptured = unlockStatus !== null;
+
   const [livePayload, setLivePayload] = useState<{
     result: AdapterResult;
     payload: SnapshotPayload;
@@ -657,10 +660,12 @@ function AnalyzeReady({
 
   return (
     <>
+      {/* Nível 0: cabeçalho informativo. O único CTA visível ao visitante
+          anónimo é o "Aprofundar gratuitamente" (DeepenAnalysisCta). */}
       <InstantAuditBar
         handle={auditHandle}
         snapshotId={snapshotId}
-        onConvert={() => openConversion("save_audit")}
+        {...(leadCaptured ? { onConvert: () => openConversion("save_audit") } : {})}
       />
       {!premiumUnlocked && packBalance > 0 ? (
         <div className="mb-4 rounded-xl border border-accent-primary/40 bg-accent-primary/5 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -697,6 +702,7 @@ function AnalyzeReady({
         featuresOverride={featuresOverride}
         lockBoundary="engagement"
         unlocked={unlocked}
+        leadCaptured={leadCaptured}
         // Estado real: derivado de `lead_entitlements` (product `report_full_9`)
         // via `getMyReportEntitlement`. Fail-closed em erro/sessão ausente.
         premiumUnlocked={premiumUnlocked}
@@ -719,12 +725,6 @@ function AnalyzeReady({
         snapshotId={snapshotId}
         unlockStatus={unlockStatus}
         onConvert={() => openConversion("comment_intelligence")}
-      />
-      <ReportEndCta
-        handle={auditHandle}
-        snapshotId={snapshotId}
-        hidden={unlockStatus !== null}
-        onConvert={() => openConversion("report_end")}
       />
       <ConversionSheet
         open={conversionOpen}
