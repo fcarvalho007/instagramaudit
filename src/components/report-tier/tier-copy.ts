@@ -32,11 +32,12 @@ export const TIER_COPY = {
         tag: "Leitura completa",
         heading: "Disponível no relatório completo",
         items: [
+          "Janelas de 30 e 90 dias",
           "Comparação com até 2 concorrentes",
           "Gap competitivo por formato e dia",
           "Keywords de oportunidade e SERP do Google",
           "Cruzamento Instagram × Pesquisa",
-          "Recomendações prioritárias e plano de 30 dias",
+          "Diagnóstico editorial completo e prioridades",
         ],
       },
     },
@@ -44,7 +45,7 @@ export const TIER_COPY = {
       "O gratuito mostra o que está a acontecer. O completo mostra porquê, contra quem e o que fazer a seguir.",
   },
   tag: {
-    essential: "Visão essencial",
+    essential: "Gratuito",
     complete: "Disponível no relatório completo",
   },
 } as const;
