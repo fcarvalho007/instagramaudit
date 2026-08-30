@@ -138,9 +138,21 @@ export interface Props {
    *   (Engagement, Frequency+Format grid, Best vs Worst posts).
    */
   mode?: "all" | "free" | "free_with_engagement" | "locked";
+  /**
+   * Nível 0 (visitante anónimo) vs Nível 1+ (email já dado).
+   * Quando `false`, os 5 teasers Pro (9€) dão lugar a um único convite
+   * gratuito — evita pedir dinheiro antes de entregar o nível intermédio.
+   */
+  showPremiumTeasers?: boolean;
 }
 
-export function ReportOverviewBlock({ result, renderInsight: _renderInsight, payload, mode = "all" }: Props) {
+export function ReportOverviewBlock({
+  result,
+  renderInsight: _renderInsight,
+  payload,
+  mode = "all",
+  showPremiumTeasers = true,
+}: Props) {
   const k = result.data.keyMetrics;
   const enriched = result.enriched;
 
@@ -391,24 +403,28 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
           <div id="engagement" className="scroll-mt-24">
             <EngagementCardRefined result={result} />
           </div>
-          <div className="space-y-5 md:space-y-6">
-            <p className="text-eyebrow-sm text-content-tertiary">
-              Relatório completo · 5 secções premium
-            </p>
-            {PREMIUM_TEASERS.map((teaser) => (
-              <PremiumTeaserCard
-                key={teaser.anchorId}
-                number={teaser.number}
-                eyebrow={teaser.eyebrow}
-                title={teaser.title}
-                description={teaser.description}
-                anchorId={teaser.anchorId}
-                source="overview_pro_teaser"
-                subItems={"subItems" in teaser ? teaser.subItems : undefined}
-                previewVariant={teaser.previewVariant}
-              />
-            ))}
-          </div>
+          {showPremiumTeasers ? (
+            <div className="space-y-5 md:space-y-6">
+              <p className="text-eyebrow-sm text-content-tertiary">
+                Relatório completo · 5 secções premium
+              </p>
+              {PREMIUM_TEASERS.map((teaser) => (
+                <PremiumTeaserCard
+                  key={teaser.anchorId}
+                  number={teaser.number}
+                  eyebrow={teaser.eyebrow}
+                  title={teaser.title}
+                  description={teaser.description}
+                  anchorId={teaser.anchorId}
+                  source="overview_pro_teaser"
+                  subItems={"subItems" in teaser ? teaser.subItems : undefined}
+                  previewVariant={teaser.previewVariant}
+                />
+              ))}
+            </div>
+          ) : (
+            <FreeDeepenTeaser />
+          )}
         </>
       )}
 
@@ -575,3 +591,38 @@ export function ReportOverviewBlock({ result, renderInsight: _renderInsight, pay
   );
 }
 
+
+/**
+ * Nível 0 → Nível 1. Único convite visível ao visitante anónimo:
+ * aprofundar gratuitamente com email. Nada de preço nesta fase.
+ */
+function FreeDeepenTeaser() {
+  const scrollToDeepen = () => {
+    if (typeof document === "undefined") return;
+    document
+      .getElementById("deepen-analysis")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  return (
+    <div className="rounded-2xl border border-accent-primary/25 bg-accent-primary/5 p-5 sm:p-6">
+      <p className="text-eyebrow-sm text-accent-primary">Próximo passo · gratuito</p>
+      <h3 className="mt-2 text-base sm:text-lg font-semibold text-content-primary">
+        Aprofundar esta auditoria
+      </h3>
+      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-content-secondary">
+        A análise das conversas — temas recorrentes, tom das reacções e sinais
+        de intenção — fica disponível gratuitamente com o teu email. Sem
+        pagamento e sem password.
+      </p>
+      <button
+        type="button"
+        onClick={scrollToDeepen}
+        className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-primary/90"
+      >
+        Aprofundar gratuitamente
+        <span aria-hidden="true">↓</span>
+      </button>
+    </div>
+  );
+}

@@ -54,8 +54,9 @@ export function DeepenAnalysisCta({
   return (
     <section
       ref={ref}
+      id="deepen-analysis"
       aria-labelledby="deepen-analysis-title"
-      className="mt-8 rounded-2xl border border-border-default bg-surface-secondary px-5 py-6 sm:px-7 sm:py-8"
+      className="scroll-mt-24 mt-8 rounded-2xl border border-border-default bg-surface-secondary px-5 py-6 sm:px-7 sm:py-8"
     >
       <span className="text-eyebrow-sm text-content-secondary">
         {t("deepen.eyebrow")}
