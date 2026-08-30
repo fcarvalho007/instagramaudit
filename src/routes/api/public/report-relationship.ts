@@ -71,9 +71,9 @@ export const Route = createFileRoute("/api/public/report-relationship")({
             .select("id, qualification, instagram_handle")
             .eq("id", leadId)
             .maybeSingle();
-          const patch: Record<string, string> = {};
+          const patch: { qualification?: string; instagram_handle?: string } = {};
           if (lead && !lead.qualification) {
-            patch['qualification'] = RELATIONSHIP_TO_QUALIFICATION[parsed.data.relationship];
+            patch.qualification = RELATIONSHIP_TO_QUALIFICATION[parsed.data.relationship];
           }
           if (lead && !lead.instagram_handle && parsed.data.relationship === "owner") {
             const { data: report } = await supabaseAdmin
@@ -82,7 +82,7 @@ export const Route = createFileRoute("/api/public/report-relationship")({
               .eq("lead_id", leadId)
               .eq("cache_key", cacheKey)
               .maybeSingle();
-            if (report?.handle) patch['instagram_handle'] = report.handle;
+            if (report?.handle) patch.instagram_handle = report.handle;
           }
           if (Object.keys(patch).length > 0) {
             await supabaseAdmin.from("leads").update(patch).eq("id", leadId);
