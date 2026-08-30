@@ -48,6 +48,16 @@ export interface OverviewKpis {
     apify: { total: number; cap: number };
     openai: { total: number; cap: number };
     dataforseo: { total: number; balance: number | null };
+    /** Provider primário — contabilizado em créditos, não em USD. */
+    scrapecreators: {
+      credits_30d: number;
+      calls_30d: number;
+      balance_credits: number | null;
+      balance_age_seconds: number | null;
+      equivalent_cost_usd_30d: number;
+      actual_cash_cost_usd_30d: number;
+      promotional: boolean;
+    };
   };
 }
 
