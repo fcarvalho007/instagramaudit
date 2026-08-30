@@ -329,7 +329,18 @@ async function fetchProfileWithPosts(
   let actualCostUsd = profileResult.actualCostUsd;
   let runId = profileResult.runId;
 
-  if (!wide || !row) {
+  if (!row) {
+    return { row, runId, actualCostUsd, billedResults };
+  }
+
+  // Providers that do not embed a post sample in the profile payload
+  // (ScrapeCreators) need an explicit posts call even for baseline, or the
+  // analysis would look like a profile with no feed.
+  const embedded = Array.isArray((row as { latestPosts?: unknown }).latestPosts)
+    ? ((row as { latestPosts: unknown[] }).latestPosts.length as number)
+    : 0;
+
+  if (!wide && embedded > 0) {
     return { row, runId, actualCostUsd, billedResults };
   }
 
@@ -342,6 +353,7 @@ async function fetchProfileWithPosts(
     maxPosts: cfg.resultsLimit,
     timeoutMs: cfg.timeoutMs,
   });
+
 
   billedResults += postsResult.billedResults;
   if (typeof postsResult.actualCostUsd === "number") {
