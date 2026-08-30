@@ -77,7 +77,7 @@ export function PipelineSection({ period }: { period: AdminPeriod }) {
           <AggregateStat
             eyebrow="Custo médio"
             value={data?.avg_cost_usd != null ? `$${data.avg_cost_usd.toFixed(3)}` : "—"}
-            sub="apify + openai"
+            sub="scrapecreators (apify fallback) + openai"
             divider
           />
         </div>

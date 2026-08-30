@@ -31,6 +31,8 @@ interface MetricsApi {
   avg_cost_usd: number | null;
   total_cost_usd?: number | null;
   apify_cost_usd?: number | null;
+  scrapecreators_credits?: number | null;
+  scrapecreators_equivalent_usd?: number | null;
   lab_cost_usd?: number | null;
   window_days: number;
 }
@@ -55,6 +57,7 @@ export function MetricsSection({ period }: { period: AdminPeriod }) {
   const avgCost = data?.avg_cost_usd;
   const totalCost = data?.total_cost_usd ?? null;
   const apifyCost = data?.apify_cost_usd ?? null;
+  const scCredits = data?.scrapecreators_credits ?? null;
   const labCost = data?.lab_cost_usd ?? null;
 
   return (
@@ -83,11 +86,15 @@ export function MetricsSection({ period }: { period: AdminPeriod }) {
         <ReportKpi
           accent="revenue-alt"
           eyebrow="Custo médio · análise"
-          info="Custo de produção (Apify + OpenAI das análises públicas e enriquecimento) ÷ análises fresh. Exclui Apify Lab/I&D e refreshes — alinha com cost-per-lead em /admin/visao-geral."
+          info="Custo de produção (ScrapeCreators + Apify fallback + OpenAI das análises públicas e enriquecimento) ÷ análises fresh. Exclui Apify Lab/I&D e refreshes — alinha com cost-per-lead em /admin/visao-geral. Os créditos ScrapeCreators são promocionais (custo efectivo $0)."
           value={avgCost != null ? `$${avgCost.toFixed(3)}` : "—"}
           sub={
             totalCost != null && apifyCost != null
               ? `Produção $${totalCost.toFixed(3)} · Apify $${apifyCost.toFixed(3)}${
+                  scCredits != null && scCredits > 0
+                    ? ` · ScrapeCreators ${scCredits.toFixed(0)} créditos`
+                    : ""
+                }${
                   labCost != null && labCost > 0
                     ? ` · Lab $${labCost.toFixed(3)} (excluído)`
                     : ""

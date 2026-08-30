@@ -150,6 +150,10 @@ export const Route = createFileRoute("/api/admin/report-requests/metrics")({
           avg_cost_usd: avgCostUsd,
           total_cost_usd: totalCostUsd,
           apify_cost_usd: apifyCostUsd,
+          scrapecreators_credits: Number(expense.scrapecreators_credits ?? 0),
+          scrapecreators_equivalent_usd: Number(
+            expense.scrapecreators_total ?? 0,
+          ),
           lab_cost_usd: labCostUsd,
         });
       },
