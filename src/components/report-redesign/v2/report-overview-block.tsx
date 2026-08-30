@@ -138,9 +138,21 @@ export interface Props {
    *   (Engagement, Frequency+Format grid, Best vs Worst posts).
    */
   mode?: "all" | "free" | "free_with_engagement" | "locked";
+  /**
+   * Nível 0 (visitante anónimo) vs Nível 1+ (email já dado).
+   * Quando `false`, os 5 teasers Pro (9€) dão lugar a um único convite
+   * gratuito — evita pedir dinheiro antes de entregar o nível intermédio.
+   */
+  showPremiumTeasers?: boolean;
 }
 
-export function ReportOverviewBlock({ result, renderInsight: _renderInsight, payload, mode = "all" }: Props) {
+export function ReportOverviewBlock({
+  result,
+  renderInsight: _renderInsight,
+  payload,
+  mode = "all",
+  showPremiumTeasers = true,
+}: Props) {
   const k = result.data.keyMetrics;
   const enriched = result.enriched;
 
