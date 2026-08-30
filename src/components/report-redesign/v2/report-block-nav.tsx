@@ -96,7 +96,10 @@ interface SidebarProps {
   /** True only when the user has paid Pro access. Commercial sidebar
    *  uses this to unlock items 03–07. Defaults to false. */
   premiumUnlocked?: boolean;
-  /** Handler that opens the existing UnlockModal (lead-magnet flow). */
+  /** True once the visitor gave an email (Análise Aprofundada / Estado B).
+   *  Unlocks the free `Conversas` section in the sidebar. */
+  leadCaptured?: boolean;
+  /** Handler for the free deepen flow (ConversionSheet) in State A. */
   onUnlockClick?: () => void;
   /** Free sample size used by the Explorar period chip. */
   sampleSize?: number;
@@ -1545,6 +1548,7 @@ export function ReportBlockSidebar({
   profiles,
   unlocked,
   premiumUnlocked = false,
+  leadCaptured = false,
   onUnlockClick,
   sampleSize = 0,
   observedDays = 0,
@@ -1563,8 +1567,8 @@ export function ReportBlockSidebar({
     () =>
       variant === "internal_lab"
         ? buildSidebarItems(blocks, variant, features)
-        : buildCommercialSidebarItems(premiumUnlocked),
-    [blocks, variant, features, premiumUnlocked],
+        : buildCommercialSidebarItems(premiumUnlocked, leadCaptured),
+    [blocks, variant, features, premiumUnlocked, leadCaptured],
   );
   // Scroll-spy across ALL sections — locked teaser cards still own a
   // matching DOM anchor (`#frequencia`, `#publicacoes-chave`, …), so they
@@ -1636,6 +1640,7 @@ export function ReportBlockTopTabs({
   profiles,
   unlocked,
   premiumUnlocked = false,
+  leadCaptured = false,
   onUnlockClick,
   sampleSize = 0,
   observedDays = 0,
@@ -1654,8 +1659,8 @@ export function ReportBlockTopTabs({
     () =>
       variant === "internal_lab"
         ? buildSidebarItems(blocks, variant, features)
-        : buildCommercialSidebarItems(premiumUnlocked),
-    [blocks, variant, features, premiumUnlocked],
+        : buildCommercialSidebarItems(premiumUnlocked, leadCaptured),
+    [blocks, variant, features, premiumUnlocked, leadCaptured],
   );
   const accessible = items.filter((i) => i.access !== "locked");
   const accessibleIds = accessible.map((i) => i.block.id);

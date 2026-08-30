@@ -578,6 +578,7 @@
     "avatar_alt": "Avatar of {{handle}}",
     "access": {
       "badge_free": "Free",
+"badge_free_email": "Free with email",
       "badge_premium": "Premium",
       "available_now": "Available now",
       "section_free": "Free reading",
