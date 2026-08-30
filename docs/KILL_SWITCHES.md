@@ -39,6 +39,6 @@ relatório público nem o unlock — são apenas side effects.
 
 | Variável | Default | Efeito |
 | --- | --- | --- |
-| `PUBLIC_BASELINE_NO_EMAIL` | `false` | `true` permite a auditoria inicial sem email/registo. Manter `false` em produção até autorização explícita. |
+| `PUBLIC_BASELINE_NO_EMAIL` | `false` | Semântica actual: **baseline gratuita** (`PUBLIC_BASELINE_FREE`). Com `true`, a Auditoria Instantânea (janela baseline, sem concorrentes) corre sem email **e sem consumo de créditos**, tanto para visitante anónimo como para lead identificado com saldo 0. Créditos/entitlements continuam a proteger concorrentes e janelas Pro. **Activa (`true`) em produção.** |
 | `PUBLIC_ANON_MAX_FRESH_PER_IP_DAY` | `10` | Análises FRESH com sucesso por IP em 24h. Cache hits não contam. |
 | `PUBLIC_ANON_MAX_FRESH_PER_IP_HOUR` | `4` | Tecto horário por IP, para travar rajadas. |
