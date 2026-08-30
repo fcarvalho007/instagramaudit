@@ -64,6 +64,7 @@ import {
 } from "@/lib/security/apify-budget.server";
 import {
   assertWithinPublicRateLimit,
+  assertWithinAnonymousBaselineRateLimit,
   RateLimitError,
 } from "@/lib/security/public-rate-limit.server";
 import type {
