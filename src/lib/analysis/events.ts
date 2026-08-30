@@ -213,6 +213,11 @@ export async function recordProviderCall(
     if (input.completionTokens != null) row.completion_tokens = input.completionTokens;
     if (input.totalTokens != null) row.total_tokens = input.totalTokens;
     if (input.analysisEventId != null) row.analysis_event_id = input.analysisEventId;
+    if (input.creditsCharged != null) row.credits_charged = input.creditsCharged;
+    if (input.creditsRemaining != null) row.credits_remaining = input.creditsRemaining;
+    if (input.cached != null) row.cached = input.cached;
+    if (input.endpoint != null) row.endpoint = input.endpoint;
+
 
     const { data, error } = await supabaseAdmin
       .from("provider_call_logs")
