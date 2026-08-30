@@ -114,6 +114,22 @@ export async function handleClaimExisting(request: Request): Promise<Response> {
     return json({ ok: false, error_code: "INTERNAL_ERROR" }, 500);
   }
 
+  // Ponte "snapshot anónimo → lead" também no login pós-valor: quem viu a
+  // auditoria base sem sessão e entrou depois passa a ser dono do relatório.
+  if (parsed.data.handle) {
+    try {
+      const { claimAnonymousBaselineReport } = await import(
+        "@/lib/credits/lead-reports.server"
+      );
+      await claimAnonymousBaselineReport({
+        leadId: result.leadId,
+        handle: parsed.data.handle,
+      });
+    } catch (err) {
+      console.warn("[onboarding/claim-existing] baseline claim failed", err);
+    }
+  }
+
   let credits = 0;
   try {
     credits = await getBalance(result.leadId);
