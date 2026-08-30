@@ -2,7 +2,7 @@
   "cta": {
     "save_audit": "Guardar esta auditoria",
     "comment_intelligence": "Desbloquear a análise das conversas",
-    "report_end": "Aprofundar esta auditoria"
+    "report_end": "Guardar e aprofundar gratuitamente"
   },
   "headline": {
     "save_audit": "Guarda esta auditoria gratuitamente",
@@ -19,14 +19,15 @@
   "errors": {
     "invalid_email": "Escreve um email válido para continuar.",
     "rate_limited": "Demasiados pedidos. Tenta novamente dentro de alguns minutos.",
-    "generic": "Não foi possível concluir. Tenta novamente."
+    "generic": "Não foi possível concluir. Tenta novamente.",
+    "lead_failed": "Não foi possível guardar a auditoria. Tenta novamente dentro de momentos."
   },
   "unlock": {
     "unlocking": "A preparar a análise aprofundada…",
     "processing": "Estamos a analisar as conversas das publicações recentes…",
     "available": "Análise aprofundada disponível. O bloco de conversas foi actualizado.",
     "degraded": "A análise das conversas está temporariamente indisponível. A auditoria fica guardada e avisamos-te quando abrir.",
-    "error": "Não foi possível iniciar a análise das conversas. A auditoria ficou guardada.",
+    "error": "Guardámos a auditoria, mas não foi possível aprofundar esta parte agora. Tenta novamente dentro de momentos.",
     "saved": "Auditoria guardada. Enviámos-te um link de acesso por email."
   },
   "relationship": {

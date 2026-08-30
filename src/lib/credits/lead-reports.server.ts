@@ -76,12 +76,34 @@ export async function claimAnonymousBaselineReport(input: {
   leadId: string;
   handle: string;
   profileRelationship?: string | null;
-}): Promise<{ claimed: boolean; cacheKey: string }> {
+}): Promise<{
+  /** Existe associação lead↔relatório depois desta chamada. */
+  associated: boolean;
+  /** A associação foi criada agora (falso em submissões repetidas). */
+  created: boolean;
+  /** Compatibilidade com chamadores antigos: igual a `created`. */
+  claimed: boolean;
+  cacheKey: string;
+  snapshotId: string | null;
+}> {
   const handle = input.handle.trim().replace(/^@/, "").toLowerCase();
   const { buildCacheKey, lookupSnapshot } = await import("@/lib/analysis/cache");
   const cacheKey = buildCacheKey(handle, [], "baseline");
   const snapshot = await lookupSnapshot(cacheKey);
-  if (!snapshot) return { claimed: false, cacheKey };
+  if (!snapshot) {
+    return {
+      associated: false,
+      created: false,
+      claimed: false,
+      cacheKey,
+      snapshotId: null,
+    };
+  }
+
+  // Distinguir "já estava associado" de "associado agora" — a segunda
+  // submissão do mesmo email tem de continuar a arrancar o Level 2 sem
+  // criar `lead_reports` nem jobs duplicados.
+  const alreadyAssociated = await leadOwnsReport(input.leadId, cacheKey);
 
   await upsertLeadReport({
     leadId: input.leadId,
@@ -91,7 +113,13 @@ export async function claimAnonymousBaselineReport(input: {
     source: "anonymous_baseline_claim",
     profileRelationship: input.profileRelationship ?? null,
   });
-  return { claimed: true, cacheKey };
+  return {
+    associated: true,
+    created: !alreadyAssociated,
+    claimed: !alreadyAssociated,
+    cacheKey,
+    snapshotId: snapshot.id,
+  };
 }
 
 /**

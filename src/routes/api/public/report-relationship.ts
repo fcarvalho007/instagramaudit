@@ -16,6 +16,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { readLeadIdFromRequest } from "@/lib/leads/lead-cookie.server";
 import { verifyScopedGrant } from "@/lib/leads/scoped-grant.server";
+import { readCaptureLeadIdFromRequest } from "@/lib/leads/report-capture-session.server";
 import { setReportRelationship } from "@/lib/credits/lead-reports.server";
 import {
   PROFILE_RELATIONSHIPS,
@@ -51,6 +52,7 @@ export const Route = createFileRoute("/api/public/report-relationship")({
         const cacheKey = parsed.data.cache_key;
         const leadId =
           readLeadIdFromRequest(request) ??
+          readCaptureLeadIdFromRequest(request, cacheKey) ??
           verifyScopedGrant(parsed.data.grant ?? null, cacheKey);
         if (!leadId) return json({ error: "NO_LEAD" }, 401);
 

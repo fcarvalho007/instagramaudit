@@ -78,7 +78,7 @@ export function ConversionSheet({
 
   useEffect(() => {
     if (!open) return;
-    trackAnonymousEvent("lead_modal_viewed", {
+    trackAnonymousEvent("lead_capture_opened", {
       handle,
       snapshotId,
       metadata: { conversion_entry_point: entryPoint },
@@ -90,7 +90,7 @@ export function ConversionSheet({
     setEmail(value);
     if (!emailStartedRef.current && value.trim().length > 0) {
       emailStartedRef.current = true;
-      trackAnonymousEvent("email_started", {
+      trackAnonymousEvent("email_field_started", {
         handle,
         snapshotId,
         metadata: { conversion_entry_point: entryPoint },
@@ -106,6 +106,11 @@ export function ConversionSheet({
       const value = email.trim();
       if (!EMAIL_RE.test(value)) {
         setError(t("errors.invalid_email"));
+        trackAnonymousEvent("email_validation_failed", {
+          handle,
+          snapshotId,
+          metadata: { conversion_entry_point: entryPoint },
+        });
         return;
       }
       setError(null);
@@ -140,7 +145,9 @@ export function ConversionSheet({
               ? t("errors.rate_limited")
               : body?.error === "INVALID_EMAIL"
                 ? t("errors.invalid_email")
-                : t("errors.generic"),
+                : body?.error === "LEAD_CREATE_FAILED"
+                  ? t("errors.lead_failed")
+                  : t("errors.generic"),
           );
           return;
         }
@@ -168,6 +175,12 @@ export function ConversionSheet({
 
         const status = body.unlock?.status;
         if (status === "queued" || status === "pending") {
+          trackAnonymousEvent("level2_unlock_started", {
+            handle,
+            snapshotId,
+            metadata: { conversion_entry_point: entryPoint },
+            dedupeKey: snapshotId,
+          });
           trackAnonymousEvent("comment_intelligence_started", {
             handle,
             snapshotId,
@@ -240,6 +253,7 @@ export function ConversionSheet({
         return t("unlock.available");
       case "degraded":
         return t("unlock.degraded");
+      case "snapshot_missing":
       case "error":
         return t("unlock.error");
       default:

@@ -10,7 +10,8 @@
  * Security model (no parallel access system — reuses what already exists):
  *  - the client sends a `cache_key`, never a snapshot id, so arbitrary
  *    snapshots cannot be targeted;
- *  - the lead session cookie must own that report (`leadOwnsReport`), which
+ *  - the lead session cookie (or the scoped `report_capture_session`) must
+ *    own that report (`leadOwnsReport`), which
  *    is written when the report is claimed — a random email cannot unlock
  *    someone else's snapshot;
  *  - idempotency, rate limits and the monthly soft cap live in
@@ -21,6 +22,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { readLeadIdFromRequest } from "@/lib/leads/lead-cookie.server";
+import { readCaptureLeadIdFromRequest } from "@/lib/leads/report-capture-session.server";
 import { clientIp, runCommentUnlock } from "@/lib/enrichment/unlock-comments.server";
 
 const BodySchema = z.object({
@@ -48,8 +50,11 @@ export const Route = createFileRoute("/api/public/unlock-comments")({
         const parsed = BodySchema.safeParse(parsedBody);
         if (!parsed.success) return json({ error: "INVALID_BODY" }, 400);
 
-        // Level 2 requires a lead (email already captured).
-        const leadId = readLeadIdFromRequest(request);
+        // Level 2 exige um lead: sessão completa (email verificado) ou
+        // `report_capture_session` de âmbito restrito a esta `cache_key`.
+        const leadId =
+          readLeadIdFromRequest(request) ??
+          readCaptureLeadIdFromRequest(request, parsed.data.cache_key);
         if (!leadId) return json({ error: "ONBOARDING_REQUIRED" }, 401);
 
         const outcome = await runCommentUnlock({
