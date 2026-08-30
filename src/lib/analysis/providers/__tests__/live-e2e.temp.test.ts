@@ -2,7 +2,7 @@
  * TEMPORARY operational validation against the REAL providers.
  * Deleted after the run — never commit to CI.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 const HANDLE = "frederico.m.carvalho";
 const LONG = 240_000;
@@ -179,11 +179,20 @@ describe("LIVE provider validation", () => {
     "5B. Apify primary but monthly hard cap reached → ScrapeCreators fallback",
     async () => {
       process.env.SOCIAL_PROVIDER_PROFILE = "apify";
-      process.env.APIFY_MONTHLY_HARD_CAP_USD = "0.000001";
-      const { invalidateApifyMonthlyBudgetCache } = await import(
-        "@/lib/security/apify-budget.server"
-      );
-      invalidateApifyMonthlyBudgetCache();
+      // Simulate a reached hard cap without polluting real spend data.
+      vi.doMock("@/lib/security/apify-budget.server", () => ({
+        MonthlyBudgetExceededError: class extends Error {
+          constructor() {
+            super("Apify monthly budget exceeded");
+            this.name = "MonthlyBudgetExceededError";
+          }
+        },
+        assertApifyMonthlyBudgetAvailable: async () => {
+          const err = new Error("Apify monthly budget exceeded");
+          err.name = "MonthlyBudgetExceededError";
+          throw err;
+        },
+      }));
       try {
         const profile = await fetchProfile(HANDLE);
         log("fallback B", {
@@ -192,6 +201,15 @@ describe("LIVE provider validation", () => {
           creditsConsumed: profile.creditsConsumed,
           cached: profile.cached,
         });
+        expect(profile.provider).toBe("scrapecreators");
+      } finally {
+        delete process.env.SOCIAL_PROVIDER_PROFILE;
+        vi.doUnmock("@/lib/security/apify-budget.server");
+      }
+    },
+    LONG,
+  );
+});
         expect(profile.provider).toBe("scrapecreators");
       } finally {
         delete process.env.SOCIAL_PROVIDER_PROFILE;
