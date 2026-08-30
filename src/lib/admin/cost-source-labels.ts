@@ -59,5 +59,7 @@ export function providerLabel(provider: ProviderKey): string {
       return "DataForSEO";
     case "openai":
       return "OpenAI";
+    case "scrapecreators":
+      return "ScrapeCreators";
   }
 }
