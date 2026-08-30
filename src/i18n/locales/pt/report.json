@@ -586,7 +586,7 @@
       "section_free": "Leitura gratuita",
       "section_premium": "Relatório completo",
       "section_paid": "Secções",
-      "progress": "{{accessible}} de {{total}} secções acessíveis",
+      "progress": "Auditoria Instantânea · {{accessible}} secções disponíveis",
       "premium_count": "{{count}} por desbloquear",
       "cta": "Desbloquear relatório",
       "cta_aria": "Desbloquear relatório",

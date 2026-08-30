@@ -6,8 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { InstagramGlyph } from "./instagram-glyph";
 import { normalizeInstagramHandle } from "@/lib/instagram/normalize-handle";
-import { OnboardingModal } from "@/components/onboarding/onboarding-modal";
-import { useAuthSession } from "@/hooks/use-auth-session";
+import { trackAnonymousEvent } from "@/lib/analytics/anonymous-funnel";
 
 /**
  * Re-export do helper canónico em `@/lib/instagram/normalize-handle`,
@@ -20,11 +19,8 @@ export function extractUsername(raw: string): string {
 export function HeroActionBar() {
   const { t } = useTranslation("landing");
   const navigate = useNavigate();
-  const { user } = useAuthSession();
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [onboardingOpen, setOnboardingOpen] = useState(false);
-  const [pendingNav, setPendingNav] = useState<{ username: string } | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,23 +31,14 @@ export function HeroActionBar() {
     }
     setError(null);
 
-    // Utilizadores autenticados saltam o onboarding modal — vão directos
-    // à análise. A pipeline em /analyze/$username já enfileira o
-    // report_request automaticamente quando há sessão activa.
-    if (user) {
-      navigate({
-        to: "/analyze/$username",
-        params: { username },
-        search: {},
-      });
-      return;
-    }
-
-    // Fase 3: NÃO navegar directamente — abrir onboarding modal primeiro.
-    // O modal vai submeter a /api/onboarding/start (cookie + créditos)
-    // antes de qualquer chamada ao provider.
-    setPendingNav({ username });
-    setOnboardingOpen(true);
+    // Ronda 3 — first value experience: nenhum gate antes do resultado.
+    // Visitantes anónimos e autenticados seguem o mesmo caminho.
+    trackAnonymousEvent("instagram_handle_submitted", { handle: username });
+    navigate({
+      to: "/analyze/$username",
+      params: { username },
+      search: {},
+    });
   };
 
   return (
@@ -134,6 +121,13 @@ export function HeroActionBar() {
         </p>
       ) : null}
 
+      <p
+        className="mt-3 font-sans text-xs sm:text-sm"
+        style={{ color: "rgb(var(--hero-text-secondary))" }}
+      >
+        {t("actionBar.trustInline.anonymous")}
+      </p>
+
       <style>{`
         .hero-bar-breathe {
           animation: none;
@@ -152,21 +146,6 @@ export function HeroActionBar() {
         }
       `}</style>
     </div>
-    {pendingNav ? (
-      <OnboardingModal
-        open={onboardingOpen}
-        onOpenChange={setOnboardingOpen}
-        handle={pendingNav.username}
-        onSuccess={(handle) => {
-          setOnboardingOpen(false);
-          navigate({
-            to: "/analyze/$username",
-            params: { username: handle },
-            search: {},
-          });
-        }}
-      />
-    ) : null}
     </>
   );
 }

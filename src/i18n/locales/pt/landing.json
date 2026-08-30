@@ -5,8 +5,8 @@
   },
   "hero": {
     "eyebrow": "Benchmark de Instagram",
-    "headline": "Analisa qualquer perfil de Instagram em segundos.",
-    "subtitle": "Diagnóstico profissional para melhorar a presença digital.",
+    "headline": "Analisa o desempenho de qualquer perfil de Instagram.",
+    "subtitle": "Introduz um perfil público e vê engagement, conteúdos com melhor desempenho e oportunidades de melhoria.",
     "previewMock": {
       "header": "Pré-visualização do relatório",
       "scoreLabel": "Índice do perfil",
@@ -27,9 +27,9 @@
     "microLabel": "Inserir perfil público do Instagram",
     "placeholder": "@perfil ou URL do Instagram",
     "ariaInput": "Username ou URL do perfil do Instagram",
-    "submit": "Analisar grátis",
+    "submit": "Analisar gratuitamente",
     "trustInline": {
-      "freeReports": "Oferta de 2 relatórios grátis"
+      "anonymous": "Sem registo · Apenas dados públicos · Resultado em segundos"
     },
     "errors": {
       "empty": "Inserir um username válido para continuar",
@@ -112,8 +112,12 @@
         "label": "posts analisados",
         "hint": "(Socialinsider, 2025-2026)"
       },
-      "engagement": { "label": "engagement médio em reels" },
-      "tiers": { "label": "escalões de comparação" }
+      "engagement": {
+        "label": "engagement médio em reels"
+      },
+      "tiers": {
+        "label": "escalões de comparação"
+      }
     },
     "manualVsTool": {
       "eyebrow": "Porquê não fazer à mão",
@@ -146,11 +150,20 @@
         "formatHint": "62% do mix",
         "competitorsLabel": "Comparação com concorrentes"
       },
-      "disclaimer": "Exemplo. Os números reais vêm do teu perfil.",
+      "disclaimer": "Exemplo. Os números reais vêm do perfil analisado.",
       "sub": {
-        "data": { "title": "Métricas acionáveis", "hint": "o que importa, nada que distrai" },
-        "benchmark": { "title": "Comparação imediata", "hint": "face ao escalão e concorrentes" },
-        "ai": { "title": "Leitura editorial", "hint": "insights gerados por IA" }
+        "data": {
+          "title": "Métricas acionáveis",
+          "hint": "o que importa, nada que distrai"
+        },
+        "benchmark": {
+          "title": "Comparação imediata",
+          "hint": "face ao escalão e concorrentes"
+        },
+        "ai": {
+          "title": "Leitura editorial",
+          "hint": "insights gerados por IA"
+        }
       }
     },
     "how": {
@@ -178,18 +191,42 @@
         "body": "O número sozinho não diz nada. Mostramos-te onde estás face a perfis do mesmo tamanho.",
         "aboveAverage": "acima da média"
       },
-      "engagement": { "title": "Taxa de engagement", "hint": "gostos, comentários e partilhas" },
-      "frequency": { "title": "Frequência", "hint": "ritmo e consistência" },
-      "format": { "title": "Formato dominante", "hint": "reels, carrosséis, imagens" },
-      "competitors": { "title": "Concorrentes", "hint": "confronto lado a lado" }
+      "engagement": {
+        "title": "Taxa de engagement",
+        "hint": "gostos, comentários e partilhas"
+      },
+      "frequency": {
+        "title": "Frequência",
+        "hint": "ritmo e consistência"
+      },
+      "format": {
+        "title": "Formato dominante",
+        "hint": "reels, carrosséis, imagens"
+      },
+      "competitors": {
+        "title": "Concorrentes",
+        "hint": "confronto lado a lado"
+      }
     },
     "personas": {
       "eyebrow": "Para quem é",
       "headline": "Feito para quem decide.",
-      "consultants": { "title": "Consultores", "body": "Diagnósticos rápidos para apresentar a clientes." },
-      "social": { "title": "Social media managers", "body": "Acompanhar contas e reportar resultados." },
-      "brands": { "title": "Marcas e PME", "body": "Perceber a presença sem contratar agência." },
-      "creators": { "title": "Criadores", "body": "Comparar com pares e afinar conteúdo." }
+      "consultants": {
+        "title": "Consultores",
+        "body": "Diagnósticos rápidos para apresentar a clientes."
+      },
+      "social": {
+        "title": "Social media managers",
+        "body": "Acompanhar contas e reportar resultados."
+      },
+      "brands": {
+        "title": "Marcas e PME",
+        "body": "Perceber a presença sem contratar agência."
+      },
+      "creators": {
+        "title": "Criadores",
+        "body": "Comparar com pares e afinar conteúdo."
+      }
     },
     "transparency": {
       "eyebrow": "Transparência",
@@ -206,9 +243,23 @@
       "headline": "Sem subscrição. Pagas o que usas.",
       "lead": "Começa pela visão inicial grátis.",
       "urgency": "Preço de lançamento — sobe para 149€ após a beta.",
-      "free": { "label": "Visão inicial", "price": "0€", "unit": "sem cartão · sem subscrição", "cta": "Começar grátis" },
-      "single": { "label": "Relatório completo", "unit": "pagamento único · sem subscrição", "cta": "Obter relatório completo" },
-      "diagnosis": { "label": "Diagnóstico de Autoridade", "unit": "leitura humana + 3 prioridades", "cta": "Reservar diagnóstico", "badge": "Mais útil" }
+      "free": {
+        "label": "Visão inicial",
+        "price": "0€",
+        "unit": "sem cartão · sem subscrição",
+        "cta": "Começar grátis"
+      },
+      "single": {
+        "label": "Relatório completo",
+        "unit": "pagamento único · sem subscrição",
+        "cta": "Obter relatório completo"
+      },
+      "diagnosis": {
+        "label": "Diagnóstico de Autoridade",
+        "unit": "leitura humana + 3 prioridades",
+        "cta": "Reservar diagnóstico",
+        "badge": "Mais útil"
+      }
     },
     "finalCta": {
       "headline": "Analisa o primeiro perfil agora.",

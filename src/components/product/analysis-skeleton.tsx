@@ -4,12 +4,12 @@ import { cn } from "@/lib/utils";
 
 /* ─── Phase steps (no repetition — one per stage) ──────────────────── */
 
+// Ronda 3 — quatro etapas reais do pipeline, sem percentagens fictícias.
 const STEPS = [
   { key: "1", durationMs: 3000 },
-  { key: "2", durationMs: 4000 },
-  { key: "3", durationMs: 5000 },
-  { key: "4", durationMs: 6000 },
-  { key: "5", durationMs: 8000 },
+  { key: "2", durationMs: 5000 },
+  { key: "3", durationMs: 6000 },
+  { key: "4", durationMs: 8000 },
 ] as const;
 
 const TOTAL_STEPS = STEPS.length;

@@ -1,4 +1,7 @@
+import { useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+
+import { trackAnonymousEvent } from "@/lib/analytics/anonymous-funnel";
 
 import { HeroSection } from "@/components/landing/hero-section";
 import { LandingDarkIsland } from "@/components/landing/dark/landing-dark-island";
@@ -31,6 +34,10 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
+  useEffect(() => {
+    trackAnonymousEvent("landing_view", { dedupeKey: "landing" });
+  }, []);
+
   return (
     // Dark hero landing — published bundle refresh marker
     <div

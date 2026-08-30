@@ -72,6 +72,7 @@ import { Route as ApiPublicPricingFeedbackRouteImport } from './routes/api/publi
 import { Route as ApiPublicOnboardingEventRouteImport } from './routes/api/public/onboarding-event'
 import { Route as ApiPublicLookupLeadRouteImport } from './routes/api/public/lookup-lead'
 import { Route as ApiPublicInlineFeedbackRouteImport } from './routes/api/public/inline-feedback'
+import { Route as ApiPublicFunnelEventRouteImport } from './routes/api/public/funnel-event'
 import { Route as ApiPublicEupagoWebhookRouteImport } from './routes/api/public/eupago-webhook'
 import { Route as ApiPublicEnrichSnapshotRouteImport } from './routes/api/public/enrich-snapshot'
 import { Route as ApiPublicEnrichCommentsRouteImport } from './routes/api/public/enrich-comments'
@@ -493,6 +494,11 @@ const ApiPublicLookupLeadRoute = ApiPublicLookupLeadRouteImport.update({
 const ApiPublicInlineFeedbackRoute = ApiPublicInlineFeedbackRouteImport.update({
   id: '/api/public/inline-feedback',
   path: '/api/public/inline-feedback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicFunnelEventRoute = ApiPublicFunnelEventRouteImport.update({
+  id: '/api/public/funnel-event',
+  path: '/api/public/funnel-event',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicEupagoWebhookRoute = ApiPublicEupagoWebhookRouteImport.update({
@@ -1164,6 +1170,7 @@ export interface FileRoutesByFullPath {
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
   '/api/public/eupago-webhook': typeof ApiPublicEupagoWebhookRoute
+  '/api/public/funnel-event': typeof ApiPublicFunnelEventRoute
   '/api/public/inline-feedback': typeof ApiPublicInlineFeedbackRoute
   '/api/public/lookup-lead': typeof ApiPublicLookupLeadRoute
   '/api/public/onboarding-event': typeof ApiPublicOnboardingEventRoute
@@ -1329,6 +1336,7 @@ export interface FileRoutesByTo {
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
   '/api/public/eupago-webhook': typeof ApiPublicEupagoWebhookRoute
+  '/api/public/funnel-event': typeof ApiPublicFunnelEventRoute
   '/api/public/inline-feedback': typeof ApiPublicInlineFeedbackRoute
   '/api/public/lookup-lead': typeof ApiPublicLookupLeadRoute
   '/api/public/onboarding-event': typeof ApiPublicOnboardingEventRoute
@@ -1497,6 +1505,7 @@ export interface FileRoutesById {
   '/api/public/enrich-comments': typeof ApiPublicEnrichCommentsRoute
   '/api/public/enrich-snapshot': typeof ApiPublicEnrichSnapshotRoute
   '/api/public/eupago-webhook': typeof ApiPublicEupagoWebhookRoute
+  '/api/public/funnel-event': typeof ApiPublicFunnelEventRoute
   '/api/public/inline-feedback': typeof ApiPublicInlineFeedbackRoute
   '/api/public/lookup-lead': typeof ApiPublicLookupLeadRoute
   '/api/public/onboarding-event': typeof ApiPublicOnboardingEventRoute
@@ -1666,6 +1675,7 @@ export interface FileRouteTypes {
     | '/api/public/enrich-comments'
     | '/api/public/enrich-snapshot'
     | '/api/public/eupago-webhook'
+    | '/api/public/funnel-event'
     | '/api/public/inline-feedback'
     | '/api/public/lookup-lead'
     | '/api/public/onboarding-event'
@@ -1831,6 +1841,7 @@ export interface FileRouteTypes {
     | '/api/public/enrich-comments'
     | '/api/public/enrich-snapshot'
     | '/api/public/eupago-webhook'
+    | '/api/public/funnel-event'
     | '/api/public/inline-feedback'
     | '/api/public/lookup-lead'
     | '/api/public/onboarding-event'
@@ -1998,6 +2009,7 @@ export interface FileRouteTypes {
     | '/api/public/enrich-comments'
     | '/api/public/enrich-snapshot'
     | '/api/public/eupago-webhook'
+    | '/api/public/funnel-event'
     | '/api/public/inline-feedback'
     | '/api/public/lookup-lead'
     | '/api/public/onboarding-event'
@@ -2143,6 +2155,7 @@ export interface RootRouteChildren {
   ApiPublicEnrichCommentsRoute: typeof ApiPublicEnrichCommentsRoute
   ApiPublicEnrichSnapshotRoute: typeof ApiPublicEnrichSnapshotRoute
   ApiPublicEupagoWebhookRoute: typeof ApiPublicEupagoWebhookRoute
+  ApiPublicFunnelEventRoute: typeof ApiPublicFunnelEventRoute
   ApiPublicInlineFeedbackRoute: typeof ApiPublicInlineFeedbackRoute
   ApiPublicLookupLeadRoute: typeof ApiPublicLookupLeadRoute
   ApiPublicOnboardingEventRoute: typeof ApiPublicOnboardingEventRoute
@@ -2636,6 +2649,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/inline-feedback'
       fullPath: '/api/public/inline-feedback'
       preLoaderRoute: typeof ApiPublicInlineFeedbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/funnel-event': {
+      id: '/api/public/funnel-event'
+      path: '/api/public/funnel-event'
+      fullPath: '/api/public/funnel-event'
+      preLoaderRoute: typeof ApiPublicFunnelEventRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/eupago-webhook': {
@@ -3678,6 +3698,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicEnrichCommentsRoute: ApiPublicEnrichCommentsRoute,
   ApiPublicEnrichSnapshotRoute: ApiPublicEnrichSnapshotRoute,
   ApiPublicEupagoWebhookRoute: ApiPublicEupagoWebhookRoute,
+  ApiPublicFunnelEventRoute: ApiPublicFunnelEventRoute,
   ApiPublicInlineFeedbackRoute: ApiPublicInlineFeedbackRoute,
   ApiPublicLookupLeadRoute: ApiPublicLookupLeadRoute,
   ApiPublicOnboardingEventRoute: ApiPublicOnboardingEventRoute,

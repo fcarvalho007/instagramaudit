@@ -7,11 +7,10 @@
     "aria": "Analyzing profile",
     "eyebrow": "Analyzing profile",
     "steps": {
-      "1": "Collecting the profile's public data…",
-      "2": "Organising posts and metrics…",
-      "3": "Comparing against market references…",
-      "4": "Identifying patterns and opportunities…",
-      "5": "Preparing the visual report…"
+      "1": "Locating the profile…",
+      "2": "Analysing recent posts…",
+      "3": "Calculating engagement and patterns…",
+      "4": "Preparing the diagnosis…"
     },
     "stepCounter": "Step {{current}} of {{total}}",
     "footnote": "Don't close this window — the diagnosis is being prepared.",

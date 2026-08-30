@@ -10,12 +10,18 @@ import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
 import { ReportShellV2 } from "@/components/report-redesign/v2/report-shell-v2";
 import { useReportShareActions } from "@/components/report-share/use-report-share-actions";
 import { UnlockModal } from "@/components/product/unlock-modal";
+import { InstantAuditBar } from "@/components/product/instant-audit-bar";
+import { DeepenAnalysisCta } from "@/components/product/deepen-analysis-cta";
 import { OnboardingModal } from "@/components/onboarding/onboarding-modal";
 import { Toaster } from "@/components/ui/sonner";
 import { fetchPublicAnalysis } from "@/lib/analysis/client";
 import { getPublishedFeatures } from "@/lib/admin/variant-overrides.functions";
 import type { VariantFeatures } from "@/lib/report/report-variant";
 import { trackEvent } from "@/lib/tracking.functions";
+import {
+  trackAnonymousEvent,
+  observeScrollMilestones,
+} from "@/lib/analytics/anonymous-funnel";
 import {
   getMyReportEntitlement,
   consumeReportUnlockForSnapshot,
@@ -245,11 +251,15 @@ function AnalyzePage() {
     // Minimum skeleton display: 3s — gives the user a sense of structured
     // progress and lets the layout settle. Fresh Apify runs take 7-20s, so
     // the floor only affects cache hits (~200-700ms).
-    const MIN_DISPLAY_MS = 3000;
+    // Ronda 3 — o piso existe apenas para o layout assentar; cache hits
+    // (~200-700ms) já não são artificialmente atrasados.
+    const MIN_DISPLAY_MS = 800;
     const waitMin = () => {
       const remaining = MIN_DISPLAY_MS - (Date.now() - loadStart);
       return remaining > 0 ? new Promise<void>((r) => setTimeout(r, remaining)) : Promise.resolve();
     };
+
+    trackAnonymousEvent("anonymous_analysis_started", { handle: cleaned });
 
     // Step 1 — trigger the public analyze pipeline.
     const analysis = await fetchPublicAnalysis(cleaned, competitors, {
@@ -277,6 +287,10 @@ function AnalyzePage() {
         });
         return;
       }
+      trackAnonymousEvent("anonymous_analysis_failed", {
+        handle: cleaned,
+        metadata: { error_code: analysis.error_code ?? "UNKNOWN" },
+      });
       setState({
         status: "error",
         message: resolveErrorMessage(analysis.error_code),
@@ -308,6 +322,17 @@ function AnalyzePage() {
       });
 
       await waitMin();
+
+      trackAnonymousEvent("anonymous_analysis_success", {
+        handle: cleaned,
+        snapshotId: body.snapshot.id,
+        dedupeKey: body.snapshot.id,
+      });
+      trackAnonymousEvent("instant_audit_viewed", {
+        handle: cleaned,
+        snapshotId: body.snapshot.id,
+        dedupeKey: body.snapshot.id,
+      });
 
       setState({
         status: "ready",
@@ -542,8 +567,17 @@ function AnalyzeReady({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snapshotId]);
 
+  // Ronda 3 — marcos de scroll da Auditoria Instantânea (uma vez por snapshot).
+  const auditHandle =
+    ((payload as { instagram_username?: string })?.instagram_username) ?? "";
+  useEffect(() => {
+    if (!snapshotId) return;
+    return observeScrollMilestones({ handle: auditHandle, snapshotId });
+  }, [snapshotId, auditHandle]);
+
   return (
     <>
+      <InstantAuditBar handle={auditHandle} snapshotId={snapshotId} />
       {!premiumUnlocked && packBalance > 0 ? (
         <div className="mb-4 rounded-xl border border-accent-primary/40 bg-accent-primary/5 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="min-w-0">
@@ -596,6 +630,7 @@ function AnalyzeReady({
           pdfDisabled: shareActions.pdfDisabled,
         }}
       />
+      <DeepenAnalysisCta handle={auditHandle} snapshotId={snapshotId} />
       <UnlockModal
         open={unlockOpen}
         onOpenChange={setUnlockOpen}
