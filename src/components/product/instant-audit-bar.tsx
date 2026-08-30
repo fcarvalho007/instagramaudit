@@ -28,10 +28,10 @@ export function InstantAuditBar({
     const io = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) {
-          trackAnonymousEvent("save_audit_cta_viewed", {
+          trackAnonymousEvent("level2_cta_viewed", {
             handle,
             snapshotId,
-            dedupeKey: snapshotId,
+            dedupeKey: `${snapshotId}:save_audit`,
           });
           io.disconnect();
         }
@@ -63,11 +63,6 @@ export function InstantAuditBar({
         <button
           type="button"
           onClick={() => {
-            trackAnonymousEvent("save_audit_cta_clicked", {
-              handle,
-              snapshotId,
-              metadata: { conversion_entry_point: "save_audit" },
-            });
             trackAnonymousEvent("lead_cta_clicked", {
               handle,
               snapshotId,
