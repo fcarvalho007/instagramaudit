@@ -1372,8 +1372,14 @@ function LoginPanel({
 /* Qualification step — single select between entry and final                 */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Ronda 2 do onboarding: em vez de um "questionário de qualificação",
+ * uma única pergunta contextual e casual sobre a relação com o perfil
+ * analisado. A qualificação de CRM é derivada server-side.
+ */
 function QualificationStepBody({
   form,
+  handle,
   purpose,
   submitting,
   serverError,
@@ -1381,6 +1387,7 @@ function QualificationStepBody({
   onContinue,
 }: {
   form: ReturnType<typeof useForm<UnlockFormValues>>;
+  handle: string;
   purpose: "analyze" | "checkout";
   submitting: boolean;
   serverError: string | null;
@@ -1389,45 +1396,30 @@ function QualificationStepBody({
 }) {
   const { t } = useTranslation("gate");
   const isCheckout = purpose === "checkout";
-  const ownership = form.watch("profile_ownership") as
-    | ProfileOwnership
+  const relationship = form.watch("profile_relationship") as
+    | ProfileRelationship
     | undefined;
-  const goal = form.watch("goal") as Goal | undefined;
-  const [ownershipError, setOwnershipError] = useState<string | null>(null);
-  const [goalError, setGoalError] = useState<string | null>(null);
+  const [relationshipError, setRelationshipError] = useState<string | null>(
+    null,
+  );
 
-  const OWNERSHIP_OPTIONS: Array<{
-    value: ProfileOwnership;
+  const RELATIONSHIP_OPTIONS: Array<{
+    value: ProfileRelationship;
     Icon: typeof User;
   }> = [
-    { value: "own_profile", Icon: User },
-    { value: "brand_profile", Icon: Star },
-    { value: "client_profile", Icon: Briefcase },
-    { value: "competitor_research", Icon: Eye },
-  ];
-
-  const GOAL_OPTIONS: Array<{ value: Goal; Icon: typeof User }> = [
-    { value: "improve_content", Icon: Sparkles },
-    { value: "benchmark_competitors", Icon: Scale },
-    { value: "client_report", Icon: LineChart },
-    { value: "grow_audience", Icon: TrendingUp },
+    { value: "owner", Icon: User },
+    { value: "manages", Icon: Sparkles },
+    { value: "client", Icon: Briefcase },
+    { value: "competitor", Icon: Eye },
+    { value: "research", Icon: Star },
   ];
 
   const handleContinue = () => {
-    let hasError = false;
-    if (!ownership) {
-      setOwnershipError(t("onboarding.qualification.ownershipError"));
-      hasError = true;
-    } else {
-      setOwnershipError(null);
+    if (!relationship) {
+      setRelationshipError(t("onboarding.qualification.relationshipError"));
+      return;
     }
-    if (!goal) {
-      setGoalError(t("onboarding.qualification.goalError"));
-      hasError = true;
-    } else {
-      setGoalError(null);
-    }
-    if (hasError) return;
+    setRelationshipError(null);
     onContinue();
   };
 
@@ -1439,50 +1431,37 @@ function QualificationStepBody({
       <OnboardingStepHeader current={2} className="mb-5" />
       <DialogHeader className="text-left space-y-2.5">
         <p className="text-eyebrow text-content-tertiary">
-          {t(isCheckout ? "onboarding.qualification.eyebrowCheckout" : "onboarding.qualification.eyebrow")}
+          {t("onboarding.qualification.eyebrow")}
         </p>
         <DialogTitle className="font-display text-[28px] sm:text-[32px] leading-[1.08] tracking-[-0.015em] text-content-primary text-balance">
-          {t(isCheckout ? "onboarding.qualification.titleCheckout" : "onboarding.qualification.title")}
+          {t("onboarding.qualification.relationshipTitle")}
         </DialogTitle>
         <DialogDescription className="text-[15px] text-content-secondary leading-[1.55]">
-          {t(isCheckout ? "onboarding.qualification.subtitleCheckout" : "onboarding.qualification.subtitle")}
+          {isCheckout
+            ? t("onboarding.qualification.relationshipSubtitleCheckout")
+            : t("onboarding.qualification.relationshipSubtitle", {
+                handle,
+              })}
         </DialogDescription>
       </DialogHeader>
 
       <div className="mt-5 space-y-5" data-testid="onboarding-qualification">
         <GridSelectField
-          legend={t("onboarding.qualification.ownershipLegend")}
-          name="profile_ownership"
-          options={OWNERSHIP_OPTIONS.map((o) => ({
+          legend=""
+          name="profile_relationship"
+          options={RELATIONSHIP_OPTIONS.map((o) => ({
             value: o.value,
-            label: t(`onboarding.compactOptions.profileOwnership.${o.value}`),
+            label: t(`onboarding.compactOptions.profileRelationship.${o.value}`),
             Icon: o.Icon,
           }))}
-          value={ownership}
+          value={relationship}
           onChange={(v) => {
-            form.setValue("profile_ownership", v as ProfileOwnership, {
+            form.setValue("profile_relationship", v as ProfileRelationship, {
               shouldValidate: true,
             });
-            setOwnershipError(null);
+            setRelationshipError(null);
           }}
-          error={ownershipError ?? undefined}
-        />
-
-        <GridSelectField
-          legend={t("onboarding.qualification.goalLegend")}
-          name="goal"
-          options={GOAL_OPTIONS.map((o) => ({
-            value: o.value,
-            label: t(`onboarding.compactOptions.goal.${o.value}`),
-            Icon: o.Icon,
-          }))}
-          value={goal}
-          onChange={(v) => {
-            form.setValue("goal", v as Goal, { shouldValidate: true });
-            form.setValue("goal_other_text", "", { shouldValidate: false });
-            setGoalError(null);
-          }}
-          error={goalError ?? undefined}
+          error={relationshipError ?? undefined}
         />
 
         {serverError ? (
@@ -1508,21 +1487,13 @@ function QualificationStepBody({
           type="button"
           size="lg"
           onClick={handleContinue}
-          disabled={submitting || !ownership || !goal}
+          disabled={submitting || !relationship}
           className="w-full sm:flex-1 sm:min-w-0 rounded-lg font-medium"
           data-testid="onboarding-qualification-continue"
         >
           <span className="truncate">{t("onboarding.qualification.cta")}</span>
         </Button>
       </div>
-      {!submitting && (!ownership || !goal) ? (
-        <p
-          className="mt-2 text-xs text-content-tertiary text-center sm:text-right"
-          aria-live="polite"
-        >
-          {t("onboarding.qualification.missingHint")}
-        </p>
-      ) : null}
     </div>
   );
 }
