@@ -163,6 +163,10 @@ export function verifyVerificationToken(
     leadId: p.leadId,
     email: p.email,
     handle: typeof p.handle === "string" ? p.handle : null,
+    purpose:
+      p.purpose === "report_access" ? "report_access" : "email_verification",
+    reportRef: typeof p.reportRef === "string" ? p.reportRef : null,
+    jti: typeof p.jti === "string" && p.jti.length > 0 ? p.jti : null,
     iat: p.iat,
     exp: p.exp,
   };
