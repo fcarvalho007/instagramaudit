@@ -32,11 +32,13 @@ export async function recordAccessEvent(input: {
 }): Promise<void> {
   try {
     await supabaseAdmin.from("product_events").insert({
-      event_type: input.eventType,
-      lead_id: input.leadId ?? null,
-      handle: input.handle ?? null,
-      metadata: input.metadata ?? {},
-    });
+      {
+        event_type: input.eventType,
+        lead_id: input.leadId ?? null,
+        handle: input.handle ?? null,
+        metadata: (input.metadata ?? {}) as never,
+      },
+    ]);
   } catch (err) {
     console.info("[access-events] insert skipped", err);
   }
