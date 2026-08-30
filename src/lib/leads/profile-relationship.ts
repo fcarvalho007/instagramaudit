@@ -18,10 +18,7 @@ export const PROFILE_RELATIONSHIPS = [
 
 export type ProfileRelationship = (typeof PROFILE_RELATIONSHIPS)[number];
 
-export const PROFILE_RELATIONSHIP_LABELS_PT: Record<
-  ProfileRelationship,
-  string
-> = {
+export const PROFILE_RELATIONSHIP_LABELS_PT: Record<ProfileRelationship, string> = {
   owner: "É a minha conta",
   manages: "Trabalho com esta conta",
   client: "É de um cliente",
@@ -29,10 +26,7 @@ export const PROFILE_RELATIONSHIP_LABELS_PT: Record<
   research: "Estou apenas a explorar",
 };
 
-export const PROFILE_RELATIONSHIP_LABELS_EN: Record<
-  ProfileRelationship,
-  string
-> = {
+export const PROFILE_RELATIONSHIP_LABELS_EN: Record<ProfileRelationship, string> = {
   owner: "It's my account",
   manages: "I work with this account",
   client: "It belongs to a client",
@@ -45,10 +39,7 @@ export const PROFILE_RELATIONSHIP_LABELS_EN: Record<
  * `leads.qualification`; derivamos a partir da relação declarada em vez de
  * pedir uma segunda pergunta ao utilizador.
  */
-export const RELATIONSHIP_TO_QUALIFICATION: Record<
-  ProfileRelationship,
-  LeadQualification
-> = {
+export const RELATIONSHIP_TO_QUALIFICATION: Record<ProfileRelationship, LeadQualification> = {
   owner: "content_creator",
   manages: "marketing_comms",
   client: "consultant_agency",
@@ -57,8 +48,5 @@ export const RELATIONSHIP_TO_QUALIFICATION: Record<
 };
 
 export function isProfileRelationship(v: unknown): v is ProfileRelationship {
-  return (
-    typeof v === "string" &&
-    (PROFILE_RELATIONSHIPS as readonly string[]).includes(v)
-  );
+  return typeof v === "string" && (PROFILE_RELATIONSHIPS as readonly string[]).includes(v);
 }

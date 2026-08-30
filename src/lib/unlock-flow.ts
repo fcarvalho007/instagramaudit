@@ -147,10 +147,7 @@ export const unlockFormSchema = z
         message: "Conta-nos brevemente (mínimo 2 caracteres)",
       });
     }
-    if (
-      data.user_type === "other" &&
-      (data.user_type_other_text ?? "").length < 2
-    ) {
+    if (data.user_type === "other" && (data.user_type_other_text ?? "").length < 2) {
       ctx.addIssue({
         path: ["user_type_other_text"],
         code: z.ZodIssueCode.custom,

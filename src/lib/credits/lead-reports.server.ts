@@ -11,10 +11,7 @@
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-export async function leadOwnsReport(
-  leadId: string,
-  cacheKey: string,
-): Promise<boolean> {
+export async function leadOwnsReport(leadId: string, cacheKey: string): Promise<boolean> {
   const { data, error } = await supabaseAdmin
     .from("lead_reports")
     .select("id")
@@ -41,24 +38,22 @@ export async function upsertLeadReport(input: {
   /** Relação declarada pelo utilizador com o perfil analisado. */
   profileRelationship?: string | null;
 }): Promise<void> {
-  const { error } = await supabaseAdmin
-    .from("lead_reports")
-    .upsert(
-      {
-        lead_id: input.leadId,
-        handle: input.handle,
-        cache_key: input.cacheKey,
-        analysis_snapshot_id: input.analysisSnapshotId ?? null,
-        source: input.source ?? "analyze_public_v1",
-        ...(input.profileRelationship
-          ? {
-              profile_relationship: input.profileRelationship,
-              relationship_source: "user_declared",
-            }
-          : {}),
-      },
-      { onConflict: "lead_id,cache_key", ignoreDuplicates: true },
-    );
+  const { error } = await supabaseAdmin.from("lead_reports").upsert(
+    {
+      lead_id: input.leadId,
+      handle: input.handle,
+      cache_key: input.cacheKey,
+      analysis_snapshot_id: input.analysisSnapshotId ?? null,
+      source: input.source ?? "analyze_public_v1",
+      ...(input.profileRelationship
+        ? {
+            profile_relationship: input.profileRelationship,
+            relationship_source: "user_declared",
+          }
+        : {}),
+    },
+    { onConflict: "lead_id,cache_key", ignoreDuplicates: true },
+  );
   if (error) {
     // Não-fatal: associação é um aumento de qualidade do gate, não bloqueia
     // a resposta ao utilizador. Tracking via log.
@@ -83,9 +78,7 @@ export async function claimAnonymousBaselineReport(input: {
   profileRelationship?: string | null;
 }): Promise<{ claimed: boolean; cacheKey: string }> {
   const handle = input.handle.trim().replace(/^@/, "").toLowerCase();
-  const { buildCacheKey, lookupSnapshot } = await import(
-    "@/lib/analysis/cache"
-  );
+  const { buildCacheKey, lookupSnapshot } = await import("@/lib/analysis/cache");
   const cacheKey = buildCacheKey(handle, [], "baseline");
   const snapshot = await lookupSnapshot(cacheKey);
   if (!snapshot) return { claimed: false, cacheKey };

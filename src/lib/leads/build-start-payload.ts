@@ -77,10 +77,8 @@ export function buildStartPayload(
   // send them when the (legacy) UI happens to collect them. The new
   // entry-modal flow drops the dedicated step that used to ask for them.
   if (values.goal) base.purpose = values.goal;
-  if (values.profile_ownership)
-    base.profile_ownership = values.profile_ownership;
-  if (values.profile_relationship)
-    base.profile_relationship = values.profile_relationship;
+  if (values.profile_ownership) base.profile_ownership = values.profile_ownership;
+  if (values.profile_relationship) base.profile_relationship = values.profile_relationship;
   if (values.qualification) {
     base.qualification = values.qualification;
   } else if (values.profile_ownership) {

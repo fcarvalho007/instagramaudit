@@ -42,45 +42,41 @@ import { setLeadCookie } from "@/lib/leads/lead-cookie.server";
 import { sendReportAccessEmail } from "@/lib/email/send-report-access.server";
 import { enqueueReportForSnapshot } from "@/lib/orchestration/enqueue-report-for-snapshot.server";
 
-const PayloadSchema = z.object({
-  name: z.string().trim().min(1).max(120),
-  email: z.string().trim().email().max(255),
-  phone: z.string().trim().max(40).optional(),
-  /**
-   * User-defined password. Required in `AUTH_MODE=password` and
-   * `AUTH_MODE=password_with_email_verification`. Min 8 chars. Server
-   * lets Supabase Auth enforce HIBP (configured globally).
-   */
-  password: z
-    .string()
-    .min(8, "password_too_short")
-    .max(72, "password_too_long")
-    .optional(),
-  marketing_consent: z.boolean().optional().default(false),
-  beta_consent: z.boolean().optional().default(false),
-  user_type: z.string().trim().max(40).optional(),
-  purpose: z.string().trim().max(120).optional(),
-  profile_ownership: z.string().trim().max(40).optional(),
-  /**
-   * Ronda 2 do onboarding: a pergunta contextual passa a ser a relação com
-   * o perfil analisado. `qualification` (CRM) é derivada quando não vem no
-   * payload — mantida opcional para compatibilidade com o fluxo legado.
-   */
-  profile_relationship: z.enum(PROFILE_RELATIONSHIPS).optional(),
-  qualification: z
-    .enum(LEAD_QUALIFICATIONS, { invalid_type_error: "invalid" })
-    .optional(),
-  pricing_preference: z.string().trim().max(40).optional(),
-  // GDPR — exige `true` explícito. Ausência ou `false` → 400 INVALID_PAYLOAD.
-  gdpr_consent: z.literal(true),
-  // Anti-bot — campos opcionais; honeypot deve permanecer vazio e `_t`
-  // (timestamp do form start em ms) deve estar pelo menos 2s no passado.
-  website: z.string().max(0).optional(),
-  _t: z.number().int().positive().optional(),
-  // Tracking-only — não persiste em `leads`, serve para correlacionar
-  // erros de validação com o handle que o utilizador estava a analisar.
-  handle: z.string().trim().max(60).optional(),
-}).strict();
+const PayloadSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    email: z.string().trim().email().max(255),
+    phone: z.string().trim().max(40).optional(),
+    /**
+     * User-defined password. Required in `AUTH_MODE=password` and
+     * `AUTH_MODE=password_with_email_verification`. Min 8 chars. Server
+     * lets Supabase Auth enforce HIBP (configured globally).
+     */
+    password: z.string().min(8, "password_too_short").max(72, "password_too_long").optional(),
+    marketing_consent: z.boolean().optional().default(false),
+    beta_consent: z.boolean().optional().default(false),
+    user_type: z.string().trim().max(40).optional(),
+    purpose: z.string().trim().max(120).optional(),
+    profile_ownership: z.string().trim().max(40).optional(),
+    /**
+     * Ronda 2 do onboarding: a pergunta contextual passa a ser a relação com
+     * o perfil analisado. `qualification` (CRM) é derivada quando não vem no
+     * payload — mantida opcional para compatibilidade com o fluxo legado.
+     */
+    profile_relationship: z.enum(PROFILE_RELATIONSHIPS).optional(),
+    qualification: z.enum(LEAD_QUALIFICATIONS, { invalid_type_error: "invalid" }).optional(),
+    pricing_preference: z.string().trim().max(40).optional(),
+    // GDPR — exige `true` explícito. Ausência ou `false` → 400 INVALID_PAYLOAD.
+    gdpr_consent: z.literal(true),
+    // Anti-bot — campos opcionais; honeypot deve permanecer vazio e `_t`
+    // (timestamp do form start em ms) deve estar pelo menos 2s no passado.
+    website: z.string().max(0).optional(),
+    _t: z.number().int().positive().optional(),
+    // Tracking-only — não persiste em `leads`, serve para correlacionar
+    // erros de validação com o handle que o utilizador estava a analisar.
+    handle: z.string().trim().max(60).optional(),
+  })
+  .strict();
 
 type Payload = z.infer<typeof PayloadSchema>;
 
@@ -127,12 +123,10 @@ const FIELD_MESSAGES_PT: Record<string, string> = {
   gdpr_consent: "Falta aceitar o tratamento de dados para continuar.",
   email: "O endereço de email indicado parece inválido.",
   name: "Falta indicar o teu nome.",
-  password:
-    "Define uma palavra-passe com pelo menos 8 caracteres para continuar.",
+  password: "Define uma palavra-passe com pelo menos 8 caracteres para continuar.",
   qualification: "Escolhe o contexto que melhor te descreve.",
   purpose: "Volta ao passo anterior e escolhe o que queres perceber.",
-  profile_ownership:
-    "Volta ao passo anterior e indica a tua relação com o perfil.",
+  profile_ownership: "Volta ao passo anterior e indica a tua relação com o perfil.",
   _t: "Foste demasiado rápido a submeter. Confirma os campos e tenta de novo.",
   website: "Pedido recusado por verificação anti-spam.",
 };
@@ -147,8 +141,7 @@ function mapZodIssues(issues: readonly ZodIssue[]): FieldIssue[] {
     seen.add(field);
     // Normaliza códigos zod para um vocabulário curto e estável.
     let code = "invalid";
-    if (i.code === "invalid_type" && i.received === "undefined")
-      code = "missing";
+    if (i.code === "invalid_type" && i.received === "undefined") code = "missing";
     else if (i.code === "invalid_literal") code = "missing";
     else if (i.code === "invalid_string") code = "format";
     else if (i.code === "too_small") code = "too_short";
@@ -167,9 +160,7 @@ function messageForIssues(issues: FieldIssue[]): string {
 function safeHandle(raw: unknown): string | null {
   if (typeof raw !== "object" || raw === null) return null;
   const h = (raw as { handle?: unknown }).handle;
-  return typeof h === "string" && h.length > 0 && h.length <= 60
-    ? h.toLowerCase()
-    : null;
+  return typeof h === "string" && h.length > 0 && h.length <= 60 ? h.toLowerCase() : null;
 }
 
 function presentFieldNames(raw: unknown): string[] {
@@ -238,9 +229,7 @@ async function upsertLead(
   // apenas a relação com o perfil (Ronda 2), derivamos a qualificação.
   const qualification =
     data.qualification ??
-    (data.profile_relationship
-      ? RELATIONSHIP_TO_QUALIFICATION[data.profile_relationship]
-      : null);
+    (data.profile_relationship ? RELATIONSHIP_TO_QUALIFICATION[data.profile_relationship] : null);
 
   const existing = await supabaseAdmin
     .from("leads")
@@ -434,9 +423,7 @@ async function tryEnqueueReportForHandle(args: {
  * Pure handler — exported para permitir testes unitários sem montar o
  * router. Comportamento idêntico ao `POST` registado no `Route` abaixo.
  */
-export async function handleOnboardingStart(
-  request: Request,
-): Promise<Response> {
+export async function handleOnboardingStart(request: Request): Promise<Response> {
   warnIfSecretMisconfigured();
   const mode = getAuthMode();
   let raw: unknown;
@@ -514,8 +501,7 @@ export async function handleOnboardingStart(
       {
         ok: false,
         error_code: "INVALID_PAYLOAD",
-        message:
-          "Usa um email permanente — não aceitamos endereços temporários.",
+        message: "Usa um email permanente — não aceitamos endereços temporários.",
         issues,
       },
       400,
@@ -534,8 +520,7 @@ export async function handleOnboardingStart(
       {
         ok: true,
         credits: 0,
-        requires_email_verification:
-          mode === "password_with_email_verification",
+        requires_email_verification: mode === "password_with_email_verification",
         auth_mode: mode,
       },
       200,
@@ -581,8 +566,7 @@ export async function handleOnboardingStart(
           {
             ok: false,
             error_code: "EMAIL_ALREADY_EXISTS",
-            message:
-              "Já existe uma conta com este email. Entra com a tua palavra-passe.",
+            message: "Já existe uma conta com este email. Entra com a tua palavra-passe.",
           },
           409,
         );
@@ -645,9 +629,7 @@ export async function handleOnboardingStart(
     // repetir scraping. Idempotente e não-fatal.
     if (parsed.data.handle) {
       try {
-        const { claimAnonymousBaselineReport } = await import(
-          "@/lib/credits/lead-reports.server"
-        );
+        const { claimAnonymousBaselineReport } = await import("@/lib/credits/lead-reports.server");
         const claim = await claimAnonymousBaselineReport({
           leadId: upserted.leadId,
           handle: parsed.data.handle,
@@ -725,9 +707,7 @@ export async function handleOnboardingStart(
     );
   }
   try {
-    const { sendVerificationEmail } = await import(
-      "@/lib/email/send-verification.server"
-    );
+    const { sendVerificationEmail } = await import("@/lib/email/send-verification.server");
     void sendVerificationEmail({
       leadId: upserted.leadId,
       toEmail: parsed.data.email,

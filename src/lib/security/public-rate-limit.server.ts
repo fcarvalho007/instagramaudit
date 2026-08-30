@@ -64,19 +64,14 @@ async function countFreshSuccess(opts: {
   if (opts.network) q = q.eq("network", opts.network);
   const { count, error } = await q;
   if (error) {
-    console.error(
-      `[public-rate-limit] count query failed (${opts.column})`,
-      error.message,
-    );
+    console.error(`[public-rate-limit] count query failed (${opts.column})`, error.message);
     return 0;
   }
   return count ?? 0;
 }
 
 /** Throws RateLimitError when IP or handle exceeds its 24h fresh quota. */
-export async function assertWithinPublicRateLimit(
-  input: AssertInput,
-): Promise<void> {
+export async function assertWithinPublicRateLimit(input: AssertInput): Promise<void> {
   const now = input.now ?? new Date();
   const sinceIso = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
   const network = (input.network ?? "instagram").toLowerCase();

@@ -118,9 +118,7 @@ export async function handleClaimExisting(request: Request): Promise<Response> {
   // auditoria base sem sessão e entrou depois passa a ser dono do relatório.
   if (parsed.data.handle) {
     try {
-      const { claimAnonymousBaselineReport } = await import(
-        "@/lib/credits/lead-reports.server"
-      );
+      const { claimAnonymousBaselineReport } = await import("@/lib/credits/lead-reports.server");
       await claimAnonymousBaselineReport({
         leadId: result.leadId,
         handle: parsed.data.handle,
