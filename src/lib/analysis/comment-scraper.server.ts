@@ -42,16 +42,17 @@ const COMMENT_ACTOR = "apify/instagram-comment-scraper";
 
 /**
  * Estimated cost per result (comment).
- * Apify Free-plan pricing for `apify/instagram-comment-scraper` is
- * $2.60 / 1,000 comments → $0.0026/result. Keeping this in sync with the
+ * Apify Free-plan list price for `apify/instagram-comment-scraper` is
+ * $2.30 / 1,000 comments → $0.0023/result. Keeping this in sync with the
  * real price is what prevents the hard cap from being silently overshot.
- * Override via COMMENT_SCRAPER_COST_PER_RESULT_USD when Apify repricing.
+ * Override via COMMENT_SCRAPER_COST_PER_RESULT_USD when Apify reprices.
  */
 const COST_PER_RESULT_USD = (() => {
   const raw = process.env.COMMENT_SCRAPER_COST_PER_RESULT_USD;
   const parsed = raw ? Number.parseFloat(raw) : Number.NaN;
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0.0026;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0.0023;
 })();
+
 
 /** Target cost per analysis — informational, used in budget planning (8 comments × 12 posts). */
 export const COMMENT_SCRAPER_TARGET_COST_USD = 0.15;
