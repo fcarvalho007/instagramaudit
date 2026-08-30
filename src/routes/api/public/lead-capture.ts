@@ -180,20 +180,39 @@ export const Route = createFileRoute("/api/public/lead-capture")({
             : { status: "error", error: outcome.error };
         }
 
-        // 5. link de acesso para leads existentes, apenas quando há uma
-        // associação nova — evita reenviar o email em cada re-submissão.
-        if (leadStatus === "existing" && claimed) {
+        // 5. link de acesso passwordless — enviado a TODOS os leads
+        // (novos e existentes), imediatamente após a submissão do email.
+        // O Comment Intelligence corre em paralelo: uma falha dele nunca
+        // impede a pessoa de verificar o email e recuperar o relatório.
+        // Guarda: no máximo 1 envio por (lead, cache_key) por hora.
+        if (cacheKey && !accessEmailThrottled(leadId, cacheKey)) {
+          await recordAccessEvent({
+            eventType: "access_email_queued",
+            leadId,
+            handle,
+          });
           try {
             const { sendReportAccessEmail } = await import(
               "@/lib/email/send-report-access.server"
             );
-            await sendReportAccessEmail({
+            const sent = await sendReportAccessEmail({
               leadId,
               toEmail: email,
               instagramHandle: handle,
+              reportRef: cacheKey,
+            });
+            await recordAccessEvent({
+              eventType: sent.ok ? "access_email_sent" : "access_email_failed",
+              leadId,
+              handle,
             });
           } catch (err) {
             console.info("[lead-capture] access email skipped", err);
+            await recordAccessEvent({
+              eventType: "access_email_failed",
+              leadId,
+              handle,
+            });
           }
         }
 
