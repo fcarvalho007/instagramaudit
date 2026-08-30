@@ -117,7 +117,9 @@ export const Route = createFileRoute("/api/public/lead-capture")({
               email_normalized: emailNormalized,
               name: fallbackName,
               source: "post_value_capture",
-              instagram_handle: handle,
+              // `instagram_handle` fica vazio: o perfil analisado ainda não
+              // é declaradamente do lead. Só é escrito se a pessoa responder
+              // "é a minha conta" (ver /api/public/report-relationship).
               marketing_consent: parsed.data.marketing_consent,
               marketing_consent_at: parsed.data.marketing_consent ? consentAt : null,
               // Consentimento operacional (necessário para guardar/entregar
