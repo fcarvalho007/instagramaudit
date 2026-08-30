@@ -71,6 +71,7 @@ import { Route as ApiPublicPricingInterestRouteImport } from './routes/api/publi
 import { Route as ApiPublicPricingFeedbackRouteImport } from './routes/api/public/pricing-feedback'
 import { Route as ApiPublicOnboardingEventRouteImport } from './routes/api/public/onboarding-event'
 import { Route as ApiPublicLookupLeadRouteImport } from './routes/api/public/lookup-lead'
+import { Route as ApiPublicLeadCaptureRouteImport } from './routes/api/public/lead-capture'
 import { Route as ApiPublicInlineFeedbackRouteImport } from './routes/api/public/inline-feedback'
 import { Route as ApiPublicFunnelEventRouteImport } from './routes/api/public/funnel-event'
 import { Route as ApiPublicEupagoWebhookRouteImport } from './routes/api/public/eupago-webhook'
@@ -489,6 +490,11 @@ const ApiPublicOnboardingEventRoute =
 const ApiPublicLookupLeadRoute = ApiPublicLookupLeadRouteImport.update({
   id: '/api/public/lookup-lead',
   path: '/api/public/lookup-lead',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicLeadCaptureRoute = ApiPublicLeadCaptureRouteImport.update({
+  id: '/api/public/lead-capture',
+  path: '/api/public/lead-capture',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicInlineFeedbackRoute = ApiPublicInlineFeedbackRouteImport.update({
@@ -1172,6 +1178,7 @@ export interface FileRoutesByFullPath {
   '/api/public/eupago-webhook': typeof ApiPublicEupagoWebhookRoute
   '/api/public/funnel-event': typeof ApiPublicFunnelEventRoute
   '/api/public/inline-feedback': typeof ApiPublicInlineFeedbackRoute
+  '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
   '/api/public/lookup-lead': typeof ApiPublicLookupLeadRoute
   '/api/public/onboarding-event': typeof ApiPublicOnboardingEventRoute
   '/api/public/pricing-feedback': typeof ApiPublicPricingFeedbackRoute
@@ -1338,6 +1345,7 @@ export interface FileRoutesByTo {
   '/api/public/eupago-webhook': typeof ApiPublicEupagoWebhookRoute
   '/api/public/funnel-event': typeof ApiPublicFunnelEventRoute
   '/api/public/inline-feedback': typeof ApiPublicInlineFeedbackRoute
+  '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
   '/api/public/lookup-lead': typeof ApiPublicLookupLeadRoute
   '/api/public/onboarding-event': typeof ApiPublicOnboardingEventRoute
   '/api/public/pricing-feedback': typeof ApiPublicPricingFeedbackRoute
@@ -1507,6 +1515,7 @@ export interface FileRoutesById {
   '/api/public/eupago-webhook': typeof ApiPublicEupagoWebhookRoute
   '/api/public/funnel-event': typeof ApiPublicFunnelEventRoute
   '/api/public/inline-feedback': typeof ApiPublicInlineFeedbackRoute
+  '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
   '/api/public/lookup-lead': typeof ApiPublicLookupLeadRoute
   '/api/public/onboarding-event': typeof ApiPublicOnboardingEventRoute
   '/api/public/pricing-feedback': typeof ApiPublicPricingFeedbackRoute
@@ -1677,6 +1686,7 @@ export interface FileRouteTypes {
     | '/api/public/eupago-webhook'
     | '/api/public/funnel-event'
     | '/api/public/inline-feedback'
+    | '/api/public/lead-capture'
     | '/api/public/lookup-lead'
     | '/api/public/onboarding-event'
     | '/api/public/pricing-feedback'
@@ -1843,6 +1853,7 @@ export interface FileRouteTypes {
     | '/api/public/eupago-webhook'
     | '/api/public/funnel-event'
     | '/api/public/inline-feedback'
+    | '/api/public/lead-capture'
     | '/api/public/lookup-lead'
     | '/api/public/onboarding-event'
     | '/api/public/pricing-feedback'
@@ -2011,6 +2022,7 @@ export interface FileRouteTypes {
     | '/api/public/eupago-webhook'
     | '/api/public/funnel-event'
     | '/api/public/inline-feedback'
+    | '/api/public/lead-capture'
     | '/api/public/lookup-lead'
     | '/api/public/onboarding-event'
     | '/api/public/pricing-feedback'
@@ -2157,6 +2169,7 @@ export interface RootRouteChildren {
   ApiPublicEupagoWebhookRoute: typeof ApiPublicEupagoWebhookRoute
   ApiPublicFunnelEventRoute: typeof ApiPublicFunnelEventRoute
   ApiPublicInlineFeedbackRoute: typeof ApiPublicInlineFeedbackRoute
+  ApiPublicLeadCaptureRoute: typeof ApiPublicLeadCaptureRoute
   ApiPublicLookupLeadRoute: typeof ApiPublicLookupLeadRoute
   ApiPublicOnboardingEventRoute: typeof ApiPublicOnboardingEventRoute
   ApiPublicPricingFeedbackRoute: typeof ApiPublicPricingFeedbackRoute
@@ -2642,6 +2655,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/lookup-lead'
       fullPath: '/api/public/lookup-lead'
       preLoaderRoute: typeof ApiPublicLookupLeadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/lead-capture': {
+      id: '/api/public/lead-capture'
+      path: '/api/public/lead-capture'
+      fullPath: '/api/public/lead-capture'
+      preLoaderRoute: typeof ApiPublicLeadCaptureRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/inline-feedback': {
@@ -3700,6 +3720,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicEupagoWebhookRoute: ApiPublicEupagoWebhookRoute,
   ApiPublicFunnelEventRoute: ApiPublicFunnelEventRoute,
   ApiPublicInlineFeedbackRoute: ApiPublicInlineFeedbackRoute,
+  ApiPublicLeadCaptureRoute: ApiPublicLeadCaptureRoute,
   ApiPublicLookupLeadRoute: ApiPublicLookupLeadRoute,
   ApiPublicOnboardingEventRoute: ApiPublicOnboardingEventRoute,
   ApiPublicPricingFeedbackRoute: ApiPublicPricingFeedbackRoute,
