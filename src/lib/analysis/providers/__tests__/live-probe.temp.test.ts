@@ -1,36 +1,34 @@
-/** TEMPORARY probe: confirm the v2 comments payload shape. Deleted after use. */
+/** TEMPORARY probe: provider-level comment parsing against a real post. */
 import { describe, expect, it } from "vitest";
 
 const { scrapeCreatorsProvider } = await import("../scrapecreators.server");
 
-describe("LIVE comments payload shape", () => {
+describe("LIVE comment parsing", () => {
   it(
-    "returns comments for a post that has them",
+    "maps v2 comments through the provider",
     async () => {
-      const posts = await scrapeCreatorsProvider.fetchPosts("pingodoce", {
-        maxPosts: 6,
-        timeoutMs: 60_000,
-      });
-      const withComments = posts.rows
-        .map((r) => ({
-          url: (r as any).url as string | undefined,
-          comments: (r as any).commentsCount as number | undefined,
-        }))
-        .filter((p) => p.url && (p.comments ?? 0) > 0);
-      console.log("\n### candidates", JSON.stringify(withComments, null, 2));
-      expect(withComments.length).toBeGreaterThan(0);
-
-      const target = withComments[0]!.url!;
-      const raw = await fetch(
-        `https://api.scrapecreators.com/v2/instagram/post/comments?url=${encodeURIComponent(target)}&amount=4`,
-        { headers: { "x-api-key": process.env.SCRAPECREATORS_API_KEY ?? "" } },
+      const res = await scrapeCreatorsProvider.fetchComments(
+        ["https://www.instagram.com/p/Da5J5sEjKoR/"],
+        { perPostLimit: 4, timeoutMs: 60_000 },
       );
-      const payload = (await raw.json()) as Record<string, unknown>;
-      console.log("\n### v2 payload keys", Object.keys(payload));
       console.log(
-        "\n### v2 payload preview",
-        JSON.stringify(payload, null, 2).slice(0, 1500),
+        "\n### provider comments",
+        JSON.stringify(
+          {
+            endpoint: res.endpoint,
+            creditsConsumed: res.creditsConsumed,
+            creditsRemaining: res.creditsRemaining,
+            cached: res.cached,
+            failed: res.failedPostUrls.length,
+            batches: res.batches.map((b) => b.comments.length),
+            sample: res.batches[0]?.comments.slice(0, 2),
+          },
+          null,
+          2,
+        ),
       );
+      expect(res.batches[0]?.comments.length).toBeGreaterThan(0);
+      expect(res.batches[0]?.comments[0]?.timestamp).toBeTruthy();
     },
     240_000,
   );
