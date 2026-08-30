@@ -49,6 +49,7 @@ export interface ProviderCostBucket {
 
 export interface CostSummary {
   apify: ProviderCostBucket;
+  scrapecreators: ProviderCostBucket;
   dataforseo: ProviderCostBucket;
   openai: ProviderCostBucket;
   total_actual_usd: number;
@@ -67,6 +68,7 @@ export interface ProviderCallDetail extends ProviderCallRow {
  */
 export interface ProviderPresence {
   apify: boolean;
+  scrapecreators: boolean;
   dataforseo: boolean;
   openai: boolean;
 }
@@ -84,7 +86,8 @@ export function detectProviderPresence(payload: unknown): ProviderPresence {
   const hasPaid = Boolean(p.market_signals_paid);
   const hasAi = Boolean(p.ai_insights);
   return {
-    apify: true,
+    apify: false,
+    scrapecreators: false,
     dataforseo: hasFree || hasPaid,
     openai: hasAi,
   };
@@ -95,6 +98,7 @@ function normalizeProvider(value: string): ProviderKey | null {
   if (v === "apify") return "apify";
   if (v === "dataforseo") return "dataforseo";
   if (v === "openai") return "openai";
+  if (v === "scrapecreators") return "scrapecreators";
   return null;
 }
 
@@ -200,6 +204,7 @@ export function summarizeCallLogs(
 ): CostSummary {
   const buckets: Record<ProviderKey, ProviderCallRow[]> = {
     apify: [],
+    scrapecreators: [],
     dataforseo: [],
     openai: [],
   };
@@ -209,6 +214,11 @@ export function summarizeCallLogs(
   }
 
   const apify = classifyCostSource(buckets.apify, "apify", presence.apify);
+  const scrapecreators = classifyCostSource(
+    buckets.scrapecreators,
+    "scrapecreators",
+    presence.scrapecreators,
+  );
   const dataforseo = classifyCostSource(
     buckets.dataforseo,
     "dataforseo",
@@ -221,14 +231,19 @@ export function summarizeCallLogs(
   );
 
   const total_actual_usd =
+    (scrapecreators.actual_usd ?? 0) +
     (apify.actual_usd ?? 0) +
     (dataforseo.actual_usd ?? 0) +
     (openai.actual_usd ?? 0);
   const total_estimated_usd =
-    apify.estimated_usd + dataforseo.estimated_usd + openai.estimated_usd;
+    apify.estimated_usd +
+    scrapecreators.estimated_usd +
+    dataforseo.estimated_usd +
+    openai.estimated_usd;
 
   return {
     apify,
+    scrapecreators,
     dataforseo,
     openai,
     total_actual_usd: Math.round(total_actual_usd * 1e5) / 1e5,
