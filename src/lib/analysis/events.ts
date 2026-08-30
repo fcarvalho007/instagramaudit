@@ -165,6 +165,18 @@ export interface RecordProviderCallInput {
    * the right admin bucket (production vs lab vs other).
    */
   sourceContext?: SourceContext;
+  /**
+   * Credit-based providers (currently ScrapeCreators). `creditsConsumed` is
+   * the billable unit; `monetaryCostUsd` stays in `actual_cost_usd` and is 0
+   * while promotional credits are being used.
+   */
+  creditsCharged?: number | null;
+  creditsRemaining?: number | null;
+  /** True when the provider served the response from its own cache. */
+  cached?: boolean | null;
+  /** Provider endpoint path, for per-endpoint cost breakdowns. */
+  endpoint?: string | null;
+
 }
 
 /**
