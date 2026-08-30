@@ -341,6 +341,10 @@ process.env.SOCIAL_PROVIDER_PROFILE = "apify";
 process.env.SOCIAL_PROVIDER_POSTS = "apify";
 process.env.SOCIAL_PROVIDER_FALLBACK = "false";
 process.env.INTERNAL_API_TOKEN = "internal-token-for-tests";
+// Este bloco testa o caminho COBRADO (baseline gratuita desligada). O
+// caminho gratuito tem o seu próprio describe no fim do ficheiro.
+process.env.PUBLIC_BASELINE_NO_EMAIL = "false";
+
 
 const LEAD_ID = "11111111-2222-3333-4444-555555555555";
 const HANDLE = "frederico.m.carvalho";
