@@ -132,7 +132,7 @@ async function processJob(job: JobRow): Promise<{ ok: boolean; error?: string }>
   try {
     const commentResult = await fetchComments(postUrls, {
       perPostLimit: COMMENT_SCRAPER_PER_POST_LIMIT,
-      includeReplies: COMMENT_SCRAPER_INCLUDE_REPLIES,
+      timeoutMs: 90_000,
     });
     const commentsReturned = commentResult.batches.reduce(
       (sum, b) => sum + b.comments.length,
@@ -142,7 +142,7 @@ async function processJob(job: JobRow): Promise<{ ok: boolean; error?: string }>
     // Record provider call with analysis_event_id linkage
     await recordProviderCall({
       provider: commentResult.provider,
-      actor: commentResult.endpoint,
+      actor: commentResult.endpoint ?? "comments",
       network: "instagram",
       handle: job.handle,
       status: "success",
@@ -177,7 +177,7 @@ async function processJob(job: JobRow): Promise<{ ok: boolean; error?: string }>
       ownerReplies: commentIntelligence.ownerRepliesCount,
       audienceComments: commentIntelligence.audienceCommentsCount,
       actualCostUsd: commentResult.actualCostUsd,
-      durationMs: commentResult.durationMs,
+      durationMs: Date.now() - startMs,
     });
 
     // Patch snapshot
