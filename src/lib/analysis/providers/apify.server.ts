@@ -110,7 +110,7 @@ export const apifyProvider: SocialDataProvider = {
       batches: result.batches.map((b) => ({
         postUrl: b.postUrl,
         comments: b.comments.map((c) => ({
-          id: c.id,
+          id: c.id ?? "",
           text: c.text,
           ownerUsername: c.ownerUsername,
           timestamp: c.timestamp,
