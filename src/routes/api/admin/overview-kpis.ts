@@ -121,7 +121,8 @@ export const Route = createFileRoute("/api/admin/overview-kpis")({
             .select("id", { count: "exact", head: true })
             .eq("status", "paid"),
           fetchExpense30d(),
-          // Reads cost_cap_* from app_config (default 29/25/50).
+          // Reads cost_cap_* from app_config. Apify está em Free Plan
+          // ($5/ciclo, soft 4.25 / hard 4.75) — default alinhado com isso.
           (async () => {
             const { data } = await supabaseAdmin
               .from("app_config")
@@ -129,12 +130,14 @@ export const Route = createFileRoute("/api/admin/overview-kpis")({
               .like("key", "cost_cap_%");
             const map = new Map((data ?? []).map((r) => [String(r.key), String(r.value)]));
             return {
-              apify: Number(map.get("cost_cap_apify_usd") ?? 29),
+              apify: Number(map.get("cost_cap_apify_usd") ?? 4.75),
               openai: Number(map.get("cost_cap_openai_usd") ?? 25),
               dataforseo: Number(map.get("cost_cap_dataforseo_usd") ?? 50),
             };
           })(),
+          fetchScrapeCreatorsCosts(),
         ]);
+
 
         const leads_30d = leads30Res.count ?? 0;
         const leads_7d = leads7Res.count ?? 0;
