@@ -57,10 +57,15 @@ const PayloadSchema = z.object({
   user_type: z.string().trim().max(40).optional(),
   purpose: z.string().trim().max(120).optional(),
   profile_ownership: z.string().trim().max(40).optional(),
-  qualification: z.enum(LEAD_QUALIFICATIONS, {
-    required_error: "missing",
-    invalid_type_error: "invalid",
-  }),
+  /**
+   * Ronda 2 do onboarding: a pergunta contextual passa a ser a relação com
+   * o perfil analisado. `qualification` (CRM) é derivada quando não vem no
+   * payload — mantida opcional para compatibilidade com o fluxo legado.
+   */
+  profile_relationship: z.enum(PROFILE_RELATIONSHIPS).optional(),
+  qualification: z
+    .enum(LEAD_QUALIFICATIONS, { invalid_type_error: "invalid" })
+    .optional(),
   pricing_preference: z.string().trim().max(40).optional(),
   // GDPR — exige `true` explícito. Ausência ou `false` → 400 INVALID_PAYLOAD.
   gdpr_consent: z.literal(true),
