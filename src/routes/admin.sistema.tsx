@@ -144,6 +144,7 @@ function SistemaPage() {
         <OnboardingFunnelCard />
         <ApifyActualCostBackfillCard />
         <SecretsConfigSection />
+        <ScrapeCreatorsCostsCard />
         <CostsDetailSection />
         <AnalysisCostBreakdown />
         <LegacyAccessSection />
