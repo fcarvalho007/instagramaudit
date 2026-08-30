@@ -17,6 +17,7 @@ import type {
   UnlockStatusCode,
 } from "@/lib/leads/lead-capture";
 import { DeepenAnalysisCta } from "@/components/product/deepen-analysis-cta";
+import { ReportEndCta } from "@/components/product/report-end-cta";
 import { OnboardingModal } from "@/components/onboarding/onboarding-modal";
 import { Toaster } from "@/components/ui/sonner";
 import { fetchPublicAnalysis } from "@/lib/analysis/client";
@@ -718,6 +719,12 @@ function AnalyzeReady({
         snapshotId={snapshotId}
         unlockStatus={unlockStatus}
         onConvert={() => openConversion("comment_intelligence")}
+      />
+      <ReportEndCta
+        handle={auditHandle}
+        snapshotId={snapshotId}
+        hidden={unlockStatus !== null}
+        onConvert={() => openConversion("report_end")}
       />
       <ConversionSheet
         open={conversionOpen}

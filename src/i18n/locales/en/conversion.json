@@ -2,7 +2,7 @@
   "cta": {
     "save_audit": "Save this audit",
     "comment_intelligence": "Unlock the conversation analysis",
-    "report_end": "Go deeper into this audit"
+    "report_end": "Save and go deeper, for free"
   },
   "headline": {
     "save_audit": "Save this audit, for free",
@@ -19,14 +19,15 @@
   "errors": {
     "invalid_email": "Enter a valid email to continue.",
     "rate_limited": "Too many requests. Try again in a few minutes.",
-    "generic": "Something went wrong. Please try again."
+    "generic": "Something went wrong. Please try again.",
+    "lead_failed": "We couldn't save the audit. Try again in a moment."
   },
   "unlock": {
     "unlocking": "Preparing the deeper analysis…",
     "processing": "We're analysing the conversations on recent posts…",
     "available": "Deeper analysis ready. The conversations block has been updated.",
     "degraded": "Conversation analysis is temporarily unavailable. The audit is saved and we'll let you know when it reopens.",
-    "error": "We couldn't start the conversation analysis. The audit has been saved.",
+    "error": "We saved the audit, but we couldn't go deeper right now. Try again in a moment.",
     "saved": "Audit saved. We've emailed you an access link."
   },
   "relationship": {

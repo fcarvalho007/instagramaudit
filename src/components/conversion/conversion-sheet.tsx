@@ -145,7 +145,9 @@ export function ConversionSheet({
               ? t("errors.rate_limited")
               : body?.error === "INVALID_EMAIL"
                 ? t("errors.invalid_email")
-                : t("errors.generic"),
+                : body?.error === "LEAD_CREATE_FAILED"
+                  ? t("errors.lead_failed")
+                  : t("errors.generic"),
           );
           return;
         }
@@ -251,6 +253,7 @@ export function ConversionSheet({
         return t("unlock.available");
       case "degraded":
         return t("unlock.degraded");
+      case "snapshot_missing":
       case "error":
         return t("unlock.error");
       default:
