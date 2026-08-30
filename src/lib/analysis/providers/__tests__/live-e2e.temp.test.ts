@@ -210,13 +210,3 @@ describe("LIVE provider validation", () => {
     LONG,
   );
 });
-        expect(profile.provider).toBe("scrapecreators");
-      } finally {
-        delete process.env.SOCIAL_PROVIDER_PROFILE;
-        delete process.env.APIFY_MONTHLY_HARD_CAP_USD;
-        invalidateApifyMonthlyBudgetCache();
-      }
-    },
-    LONG,
-  );
-});
