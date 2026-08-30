@@ -881,7 +881,24 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         let creditOutcome: CreditOutcome = "release";
         let snapshotForConfirm: string | null = null;
         const finalizeCredit = async () => {
+          // Baseline gratuita com lead identificado: sem reserva a fechar,
+          // mas o histórico deve continuar a ser associado ao lead.
+          if (anonymousBaseline) {
+            if (!leadId || (creditOutcome as CreditOutcome) !== "confirm") return;
+            try {
+              await upsertLeadReport({
+                leadId,
+                handle: primary,
+                cacheKey,
+                analysisSnapshotId: snapshotForConfirm,
+              });
+            } catch (e) {
+              console.error("[analyze-public-v1] free baseline association failed", e);
+            }
+            return;
+          }
           if (!reservation || !leadId) return;
+
           const r = reservation;
           reservation = null;
           try {
