@@ -7,6 +7,7 @@
 import { z } from "zod";
 
 import { LEAD_QUALIFICATIONS } from "@/lib/leads/qualification";
+import { PROFILE_RELATIONSHIPS } from "@/lib/leads/profile-relationship";
 
 export const PROFILE_OWNERSHIPS = [
   "own_profile",
@@ -118,6 +119,8 @@ export const unlockFormSchema = z
     // onboarding modal enforces it client-side and the server route
     // (`/api/onboarding/start`) requires it via its own Zod schema.
     qualification: z.enum(LEAD_QUALIFICATIONS).optional(),
+    // Ronda 2: relação com o perfil analisado (pergunta contextual única).
+    profile_relationship: z.enum(PROFILE_RELATIONSHIPS).optional(),
     profile_ownership: z.enum(PROFILE_OWNERSHIPS, {
       required_error: "Escolhe uma opção",
     }),

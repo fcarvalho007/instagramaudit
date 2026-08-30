@@ -42,6 +42,8 @@ export interface OnboardingStartPayload {
   purpose?: UnlockFormValues["goal"];
   profile_ownership?: UnlockFormValues["profile_ownership"];
   qualification?: LeadQualification;
+  /** Ronda 2: relação declarada com o perfil analisado. */
+  profile_relationship?: UnlockFormValues["profile_relationship"];
   gdpr_consent: true;
   website: string;
   _t: number;
@@ -77,6 +79,8 @@ export function buildStartPayload(
   if (values.goal) base.purpose = values.goal;
   if (values.profile_ownership)
     base.profile_ownership = values.profile_ownership;
+  if (values.profile_relationship)
+    base.profile_relationship = values.profile_relationship;
   if (values.qualification) {
     base.qualification = values.qualification;
   } else if (values.profile_ownership) {

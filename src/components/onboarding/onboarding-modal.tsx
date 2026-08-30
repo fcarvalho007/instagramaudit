@@ -70,6 +70,7 @@ import {
   LEAD_QUALIFICATION_LABELS_PT,
   type LeadQualification,
 } from "@/lib/leads/qualification";
+import type { ProfileRelationship } from "@/lib/leads/profile-relationship";
 import { GridSelectField } from "@/components/onboarding/grid-select-field";
 import { supabase } from "@/integrations/supabase/client";
 import { parseFullName } from "@/lib/names/parse-full-name";
@@ -519,6 +520,7 @@ export function OnboardingModal({
         ) : view.kind === "qualification" ? (
           <QualificationStepBody
             form={form}
+            handle={handle}
             purpose={purpose}
             submitting={submitting}
             serverError={serverError}
