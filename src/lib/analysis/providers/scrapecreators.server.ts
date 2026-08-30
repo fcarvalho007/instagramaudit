@@ -335,7 +335,10 @@ export function mapPost(raw: Record<string, unknown>): ProviderPostRow {
     isPaidPartnership: Boolean(
       raw.is_paid_partnership ?? raw.paid_partnership ?? false,
     ),
-    carouselMediaCount: carousel,
+    // Normalizer reads `carouselItemCount` / `carousel_media_count`.
+    carouselItemCount: carousel,
+    carousel_media_count: carousel,
+
     coauthorProducers: usernameList(raw.coauthor_producers),
     taggedUsers: usernameList(
       asRecord(raw.usertags)?.in ?? raw.usertags ?? raw.tagged_users,
