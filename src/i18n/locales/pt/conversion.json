@@ -9,7 +9,7 @@
     "comment_intelligence": "Aprofunda esta auditoria gratuitamente",
     "report_end": "Aprofunda esta auditoria gratuitamente"
   },
-  "subcopy": "Guarda o relatório, desbloqueia a análise das conversas e recebe um link para voltares quando quiseres.",
+  "subcopy": "Guarda o relatório e desbloqueia gratuitamente a análise das conversas.",
   "email_label": "Email",
   "email_placeholder": "nome@empresa.com",
   "submit": "Desbloquear gratuitamente",
@@ -35,5 +35,10 @@
     "question": "Qual é a tua relação com @{{handle}}?",
     "skip": "Agora não",
     "thanks": "Obrigado — vamos ter isso em conta."
+  },
+  "deepen": {
+    "eyebrow": "Próximo nível",
+    "title": "Aprofundar a análise",
+    "body": "A análise de comentários acrescenta leitura de audiência: temas recorrentes, tom das reacções e sinais de intenção nas publicações com melhor desempenho de @{{handle}}."
   }
 }

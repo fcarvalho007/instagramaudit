@@ -117,7 +117,9 @@ export const Route = createFileRoute("/api/public/lead-capture")({
               email_normalized: emailNormalized,
               name: fallbackName,
               source: "post_value_capture",
-              instagram_handle: handle,
+              // `instagram_handle` fica vazio: o perfil analisado ainda não
+              // é declaradamente do lead. Só é escrito se a pessoa responder
+              // "é a minha conta" (ver /api/public/report-relationship).
               marketing_consent: parsed.data.marketing_consent,
               marketing_consent_at: parsed.data.marketing_consent ? consentAt : null,
               // Consentimento operacional (necessário para guardar/entregar
@@ -178,8 +180,9 @@ export const Route = createFileRoute("/api/public/lead-capture")({
             : { status: "error", error: outcome.error };
         }
 
-        // 5. link de acesso para leads existentes (sem cookie emitido).
-        if (leadStatus === "existing") {
+        // 5. link de acesso para leads existentes, apenas quando há uma
+        // associação nova — evita reenviar o email em cada re-submissão.
+        if (leadStatus === "existing" && claimed) {
           try {
             const { sendReportAccessEmail } = await import(
               "@/lib/email/send-report-access.server"
@@ -200,8 +203,10 @@ export const Route = createFileRoute("/api/public/lead-capture")({
           scoped: true,
           claimed,
           associated,
-          cache_key: cacheKey,
-          grant: cacheKey ? signScopedGrant(leadId, cacheKey) : null,
+          cache_key: associated ? cacheKey : null,
+          // Fallback ao cookie (contextos em que `Secure`/`SameSite=None`
+          // não é aceite). Nunca emitido sem associação real.
+          grant: associated && cacheKey ? signScopedGrant(leadId, cacheKey) : null,
           unlock,
         });
       },
