@@ -234,6 +234,13 @@ async function upsertLead(
 ): Promise<{ leadId: string; isNew: boolean } | { error: string }> {
   const emailNormalized = data.email.toLowerCase();
   const consentTimestamp = nowIso();
+  // CRM continua a indexar em `leads.qualification`; quando o payload traz
+  // apenas a relação com o perfil (Ronda 2), derivamos a qualificação.
+  const qualification =
+    data.qualification ??
+    (data.profile_relationship
+      ? RELATIONSHIP_TO_QUALIFICATION[data.profile_relationship]
+      : null);
 
   const existing = await supabaseAdmin
     .from("leads")
