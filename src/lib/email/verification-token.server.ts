@@ -51,15 +51,32 @@ function sign(payload: string, secret: string): Buffer {
   return createHmac("sha256", secret).update(payload).digest();
 }
 
+export type VerificationTokenPurpose = "email_verification" | "report_access";
+
 export interface VerificationTokenPayload {
   leadId: string;
   email: string;
   handle?: string | null;
+  /**
+   * Ronda 5B — distingue o link curto de verificação do link longo de
+   * acesso ao relatório. Tokens antigos sem `purpose` são tratados como
+   * `email_verification` na verificação.
+   */
+  purpose?: VerificationTokenPurpose;
+  /**
+   * `cache_key` do relatório que originou o email. Permite reabrir
+   * exactamente o relatório correcto em vez da análise mais recente.
+   */
+  reportRef?: string | null;
 }
 
 export interface VerifiedVerificationToken extends VerificationTokenPayload {
   iat: number;
   exp: number;
+  purpose: VerificationTokenPurpose;
+  reportRef: string | null;
+  /** Identificador único do token — base do consumo one-time. */
+  jti: string | null;
 }
 
 export function signVerificationToken(
@@ -86,6 +103,9 @@ export function signVerificationToken(
     leadId: input.leadId,
     email: input.email.toLowerCase(),
     handle: input.handle?.trim() || null,
+    purpose: input.purpose ?? "email_verification",
+    reportRef: input.reportRef?.trim() || null,
+    jti: randomUUID(),
     iat,
     exp,
   };
@@ -93,6 +113,7 @@ export function signVerificationToken(
   const sigB64 = b64urlEncode(sign(payloadB64, secret));
   return `${payloadB64}.${sigB64}`;
 }
+
 
 export function verifyVerificationToken(
   token: string,
