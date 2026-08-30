@@ -115,11 +115,12 @@ import {
 } from "@/lib/analysis/window-configs";
 import { PUBLIC_INSTAGRAM_POSTS_LIMIT } from "@/lib/analysis/constants";
 import {
-  fallbackProviderFor,
+  fetchPosts,
+  fetchProfile,
   isProviderSideFailure,
-  scrapeCreatorsProvider,
   selectProvider,
 } from "@/lib/analysis/providers/index.server";
+
 import { hasEntitlement } from "@/lib/payments/entitlements.server";
 
 // Unified Apify actor — returns profile details with `latestPosts[]` embedded
