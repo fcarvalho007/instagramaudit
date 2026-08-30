@@ -660,19 +660,19 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         //     BUDGET_EXCEEDED, validação, exceções).
         //   • Bypass com Authorization: Bearer $INTERNAL_API_TOKEN (admin /
         //     /api/analyze/refresh / /api/admin/refresh-profile).
-        // ── Nível 1 anónimo (staged product) ───────────────────────────
-        // Quando PUBLIC_BASELINE_NO_EMAIL=true, a auditoria base (janela
-        // baseline, sem concorrentes) corre sem lead/email. O gate de email
-        // passa a proteger apenas o nível 2 (Comment Intelligence) e as
-        // funcionalidades Pro (concorrentes / janelas 30d-90d).
+        // ── Nível 1 gratuito (staged product) ──────────────────────────
+        // Quando PUBLIC_BASELINE_NO_EMAIL=true (semântica actual:
+        // PUBLIC_BASELINE_FREE), a auditoria base (janela baseline, sem
+        // concorrentes) é gratuita para toda a gente — visitante anónimo OU
+        // lead identificado, mesmo com saldo 0. Créditos e entitlements
+        // passam a proteger apenas concorrentes e janelas Pro (30d/90d).
         const anonymousBaselineEnabled =
           (process.env.PUBLIC_BASELINE_NO_EMAIL ?? "false").toLowerCase() === "true";
         const anonymousBaseline =
           anonymousBaselineEnabled &&
           !isInternalBypass &&
           competitors.length === 0 &&
-          !isWideWindow(windowKind) &&
-          readLeadIdFromRequest(request) === null;
+          !isWideWindow(windowKind);
 
         let leadId: string | null = null;
         let reservation: { reservationId: string } | null = null;
@@ -682,8 +682,13 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         // antes de reservar. Reutilizado mais à frente como `existing`.
         const existingEarly = await lookupSnapshot(cacheKey);
         const cacheFreshHit = !!existingEarly && !forceRefresh && isFresh(existingEarly);
-        if (!isInternalBypass && !anonymousBaseline) {
+        if (anonymousBaseline) {
+          // Baseline gratuita: o lead (quando existe) serve apenas para
+          // associar o histórico. Nunca há reserva nem débito.
           leadId = readLeadIdFromRequest(request);
+        } else if (!isInternalBypass) {
+          leadId = readLeadIdFromRequest(request);
+
           if (!leadId) {
             await logEvent({
               handle: primary,
