@@ -26,6 +26,8 @@ import {
   isReportExpired,
   formatRetentionMessage,
 } from "@/lib/report/retention";
+import { useAppSessionMode } from "@/routes/app";
+import { getLeadAudits, type LeadAudit } from "@/lib/rpc/lead-session.functions";
 
 export const Route = createFileRoute("/app/reports")({
   component: ReportsPage,
