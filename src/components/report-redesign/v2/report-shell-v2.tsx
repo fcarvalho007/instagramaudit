@@ -40,6 +40,10 @@ import { ReportBlockSidebar, ReportBlockTopTabs } from "./report-block-nav";
 import { ReportBlockSection } from "./report-block-section";
 import { ReportHeroV2 } from "./report-hero-v2";
 import { ReportOverviewBlock } from "./report-overview-block";
+import {
+  CommentIntelligenceSection,
+  CommentIntelligenceUnavailable,
+} from "./report-comment-intelligence";
 import { ReportDiagnosticBlock } from "./report-diagnostic-block";
 // BlockFeedback removido — feedback agora só no EndFeedbackStrip (fim do bloco gratuito).
 import { ReportEndOfFreeBlock } from "./end-of-free-block";
@@ -70,6 +74,9 @@ interface ReportShellV2Props {
    */
   lockBoundary?: "engagement" | null;
   unlocked?: boolean;
+  /** True quando o email já foi capturado (Nível 1). Controla a revelação
+   *  do Comment Intelligence e a exposição dos CTAs Pro (9€). */
+  leadCaptured?: boolean;
   /** True only when the user has paid/premium access. Lead capture
    *  alone must NOT set this. Defaults to false. */
   premiumUnlocked?: boolean;
@@ -107,6 +114,7 @@ export function ReportShellV2({
   featuresOverride,
   lockBoundary = null,
   unlocked = false,
+  leadCaptured = false,
   premiumUnlocked = false,
   onUnlockClick,
   competitorHandles = [],
@@ -250,6 +258,7 @@ export function ReportShellV2({
                     renderInsight={renderInsight}
                     payload={payload}
                     mode="free_with_engagement"
+                    showPremiumTeasers={leadCaptured}
                   />
                 ) : (
                   <ReportOverviewBlock
@@ -259,6 +268,24 @@ export function ReportShellV2({
                   />
                 )}
               </ReportBlockSection>
+              )}
+
+              {/* Nível 1 · Conversas (Comment Intelligence) — revelado
+                  assim que o email é capturado, sem pagamento. */}
+              {leadCaptured && !premiumUnlocked && (
+                <section
+                  id="conversas"
+                  aria-label="Análise das conversas"
+                  className="scroll-mt-24 mt-8 sm:mt-10"
+                >
+                  {result.enriched.commentIntelligence ? (
+                    <CommentIntelligenceSection
+                      data={result.enriched.commentIntelligence}
+                    />
+                  ) : (
+                    <CommentIntelligenceUnavailable data={null} />
+                  )}
+                </section>
               )}
 
               {/* Fluxo público: blocos 2–6 só em premium. Sidebar/tabs
@@ -413,7 +440,7 @@ export function ReportShellV2({
             esta barra desaparece. Mantemos a dependência em `unlocked`
             (em vez de remover de vez) para que estados futuros
             (admin previews, deep-links sem cookie) possam reactivar. */}
-        {lockBoundary === "engagement" && !premiumUnlocked && (
+        {lockBoundary === "engagement" && !premiumUnlocked && leadCaptured && (
           <StickyUnlockBar />
         )}
         <ReportShortcutDialog
