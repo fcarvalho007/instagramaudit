@@ -1266,6 +1266,11 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             handle: primary,
             network: "instagram",
           });
+          // Baseline anónimo: sem lead nem crédito a travar o custo, o
+          // tecto por IP é mais apertado do que o limite público geral.
+          if (anonymousBaseline) {
+            await assertWithinAnonymousBaselineRateLimit({ ipHash });
+          }
         } catch (err) {
           if (err instanceof RateLimitError) {
             console.warn(
