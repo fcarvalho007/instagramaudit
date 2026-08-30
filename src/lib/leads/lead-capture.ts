@@ -11,8 +11,10 @@ export const CONVERSION_ENTRY_POINTS = [
 
 export type ConversionEntryPoint = (typeof CONVERSION_ENTRY_POINTS)[number];
 
-/** Versão da copy de consentimento registada com o opt-in. */
-export const MARKETING_CONSENT_VERSION = "2026-08-round4";
+/** Versão da copy de consentimento operacional (guardar/entregar auditoria). */
+export const OPERATIONAL_CONSENT_VERSION = "2026-08-round4-operational";
+/** Versão da copy do opt-in de marketing, registada em separado. */
+export const MARKETING_CONSENT_VERSION = "2026-08-round4-marketing";
 
 export type UnlockStatusCode =
   | "queued"
@@ -20,13 +22,15 @@ export type UnlockStatusCode =
   | "already_available"
   | "degraded"
   | "error"
-  | "unavailable";
+  | "unavailable"
+  | "snapshot_missing";
 
 export interface LeadCaptureResponse {
   ok: true;
   lead_status: "created" | "existing";
   scoped: boolean;
   claimed: boolean;
+  associated: boolean;
   cache_key: string | null;
   grant: string | null;
   unlock: { status: UnlockStatusCode; reason?: string; error?: string };
