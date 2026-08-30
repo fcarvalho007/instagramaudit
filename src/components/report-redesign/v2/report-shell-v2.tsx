@@ -131,6 +131,17 @@ export function ReportShellV2({
     displayName: result.data.profile.fullName ?? null,
   };
 
+  const conversasRef = useTrackOnceInView<HTMLElement>(
+    "comment_intelligence_viewed",
+    leadCaptured && !premiumUnlocked,
+    { handle: result.data.profile.username, snapshotId: snapshotId ?? null },
+  );
+  const proOfferRef = useTrackOnceInView<HTMLElement>(
+    "pro_cta_viewed",
+    leadCaptured && !premiumUnlocked,
+    { handle: result.data.profile.username, snapshotId: snapshotId ?? null },
+  );
+
   const scrollToCofre = () => {
     if (typeof document === "undefined") return;
     const el = document.getElementById("report-cofre");
@@ -415,6 +426,7 @@ export function ReportShellV2({
                 <section
                   id="lead-magnet-card"
                   className="mt-12 sm:mt-16 mb-16 sm:mb-20"
+                  ref={proOfferRef}
                 >
                   <ReportEndOfFreeBlock />
                   <EndFeedbackStrip
