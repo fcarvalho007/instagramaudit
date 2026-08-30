@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { FileText, User, CreditCard, LogOut, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { endLeadSession } from "@/lib/rpc/lead-session.functions";
 import { BrandMark } from "@/components/layout/brand-mark";
 import { cn } from "@/lib/utils";
 
