@@ -89,7 +89,7 @@ export function ReportEngagementBenchmarkChart({
               aria-hidden="true"
               style={{ background: isPositive ? successBar : dangerBar }}
             />
-            <span className="text-content-secondary">O teu perfil</span>
+            <span className="text-content-secondary">Este perfil</span>
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="w-2.5 h-[7px] rounded-sm bg-content-secondary/10" aria-hidden="true" />

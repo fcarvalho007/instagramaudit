@@ -111,7 +111,12 @@ export async function assertWithinPublicRateLimit(input: AssertInput): Promise<v
  * `PUBLIC_ANON_MAX_FRESH_PER_IP_DAY` (default 3).
  */
 export function getAnonymousMaxFreshPerIpDay(): number {
-  return readNumber("PUBLIC_ANON_MAX_FRESH_PER_IP_DAY", 3);
+  return readNumber("PUBLIC_ANON_MAX_FRESH_PER_IP_DAY", 10);
+}
+
+/** Tecto horário, para travar rajadas sem penalizar uso normal ao dia. */
+export function getAnonymousMaxFreshPerIpHour(): number {
+  return readNumber("PUBLIC_ANON_MAX_FRESH_PER_IP_HOUR", 4);
 }
 
 export async function assertWithinAnonymousBaselineRateLimit(input: {
@@ -129,5 +134,16 @@ export async function assertWithinAnonymousBaselineRateLimit(input: {
   });
   if (count >= limit) {
     throw new RateLimitError("ip", count, limit);
+  }
+
+  const hourLimit = getAnonymousMaxFreshPerIpHour();
+  const hourSinceIso = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+  const hourCount = await countFreshSuccess({
+    column: "request_ip_hash",
+    value: input.ipHash,
+    sinceIso: hourSinceIso,
+  });
+  if (hourCount >= hourLimit) {
+    throw new RateLimitError("ip", hourCount, hourLimit);
   }
 }

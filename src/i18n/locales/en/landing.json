@@ -5,8 +5,8 @@
   },
   "hero": {
     "eyebrow": "Instagram benchmark",
-    "headline": "Analyze any Instagram profile in seconds.",
-    "subtitle": "Professional diagnostics to improve your digital presence.",
+    "headline": "Analyse the performance of any Instagram profile.",
+    "subtitle": "Enter a public profile and see engagement, best-performing content and improvement opportunities.",
     "previewMock": {
       "header": "Report preview",
       "scoreLabel": "Profile index",
@@ -29,7 +29,7 @@
     "ariaInput": "Instagram profile username or URL",
     "submit": "Analyse for free",
     "trustInline": {
-      "freeReports": "2 free reports included"
+      "anonymous": "No sign-up · Public data only · Results in seconds"
     },
     "errors": {
       "empty": "Enter a valid username to continue",
@@ -108,9 +108,16 @@
     "stats": {
       "eyebrow": "Up-to-date benchmarks",
       "headline": "Fresh Instagram data, analyzed every month.",
-      "posts": { "label": "posts analyzed", "hint": "(Socialinsider, 2025-2026)" },
-      "engagement": { "label": "average engagement on reels" },
-      "tiers": { "label": "comparison tiers" }
+      "posts": {
+        "label": "posts analyzed",
+        "hint": "(Socialinsider, 2025-2026)"
+      },
+      "engagement": {
+        "label": "average engagement on reels"
+      },
+      "tiers": {
+        "label": "comparison tiers"
+      }
     },
     "manualVsTool": {
       "eyebrow": "Why not do it by hand",
@@ -143,20 +150,38 @@
         "formatHint": "62% of mix",
         "competitorsLabel": "Competitor comparison"
       },
-      "disclaimer": "Example. Real numbers come from your profile.",
+      "disclaimer": "Example. Real numbers come from the analysed profile.",
       "sub": {
-        "data": { "title": "Actionable metrics", "hint": "what matters, nothing that distracts" },
-        "benchmark": { "title": "Instant comparison", "hint": "against tier and competitors" },
-        "ai": { "title": "Editorial reading", "hint": "AI-generated insights" }
+        "data": {
+          "title": "Actionable metrics",
+          "hint": "what matters, nothing that distracts"
+        },
+        "benchmark": {
+          "title": "Instant comparison",
+          "hint": "against tier and competitors"
+        },
+        "ai": {
+          "title": "Editorial reading",
+          "hint": "AI-generated insights"
+        }
       }
     },
     "how": {
       "eyebrow": "How it works",
       "headline": "Report in 3 steps.",
       "stepLabel": "STEP {{number}}",
-      "step1": { "title": "Enter the username", "desc": "Enter the profile's @." },
-      "step2": { "title": "Automatic analysis", "desc": "We analyze public data." },
-      "step3": { "title": "Report ready", "desc": "We show what to improve." }
+      "step1": {
+        "title": "Enter the username",
+        "desc": "Enter the profile's @."
+      },
+      "step2": {
+        "title": "Automatic analysis",
+        "desc": "We analyze public data."
+      },
+      "step3": {
+        "title": "Report ready",
+        "desc": "We show what to improve."
+      }
     },
     "bento": {
       "eyebrow": "What you'll see",
@@ -166,18 +191,42 @@
         "body": "The number alone says nothing. We show where you stand against profiles of the same size.",
         "aboveAverage": "above average"
       },
-      "engagement": { "title": "Engagement rate", "hint": "likes, comments and shares" },
-      "frequency": { "title": "Frequency", "hint": "rhythm and consistency" },
-      "format": { "title": "Dominant format", "hint": "reels, carousels, images" },
-      "competitors": { "title": "Competitors", "hint": "side-by-side comparison" }
+      "engagement": {
+        "title": "Engagement rate",
+        "hint": "likes, comments and shares"
+      },
+      "frequency": {
+        "title": "Frequency",
+        "hint": "rhythm and consistency"
+      },
+      "format": {
+        "title": "Dominant format",
+        "hint": "reels, carousels, images"
+      },
+      "competitors": {
+        "title": "Competitors",
+        "hint": "side-by-side comparison"
+      }
     },
     "personas": {
       "eyebrow": "Who it's for",
       "headline": "Built for decision-makers.",
-      "consultants": { "title": "Consultants", "body": "Quick diagnostics to present to clients." },
-      "social": { "title": "Social media managers", "body": "Track accounts and report results." },
-      "brands": { "title": "Brands & SMBs", "body": "Understand presence without hiring an agency." },
-      "creators": { "title": "Creators", "body": "Compare with peers and refine your content." }
+      "consultants": {
+        "title": "Consultants",
+        "body": "Quick diagnostics to present to clients."
+      },
+      "social": {
+        "title": "Social media managers",
+        "body": "Track accounts and report results."
+      },
+      "brands": {
+        "title": "Brands & SMBs",
+        "body": "Understand presence without hiring an agency."
+      },
+      "creators": {
+        "title": "Creators",
+        "body": "Compare with peers and refine your content."
+      }
     },
     "transparency": {
       "eyebrow": "Transparency",
@@ -194,9 +243,23 @@
       "headline": "No subscription. Pay as you go.",
       "lead": "Start with the free initial overview.",
       "urgency": "Launch price — rises to €149 after the beta.",
-      "free": { "label": "Initial overview", "price": "€0", "unit": "no card · no subscription", "cta": "Start free" },
-      "single": { "label": "Full report", "unit": "one-off payment · no subscription", "cta": "Get full report" },
-      "diagnosis": { "label": "Authority Diagnosis", "unit": "human reading + 3 priorities", "cta": "Reserve diagnosis", "badge": "Most useful" }
+      "free": {
+        "label": "Initial overview",
+        "price": "€0",
+        "unit": "no card · no subscription",
+        "cta": "Start free"
+      },
+      "single": {
+        "label": "Full report",
+        "unit": "one-off payment · no subscription",
+        "cta": "Get full report"
+      },
+      "diagnosis": {
+        "label": "Authority Diagnosis",
+        "unit": "human reading + 3 priorities",
+        "cta": "Reserve diagnosis",
+        "badge": "Most useful"
+      }
     },
     "finalCta": {
       "headline": "Analyze your first profile now.",

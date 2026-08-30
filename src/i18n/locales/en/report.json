@@ -583,7 +583,7 @@
       "section_free": "Free reading",
       "section_premium": "Full report",
       "section_paid": "Sections",
-      "progress": "{{accessible}} of {{total}} sections accessible",
+      "progress": "Instant Audit · {{accessible}} sections available",
       "premium_count": "{{count}} locked",
       "cta": "Unlock full report",
       "cta_aria": "Unlock full report",

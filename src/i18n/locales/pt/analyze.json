@@ -7,11 +7,10 @@
     "aria": "A analisar perfil",
     "eyebrow": "A analisar perfil",
     "steps": {
-      "1": "A recolher dados públicos do perfil…",
-      "2": "A organizar publicações e métricas…",
-      "3": "A comparar com referências de mercado…",
-      "4": "A identificar padrões e oportunidades…",
-      "5": "A preparar o relatório visual…"
+      "1": "A localizar o perfil…",
+      "2": "A analisar publicações recentes…",
+      "3": "A calcular engagement e padrões…",
+      "4": "A preparar o diagnóstico…"
     },
     "stepCounter": "Passo {{current}} de {{total}}",
     "footnote": "Não feches esta janela — o diagnóstico está a ser preparado.",
