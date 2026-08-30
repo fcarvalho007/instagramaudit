@@ -11,6 +11,11 @@ import { ReportShellV2 } from "@/components/report-redesign/v2/report-shell-v2";
 import { useReportShareActions } from "@/components/report-share/use-report-share-actions";
 import { UnlockModal } from "@/components/product/unlock-modal";
 import { InstantAuditBar } from "@/components/product/instant-audit-bar";
+import { ConversionSheet } from "@/components/conversion/conversion-sheet";
+import type {
+  ConversionEntryPoint,
+  UnlockStatusCode,
+} from "@/lib/leads/lead-capture";
 import { DeepenAnalysisCta } from "@/components/product/deepen-analysis-cta";
 import { OnboardingModal } from "@/components/onboarding/onboarding-modal";
 import { Toaster } from "@/components/ui/sonner";
@@ -682,9 +687,9 @@ function AnalyzeReady({
         </div>
       ) : null}
       <ReportShellV2
-        result={result}
+        result={shownResult}
         snapshotId={snapshotId}
-        payload={payload}
+        payload={shownPayload}
         analyzedAtIso={analyzedAtIso}
         expiresAtIso={expiresAtIso}
         variant={effectiveVariant}
@@ -708,7 +713,20 @@ function AnalyzeReady({
           pdfDisabled: shareActions.pdfDisabled,
         }}
       />
-      <DeepenAnalysisCta handle={auditHandle} snapshotId={snapshotId} />
+      <DeepenAnalysisCta
+        handle={auditHandle}
+        snapshotId={snapshotId}
+        unlockStatus={unlockStatus}
+        onConvert={() => openConversion("comment_intelligence")}
+      />
+      <ConversionSheet
+        open={conversionOpen}
+        onOpenChange={setConversionOpen}
+        entryPoint={entryPoint}
+        handle={auditHandle}
+        snapshotId={snapshotId}
+        onUnlockStarted={handleUnlockStarted}
+      />
       <UnlockModal
         open={unlockOpen}
         onOpenChange={setUnlockOpen}
