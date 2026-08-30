@@ -796,26 +796,17 @@ function FinalStepBody({
   const isCheckout = purpose === "checkout";
   const nameError = form.formState.errors.full_name?.message;
   const emailError = form.formState.errors.email?.message;
-  const qualificationError = form.formState.errors.qualification?.message;
   const passwordError = form.formState.errors.password?.message;
   const consentError = form.formState.errors.gdpr_consent?.message;
   const consent = form.watch("gdpr_consent");
   const marketing = form.watch("marketing_consent");
   const emailValue = form.watch("email");
-  const qualification = form.watch("qualification");
   const passwordValue = form.watch("password") ?? "";
   const [showPassword, setShowPassword] = useState(false);
   const strength = computePasswordStrength(passwordValue);
   const emailIsValid = !emailError && emailValue && EMAIL_RE.test(emailValue);
 
   const trySubmit = async () => {
-    if (!form.getValues("qualification")) {
-      form.setError("qualification", {
-        type: "manual",
-        message: "Escolhe uma opção",
-      });
-      return;
-    }
     const ok = await form.trigger();
     if (!ok) return;
     await onSubmit();
@@ -967,44 +958,6 @@ function FinalStepBody({
           )}
         </div>
 
-        <div className="space-y-1.5">
-          <Label
-            htmlFor="onb-qualification"
-            className="text-[13.5px] font-medium text-content-primary"
-          >
-            {t("onboarding.final.right.qualificationLabel")}
-          </Label>
-          <Select
-            value={qualification ?? ""}
-            onValueChange={(v) => {
-              form.setValue("qualification", v as LeadQualification, {
-                shouldValidate: true,
-              });
-              form.clearErrors("qualification");
-            }}
-          >
-            <SelectTrigger
-              id="onb-qualification"
-              aria-invalid={Boolean(qualificationError)}
-              data-testid="onboarding-qualification"
-              className="text-base"
-            >
-              <SelectValue
-                placeholder={t("onboarding.final.right.qualificationPlaceholder")}
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {LEAD_QUALIFICATIONS.map((q) => (
-                <SelectItem key={q} value={q}>
-                  {LEAD_QUALIFICATION_LABELS_PT[q]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {qualificationError ? (
-            <p className="text-[12.5px] text-destructive">{qualificationError}</p>
-          ) : null}
-        </div>
 
         <div className="space-y-1.5">
           <Label
