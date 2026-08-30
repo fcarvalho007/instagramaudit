@@ -14,7 +14,7 @@
  * `null` no `verify` e lança no `sign` (chamado só server-side).
  */
 
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 const TTL_SECONDS = 60 * 30; // 30 min
 
