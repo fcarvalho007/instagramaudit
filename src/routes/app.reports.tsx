@@ -297,7 +297,98 @@ function ReportCard({ report }: { report: UserReport }) {
 
 /* ── Page ── */
 
+function LeadAuditsList() {
+  const [audits, setAudits] = useState<LeadAudit[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    getLeadAudits()
+      .then((data) => {
+        if (!cancelled) setAudits(data);
+      })
+      .catch(() => {
+        if (!cancelled) setAudits([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <div>
+      <h1 className="text-xl font-semibold tracking-tight text-content-primary">
+        As minhas auditorias
+      </h1>
+      <p className="mt-1 text-sm text-content-secondary">
+        Auditorias associadas a este email.
+      </p>
+
+      {loading && (
+        <div className="mt-10 flex items-center justify-center">
+          <Loader2 className="size-5 animate-spin text-content-tertiary" />
+        </div>
+      )}
+
+      {!loading && audits.length === 0 && (
+        <div className="mt-8 rounded-xl border border-border-default/20 bg-white p-8 text-center shadow-sm">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-surface-muted">
+            <Search className="size-5 text-content-tertiary" />
+          </div>
+          <h2 className="mt-4 text-sm font-semibold text-content-primary">
+            Ainda não há auditorias
+          </h2>
+          <Link
+            to="/"
+            className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-content-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-content-primary/90"
+          >
+            <Search className="size-3.5" />
+            Analisar perfil
+          </Link>
+        </div>
+      )}
+
+      {!loading && audits.length > 0 && (
+        <div className="mt-5 space-y-3">
+          {audits.map((a) => (
+            <div
+              key={a.id}
+              className="flex items-center justify-between gap-3 rounded-xl border border-border-default/20 bg-white p-4 shadow-sm"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-content-primary">
+                  @{a.handle}
+                </p>
+                <p className="mt-0.5 text-xs text-content-tertiary">
+                  {formatDate(a.createdAt)}
+                </p>
+              </div>
+              <Link
+                to="/analyze/$username"
+                params={{ username: a.handle }}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border-default/20 bg-white px-3 py-1.5 text-xs font-medium text-content-secondary transition-colors hover:bg-surface-muted"
+              >
+                <ExternalLink className="size-3" />
+                Abrir auditoria
+              </Link>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ReportsPage() {
+  const sessionMode = useAppSessionMode();
+  if (sessionMode === "lead") return <LeadAuditsList />;
+  return <AuthReportsPage />;
+}
+
+function AuthReportsPage() {
   const [reports, setReports] = useState<UserReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
