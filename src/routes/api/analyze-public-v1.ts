@@ -319,6 +319,12 @@ async function fetchProfileWithPosts(
   actualCostUsd: number | null;
   /** Real dataset item count across every run made for this handle. */
   billedResults: number;
+  /** Provider that actually served the data (last call wins). */
+  provider: "apify" | "scrapecreators";
+  creditsCharged: number | null;
+  creditsRemaining: number | null;
+  cached: boolean;
+  endpoint: string | null;
 }> {
   const wide = cfg.costTier === "wide" && Boolean(cfg.onlyPostsNewerThan);
 
@@ -328,9 +334,24 @@ async function fetchProfileWithPosts(
   let billedResults = profileResult.billedResults;
   let actualCostUsd = profileResult.actualCostUsd;
   let runId = profileResult.runId;
+  let provider = profileResult.provider;
+  let creditsCharged = profileResult.creditsConsumed;
+  let creditsRemaining = profileResult.creditsRemaining;
+  let cached = profileResult.cached;
+  let endpoint = profileResult.endpoint;
 
   if (!row) {
-    return { row, runId, actualCostUsd, billedResults };
+    return {
+      row,
+      runId,
+      actualCostUsd,
+      billedResults,
+      provider,
+      creditsCharged,
+      creditsRemaining,
+      cached,
+      endpoint,
+    };
   }
 
   // Providers that do not embed a post sample in the profile payload
@@ -341,7 +362,17 @@ async function fetchProfileWithPosts(
     : 0;
 
   if (!wide && embedded > 0) {
-    return { row, runId, actualCostUsd, billedResults };
+    return {
+      row,
+      runId,
+      actualCostUsd,
+      billedResults,
+      provider,
+      creditsCharged,
+      creditsRemaining,
+      cached,
+      endpoint,
+    };
   }
 
   // ---- Step B: posts inside the window -----------------------------------
@@ -360,6 +391,14 @@ async function fetchProfileWithPosts(
     actualCostUsd = (actualCostUsd ?? 0) + postsResult.actualCostUsd;
   }
   runId = postsResult.runId ?? runId;
+  provider = postsResult.provider;
+  creditsCharged =
+    postsResult.creditsConsumed === null && creditsCharged === null
+      ? null
+      : (creditsCharged ?? 0) + (postsResult.creditsConsumed ?? 0);
+  creditsRemaining = postsResult.creditsRemaining ?? creditsRemaining;
+  cached = cached && postsResult.cached;
+  endpoint = postsResult.endpoint ?? endpoint;
 
   // Replace the embedded sample with the real window dataset. If the posts
   // call returned nothing we keep the sample rather than pretending the
@@ -369,8 +408,19 @@ async function fetchProfileWithPosts(
     row.analysis_window_truncated = postsResult.truncated;
   }
 
-  return { row, runId, actualCostUsd, billedResults };
+  return {
+    row,
+    runId,
+    actualCostUsd,
+    billedResults,
+    provider,
+    creditsCharged,
+    creditsRemaining,
+    cached,
+    endpoint,
+  };
 }
+
 
 
 /**
