@@ -211,7 +211,6 @@ export const MOCK_DAILY_COSTS = [
   { day: "30", apify: 0.52, openai: 0.33 },
 ] as const;
 
-export const DAILY_COST_LIMIT = 29 / 30; // $0.97
 
 export const MOCK_KANBAN = [
   {
