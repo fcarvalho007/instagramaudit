@@ -8,7 +8,7 @@
  *   4. insufficient — neutral copy, weekly = 0
  *
  * Always:
- *   - excludes posts with is_pinned=true
+ *   - keeps pinned posts; filtering is strictly by timestamp
  *   - excludes posts with invalid/missing/future timestamps
  *   - sorts desc by timestamp before counting
  *   - accepts taken_at_iso OR taken_at (seconds OR milliseconds, auto-detected)
@@ -148,9 +148,11 @@ export function computeCadence(
   const now = opts.now ?? Date.now();
 
   const all = posts ?? [];
+  // Pinned posts are NOT excluded: `is_pinned` is an analytical attribute,
+  // not a temporal one. Temporal analysis filters strictly by timestamp
+  // (see `dropDateOutliers`), which already removes stale pinned posts.
   const pinnedCount = all.filter((p) => p && p.is_pinned === true).length;
-  const nonPinned = all.filter((p) => p && p.is_pinned !== true);
-  const validRaw = nonPinned
+  const validRaw = all
     .map((p) => normalizePostTimestamp(p))
     .filter((ts) => Number.isFinite(ts) && ts <= now)
     .sort((a, b) => b - a);
@@ -160,7 +162,6 @@ export function computeCadence(
   const valid = validTs.map((ts) => ({ ts }));
 
   const warnings: CadenceWarning[] = [];
-  if (pinnedCount > 0) warnings.push("pinned_excluded");
   if (excludedOutliers > 0) warnings.push("date_outlier_detected");
 
   if (valid.length === 0) {
@@ -174,7 +175,7 @@ export function computeCadence(
       noteEn: INSUFFICIENT_EN,
       reliability: "low",
       warnings,
-      excludedPinned: pinnedCount,
+      excludedPinned: 0,
       excludedOutliers,
     };
   }
@@ -201,7 +202,7 @@ export function computeCadence(
       noteEn: null,
       reliability: deriveReliability("window_30d", count30, w),
       warnings: w,
-      excludedPinned: pinnedCount,
+      excludedPinned: 0,
       excludedOutliers,
     };
   }
@@ -217,7 +218,7 @@ export function computeCadence(
       noteEn: null,
       reliability: deriveReliability("window_90d", count90, warnings),
       warnings,
-      excludedPinned: pinnedCount,
+      excludedPinned: 0,
       excludedOutliers,
     };
   }
@@ -239,7 +240,7 @@ export function computeCadence(
         noteEn: null,
         reliability: deriveReliability("sample_span", valid.length, w),
         warnings: w,
-        excludedPinned: pinnedCount,
+        excludedPinned: 0,
         excludedOutliers,
       };
     }
