@@ -12,6 +12,7 @@ import ptErrors from "./locales/pt/errors.json";
 import ptReport from "./locales/pt/report.json";
 import ptUnsubscribe from "./locales/pt/unsubscribe.json";
 import ptPricing from "./locales/pt/pricing.json";
+import ptConversion from "./locales/pt/conversion.json";
 import enCommon from "./locales/en/common.json";
 import enHeader from "./locales/en/header.json";
 import enLanding from "./locales/en/landing.json";
@@ -23,6 +24,7 @@ import enErrors from "./locales/en/errors.json";
 import enReport from "./locales/en/report.json";
 import enUnsubscribe from "./locales/en/unsubscribe.json";
 import enPricing from "./locales/en/pricing.json";
+import enConversion from "./locales/en/conversion.json";
 
 export const SUPPORTED_LANGUAGES = ["pt", "en"] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
@@ -47,6 +49,7 @@ if (!i18n.isInitialized) {
         report: ptReport,
         unsubscribe: ptUnsubscribe,
         pricing: ptPricing,
+        conversion: ptConversion,
       },
       en: {
         common: enCommon,
@@ -60,6 +63,7 @@ if (!i18n.isInitialized) {
         report: enReport,
         unsubscribe: enUnsubscribe,
         pricing: enPricing,
+        conversion: enConversion,
       },
     },
     lng: "pt",
@@ -77,6 +81,7 @@ if (!i18n.isInitialized) {
       "report",
       "unsubscribe",
       "pricing",
+      "conversion",
     ],
     interpolation: { escapeValue: false },
     react: { useSuspense: false },

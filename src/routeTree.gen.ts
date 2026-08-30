@@ -66,11 +66,13 @@ import { Route as ApiPublicVerifyEmailRouteImport } from './routes/api/public/ve
 import { Route as ApiPublicUnlockCommentsRouteImport } from './routes/api/public/unlock-comments'
 import { Route as ApiPublicUnlockCheckRouteImport } from './routes/api/public/unlock-check'
 import { Route as ApiPublicReportUnlockRouteImport } from './routes/api/public/report-unlock'
+import { Route as ApiPublicReportRelationshipRouteImport } from './routes/api/public/report-relationship'
 import { Route as ApiPublicPublicReportPdfRouteImport } from './routes/api/public/public-report-pdf'
 import { Route as ApiPublicPricingInterestRouteImport } from './routes/api/public/pricing-interest'
 import { Route as ApiPublicPricingFeedbackRouteImport } from './routes/api/public/pricing-feedback'
 import { Route as ApiPublicOnboardingEventRouteImport } from './routes/api/public/onboarding-event'
 import { Route as ApiPublicLookupLeadRouteImport } from './routes/api/public/lookup-lead'
+import { Route as ApiPublicLeadCaptureRouteImport } from './routes/api/public/lead-capture'
 import { Route as ApiPublicInlineFeedbackRouteImport } from './routes/api/public/inline-feedback'
 import { Route as ApiPublicFunnelEventRouteImport } from './routes/api/public/funnel-event'
 import { Route as ApiPublicEupagoWebhookRouteImport } from './routes/api/public/eupago-webhook'
@@ -462,6 +464,12 @@ const ApiPublicReportUnlockRoute = ApiPublicReportUnlockRouteImport.update({
   path: '/api/public/report-unlock',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicReportRelationshipRoute =
+  ApiPublicReportRelationshipRouteImport.update({
+    id: '/api/public/report-relationship',
+    path: '/api/public/report-relationship',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicPublicReportPdfRoute =
   ApiPublicPublicReportPdfRouteImport.update({
     id: '/api/public/public-report-pdf',
@@ -489,6 +497,11 @@ const ApiPublicOnboardingEventRoute =
 const ApiPublicLookupLeadRoute = ApiPublicLookupLeadRouteImport.update({
   id: '/api/public/lookup-lead',
   path: '/api/public/lookup-lead',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicLeadCaptureRoute = ApiPublicLeadCaptureRouteImport.update({
+  id: '/api/public/lead-capture',
+  path: '/api/public/lead-capture',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicInlineFeedbackRoute = ApiPublicInlineFeedbackRouteImport.update({
@@ -1172,11 +1185,13 @@ export interface FileRoutesByFullPath {
   '/api/public/eupago-webhook': typeof ApiPublicEupagoWebhookRoute
   '/api/public/funnel-event': typeof ApiPublicFunnelEventRoute
   '/api/public/inline-feedback': typeof ApiPublicInlineFeedbackRoute
+  '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
   '/api/public/lookup-lead': typeof ApiPublicLookupLeadRoute
   '/api/public/onboarding-event': typeof ApiPublicOnboardingEventRoute
   '/api/public/pricing-feedback': typeof ApiPublicPricingFeedbackRoute
   '/api/public/pricing-interest': typeof ApiPublicPricingInterestRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
+  '/api/public/report-relationship': typeof ApiPublicReportRelationshipRoute
   '/api/public/report-unlock': typeof ApiPublicReportUnlockRoute
   '/api/public/unlock-check': typeof ApiPublicUnlockCheckRoute
   '/api/public/unlock-comments': typeof ApiPublicUnlockCommentsRoute
@@ -1338,11 +1353,13 @@ export interface FileRoutesByTo {
   '/api/public/eupago-webhook': typeof ApiPublicEupagoWebhookRoute
   '/api/public/funnel-event': typeof ApiPublicFunnelEventRoute
   '/api/public/inline-feedback': typeof ApiPublicInlineFeedbackRoute
+  '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
   '/api/public/lookup-lead': typeof ApiPublicLookupLeadRoute
   '/api/public/onboarding-event': typeof ApiPublicOnboardingEventRoute
   '/api/public/pricing-feedback': typeof ApiPublicPricingFeedbackRoute
   '/api/public/pricing-interest': typeof ApiPublicPricingInterestRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
+  '/api/public/report-relationship': typeof ApiPublicReportRelationshipRoute
   '/api/public/report-unlock': typeof ApiPublicReportUnlockRoute
   '/api/public/unlock-check': typeof ApiPublicUnlockCheckRoute
   '/api/public/unlock-comments': typeof ApiPublicUnlockCommentsRoute
@@ -1507,11 +1524,13 @@ export interface FileRoutesById {
   '/api/public/eupago-webhook': typeof ApiPublicEupagoWebhookRoute
   '/api/public/funnel-event': typeof ApiPublicFunnelEventRoute
   '/api/public/inline-feedback': typeof ApiPublicInlineFeedbackRoute
+  '/api/public/lead-capture': typeof ApiPublicLeadCaptureRoute
   '/api/public/lookup-lead': typeof ApiPublicLookupLeadRoute
   '/api/public/onboarding-event': typeof ApiPublicOnboardingEventRoute
   '/api/public/pricing-feedback': typeof ApiPublicPricingFeedbackRoute
   '/api/public/pricing-interest': typeof ApiPublicPricingInterestRoute
   '/api/public/public-report-pdf': typeof ApiPublicPublicReportPdfRoute
+  '/api/public/report-relationship': typeof ApiPublicReportRelationshipRoute
   '/api/public/report-unlock': typeof ApiPublicReportUnlockRoute
   '/api/public/unlock-check': typeof ApiPublicUnlockCheckRoute
   '/api/public/unlock-comments': typeof ApiPublicUnlockCommentsRoute
@@ -1677,11 +1696,13 @@ export interface FileRouteTypes {
     | '/api/public/eupago-webhook'
     | '/api/public/funnel-event'
     | '/api/public/inline-feedback'
+    | '/api/public/lead-capture'
     | '/api/public/lookup-lead'
     | '/api/public/onboarding-event'
     | '/api/public/pricing-feedback'
     | '/api/public/pricing-interest'
     | '/api/public/public-report-pdf'
+    | '/api/public/report-relationship'
     | '/api/public/report-unlock'
     | '/api/public/unlock-check'
     | '/api/public/unlock-comments'
@@ -1843,11 +1864,13 @@ export interface FileRouteTypes {
     | '/api/public/eupago-webhook'
     | '/api/public/funnel-event'
     | '/api/public/inline-feedback'
+    | '/api/public/lead-capture'
     | '/api/public/lookup-lead'
     | '/api/public/onboarding-event'
     | '/api/public/pricing-feedback'
     | '/api/public/pricing-interest'
     | '/api/public/public-report-pdf'
+    | '/api/public/report-relationship'
     | '/api/public/report-unlock'
     | '/api/public/unlock-check'
     | '/api/public/unlock-comments'
@@ -2011,11 +2034,13 @@ export interface FileRouteTypes {
     | '/api/public/eupago-webhook'
     | '/api/public/funnel-event'
     | '/api/public/inline-feedback'
+    | '/api/public/lead-capture'
     | '/api/public/lookup-lead'
     | '/api/public/onboarding-event'
     | '/api/public/pricing-feedback'
     | '/api/public/pricing-interest'
     | '/api/public/public-report-pdf'
+    | '/api/public/report-relationship'
     | '/api/public/report-unlock'
     | '/api/public/unlock-check'
     | '/api/public/unlock-comments'
@@ -2157,11 +2182,13 @@ export interface RootRouteChildren {
   ApiPublicEupagoWebhookRoute: typeof ApiPublicEupagoWebhookRoute
   ApiPublicFunnelEventRoute: typeof ApiPublicFunnelEventRoute
   ApiPublicInlineFeedbackRoute: typeof ApiPublicInlineFeedbackRoute
+  ApiPublicLeadCaptureRoute: typeof ApiPublicLeadCaptureRoute
   ApiPublicLookupLeadRoute: typeof ApiPublicLookupLeadRoute
   ApiPublicOnboardingEventRoute: typeof ApiPublicOnboardingEventRoute
   ApiPublicPricingFeedbackRoute: typeof ApiPublicPricingFeedbackRoute
   ApiPublicPricingInterestRoute: typeof ApiPublicPricingInterestRoute
   ApiPublicPublicReportPdfRoute: typeof ApiPublicPublicReportPdfRoute
+  ApiPublicReportRelationshipRoute: typeof ApiPublicReportRelationshipRoute
   ApiPublicReportUnlockRoute: typeof ApiPublicReportUnlockRoute
   ApiPublicUnlockCheckRoute: typeof ApiPublicUnlockCheckRoute
   ApiPublicUnlockCommentsRoute: typeof ApiPublicUnlockCommentsRoute
@@ -2609,6 +2636,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicReportUnlockRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/report-relationship': {
+      id: '/api/public/report-relationship'
+      path: '/api/public/report-relationship'
+      fullPath: '/api/public/report-relationship'
+      preLoaderRoute: typeof ApiPublicReportRelationshipRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/public-report-pdf': {
       id: '/api/public/public-report-pdf'
       path: '/api/public/public-report-pdf'
@@ -2642,6 +2676,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/lookup-lead'
       fullPath: '/api/public/lookup-lead'
       preLoaderRoute: typeof ApiPublicLookupLeadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/lead-capture': {
+      id: '/api/public/lead-capture'
+      path: '/api/public/lead-capture'
+      fullPath: '/api/public/lead-capture'
+      preLoaderRoute: typeof ApiPublicLeadCaptureRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/inline-feedback': {
@@ -3700,11 +3741,13 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicEupagoWebhookRoute: ApiPublicEupagoWebhookRoute,
   ApiPublicFunnelEventRoute: ApiPublicFunnelEventRoute,
   ApiPublicInlineFeedbackRoute: ApiPublicInlineFeedbackRoute,
+  ApiPublicLeadCaptureRoute: ApiPublicLeadCaptureRoute,
   ApiPublicLookupLeadRoute: ApiPublicLookupLeadRoute,
   ApiPublicOnboardingEventRoute: ApiPublicOnboardingEventRoute,
   ApiPublicPricingFeedbackRoute: ApiPublicPricingFeedbackRoute,
   ApiPublicPricingInterestRoute: ApiPublicPricingInterestRoute,
   ApiPublicPublicReportPdfRoute: ApiPublicPublicReportPdfRoute,
+  ApiPublicReportRelationshipRoute: ApiPublicReportRelationshipRoute,
   ApiPublicReportUnlockRoute: ApiPublicReportUnlockRoute,
   ApiPublicUnlockCheckRoute: ApiPublicUnlockCheckRoute,
   ApiPublicUnlockCommentsRoute: ApiPublicUnlockCommentsRoute,

@@ -1,26 +1,31 @@
 import { useEffect, useRef } from "react";
-import { MessagesSquare } from "lucide-react";
+import { Loader2, MessagesSquare } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { trackAnonymousEvent } from "@/lib/analytics/anonymous-funnel";
+import type { UnlockStatusCode } from "@/lib/leads/lead-capture";
 
 /**
- * Ronda 3.5 — bloco contextual "Aprofundar a análise".
+ * Bloco contextual "Aprofundar a análise".
  *
- * Bloco informativo, sem botão: em staging externo não pode existir uma
- * acção aparentemente funcional que termine apenas em "disponível em breve".
- *
- * Ronda 4: acrescentar aqui o botão de desbloqueio, ligado à captura de
- * email + Comment Intelligence (`/api/public/unlock-comments`), emitindo
- * `level2_cta_clicked`.
+ * Ronda 4 — o botão abre o motor único de conversão com
+ * `conversion_entry_point = comment_intelligence`. Depois da captura de
+ * email o bloco mostra o estado real do desbloqueio
+ * (`unlocking → processing → available`), sem percentagens fictícias.
  */
 export function DeepenAnalysisCta({
   handle,
   snapshotId,
+  onConvert,
+  unlockStatus,
 }: {
   handle: string;
   snapshotId: string;
+  onConvert?: () => void;
+  unlockStatus?: UnlockStatusCode | null;
 }) {
   const ref = useRef<HTMLElement | null>(null);
+  const { t } = useTranslation("conversion");
 
   useEffect(() => {
     const el = ref.current;
@@ -41,6 +46,9 @@ export function DeepenAnalysisCta({
     io.observe(el);
     return () => io.disconnect();
   }, [handle, snapshotId]);
+
+  const processing = unlockStatus === "queued" || unlockStatus === "pending";
+  const done = unlockStatus === "already_available";
 
   return (
     <section
@@ -64,8 +72,43 @@ export function DeepenAnalysisCta({
       <p className="mt-2 max-w-2xl font-sans text-sm leading-relaxed text-content-secondary">
         A análise de comentários acrescenta leitura de audiência: temas
         recorrentes, tom das reacções e sinais de intenção nas publicações com
-        melhor desempenho de @{handle}. Em preparação.
+        melhor desempenho de @{handle}.
       </p>
+
+      {processing || done ? (
+        <p
+          role="status"
+          className="mt-4 flex items-center gap-2 text-sm text-content-secondary"
+        >
+          {processing ? (
+            <Loader2
+              className="size-4 shrink-0 animate-spin text-accent-primary"
+              aria-hidden="true"
+            />
+          ) : null}
+          {processing ? t("unlock.processing") : t("unlock.available")}
+        </p>
+      ) : onConvert ? (
+        <button
+          type="button"
+          onClick={() => {
+            trackAnonymousEvent("level2_cta_clicked", {
+              handle,
+              snapshotId,
+              metadata: { conversion_entry_point: "comment_intelligence" },
+            });
+            trackAnonymousEvent("lead_cta_clicked", {
+              handle,
+              snapshotId,
+              metadata: { conversion_entry_point: "comment_intelligence" },
+            });
+            onConvert();
+          }}
+          className="mt-5 w-full rounded-lg bg-accent-primary px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-primary/90 sm:w-auto"
+        >
+          {t("cta.comment_intelligence")}
+        </button>
+      ) : null}
     </section>
   );
 }
