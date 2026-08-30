@@ -13,12 +13,12 @@ describe("PUBLIC_INSTAGRAM_POSTS_LIMIT", () => {
     expect(PUBLIC_INSTAGRAM_POSTS_LIMIT).toBe(12);
   });
 
-  it("is wired into the Apify actor input in analyze-public-v1", () => {
+  it("is wired into the Apify actor input in the Apify adapter", () => {
     const src = readFileSync(
-      resolve(process.cwd(), "src/routes/api/analyze-public-v1.ts"),
+      resolve(process.cwd(), "src/lib/analysis/providers/apify.server.ts"),
       "utf8",
     );
-    expect(src).toContain('from "@/lib/analysis/constants"');
+    expect(src).toContain('from "../constants"');
     // Wide windows fetch posts in a dedicated run, so the details run keeps
     // the constant as its sample size.
     expect(src).toMatch(/resultsLimit:[^\n]*PUBLIC_INSTAGRAM_POSTS_LIMIT/);

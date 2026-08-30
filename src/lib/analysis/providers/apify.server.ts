@@ -12,6 +12,7 @@
  */
 
 import { runActorWithMetadata } from "../apify-client";
+import { PUBLIC_INSTAGRAM_POSTS_LIMIT } from "../constants";
 import {
   emptyMeta,
   type FetchCommentsOptions,
@@ -43,7 +44,7 @@ export const apifyProvider: SocialDataProvider = {
       {
         directUrls: [profileUrlFor(handle)],
         resultsType: "details",
-        resultsLimit: 12,
+        resultsLimit: PUBLIC_INSTAGRAM_POSTS_LIMIT,
         addParentData: false,
       },
       { timeoutMs: 60_000, apifyTimeoutSecs: 55, maxItems: 1 },
