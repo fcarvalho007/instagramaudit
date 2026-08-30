@@ -78,7 +78,7 @@ export function ConversionSheet({
 
   useEffect(() => {
     if (!open) return;
-    trackAnonymousEvent("lead_modal_viewed", {
+    trackAnonymousEvent("lead_capture_opened", {
       handle,
       snapshotId,
       metadata: { conversion_entry_point: entryPoint },
@@ -90,7 +90,7 @@ export function ConversionSheet({
     setEmail(value);
     if (!emailStartedRef.current && value.trim().length > 0) {
       emailStartedRef.current = true;
-      trackAnonymousEvent("email_started", {
+      trackAnonymousEvent("email_field_started", {
         handle,
         snapshotId,
         metadata: { conversion_entry_point: entryPoint },
