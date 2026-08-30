@@ -35,5 +35,10 @@
     "question": "What's your relationship with @{{handle}}?",
     "skip": "Not now",
     "thanks": "Thanks — we'll take that into account."
+  },
+  "deepen": {
+    "eyebrow": "Next level",
+    "title": "Go deeper into the analysis",
+    "body": "Comment analysis adds audience reading: recurring themes, tone of reactions and intent signals in the best-performing posts of @{{handle}}."
   }
 }

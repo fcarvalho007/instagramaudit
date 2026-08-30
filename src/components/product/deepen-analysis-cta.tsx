@@ -33,11 +33,6 @@ export function DeepenAnalysisCta({
     const io = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) {
-          trackAnonymousEvent("level2_cta_viewed", {
-            handle,
-            snapshotId,
-            dedupeKey: snapshotId,
-          });
           trackAnonymousEvent("lead_cta_viewed", {
             handle,
             snapshotId,
@@ -63,7 +58,7 @@ export function DeepenAnalysisCta({
       className="mt-8 rounded-2xl border border-border-default bg-surface-secondary px-5 py-6 sm:px-7 sm:py-8"
     >
       <span className="text-eyebrow-sm text-content-secondary">
-        Próximo nível
+        {t("deepen.eyebrow")}
       </span>
       <h2
         id="deepen-analysis-title"
@@ -73,12 +68,10 @@ export function DeepenAnalysisCta({
           className="size-5 shrink-0 text-accent-primary"
           aria-hidden="true"
         />
-        Aprofundar a análise
+        {t("deepen.title")}
       </h2>
       <p className="mt-2 max-w-2xl font-sans text-sm leading-relaxed text-content-secondary">
-        A análise de comentários acrescenta leitura de audiência: temas
-        recorrentes, tom das reacções e sinais de intenção nas publicações com
-        melhor desempenho de @{handle}.
+        {t("deepen.body", { handle })}
       </p>
 
       {processing || done ? (
@@ -98,11 +91,6 @@ export function DeepenAnalysisCta({
         <button
           type="button"
           onClick={() => {
-            trackAnonymousEvent("level2_cta_clicked", {
-              handle,
-              snapshotId,
-              metadata: { conversion_entry_point: "comment_intelligence" },
-            });
             trackAnonymousEvent("lead_cta_clicked", {
               handle,
               snapshotId,

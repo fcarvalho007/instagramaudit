@@ -19,8 +19,6 @@ export type AnonymousFunnelEvent =
   | "instant_audit_scroll_100"
   | "save_audit_cta_viewed"
   | "save_audit_cta_clicked"
-  | "level2_cta_viewed"
-  | "level2_cta_clicked"
   | "lead_cta_viewed"
   | "lead_cta_clicked"
   | "lead_capture_opened"

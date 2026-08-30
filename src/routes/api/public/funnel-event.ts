@@ -24,8 +24,6 @@ export const ANONYMOUS_FUNNEL_EVENTS = [
   "instant_audit_scroll_100",
   "save_audit_cta_viewed",
   "save_audit_cta_clicked",
-  "level2_cta_viewed",
-  "level2_cta_clicked",
   // Ronda 4 — captura pós-valor e desbloqueio do Nível 2
   "lead_cta_viewed",
   "lead_cta_clicked",
