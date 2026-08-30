@@ -1,9 +1,13 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/app/app-layout";
 import { ensureReportAssociation } from "@/lib/rpc/account.functions";
 import { getLeadSessionState } from "@/lib/rpc/lead-session.functions";
+import {
+  SessionModeContext,
+  type AppSessionMode,
+} from "@/components/app/session-mode";
 
 export const Route = createFileRoute("/app")({
   component: AppShell,
@@ -12,19 +16,7 @@ export const Route = createFileRoute("/app")({
   }),
 });
 
-/**
- * Modo de sessão da área privada:
- *   - `auth`: utilizador Supabase (caminho histórico, com password);
- *   - `lead`: email verificado via magic link, sem password (Ronda 5B).
- * O modo `auth` tem precedência quando ambos existem.
- */
-export type AppSessionMode = "auth" | "lead";
-
-const SessionModeContext = createContext<AppSessionMode>("auth");
-
-export function useAppSessionMode(): AppSessionMode {
-  return useContext(SessionModeContext);
-}
+export { useAppSessionMode, type AppSessionMode } from "@/components/app/session-mode";
 
 function AppShell() {
   const [user, setUser] = useState<{

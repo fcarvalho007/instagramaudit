@@ -232,6 +232,29 @@ function failureHtml(reason: ClaimFailure): Response {
   );
 }
 
+/**
+ * Página de confirmação humana.
+ *
+ * O GET nunca consome o token: scanners de email e prefetch de clientes
+ * fazem GET automático e queimariam o link one-time. O consumo acontece
+ * apenas no POST despoletado por esta página.
+ */
+function confirmHtml(token: string): Response {
+  const safeToken = JSON.stringify(token);
+  const home = resolveBaseUrl();
+  const html = `<!DOCTYPE html><html lang="pt-PT"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="robots" content="noindex"/><meta name="referrer" content="no-referrer"/><title>Confirmar acesso</title><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;background:#FAFBFD;color:#03045E;margin:0;padding:48px 16px;display:flex;justify-content:center}main{max-width:480px;width:100%;background:#fff;border:1px solid rgba(3,4,94,0.08);border-radius:14px;padding:32px}h1{font-family:Fraunces,Georgia,serif;font-size:24px;margin:0 0 12px}p{font-size:15px;line-height:1.55;opacity:0.85;margin:0 0 20px}button{width:100%;background:#0077B6;color:#fff;border:0;border-radius:10px;padding:14px 18px;font-size:15px;font-weight:600;cursor:pointer}button[disabled]{opacity:0.6;cursor:progress}a{color:#0077B6;text-decoration:none;font-weight:600}#err{color:#9B2C2C;font-size:14px;margin-top:14px}</style></head><body><main><h1>Confirmar acesso</h1><p>Carrega no botão para confirmares o teu endereço de email e abrires a tua auditoria.</p><button id="go" type="button">Confirmar e abrir auditoria</button><p id="err" hidden></p><p style="margin-top:20px"><a href="${home}/">Voltar ao AuditProfiles</a></p></main><script>
+(function(){var b=document.getElementById('go');var e=document.getElementById('err');b.addEventListener('click',function(){b.disabled=true;b.textContent='A confirmar…';fetch(window.location.pathname,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({token:${safeToken}})}).then(function(r){return r.json().then(function(j){return {s:r.status,j:j}})}).then(function(o){if(o.j&&o.j.ok&&o.j.redirect_to){window.location.replace(o.j.redirect_to);return}b.disabled=false;b.textContent='Confirmar e abrir auditoria';e.hidden=false;e.textContent=o.j&&o.j.error_code==='expired'?'Este link expirou. Pede um novo acesso.':(o.j&&o.j.error_code==='already_used'?'Este link já foi utilizado. Pede um novo acesso.':'Não foi possível validar este link. Pede um novo acesso.')}).catch(function(){b.disabled=false;b.textContent='Confirmar e abrir auditoria';e.hidden=false;e.textContent='Não foi possível validar este link. Tenta novamente.'})})})();
+</script></body></html>`;
+  return new Response(html, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Referrer-Policy": "no-referrer",
+    },
+  });
+}
+
 async function handleGet(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const token = url.searchParams.get("token") ?? "";
@@ -239,20 +262,16 @@ async function handleGet(request: Request): Promise<Response> {
     await recordAccessEvent({ eventType: "magic_link_invalid" });
     return failureHtml("rate_limited");
   }
+  if (!token) return failureHtml("invalid");
   await recordAccessEvent({ eventType: "magic_link_clicked" });
-  const outcome = await claimFromToken(token);
-  if (outcome.ok) {
-    const headers = new Headers({
-      Location: outcome.redirectTo,
-      "Cache-Control": "no-store",
-      "Referrer-Policy": "no-referrer",
-    });
-    for (const cookie of setCookieHeaders(outcome.leadId)) {
-      headers.append("Set-Cookie", cookie);
-    }
-    return new Response(null, { status: 302, headers });
+  // Verificação apenas de assinatura/validade: sem consumo, sem sessão,
+  // sem créditos. Um scanner que faça GET não inutiliza o link.
+  const verified = verifyVerificationToken(token);
+  if (!verified) {
+    const looksWellFormed = token.split(".").length === 2;
+    return failureHtml(looksWellFormed ? "expired" : "invalid");
   }
-  return failureHtml(outcome.reason);
+  return confirmHtml(token);
 }
 
 function statusForFailure(reason: ClaimFailure): number {

@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { FileText, User, CreditCard, LogOut, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { endLeadSession } from "@/lib/rpc/lead-session.functions";
 import { BrandMark } from "@/components/layout/brand-mark";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +23,9 @@ export function AppTopbar({ userEmail }: AppTopbarProps) {
   });
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    // Termina ambos os caminhos de sessão: Supabase Auth (histórico) e
+    // `lead_session` (passwordless). Sair tem de sair mesmo.
+    await Promise.allSettled([supabase.auth.signOut(), endLeadSession()]);
     window.location.href = "/login";
   };
 
