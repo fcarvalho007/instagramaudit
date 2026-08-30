@@ -205,6 +205,12 @@ export const Route = createFileRoute("/api/admin/reports")({
                 source: presence.openai ? "cache_hit" : "not_used",
                 calls: 0,
               },
+              scrapecreators: {
+                actual_usd: null,
+                estimated_usd: 0,
+                source: presence.scrapecreators ? "cache_hit" : "not_used",
+                calls: 0,
+              },
               total_actual_usd: 0,
               total_estimated_usd: 0,
               confidence: "sem_custos",
