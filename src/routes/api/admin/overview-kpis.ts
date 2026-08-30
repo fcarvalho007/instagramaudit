@@ -212,6 +212,15 @@ export const Route = createFileRoute("/api/admin/overview-kpis")({
               total: Number(expense.dataforseo_total ?? 0),
               balance: expense.dataforseo_balance ?? null,
             },
+            scrapecreators: {
+              credits_30d: scrapecreators.windows.last_30d.credits,
+              calls_30d: scrapecreators.windows.last_30d.calls,
+              balance_credits: scrapecreators.last_known_balance?.credits_remaining ?? null,
+              balance_age_seconds: scrapecreators.last_known_balance?.age_seconds ?? null,
+              equivalent_cost_usd_30d: scrapecreators.windows.last_30d.equivalent_cost_usd,
+              actual_cash_cost_usd_30d: scrapecreators.windows.last_30d.actual_cash_cost_usd,
+              promotional: scrapecreators.promotional,
+            },
           },
         };
 
