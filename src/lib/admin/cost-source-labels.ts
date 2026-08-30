@@ -17,7 +17,11 @@ export type CostConfidence =
   | "estimado"
   | "sem_custos";
 
-export type ProviderKey = "apify" | "dataforseo" | "openai";
+export type ProviderKey =
+  | "apify"
+  | "dataforseo"
+  | "openai"
+  | "scrapecreators";
 
 export function costSourceLabel(value: CostSource): string {
   switch (value) {
