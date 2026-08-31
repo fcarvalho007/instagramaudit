@@ -68,11 +68,11 @@ function useSidebarCompact(threshold = 220): boolean {
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type AccessState = "accessible" | "locked";
-type Group = "incluido" | "premium";
-type AccessBadge = "free" | "free_email" | "included" | "premium";
+export type AccessState = "accessible" | "locked";
+export type Group = "incluido" | "premium";
+export type AccessBadge = "free" | "free_email" | "included" | "premium";
 
-interface SidebarItem {
+export interface SidebarItem {
   block: BlockConfig;
   group: Group;
   access: AccessState;
