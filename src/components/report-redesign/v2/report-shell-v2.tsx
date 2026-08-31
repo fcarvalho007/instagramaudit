@@ -290,7 +290,7 @@ export function ReportShellV2({
                 <section
                   id="conversas"
                   aria-label="Análise das conversas"
-                  className="scroll-mt-24 mt-8 sm:mt-10"
+                  className="scroll-mt-24 mt-6 sm:mt-8"
                   ref={conversasRef}
                 >
                   {result.enriched.commentIntelligence ? (
