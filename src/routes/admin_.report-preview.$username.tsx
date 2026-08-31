@@ -193,7 +193,7 @@ function AdminReportPreviewPage() {
   return (
     <ReportThemeWrapper>
       <div className="min-h-screen bg-surface-base">
-        <ExitPreviewPill username={username} variant={variant} />
+        <ExitPreviewPill username={username} variant={variant} state={effectiveState} />
         {variant === "internal_lab" ? <LabFullPreviewBanner /> : null}
         {load.kind === "loading" || load.kind === "idle" ? (
           <CenteredMessage
@@ -220,9 +220,10 @@ function AdminReportPreviewPage() {
             expiresAtIso={load.expiresAt}
             variant={variant}
             featuresOverride={featuresOverride}
-            premiumUnlocked={variant !== "public_mvp"}
-            unlocked={variant !== "public_mvp"}
-            lockBoundary={variant === "public_mvp" ? "engagement" : null}
+            premiumUnlocked={shellState.premiumUnlocked}
+            unlocked={shellState.premiumUnlocked}
+            leadCaptured={shellState.leadCaptured}
+            lockBoundary={shellState.lockBoundary}
             isAdminPreview={true}
             actions={{}}
           />
