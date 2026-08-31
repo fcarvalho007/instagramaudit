@@ -35,10 +35,24 @@ import {
 
 const VALID_VARIANTS = ["public_mvp", "internal_lab", "pro_preview"] as const;
 
+/** Estado comercial do leitor: a = anónimo, b = email capturado, c = Pro. */
+const VALID_STATES = ["a", "b", "c"] as const;
+type CommercialState = (typeof VALID_STATES)[number];
+
 const previewSearchSchema = z.object({
   variant: fallback(z.enum(VALID_VARIANTS), "public_mvp").default("public_mvp"),
   draft: fallback(z.boolean(), false).default(false),
+  state: fallback(z.enum(VALID_STATES), "a").default("a"),
 });
+
+/** Traduz o estado comercial nas props que o `ReportShellV2` já aceita. */
+function shellPropsForState(state: CommercialState) {
+  return {
+    leadCaptured: state !== "a",
+    premiumUnlocked: state === "c",
+    lockBoundary: state === "c" ? null : ("engagement" as const),
+  };
+}
 
 export const Route = createFileRoute("/admin_/report-preview/$username")({
   validateSearch: zodValidator(previewSearchSchema),
