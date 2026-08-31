@@ -147,11 +147,12 @@ function buildSidebarItems(
  * sidebar UI. The synthesized BlockConfig only fills fields actually
  * read by `ItemRow` (id, number, shortLabel, icon).
  */
-function commercialToSidebarItem(
+export function commercialToSidebarItem(
   s: CommercialSection,
   premiumUnlocked: boolean,
   leadCaptured: boolean,
 ): SidebarItem {
+
   // `free_email` = Análise Aprofundada (Conversas): gratuito, mas só
   // acessível depois da captura de email.
   const unlockedForUser =
