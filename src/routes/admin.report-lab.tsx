@@ -499,14 +499,17 @@ function ReportLabPage() {
             <div className="min-w-0">
               <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-admin-text-tertiary">
                 Pré-visualização condensada · {variant}
+                {variant === "public_mvp" && ` · estado ${effectiveState.toUpperCase()}`}
               </p>
               <p className="mt-0.5 text-[12.5px] text-admin-text-secondary">
-                Para validar como o cliente {variant === "pro_preview" ? "Pro" : variant === "internal_lab" ? "interno" : "público"} vê, abre em ecrã completo.
+                {variant === "public_mvp"
+                  ? `Para validar como o cliente público vê no ${STATE_OPTIONS.find((o) => o.value === effectiveState)?.label}, abre em ecrã completo.`
+                  : `Para validar como o cliente ${variant === "pro_preview" ? "Pro" : "interno"} vê, abre em ecrã completo.`}
               </p>
             </div>
             <button
               type="button"
-              onClick={() => window.open(`/admin/report-preview/${activeProfile}?variant=${variant}`, "_blank")}
+              onClick={() => window.open(`/admin/report-preview/${activeProfile}?variant=${variant}&state=${effectiveState}`, "_blank")}
               className="inline-flex items-center gap-1.5 rounded-lg bg-admin-text-primary px-3.5 py-2 text-[12.5px] font-medium text-white transition-colors hover:opacity-90"
             >
               <ExternalLink className="h-3.5 w-3.5" />
@@ -520,8 +523,11 @@ function ReportLabPage() {
               payload={load.payload}
               analyzedAtIso={load.createdAt}
               variant={variant}
-              premiumUnlocked={variant !== "public_mvp"}
-              unlocked={variant !== "public_mvp"}
+              premiumUnlocked={shellState.premiumUnlocked}
+              unlocked={shellState.premiumUnlocked}
+              leadCaptured={shellState.leadCaptured}
+              lockBoundary={shellState.lockBoundary}
+              isAdminPreview
               actions={{}}
             />
           </ReportThemeWrapper>
