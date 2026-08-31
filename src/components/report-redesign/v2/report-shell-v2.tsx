@@ -260,27 +260,29 @@ export function ReportShellV2({
               {/* 01 · Overview (redesigned) */}
               {features.blockOverview !== "hidden" && (
               <ReportBlockSection block={overview} tone="canvas" first>
-                {lockBoundary === "engagement" && !premiumUnlocked ? (
-                  // Free público (onboarding-first) — Identity + Engagement +
-                  // 5 teaser cards (Frequência, Formatos, Publicações-chave,
-                  // Diagnóstico, Prioridades). Renderiza sempre, mesmo que
-                  // `unlocked` esteja momentaneamente a false durante o
-                  // bootstrap, para evitar o estado vazio em que o corpo
-                  // do relatório só mostra o Identity Card.
+                {variant === "internal_lab" ? (
+                  // Lab experimental: mantém o ramo antigo (comparação de
+                  // concorrentes + leituras IA por card).
+                  <ReportOverviewBlock
+                    result={result}
+                    renderInsight={renderInsight}
+                    payload={payload}
+                  />
+                ) : (
+                  // Ramo comercial único: A ⊂ B ⊂ C. O leitor pago vê
+                  // exactamente a mesma composição que viu em B, apenas
+                  // com os cards completos.
                   <ReportOverviewBlock
                     result={result}
                     renderInsight={renderInsight}
                     payload={payload}
                     mode="free_with_engagement"
-                    access={leadCaptured ? "lead" : "anon"}
-                  />
-                ) : (
-                  <ReportOverviewBlock
-                    result={result}
-                    renderInsight={renderInsight}
-                    payload={payload}
+                    access={
+                      premiumUnlocked ? "pro" : leadCaptured ? "lead" : "anon"
+                    }
                   />
                 )}
+
               </ReportBlockSection>
               )}
 

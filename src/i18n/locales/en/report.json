@@ -1438,9 +1438,17 @@
     "retentionMessage": "Reports remain available for {{days}} days after generation."
   },
   "end_of_free": {
-    "eyebrow": "End of public reading",
-    "title": "There's more behind this profile",
-    "description": "The full report adds temporal analysis, an editorial reading of the rhythm and a detailed comparison with competitors.",
+    "eyebrow": "You've seen what is happening",
+    "title": "Now find out why — and what to do next.",
+    "description": "The Pro report explains the causes behind these numbers and returns a prioritised plan for the <strong>next 30 days</strong>.",
+    "benefits_title": "Only in the Pro report",
+    "benefits": {
+      "diagnosis": "Editorial diagnosis with the causes behind the results",
+      "priorities": "Action priorities for the next 4 weeks",
+      "rhythm": "What to test, fix and repeat",
+      "competitors": "Comparative reading against similar profiles",
+      "opportunities": "Editorial opportunities still untapped"
+    },
     "chips": {
       "competitors": "Competitors",
       "rank": "Tier ranking",

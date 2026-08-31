@@ -96,19 +96,17 @@ describe("Premium CTA — tracking allow-list", () => {
 });
 
 describe("Premium CTA — shell wiring", () => {
-  it("body lock-gate routes through usePremiumCta (not UnlockModal)", async () => {
+  it("a oferta Pro do corpo passa pelo usePremiumCta (nunca pelo UnlockModal)", async () => {
     const source = await import("fs").then((fs) =>
       fs.promises.readFile(
         new URL("../report-shell-v2.tsx", import.meta.url),
         "utf8",
       ),
     );
-    // The body lock-gate wrapper exists and emits the lock_gate source.
-    expect(source).toMatch(/function LockGatePremium/);
-    expect(source).toMatch(/handlePremiumAccessClick\("lock_gate"/);
-    // The body CTA must NOT pass the route's onUnlockClick (which opens
-    // the legacy 5-step UnlockModal) — replaced by <LockGatePremium />.
-    expect(source).toMatch(/<LockGatePremium\b/);
+    // 6B.2: o corpo já não tem paywall — a proposta Pro única vive no
+    // ReportEndOfFreeBlock, que emite `lock_gate` via usePremiumCta.
+    expect(source).toContain("ReportEndOfFreeBlock");
+    expect(source).not.toContain("UnlockModal");
   });
 
   it("sticky unlock bar is mounted based on lockBoundary, not the stale `unlocked` flag", async () => {

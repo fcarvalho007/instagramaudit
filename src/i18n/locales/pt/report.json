@@ -1449,16 +1449,16 @@
     "retentionMessage": "Os relatórios ficam disponíveis durante {{days}} dias após a geração."
   },
   "end_of_free": {
-    "eyebrow": "Viste os primeiros sinais",
-    "title": "Transforma sinais em decisões.",
-    "description": "O relatório completo mostra o que está a funcionar, o que está a falhar e que decisões podem melhorar a leitura estratégica deste perfil nos <strong>próximos 30 dias</strong>.",
-    "benefits_title": "No relatório completo vais conseguir",
+    "eyebrow": "Já viste o que está a acontecer",
+    "title": "Agora descobre porquê — e o que deves fazer a seguir.",
+    "description": "O relatório Pro explica as causas por trás destes números e devolve um plano priorizado para os <strong>próximos 30 dias</strong>.",
+    "benefits_title": "Só no relatório Pro",
     "benefits": {
-      "best_worst": "Ver as melhores e piores publicações",
-      "formats": "Perceber que formatos repetir ou reduzir",
-      "rhythm": "Identificar padrões de ritmo e frequência",
-      "competitors": "Comparar o perfil com concorrentes",
-      "opportunities": "Descobrir oportunidades editoriais"
+      "diagnosis": "Diagnóstico editorial com as causas dos resultados",
+      "priorities": "Prioridades de acção para as próximas 4 semanas",
+      "rhythm": "O que testar, corrigir e repetir",
+      "competitors": "Leitura comparada face a perfis semelhantes",
+      "opportunities": "Oportunidades editoriais por explorar"
     },
     "price": {
       "launch": "9",

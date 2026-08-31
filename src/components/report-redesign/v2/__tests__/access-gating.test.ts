@@ -116,3 +116,26 @@ describe("Estado C — Pro", () => {
     }
   });
 });
+
+
+describe("Overview — composição comercial", () => {
+  it("não renderiza teasers Pro dentro do overview", async () => {
+    const fs = await import("node:fs/promises");
+    const src = await fs.readFile(
+      new URL("../report-overview-block.tsx", import.meta.url),
+      "utf8",
+    );
+    expect(src).not.toContain("PremiumTeaserCard");
+    expect(src).toContain("FreeDeepenTeaser");
+  });
+
+  it("o preview de publicações não tem CTA próprio (gate único no estado A)", async () => {
+    const fs = await import("node:fs/promises");
+    const src = await fs.readFile(
+      new URL("../report-post-comparison.tsx", import.meta.url),
+      "utf8",
+    );
+    expect(src).not.toContain("Aprofundar gratuitamente");
+    expect(src).toContain("post_comparison_preview_viewed");
+  });
+});
