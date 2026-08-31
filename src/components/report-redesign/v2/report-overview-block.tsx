@@ -126,6 +126,17 @@ const PREMIUM_TEASERS = [
   },
 ] as const;
 
+/**
+ * Teasers mostrados no Estado B (email capturado, sem Pro). Frequência,
+ * Publicações-chave e Formatos já foram entregues, por isso só restam as
+ * duas secções realmente exclusivas do Pro. Numeração alinhada com
+ * `COMMERCIAL_SECTIONS` em `block-config.ts`.
+ */
+const PRO_TEASERS = [
+  { ...PREMIUM_TEASERS[3], number: "07" },
+  { ...PREMIUM_TEASERS[4], number: "08" },
+] as const;
+
 export interface Props {
   result: AdapterResult;
   renderInsight: (key: AiInsightV2Section) => ReactNode;
