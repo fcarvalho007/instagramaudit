@@ -30,11 +30,24 @@ describe("Secções comerciais — estrutura", () => {
   it("mantém Conversas como gratuito após email (free_email)", () => {
     const conversas = COMMERCIAL_SECTIONS.find((s) => s.id === "conversas");
     expect(conversas?.tier).toBe("free_email");
-    expect(conversas?.number).toBe("03");
+    expect(conversas?.number).toBe("06");
   });
 
-  it("mantém exactamente cinco secções Pro", () => {
-    expect(COMMERCIAL_SECTIONS.filter((s) => s.tier === "pro")).toHaveLength(5);
+  it("entrega Frequência já no estado anónimo", () => {
+    expect(COMMERCIAL_SECTIONS.find((s) => s.id === "frequencia")?.tier).toBe("free");
+  });
+
+  it("coloca Publicações-chave e Formatos atrás do email, não do pagamento", () => {
+    expect(
+      COMMERCIAL_SECTIONS.find((s) => s.id === "publicacoes-chave")?.tier,
+    ).toBe("free_email");
+    expect(COMMERCIAL_SECTIONS.find((s) => s.id === "formatos")?.tier).toBe(
+      "free_email",
+    );
+  });
+
+  it("mantém exactamente duas secções Pro", () => {
+    expect(COMMERCIAL_SECTIONS.filter((s) => s.tier === "pro")).toHaveLength(2);
   });
 
   it("numera as secções de forma contínua e única", () => {
