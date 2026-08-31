@@ -10,7 +10,7 @@
  * exactly as written by the enrichment pipeline.
  */
 
-export type SnapshotAccessLevel = "free" | "pro" | "internal_lab";
+export type SnapshotAccessLevel = "free" | "lead" | "pro" | "internal_lab";
 
 /**
  * Paid-only fields removed from the public snapshot payload for Free
@@ -28,13 +28,24 @@ export const PAID_SNAPSHOT_FIELDS = [
   "market_signals_paid",
 ] as const;
 
+/**
+ * Fields delivered to an identified lead (Estado B — email capturado, sem
+ * pagamento). Comment Intelligence é gratuito depois do email, por isso
+ * não pode ser removido para este nível.
+ */
+export const LEAD_SNAPSHOT_FIELDS = ["comment_intelligence"] as const;
+
 export function sanitizeSnapshotForAccessLevel<
   T extends Record<string, unknown>,
 >(payload: T, accessLevel: SnapshotAccessLevel): T {
   if (accessLevel === "pro" || accessLevel === "internal_lab") return payload;
-  // Free: shallow clone, drop paid fields. Non-mutating by design.
+  const allowed = new Set<string>(
+    accessLevel === "lead" ? LEAD_SNAPSHOT_FIELDS : [],
+  );
+  // Free/lead: shallow clone, drop paid fields. Non-mutating by design.
   const next: Record<string, unknown> = { ...payload };
   for (const key of PAID_SNAPSHOT_FIELDS) {
+    if (allowed.has(key)) continue;
     if (key in next) delete next[key];
   }
   return next as T;
