@@ -68,9 +68,14 @@ function useSidebarCompact(threshold = 220): boolean {
 
 // ── Types ────────────────────────────────────────────────────────────
 
-export type AccessState = "accessible" | "locked";
-export type Group = "incluido" | "premium";
-export type AccessBadge = "free" | "free_email" | "included" | "premium";
+export type { AccessState, Group, AccessBadge } from "./access-gating";
+
+import {
+  resolveSectionAccess,
+  type AccessState,
+  type Group,
+  type AccessBadge,
+} from "./access-gating";
 
 export interface SidebarItem {
   block: BlockConfig;
