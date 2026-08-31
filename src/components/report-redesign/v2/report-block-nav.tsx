@@ -157,25 +157,11 @@ export function commercialToSidebarItem(
   premiumUnlocked: boolean,
   leadCaptured: boolean,
 ): SidebarItem {
-
-  // `free_email` = Análise Aprofundada (Conversas): gratuito, mas só
-  // acessível depois da captura de email.
-  const unlockedForUser =
-    s.tier === "free" ||
-    premiumUnlocked ||
-    (s.tier === "free_email" && leadCaptured);
-  const accessBadge: AccessBadge =
-    s.tier === "free"
-      ? "free"
-      : s.tier === "free_email"
-        ? leadCaptured
-          ? "free"
-          : "free_email"
-        : "premium";
-  const access: AccessState = unlockedForUser ? "accessible" : "locked";
-  // When Pro is unlocked, every section sits in the "available now" list.
-  // Otherwise, premium-tier sections move into the locked Premium card.
-  const group: Group = unlockedForUser ? "incluido" : "premium";
+  const { access, accessBadge, group } = resolveSectionAccess(
+    s.tier,
+    premiumUnlocked,
+    leadCaptured,
+  );
   const pseudoBlock = {
     id: s.id,
     number: s.number,
