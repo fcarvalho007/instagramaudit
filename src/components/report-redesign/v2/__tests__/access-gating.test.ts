@@ -63,6 +63,9 @@ describe("Estado A — Auditoria Instantânea (anónimo)", () => {
   it("dá acesso apenas às secções gratuitas", () => {
     expect(m.overview.access).toBe("accessible");
     expect(m.engagement.access).toBe("accessible");
+    expect(m.frequencia.access).toBe("accessible");
+    expect(m["publicacoes-chave"].access).toBe("locked");
+    expect(m.formatos.access).toBe("locked");
     expect(m.conversas.access).toBe("locked");
     expect(m.prioridades.access).toBe("locked");
   });
