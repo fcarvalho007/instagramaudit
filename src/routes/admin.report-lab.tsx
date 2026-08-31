@@ -176,10 +176,15 @@ function ReportLabPage() {
   const [customProfile, setCustomProfile] = useState(isPreset ? "" : resolved.profile);
   const [committedCustom, setCommittedCustom] = useState(isPreset ? "" : resolved.profile);
   const [variant, setVariant] = useState<ReportVariant>(resolved.variant);
+  const [stateChoice, setStateChoice] = useState<CommercialState>(search.state);
   const [load, setLoad] = useState<LoadState>({ kind: "idle" });
   const [showModules, setShowModules] = useState(false);
 
   const activeProfile = committedCustom.trim() || profile;
+  // Só a variante pública tem estados comerciais; as internas são sempre Pro.
+  const effectiveState: CommercialState =
+    variant === "public_mvp" ? stateChoice : "c";
+  const shellState = shellPropsForState(effectiveState);
 
   // ── Sync state → URL + localStorage ──
   useEffect(() => {
@@ -193,10 +198,10 @@ function ReportLabPage() {
     }
     writeLabPrefs({ profile: activeProfile, variant });
     navigate({
-      search: { profile: activeProfile, variant },
+      search: { profile: activeProfile, variant, state: stateChoice },
       replace: true,
     });
-  }, [activeProfile, variant, navigate]);
+  }, [activeProfile, variant, stateChoice, navigate]);
 
   const loadSnapshot = useCallback(async (handle: string) => {
     setLoad({ kind: "loading" });
