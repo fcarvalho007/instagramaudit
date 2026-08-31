@@ -171,7 +171,7 @@ export const COMMERCIAL_SECTIONS: readonly CommercialSection[] = [
 export const COMPETITOR_COMPARISON_SECTION: CommercialSection = {
   id: "comparacao-concorrente",
   number: "06",
-  shortLabel: "Comparação com concorrente",
+  shortLabel: "Comparação directa",
   tier: "pro",
   icon: GitCompareArrows,
 };
