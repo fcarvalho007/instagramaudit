@@ -54,9 +54,14 @@ import { z } from "zod";
 
 const VALID_VARIANTS = ["public_mvp", "internal_lab", "pro_preview"] as const;
 
+/** Estado comercial do leitor: a = anónimo, b = email capturado, c = Pro. */
+const VALID_STATES = ["a", "b", "c"] as const;
+type CommercialState = (typeof VALID_STATES)[number];
+
 const labSearchSchema = z.object({
   profile: fallback(z.string(), "").default(""),
   variant: fallback(z.enum(VALID_VARIANTS), "internal_lab").default("internal_lab"),
+  state: fallback(z.enum(VALID_STATES), "a").default("a"),
 });
 
 export const Route = createFileRoute("/admin/report-lab")({
