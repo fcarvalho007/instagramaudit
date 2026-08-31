@@ -1,9 +1,9 @@
 import {
   ArrowRight,
-  ArrowUpRight,
   CalendarClock,
   Lightbulb,
-  Repeat,
+  ListChecks,
+  Stethoscope,
   Users,
 } from "lucide-react";
 import { Trans, useTranslation } from "react-i18next";
@@ -34,8 +34,8 @@ export function ReportEndOfFreeBlock({ className }: { className?: string }) {
   const priceLabel = PUBLIC_PRODUCTS.report_full_9.priceLabel;
 
   const benefits = [
-    { icon: ArrowUpRight, key: "best_worst" },
-    { icon: Repeat, key: "formats" },
+    { icon: Stethoscope, key: "diagnosis" },
+    { icon: ListChecks, key: "priorities" },
     { icon: CalendarClock, key: "rhythm" },
     { icon: Users, key: "competitors" },
     { icon: Lightbulb, key: "opportunities" },

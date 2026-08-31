@@ -22,6 +22,7 @@ export type AnonymousFunnelEvent =
   | "lead_cta_viewed"
   | "deepen_cta_viewed"
   | "deepen_cta_clicked"
+  | "post_comparison_preview_viewed"
   | "comment_intelligence_viewed"
   | "pro_cta_viewed"
   | "pro_cta_clicked"

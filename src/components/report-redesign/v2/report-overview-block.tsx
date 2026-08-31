@@ -26,7 +26,6 @@ import {
 } from "@/lib/report/cadence-label";
 import { computePostAverages } from "@/lib/report/post-aggregates";
 import { buildBlock01Sample } from "@/lib/report/block01-sample";
-import { PremiumTeaserCard } from "./premium-teaser-card";
 import { ComparisonHero } from "./overview/comparison-hero";
 import { CompetitorEngagementCompare } from "./competitor-engagement-compare";
 import { CompetitorCadenceCompare } from "./competitor-cadence-compare";
@@ -51,91 +50,6 @@ function tierLabelFromFollowers(n: number | null | undefined): string | null {
   if (n < 1_000_000) return "Macro";
   return "Mega";
 }
-
-const PREMIUM_TEASERS = [
-  {
-    number: "03",
-    eyebrow: "CADÊNCIA SEMANAL",
-    title: "Cadência semanal e ritmo por dia",
-    description:
-      "Cadência semanal observada, ritmo por dia da semana e comparação com o concorrente.",
-    anchorId: "frequencia",
-    previewVariant: "frequency",
-    subItems: [
-      "Cadência semanal",
-      "Ritmo por dia da semana",
-      "Comparação com concorrente",
-    ],
-  },
-  {
-    number: "04",
-    eyebrow: "MIX DE FORMATOS",
-    title: "Mix de formatos",
-    description:
-      "Distribuição entre Reels, Carrosséis e Imagens e como difere do concorrente.",
-    anchorId: "formatos",
-    previewVariant: "format",
-    subItems: [
-      "Reels vs Carrosséis vs Imagens",
-      "Formato dominante",
-      "Comparação com concorrente",
-    ],
-  },
-  {
-    number: "05",
-    eyebrow: "PUBLICAÇÕES-CHAVE",
-    title: "Melhor vs pior publicação",
-    description:
-      "Melhor e pior publicação do período e duelo lado-a-lado com a melhor do concorrente.",
-    anchorId: "publicacoes-chave",
-    previewVariant: "publications",
-    subItems: [
-      "Top publicações",
-      "Piores publicações",
-      "Publicação em destaque vs concorrente",
-    ],
-  },
-  {
-    number: "06",
-    eyebrow: "DIAGNÓSTICO EDITORIAL",
-    title: "Diagnóstico editorial comparativo",
-    description:
-      "7 perguntas estratégicas + diagnóstico editorial comparado ao concorrente.",
-    anchorId: "diagnostico-editorial",
-    previewVariant: "diagnostic",
-    subItems: [
-      "Natureza do conteúdo",
-      "Funil",
-      "Hashtags",
-      "Legendas",
-      "Capas",
-      "Audiência",
-      "Integração",
-      "Diagnóstico comparativo",
-    ],
-  },
-  {
-    number: "07",
-    eyebrow: "PRIORIDADES DE ACÇÃO",
-    title: "Prioridades de acção",
-    description:
-      "Lista priorizada do que testar, corrigir e repetir nas próximas 4 semanas.",
-    anchorId: "prioridades",
-    previewVariant: "priorities",
-    subItems: ["O que testar", "O que corrigir", "O que repetir"],
-  },
-] as const;
-
-/**
- * Teasers mostrados no Estado B (email capturado, sem Pro). Frequência,
- * Publicações-chave e Formatos já foram entregues, por isso só restam as
- * duas secções realmente exclusivas do Pro. Numeração alinhada com
- * `COMMERCIAL_SECTIONS` em `block-config.ts`.
- */
-const PRO_TEASERS = [
-  { ...PREMIUM_TEASERS[3], number: "07" },
-  { ...PREMIUM_TEASERS[4], number: "08" },
-] as const;
 
 export interface Props {
   result: AdapterResult;
@@ -476,28 +390,10 @@ export function ReportOverviewBlock({
             </div>
           )}
 
-          {access === "anon" ? (
-            <FreeDeepenTeaser />
-          ) : (
-            <div className="space-y-5 md:space-y-6">
-              <p className="text-eyebrow-sm text-content-tertiary">
-                Análise Pro · {PRO_TEASERS.length} secções
-              </p>
-              {PRO_TEASERS.map((teaser) => (
-                <PremiumTeaserCard
-                  key={teaser.anchorId}
-                  number={teaser.number}
-                  eyebrow={teaser.eyebrow}
-                  title={teaser.title}
-                  description={teaser.description}
-                  anchorId={teaser.anchorId}
-                  source="overview_pro_teaser"
-                  subItems={"subItems" in teaser ? teaser.subItems : undefined}
-                  previewVariant={teaser.previewVariant}
-                />
-              ))}
-            </div>
-          )}
+          {/* Gate único do Estado A. Em B/C a proposta Pro vive no fim do
+              relatório (ReportEndOfFreeBlock), depois de Conversas. */}
+          {access === "anon" ? <FreeDeepenTeaser /> : null}
+
         </>
       )}
 
@@ -679,15 +575,16 @@ function FreeDeepenTeaser() {
 
   return (
     <div className="rounded-2xl border border-accent-primary/25 bg-accent-primary/5 p-5 sm:p-6">
-      <p className="text-eyebrow-sm text-accent-primary">Próximo passo · gratuito</p>
+      <p className="text-eyebrow-sm text-accent-primary">Grátis com email</p>
       <h3 className="mt-2 text-base sm:text-lg font-semibold text-content-primary">
-        Aprofundar esta auditoria
+        Queres ver o que encontrámos nestas publicações?
       </h3>
       <p className="mt-2 max-w-2xl text-sm leading-relaxed text-content-secondary">
-        A análise das conversas — temas recorrentes, tom das reacções e sinais
-        de intenção — fica disponível gratuitamente com o teu email. Sem
-        pagamento e sem password.
+        Melhores e piores conteúdos com os números completos, o mix de formatos
+        e a análise das conversas — temas recorrentes, tom das reacções e
+        sinais de intenção. Tudo sem pagamento e sem password.
       </p>
+
       <button
         type="button"
         onClick={scrollToDeepen}

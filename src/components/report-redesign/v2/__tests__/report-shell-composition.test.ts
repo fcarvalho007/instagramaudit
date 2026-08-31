@@ -30,7 +30,11 @@ describe("ReportShellV2 — invariantes de composição", () => {
   });
 
   it("passa o estado comercial ao overview em vez de um booleano de teasers", () => {
-    expect(shell).toContain('access={leadCaptured ? "lead" : "anon"}');
+    // Ramo comercial único: A ⊂ B ⊂ C.
+    expect(shell).toContain('mode="free_with_engagement"');
+    expect(shell).toMatch(
+      /premiumUnlocked \? "pro" : leadCaptured \? "lead" : "anon"/,
+    );
     expect(shell).not.toContain("showPremiumTeasers");
   });
 
@@ -48,6 +52,10 @@ describe("ReportShellV2 — invariantes de composição", () => {
 
   it("continua a passar leadCaptured à navegação", () => {
     expect(shell).toContain("leadCaptured={leadCaptured}");
+  });
+
+  it("mantém o ramo antigo (mode=all) apenas no internal_lab", () => {
+    expect(shell).toMatch(/variant === "internal_lab" \? \(/);
   });
 
   it("não reintroduz o UnlockModal legado no percurso principal", () => {

@@ -14,6 +14,7 @@ import type { TFunction } from "i18next";
 import type { ReportEnriched } from "@/lib/report/snapshot-to-report-data";
 import type { CadenceMethod } from "@/lib/report/cadence";
 import { cn } from "@/lib/utils";
+import { useTrackOnceInView } from "./use-track-once-in-view";
 import { useLanguage } from "@/hooks/use-language";
 import { formatNumber } from "@/lib/i18n/format";
 import type { SupportedLanguage } from "@/i18n";
@@ -1070,26 +1071,22 @@ export function PostComparisonPreview({
   bottomPosts,
   cadenceMethod,
   sampleSize,
-  onUnlock,
 }: {
   topPosts: EnrichedPost[];
   bottomPosts: EnrichedPost[];
   cadenceMethod?: CadenceMethod;
   sampleSize?: number;
-  onUnlock?: () => void;
 }) {
   const { t } = useTranslation("report");
+  // Estado A: um único evento de visualização; o convite vive no gate.
+  const previewRef = useTrackOnceInView<HTMLElement>(
+    "post_comparison_preview_viewed",
+    true,
+    {},
+  );
   const best = topPosts[0];
   const worst = bottomPosts[bottomPosts.length - 1];
   if (!best) return null;
-
-  const handleUnlock = () => {
-    if (onUnlock) return onUnlock();
-    if (typeof document === "undefined") return;
-    document
-      .getElementById("deepen-analysis")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
 
   const items: Array<{ post: EnrichedPost; label: string; tone: "best" | "worst" }> = [
     { post: best, label: t("posts.best_label", { defaultValue: "Melhor publicação" }), tone: "best" },
@@ -1103,7 +1100,10 @@ export function PostComparisonPreview({
   }
 
   return (
-    <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
+    <article
+      ref={previewRef}
+      className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden"
+    >
       <div className="px-5 md:px-6 pt-6 md:pt-8 pb-4 space-y-2">
         <ReportCardSectionHeader
           title={t("posts.title")}
@@ -1170,23 +1170,6 @@ export function PostComparisonPreview({
           ))}
         </div>
 
-        <div className="flex flex-col gap-3 rounded-xl border border-accent-primary/25 bg-accent-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-eyebrow-sm text-accent-primary">Grátis com email</p>
-            <p className="mt-1 text-sm leading-relaxed text-content-secondary">
-              Engagement de cada publicação, distribuição completa e leitura
-              editorial ficam disponíveis sem pagamento.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={handleUnlock}
-            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-accent-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-primary/90"
-          >
-            <Sparkles className="size-4" aria-hidden="true" />
-            Aprofundar gratuitamente
-          </button>
-        </div>
       </div>
     </article>
   );
