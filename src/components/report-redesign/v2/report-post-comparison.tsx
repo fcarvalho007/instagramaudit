@@ -1053,3 +1053,141 @@ function AiReading({
   );
 }
 
+
+/**
+ * PostComparisonPreview — apresentação derivada do MESMO subconjunto de
+ * dados do `PostComparisonBlock`, para o Estado A (auditoria instantânea
+ * sem email). Não recalcula nada: recebe os mesmos `topPosts`/`bottomPosts`
+ * e renderiza apenas o que é seguro mostrar antes da captura de email
+ * (thumbnail, etiqueta melhor/pior, formato, data, legenda truncada).
+ *
+ * Os valores analíticos (engagement, likes, comentários, multiplicador,
+ * scatter e leitura editorial) NÃO são renderizados — não há camada de CSS
+ * por cima de conteúdo completo.
+ */
+export function PostComparisonPreview({
+  topPosts,
+  bottomPosts,
+  cadenceMethod,
+  sampleSize,
+  onUnlock,
+}: {
+  topPosts: EnrichedPost[];
+  bottomPosts: EnrichedPost[];
+  cadenceMethod?: CadenceMethod;
+  sampleSize?: number;
+  onUnlock?: () => void;
+}) {
+  const { t } = useTranslation("report");
+  const best = topPosts[0];
+  const worst = bottomPosts[bottomPosts.length - 1];
+  if (!best) return null;
+
+  const handleUnlock = () => {
+    if (onUnlock) return onUnlock();
+    if (typeof document === "undefined") return;
+    document
+      .getElementById("deepen-analysis")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const items: Array<{ post: EnrichedPost; label: string; tone: "best" | "worst" }> = [
+    { post: best, label: t("posts.best_label", { defaultValue: "Melhor publicação" }), tone: "best" },
+  ];
+  if (worst && worst.id !== best.id) {
+    items.push({
+      post: worst,
+      label: t("posts.worst_label", { defaultValue: "Pior publicação" }),
+      tone: "worst",
+    });
+  }
+
+  return (
+    <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
+      <div className="px-5 md:px-6 pt-6 md:pt-8 pb-4 space-y-2">
+        <ReportCardSectionHeader
+          title={t("posts.title")}
+          eyebrow={(() => {
+            const picked = pickSubtitleKey(cadenceMethod, sampleSize ?? 0);
+            return t(picked.key, picked.params);
+          })()}
+          bottomMargin={false}
+        />
+      </div>
+
+      <div className="px-5 md:px-6 pb-6 md:pb-8 space-y-5">
+        <div className="grid gap-4 sm:grid-cols-2">
+          {items.map(({ post, label, tone }) => (
+            <div
+              key={post.id}
+              className="rounded-xl border border-border-default bg-surface-base overflow-hidden"
+            >
+              <div className="flex gap-3 p-3">
+                <div className="size-20 shrink-0 overflow-hidden rounded-lg bg-surface-muted">
+                  {post.thumbnailUrl ? (
+                    <img
+                      src={post.thumbnailUrl}
+                      alt=""
+                      loading="lazy"
+                      className="size-full object-cover"
+                    />
+                  ) : null}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p
+                    className={cn(
+                      "text-eyebrow-sm inline-flex items-center gap-1",
+                      tone === "best" ? "text-signal-positive" : "text-signal-warning",
+                    )}
+                  >
+                    {tone === "best" ? (
+                      <ArrowUpRight className="size-3.5" aria-hidden="true" />
+                    ) : (
+                      <ArrowDownRight className="size-3.5" aria-hidden="true" />
+                    )}
+                    {label}
+                  </p>
+                  <p className="mt-1 flex items-center gap-1.5 text-xs text-content-tertiary">
+                    <FormatIcon format={post.format} className="size-3.5" />
+                    <span>{formatChipLabel(post.format, t)}</span>
+                    {post.date ? <span aria-hidden="true">·</span> : null}
+                    {post.date ? <span>{post.date}</span> : null}
+                  </p>
+                  <p className="mt-1.5 truncate text-sm text-content-secondary">
+                    {post.caption || "—"}
+                  </p>
+                </div>
+              </div>
+              {/* Faixa protegida: estrutura visível, valores por revelar. */}
+              <div className="border-t border-border-default bg-surface-muted/60 px-3 py-2.5">
+                <div className="flex items-center gap-4" aria-hidden="true">
+                  <div className="h-2.5 w-16 rounded-full bg-content-tertiary/25 blur-[2px]" />
+                  <div className="h-2.5 w-12 rounded-full bg-content-tertiary/25 blur-[2px]" />
+                  <div className="h-2.5 w-10 rounded-full bg-content-tertiary/25 blur-[2px]" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-col gap-3 rounded-xl border border-accent-primary/25 bg-accent-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-eyebrow-sm text-accent-primary">Grátis com email</p>
+            <p className="mt-1 text-sm leading-relaxed text-content-secondary">
+              Engagement de cada publicação, distribuição completa e leitura
+              editorial ficam disponíveis sem pagamento.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleUnlock}
+            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-accent-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-primary/90"
+          >
+            <Sparkles className="size-4" aria-hidden="true" />
+            Aprofundar gratuitamente
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}

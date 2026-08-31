@@ -155,10 +155,10 @@ export interface CommercialSection {
 export const COMMERCIAL_SECTIONS: readonly CommercialSection[] = [
   { id: "overview",              number: "01", shortLabel: "Visão geral",         tier: "free", icon: Eye },
   { id: "engagement",            number: "02", shortLabel: "Engagement",          tier: "free", icon: Activity },
-  { id: "conversas",             number: "03", shortLabel: "Conversas",           tier: "free_email", icon: MessagesSquare },
-  { id: "frequencia",            number: "04", shortLabel: "Cadência semanal", tier: "pro",  icon: CalendarClock },
-  { id: "formatos",              number: "05", shortLabel: "Mix de formatos",     tier: "pro",  icon: LayoutGrid },
-  { id: "publicacoes-chave",     number: "06", shortLabel: "Melhor vs pior publicação", tier: "pro",  icon: Star },
+  { id: "frequencia",            number: "03", shortLabel: "Cadência semanal",    tier: "free", icon: CalendarClock },
+  { id: "publicacoes-chave",     number: "04", shortLabel: "Melhor vs pior publicação", tier: "free_email", icon: Star },
+  { id: "formatos",              number: "05", shortLabel: "Mix de formatos",     tier: "free_email", icon: LayoutGrid },
+  { id: "conversas",             number: "06", shortLabel: "Conversas",           tier: "free_email", icon: MessagesSquare },
   { id: "diagnostico-editorial", number: "07", shortLabel: "Diagnóstico editorial", tier: "pro", icon: Stethoscope },
   { id: "prioridades",           number: "08", shortLabel: "Prioridades de acção", tier: "pro",  icon: ListChecks },
 ] as const;

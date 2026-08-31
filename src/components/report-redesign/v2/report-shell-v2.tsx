@@ -272,7 +272,7 @@ export function ReportShellV2({
                     renderInsight={renderInsight}
                     payload={payload}
                     mode="free_with_engagement"
-                    showPremiumTeasers={leadCaptured}
+                    access={leadCaptured ? "lead" : "anon"}
                   />
                 ) : (
                   <ReportOverviewBlock
@@ -285,8 +285,9 @@ export function ReportShellV2({
               )}
 
               {/* Nível 1 · Conversas (Comment Intelligence) — revelado
-                  assim que o email é capturado, sem pagamento. */}
-              {leadCaptured && !premiumUnlocked && (
+                  assim que o email é capturado e mantido no Pro: pagar
+                  nunca pode fazer desaparecer uma secção já entregue. */}
+              {(leadCaptured || premiumUnlocked) && (
                 <section
                   id="conversas"
                   aria-label="Análise das conversas"

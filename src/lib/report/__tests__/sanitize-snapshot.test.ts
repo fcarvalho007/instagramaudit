@@ -38,6 +38,17 @@ describe("sanitizeSnapshotForAccessLevel", () => {
     expect(out).toHaveProperty("enrichment_status");
   });
 
+  it("keeps only comment intelligence for identified leads", () => {
+    const input = buildPayload();
+    const out = sanitizeSnapshotForAccessLevel(input, "lead");
+    expect(out).toHaveProperty("comment_intelligence");
+    for (const key of PAID_SNAPSHOT_FIELDS) {
+      if (key === "comment_intelligence") continue;
+      expect(out).not.toHaveProperty(key);
+    }
+  });
+
+
   it("returns the payload unchanged for pro callers", () => {
     const input = buildPayload();
     const out = sanitizeSnapshotForAccessLevel(input, "pro");
