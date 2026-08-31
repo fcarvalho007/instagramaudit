@@ -236,9 +236,11 @@ function AdminReportPreviewPage() {
 function ExitPreviewPill({
   username,
   variant,
+  state,
 }: {
   username: string;
   variant: ReportVariant;
+  state: CommercialState;
 }) {
   const navigate = useNavigate();
   const variantLabel: Record<ReportVariant, { label: string; className: string }> = {
