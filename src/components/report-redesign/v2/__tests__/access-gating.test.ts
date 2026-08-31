@@ -82,12 +82,14 @@ describe("Estado A — Auditoria Instantânea (anónimo)", () => {
 describe("Estado B — Análise Aprofundada (email capturado)", () => {
   const m = map(B);
 
-  it("desbloqueia Conversas sem desbloquear Pro", () => {
+  it("desbloqueia Conversas, Publicações-chave e Formatos sem desbloquear Pro", () => {
     expect(m.conversas.access).toBe("accessible");
     expect(m.conversas.accessBadge).toBe("free");
     expect(m.conversas.group).toBe("incluido");
-    expect(m.frequencia.access).toBe("locked");
+    expect(m["publicacoes-chave"].access).toBe("accessible");
+    expect(m.formatos.access).toBe("accessible");
     expect(m["diagnostico-editorial"].access).toBe("locked");
+    expect(m.prioridades.access).toBe("locked");
   });
 });
 
