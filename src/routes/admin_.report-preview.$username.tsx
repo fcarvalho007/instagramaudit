@@ -281,7 +281,7 @@ function ExitPreviewPill({
         onClick={() =>
           navigate({
             to: "/admin/report-lab",
-            search: { profile: username, variant },
+            search: { profile: username, variant, state },
           })
         }
         className="inline-flex items-center gap-1.5 rounded-full border border-border-default/50 bg-white/90 px-3 py-1.5 text-[12px] font-medium text-content-secondary shadow-sm backdrop-blur-sm transition-colors hover:border-border-strong/60 hover:text-content-primary"
