@@ -94,10 +94,10 @@ export function ReportBlockSection({ block, tone = "canvas", first, children }: 
         />
       </div>
 
-      <div className={cn(first ? "pt-0 pb-14 md:pt-0 md:pb-24" : "py-14 md:py-24")}>
-        <header className="mb-0 pb-8 md:pb-10 border-t border-border-subtle pt-8 md:pt-10">
-          <div className="flex flex-col md:flex-row md:items-start gap-5 md:gap-8">
-            {/* Large chapter number */}
+      <div className={cn(first ? "pt-0 pb-8 md:pt-0 md:pb-12" : "py-8 md:py-12")}>
+        <header className="mb-0 pb-5 md:pb-6 border-t border-border-subtle pt-6 md:pt-8">
+          <div className="flex flex-col md:flex-row md:items-start gap-3 md:gap-6">
+            {/* Chapter marker — caixa em desktop, número inline em mobile */}
             <div className={REDESIGN_TOKENS.chapterNumberBox}>
               <span
                 aria-hidden="true"
@@ -108,8 +108,14 @@ export function ReportBlockSection({ block, tone = "canvas", first, children }: 
             </div>
 
             {/* Text stack */}
-            <div className="min-w-0 max-w-[900px] space-y-2 md:space-y-3 md:pt-1">
+            <div className="min-w-0 max-w-[820px] space-y-1.5 md:space-y-2.5 md:pt-1">
               <p className={REDESIGN_TOKENS.chapterLabel}>
+                <span
+                  aria-hidden="true"
+                  className={cn(REDESIGN_TOKENS.chapterNumberInline, "mr-2")}
+                >
+                  {block.number}
+                </span>
                 {eyebrow.toUpperCase()}
               </p>
               <h2 className={REDESIGN_TOKENS.h2Section}>{question}</h2>
@@ -118,7 +124,7 @@ export function ReportBlockSection({ block, tone = "canvas", first, children }: 
           </div>
         </header>
 
-        <div className="min-w-0 pt-10 md:pt-12 space-y-8 md:space-y-10">{children}</div>
+        <div className="min-w-0 pt-6 md:pt-8 space-y-6 md:space-y-8">{children}</div>
       </div>
     </section>
   );
