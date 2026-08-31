@@ -54,9 +54,14 @@ import { z } from "zod";
 
 const VALID_VARIANTS = ["public_mvp", "internal_lab", "pro_preview"] as const;
 
+/** Estado comercial do leitor: a = anónimo, b = email capturado, c = Pro. */
+const VALID_STATES = ["a", "b", "c"] as const;
+type CommercialState = (typeof VALID_STATES)[number];
+
 const labSearchSchema = z.object({
   profile: fallback(z.string(), "").default(""),
   variant: fallback(z.enum(VALID_VARIANTS), "internal_lab").default("internal_lab"),
+  state: fallback(z.enum(VALID_STATES), "a").default("a"),
 });
 
 export const Route = createFileRoute("/admin/report-lab")({
@@ -97,6 +102,21 @@ const VARIANT_OPTIONS: { value: ReportVariant; label: string; description: strin
   { value: "internal_lab", label: "Laboratório interno", description: "Mostra todos os blocos desbloqueados para trabalho/admin." },
   { value: "pro_preview", label: "Pro Preview", description: "Simula uma versão paga com todos os blocos desbloqueados." },
 ];
+
+const STATE_OPTIONS: { value: CommercialState; label: string; description: string }[] = [
+  { value: "a", label: "A · Auditoria Instantânea", description: "Visitante anónimo, sem email. Visão geral, engagement e cadência; o resto fica bloqueado." },
+  { value: "b", label: "B · Análise Aprofundada", description: "Email capturado, sem pagamento. Junta melhor vs pior publicação, mix de formatos e conversas." },
+  { value: "c", label: "C · Pro", description: "Relatório pago. Junta diagnóstico editorial e prioridades de acção." },
+];
+
+/** Traduz o estado comercial nas props que o `ReportShellV2` já aceita. */
+function shellPropsForState(state: CommercialState) {
+  return {
+    leadCaptured: state !== "a",
+    premiumUnlocked: state === "c",
+    lockBoundary: state === "c" ? null : ("engagement" as const),
+  };
+}
 
 const MODE_TONES: Record<ReportVariant, string> = {
   public_mvp: "bg-blue-50 border-blue-200 text-blue-700",
@@ -156,10 +176,15 @@ function ReportLabPage() {
   const [customProfile, setCustomProfile] = useState(isPreset ? "" : resolved.profile);
   const [committedCustom, setCommittedCustom] = useState(isPreset ? "" : resolved.profile);
   const [variant, setVariant] = useState<ReportVariant>(resolved.variant);
+  const [stateChoice, setStateChoice] = useState<CommercialState>(search.state);
   const [load, setLoad] = useState<LoadState>({ kind: "idle" });
   const [showModules, setShowModules] = useState(false);
 
   const activeProfile = committedCustom.trim() || profile;
+  // Só a variante pública tem estados comerciais; as internas são sempre Pro.
+  const effectiveState: CommercialState =
+    variant === "public_mvp" ? stateChoice : "c";
+  const shellState = shellPropsForState(effectiveState);
 
   // ── Sync state → URL + localStorage ──
   useEffect(() => {
@@ -173,10 +198,10 @@ function ReportLabPage() {
     }
     writeLabPrefs({ profile: activeProfile, variant });
     navigate({
-      search: { profile: activeProfile, variant },
+      search: { profile: activeProfile, variant, state: stateChoice },
       replace: true,
     });
-  }, [activeProfile, variant, navigate]);
+  }, [activeProfile, variant, stateChoice, navigate]);
 
   const loadSnapshot = useCallback(async (handle: string) => {
     setLoad({ kind: "loading" });
@@ -302,6 +327,42 @@ function ReportLabPage() {
                 {VARIANT_OPTIONS.find((o) => o.value === variant)?.description}
               </p>
             </div>
+
+            {/* Commercial state switcher (só na variante pública) */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-medium uppercase tracking-[0.12em] text-admin-text-tertiary">
+                Estado comercial do leitor
+              </label>
+              <div className="flex flex-wrap gap-1 rounded-xl border border-admin-border bg-admin-surface-muted p-1 sm:inline-flex sm:flex-nowrap">
+                {STATE_OPTIONS.map((opt) => {
+                  const active = effectiveState === opt.value;
+                  const disabled = variant !== "public_mvp";
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => setStateChoice(opt.value)}
+                      className={cn(
+                        "flex-1 sm:flex-none rounded-lg px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap",
+                        active
+                          ? "bg-white text-admin-text-primary shadow-sm border border-admin-border"
+                          : "text-admin-text-secondary hover:text-admin-text-primary border border-transparent",
+                        disabled && "cursor-not-allowed opacity-60 hover:text-admin-text-secondary",
+                      )}
+                    >
+                      {active && <span className="h-2 w-2 rounded-full bg-current" />}
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-admin-text-tertiary mt-1">
+                {variant === "public_mvp"
+                  ? STATE_OPTIONS.find((o) => o.value === effectiveState)?.description
+                  : "As variantes internas mostram sempre o relatório completo (estado C)."}
+              </p>
+            </div>
           </div>
         </div>
         <BlockAccessMatrix variant={variant} />
@@ -359,19 +420,19 @@ function ReportLabPage() {
               <LinkBlock
                 title="Preview fullscreen (admin)"
                 subtitle={`Variante: ${variant}`}
-                url={`/admin/report-preview/${activeProfile}?variant=${variant}`}
+                url={`/admin/report-preview/${activeProfile}?variant=${variant}&state=${effectiveState}`}
                 actions={
                   <>
                     <AdminActionButton
                       label="Abrir preview"
                       icon={<FlaskConical className="h-3.5 w-3.5" />}
-                      onClick={() => window.open(`/admin/report-preview/${activeProfile}?variant=${variant}`, "_blank")}
+                      onClick={() => window.open(`/admin/report-preview/${activeProfile}?variant=${variant}&state=${effectiveState}`, "_blank")}
                     />
                     <AdminActionButton
                       label="Copiar URL"
                       icon={<Copy className="h-3.5 w-3.5" />}
                       onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/admin/report-preview/${activeProfile}?variant=${variant}`);
+                        navigator.clipboard.writeText(`${window.location.origin}/admin/report-preview/${activeProfile}?variant=${variant}&state=${effectiveState}`);
                         toast.success("Link de preview copiado.");
                       }}
                       copyMode
@@ -438,14 +499,17 @@ function ReportLabPage() {
             <div className="min-w-0">
               <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-admin-text-tertiary">
                 Pré-visualização condensada · {variant}
+                {variant === "public_mvp" && ` · estado ${effectiveState.toUpperCase()}`}
               </p>
               <p className="mt-0.5 text-[12.5px] text-admin-text-secondary">
-                Para validar como o cliente {variant === "pro_preview" ? "Pro" : variant === "internal_lab" ? "interno" : "público"} vê, abre em ecrã completo.
+                {variant === "public_mvp"
+                  ? `Para validar como o cliente público vê no ${STATE_OPTIONS.find((o) => o.value === effectiveState)?.label}, abre em ecrã completo.`
+                  : `Para validar como o cliente ${variant === "pro_preview" ? "Pro" : "interno"} vê, abre em ecrã completo.`}
               </p>
             </div>
             <button
               type="button"
-              onClick={() => window.open(`/admin/report-preview/${activeProfile}?variant=${variant}`, "_blank")}
+              onClick={() => window.open(`/admin/report-preview/${activeProfile}?variant=${variant}&state=${effectiveState}`, "_blank")}
               className="inline-flex items-center gap-1.5 rounded-lg bg-admin-text-primary px-3.5 py-2 text-[12.5px] font-medium text-white transition-colors hover:opacity-90"
             >
               <ExternalLink className="h-3.5 w-3.5" />
@@ -459,8 +523,11 @@ function ReportLabPage() {
               payload={load.payload}
               analyzedAtIso={load.createdAt}
               variant={variant}
-              premiumUnlocked={variant !== "public_mvp"}
-              unlocked={variant !== "public_mvp"}
+              premiumUnlocked={shellState.premiumUnlocked}
+              unlocked={shellState.premiumUnlocked}
+              leadCaptured={shellState.leadCaptured}
+              lockBoundary={shellState.lockBoundary}
+              isAdminPreview
               actions={{}}
             />
           </ReportThemeWrapper>

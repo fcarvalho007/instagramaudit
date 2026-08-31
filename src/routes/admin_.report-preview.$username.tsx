@@ -35,10 +35,24 @@ import {
 
 const VALID_VARIANTS = ["public_mvp", "internal_lab", "pro_preview"] as const;
 
+/** Estado comercial do leitor: a = anónimo, b = email capturado, c = Pro. */
+const VALID_STATES = ["a", "b", "c"] as const;
+type CommercialState = (typeof VALID_STATES)[number];
+
 const previewSearchSchema = z.object({
   variant: fallback(z.enum(VALID_VARIANTS), "public_mvp").default("public_mvp"),
   draft: fallback(z.boolean(), false).default(false),
+  state: fallback(z.enum(VALID_STATES), "a").default("a"),
 });
+
+/** Traduz o estado comercial nas props que o `ReportShellV2` já aceita. */
+function shellPropsForState(state: CommercialState) {
+  return {
+    leadCaptured: state !== "a",
+    premiumUnlocked: state === "c",
+    lockBoundary: state === "c" ? null : ("engagement" as const),
+  };
+}
 
 export const Route = createFileRoute("/admin_/report-preview/$username")({
   validateSearch: zodValidator(previewSearchSchema),
@@ -87,10 +101,14 @@ type LoadState =
 
 function AdminReportPreviewPage() {
   const { username } = Route.useParams();
-  const { variant, draft } = Route.useSearch();
+  const { variant, draft, state } = Route.useSearch();
   const [authState, setAuthState] = useState<AuthState>("checking");
   const [load, setLoad] = useState<LoadState>({ kind: "idle" });
   const [featuresOverride, setFeaturesOverride] = useState<VariantFeatures | null>(null);
+
+  // Só a variante pública tem estados comerciais; as internas são sempre Pro.
+  const effectiveState: CommercialState = variant === "public_mvp" ? state : "c";
+  const shellState = shellPropsForState(effectiveState);
 
   useEffect(() => {
     setAuthState(readAdminEmail() ? "in" : "signed_out");
@@ -175,7 +193,7 @@ function AdminReportPreviewPage() {
   return (
     <ReportThemeWrapper>
       <div className="min-h-screen bg-surface-base">
-        <ExitPreviewPill username={username} variant={variant} />
+        <ExitPreviewPill username={username} variant={variant} state={effectiveState} />
         {variant === "internal_lab" ? <LabFullPreviewBanner /> : null}
         {load.kind === "loading" || load.kind === "idle" ? (
           <CenteredMessage
@@ -202,9 +220,10 @@ function AdminReportPreviewPage() {
             expiresAtIso={load.expiresAt}
             variant={variant}
             featuresOverride={featuresOverride}
-            premiumUnlocked={variant !== "public_mvp"}
-            unlocked={variant !== "public_mvp"}
-            lockBoundary={variant === "public_mvp" ? "engagement" : null}
+            premiumUnlocked={shellState.premiumUnlocked}
+            unlocked={shellState.premiumUnlocked}
+            leadCaptured={shellState.leadCaptured}
+            lockBoundary={shellState.lockBoundary}
             isAdminPreview={true}
             actions={{}}
           />
@@ -217,9 +236,11 @@ function AdminReportPreviewPage() {
 function ExitPreviewPill({
   username,
   variant,
+  state,
 }: {
   username: string;
   variant: ReportVariant;
+  state: CommercialState;
 }) {
   const navigate = useNavigate();
   const variantLabel: Record<ReportVariant, { label: string; className: string }> = {
@@ -236,7 +257,11 @@ function ExitPreviewPill({
       className: "bg-amber-50 text-amber-700 ring-amber-200",
     },
   };
-  const meta = variantLabel[variant];
+  const base = variantLabel[variant];
+  const meta =
+    variant === "public_mvp"
+      ? { ...base, label: `${base.label} · ${state.toUpperCase()}` }
+      : base;
   return (
     <div className="fixed top-3 right-3 z-50 flex items-center gap-2 print:hidden">
       <span
@@ -256,7 +281,7 @@ function ExitPreviewPill({
         onClick={() =>
           navigate({
             to: "/admin/report-lab",
-            search: { profile: username, variant },
+            search: { profile: username, variant, state },
           })
         }
         className="inline-flex items-center gap-1.5 rounded-full border border-border-default/50 bg-white/90 px-3 py-1.5 text-[12px] font-medium text-content-secondary shadow-sm backdrop-blur-sm transition-colors hover:border-border-strong/60 hover:text-content-primary"
