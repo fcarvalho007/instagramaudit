@@ -101,10 +101,14 @@ type LoadState =
 
 function AdminReportPreviewPage() {
   const { username } = Route.useParams();
-  const { variant, draft } = Route.useSearch();
+  const { variant, draft, state } = Route.useSearch();
   const [authState, setAuthState] = useState<AuthState>("checking");
   const [load, setLoad] = useState<LoadState>({ kind: "idle" });
   const [featuresOverride, setFeaturesOverride] = useState<VariantFeatures | null>(null);
+
+  // Só a variante pública tem estados comerciais; as internas são sempre Pro.
+  const effectiveState: CommercialState = variant === "public_mvp" ? state : "c";
+  const shellState = shellPropsForState(effectiveState);
 
   useEffect(() => {
     setAuthState(readAdminEmail() ? "in" : "signed_out");
