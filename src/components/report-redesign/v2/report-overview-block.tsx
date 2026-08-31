@@ -407,12 +407,69 @@ export function ReportOverviewBlock({
           <div id="engagement" className="scroll-mt-24">
             <EngagementCardRefined result={result} />
           </div>
-          {showPremiumTeasers ? (
+
+          {/* Frequência — completa já no Estado A. */}
+          <div id="frequencia" className="scroll-mt-24">
+            <FrequencyCard
+              postsAnalyzed={k.postsAnalyzed}
+              windowDays={result.coverage.windowDays}
+              postingFrequencyWeekly={k.postingFrequencyWeekly}
+              calendarDays={enriched.postingTimeline}
+              cadenceSufficient={enriched.cadence.sufficient}
+              cadenceSampleSize={enriched.cadence.sampleSize}
+              cadenceWindowDays={enriched.cadence.windowDays}
+              socialinsiderRef={result.externalReferences}
+            />
+          </div>
+
+          {/* Melhores e piores — pré-visualização no Estado A, completo
+              a partir do momento em que há email. */}
+          <div id="publicacoes-chave" className="scroll-mt-24">
+            {access === "anon" ? (
+              <PostComparisonPreview
+                topPosts={result.enriched.topPosts}
+                bottomPosts={result.enriched.bottomPosts}
+                cadenceMethod={enriched.cadence.method}
+                sampleSize={sample?.performancePosts.length ?? 0}
+              />
+            ) : (
+              <PostComparisonBlock
+                topPosts={result.enriched.topPosts}
+                bottomPosts={result.enriched.bottomPosts}
+                allPostsForScatter={result.enriched.allPostsScatter}
+                windowRange={result.enriched.windowRange}
+                aiInsightText={
+                  result.enriched.aiInsightsV2?.sections.topPosts?.text ?? null
+                }
+                cadenceMethod={enriched.cadence.method}
+                cadenceWindowDays={enriched.cadence.windowDays}
+                sampleSize={sample?.performancePosts.length ?? 0}
+              />
+            )}
+          </div>
+
+          {/* Formato — só após captura de email. Sem teaser dedicado. */}
+          {access !== "anon" && (
+            <div id="formatos" className="scroll-mt-24">
+              <FormatCard
+                postsAnalyzed={k.postsAnalyzed}
+                dominantFormat={k.dominantFormat}
+                dominantFormatShare={k.dominantFormatShare}
+                formats={formatEntries}
+                analysedPostFormats={enriched.analysedPostFormats}
+                socialinsiderRef={result.externalReferences}
+              />
+            </div>
+          )}
+
+          {access === "anon" ? (
+            <FreeDeepenTeaser />
+          ) : (
             <div className="space-y-5 md:space-y-6">
               <p className="text-eyebrow-sm text-content-tertiary">
-                Relatório completo · 5 secções premium
+                Análise Pro · {PRO_TEASERS.length} secções
               </p>
-              {PREMIUM_TEASERS.map((teaser) => (
+              {PRO_TEASERS.map((teaser) => (
                 <PremiumTeaserCard
                   key={teaser.anchorId}
                   number={teaser.number}
@@ -426,8 +483,6 @@ export function ReportOverviewBlock({
                 />
               ))}
             </div>
-          ) : (
-            <FreeDeepenTeaser />
           )}
         </>
       )}
