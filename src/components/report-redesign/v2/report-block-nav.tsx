@@ -68,11 +68,16 @@ function useSidebarCompact(threshold = 220): boolean {
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type AccessState = "accessible" | "locked";
-type Group = "incluido" | "premium";
-type AccessBadge = "free" | "free_email" | "included" | "premium";
+export type { AccessState, Group, AccessBadge } from "./access-gating";
 
-interface SidebarItem {
+import {
+  resolveSectionAccess,
+  type AccessState,
+  type Group,
+  type AccessBadge,
+} from "./access-gating";
+
+export interface SidebarItem {
   block: BlockConfig;
   group: Group;
   access: AccessState;
@@ -147,29 +152,16 @@ function buildSidebarItems(
  * sidebar UI. The synthesized BlockConfig only fills fields actually
  * read by `ItemRow` (id, number, shortLabel, icon).
  */
-function commercialToSidebarItem(
+export function commercialToSidebarItem(
   s: CommercialSection,
   premiumUnlocked: boolean,
   leadCaptured: boolean,
 ): SidebarItem {
-  // `free_email` = Análise Aprofundada (Conversas): gratuito, mas só
-  // acessível depois da captura de email.
-  const unlockedForUser =
-    s.tier === "free" ||
-    premiumUnlocked ||
-    (s.tier === "free_email" && leadCaptured);
-  const accessBadge: AccessBadge =
-    s.tier === "free"
-      ? "free"
-      : s.tier === "free_email"
-        ? leadCaptured
-          ? "free"
-          : "free_email"
-        : "premium";
-  const access: AccessState = unlockedForUser ? "accessible" : "locked";
-  // When Pro is unlocked, every section sits in the "available now" list.
-  // Otherwise, premium-tier sections move into the locked Premium card.
-  const group: Group = unlockedForUser ? "incluido" : "premium";
+  const { access, accessBadge, group } = resolveSectionAccess(
+    s.tier,
+    premiumUnlocked,
+    leadCaptured,
+  );
   const pseudoBlock = {
     id: s.id,
     number: s.number,
@@ -183,10 +175,11 @@ function commercialToSidebarItem(
   return { block: pseudoBlock, group, access, accessBadge };
 }
 
-function buildCommercialSidebarItems(
+export function buildCommercialSidebarItems(
   premiumUnlocked: boolean,
   leadCaptured: boolean,
 ): SidebarItem[] {
+
   return COMMERCIAL_SECTIONS.map((s) =>
     commercialToSidebarItem(s, premiumUnlocked, leadCaptured),
   );
