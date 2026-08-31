@@ -16,6 +16,7 @@ import {
   Compass,
   ListChecks,
   MessagesSquare,
+  GitCompareArrows,
 } from "lucide-react";
 
 /**
@@ -162,3 +163,15 @@ export const COMMERCIAL_SECTIONS: readonly CommercialSection[] = [
   { id: "diagnostico-editorial", number: "07", shortLabel: "Diagnóstico editorial", tier: "pro", icon: Stethoscope },
   { id: "prioridades",           number: "08", shortLabel: "Prioridades de acção", tier: "pro",  icon: ListChecks },
 ] as const;
+
+/**
+ * Camada comparativa cumulativa — só existe quando o leitor é Pro e tem
+ * pelo menos um concorrente analisado. Não substitui nenhuma secção base.
+ */
+export const COMPETITOR_COMPARISON_SECTION: CommercialSection = {
+  id: "comparacao-concorrente",
+  number: "06",
+  shortLabel: "Comparação directa",
+  tier: "pro",
+  icon: GitCompareArrows,
+};

@@ -390,9 +390,127 @@ export function ReportOverviewBlock({
             </div>
           )}
 
+          {/* Camada comparativa cumulativa: Pro + concorrente = Pro + comparação.
+              Acrescenta, nunca substitui os cards base. */}
+          {access === "pro" && firstCompetitor ? (
+            <div id="comparacao-concorrente" className="scroll-mt-24 space-y-6 md:space-y-8">
+              <ComparisonHero
+                primary={{
+                  handle: primaryHandle,
+                  fullName: result.data.profile.fullName ?? null,
+                  avatarUrl: enriched.profile.avatarUrl,
+                  verified: Boolean(result.data.profile.verified),
+                  followers: result.data.profile.followers,
+                  engagementRate: k.engagementRate,
+                  engagementBenchmark: k.engagementBenchmark,
+                  postingFrequencyWeekly: k.postingFrequencyWeekly,
+                  dominantFormat: k.dominantFormat,
+                  postsAnalyzed: k.postsAnalyzed,
+                }}
+                competitor={firstCompetitor}
+                windowLabel={result.data.meta?.windowLabel ?? null}
+              />
+              {aiReadings ? (
+                <>
+                  <LeituraIaExecutiveSummary global={aiReadings.global} />
+                  <LeituraIaBox reading={aiReadings.byCard.overview ?? null} />
+                </>
+              ) : null}
+              <CompetitorBioCompare
+                primaryHandle={primaryHandle}
+                primaryAvatarUrl={enriched.profile.avatarUrl}
+                primaryFullName={result.data.profile.fullName ?? null}
+                primaryBio={enriched.profile.bio}
+                primaryExternalUrls={enriched.profile.externalUrls}
+                primaryVerified={Boolean(result.data.profile.verified)}
+                competitor={firstCompetitor}
+              />
+              <CompetitorEngagementCompare
+                primary={{
+                  handle: primaryHandle,
+                  avatarUrl: enriched.profile.avatarUrl,
+                  fullName: result.data.profile.fullName ?? null,
+                  verified: Boolean(result.data.profile.verified),
+                  engagementRate: k.engagementRate,
+                  averageLikes: avgLikes,
+                  averageComments: avgComments,
+                  postsAnalyzed: k.postsAnalyzed,
+                }}
+                competitor={firstCompetitor}
+                benchmark={k.engagementBenchmark}
+                scaleLabel={tierLabelFromFollowers(result.data.profile.followers)}
+              />
+              <CompetitorCadenceCompare
+                primary={{
+                  handle: primaryHandle,
+                  avatarUrl: enriched.profile.avatarUrl,
+                  fullName: result.data.profile.fullName ?? null,
+                  verified: Boolean(result.data.profile.verified),
+                  postingFrequencyWeekly: k.postingFrequencyWeekly,
+                }}
+                competitor={firstCompetitor}
+                primaryRecentPosts={(sample?.analyzedPosts ?? [])
+                  .slice()
+                  .sort((a, b) => (b.taken_at ?? 0) - (a.taken_at ?? 0))
+                  .slice(0, 5)
+                  .map((p) => ({
+                    thumbUrl: pickThumbnailUrl({
+                      thumbnail_storage_url: p.thumbnail_storage_url ?? null,
+                      thumbnail_url: p.thumbnail_url ?? null,
+                    }),
+                    permalink: p.permalink ?? null,
+                    takenAt: p.taken_at ?? null,
+                  }))}
+              />
+              <CompetitorWeekdayCompare
+                primaryHandle={primaryHandle}
+                primaryAvatarUrl={enriched.profile.avatarUrl}
+                primaryFullName={result.data.profile.fullName ?? null}
+                primaryVerified={Boolean(result.data.profile.verified)}
+                payload={payload}
+                competitor={firstCompetitor}
+              />
+              <CompetitorFormatCompare
+                primaryHandle={primaryHandle}
+                primaryAvatarUrl={enriched.profile.avatarUrl}
+                primaryFullName={result.data.profile.fullName ?? null}
+                primaryVerified={Boolean(result.data.profile.verified)}
+                formats={formatEntries}
+                competitor={firstCompetitor}
+              />
+              <CompetitorTopPostCompare
+                primaryHandle={primaryHandle}
+                primaryAvatarUrl={enriched.profile.avatarUrl}
+                primaryFullName={result.data.profile.fullName ?? null}
+                primaryVerified={Boolean(result.data.profile.verified)}
+                primaryTopPost={result.enriched.topPosts[0] ?? null}
+                competitor={firstCompetitor}
+              />
+              <CompetitorEditorialDiagnostic
+                primaryHandle={primaryHandle}
+                primaryAvatarUrl={enriched.profile.avatarUrl}
+                primaryFullName={result.data.profile.fullName ?? null}
+                primaryVerified={Boolean(result.data.profile.verified)}
+                primary={{
+                  engagementRate: k.engagementRate,
+                  postingFrequencyWeekly: k.postingFrequencyWeekly,
+                  dominantFormat: k.dominantFormat,
+                  formatBreakdown: result.data.formatBreakdown.map((f) => ({
+                    format: f.format,
+                    sharePct: f.sharePct,
+                  })),
+                  bio: enriched.profile.bio,
+                  externalUrls: enriched.profile.externalUrls,
+                }}
+                competitor={firstCompetitor}
+              />
+            </div>
+          ) : null}
+
           {/* Gate único do Estado A. Em B/C a proposta Pro vive no fim do
               relatório (ReportEndOfFreeBlock), depois de Conversas. */}
           {access === "anon" ? <FreeDeepenTeaser /> : null}
+
 
         </>
       )}
