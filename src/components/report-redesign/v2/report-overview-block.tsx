@@ -139,11 +139,15 @@ export interface Props {
    */
   mode?: "all" | "free" | "free_with_engagement" | "locked";
   /**
-   * Nível 0 (visitante anónimo) vs Nível 1+ (email já dado).
-   * Quando `false`, os 5 teasers Pro (9€) dão lugar a um único convite
-   * gratuito — evita pedir dinheiro antes de entregar o nível intermédio.
+   * Estado comercial do leitor:
+   * - "anon": Auditoria Instantânea (sem email) — Identidade, Engagement,
+   *   Frequência completos e Melhor/Pior em pré-visualização. Sem Formato,
+   *   sem teasers Pro.
+   * - "lead": Análise Aprofundada (email dado) — tudo o acima completo,
+   *   mais Formato; teasers Pro apenas para Diagnóstico e Prioridades.
+   * - "pro": relatório pago.
    */
-  showPremiumTeasers?: boolean;
+  access?: "anon" | "lead" | "pro";
 }
 
 export function ReportOverviewBlock({
@@ -151,7 +155,7 @@ export function ReportOverviewBlock({
   renderInsight: _renderInsight,
   payload,
   mode = "all",
-  showPremiumTeasers = true,
+  access = "pro",
 }: Props) {
   const k = result.data.keyMetrics;
   const enriched = result.enriched;
