@@ -184,10 +184,11 @@ export function commercialToSidebarItem(
   return { block: pseudoBlock, group, access, accessBadge };
 }
 
-function buildCommercialSidebarItems(
+export function buildCommercialSidebarItems(
   premiumUnlocked: boolean,
   leadCaptured: boolean,
 ): SidebarItem[] {
+
   return COMMERCIAL_SECTIONS.map((s) =>
     commercialToSidebarItem(s, premiumUnlocked, leadCaptured),
   );
