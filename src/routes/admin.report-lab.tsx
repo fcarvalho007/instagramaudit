@@ -103,6 +103,21 @@ const VARIANT_OPTIONS: { value: ReportVariant; label: string; description: strin
   { value: "pro_preview", label: "Pro Preview", description: "Simula uma versão paga com todos os blocos desbloqueados." },
 ];
 
+const STATE_OPTIONS: { value: CommercialState; label: string; description: string }[] = [
+  { value: "a", label: "A · Auditoria Instantânea", description: "Visitante anónimo, sem email. Visão geral, engagement e cadência; o resto fica bloqueado." },
+  { value: "b", label: "B · Análise Aprofundada", description: "Email capturado, sem pagamento. Junta melhor vs pior publicação, mix de formatos e conversas." },
+  { value: "c", label: "C · Pro", description: "Relatório pago. Junta diagnóstico editorial e prioridades de acção." },
+];
+
+/** Traduz o estado comercial nas props que o `ReportShellV2` já aceita. */
+function shellPropsForState(state: CommercialState) {
+  return {
+    leadCaptured: state !== "a",
+    premiumUnlocked: state === "c",
+    lockBoundary: state === "c" ? null : ("engagement" as const),
+  };
+}
+
 const MODE_TONES: Record<ReportVariant, string> = {
   public_mvp: "bg-blue-50 border-blue-200 text-blue-700",
   internal_lab: "bg-amber-50 border-amber-200 text-amber-700",
