@@ -257,7 +257,11 @@ function ExitPreviewPill({
       className: "bg-amber-50 text-amber-700 ring-amber-200",
     },
   };
-  const meta = variantLabel[variant];
+  const base = variantLabel[variant];
+  const meta =
+    variant === "public_mvp"
+      ? { ...base, label: `${base.label} · ${state.toUpperCase()}` }
+      : base;
   return (
     <div className="fixed top-3 right-3 z-50 flex items-center gap-2 print:hidden">
       <span
