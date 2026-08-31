@@ -241,7 +241,7 @@ export function ReportShellV2({
 
         {/* Layout 2-col a partir do bloco 01 */}
         <div className="mx-auto max-w-[1520px] px-4 sm:px-5 md:px-6 lg:px-8">
-          <div className="flex gap-8 lg:gap-10 pt-3 lg:pt-4">
+          <div className="flex gap-8 pt-2 lg:pt-3">
             <ReportBlockSidebar
               variant={variant}
               features={features}
