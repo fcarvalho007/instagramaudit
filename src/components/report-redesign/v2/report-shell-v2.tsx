@@ -241,7 +241,7 @@ export function ReportShellV2({
 
         {/* Layout 2-col a partir do bloco 01 */}
         <div className="mx-auto max-w-[1520px] px-4 sm:px-5 md:px-6 lg:px-8">
-          <div className="flex gap-8 lg:gap-10 pt-3 lg:pt-4">
+          <div className="flex gap-8 pt-2 lg:pt-3">
             <ReportBlockSidebar
               variant={variant}
               features={features}
@@ -290,7 +290,7 @@ export function ReportShellV2({
                 <section
                   id="conversas"
                   aria-label="Análise das conversas"
-                  className="scroll-mt-24 mt-8 sm:mt-10"
+                  className="scroll-mt-24 mt-6 sm:mt-8"
                   ref={conversasRef}
                 >
                   {result.enriched.commentIntelligence ? (
@@ -425,7 +425,7 @@ export function ReportShellV2({
               {leadCaptured && !premiumUnlocked && (
                 <section
                   id="lead-magnet-card"
-                  className="mt-12 sm:mt-16 mb-16 sm:mb-20"
+                  className="mt-8 sm:mt-10 mb-12 sm:mb-16"
                   ref={proOfferRef}
                 >
                   <ReportEndOfFreeBlock />

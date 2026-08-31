@@ -94,18 +94,21 @@ export const REDESIGN_TOKENS = {
     "mt-6 md:mt-7 flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-t border-slate-200/60 pt-4 md:pt-5",
   positioningChip:
     "text-eyebrow-sm inline-flex items-center gap-1.5 rounded-full ring-1 ring-blue-200 bg-blue-50 text-blue-700 px-2.5 py-1",
-  /** Número do capítulo no chapter marker editorial. */
+  /** Número do capítulo no chapter marker editorial (6B.1 — marcador discreto). */
   chapterNumber:
-    "font-display text-[4.5rem] md:text-[5.5rem] font-semibold leading-none tracking-tighter text-content-tertiary/60 select-none",
+    "font-display text-[2rem] md:text-[3rem] font-semibold leading-none tracking-tight text-content-tertiary/60 select-none",
   /** Caixa cinza-clara que isola o número do capítulo. */
   chapterNumberBox:
-    "flex items-center justify-center rounded-3xl bg-surface-muted ring-1 ring-border-default/10 w-[140px] h-[120px] md:w-[160px] md:h-[140px] shrink-0",
+    "hidden md:flex items-center justify-center rounded-2xl bg-surface-muted ring-1 ring-border-default/10 md:w-[104px] md:h-[92px] shrink-0",
   /** Label do bloco: OVERVIEW, DIAGNÓSTICO EDITORIAL, etc. */
   chapterLabel:
     "text-[11px] md:text-xs font-semibold uppercase tracking-[0.22em] text-accent-primary",
-  /** Subtítulo do capítulo — Inter, tamanho editorial. */
+  /** Subtítulo do capítulo — Inter, escala de apoio (6B.1). */
   chapterSubtitle:
-    "text-[15px] sm:text-[17px] md:text-[20px] text-content-secondary leading-relaxed max-w-[900px]",
+    "text-[14px] sm:text-[15px] md:text-[16px] text-content-secondary leading-relaxed max-w-[820px]",
+  /** Número do capítulo inline (mobile) — substitui a caixa grande. */
+  chapterNumberInline:
+    "md:hidden font-display text-[13px] font-semibold tabular-nums text-content-tertiary/70 select-none",
   /** Valor categorical do KPI (ex.: nome de formato) — escala mais sóbria. */
   kpiValueV2Categorical:
     "font-display text-[1.375rem] md:text-[1.5rem] font-semibold tracking-tight text-slate-900 leading-tight break-words [word-break:normal] [hyphens:none]",
