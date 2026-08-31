@@ -425,7 +425,7 @@ export function ReportShellV2({
               {leadCaptured && !premiumUnlocked && (
                 <section
                   id="lead-magnet-card"
-                  className="mt-12 sm:mt-16 mb-16 sm:mb-20"
+                  className="mt-8 sm:mt-10 mb-12 sm:mb-16"
                   ref={proOfferRef}
                 >
                   <ReportEndOfFreeBlock />
