@@ -327,6 +327,42 @@ function ReportLabPage() {
                 {VARIANT_OPTIONS.find((o) => o.value === variant)?.description}
               </p>
             </div>
+
+            {/* Commercial state switcher (só na variante pública) */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-medium uppercase tracking-[0.12em] text-admin-text-tertiary">
+                Estado comercial do leitor
+              </label>
+              <div className="flex flex-wrap gap-1 rounded-xl border border-admin-border bg-admin-surface-muted p-1 sm:inline-flex sm:flex-nowrap">
+                {STATE_OPTIONS.map((opt) => {
+                  const active = effectiveState === opt.value;
+                  const disabled = variant !== "public_mvp";
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => setStateChoice(opt.value)}
+                      className={cn(
+                        "flex-1 sm:flex-none rounded-lg px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap",
+                        active
+                          ? "bg-white text-admin-text-primary shadow-sm border border-admin-border"
+                          : "text-admin-text-secondary hover:text-admin-text-primary border border-transparent",
+                        disabled && "cursor-not-allowed opacity-60 hover:text-admin-text-secondary",
+                      )}
+                    >
+                      {active && <span className="h-2 w-2 rounded-full bg-current" />}
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-admin-text-tertiary mt-1">
+                {variant === "public_mvp"
+                  ? STATE_OPTIONS.find((o) => o.value === effectiveState)?.description
+                  : "As variantes internas mostram sempre o relatório completo (estado C)."}
+              </p>
+            </div>
           </div>
         </div>
         <BlockAccessMatrix variant={variant} />
