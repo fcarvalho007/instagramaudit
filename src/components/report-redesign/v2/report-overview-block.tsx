@@ -15,7 +15,10 @@ import { MethodologyLine } from "./overview/methodology-line";
 import { EngagementCardRefined } from "./report-overview-engagement";
 import { FrequencyCard } from "./overview/frequency-card";
 import { FormatCard, type FormatEntry } from "./overview/format-card";
-import { PostComparisonBlock } from "./report-post-comparison";
+import {
+  PostComparisonBlock,
+  PostComparisonPreview,
+} from "./report-post-comparison";
 import {
   buildCadenceLabelPt,
   classifyHashtagsState,
