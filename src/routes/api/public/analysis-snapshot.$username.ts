@@ -87,11 +87,15 @@ export const Route = createFileRoute("/api/public/analysis-snapshot/$username")(
 
         // Derive access level server-side. Fail-closed: any cookie/DB
         // error keeps the caller on Free and the response scrubbed.
+        // `lead` = email capturado sem pagamento → só Comment Intelligence
+        // (gratuito após email) é devolvido a mais do que no nível free.
         let accessLevel: SnapshotAccessLevel = "free";
         try {
           const leadId = readLeadIdFromRequest(request);
-          if (leadId && (await hasEntitlement(leadId, "report_full_9"))) {
-            accessLevel = "pro";
+          if (leadId) {
+            accessLevel = (await hasEntitlement(leadId, "report_full_9"))
+              ? "pro"
+              : "lead";
           }
         } catch {
           accessLevel = "free";
