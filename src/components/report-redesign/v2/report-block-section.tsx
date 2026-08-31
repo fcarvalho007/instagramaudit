@@ -124,7 +124,7 @@ export function ReportBlockSection({ block, tone = "canvas", first, children }: 
           </div>
         </header>
 
-        <div className="min-w-0 pt-6 md:pt-8 space-y-6 md:space-y-8">{children}</div>
+        <div className="min-w-0 pt-5 md:pt-6 space-y-6 md:space-y-8">{children}</div>
       </div>
     </section>
   );
