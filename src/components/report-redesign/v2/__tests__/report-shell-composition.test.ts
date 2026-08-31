@@ -22,15 +22,16 @@ const route = readFileSync(
 );
 
 describe("ReportShellV2 — invariantes de composição", () => {
-  it("renderiza Conversas apenas em estado B (lead sem premium)", () => {
-    expect(shell).toMatch(/\{leadCaptured && !premiumUnlocked && \(/);
+  it("renderiza Conversas em estado B e mantém-nas no estado C", () => {
+    expect(shell).toMatch(/\{\(leadCaptured \|\| premiumUnlocked\) && \(/);
     expect(shell).toContain('id="conversas"');
     expect(shell).toContain("CommentIntelligenceSection");
     expect(shell).toContain("CommentIntelligenceUnavailable");
   });
 
-  it("mostra os teasers Premium apenas depois da captura de email", () => {
-    expect(shell).toContain("showPremiumTeasers={leadCaptured}");
+  it("passa o estado comercial ao overview em vez de um booleano de teasers", () => {
+    expect(shell).toContain('access={leadCaptured ? "lead" : "anon"}');
+    expect(shell).not.toContain("showPremiumTeasers");
   });
 
   it("mantém o bloco de diagnóstico exclusivo do estado Pro", () => {
