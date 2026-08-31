@@ -1579,8 +1579,8 @@ export function ReportBlockSidebar({
       aria-label={t("nav.aria")}
       className={cn(
         "hidden lg:block self-start shrink-0",
-        "w-64 xl:w-72",
-        "sticky top-20",
+        "w-60 xl:w-64",
+        "sticky top-16",
         "max-h-[calc(100vh-5.5rem)] overflow-y-auto",
         "rounded-2xl border border-border-default",
         "bg-white",
