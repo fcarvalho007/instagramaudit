@@ -19,6 +19,7 @@ import {
   useBlocks,
   type BlockConfig,
   COMMERCIAL_SECTIONS,
+  COMPETITOR_COMPARISON_SECTION,
   type CommercialSection,
 } from "./block-config";
 import { scrollToBlock, useActiveBlock } from "./use-active-block";
@@ -117,6 +118,9 @@ interface SidebarProps {
   /** Lista actual de concorrentes para alimentar o "Adicionar concorrente"
    *  (passada do shell a partir do `?vs=`). */
   competitorHandles?: string[];
+  /** True quando o relatório compõe a camada comparativa (Pro com pelo
+   *  menos um concorrente no snapshot). Acrescenta a entrada de sidebar. */
+  hasComparisonLayer?: boolean;
   /** Admin preview override: when true, the explore section uses a
    *  simulated credit balance so the operator can test 30d/90d and
    *  competitor flows without holding real customer credits. */
@@ -178,12 +182,27 @@ export function commercialToSidebarItem(
 export function buildCommercialSidebarItems(
   premiumUnlocked: boolean,
   leadCaptured: boolean,
+  competitorCount = 0,
 ): SidebarItem[] {
-
-  return COMMERCIAL_SECTIONS.map((s) =>
-    commercialToSidebarItem(s, premiumUnlocked, leadCaptured),
+  const sections: CommercialSection[] = [...COMMERCIAL_SECTIONS];
+  if (premiumUnlocked && competitorCount > 0) {
+    // Camada comparativa entra logo a seguir a "formatos", que é onde é
+    // composta no corpo do relatório.
+    const at = sections.findIndex((s) => s.id === "formatos");
+    sections.splice(at >= 0 ? at + 1 : sections.length, 0, {
+      ...COMPETITOR_COMPARISON_SECTION,
+    });
+  }
+  // Numeração contínua — a camada comparativa desloca as secções seguintes.
+  return sections.map((s, i) =>
+    commercialToSidebarItem(
+      { ...s, number: String(i + 1).padStart(2, "0") },
+      premiumUnlocked,
+      leadCaptured,
+    ),
   );
 }
+
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -1548,6 +1567,7 @@ export function ReportBlockSidebar({
   competitorCount = 0,
   competitorMax = 2,
   competitorHandles,
+  hasComparisonLayer = false,
   isAdminPreview = false,
 }: SidebarProps) {
   const { t } = useTranslation("report");
@@ -1560,8 +1580,12 @@ export function ReportBlockSidebar({
     () =>
       variant === "internal_lab"
         ? buildSidebarItems(blocks, variant, features)
-        : buildCommercialSidebarItems(premiumUnlocked, leadCaptured),
-    [blocks, variant, features, premiumUnlocked, leadCaptured],
+        : buildCommercialSidebarItems(
+            premiumUnlocked,
+            leadCaptured,
+            hasComparisonLayer ? 1 : 0,
+          ),
+    [blocks, variant, features, premiumUnlocked, leadCaptured, hasComparisonLayer],
   );
   // Scroll-spy across ALL sections — locked teaser cards still own a
   // matching DOM anchor (`#frequencia`, `#publicacoes-chave`, …), so they
@@ -1640,6 +1664,7 @@ export function ReportBlockTopTabs({
   competitorCount = 0,
   competitorMax = 2,
   competitorHandles,
+  hasComparisonLayer = false,
   isAdminPreview = false,
 }: SidebarProps) {
   const { t } = useTranslation("report");
@@ -1652,8 +1677,12 @@ export function ReportBlockTopTabs({
     () =>
       variant === "internal_lab"
         ? buildSidebarItems(blocks, variant, features)
-        : buildCommercialSidebarItems(premiumUnlocked, leadCaptured),
-    [blocks, variant, features, premiumUnlocked, leadCaptured],
+        : buildCommercialSidebarItems(
+            premiumUnlocked,
+            leadCaptured,
+            hasComparisonLayer ? 1 : 0,
+          ),
+    [blocks, variant, features, premiumUnlocked, leadCaptured, hasComparisonLayer],
   );
   const accessible = items.filter((i) => i.access !== "locked");
   const accessibleIds = accessible.map((i) => i.block.id);

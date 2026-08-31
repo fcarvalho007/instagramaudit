@@ -81,3 +81,47 @@ describe("Rota /analyze/$username — um CTA principal por estado", () => {
     expect(route).toContain("report-access-state");
   });
 });
+
+describe("Pro + concorrente — camada comparativa cumulativa", () => {
+  const overview = readFileSync(
+    resolve(root, "src/components/report-redesign/v2/report-overview-block.tsx"),
+    "utf8",
+  );
+
+  it("compõe a comparação dentro do ramo comercial quando o leitor é Pro", () => {
+    expect(overview).toContain('access === "pro" && firstCompetitor');
+    expect(overview).toContain('id="comparacao-concorrente"');
+    for (const component of [
+      "ComparisonHero",
+      "CompetitorBioCompare",
+      "CompetitorEngagementCompare",
+      "CompetitorCadenceCompare",
+      "CompetitorWeekdayCompare",
+      "CompetitorFormatCompare",
+      "CompetitorTopPostCompare",
+      "CompetitorEditorialDiagnostic",
+    ]) {
+      expect(overview).toContain(`<${component}`);
+    }
+  });
+
+  it("mantém a base cumulativa — a comparação acrescenta, não substitui", () => {
+    const branch = overview.slice(
+      overview.indexOf('mode === "free_with_engagement"'),
+      overview.indexOf('mode === "all" || mode === "locked"'),
+    );
+    expect(branch).toContain("<EngagementCardRefined");
+    expect(branch).toContain("<FrequencyCard");
+    expect(branch).toContain("<FormatCard");
+    expect(branch).toContain('id="comparacao-concorrente"');
+  });
+
+  it("expõe a secção comparativa na sidebar apenas com concorrente em Pro", () => {
+    const nav = readFileSync(
+      resolve(root, "src/components/report-redesign/v2/report-block-nav.tsx"),
+      "utf8",
+    );
+    expect(nav).toContain("COMPETITOR_COMPARISON_SECTION");
+    expect(nav).toContain("premiumUnlocked && competitorCount > 0");
+  });
+});

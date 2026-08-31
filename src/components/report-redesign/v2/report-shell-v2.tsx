@@ -125,6 +125,14 @@ export function ReportShellV2({
   const v2 = result.enriched.aiInsightsV2;
   const features = featuresOverride ?? getVariantFeatures(variant);
 
+  /** Camada comparativa: só existe em Pro e com concorrente no snapshot. */
+  const hasComparisonLayer =
+    variant !== "internal_lab" &&
+    premiumUnlocked &&
+    result.data.competitorBreakdown.length > 0;
+
+
+
   const sidebarProfile = {
     handle: result.data.profile.username,
     avatarUrl: result.enriched.profile?.avatarUrl ?? null,
@@ -236,6 +244,7 @@ export function ReportShellV2({
           observedDays={result.coverage.windowDays ?? 0}
           competitorHandles={competitorHandles}
           competitorCount={competitorHandles.length}
+          hasComparisonLayer={hasComparisonLayer}
           isAdminPreview={isAdminPreview}
         />
 
@@ -254,6 +263,7 @@ export function ReportShellV2({
               observedDays={result.coverage.windowDays ?? 0}
               competitorHandles={competitorHandles}
               competitorCount={competitorHandles.length}
+              hasComparisonLayer={hasComparisonLayer}
               isAdminPreview={isAdminPreview}
             />
             <main className="min-w-0 flex-1 overflow-x-clip">
