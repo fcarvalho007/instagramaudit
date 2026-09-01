@@ -393,8 +393,8 @@ export function EditorialIdentityCard({
       aria-label={t("identity.aria_label")}
       className="rounded-2xl border border-border-default bg-white shadow-card overflow-hidden"
     >
-      {/* Zona macro — empilhada: herói + régua em cima, veredicto a respirar abaixo */}
-      <div className="px-6 py-7 sm:px-7 sm:py-8 flex flex-col gap-7">
+      {/* Zona macro — herói + régua compactos, veredicto logo a seguir */}
+      <div className="px-6 py-6 sm:px-7 sm:py-7 flex flex-col gap-5">
         <IndexBlock
           value={overall}
           engagementRatePct={keyMetrics?.engagementRate ?? null}
@@ -411,14 +411,18 @@ export function EditorialIdentityCard({
           locale={i18n.language}
         />
 
-        <div className="min-w-0 space-y-3.5 border-t border-border-default pt-6">
-          <h2 className="font-display text-[1.25rem] md:text-[1.5rem] font-semibold leading-snug tracking-tight text-content-primary text-pretty">
+        <div className="min-w-0 space-y-3 border-t border-border-default/70 pt-5">
+          <p className="text-eyebrow-sm text-content-tertiary">
+            {t("identity.verdict_eyebrow", { defaultValue: "Veredicto" })}
+          </p>
+          <h2 className="font-display text-[1.375rem] md:text-[1.625rem] font-semibold leading-snug tracking-tight text-content-primary text-pretty">
             {copy.title}
           </h2>
 
-          <p className="text-[17px] leading-[1.65] text-content-primary whitespace-pre-line text-pretty">
+          <p className="max-w-[62ch] text-[16px] leading-[1.6] text-content-primary whitespace-pre-line text-pretty">
             {copy.paragraph}
           </p>
+
 
           {resolution.source !== "fallback" && resolved.evidence_used.length >= 2 ? (
             <div className="pt-1">
@@ -431,12 +435,13 @@ export function EditorialIdentityCard({
                 {resolved.evidence_used.slice(0, 3).map((ev) => (
                   <li
                     key={ev}
-                    className="text-[17px] leading-[1.65] text-content-secondary flex gap-2 items-start"
+                    className="text-[15px] leading-[1.6] text-content-secondary flex gap-2 items-start"
                   >
                     <span
                       aria-hidden="true"
-                      className="mt-[11px] inline-block w-1 h-1 rounded-full bg-content-tertiary/70 shrink-0"
+                      className="mt-[9px] inline-block w-1 h-1 rounded-full bg-content-tertiary/70 shrink-0"
                     />
+
                     <span>
                       {t(`identity.evidence.${ev}`, { defaultValue: ev })}
                     </span>
@@ -473,9 +478,12 @@ export function EditorialIdentityCard({
         </div>
       </div>
 
-      {/* Zona métrica — gostos / comentários / ritmo */}
+      {/* Zona evidência — gostos / comentários / ritmo (suporte, não dashboard) */}
       {hasAnyMetric && (
-        <div className="px-6 pb-7 sm:px-7">
+        <div className="px-6 pb-6 sm:px-7 sm:pb-7">
+          <p className="text-eyebrow-sm text-content-tertiary mb-2.5">
+            {t("identity.evidence_strip_title", { defaultValue: "Evidência" })}
+          </p>
           <MetricsStrip
             averageLikes={averageLikes}
             averageComments={averageComments}
@@ -486,6 +494,7 @@ export function EditorialIdentityCard({
           />
         </div>
       )}
+
 
       {/* Zona accionável */}
       <div className="border-t border-border-default grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border-default/60">
@@ -620,7 +629,7 @@ function IndexBlock({
   ].filter(Boolean) as string[];
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       {/* a) Eyebrow + ⓘ */}
       <div className="flex items-center gap-1.5">
           <span className="text-eyebrow-sm text-content-tertiary">
@@ -680,33 +689,38 @@ function IndexBlock({
           </Popover>
       </div>
 
-      {/* b) Número herói */}
-      <div className="flex flex-col gap-1" data-band={band}>
-        <div className="flex items-baseline gap-1.5">
-          <span className="font-display text-[4.5rem] sm:text-[5.5rem] leading-none font-bold tabular-nums text-content-primary tracking-[-0.03em]">
+      {/* b + c) Número herói e régua lado a lado em desktop */}
+      <div
+        className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-7"
+        data-band={band}
+      >
+        <div className="flex items-baseline gap-1.5 shrink-0">
+          <span className="font-display text-[3.75rem] sm:text-[4.5rem] leading-none font-bold tabular-nums text-content-primary tracking-[-0.03em]">
             {hasValue ? clamped : "—"}
           </span>
-          <span className="text-[0.95rem] text-content-tertiary tabular-nums">
+          <span className="text-[1rem] font-medium text-content-secondary tabular-nums">
             / 100
           </span>
         </div>
+
+        {hasValue ? (
+          <div className="flex-1 min-w-0 sm:pb-1.5">
+            <IndexRuler
+              value={clamped}
+              median={medianIndex}
+              t={t}
+              locale={locale}
+            />
+          </div>
+        ) : (
+          <p className="text-[14px] leading-snug text-content-secondary">
+            {t("identity.index.no_value", {
+              defaultValue: "Sem dados suficientes para calcular o índice.",
+            })}
+          </p>
+        )}
       </div>
 
-      {/* c) Régua 0–100 full-width */}
-      {hasValue ? (
-        <IndexRuler
-          value={clamped}
-          median={medianIndex}
-          t={t}
-          locale={locale}
-        />
-      ) : (
-        <p className="text-[14px] leading-snug text-content-secondary">
-          {t("identity.index.no_value", {
-            defaultValue: "Sem dados suficientes para calcular o índice.",
-          })}
-        </p>
-      )}
 
       {/* d) Leitura qualitativa do índice (sem números) */}
       {qualitativeLine ? (
@@ -749,23 +763,26 @@ function IndexRuler({
       : null,
   ].filter(Boolean) as string[];
 
+  // Mantém o rótulo flutuante dentro da régua nos extremos.
+  const labelPct = Math.max(9, Math.min(91, valuePct));
+
   return (
-    <div className="flex-1 min-w-0 w-full">
+    <div className="flex-1 min-w-0 w-full pt-7">
       <div
-        className="relative h-1.5 rounded-full bg-surface-muted"
+        className="relative h-2 rounded-full bg-surface-muted"
         role="img"
         aria-label={ariaParts.join(" · ")}
       >
         {/* Barra preenchida até ao pin */}
         <div
-          className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-accent-primary/25 to-accent-primary/55"
+          className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-accent-primary/45 to-accent-primary/80"
           style={{ width: `${valuePct}%` }}
         />
 
         {/* Marcador mediana */}
         {medianPct !== null ? (
           <span
-            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-4 w-px bg-content-tertiary"
+            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-4 w-[2px] rounded-full bg-content-secondary"
             style={{ left: `${medianPct}%` }}
             aria-hidden="true"
             title={t("identity.index.median_tooltip", {
@@ -782,10 +799,10 @@ function IndexRuler({
           aria-hidden="true"
         />
 
-        {/* Label flutuante "esta marca" — desktop only */}
+        {/* Label flutuante "esta marca" */}
         <span
-          className="hidden sm:inline-flex absolute -top-7 -translate-x-1/2 items-center rounded-md bg-accent-primary/10 px-2 py-0.5 text-[11px] font-medium text-accent-primary whitespace-nowrap"
-          style={{ left: `${valuePct}%` }}
+          className="absolute -top-7 -translate-x-1/2 inline-flex items-center rounded-md bg-accent-primary/10 px-2 py-0.5 text-[11px] font-medium text-accent-primary whitespace-nowrap"
+          style={{ left: `${labelPct}%` }}
           aria-hidden="true"
         >
           {t("identity.index.this_brand_label", {
@@ -794,36 +811,35 @@ function IndexRuler({
         </span>
       </div>
 
-      {/* Endpoints 0 / 100 */}
-      <div className="flex justify-between mt-2 text-[11px] text-content-tertiary tabular-nums">
+      {/* Endpoints + legenda na mesma linha */}
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] text-content-tertiary tabular-nums">
         <span>0</span>
+        {medianPct !== null ? (
+          <span className="flex items-center gap-3 text-[12px]">
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="h-2 w-2 rounded-full bg-accent-primary"
+                aria-hidden="true"
+              />
+              {t("identity.index.legend_this", {
+                defaultValue: "este perfil",
+              })}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="h-3 w-px bg-content-secondary"
+                aria-hidden="true"
+              />
+              {t("identity.index.legend_median", {
+                defaultValue: "mediana do escalão",
+              })}
+            </span>
+          </span>
+        ) : null}
         <span>100</span>
       </div>
-
-      {/* Legenda do pin vs mediana */}
-      {medianPct !== null ? (
-        <div className="flex items-center gap-3 mt-2 text-[12px] text-content-tertiary">
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              className="h-2 w-2 rounded-full bg-accent-primary"
-              aria-hidden="true"
-            />
-            {t("identity.index.legend_this", {
-              defaultValue: "este perfil",
-            })}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              className="h-3 w-px bg-content-tertiary"
-              aria-hidden="true"
-            />
-            {t("identity.index.legend_median", {
-              defaultValue: "mediana do escalão",
-            })}
-          </span>
-        </div>
-      ) : null}
     </div>
+
   );
 }
 
@@ -844,33 +860,38 @@ function BulletColumn({
   const dot = tone === "success" ? "bg-signal-success" : "bg-signal-warning";
   const surface =
     tone === "success"
-      ? "bg-signal-success/[0.06] border-l-2 border-signal-success"
-      : "bg-signal-warning/[0.07] border-l-2 border-signal-warning";
+      ? "border-l-2 border-signal-success/60"
+      : "border-l-2 border-signal-warning/60";
   const Icon = tone === "success" ? ArrowUpRight : ArrowDownRight;
 
   return (
-    <div className={cn("px-6 py-5 sm:px-7 sm:py-6", surface, className)}>
-      <div className="flex items-start gap-2 mb-3">
-        <Icon className={cn("h-3.5 w-3.5 mt-0.5", accent)} aria-hidden="true" />
+    <div className={cn("px-6 py-5 sm:px-7", surface, className)}>
+      <div className="flex items-center gap-2 mb-2.5">
+        <Icon className={cn("h-3.5 w-3.5", accent)} aria-hidden="true" />
         <span className={cn("text-eyebrow-sm", accent)}>{title}</span>
       </div>
-      <ul className="space-y-2.5">
+      <ul className="space-y-2">
         {items.map((it, i) => (
-          <li key={i} className="flex gap-2.5 text-[17px] leading-[1.65]">
+          <li key={i} className="flex gap-2.5 text-[15px] leading-[1.6]">
             <span
               className={cn("mt-[7px] h-1.5 w-1.5 rounded-full shrink-0", dot)}
               aria-hidden="true"
             />
             <span className="text-content-primary">
               <span className="font-medium text-content-primary">{it.destaque}</span>
-              {" · "}
-              {it.detalhe}
+              {it.detalhe ? (
+                <>
+                  {" · "}
+                  {it.detalhe}
+                </>
+              ) : null}
             </span>
           </li>
         ))}
       </ul>
     </div>
   );
+
 }
 
 /* ── Metrics Strip ─────────────────────────────────────────────────── */
@@ -968,7 +989,7 @@ function MetricsStrip({
   };
 
   return (
-    <div className="rounded-xl border border-border-default bg-white grid grid-cols-1 sm:grid-cols-3 overflow-hidden divide-y divide-border-default/60 sm:divide-y-0">
+    <div className="rounded-xl bg-surface-muted/60 grid grid-cols-1 sm:grid-cols-3 overflow-hidden divide-y divide-border-default/50 sm:divide-y-0">
       {items.map((it, idx) => {
         const Icon = it.icon;
         const isFirst = idx === 0;
@@ -976,28 +997,29 @@ function MetricsStrip({
           <div
             key={it.key}
             className={cn(
-              "px-5 py-5 sm:px-6 sm:py-6",
-              !isFirst && "sm:border-l sm:border-border-default/60",
+              "px-4 py-4 sm:px-5",
+              !isFirst && "sm:border-l sm:border-border-default/50",
             )}
           >
-            <div className="flex items-center gap-2.5 mb-3">
-              <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-accent-primary/10 shrink-0">
-                <Icon className="h-3.5 w-3.5 text-accent-primary" aria-hidden="true" />
-              </span>
+            <div className="flex items-center gap-2 mb-2">
+              <Icon
+                className="h-3.5 w-3.5 text-content-tertiary shrink-0"
+                aria-hidden="true"
+              />
               <span className="text-eyebrow-sm text-content-secondary">{it.label}</span>
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="font-sans text-[2rem] sm:text-[2.25rem] font-semibold tabular-nums text-content-primary leading-none">
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-sans text-[1.5rem] sm:text-[1.625rem] font-semibold tabular-nums text-content-primary leading-none">
                 {it.value}
               </span>
-              <span className="text-[15px] font-medium text-content-tertiary">{it.unit}</span>
+              <span className="text-[13px] font-medium text-content-tertiary">{it.unit}</span>
             </div>
             {it.key === "likes" ? (
-              <p className="mt-3 text-[15px] leading-[1.5] text-content-secondary">{it.subtitle}</p>
+              <p className="mt-2 text-[13px] leading-[1.5] text-content-secondary">{it.subtitle}</p>
             ) : (
               <span
                 className={cn(
-                  "mt-3 inline-flex items-center rounded-full px-2.5 py-1 text-[13px] font-medium",
+                  "mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[12px] font-medium",
                   toneClass[it.tone],
                 )}
               >
@@ -1009,4 +1031,5 @@ function MetricsStrip({
       })}
     </div>
   );
+
 }
