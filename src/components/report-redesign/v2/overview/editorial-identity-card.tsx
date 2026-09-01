@@ -689,33 +689,38 @@ function IndexBlock({
           </Popover>
       </div>
 
-      {/* b) Número herói */}
-      <div className="flex flex-col gap-1" data-band={band}>
-        <div className="flex items-baseline gap-1.5">
-          <span className="font-display text-[4.5rem] sm:text-[5.5rem] leading-none font-bold tabular-nums text-content-primary tracking-[-0.03em]">
+      {/* b + c) Número herói e régua lado a lado em desktop */}
+      <div
+        className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-7"
+        data-band={band}
+      >
+        <div className="flex items-baseline gap-1.5 shrink-0">
+          <span className="font-display text-[3.75rem] sm:text-[4.5rem] leading-none font-bold tabular-nums text-content-primary tracking-[-0.03em]">
             {hasValue ? clamped : "—"}
           </span>
-          <span className="text-[0.95rem] text-content-tertiary tabular-nums">
+          <span className="text-[1rem] font-medium text-content-secondary tabular-nums">
             / 100
           </span>
         </div>
+
+        {hasValue ? (
+          <div className="flex-1 min-w-0 sm:pb-1.5">
+            <IndexRuler
+              value={clamped}
+              median={medianIndex}
+              t={t}
+              locale={locale}
+            />
+          </div>
+        ) : (
+          <p className="text-[14px] leading-snug text-content-secondary">
+            {t("identity.index.no_value", {
+              defaultValue: "Sem dados suficientes para calcular o índice.",
+            })}
+          </p>
+        )}
       </div>
 
-      {/* c) Régua 0–100 full-width */}
-      {hasValue ? (
-        <IndexRuler
-          value={clamped}
-          median={medianIndex}
-          t={t}
-          locale={locale}
-        />
-      ) : (
-        <p className="text-[14px] leading-snug text-content-secondary">
-          {t("identity.index.no_value", {
-            defaultValue: "Sem dados suficientes para calcular o índice.",
-          })}
-        </p>
-      )}
 
       {/* d) Leitura qualitativa do índice (sem números) */}
       {qualitativeLine ? (
