@@ -123,15 +123,16 @@ export function PremiumInterestDialog({
           >
             <Button
               type="button"
-              variant="outline"
-              className="w-full"
+              variant="primary"
+              className="w-full gap-2"
               onClick={() => handleSelect("single_report")}
             >
               {t("premium.dialog.single.cta")}
+              <ArrowRight className="size-4" aria-hidden="true" />
             </Button>
           </NeutralCard>
 
-          {/* Card 3 — Hero diagnóstico 97€ */}
+          {/* Card 2 — Hero diagnóstico 97€ */}
           <HeroCard
             badge={t("premium.dialog.hero.badge")}
             eyebrow={t("premium.dialog.hero.label")}
