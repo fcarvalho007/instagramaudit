@@ -420,21 +420,6 @@ export function EditorialIdentityCard({
   const clamped = clampVerdictParagraph(copy.paragraph);
   const [expanded, setExpanded] = useState(false);
 
-  const readProofItems = buildReadProofItems(
-    {
-      postsAnalyzed,
-      cadenceWindowDays,
-      cadenceLabelPt,
-      dominantFormat,
-      dominantFormatShare,
-      topHashtags,
-      hashtagsState,
-      averageLikes,
-      averageComments,
-    },
-    t,
-    i18n.language,
-  );
 
   return (
     <article
