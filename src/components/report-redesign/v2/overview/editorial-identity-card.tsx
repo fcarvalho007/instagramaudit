@@ -515,6 +515,29 @@ export function EditorialIdentityCard({
     typeof averageComments === "number" ||
     typeof postingFrequencyWeekly === "number";
 
+  // Veredicto curto por omissão; leitura completa fica a um clique para
+  // relatórios antigos gerados com o limite anterior de 140 palavras.
+  const clamped = clampVerdictParagraph(copy.paragraph);
+  const [expanded, setExpanded] = useState(false);
+
+  const readProofItems = buildReadProofItems(
+    {
+      postsAnalyzed,
+      cadenceWindowDays,
+      cadenceLabelPt,
+      dominantFormat,
+      dominantFormatShare,
+      topHashtags,
+      hashtagsState,
+      averageLikes,
+      averageComments,
+    },
+    t,
+    i18n.language,
+  );
+
+
+
   return (
     <article
       aria-label={t("identity.aria_label")}
