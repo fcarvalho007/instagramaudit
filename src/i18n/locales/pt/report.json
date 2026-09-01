@@ -393,7 +393,8 @@
       "interpretation_peak_only": "Publicação concentrada à <b>{{peak}}</b>. Restantes dias da semana equilibrados.",
       "interpretation_uniform": "Cadência uniforme — nenhum dia da semana se destaca pela negativa.",
       "aria_distribution": "Distribuição de publicações por dia da semana"
-    }
+    },
+    "reading_label": "Leitura"
   },
   "format": {
     "title": "Formato",
@@ -480,7 +481,8 @@
       "bridge": "Usa esta leitura como enquadramento: abaixo comparas o mix do perfil com uma referência externa por formato.",
       "mobile_label_profile": "Este perfil",
       "mobile_label_reference": "Referência externa"
-    }
+    },
+    "dominant_label": "Formato dominante"
   },
   "external_source_note": {
     "template": "Fonte externa: {{source}}, dados {{range}}.",

@@ -37,6 +37,13 @@ interface ReportCardSectionHeaderProps {
   qualifier?: string;
   /** Tom do qualifier — controla a cor do underline subtil. */
   qualifierTone?: ReportSectionQualifierTone;
+  /**
+   * `inline` (default) mantém "Título Qualificador" na mesma linha.
+   * `block` separa em duas linhas: nome da dimensão em eyebrow e o
+   * qualificador em escala editorial. O `<h3>` continua a conter os dois
+   * textos, por isso a semântica e a navegação não mudam.
+   */
+  qualifierPlacement?: "inline" | "block";
   /** Subtítulo descritivo opcional logo abaixo do título. */
   subtitle?: ReactNode;
   /** Acção opcional alinhada à direita (ex.: chip de sample size). */
@@ -46,11 +53,21 @@ interface ReportCardSectionHeaderProps {
   className?: string;
 }
 
+/** Cor do qualificador quando renderizado em bloco (linha própria). */
+const BLOCK_QUALIFIER_COLOR: Record<ReportSectionQualifierTone, string> = {
+  positive: "rgb(29,158,117)",
+  warning: "rgb(186,117,23)",
+  negative: "rgb(163,45,45)",
+  info: "rgb(37,99,217)",
+  neutral: "var(--content-primary, #0F172A)",
+};
+
 export function ReportCardSectionHeader({
   eyebrow,
   title,
   qualifier,
   qualifierTone = "neutral",
+  qualifierPlacement = "inline",
   subtitle,
   action,
   bottomMargin = true,
@@ -58,6 +75,7 @@ export function ReportCardSectionHeader({
 }: ReportCardSectionHeaderProps) {
   const underline = REPORT_SECTION_QUALIFIER_UNDERLINE[qualifierTone];
   const hasUnderline = qualifierTone !== "neutral" && underline !== "transparent";
+  const isBlock = qualifierPlacement === "block" && Boolean(qualifier);
 
   return (
     <header
@@ -72,27 +90,39 @@ export function ReportCardSectionHeader({
           {eyebrow ? (
             <p className={cn(T.eyebrow, T.eyebrowGap)}>{eyebrow}</p>
           ) : null}
-          <h3 className={T.title}>
-            {title}
-            {qualifier ? (
-              <>
-                {" "}
-                <span
-                  className={T.qualifier}
-                  style={
-                    hasUnderline
-                      ? {
-                          borderBottom: `2px solid ${underline}`,
-                          paddingBottom: "1px",
-                        }
-                      : undefined
-                  }
-                >
-                  {qualifier}
-                </span>
-              </>
-            ) : null}
-          </h3>
+          {isBlock ? (
+            <h3 className="min-w-0">
+              <span className={cn(T.eyebrow, "block")}>{title}</span>
+              <span
+                className={cn(T.title, "mt-1.5 block")}
+                style={{ color: BLOCK_QUALIFIER_COLOR[qualifierTone] }}
+              >
+                {qualifier}
+              </span>
+            </h3>
+          ) : (
+            <h3 className={T.title}>
+              {title}
+              {qualifier ? (
+                <>
+                  {" "}
+                  <span
+                    className={T.qualifier}
+                    style={
+                      hasUnderline
+                        ? {
+                            borderBottom: `2px solid ${underline}`,
+                            paddingBottom: "1px",
+                          }
+                        : undefined
+                    }
+                  >
+                    {qualifier}
+                  </span>
+                </>
+              ) : null}
+            </h3>
+          )}
           {subtitle ? (
             typeof subtitle === "string" ? (
               <p className={T.subtitle}>{subtitle}</p>

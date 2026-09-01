@@ -292,6 +292,7 @@ export function FormatCard({
         <ReportCardSectionHeader
           title={t("format.title")}
           qualifier={variationStatus}
+          qualifierPlacement="block"
           qualifierTone={
             variationKey === "varied_high"
               ? "positive"
@@ -316,9 +317,9 @@ export function FormatCard({
         />
       )}
 
-      {/* Verdict — calmer, editorial */}
-      <div className="px-5 md:px-6 mt-6 mb-5 sm:mb-6">
-        <div className="border-t border-border-subtle/60 pt-4">
+      {/* Verdict — conclusão encostada à distribuição */}
+      <div className="px-5 md:px-6 mt-5 mb-5 sm:mb-6">
+        <div className="rounded-xl bg-surface-muted/60 px-4 py-3.5">
           <span className="text-eyebrow-sm text-content-tertiary">
             {calloutLabel}
           </span>
@@ -328,6 +329,7 @@ export function FormatCard({
           </p>
         </div>
       </div>
+
       {socialinsiderRef ? (
         <p className="px-5 md:px-6 -mt-4 mb-3 text-[13px] text-content-secondary leading-relaxed">
           {t("format.external_ref.bridge")}
@@ -461,21 +463,25 @@ function FormatProportionBar({
         aria-label={ariaLabel}
         className="grid grid-cols-[1fr_auto] gap-5 md:gap-8 items-stretch rounded-2xl border border-border-subtle/60 bg-surface-base/50 px-5 md:px-7 py-5 md:py-6"
       >
-        {/* Left — editorial percentage */}
+        {/* Left — dominant format: número forte, mas com significado legível */}
         <div className="flex flex-col justify-center min-w-0">
+          <span className="text-eyebrow-sm text-content-tertiary">
+            {t("format.dominant_label", { defaultValue: "Formato dominante" })}
+          </span>
           <span
-            className="font-display font-semibold tabular-nums leading-[0.95] tracking-[-0.02em] text-[3.5rem] sm:text-[4.5rem] md:text-[5.25rem]"
+            className="mt-1.5 font-display font-semibold tabular-nums leading-[0.95] tracking-[-0.02em] text-[2.75rem] sm:text-[3.25rem] md:text-[3.5rem]"
             style={{ color: ACCENT }}
           >
             {dominant.pct}%
           </span>
-          <span className="mt-2 text-[13px] md:text-sm text-content-secondary leading-snug">
-            <span className="font-semibold text-content-primary">
-              {dominantCapital}
-            </span>{" "}
-            · <span className="tabular-nums">{dominant.count}/{total}</span>
+          <span className="mt-1.5 text-[15px] md:text-base font-semibold text-content-primary leading-snug truncate">
+            {dominantCapital}
+          </span>
+          <span className="mt-0.5 text-[13px] text-content-secondary leading-snug tabular-nums">
+            {dominant.count}/{total}
           </span>
         </div>
+
 
         {/* Right — cinematic vertical proportion column */}
         <div className="flex flex-col w-[80px] sm:w-[104px] md:w-[128px] h-[156px] md:h-[180px] rounded-xl overflow-hidden border border-border-subtle/60 shadow-sm">
@@ -490,6 +496,7 @@ function FormatProportionBar({
                   flexBasis: `${seg.pct}%`,
                   flexGrow: 0,
                   flexShrink: 0,
+                  minHeight: "20px",
                   backgroundColor: segmentBg(idx),
                   color: segmentFg(idx),
                 }}
@@ -501,11 +508,11 @@ function FormatProportionBar({
                       {seg.pct}%
                     </span>
                     <span
-                      className="mt-1 text-[10px] md:text-[11px] uppercase tracking-[0.12em] leading-none truncate max-w-full"
+                      className="mt-1 text-[11px] uppercase tracking-[0.1em] leading-none truncate max-w-full"
                       style={{
                         color:
                           idx === 0
-                            ? "color-mix(in oklab, #FFFFFF 80%, transparent)"
+                            ? "color-mix(in oklab, #FFFFFF 85%, transparent)"
                             : "var(--content-secondary, #475569)",
                       }}
                     >
@@ -513,7 +520,10 @@ function FormatProportionBar({
                     </span>
                   </>
                 ) : (
-                  <span className="text-[10px] font-semibold tabular-nums leading-none">
+                  <span
+                    className="text-[11px] font-semibold tabular-nums leading-none"
+                    style={{ color: "var(--content-primary, #0F172A)" }}
+                  >
                     {seg.pct}%
                   </span>
                 )}
@@ -522,6 +532,7 @@ function FormatProportionBar({
           })}
         </div>
       </div>
+
 
       {/* Subtle legend */}
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">

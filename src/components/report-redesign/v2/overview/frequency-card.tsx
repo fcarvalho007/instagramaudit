@@ -80,28 +80,25 @@ export interface FrequencyCardProps {
 
 // ─── Weekly summary helpers ─────────────────────────────────────────
 
-// ─── KPI tile (icon + eyebrow on top, value below) ──────────────────
+// ─── KPI hierarchy: one primary metric + two support metrics ────────
 
-function KpiTile({
+/** Indicador principal: posts por semana. */
+function PrimaryKpi({
   icon,
   label,
   value,
   unit,
-  valueSuffix,
-  isCategorical,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   unit?: string;
-  valueSuffix?: string;
-  isCategorical?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-border-default bg-surface-base/60 px-4 md:px-5 py-4 md:py-5">
-      <div className="flex items-center gap-2 mb-3">
+    <div className="rounded-xl border border-border-default bg-surface-base/60 px-4 md:px-5 py-4">
+      <div className="flex items-center gap-2">
         <span
-          className="inline-flex h-7 w-7 items-center justify-center rounded-full text-accent-primary"
+          className="inline-flex h-6 w-6 items-center justify-center rounded-full text-accent-primary"
           style={{
             background:
               "color-mix(in oklab, var(--accent-primary, #3772E5) 10%, #FFFFFF)",
@@ -111,28 +108,60 @@ function KpiTile({
         </span>
         <span className="text-eyebrow-sm text-content-secondary">{label}</span>
       </div>
-      <div className="flex items-baseline gap-1.5 flex-wrap">
-        <span
-          className={
-            isCategorical
-              ? "font-sans text-[1.5rem] md:text-[1.75rem] font-semibold leading-none text-content-primary"
-              : "font-sans text-[2rem] md:text-[2.25rem] font-semibold tabular-nums leading-none text-content-primary"
-          }
-        >
+      <div className="mt-2 flex items-baseline gap-1.5 flex-wrap">
+        <span className="font-sans text-[2.5rem] md:text-[2.75rem] font-semibold tabular-nums leading-none text-content-primary">
           {value}
         </span>
-        {valueSuffix ? (
-          <span className="font-sans text-[1.25rem] md:text-[1.5rem] font-semibold leading-none text-content-secondary/70">
-            {valueSuffix}
-          </span>
-        ) : null}
         {unit ? (
-          <span className="text-xs text-content-tertiary pb-1">{unit}</span>
+          <span className="text-[13px] text-content-secondary pb-1">{unit}</span>
         ) : null}
       </div>
     </div>
   );
 }
+
+/** Indicador de suporte: sem caixa própria, escala reduzida. */
+function SupportMetric({
+  icon,
+  label,
+  value,
+  valueSuffix,
+  isCategorical,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  valueSuffix?: string;
+  isCategorical?: boolean;
+}) {
+  return (
+    <div className="min-w-0 px-1 py-1">
+      <div className="flex items-center gap-1.5 text-content-tertiary">
+        <span className="shrink-0" aria-hidden="true">
+          {icon}
+        </span>
+        <span className="text-eyebrow-sm truncate">{label}</span>
+      </div>
+      <div className="mt-1 flex items-baseline gap-1">
+        <span
+          className={
+            isCategorical
+              ? "font-sans text-[1.0625rem] md:text-[1.125rem] font-semibold leading-tight text-content-primary truncate"
+              : "font-sans text-[1.25rem] md:text-[1.375rem] font-semibold tabular-nums leading-none text-content-primary"
+          }
+        >
+          {value}
+        </span>
+        {valueSuffix ? (
+          <span className="font-sans text-[1rem] font-semibold leading-none text-content-secondary/70">
+            {valueSuffix}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 
 /** Aggregate posts/days by weekday (Mon=0..Sun=6). */
 function aggregateByWeekday(days: DayEntry[]): Array<{
@@ -277,20 +306,21 @@ function WeeklyRhythmChart({
 
   return (
     <div
-      className="mt-8 rounded-2xl border border-border-default bg-surface-base/60 px-6 md:px-8 pt-6 pb-7"
+      className="mt-5 pt-4 border-t border-border-default/70"
       role="img"
       aria-label={t("frequency.weekly_rhythm.aria_distribution")}
     >
-      <div className="flex items-center justify-between mb-8 md:mb-10">
-        <span className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.2em] text-content-tertiary">
+      <div className="flex items-center justify-between gap-3 mb-4 md:mb-5">
+        <span className="text-eyebrow-sm text-content-tertiary">
           {t("frequency.weekly_rhythm.title")}
         </span>
-        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-content-tertiary/70">
+        <span className="text-eyebrow-sm text-content-tertiary/70">
           {t("frequency.weekly_rhythm.peak_chip")}
         </span>
       </div>
 
-      <div className="flex items-end justify-between gap-2 px-1">
+      <div className="flex items-end justify-between gap-1.5 sm:gap-2">
+
         {buckets.map((b, i) => {
           const isPeak = b.weekday === top.weekday && b.posts > 0;
           const isZero = b.posts === 0;
@@ -300,7 +330,7 @@ function WeeklyRhythmChart({
           return (
             <div
               key={`col-${i}`}
-              className="flex flex-col items-center gap-3 w-full max-w-[48px]"
+              className="flex flex-col items-center gap-2 w-full min-w-0 max-w-[52px]"
             >
               <span
                 className="text-[11px] tabular-nums"
@@ -308,25 +338,24 @@ function WeeklyRhythmChart({
                   color: isPeak
                     ? NAVY
                     : isZero
-                      ? "transparent"
-                      : "rgba(3, 4, 94, 0.45)",
+                      ? "rgba(3, 4, 94, 0.30)"
+                      : "rgba(3, 4, 94, 0.55)",
                   fontWeight: isPeak ? 700 : 600,
                 }}
-                aria-hidden={isZero || undefined}
               >
                 {b.posts}
               </span>
 
               {isZero ? (
-                <div className="w-full h-24 flex items-end justify-center">
+                <div className="w-full h-20 flex items-end justify-center">
                   <div
-                    className="w-1.5 h-1.5 rounded-full"
+                    className="w-full h-1.5 rounded-full"
                     style={{ background: TRACK }}
                   />
                 </div>
               ) : (
                 <div
-                  className="w-full h-24 rounded-full relative overflow-hidden"
+                  className="w-full h-20 rounded-full relative overflow-hidden"
                   style={{
                     background: TRACK,
                     boxShadow: isPeak
@@ -342,19 +371,20 @@ function WeeklyRhythmChart({
               )}
 
               <span
-                className="text-xs uppercase tracking-[0.08em]"
+                className="text-xs uppercase tracking-[0.06em] truncate max-w-full"
                 style={{
                   color: isPeak
                     ? NAVY
                     : isZero
-                      ? "rgba(3, 4, 94, 0.22)"
-                      : "rgba(3, 4, 94, 0.6)",
+                      ? "rgba(3, 4, 94, 0.35)"
+                      : "rgba(3, 4, 94, 0.62)",
                   fontWeight: isPeak ? 700 : 500,
                 }}
               >
                 {label}
               </span>
             </div>
+
           );
         })}
       </div>
@@ -403,7 +433,11 @@ function FrequencyConclusion({
   })();
 
   return (
-    <div className="mt-8 pt-5 border-t border-border-default/70 space-y-2.5">
+    <div className="mt-4 rounded-xl bg-surface-muted/60 px-4 py-3.5 space-y-2">
+      <p className="text-eyebrow-sm text-content-tertiary">
+        {t("frequency.reading_label")}
+      </p>
+
       <p
         className="text-[14px] text-content-secondary leading-relaxed [&_b]:font-semibold [&_b]:text-content-primary"
         dangerouslySetInnerHTML={{ __html: interpretation }}
@@ -522,10 +556,11 @@ export function FrequencyCard({
 
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden flex flex-col">
-      <div className="px-5 md:px-7 pt-6 md:pt-7 pb-6 md:pb-7">
+      <div className="px-5 md:px-7 pt-5 md:pt-6 pb-5 md:pb-6">
         <ReportCardSectionHeader
           title={t("frequency.title")}
           qualifier={!isInsufficient ? frequencyStatus : undefined}
+          qualifierPlacement="block"
           qualifierTone={
             (statusKey === "high"
               ? "positive"
@@ -539,27 +574,32 @@ export function FrequencyCard({
 
         {!isInsufficient && hasUsableData && (
           <>
-            {/* KPI strip — icon + eyebrow on top, value below (aligned with "Índice do perfil" card pattern) */}
-            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-              <KpiTile
+            {/* KPI: cadência é o indicador principal; consistência e pico dão suporte */}
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] sm:items-center sm:gap-5">
+              <PrimaryKpi
                 icon={<Activity className="h-3.5 w-3.5" aria-hidden="true" />}
                 label={t("frequency.kpi.cadence_label")}
                 unit={t("frequency.kpi.cadence_unit")}
                 value={cadenceValue}
               />
-              <KpiTile
-                icon={<CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />}
-                label={t("frequency.kpi.consistency_label")}
-                value={String(consistencyPct)}
-                valueSuffix="%"
-              />
-              <KpiTile
-                icon={<TrendingUp className="h-3.5 w-3.5" aria-hidden="true" />}
-                label={t("frequency.kpi.peak_label")}
-                value={peakLabel}
-                isCategorical
-              />
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:divide-x sm:divide-border-default/60">
+                <SupportMetric
+                  icon={<CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />}
+                  label={t("frequency.kpi.consistency_label")}
+                  value={String(consistencyPct)}
+                  valueSuffix="%"
+                />
+                <div className="sm:pl-4">
+                  <SupportMetric
+                    icon={<TrendingUp className="h-3.5 w-3.5" aria-hidden="true" />}
+                    label={t("frequency.kpi.peak_label")}
+                    value={peakLabel}
+                    isCategorical
+                  />
+                </div>
+              </div>
             </div>
+
 
             <WeeklyRhythmChart days={windowedDays} t={t} />
 
