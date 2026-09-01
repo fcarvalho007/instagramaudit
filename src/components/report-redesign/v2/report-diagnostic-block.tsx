@@ -368,6 +368,9 @@ export function ReportDiagnosticBlock({ result, payload, premiumUnlocked = false
           captionEngagementStrategy,
           captionAsksForCommentsPct,
           t,
+          // A secção "Conversas" já mostra o estado do Comment Intelligence
+          // acima deste bloco — evitar o duplicado dentro do cartão 05.
+          true,
         ),
       ),
     ]);
@@ -382,9 +385,26 @@ export function ReportDiagnosticBlock({ result, payload, premiumUnlocked = false
       groupC.length > 0 ||
       groupD.length > 0;
 
+    const aiVerdict = result.enriched.aiInsightsV2?.sections.hero?.text ?? null;
+    const verdictText =
+      aiVerdict ??
+      (contentType.available && funnel.available && audience.available
+        ? t("diagnostic.verdict_fallback", {
+            content: (contentType.label ?? "—").toLowerCase(),
+            funnel: (funnel.label ?? "—").toLowerCase(),
+            audience: (audience.label ?? "—").toLowerCase(),
+          })
+        : null);
+
     return (
       <div className="space-y-12 md:space-y-14">
         <div id="diagnostico-editorial" className="scroll-mt-24 space-y-10 md:space-y-12">
+          {verdictText ? (
+            <ReportDiagnosticVerdict
+              text={verdictText}
+              source={aiVerdict ? "ai" : "fallback"}
+            />
+          ) : null}
           {hasAnyCard ? (
             <>
               {groupA.length > 0 ? (
@@ -409,17 +429,6 @@ export function ReportDiagnosticBlock({ result, payload, premiumUnlocked = false
                 </div>
               </ReportDiagnosticGroup>
 
-              <ReportDiagnosticGroup
-                letter="E"
-                label={t("diagnostic_groups.E")}
-                questionsCount={1}
-                layout="stack"
-              >
-                <div id="diag-capas" className="scroll-mt-24">
-                  {renderCoverSlot()}
-                </div>
-              </ReportDiagnosticGroup>
-
               {groupC.length > 0 ? (
                 <ReportDiagnosticGroup
                   letter="C"
@@ -441,7 +450,19 @@ export function ReportDiagnosticBlock({ result, payload, premiumUnlocked = false
                   {groupD}
                 </ReportDiagnosticGroup>
               ) : null}
+
+              <ReportDiagnosticGroup
+                letter="E"
+                label={t("diagnostic_groups.E")}
+                questionsCount={1}
+                layout="stack"
+              >
+                <div id="diag-capas" className="scroll-mt-24">
+                  {renderCoverSlot()}
+                </div>
+              </ReportDiagnosticGroup>
             </>
+
           ) : (
             <p className="text-sm text-content-secondary leading-relaxed max-w-2xl">
               {t("diagnostic_groups.small_sample")}
