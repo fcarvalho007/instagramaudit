@@ -13,6 +13,15 @@
  *  - mesmo spacing inferior
  *
  * Não altera dados, cálculos ou copy — apenas apresentação.
+ *
+ * Regras canónicas (header consistency hotfix):
+ *  - o qualifier é SEMPRE inline, dentro do mesmo `<h3>` do título;
+ *    quebras de linha em ecrãs estreitos são naturais, nunca forçadas;
+ *  - não existe variante em bloco — o padrão de referência é o card
+ *    Engagement ("Taxa de Engagement Baixa");
+ *  - não renderizar eyebrow que apenas repita o título (regra de
+ *    não-redundância). O eyebrow só é usado quando acrescenta uma
+ *    categoria ou contexto que o título não contém.
  */
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
