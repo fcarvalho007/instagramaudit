@@ -46,21 +46,11 @@ interface ReportCardSectionHeaderProps {
   className?: string;
 }
 
-/** Cor do qualificador quando renderizado em bloco (linha própria). */
-const BLOCK_QUALIFIER_COLOR: Record<ReportSectionQualifierTone, string> = {
-  positive: "rgb(29,158,117)",
-  warning: "rgb(186,117,23)",
-  negative: "rgb(163,45,45)",
-  info: "rgb(37,99,217)",
-  neutral: "var(--content-primary, #0F172A)",
-};
-
 export function ReportCardSectionHeader({
   eyebrow,
   title,
   qualifier,
   qualifierTone = "neutral",
-  qualifierPlacement = "inline",
   subtitle,
   action,
   bottomMargin = true,
