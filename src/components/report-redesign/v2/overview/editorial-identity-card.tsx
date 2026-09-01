@@ -151,7 +151,6 @@ function formatDecimal(value: number, locale: string, digits = 1): string {
   return value.toFixed(digits).replace(".", sep);
 }
 
-
 /**
  * Format an average metric (likes/post, comments/post) consistently with
  * Bloco 2 (`formatAvg` in report-diagnostic-card.tsx): keeps 1 decimal when
@@ -421,7 +420,6 @@ function ReadProofLine({ items }: { items: string[] }) {
 
 /* ── Main Component ────────────────────────────────────────────────── */
 
-
 export function EditorialIdentityCard({
   scores,
   aiVerdict,
@@ -537,15 +535,13 @@ export function EditorialIdentityCard({
     i18n.language,
   );
 
-
-
   return (
     <article
       aria-label={t("identity.aria_label")}
       className="rounded-2xl border border-border-default bg-white shadow-card overflow-hidden"
     >
       {/* Zona macro — herói + régua compactos, veredicto logo a seguir */}
-      <div className="px-6 py-6 sm:px-7 sm:py-7 flex flex-col gap-5">
+      <div className="px-6 py-6 sm:px-7 sm:py-7 flex flex-col gap-4">
         <IndexBlock
           value={overall}
           engagementRatePct={keyMetrics?.engagementRate ?? null}
@@ -589,9 +585,6 @@ export function EditorialIdentityCard({
               <ReadProofLine items={readProofItems} />
             </div>
           ) : null}
-
-
-
 
           {resolution.source !== "fallback" && resolved.evidence_used.length >= 2 ? (
             <div className="pt-1">
@@ -650,7 +643,7 @@ export function EditorialIdentityCard({
       {/* Zona evidência — gostos / comentários / ritmo (suporte, não dashboard) */}
       {hasAnyMetric && (
         <div className="px-6 pb-6 sm:px-7 sm:pb-7">
-          <p className="text-eyebrow-sm text-content-tertiary mb-2.5">
+          <p className="text-eyebrow-sm text-content-tertiary mb-2">
             {t("identity.evidence_strip_title", { defaultValue: "Evidência" })}
           </p>
           <MetricsStrip
@@ -663,7 +656,6 @@ export function EditorialIdentityCard({
           />
         </div>
       )}
-
 
       {/* Zona accionável */}
       <div className="border-t border-border-default grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border-default/60">
@@ -889,7 +881,6 @@ function IndexBlock({
           </p>
         )}
       </div>
-
 
       {/* d) Leitura qualitativa do índice (sem números) */}
       {qualitativeLine ? (
