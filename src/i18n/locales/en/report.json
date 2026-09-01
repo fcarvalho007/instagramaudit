@@ -1456,9 +1456,9 @@
     "retentionMessage": "Reports remain available for {{days}} days after generation."
   },
   "end_of_free": {
-    "eyebrow": "You've seen what is happening",
+    "eyebrow": "Pro analysis",
     "title": "Now find out why — and what to do next.",
-    "description": "The Pro report explains the causes behind these numbers and returns a prioritised plan for the <strong>next 30 days</strong>.",
+    "description": "Turn the signals in this audit into a diagnosis of the causes and a priority plan for the <strong>next 30 days</strong>.",
     "benefits_title": "Only in the Pro report",
     "benefits": {
       "diagnosis": "Editorial diagnosis with the causes behind the results",
@@ -1475,10 +1475,11 @@
       "list": "9",
       "currency": "€",
       "caption_prefix": "",
-      "caption_suffix": "one-off payment · no subscription"
+      "caption_suffix": "one-off payment"
     },
-    "cta": "Lock in launch price",
-    "footnote": "Join the list and we'll let you know when it opens · one-time payment, no subscription"
+    "cta": "Unlock Pro analysis",
+    "footnote": "Join the list and we'll let you know when it opens · one-time payment, no subscription",
+    "reassurance": "One-off payment, no subscription. The report stays tied to this profile."
   },
   "end_feedback": {
     "question": "Was this reading useful?",

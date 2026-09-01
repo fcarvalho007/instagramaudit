@@ -1467,9 +1467,9 @@
     "retentionMessage": "Os relatórios ficam disponíveis durante {{days}} dias após a geração."
   },
   "end_of_free": {
-    "eyebrow": "Já viste o que está a acontecer",
+    "eyebrow": "Análise Pro",
     "title": "Agora descobre porquê — e o que deves fazer a seguir.",
-    "description": "O relatório Pro explica as causas por trás destes números e devolve um plano priorizado para os <strong>próximos 30 dias</strong>.",
+    "description": "Transforma os sinais desta auditoria num diagnóstico das causas e num plano de prioridades para os <strong>próximos 30 dias</strong>.",
     "benefits_title": "Só no relatório Pro",
     "benefits": {
       "diagnosis": "Diagnóstico editorial com as causas dos resultados",
@@ -1481,10 +1481,10 @@
       "list": "9",
       "currency": "€",
       "caption_prefix": "",
-      "caption_suffix": "pagamento único · sem subscrição"
+      "caption_suffix": "pagamento único"
     },
-    "cta": "Desbloquear análise completa",
-    "reassurance": "Ideal para quem gere, analisa ou compara perfis de Instagram e precisa de decisões claras, não só de métricas."
+    "cta": "Desbloquear Análise Pro",
+    "reassurance": "Pagamento único, sem subscrição. O relatório fica associado a este perfil."
   },
   "end_feedback": {
     "question": "Esta leitura foi útil?",

@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
 import { useNavigate } from "@tanstack/react-router";
 
@@ -13,6 +6,7 @@ import { trackEvent } from "@/lib/tracking.functions";
 import { trackAnonymousEvent } from "@/lib/analytics/anonymous-funnel";
 
 import { PremiumInterestDialog } from "./premium-interest-dialog";
+import { buildProCheckoutSearch } from "./pro-checkout-search";
 import { scrollToBlock } from "./use-active-block";
 
 /**
@@ -49,10 +43,7 @@ export interface PremiumCtaContextValue {
    * instead of opening the modal (the CTA shouldn't even be visible in
    * that case; this is a defensive no-op).
    */
-  handlePremiumAccessClick: (
-    source: PremiumCtaSource,
-    extra?: PremiumCtaExtra,
-  ) => void;
+  handlePremiumAccessClick: (source: PremiumCtaSource, extra?: PremiumCtaExtra) => void;
   /**
    * Dispatches `premium_window_interest` when the user opens a locked
    * window popover in the analysis-period selector. Does NOT open the
@@ -102,9 +93,7 @@ export function PremiumCtaProvider({
   const [source, setSource] = useState<PremiumCtaSource>("sidebar");
   const navigate = useNavigate();
 
-  const handlePremiumAccessClick = useCallback<
-    PremiumCtaContextValue["handlePremiumAccessClick"]
-  >(
+  const handlePremiumAccessClick = useCallback<PremiumCtaContextValue["handlePremiumAccessClick"]>(
     (nextSource, extra) => {
       // Fire-and-forget tracking; never block the UI.
       trackEvent({
@@ -160,9 +149,7 @@ export function PremiumCtaProvider({
     [snapshotId, handle, variant],
   );
 
-  const goToProCheckout = useCallback<
-    PremiumCtaContextValue["goToProCheckout"]
-  >(
+  const goToProCheckout = useCallback<PremiumCtaContextValue["goToProCheckout"]>(
     (nextSource) => {
       if (premiumUnlocked) {
         if (typeof window !== "undefined") {
@@ -192,13 +179,12 @@ export function PremiumCtaProvider({
 
       navigate({
         to: "/checkout/report-full",
-        search: {
+        search: buildProCheckoutSearch({
           source: nextSource,
-          username: handle ?? undefined,
-          return: typeof window !== "undefined"
-            ? window.location.pathname
-            : "/",
-        },
+          handle,
+          snapshotId,
+          returnPath: typeof window !== "undefined" ? window.location.pathname : "/",
+        }),
       }).catch(() => {});
     },
     [navigate, snapshotId, handle, variant, premiumUnlocked],
@@ -211,12 +197,7 @@ export function PremiumCtaProvider({
       trackPremiumWindowInterest,
       goToProCheckout,
     }),
-    [
-      premiumUnlocked,
-      handlePremiumAccessClick,
-      trackPremiumWindowInterest,
-      goToProCheckout,
-    ],
+    [premiumUnlocked, handlePremiumAccessClick, trackPremiumWindowInterest, goToProCheckout],
   );
 
   return (
@@ -242,9 +223,7 @@ export function PremiumCtaProvider({
 export function usePremiumCta(): PremiumCtaContextValue {
   const ctx = useContext(PremiumCtaContext);
   if (!ctx) {
-    throw new Error(
-      "usePremiumCta must be used inside a <PremiumCtaProvider>.",
-    );
+    throw new Error("usePremiumCta must be used inside a <PremiumCtaProvider>.");
   }
   return ctx;
 }
