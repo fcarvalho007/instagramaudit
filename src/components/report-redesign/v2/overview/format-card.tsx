@@ -317,9 +317,9 @@ export function FormatCard({
         />
       )}
 
-      {/* Verdict — calmer, editorial */}
-      <div className="px-5 md:px-6 mt-6 mb-5 sm:mb-6">
-        <div className="border-t border-border-subtle/60 pt-4">
+      {/* Verdict — conclusão encostada à distribuição */}
+      <div className="px-5 md:px-6 mt-5 mb-5 sm:mb-6">
+        <div className="rounded-xl bg-surface-muted/60 px-4 py-3.5">
           <span className="text-eyebrow-sm text-content-tertiary">
             {calloutLabel}
           </span>
@@ -329,6 +329,7 @@ export function FormatCard({
           </p>
         </div>
       </div>
+
       {socialinsiderRef ? (
         <p className="px-5 md:px-6 -mt-4 mb-3 text-[13px] text-content-secondary leading-relaxed">
           {t("format.external_ref.bridge")}
