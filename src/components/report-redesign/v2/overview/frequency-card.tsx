@@ -306,20 +306,21 @@ function WeeklyRhythmChart({
 
   return (
     <div
-      className="mt-8 rounded-2xl border border-border-default bg-surface-base/60 px-6 md:px-8 pt-6 pb-7"
+      className="mt-5 pt-4 border-t border-border-default/70"
       role="img"
       aria-label={t("frequency.weekly_rhythm.aria_distribution")}
     >
-      <div className="flex items-center justify-between mb-8 md:mb-10">
-        <span className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.2em] text-content-tertiary">
+      <div className="flex items-center justify-between gap-3 mb-4 md:mb-5">
+        <span className="text-eyebrow-sm text-content-tertiary">
           {t("frequency.weekly_rhythm.title")}
         </span>
-        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-content-tertiary/70">
+        <span className="text-eyebrow-sm text-content-tertiary/70">
           {t("frequency.weekly_rhythm.peak_chip")}
         </span>
       </div>
 
-      <div className="flex items-end justify-between gap-2 px-1">
+      <div className="flex items-end justify-between gap-1.5 sm:gap-2">
+
         {buckets.map((b, i) => {
           const isPeak = b.weekday === top.weekday && b.posts > 0;
           const isZero = b.posts === 0;
