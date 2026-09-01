@@ -754,7 +754,8 @@ function renderAudienceCard(
             {tr("diagnostic_questions.audience.empty_help")}
           </p>
         </div>
-        <CommentIntelligenceUnavailable data={commentIntel} />
+        {!hideCommentFallback && <CommentIntelligenceUnavailable data={commentIntel} />}
+
       </ReportDiagnosticCard>
     );
   }
