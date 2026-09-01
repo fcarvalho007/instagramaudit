@@ -120,12 +120,36 @@ function verdictLabelToBand(label: EditorialVerdict["verdict_label"]): Band {
   return "warning"; // needs_work | limited_data
 }
 
+/* ── Veredicto: clamp de apresentação ──────────────────────────────── */
+
+/**
+ * Máximo de frases mostradas no parágrafo do veredicto. Veredictos
+ * antigos (gerados quando o prompt exigia 90–140 palavras) continuam em
+ * cache; são cortados apenas na apresentação e o restante fica atrás de
+ * "Ver leitura completa". Nenhum dado é perdido.
+ */
+const VERDICT_SENTENCE_CAP = 3;
+
+export function clampVerdictParagraph(paragraph: string): {
+  visible: string;
+  rest: string;
+} {
+  const text = paragraph.trim();
+  const parts = text.split(/(?<=[.!?])\s+/).filter((s) => s.trim().length > 0);
+  if (parts.length <= VERDICT_SENTENCE_CAP) return { visible: text, rest: "" };
+  return {
+    visible: parts.slice(0, VERDICT_SENTENCE_CAP).join(" "),
+    rest: parts.slice(VERDICT_SENTENCE_CAP).join(" "),
+  };
+}
+
 /* ── Helpers numéricos ─────────────────────────────────────────────── */
 
 function formatDecimal(value: number, locale: string, digits = 1): string {
   const sep = locale.startsWith("pt") ? "," : ".";
   return value.toFixed(digits).replace(".", sep);
 }
+
 
 /**
  * Format an average metric (likes/post, comments/post) consistently with
