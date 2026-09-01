@@ -134,91 +134,30 @@ export function EngagementCardRefined({ result }: Props) {
         />
       </div>
 
-      {/* Hero row — 3 KPI cards */}
-      <div className="px-4 sm:px-5 md:px-6 pt-5 sm:pt-6 border-t border-border-default pb-6 sm:pb-8">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
-
-          <div className="rounded-xl border border-border-default bg-surface-muted/50 px-4 py-4 sm:px-5 sm:py-5">
-            <span className="text-eyebrow-sm text-content-secondary block mb-2">
-              <span className="hidden sm:inline">{t("engagement.kpi.profile_full")}</span>
-              <span className="sm:hidden">{t("engagement.kpi.profile_short")}</span>
-            </span>
-            <div className="flex items-baseline">
-              <span className="tabular-nums text-[1.6rem] sm:text-[2.25rem] font-bold text-content-primary leading-none tracking-tight">
-                {fmtPctHero(k.engagementRate, language)}
-              </span>
-              <span className="tabular-nums text-[1.6rem] sm:text-[2.25rem] font-light text-content-secondary/50 ml-0.5">
-                %
-              </span>
-            </div>
-            <span className="block text-sm text-content-secondary mt-1.5 leading-snug">
-              <span className="hidden sm:inline">{t("engagement.kpi.profile_caption_full")}</span>
-              <span className="sm:hidden">{t("engagement.kpi.profile_caption_short")}</span>
-            </span>
-          </div>
-
-          {/* KPI 2 — Tier benchmark */}
-          <div className="rounded-xl border border-border-default bg-surface-muted/50 px-4 py-4 sm:px-5 sm:py-5">
-            <span className="text-eyebrow-sm text-content-secondary block mb-2">
-              <span className="hidden sm:inline">{t("engagement.kpi.tier_full")}</span>
-              <span className="sm:hidden">{t("engagement.kpi.tier_short")}</span>
-            </span>
-            <div className="flex items-baseline">
-              <span className="tabular-nums text-[1.6rem] sm:text-[2.25rem] font-bold text-content-primary leading-none tracking-tight">
-                {fmtPctHero(chartBenchmarkVal, language)}
-              </span>
-              <span className="tabular-nums text-[1.6rem] sm:text-[2.25rem] font-light text-content-secondary/50 ml-0.5">
-                %
-              </span>
-            </div>
-            <span className="block text-sm text-content-secondary mt-1.5 leading-snug">
-              <span className="hidden sm:inline">{t("engagement.kpi.tier_caption_full")}</span>
-              <span className="sm:hidden">{t("engagement.kpi.tier_caption_short")}</span>
-            </span>
-          </div>
-
-          {/* KPI 3 — Distance to benchmark */}
-          <div
-            className={cn(
-              "rounded-xl border px-4 py-4 sm:px-5 sm:py-5",
-              isPositive
-                ? "border-signal-success/12 bg-signal-success/3"
-                : "border-signal-danger/12 bg-signal-danger/3",
-            )}
-          >
-            <span className="text-eyebrow-sm text-content-secondary block mb-2">
-              <span className="hidden sm:inline">{t("engagement.kpi.gap_full")}</span>
-              <span className="sm:hidden">{t("engagement.kpi.gap_short")}</span>
-            </span>
-            <div className="flex items-baseline gap-1.5">
-              <span
-                className={cn(
-                  "tabular-nums text-[1.6rem] sm:text-[2.25rem] font-bold leading-none tracking-tight",
-                  isPositive ? "text-signal-success" : "text-signal-danger"
-                )}
-              >
-                {pctDiffLabel}
-              </span>
-              {pctDiffDirection && (
-                <span
-                  className={cn(
-                    "text-sm font-medium",
-                    isPositive ? "text-signal-success" : "text-signal-danger"
-                  )}
-                >
-                  {pctDiffDirection}
-                </span>
-              )}
-            </div>
-            <span className="block text-sm text-content-secondary mt-1.5 leading-snug">
-              {t("engagement.kpi.gap_caption")}
-            </span>
-          </div>
-        </div>
+      {/* Bloco comparativo — taxa → referência → distância */}
+      <div className="px-4 sm:px-5 md:px-6 pt-4 sm:pt-5 border-t border-border-default pb-4 sm:pb-5">
+        <EngagementKpiRow
+          rateLabel={fmtPctHero(k.engagementRate, language)}
+          rateEyebrowFull={t("engagement.kpi.profile_full")}
+          rateEyebrowShort={t("engagement.kpi.profile_short")}
+          rateCaptionFull={t("engagement.kpi.profile_caption_full")}
+          rateCaptionShort={t("engagement.kpi.profile_caption_short")}
+          benchmarkLabel={fmtPctHero(chartBenchmarkVal, language)}
+          benchmarkEyebrowFull={t("engagement.kpi.tier_full")}
+          benchmarkEyebrowShort={t("engagement.kpi.tier_short")}
+          benchmarkCaptionFull={t("engagement.kpi.tier_caption_full")}
+          benchmarkCaptionShort={t("engagement.kpi.tier_caption_short")}
+          gapLabel={pctDiffLabel}
+          gapDirection={pctDiffDirection}
+          gapEyebrowFull={t("engagement.kpi.gap_full")}
+          gapEyebrowShort={t("engagement.kpi.gap_short")}
+          gapCaption={t("engagement.kpi.gap_caption")}
+          isPositive={isPositive}
+        />
       </div>
 
       {/* Chart */}
-      <div className="px-4 sm:px-5 md:px-6 mt-4 sm:mt-6 pb-5 sm:pb-6 md:pb-8">
+      <div className="px-4 sm:px-5 md:px-6 mt-1 sm:mt-2 pb-5 sm:pb-6 md:pb-8">
         <ReportEngagementBenchmarkChart
           profileEngagementRatePct={k.engagementRate}
           followersCount={followers}
