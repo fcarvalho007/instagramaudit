@@ -45,7 +45,7 @@ export function HeroSection() {
           </div>
 
           {/* Right — report preview */}
-          <div className="hero-preview-zone order-2 lg:order-2 w-full mt-20 sm:mt-16 lg:mt-0">
+          <div className="hero-preview-zone order-2 lg:order-2 w-full mt-12 sm:mt-12 lg:mt-0">
             <TiltCard
               className="rounded-3xl"
               tiltLimit={5}
