@@ -989,7 +989,7 @@ function MetricsStrip({
   };
 
   return (
-    <div className="rounded-xl border border-border-default bg-white grid grid-cols-1 sm:grid-cols-3 overflow-hidden divide-y divide-border-default/60 sm:divide-y-0">
+    <div className="rounded-xl bg-surface-muted/60 grid grid-cols-1 sm:grid-cols-3 overflow-hidden divide-y divide-border-default/50 sm:divide-y-0">
       {items.map((it, idx) => {
         const Icon = it.icon;
         const isFirst = idx === 0;
@@ -997,28 +997,29 @@ function MetricsStrip({
           <div
             key={it.key}
             className={cn(
-              "px-5 py-5 sm:px-6 sm:py-6",
-              !isFirst && "sm:border-l sm:border-border-default/60",
+              "px-4 py-4 sm:px-5",
+              !isFirst && "sm:border-l sm:border-border-default/50",
             )}
           >
-            <div className="flex items-center gap-2.5 mb-3">
-              <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-accent-primary/10 shrink-0">
-                <Icon className="h-3.5 w-3.5 text-accent-primary" aria-hidden="true" />
-              </span>
+            <div className="flex items-center gap-2 mb-2">
+              <Icon
+                className="h-3.5 w-3.5 text-content-tertiary shrink-0"
+                aria-hidden="true"
+              />
               <span className="text-eyebrow-sm text-content-secondary">{it.label}</span>
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="font-sans text-[2rem] sm:text-[2.25rem] font-semibold tabular-nums text-content-primary leading-none">
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-sans text-[1.5rem] sm:text-[1.625rem] font-semibold tabular-nums text-content-primary leading-none">
                 {it.value}
               </span>
-              <span className="text-[15px] font-medium text-content-tertiary">{it.unit}</span>
+              <span className="text-[13px] font-medium text-content-tertiary">{it.unit}</span>
             </div>
             {it.key === "likes" ? (
-              <p className="mt-3 text-[15px] leading-[1.5] text-content-secondary">{it.subtitle}</p>
+              <p className="mt-2 text-[13px] leading-[1.5] text-content-secondary">{it.subtitle}</p>
             ) : (
               <span
                 className={cn(
-                  "mt-3 inline-flex items-center rounded-full px-2.5 py-1 text-[13px] font-medium",
+                  "mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-[12px] font-medium",
                   toneClass[it.tone],
                 )}
               >
@@ -1030,4 +1031,5 @@ function MetricsStrip({
       })}
     </div>
   );
+
 }
