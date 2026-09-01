@@ -1258,3 +1258,32 @@ function PreviewThumb({
     </div>
   );
 }
+
+/**
+ * Miniatura secundária da tira "mais publicações": apenas sinal visual de
+ * volume, desfocada e sem métricas.
+ */
+function MorePreviewThumb({
+  post,
+}: {
+  post: EnrichedPost & { thumbnailUrl?: string };
+}) {
+  const [imgError, setImgError] = useState(false);
+  const show = Boolean(post.thumbnailUrl) && !imgError;
+  return (
+    <div className="relative size-9 shrink-0 overflow-hidden rounded-lg border border-border-subtle bg-surface-muted">
+      <div className="absolute inset-0 flex items-center justify-center text-content-tertiary">
+        <FormatIcon format={post.format} className="size-3.5 opacity-50" />
+      </div>
+      {show ? (
+        <img
+          src={post.thumbnailUrl}
+          alt=""
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={() => setImgError(true)}
+          className="absolute inset-0 size-full object-cover blur-[2px]"
+        />
+      ) : null}
+
+}
