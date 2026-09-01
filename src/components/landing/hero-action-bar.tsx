@@ -51,6 +51,11 @@ export function HeroActionBar() {
       >
         <InstagramGlyph className="size-[18px]" />
         <span className="text-eyebrow-sm">{t("actionBar.microLabel")}</span>
+        <ArrowDown
+          aria-hidden="true"
+          strokeWidth={2.25}
+          className="hero-hint-arrow hidden sm:block size-[18px] shrink-0 -rotate-12"
+        />
       </div>
 
       {/* The bar — glass card with input + button inline */}
@@ -64,13 +69,6 @@ export function HeroActionBar() {
             "0 18px 40px -22px rgba(8, 14, 32, 0.45), 0 1px 0 rgba(15, 23, 42, 0.04) inset",
         }}
       >
-        {/* Vertical arrow hint pointing at the input */}
-        <ArrowDown
-          aria-hidden="true"
-          strokeWidth={2.25}
-          className="hero-hint-arrow hidden sm:block pointer-events-none absolute -top-7 left-5 size-[22px]"
-          style={{ color: "rgb(var(--hero-cyan))" }}
-        />
         <form
           onSubmit={handleSubmit}
           className="flex flex-col sm:flex-row items-stretch gap-0"

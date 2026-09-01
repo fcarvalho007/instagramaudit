@@ -20,14 +20,14 @@ export function HeroSection() {
       <HeroAuroraBackground />
 
       <Container size="lg" className="relative z-10 py-16 md:py-28 lg:py-32">
-        <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-10 lg:gap-12 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_0.85fr] gap-10 lg:gap-12 items-center">
           {/* Left — copy + action */}
           <div className="order-1 space-y-7 md:space-y-8 text-center lg:text-left">
             <BlurRevealText
               text={t("hero.headline")}
               as="h1"
               className="font-display text-[2.5rem] sm:text-5xl md:text-6xl lg:text-7xl tracking-[-0.02em] font-medium leading-[1.12] sm:leading-[1.08] lg:leading-[1.06] pb-[0.12em] text-balance max-w-[16ch] sm:max-w-[20ch] lg:max-w-[22ch] mx-auto lg:mx-0 text-[color:rgb(var(--hero-text-primary))]"
-              delayMs={150}
+              delayMs={60}
               highlightTailWords={2}
               highlightClassName="bg-gradient-to-r from-[rgb(var(--hero-cyan-soft))] via-[rgb(var(--hero-cyan))] to-[rgb(var(--hero-violet))] bg-clip-text text-transparent"
             />
@@ -35,8 +35,8 @@ export function HeroSection() {
             <BlurRevealText
               text={t("hero.subtitle")}
               as="p"
-              className="font-sans text-base md:text-[1.0625rem] leading-[1.55] max-w-xl lg:max-w-none lg:whitespace-nowrap mx-auto lg:mx-0 text-[color:rgb(var(--hero-text-secondary))]"
-              delayMs={500}
+              className="font-sans text-base md:text-[1.0625rem] leading-[1.55] max-w-[46ch] text-balance mx-auto lg:mx-0 text-[color:rgb(var(--hero-text-secondary))]"
+              delayMs={260}
             />
 
             <div className="pt-4 lg:pt-2">
