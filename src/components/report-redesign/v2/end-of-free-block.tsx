@@ -109,4 +109,3 @@ export function ReportEndOfFreeBlock({ className }: { className?: string }) {
     </section>
   );
 }
-
