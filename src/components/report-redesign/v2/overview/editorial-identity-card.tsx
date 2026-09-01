@@ -316,7 +316,112 @@ export function deriveSignals(
   return { strengths: strengths.slice(0, 2), limits: limits.slice(0, 2) };
 }
 
+/* ── Prova de leitura ──────────────────────────────────────────────── */
+
+interface ReadProofInput {
+  postsAnalyzed?: number;
+  cadenceWindowDays?: number | null;
+  cadenceLabelPt?: string | null;
+  dominantFormat?: string;
+  dominantFormatShare?: number;
+  topHashtags?: ReadonlyArray<string> | null;
+  hashtagsState?: "recurring" | "weak" | "absent" | null;
+  averageLikes?: number;
+  averageComments?: number;
+}
+
+/**
+ * Linha factual que prova ao leitor que o perfil foi realmente lido.
+ * Só entram itens com dados reais — nada é estimado nem preenchido com
+ * placeholders. Exportada para teste.
+ */
+export function buildReadProofItems(
+  input: ReadProofInput,
+  t: TFunction,
+  locale: string,
+): string[] {
+  const items: string[] = [];
+
+  if (typeof input.postsAnalyzed === "number" && input.postsAnalyzed > 0) {
+    items.push(
+      t("identity.read_proof.posts", {
+        count: input.postsAnalyzed,
+        defaultValue: "{{count}} publicações analisadas",
+      }),
+    );
+  }
+
+  if (
+    typeof input.cadenceWindowDays === "number" &&
+    input.cadenceWindowDays > 0
+  ) {
+    items.push(
+      t("identity.read_proof.window", {
+        days: input.cadenceWindowDays,
+        defaultValue: "janela de {{days}} dias",
+      }),
+    );
+  }
+
+  const cadence = input.cadenceLabelPt?.trim();
+  if (cadence) items.push(cadence);
+
+  if (
+    input.dominantFormat &&
+    typeof input.dominantFormatShare === "number" &&
+    input.dominantFormatShare > 0
+  ) {
+    items.push(
+      `${Math.round(input.dominantFormatShare)}% ${input.dominantFormat}`,
+    );
+  }
+
+  if (input.hashtagsState === "recurring") {
+    const tags = (input.topHashtags ?? [])
+      .slice(0, 2)
+      .map((tag) => (tag.startsWith("#") ? tag : `#${tag}`));
+    if (tags.length > 0) items.push(tags.join(", "));
+  }
+
+  if (
+    typeof input.averageLikes === "number" &&
+    typeof input.averageComments === "number"
+  ) {
+    items.push(
+      t("identity.read_proof.averages", {
+        likes: formatCompactNumber(Math.round(input.averageLikes), locale),
+        comments: formatCompactNumber(
+          Math.round(input.averageComments),
+          locale,
+        ),
+        defaultValue: "{{likes}} gostos / {{comments}} comentários por post",
+      }),
+    );
+  }
+
+  return items;
+}
+
+function ReadProofLine({ items }: { items: string[] }) {
+  if (items.length === 0) return null;
+  return (
+    <ul className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] leading-[1.5] text-content-tertiary tabular-nums">
+      {items.map((item, idx) => (
+        <li key={item} className="flex items-center gap-2">
+          {idx > 0 ? (
+            <span aria-hidden="true" className="text-border-default">
+              ·
+            </span>
+          ) : null}
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /* ── Main Component ────────────────────────────────────────────────── */
+
 
 export function EditorialIdentityCard({
   scores,
