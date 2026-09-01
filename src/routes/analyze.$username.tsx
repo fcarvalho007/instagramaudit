@@ -693,7 +693,7 @@ function AnalyzeReady({
   return (
     <>
       {/* Nível 0: cabeçalho informativo. O único CTA visível ao visitante
-          anónimo é o "Aprofundar gratuitamente" (DeepenAnalysisCta).
+          anónimo é o gate dentro do preview de Publicações-chave.
           Envolvido em `ReportGridRow` para partilhar a grelha do shell. */}
       <ReportGridRow className="pt-3 sm:pt-4">
         <InstantAuditBar
@@ -759,14 +759,19 @@ function AnalyzeReady({
           pdfDisabled: shareActions.pdfDisabled,
         }}
       />
-      <ReportGridRow>
-        <DeepenAnalysisCta
-          handle={auditHandle}
-          snapshotId={snapshotId}
-          unlockStatus={unlockStatus}
-          onConvert={() => openConversion("comment_intelligence")}
-        />
-      </ReportGridRow>
+      {/* QA 09 — CTA único no Estado A: a decisão principal vive no gate
+          dentro do preview de Publicações-chave. Este bloco passa a ser
+          apenas a superfície de ESTADO do desbloqueio (a processar /
+          disponível), montada só depois da captura de email. */}
+      {unlockStatus !== null && !premiumUnlocked ? (
+        <ReportGridRow>
+          <DeepenAnalysisCta
+            handle={auditHandle}
+            snapshotId={snapshotId}
+            unlockStatus={unlockStatus}
+          />
+        </ReportGridRow>
+      ) : null}
 
       <ConversionSheet
         open={conversionOpen}

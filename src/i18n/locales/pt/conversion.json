@@ -40,5 +40,10 @@
     "eyebrow": "Próximo nível",
     "title": "Aprofundar a análise",
     "body": "A análise de comentários acrescenta leitura de audiência: temas recorrentes, tom das reacções e sinais de intenção nas publicações com melhor desempenho de @{{handle}}."
+  },
+  "gate": {
+    "title": "Já sabes o que está a acontecer. Falta perceber porquê.",
+    "body": "Guarda esta auditoria para ver que conteúdos explicam estes sinais — as publicações completas, o mix de formatos e as conversas que geram.",
+    "cta": "Aprofundar gratuitamente"
   }
 }

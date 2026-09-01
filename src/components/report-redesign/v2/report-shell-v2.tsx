@@ -293,6 +293,7 @@ export function ReportShellV2({
                     access={
                       premiumUnlocked ? "pro" : leadCaptured ? "lead" : "anon"
                     }
+                    onFreeUnlockClick={handleUnlockClick}
                   />
                 )}
 

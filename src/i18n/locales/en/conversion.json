@@ -40,5 +40,10 @@
     "eyebrow": "Next level",
     "title": "Go deeper into the analysis",
     "body": "Comment analysis adds audience reading: recurring themes, tone of reactions and intent signals in the best-performing posts of @{{handle}}."
+  },
+  "gate": {
+    "title": "You already know what is happening. Now find out why.",
+    "body": "Save this audit to see which content explains these signals — the full posts, the format mix and the conversations they spark.",
+    "cta": "Go deeper, for free"
   }
 }
