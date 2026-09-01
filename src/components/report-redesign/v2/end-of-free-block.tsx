@@ -1,9 +1,4 @@
-import {
-  ArrowRight,
-  CalendarClock,
-  ListChecks,
-  Stethoscope,
-} from "lucide-react";
+import { ArrowRight, CalendarClock, ListChecks, Stethoscope } from "lucide-react";
 import { Trans, useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { PUBLIC_PRODUCTS } from "@/lib/payments/products";
@@ -37,10 +32,7 @@ export function ReportEndOfFreeBlock({ className }: { className?: string }) {
   ] as const;
 
   return (
-    <section
-      aria-label={t("end_of_free.eyebrow")}
-      className={cn(className)}
-    >
+    <section aria-label={t("end_of_free.eyebrow")} className={cn(className)}>
       <div
         className={cn(
           "mx-auto max-w-xl text-center",
@@ -49,13 +41,10 @@ export function ReportEndOfFreeBlock({ className }: { className?: string }) {
           "shadow-[0_8px_40px_-12px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.04)]",
         )}
         style={{
-          background:
-            "linear-gradient(180deg, #FFFFFF 0%, #F8FAFE 100%)",
+          background: "linear-gradient(180deg, #FFFFFF 0%, #F8FAFE 100%)",
         }}
       >
-        <p className="text-eyebrow-sm text-content-tertiary">
-          {t("end_of_free.eyebrow")}
-        </p>
+        <p className="text-eyebrow-sm text-content-tertiary">{t("end_of_free.eyebrow")}</p>
 
         <h2
           className={cn(
@@ -80,10 +69,7 @@ export function ReportEndOfFreeBlock({ className }: { className?: string }) {
               key={key}
               className="flex items-start gap-3 text-[14.5px] leading-snug text-content-primary"
             >
-              <Icon
-                className="mt-0.5 size-4 shrink-0 text-content-tertiary"
-                aria-hidden="true"
-              />
+              <Icon className="mt-0.5 size-4 shrink-0 text-content-tertiary" aria-hidden="true" />
               <span>{t(`end_of_free.benefits.${key}`)}</span>
             </li>
           ))}

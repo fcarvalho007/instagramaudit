@@ -218,8 +218,7 @@ function Eyebrow({ children, tone }: { children: string; tone: EyebrowTone }) {
     <span
       className={cn(
         "inline-flex w-fit items-center rounded-full px-2 py-0.5 text-eyebrow-sm",
-        tone === "neutral" &&
-          "bg-surface-base text-content-tertiary ring-1 ring-border-default",
+        tone === "neutral" && "bg-surface-base text-content-tertiary ring-1 ring-border-default",
         tone === "secondary" &&
           "bg-accent-secondary/10 text-accent-secondary ring-1 ring-accent-secondary/20",
         tone === "primary" &&
@@ -231,20 +230,11 @@ function Eyebrow({ children, tone }: { children: string; tone: EyebrowTone }) {
   );
 }
 
-function BulletList({
-  items,
-  tone,
-}: {
-  items: string[];
-  tone: "muted" | "accent";
-}) {
+function BulletList({ items, tone }: { items: string[]; tone: "muted" | "accent" }) {
   return (
     <ul className="mt-3 space-y-1.5">
       {items.map((b) => (
-        <li
-          key={b}
-          className="flex items-start gap-2 text-xs text-content-secondary"
-        >
+        <li key={b} className="flex items-start gap-2 text-xs text-content-secondary">
           <Check
             aria-hidden="true"
             className={cn(
@@ -285,9 +275,7 @@ function NeutralCard({
       <p className="mt-1 text-3xl font-bold text-content-primary tabular-nums leading-none">
         {price}
       </p>
-      {unit ? (
-        <p className="mt-1 text-xs text-content-tertiary leading-relaxed">{unit}</p>
-      ) : null}
+      {unit ? <p className="mt-1 text-xs text-content-tertiary leading-relaxed">{unit}</p> : null}
       <BulletList items={bullets} tone={eyebrowTone === "neutral" ? "muted" : "accent"} />
       <div className="mt-4 sm:mt-auto pt-2">{children}</div>
     </div>
@@ -332,9 +320,7 @@ function HeroCard({
         <span className="text-3xl font-bold text-content-primary tabular-nums leading-none">
           {price}
         </span>
-        <span className="text-base text-content-tertiary line-through tabular-nums">
-          {strike}
-        </span>
+        <span className="text-base text-content-tertiary line-through tabular-nums">{strike}</span>
       </div>
       <p className="mt-1 text-xs text-content-tertiary leading-relaxed">{launch}</p>
       <BulletList items={bullets} tone="accent" />

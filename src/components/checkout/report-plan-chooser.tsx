@@ -65,11 +65,7 @@ interface Props {
 
 export function ReportPlanChooser({ value, onChange }: Props) {
   return (
-    <div
-      role="radiogroup"
-      aria-label="Escolhe o plano"
-      className="grid gap-3 sm:grid-cols-3"
-    >
+    <div role="radiogroup" aria-label="Escolhe o plano" className="grid gap-3 sm:grid-cols-3">
       {PLANS.map((plan) => {
         const selected = plan.code === value;
         return (
@@ -93,14 +89,9 @@ export function ReportPlanChooser({ value, onChange }: Props) {
               </span>
             ) : null}
             <div className="flex items-baseline justify-between gap-2">
-              <p className="text-sm font-semibold text-content-primary">
-                {plan.title}
-              </p>
+              <p className="text-sm font-semibold text-content-primary">{plan.title}</p>
               {selected ? (
-                <Check
-                  aria-hidden="true"
-                  className="size-4 text-accent-primary"
-                />
+                <Check aria-hidden="true" className="size-4 text-accent-primary" />
               ) : null}
             </div>
             <div className="mt-2 flex items-baseline gap-2">
@@ -113,15 +104,10 @@ export function ReportPlanChooser({ value, onChange }: Props) {
                 {plan.totalLabel}
               </span>
             </div>
-            <p className="mt-1 text-xs text-content-tertiary">
-              {plan.perReportLabel}
-            </p>
+            <p className="mt-1 text-xs text-content-tertiary">{plan.perReportLabel}</p>
             <ul className="mt-3 space-y-1">
               {plan.bullets.map((b) => (
-                <li
-                  key={b}
-                  className="flex items-start gap-1.5 text-xs text-content-secondary"
-                >
+                <li key={b} className="flex items-start gap-1.5 text-xs text-content-secondary">
                   <Check
                     aria-hidden="true"
                     className="mt-0.5 size-3 shrink-0 text-accent-primary"

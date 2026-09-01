@@ -40,11 +40,7 @@ function useStickyUnlockTrigger() {
             const entry = entries[0];
             // Só quando a secção já saiu por cima do viewport, i.e. foi
             // efectivamente lida.
-            if (
-              entry &&
-              !entry.isIntersecting &&
-              entry.boundingClientRect.bottom < 0
-            ) {
+            if (entry && !entry.isIntersecting && entry.boundingClientRect.bottom < 0) {
               setPassedValue(true);
             }
           },
@@ -125,9 +121,7 @@ export function StickyUnlockBar() {
       className={cn(
         "hidden md:block fixed inset-x-0 bottom-0 z-30",
         "transition-[opacity,transform] duration-200 ease-out",
-        visible
-          ? "opacity-100 translate-y-0"
-          : "opacity-0 translate-y-2 pointer-events-none",
+        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none",
       )}
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       role="region"
@@ -153,9 +147,7 @@ export function StickyUnlockBar() {
             </p>
           </div>
           <div className="shrink-0 flex items-baseline gap-1.5">
-            <span className="text-base font-semibold tabular-nums text-white">
-              {priceLabel}
-            </span>
+            <span className="text-base font-semibold tabular-nums text-white">{priceLabel}</span>
             <span className="text-xs text-white/60">pagamento único</span>
           </div>
           <button
