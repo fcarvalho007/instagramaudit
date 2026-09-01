@@ -6,6 +6,7 @@
  *   MetricsStrip    | 3 blocos: média de likes, média de comentários, frequência semanal
  *   Zona accionável | duas colunas: "O QUE JÁ FUNCIONA" (success) / "O QUE LIMITA O CRESCIMENTO" (warning)
  */
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   ArrowDownRight,
