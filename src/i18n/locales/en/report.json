@@ -131,7 +131,6 @@
     "evidence_title": "Signals used in this reading",
     "evidence_strip_title": "Evidence",
     "verdict_eyebrow": "Verdict",
-
     "evidence": {
       "cadence.window_30d": "Cadence over the last 30 days",
       "cadence.window_90d": "Cadence over the last 90 days",
@@ -831,7 +830,23 @@
         "confidence_low": "< 50%",
         "detail_with_conf": "{{detail}} · {{conf}}"
       }
-    }
+    },
+    "priorities_heading": "What to test, fix or repeat?",
+    "priorities_horizon": "Plan for the next 4 weeks",
+    "priorities_based_on": "Based on:",
+    "priorities_category": {
+      "testar": "Test",
+      "corrigir": "Fix",
+      "repetir": "Repeat",
+      "oportunidade": "Opportunity"
+    },
+    "priorities_source": {
+      "ai": "AI",
+      "deterministic": "Rule"
+    },
+    "verdict_fallback": "Automatic reading: dominant content {{content}}, editorial role {{funnel}} and {{audience}}. The priorities below follow from this.",
+    "pro_unlocked_eyebrow": "Pro report unlocked",
+    "pro_unlocked_body": "From here on: why these results happen and what to do over the next 4 weeks."
   },
   "comparison": {
     "cta_aria": "Compare with direct competitors",

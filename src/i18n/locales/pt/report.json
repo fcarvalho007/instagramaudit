@@ -137,7 +137,6 @@
     "evidence_title": "Sinais usados nesta leitura",
     "evidence_strip_title": "Evidência",
     "verdict_eyebrow": "Veredicto",
-
     "evidence": {
       "cadence.window_30d": "Cadência observada nos últimos 30 dias",
       "cadence.window_90d": "Cadência observada nos últimos 90 dias",
@@ -842,7 +841,12 @@
         "confidence_low": "< 50%",
         "detail_with_conf": "{{detail}} · {{conf}}"
       }
-    }
+    },
+    "priorities_heading": "O que testar, corrigir ou repetir?",
+    "priorities_horizon": "Plano para as próximas 4 semanas",
+    "verdict_fallback": "Leitura automática: conteúdo dominante {{content}}, papel editorial {{funnel}} e {{audience}}. As prioridades abaixo partem deste cruzamento.",
+    "pro_unlocked_eyebrow": "Relatório Pro desbloqueado",
+    "pro_unlocked_body": "A partir daqui: porquê estes resultados acontecem e o que fazer nas próximas 4 semanas."
   },
   "comparison": {
     "cta_aria": "Comparar com concorrentes diretos",
