@@ -135,6 +135,9 @@
     },
     "priority_label": "Próximo passo",
     "evidence_title": "Sinais usados nesta leitura",
+    "evidence_strip_title": "Evidência",
+    "verdict_eyebrow": "Veredicto",
+
     "evidence": {
       "cadence.window_30d": "Cadência observada nos últimos 30 dias",
       "cadence.window_90d": "Cadência observada nos últimos 90 dias",
