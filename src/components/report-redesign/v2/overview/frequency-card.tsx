@@ -433,7 +433,11 @@ function FrequencyConclusion({
   })();
 
   return (
-    <div className="mt-8 pt-5 border-t border-border-default/70 space-y-2.5">
+    <div className="mt-4 rounded-xl bg-surface-muted/60 px-4 py-3.5 space-y-2">
+      <p className="text-eyebrow-sm text-content-tertiary">
+        {t("frequency.reading_label")}
+      </p>
+
       <p
         className="text-[14px] text-content-secondary leading-relaxed [&_b]:font-semibold [&_b]:text-content-primary"
         dangerouslySetInnerHTML={{ __html: interpretation }}
