@@ -759,14 +759,19 @@ function AnalyzeReady({
           pdfDisabled: shareActions.pdfDisabled,
         }}
       />
-      <ReportGridRow>
-        <DeepenAnalysisCta
-          handle={auditHandle}
-          snapshotId={snapshotId}
-          unlockStatus={unlockStatus}
-          onConvert={() => openConversion("comment_intelligence")}
-        />
-      </ReportGridRow>
+      {/* QA 09 — CTA único no Estado A: a decisão principal vive no gate
+          dentro do preview de Publicações-chave. Este bloco passa a ser
+          apenas a superfície de ESTADO do desbloqueio (a processar /
+          disponível), montada só depois da captura de email. */}
+      {unlockStatus !== null && !premiumUnlocked ? (
+        <ReportGridRow>
+          <DeepenAnalysisCta
+            handle={auditHandle}
+            snapshotId={snapshotId}
+            unlockStatus={unlockStatus}
+          />
+        </ReportGridRow>
+      ) : null}
 
       <ConversionSheet
         open={conversionOpen}
