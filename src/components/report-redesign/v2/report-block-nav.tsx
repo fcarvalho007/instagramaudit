@@ -456,16 +456,22 @@ function ItemRow({
       >
         {item.block.shortLabel}
       </span>
-      {showBadge && !compact ? (
+      {/* O badge de acesso acompanha o modo compacto: encolhe, nunca
+          desaparece — em sticky continua a distinguir grátis de premium. */}
+      {showBadge ? (
         <span
           className={cn(
-            "ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.06em] ring-1",
+            "ml-auto inline-flex items-center gap-1 rounded-full font-semibold uppercase ring-1",
+            compact
+              ? "px-1.5 py-0 text-[10px] tracking-[0.04em]"
+              : "px-2 py-0.5 text-xs tracking-[0.06em]",
             badgeClass,
           )}
         >
           {badgeLabel}
         </span>
       ) : null}
+
     </button>
   );
 }
