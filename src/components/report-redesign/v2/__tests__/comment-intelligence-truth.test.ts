@@ -38,6 +38,8 @@ function base(overrides: Partial<CommentIntelligence> = {}): CommentIntelligence
     complaintOrIssueCount: 1,
     buyingIntentCount: 1,
     spamOrLowQualityCount: 0,
+    dominantConversationSignals: [],
+    recommendedConversationAction: "Responder às perguntas mais frequentes.",
     limitations: [],
     ...(overrides as object),
   } as CommentIntelligence;
