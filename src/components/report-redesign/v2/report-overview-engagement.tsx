@@ -23,6 +23,7 @@ import { useLanguage } from "@/hooks/use-language";
 import { formatNumber } from "@/lib/i18n/format";
 import { ReportEngagementBenchmarkChart } from "./report-engagement-benchmark-chart";
 import { InsightCallout } from "./overview/insight-callout";
+import { EngagementKpiRow } from "./overview/engagement-kpi-row";
 import { ReportCardSectionHeader } from "./report-card-section-header";
 
 interface Props {
