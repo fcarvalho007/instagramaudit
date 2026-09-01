@@ -1132,16 +1132,8 @@ export function PostComparisonPreview({
               className="rounded-xl border border-border-default bg-surface-base overflow-hidden"
             >
               <div className="flex gap-3 p-3">
-                <div className="size-20 shrink-0 overflow-hidden rounded-lg bg-surface-muted">
-                  {post.thumbnailUrl ? (
-                    <img
-                      src={post.thumbnailUrl}
-                      alt=""
-                      loading="lazy"
-                      className="size-full object-cover"
-                    />
-                  ) : null}
-                </div>
+                <PreviewThumb post={post} />
+
                 <div className="min-w-0 flex-1">
                   <p
                     className={cn(
