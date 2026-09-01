@@ -392,10 +392,7 @@ export function CommentIntelligenceUnavailable({ data }: { data?: CommentIntelli
   }
 
   // ── internal_lab: full technical detail ──
-  const effectiveReason = (reason && TECHNICAL_REASONS.has(reason))
-    ? reason
-    : reason;
-  const validReason = effectiveReason && UNAVAILABLE_REASON_KEYS.has(effectiveReason)
+  const validReason = reason && UNAVAILABLE_REASON_KEYS.has(reason)
     ? effectiveReason
     : null;
   const title = validReason
