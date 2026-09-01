@@ -330,7 +330,7 @@ function WeeklyRhythmChart({
           return (
             <div
               key={`col-${i}`}
-              className="flex flex-col items-center gap-3 w-full max-w-[48px]"
+              className="flex flex-col items-center gap-2 w-full min-w-0 max-w-[52px]"
             >
               <span
                 className="text-[11px] tabular-nums"
@@ -338,25 +338,24 @@ function WeeklyRhythmChart({
                   color: isPeak
                     ? NAVY
                     : isZero
-                      ? "transparent"
-                      : "rgba(3, 4, 94, 0.45)",
+                      ? "rgba(3, 4, 94, 0.30)"
+                      : "rgba(3, 4, 94, 0.55)",
                   fontWeight: isPeak ? 700 : 600,
                 }}
-                aria-hidden={isZero || undefined}
               >
                 {b.posts}
               </span>
 
               {isZero ? (
-                <div className="w-full h-24 flex items-end justify-center">
+                <div className="w-full h-20 flex items-end justify-center">
                   <div
-                    className="w-1.5 h-1.5 rounded-full"
+                    className="w-full h-1.5 rounded-full"
                     style={{ background: TRACK }}
                   />
                 </div>
               ) : (
                 <div
-                  className="w-full h-24 rounded-full relative overflow-hidden"
+                  className="w-full h-20 rounded-full relative overflow-hidden"
                   style={{
                     background: TRACK,
                     boxShadow: isPeak
@@ -372,19 +371,20 @@ function WeeklyRhythmChart({
               )}
 
               <span
-                className="text-xs uppercase tracking-[0.08em]"
+                className="text-xs uppercase tracking-[0.06em] truncate max-w-full"
                 style={{
                   color: isPeak
                     ? NAVY
                     : isZero
-                      ? "rgba(3, 4, 94, 0.22)"
-                      : "rgba(3, 4, 94, 0.6)",
+                      ? "rgba(3, 4, 94, 0.35)"
+                      : "rgba(3, 4, 94, 0.62)",
                   fontWeight: isPeak ? 700 : 500,
                 }}
               >
                 {label}
               </span>
             </div>
+
           );
         })}
       </div>
