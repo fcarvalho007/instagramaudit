@@ -860,33 +860,38 @@ function BulletColumn({
   const dot = tone === "success" ? "bg-signal-success" : "bg-signal-warning";
   const surface =
     tone === "success"
-      ? "bg-signal-success/[0.06] border-l-2 border-signal-success"
-      : "bg-signal-warning/[0.07] border-l-2 border-signal-warning";
+      ? "border-l-2 border-signal-success/60"
+      : "border-l-2 border-signal-warning/60";
   const Icon = tone === "success" ? ArrowUpRight : ArrowDownRight;
 
   return (
-    <div className={cn("px-6 py-5 sm:px-7 sm:py-6", surface, className)}>
-      <div className="flex items-start gap-2 mb-3">
-        <Icon className={cn("h-3.5 w-3.5 mt-0.5", accent)} aria-hidden="true" />
+    <div className={cn("px-6 py-5 sm:px-7", surface, className)}>
+      <div className="flex items-center gap-2 mb-2.5">
+        <Icon className={cn("h-3.5 w-3.5", accent)} aria-hidden="true" />
         <span className={cn("text-eyebrow-sm", accent)}>{title}</span>
       </div>
-      <ul className="space-y-2.5">
+      <ul className="space-y-2">
         {items.map((it, i) => (
-          <li key={i} className="flex gap-2.5 text-[17px] leading-[1.65]">
+          <li key={i} className="flex gap-2.5 text-[15px] leading-[1.6]">
             <span
               className={cn("mt-[7px] h-1.5 w-1.5 rounded-full shrink-0", dot)}
               aria-hidden="true"
             />
             <span className="text-content-primary">
               <span className="font-medium text-content-primary">{it.destaque}</span>
-              {" · "}
-              {it.detalhe}
+              {it.detalhe ? (
+                <>
+                  {" · "}
+                  {it.detalhe}
+                </>
+              ) : null}
             </span>
           </li>
         ))}
       </ul>
     </div>
   );
+
 }
 
 /* ── Metrics Strip ─────────────────────────────────────────────────── */
