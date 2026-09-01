@@ -25,6 +25,8 @@ import {
   type PriorityBasis,
 } from "@/lib/report/block02-diagnostic";
 import { ReportDiagnosticPriorities } from "./report-diagnostic-priorities";
+import { ReportDiagnosticVerdict } from "./report-diagnostic-verdict";
+
 
 import { ReportDiagnosticGroup } from "./report-diagnostic-group";
 import {
