@@ -1132,16 +1132,8 @@ export function PostComparisonPreview({
               className="rounded-xl border border-border-default bg-surface-base overflow-hidden"
             >
               <div className="flex gap-3 p-3">
-                <div className="size-20 shrink-0 overflow-hidden rounded-lg bg-surface-muted">
-                  {post.thumbnailUrl ? (
-                    <img
-                      src={post.thumbnailUrl}
-                      alt=""
-                      loading="lazy"
-                      className="size-full object-cover"
-                    />
-                  ) : null}
-                </div>
+                <PreviewThumb post={post} />
+
                 <div className="min-w-0 flex-1">
                   <p
                     className={cn(
@@ -1203,3 +1195,35 @@ export function PostComparisonPreview({
   );
 }
 
+
+/**
+ * Miniatura do preview gratuito. Quando não existe imagem (ou o URL do CDN
+ * do Instagram já expirou), mostra o ícone de formato em vez de um espaço
+ * partido. Nunca inventa imagem.
+ */
+function PreviewThumb({
+  post,
+}: {
+  post: EnrichedPost & { thumbnailUrl?: string };
+}) {
+  const [imgError, setImgError] = useState(false);
+  const url = post.thumbnailUrl;
+  const show = Boolean(url) && !imgError;
+  return (
+    <div className="relative size-20 shrink-0 overflow-hidden rounded-lg border border-border-subtle bg-surface-muted">
+      <div className="absolute inset-0 flex items-center justify-center text-content-tertiary">
+        <FormatIcon format={post.format} className="size-6 opacity-60" />
+      </div>
+      {show ? (
+        <img
+          src={url}
+          alt=""
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={() => setImgError(true)}
+          className="absolute inset-0 size-full object-cover"
+        />
+      ) : null}
+    </div>
+  );
+}
