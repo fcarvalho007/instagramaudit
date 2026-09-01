@@ -26,12 +26,14 @@ interface PlanOption {
   bullets: string[];
 }
 
+// Preços e strikes vêm de `PUBLIC_PRODUCTS` (fonte única de exibição);
+// aqui só vive a composição da grelha e o preço unitário derivado.
 const PLANS: PlanOption[] = [
   {
     code: "report_full_9",
     title: "1 relatório",
     unitCount: 1,
-    totalLabel: "9€",
+    totalLabel: PUBLIC_PRODUCTS.report_full_9.priceLabel,
     perReportLabel: "9€ por relatório",
     bullets: ["Desbloqueio único", "Para um perfil"],
   },
@@ -39,18 +41,18 @@ const PLANS: PlanOption[] = [
     code: "report_pack_5",
     title: "Pack 5 relatórios",
     unitCount: 5,
-    totalLabel: "40€",
+    totalLabel: PUBLIC_PRODUCTS.report_pack_5.priceLabel,
     perReportLabel: "8€ por relatório",
-    strike: "45€",
+    strike: PUBLIC_PRODUCTS.report_pack_5.strikePrice,
     bullets: ["5 desbloqueios", "Perfis à escolha", "Sem expiração"],
   },
   {
     code: "report_pack_10",
     title: "Pack 10 relatórios",
     unitCount: 10,
-    totalLabel: "72€",
+    totalLabel: PUBLIC_PRODUCTS.report_pack_10.priceLabel,
     perReportLabel: "7,20€ por relatório",
-    strike: "90€",
+    strike: PUBLIC_PRODUCTS.report_pack_10.strikePrice,
     badge: "Melhor valor",
     bullets: ["10 desbloqueios", "Perfis à escolha", "Sem expiração"],
   },
