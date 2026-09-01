@@ -1103,7 +1103,13 @@ export function PostComparisonPreview({
   }
 
   /** Rótulos nítidos, valores por revelar. Nenhum dado real no DOM. */
-  const protectedMetrics = ["Envolvimento", "vs. média"];
+  const protectedMetrics = ["Envolvimento", "Interacções", "vs. média"];
+
+  const shownIds = new Set(items.map((i) => i.post.id));
+  const morePosts = [...topPosts, ...bottomPosts].filter(
+    (p) => !shownIds.has(p.id),
+  );
+  const remaining = Math.max(0, (sampleSize ?? 0) - items.length);
 
   return (
     <article
@@ -1131,39 +1137,40 @@ export function PostComparisonPreview({
               key={post.id}
               className="rounded-xl border border-border-default bg-surface-base overflow-hidden"
             >
-              <div className="flex gap-3 p-3">
+              <div className="relative">
                 <PreviewThumb post={post} />
+                <span
+                  className={cn(
+                    "absolute left-3 top-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1",
+                    "text-eyebrow-sm bg-surface-base/90 backdrop-blur-sm border border-border-subtle",
+                    tone === "best" ? "text-signal-positive" : "text-signal-warning",
+                  )}
+                >
+                  {tone === "best" ? (
+                    <ArrowUpRight className="size-3.5" aria-hidden="true" />
+                  ) : (
+                    <ArrowDownRight className="size-3.5" aria-hidden="true" />
+                  )}
+                  {label}
+                </span>
+              </div>
 
-                <div className="min-w-0 flex-1">
-                  <p
-                    className={cn(
-                      "text-eyebrow-sm inline-flex items-center gap-1",
-                      tone === "best" ? "text-signal-positive" : "text-signal-warning",
-                    )}
-                  >
-                    {tone === "best" ? (
-                      <ArrowUpRight className="size-3.5" aria-hidden="true" />
-                    ) : (
-                      <ArrowDownRight className="size-3.5" aria-hidden="true" />
-                    )}
-                    {label}
-                  </p>
-                  <p className="mt-1 flex items-center gap-1.5 text-xs text-content-tertiary">
-                    <FormatIcon format={post.format} className="size-3.5" />
-                    <span>{formatChipLabel(post.format, t)}</span>
-                    {post.date ? <span aria-hidden="true">·</span> : null}
-                    {post.date ? <span>{post.date}</span> : null}
-                  </p>
-                  <p className="mt-1.5 truncate text-sm text-content-secondary">
-                    {post.caption || "—"}
-                  </p>
-                </div>
+              <div className="p-3">
+                <p className="flex items-center gap-1.5 text-xs text-content-tertiary">
+                  <FormatIcon format={post.format} className="size-3.5" />
+                  <span>{formatChipLabel(post.format, t)}</span>
+                  {post.date ? <span aria-hidden="true">·</span> : null}
+                  {post.date ? <span>{post.date}</span> : null}
+                </p>
+                <p className="mt-1.5 line-clamp-2 text-sm leading-snug text-content-secondary">
+                  {post.caption || "—"}
+                </p>
               </div>
               {/* Faixa protegida: rótulos legíveis, valores por revelar.
                   Os valores são glifos neutros — nenhum dado sanitizado
                   chega ao DOM. */}
               <div className="relative border-t border-border-default bg-surface-muted/50 px-3 py-2.5">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-2">
                   {protectedMetrics.map((metric) => (
                     <div key={metric} className="min-w-0">
                       <p className="text-eyebrow-sm truncate text-content-tertiary">
@@ -1187,13 +1194,36 @@ export function PostComparisonPreview({
           ))}
         </div>
 
+        {morePosts.length > 0 || remaining > 0 ? (
+          <div className="mt-4 flex items-center gap-3 rounded-xl border border-border-default bg-surface-base px-3 py-2.5">
+            <div className="flex -space-x-2" aria-hidden="true">
+              {morePosts.slice(0, 5).map((p) => (
+                <MorePreviewThumb key={p.id} post={p} />
+              ))}
+            </div>
+            {remaining > 0 ? (
+              <p className="min-w-0 text-xs text-content-tertiary">
+                {`+${remaining} publicações analisadas nesta janela`}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         {gate ? (
-          <div className="mt-5 border-t border-border-default pt-5">{gate}</div>
+          <div className="mt-5 border-t border-border-default pt-5">
+            <p className="mb-3 text-sm text-content-secondary">
+              {sampleSize
+                ? `Análise completa das ${sampleSize} publicações, dos formatos e das conversas.`
+                : "Análise completa das publicações, dos formatos e das conversas."}
+            </p>
+            {gate}
+          </div>
         ) : null}
       </div>
     </article>
   );
 }
+
 
 
 /**
@@ -1210,9 +1240,9 @@ function PreviewThumb({
   const url = post.thumbnailUrl;
   const show = Boolean(url) && !imgError;
   return (
-    <div className="relative size-20 shrink-0 overflow-hidden rounded-lg border border-border-subtle bg-surface-muted">
+    <div className="relative w-full aspect-[4/5] overflow-hidden bg-surface-muted">
       <div className="absolute inset-0 flex items-center justify-center text-content-tertiary">
-        <FormatIcon format={post.format} className="size-6 opacity-60" />
+        <FormatIcon format={post.format} className="size-10 opacity-50" />
       </div>
       {show ? (
         <img
@@ -1224,6 +1254,38 @@ function PreviewThumb({
           className="absolute inset-0 size-full object-cover"
         />
       ) : null}
+
     </div>
   );
 }
+
+/**
+ * Miniatura secundária da tira "mais publicações": apenas sinal visual de
+ * volume, desfocada e sem métricas.
+ */
+function MorePreviewThumb({
+  post,
+}: {
+  post: EnrichedPost & { thumbnailUrl?: string };
+}) {
+  const [imgError, setImgError] = useState(false);
+  const show = Boolean(post.thumbnailUrl) && !imgError;
+  return (
+    <div className="relative size-9 shrink-0 overflow-hidden rounded-lg border border-border-subtle bg-surface-muted">
+      <div className="absolute inset-0 flex items-center justify-center text-content-tertiary">
+        <FormatIcon format={post.format} className="size-3.5 opacity-50" />
+      </div>
+      {show ? (
+        <img
+          src={post.thumbnailUrl}
+          alt=""
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={() => setImgError(true)}
+          className="absolute inset-0 size-full object-cover blur-[2px]"
+        />
+      ) : null}
+    </div>
+  );
+}
+
