@@ -796,9 +796,10 @@ function renderAudienceCard(
         captionEngagementStrategy={captionEngagementStrategy}
         captionAsksForCommentsPct={captionAsksForCommentsPct}
       />
-      {!commentIntel?.available && (
+      {!hideCommentFallback && !commentIntel?.available && (
         <CommentIntelligenceUnavailable data={commentIntel} />
       )}
+
     </ReportDiagnosticCard>
   );
 }
