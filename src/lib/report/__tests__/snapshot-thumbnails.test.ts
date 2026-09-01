@@ -49,7 +49,9 @@ describe("snapshotToReportData — imagens reais das publicações", () => {
     const { enriched } = snapshotToReportData({ payload: payload(posts) });
 
     expect(enriched.topPosts[0]?.thumbnailUrl).toBe(bestStored);
-    expect(enriched.bottomPosts.at(-1)?.thumbnailUrl).toBe(worstStored);
+    expect(enriched.bottomPosts.find((item) => item.id === "worst")?.thumbnailUrl).toBe(
+      worstStored,
+    );
   });
 
   it("usa o URL original quando ainda não existe uma cópia persistida", () => {
