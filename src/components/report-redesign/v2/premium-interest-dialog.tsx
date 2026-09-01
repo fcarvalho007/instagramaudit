@@ -108,32 +108,17 @@ export function PremiumInterestDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 items-stretch">
-          {/* Card 1 — Free */}
-          <NeutralCard
-            eyebrow={t("premium.dialog.free.label")}
-            eyebrowTone="neutral"
-            title={t("premium.dialog.free.title")}
-            price={t("premium.dialog.free.price")}
-            bullets={t("premium.dialog.free.bullets", { returnObjects: true }) as string[]}
-          >
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={() => handleSelect("free")}
-            >
-              {t("premium.dialog.free.cta")}
-            </Button>
-          </NeutralCard>
-
-          {/* Card 2 — Relatório 9€ */}
+        {/* Duas propostas apenas: relatório automático (produto
+            principal) e leitura humana. A coluna gratuita saiu — quem
+            chega aqui já tem tudo o que ela oferecia. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 items-stretch">
+          {/* Card 1 — Relatório 9€ */}
           <NeutralCard
             eyebrow={t("premium.dialog.single.label")}
             eyebrowTone="secondary"
             title={t("premium.dialog.single.title")}
-            price={t("premium.dialog.single.price")}
-            unit={t("premium.dialog.single.unit")}
+            price={PUBLIC_PRODUCTS.report_full_9.priceLabel}
+            unit={PUBLIC_PRODUCTS.report_full_9.priceNote}
             bullets={t("premium.dialog.single.bullets", { returnObjects: true }) as string[]}
           >
             <Button
