@@ -629,7 +629,7 @@ function IndexBlock({
   ].filter(Boolean) as string[];
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       {/* a) Eyebrow + ⓘ */}
       <div className="flex items-center gap-1.5">
           <span className="text-eyebrow-sm text-content-tertiary">
