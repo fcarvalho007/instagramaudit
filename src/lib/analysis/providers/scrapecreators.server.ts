@@ -199,6 +199,85 @@ function countOf(value: unknown): number | null {
   return rec ? num(rec.count) : null;
 }
 
+/**
+ * Escolhe o candidato de maior resolução de uma lista tipo
+ * `image_versions2.candidates` / `thumbnail_resources` / `display_resources`.
+ * A API devolve um ARRAY de objectos `{ url, width, height }` — tratá-lo como
+ * objecto (o bug anterior) devolvia sempre `null` e o relatório ficava sem
+ * imagens nas publicações.
+ */
+function bestCandidateUrl(value: unknown): string | null {
+  if (!Array.isArray(value)) return null;
+  let best: { url: string; width: number } | null = null;
+  for (const entry of value) {
+    const rec = asRecord(entry);
+    if (!rec) continue;
+    const url = str(rec.url) ?? str(rec.src);
+    if (!url) continue;
+    const width = num(rec.width) ?? 0;
+    if (!best || width > best.width) best = { url, width };
+  }
+  return best?.url ?? null;
+}
+
+/**
+ * URL de imagem de um media item do ScrapeCreators, com fallbacks em cascata:
+ * imagem directa → lista de candidatos por resolução → primeiro item de
+ * carrossel → capa de vídeo/Reel. Nunca devolve um URL de vídeo.
+ * Exportada para teste.
+ */
+export function pickImageUrl(raw: Record<string, unknown>, depth = 0): string | null {
+  const direct =
+    str(raw.display_url) ??
+    str(raw.display_uri) ??
+    str(raw.thumbnail_url) ??
+    str(raw.thumbnail_src) ??
+    str(raw.image_url) ??
+    str(raw.imageUrl);
+  if (direct) return direct;
+
+  const fromCandidates =
+    bestCandidateUrl(asRecord(raw.image_versions2)?.candidates) ??
+    bestCandidateUrl(asRecord(raw.image_versions)?.items) ??
+    bestCandidateUrl(raw.image_versions) ??
+    bestCandidateUrl(raw.display_resources) ??
+    bestCandidateUrl(raw.thumbnail_resources);
+  if (fromCandidates) return fromCandidates;
+
+  // Carrossel: a capa é a imagem do primeiro item. Vídeos dentro do
+  // carrossel também expõem `image_versions2` (a capa), por isso a
+  // recursão é segura.
+  if (depth < 2 && Array.isArray(raw.carousel_media)) {
+    for (const item of raw.carousel_media) {
+      const rec = asRecord(item);
+      if (!rec) continue;
+      const nested = pickImageUrl(rec, depth + 1);
+      if (nested) return nested;
+    }
+  }
+
+  // Reels / vídeo: capa exposta em `image_versions2` do próprio item
+  // (já coberto acima) ou num objecto de capa dedicado.
+  if (depth < 2) {
+    const cover =
+      asRecord(raw.cover_frame) ??
+      asRecord(raw.first_frame) ??
+      asRecord(asRecord(raw.clips_metadata)?.cover_media);
+    if (cover) {
+      const nested = pickImageUrl(cover, depth + 1);
+      if (nested) return nested;
+    }
+    const coverUrl =
+      str(asRecord(raw.cover_photo)?.url) ??
+      str(raw.cover_frame_url) ??
+      str(raw.thumbnail_url_hd);
+    if (coverUrl) return coverUrl;
+  }
+
+  return null;
+}
+
+
 /** ScrapeCreators user → Apify `details` row. */
 export function mapProfile(
   payload: Record<string, unknown>,
