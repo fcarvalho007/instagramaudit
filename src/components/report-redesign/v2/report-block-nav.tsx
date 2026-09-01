@@ -363,13 +363,24 @@ function ProfileHeader({
   );
 }
 
-function ProgressSummary({ items }: { items: SidebarItem[] }) {
+function ProgressSummary({
+  items,
+  compact = false,
+}: {
+  items: SidebarItem[];
+  compact?: boolean;
+}) {
   const { t } = useTranslation("report");
   const accessible = items.filter((i) => i.access === "accessible").length;
   const total = items.length;
   return (
-    <div className="px-1 pt-1 pb-1">
-      <p className="mb-1.5 text-xs font-medium text-content-secondary">
+    <div className={cn("px-1", compact ? "pt-0.5 pb-1" : "pt-1 pb-1")}>
+      <p
+        className={cn(
+          "font-medium text-content-secondary",
+          compact ? "mb-1 text-[11px]" : "mb-1.5 text-xs",
+        )}
+      >
         {t("nav.access.progress", { accessible, total })}
       </p>
       <div className="flex w-full gap-1" aria-hidden="true">
@@ -377,7 +388,8 @@ function ProgressSummary({ items }: { items: SidebarItem[] }) {
           <div
             key={i}
             className={cn(
-              "h-[5px] flex-1 rounded-sm",
+              "flex-1 rounded-sm",
+              compact ? "h-[3px]" : "h-[5px]",
               item.accessBadge === "free" && "bg-emerald-500",
               item.accessBadge === "free_email" && "bg-emerald-300",
               item.accessBadge === "included" && "bg-[rgb(var(--accent-primary))]",
@@ -389,6 +401,7 @@ function ProgressSummary({ items }: { items: SidebarItem[] }) {
     </div>
   );
 }
+
 
 function ItemRow({
   item,
