@@ -9,7 +9,13 @@ function buildPayload() {
     profile: { username: "x", followers_count: 100 },
     content_summary: { average_engagement_rate: 0.02 },
     format_stats: { reel: { count: 5 } },
-    posts: [{ id: "1" }],
+    posts: [
+      {
+        id: "1",
+        thumbnail_url: "https://cdn.example/post.jpg",
+        thumbnail_storage_url: "https://storage.example/post.jpg",
+      },
+    ],
     competitors: [],
     enrichment_status: { visual_cover: "pending" },
     ai_insights_v1: { insights: [{ id: "a" }] },
@@ -34,6 +40,13 @@ describe("sanitizeSnapshotForAccessLevel", () => {
     expect(out).toHaveProperty("content_summary");
     expect(out).toHaveProperty("format_stats");
     expect(out).toHaveProperty("posts");
+    expect(out.posts).toEqual([
+      {
+        id: "1",
+        thumbnail_url: "https://cdn.example/post.jpg",
+        thumbnail_storage_url: "https://storage.example/post.jpg",
+      },
+    ]);
     expect(out).toHaveProperty("competitors");
     expect(out).toHaveProperty("enrichment_status");
   });
@@ -42,6 +55,13 @@ describe("sanitizeSnapshotForAccessLevel", () => {
     const input = buildPayload();
     const out = sanitizeSnapshotForAccessLevel(input, "lead");
     expect(out).toHaveProperty("comment_intelligence");
+    expect(out.posts).toEqual([
+      {
+        id: "1",
+        thumbnail_url: "https://cdn.example/post.jpg",
+        thumbnail_storage_url: "https://storage.example/post.jpg",
+      },
+    ]);
     for (const key of PAID_SNAPSHOT_FIELDS) {
       if (key === "comment_intelligence") continue;
       expect(out).not.toHaveProperty(key);
