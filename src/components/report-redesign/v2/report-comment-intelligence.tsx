@@ -389,7 +389,7 @@ export function CommentIntelligenceUnavailable({ data }: { data?: CommentIntelli
 
   // ── internal_lab: full technical detail ──
   const validReason = reason && UNAVAILABLE_REASON_KEYS.has(reason)
-    ? effectiveReason
+    ? reason
     : null;
   const title = validReason
     ? t(`comments.unavailable.reasons.${validReason}.title`)
