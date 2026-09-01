@@ -683,9 +683,19 @@ export function ReportOverviewBlock({
 /**
  * Nível 0 → Nível 1. Único convite visível ao visitante anónimo:
  * aprofundar gratuitamente com email. Nada de preço nesta fase.
+ *
+ * QA 09: o botão abre directamente o motor de conversão
+ * (`ConversionSheet`) em vez de fazer scroll para um segundo CTA — havia
+ * duas superfícies a competir pela mesma decisão no Estado A.
  */
-function FreeDeepenTeaser() {
-  const scrollToDeepen = () => {
+function FreeDeepenTeaser({ onConvert }: { onConvert?: (() => void) | undefined }) {
+  const { t } = useTranslation("conversion");
+
+  const handleClick = () => {
+    if (onConvert) {
+      onConvert();
+      return;
+    }
     if (typeof document === "undefined") return;
     document
       .getElementById("deepen-analysis")
@@ -695,22 +705,21 @@ function FreeDeepenTeaser() {
   return (
     <div>
       <h3 className="text-base sm:text-lg font-semibold text-content-primary">
-        Já sabes o que está a acontecer. Falta perceber porquê.
+        {t("gate.title")}
       </h3>
       <p className="mt-2 max-w-2xl text-sm leading-relaxed text-content-secondary">
-        Guarda esta auditoria para ver que conteúdos explicam estes sinais — as
-        publicações completas, o mix de formatos e as conversas que geram.
+        {t("gate.body")}
       </p>
 
       <button
         type="button"
-        onClick={scrollToDeepen}
+        onClick={handleClick}
         className="mt-4 inline-flex w-full sm:w-auto min-h-11 items-center justify-center gap-2 rounded-lg bg-accent-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-primary/90"
       >
-        Aprofundar gratuitamente
-        <span aria-hidden="true">↓</span>
+        {t("gate.cta")}
       </button>
     </div>
   );
 }
+
 
