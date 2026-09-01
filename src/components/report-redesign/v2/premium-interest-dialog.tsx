@@ -12,10 +12,11 @@ import { Button } from "@/components/ui/button";
 import { trackEvent } from "@/lib/tracking.functions";
 import { cn } from "@/lib/utils";
 import { CouponInput } from "@/components/pricing/coupon-input";
+import { PUBLIC_PRODUCTS } from "@/lib/payments/products";
 import { useState } from "react";
 
 // Both 9€ and 97€ cards now route to focused checkouts.
-export type PricingOption = "free" | "single_report";
+export type PricingOption = "single_report";
 
 interface Props {
   open: boolean;
