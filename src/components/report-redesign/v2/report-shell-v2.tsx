@@ -327,9 +327,18 @@ export function ReportShellV2({
               {/* 02 · Diagnóstico editorial — só fora do gate em premium */}
               {premiumUnlocked && features.blockDiagnosis !== "hidden" && (
               <ReportBlockSection block={diagnostico} tone="canvas">
+                <div className="mb-6 sm:mb-8 rounded-xl border border-accent-primary/20 bg-tint-primary px-5 py-4">
+                  <p className="text-eyebrow-sm text-accent-primary">
+                    {t("diagnostic.pro_unlocked_eyebrow")}
+                  </p>
+                  <p className="mt-1 text-sm text-content-secondary leading-relaxed">
+                    {t("diagnostic.pro_unlocked_body")}
+                  </p>
+                </div>
                 <ReportDiagnosticBlock result={result} payload={payload} premiumUnlocked={premiumUnlocked} />
               </ReportBlockSection>
               )}
+
 
               {/* 03 · Performance — só renderiza em variantes premium (`full`).
                   Em public_mvp (`lightweight`) a sidebar continua a mostrar o
