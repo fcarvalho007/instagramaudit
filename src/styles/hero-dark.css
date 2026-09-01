@@ -279,6 +279,11 @@
   opacity: 0.78;
 }
 .hero-dark:has(.hero-input-zone:focus-within) .hero-hint-arrow,
-.hero-dark .hero-input-zone[data-has-value="true"] .hero-hint-arrow {
+.hero-dark:has(.hero-input-zone[data-has-value="true"]) .hero-hint-arrow {
   opacity: 0;
+}
+
+/* Cor da seta alinhada ao microlabel (cyan suave). */
+.hero-hint-arrow {
+  color: rgb(var(--hero-cyan));
 }
