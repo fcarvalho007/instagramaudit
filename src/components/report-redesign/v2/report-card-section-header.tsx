@@ -73,39 +73,27 @@ export function ReportCardSectionHeader({
           {eyebrow ? (
             <p className={cn(T.eyebrow, T.eyebrowGap)}>{eyebrow}</p>
           ) : null}
-          {isBlock ? (
-            <h3 className="min-w-0">
-              <span className={cn(T.eyebrow, "block")}>{title}</span>
-              <span
-                className={cn(T.title, "mt-1.5 block")}
-                style={{ color: BLOCK_QUALIFIER_COLOR[qualifierTone] }}
-              >
-                {qualifier}
-              </span>
-            </h3>
-          ) : (
-            <h3 className={T.title}>
-              {title}
-              {qualifier ? (
-                <>
-                  {" "}
-                  <span
-                    className={T.qualifier}
-                    style={
-                      hasUnderline
-                        ? {
-                            borderBottom: `2px solid ${underline}`,
-                            paddingBottom: "1px",
-                          }
-                        : undefined
-                    }
-                  >
-                    {qualifier}
-                  </span>
-                </>
-              ) : null}
-            </h3>
-          )}
+          <h3 className={T.title}>
+            {title}
+            {qualifier ? (
+              <>
+                {" "}
+                <span
+                  className={T.qualifier}
+                  style={
+                    hasUnderline
+                      ? {
+                          borderBottom: `2px solid ${underline}`,
+                          paddingBottom: "1px",
+                        }
+                      : undefined
+                  }
+                >
+                  {qualifier}
+                </span>
+              </>
+            ) : null}
+          </h3>
           {subtitle ? (
             typeof subtitle === "string" ? (
               <p className={T.subtitle}>{subtitle}</p>
