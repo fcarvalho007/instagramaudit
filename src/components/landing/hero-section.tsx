@@ -19,10 +19,10 @@ export function HeroSection() {
     >
       <HeroAuroraBackground />
 
-      <Container size="lg" className="relative z-10 py-16 md:py-28 lg:py-32">
-        <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_0.85fr] gap-10 lg:gap-12 items-center">
+      <Container size="xl" className="relative z-10 py-16 md:py-24 lg:py-24">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_0.85fr] gap-10 lg:gap-16 items-center">
           {/* Left — copy + action */}
-          <div className="order-1 space-y-7 md:space-y-8 text-center lg:text-left">
+          <div className="order-1 text-center lg:text-left">
             <BlurRevealText
               text={t("hero.headline")}
               as="h1"
@@ -35,17 +35,17 @@ export function HeroSection() {
             <BlurRevealText
               text={t("hero.subtitle")}
               as="p"
-              className="font-sans text-base md:text-[1.0625rem] leading-[1.55] max-w-[46ch] text-balance mx-auto lg:mx-0 text-[color:rgb(var(--hero-text-secondary))]"
+              className="mt-6 font-sans text-base md:text-[1.0625rem] leading-[1.55] max-w-[46ch] text-balance mx-auto lg:mx-0 text-[color:rgb(var(--hero-text-secondary))]"
               delayMs={260}
             />
 
-            <div className="pt-4 lg:pt-2">
+            <div className="mt-10">
               <HeroActionBar />
             </div>
           </div>
 
           {/* Right — report preview */}
-          <div className="hero-preview-zone order-2 lg:order-2 w-full mt-20 sm:mt-16 lg:mt-0">
+          <div className="hero-preview-zone order-2 lg:order-2 w-full mt-12 sm:mt-12 lg:mt-0">
             <TiltCard
               className="rounded-3xl"
               tiltLimit={5}
