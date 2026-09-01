@@ -59,6 +59,14 @@ export interface PremiumCtaContextValue {
    * modal.
    */
   trackPremiumWindowInterest: (windowDays: number) => void;
+  /**
+   * Percurso de compra canónico do Estado B: leva directamente ao
+   * checkout de `report_full_9`, sem modal intermédio. Usado pelas
+   * superfícies com intenção explícita (bloco final e sticky). As
+   * superfícies exploratórias (período, concorrentes, secções da
+   * sidebar) continuam a usar `handlePremiumAccessClick`.
+   */
+  goToProCheckout: (source: PremiumCtaSource) => void;
 }
 
 const PremiumCtaContext = createContext<PremiumCtaContextValue | null>(null);
