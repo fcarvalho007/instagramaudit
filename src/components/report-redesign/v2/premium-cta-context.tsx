@@ -13,7 +13,9 @@ import { trackEvent } from "@/lib/tracking.functions";
 import { trackAnonymousEvent } from "@/lib/analytics/anonymous-funnel";
 
 import { PremiumInterestDialog } from "./premium-interest-dialog";
+import { buildProCheckoutSearch } from "./pro-checkout-search";
 import { scrollToBlock } from "./use-active-block";
+
 
 /**
  * Logical source identifiers for every premium CTA inside the public
