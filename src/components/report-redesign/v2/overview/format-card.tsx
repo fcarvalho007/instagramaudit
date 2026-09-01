@@ -494,6 +494,7 @@ function FormatProportionBar({
                   flexBasis: `${seg.pct}%`,
                   flexGrow: 0,
                   flexShrink: 0,
+                  minHeight: "20px",
                   backgroundColor: segmentBg(idx),
                   color: segmentFg(idx),
                 }}
@@ -505,11 +506,11 @@ function FormatProportionBar({
                       {seg.pct}%
                     </span>
                     <span
-                      className="mt-1 text-[10px] md:text-[11px] uppercase tracking-[0.12em] leading-none truncate max-w-full"
+                      className="mt-1 text-[11px] uppercase tracking-[0.1em] leading-none truncate max-w-full"
                       style={{
                         color:
                           idx === 0
-                            ? "color-mix(in oklab, #FFFFFF 80%, transparent)"
+                            ? "color-mix(in oklab, #FFFFFF 85%, transparent)"
                             : "var(--content-secondary, #475569)",
                       }}
                     >
@@ -517,7 +518,10 @@ function FormatProportionBar({
                     </span>
                   </>
                 ) : (
-                  <span className="text-[10px] font-semibold tabular-nums leading-none">
+                  <span
+                    className="text-[11px] font-semibold tabular-nums leading-none"
+                    style={{ color: "var(--content-primary, #0F172A)" }}
+                  >
                     {seg.pct}%
                   </span>
                 )}
@@ -526,6 +530,7 @@ function FormatProportionBar({
           })}
         </div>
       </div>
+
 
       {/* Subtle legend */}
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
