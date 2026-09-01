@@ -17,7 +17,7 @@ import {
   getConsolidatedBenchmarkSeries,
   getActiveTierIndex,
 } from "@/lib/knowledge/benchmark-context";
-import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/hooks/use-language";
 import { formatNumber } from "@/lib/i18n/format";
