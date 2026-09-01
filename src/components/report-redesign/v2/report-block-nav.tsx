@@ -363,13 +363,24 @@ function ProfileHeader({
   );
 }
 
-function ProgressSummary({ items }: { items: SidebarItem[] }) {
+function ProgressSummary({
+  items,
+  compact = false,
+}: {
+  items: SidebarItem[];
+  compact?: boolean;
+}) {
   const { t } = useTranslation("report");
   const accessible = items.filter((i) => i.access === "accessible").length;
   const total = items.length;
   return (
-    <div className="px-1 pt-1 pb-1">
-      <p className="mb-1.5 text-xs font-medium text-content-secondary">
+    <div className={cn("px-1", compact ? "pt-0.5 pb-1" : "pt-1 pb-1")}>
+      <p
+        className={cn(
+          "font-medium text-content-secondary",
+          compact ? "mb-1 text-[11px]" : "mb-1.5 text-xs",
+        )}
+      >
         {t("nav.access.progress", { accessible, total })}
       </p>
       <div className="flex w-full gap-1" aria-hidden="true">
@@ -377,7 +388,8 @@ function ProgressSummary({ items }: { items: SidebarItem[] }) {
           <div
             key={i}
             className={cn(
-              "h-[5px] flex-1 rounded-sm",
+              "flex-1 rounded-sm",
+              compact ? "h-[3px]" : "h-[5px]",
               item.accessBadge === "free" && "bg-emerald-500",
               item.accessBadge === "free_email" && "bg-emerald-300",
               item.accessBadge === "included" && "bg-[rgb(var(--accent-primary))]",
@@ -389,6 +401,7 @@ function ProgressSummary({ items }: { items: SidebarItem[] }) {
     </div>
   );
 }
+
 
 function ItemRow({
   item,
@@ -456,16 +469,22 @@ function ItemRow({
       >
         {item.block.shortLabel}
       </span>
-      {showBadge && !compact ? (
+      {/* O badge de acesso acompanha o modo compacto: encolhe, nunca
+          desaparece — em sticky continua a distinguir grátis de premium. */}
+      {showBadge ? (
         <span
           className={cn(
-            "ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.06em] ring-1",
+            "ml-auto inline-flex items-center gap-1 rounded-full font-semibold uppercase ring-1",
+            compact
+              ? "px-1.5 py-0 text-[10px] tracking-[0.04em]"
+              : "px-2 py-0.5 text-xs tracking-[0.06em]",
             badgeClass,
           )}
         >
           {badgeLabel}
         </span>
       ) : null}
+
     </button>
   );
 }
@@ -1404,15 +1423,19 @@ function SidebarList({
 
   return (
     <div className={cn("transition-all duration-200", compact ? "space-y-2" : "space-y-3")}>
-      {!premiumUnlocked && !compact && <ProgressSummary items={items} />}
+      {!premiumUnlocked && <ProgressSummary items={items} compact={compact} />}
 
       {premiumUnlocked ? (
         <section className={cn(compact ? "space-y-0.5" : "space-y-1")}>
-          {!compact && (
-            <p className="px-2 text-eyebrow-sm text-content-tertiary">
-              {t("nav.access.section_paid")}
-            </p>
-          )}
+          <p
+            className={cn(
+              "px-2 text-content-tertiary",
+              compact ? "text-eyebrow-sm text-[10px]" : "text-eyebrow-sm",
+            )}
+          >
+            {t("nav.access.section_paid")}
+          </p>
+
           <ul className="space-y-0">
             {items.map((item) => {
               const isDiag = item.block.id === DIAGNOSTIC_SECTION_ID;
@@ -1467,11 +1490,14 @@ function SidebarList({
       ) : (
         <>
           <section className={cn(compact ? "space-y-0.5" : "space-y-1")}>
-            {!compact && (
-              <p className="px-2 text-eyebrow-sm text-content-tertiary">
-                {t("nav.access.section_free")}
-              </p>
-            )}
+            <p
+              className={cn(
+                "px-2 text-content-tertiary",
+                compact ? "text-eyebrow-sm text-[10px]" : "text-eyebrow-sm",
+              )}
+            >
+              {t("nav.access.section_free")}
+            </p>
             <ul className="space-y-0.5">
               {incluidos.map((item) => (
                 <li key={item.block.id}>
@@ -1488,11 +1514,15 @@ function SidebarList({
 
           {premium.length > 0 && (
             <section className={cn(compact ? "space-y-0.5" : "space-y-1")}>
-              {!compact && (
-                <p className="px-2 text-eyebrow-sm text-content-tertiary">
-                  {t("nav.access.section_premium")}
-                </p>
-              )}
+              <p
+                className={cn(
+                  "px-2 text-content-tertiary",
+                  compact ? "text-eyebrow-sm text-[10px]" : "text-eyebrow-sm",
+                )}
+              >
+                {t("nav.access.section_premium")}
+              </p>
+
               <ul className="space-y-0.5">
                 {premium.map((item) => {
                   const isDiag = item.block.id === DIAGNOSTIC_SECTION_ID;

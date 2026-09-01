@@ -158,3 +158,28 @@ describe("Card Review 01 — preview + gate 'Grátis com email'", () => {
     expect(comparison).not.toContain("9 €");
   });
 });
+
+describe("6B.2.2 — grelha partilhada e navegação sticky coerente", () => {
+  const nav = readFileSync(
+    resolve(root, "src/components/report-redesign/v2/report-block-nav.tsx"),
+    "utf8",
+  );
+
+  it("alinha a chrome da rota com a grelha do shell", () => {
+    expect(route).toContain("ReportGridRow");
+    expect(shell).toContain("REPORT_GRID_ROW_CLASS");
+  });
+
+  it("mantém badges de acesso também no modo compacto da sidebar", () => {
+    expect(nav).not.toContain("showBadge && !compact");
+    expect(nav).toContain("<ProgressSummary items={items} compact={compact} />");
+  });
+
+  it("Formatos continua fora do estado A (free_email)", () => {
+    const config = readFileSync(
+      resolve(root, "src/components/report-redesign/v2/block-config.ts"),
+      "utf8",
+    );
+    expect(config).toMatch(/formatos[\s\S]{0,120}free_email/);
+  });
+});

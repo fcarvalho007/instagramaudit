@@ -695,11 +695,11 @@ function FreeDeepenTeaser() {
   return (
     <div>
       <h3 className="text-base sm:text-lg font-semibold text-content-primary">
-        Queres ver o que encontrámos nestas publicações?
+        Já sabes o que está a acontecer. Falta perceber porquê.
       </h3>
       <p className="mt-2 max-w-2xl text-sm leading-relaxed text-content-secondary">
-        Guarda esta auditoria e desbloqueia a análise completa das publicações,
-        dos formatos e das conversas.
+        Guarda esta auditoria para ver que conteúdos explicam estes sinais — as
+        publicações completas, o mix de formatos e as conversas que geram.
       </p>
 
       <button
@@ -713,3 +713,4 @@ function FreeDeepenTeaser() {
     </div>
   );
 }
+

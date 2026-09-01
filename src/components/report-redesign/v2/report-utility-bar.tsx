@@ -40,7 +40,7 @@ export function ReportUtilityBar({
           : "opacity-0 -translate-y-1 pointer-events-none",
       )}
     >
-      <div className="mx-auto max-w-[1520px] px-3 sm:px-6">
+      <div className="mx-auto w-full max-w-[1520px] px-4 sm:px-5 md:px-6 lg:px-8">
         <div className="flex items-center justify-end gap-1.5 sm:gap-2 h-12 sm:h-11">
           <button
             type="button"
