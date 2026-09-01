@@ -33,6 +33,29 @@ const CATEGORY_KEY = {
   oportunidade: "diagnostic.priorities_category.oportunidade",
 } as const;
 
+/**
+ * Liga cada base de evidência ao cartão de diagnóstico (ou secção do
+ * relatório) que a sustenta. Fecha o salto "diagnóstico → acção".
+ */
+const BASIS_ANCHOR: Record<string, string> = {
+  "Resposta do público": "diag-audiencia",
+  "Análise visual das capas": "diag-capas",
+  "Frequência editorial": "frequencia",
+  "Mix de formatos": "formatos",
+  "Publicações-chave": "publicacoes-chave",
+  "Padrão das captions": "diag-legendas",
+  "Integração entre canais": "diag-integracao",
+  "Tipo de conteúdo dominante": "diag-conteudo",
+};
+
+/** Remove a numeração legada "Pergunta N", que já não coincide com os cartões. */
+function cleanResolves(text: string): string {
+  return text
+    .replace(/\s*—?\s*Pergunta\s*\d+\s*—?\s*/gi, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 export function ReportDiagnosticPriorities({ items }: Props) {
   const { t } = useTranslation("report");
   if (items.length === 0) return null;
@@ -41,16 +64,20 @@ export function ReportDiagnosticPriorities({ items }: Props) {
       <header className="space-y-3">
         <div className="flex items-center gap-3">
           <p className="text-eyebrow-sm text-content-tertiary">
-            07 · Prioridades de acção
+            08 · {t("diagnostic.priorities_title")}
           </p>
           <span className="text-eyebrow-sm ml-auto text-content-tertiary tabular-nums">
             {t("diagnostic.priorities_count", { count: items.length })}
           </span>
         </div>
         <h3 className="font-display text-[1.5rem] md:text-[1.75rem] leading-tight tracking-tight text-content-primary">
-          O que testar, corrigir ou repetir?
+          {t("diagnostic.priorities_heading")}
         </h3>
+        <span className="inline-flex items-center rounded-full px-2.5 py-1 text-eyebrow-sm ring-1 bg-tint-primary text-accent-primary ring-accent-primary/15">
+          {t("diagnostic.priorities_horizon")}
+        </span>
       </header>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {items.map((it, i) => {
           const s = STYLE[it.level];
