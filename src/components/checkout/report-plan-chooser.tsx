@@ -1,7 +1,7 @@
 import { Check } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import type { ProductCode } from "@/lib/payments/products";
+import { PUBLIC_PRODUCTS, type ProductCode } from "@/lib/payments/products";
 
 /**
  * Selector de plano para o checkout do relatório completo.
