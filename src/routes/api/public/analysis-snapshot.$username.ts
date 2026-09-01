@@ -56,6 +56,8 @@ export const Route = createFileRoute("/api/public/analysis-snapshot/$username")(
             "id, instagram_username, normalized_payload, created_at, updated_at, expires_at",
           )
           .eq("instagram_username", handle)
+          .eq("analysis_status", "ready")
+          .order("updated_at", { ascending: false })
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
