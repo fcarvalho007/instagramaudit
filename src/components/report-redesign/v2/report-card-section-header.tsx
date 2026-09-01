@@ -37,13 +37,6 @@ interface ReportCardSectionHeaderProps {
   qualifier?: string;
   /** Tom do qualifier — controla a cor do underline subtil. */
   qualifierTone?: ReportSectionQualifierTone;
-  /**
-   * `inline` (default) mantém "Título Qualificador" na mesma linha.
-   * `block` separa em duas linhas: nome da dimensão em eyebrow e o
-   * qualificador em escala editorial. O `<h3>` continua a conter os dois
-   * textos, por isso a semântica e a navegação não mudam.
-   */
-  qualifierPlacement?: "inline" | "block";
   /** Subtítulo descritivo opcional logo abaixo do título. */
   subtitle?: ReactNode;
   /** Acção opcional alinhada à direita (ex.: chip de sample size). */

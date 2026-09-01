@@ -560,7 +560,7 @@ export function FrequencyCard({
         <ReportCardSectionHeader
           title={t("frequency.title")}
           qualifier={!isInsufficient ? frequencyStatus : undefined}
-          qualifierPlacement="block"
+          
           qualifierTone={
             (statusKey === "high"
               ? "positive"
