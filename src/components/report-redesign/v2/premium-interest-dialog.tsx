@@ -142,9 +142,10 @@ export function PremiumInterestDialog({
             launch={t("premium.dialog.hero.launch")}
             bullets={t("premium.dialog.hero.bullets", { returnObjects: true }) as string[]}
           >
+            {/* Secundário: só o relatório de 9€ é proposta principal. */}
             <Button
               type="button"
-              variant="primary"
+              variant="outline"
               className="w-full gap-2"
               onClick={() => {
                 trackEvent({
