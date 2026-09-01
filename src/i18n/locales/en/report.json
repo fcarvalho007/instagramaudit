@@ -129,6 +129,9 @@
     },
     "priority_label": "Next step",
     "evidence_title": "Signals used in this reading",
+    "evidence_strip_title": "Evidence",
+    "verdict_eyebrow": "Verdict",
+
     "evidence": {
       "cadence.window_30d": "Cadence over the last 30 days",
       "cadence.window_90d": "Cadence over the last 90 days",
