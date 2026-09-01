@@ -391,8 +391,10 @@ function ProgressSummary({
               "flex-1 rounded-sm",
               compact ? "h-[3px]" : "h-[5px]",
               item.accessBadge === "free" && "bg-emerald-500",
-              item.accessBadge === "free_email" && "bg-emerald-300",
+              item.accessBadge === "free_email" &&
+                "bg-emerald-50 ring-1 ring-inset ring-emerald-400",
               item.accessBadge === "included" && "bg-[rgb(var(--accent-primary))]",
+
               item.access === "locked" && "bg-border-default",
             )}
           />
