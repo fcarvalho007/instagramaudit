@@ -20,7 +20,7 @@ export function HeroSection() {
       <HeroAuroraBackground />
 
       <Container size="lg" className="relative z-10 py-16 md:py-28 lg:py-32">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_0.95fr] gap-10 lg:gap-14 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_0.85fr] gap-10 lg:gap-12 items-center">
           {/* Left — copy + action */}
           <div className="order-1 space-y-7 md:space-y-8 text-center lg:text-left">
             <BlurRevealText
