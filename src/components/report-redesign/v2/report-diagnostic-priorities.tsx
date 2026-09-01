@@ -152,11 +152,31 @@ export function ReportDiagnosticPriorities({ items }: Props) {
               {basedOn.length > 0 ? (
                 <p className="text-xs text-content-tertiary mt-auto leading-relaxed">
                   <span className="font-medium">{t("diagnostic.priorities_based_on")}</span>{" "}
-                  {basedOn.join(" · ")}
+                  {basedOn.map((b, j) => {
+                    const anchor = BASIS_ANCHOR[b];
+                    return (
+                      <span key={`${b}-${j}`}>
+                        {j > 0 ? " · " : null}
+                        {anchor ? (
+                          <a
+                            href={`#${anchor}`}
+                            className="underline decoration-dotted underline-offset-2 hover:text-accent-primary"
+                          >
+                            {b}
+                          </a>
+                        ) : (
+                          b
+                        )}
+                      </span>
+                    );
+                  })}
                 </p>
               ) : it.resolves ? (
-                <p className="text-eyebrow-sm mt-auto text-content-tertiary">{it.resolves}</p>
+                <p className="text-eyebrow-sm mt-auto text-content-tertiary">
+                  {cleanResolves(it.resolves)}
+                </p>
               ) : null}
+
             </article>
           );
         })}
