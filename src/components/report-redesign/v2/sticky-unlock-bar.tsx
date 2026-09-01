@@ -140,10 +140,10 @@ export function StickyUnlockBar() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-white truncate">
-              Já viste o que está a acontecer. Falta o porquê.
+              Agora falta perceber porquê.
             </p>
             <p className="text-xs text-white/60 truncate">
-              Diagnóstico editorial e prioridades de acção para os próximos 30 dias
+              Diagnóstico + prioridades para os próximos 30 dias
             </p>
           </div>
           <div className="shrink-0 flex items-baseline gap-1.5">
@@ -161,8 +161,9 @@ export function StickyUnlockBar() {
               "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3D9AFF]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#03045E]",
             )}
           >
-            Desbloquear análise Pro
+            Desbloquear Pro · {priceLabel}
           </button>
+
           <button
             type="button"
             onClick={handleDismiss}
