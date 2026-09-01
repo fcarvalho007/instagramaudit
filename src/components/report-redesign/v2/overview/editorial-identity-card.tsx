@@ -393,8 +393,8 @@ export function EditorialIdentityCard({
       aria-label={t("identity.aria_label")}
       className="rounded-2xl border border-border-default bg-white shadow-card overflow-hidden"
     >
-      {/* Zona macro — empilhada: herói + régua em cima, veredicto a respirar abaixo */}
-      <div className="px-6 py-7 sm:px-7 sm:py-8 flex flex-col gap-7">
+      {/* Zona macro — herói + régua compactos, veredicto logo a seguir */}
+      <div className="px-6 py-6 sm:px-7 sm:py-7 flex flex-col gap-5">
         <IndexBlock
           value={overall}
           engagementRatePct={keyMetrics?.engagementRate ?? null}
@@ -411,14 +411,18 @@ export function EditorialIdentityCard({
           locale={i18n.language}
         />
 
-        <div className="min-w-0 space-y-3.5 border-t border-border-default pt-6">
-          <h2 className="font-display text-[1.25rem] md:text-[1.5rem] font-semibold leading-snug tracking-tight text-content-primary text-pretty">
+        <div className="min-w-0 space-y-3 border-t border-border-default/70 pt-5">
+          <p className="text-eyebrow-sm text-content-tertiary">
+            {t("identity.verdict_eyebrow", { defaultValue: "Veredicto" })}
+          </p>
+          <h2 className="font-display text-[1.375rem] md:text-[1.625rem] font-semibold leading-snug tracking-tight text-content-primary text-pretty">
             {copy.title}
           </h2>
 
-          <p className="text-[17px] leading-[1.65] text-content-primary whitespace-pre-line text-pretty">
+          <p className="max-w-[62ch] text-[16px] leading-[1.6] text-content-primary whitespace-pre-line text-pretty">
             {copy.paragraph}
           </p>
+
 
           {resolution.source !== "fallback" && resolved.evidence_used.length >= 2 ? (
             <div className="pt-1">
