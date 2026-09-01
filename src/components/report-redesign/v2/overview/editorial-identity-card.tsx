@@ -478,9 +478,12 @@ export function EditorialIdentityCard({
         </div>
       </div>
 
-      {/* Zona métrica — gostos / comentários / ritmo */}
+      {/* Zona evidência — gostos / comentários / ritmo (suporte, não dashboard) */}
       {hasAnyMetric && (
-        <div className="px-6 pb-7 sm:px-7">
+        <div className="px-6 pb-6 sm:px-7 sm:pb-7">
+          <p className="text-eyebrow-sm text-content-tertiary mb-2.5">
+            {t("identity.evidence_strip_title", { defaultValue: "Evidência" })}
+          </p>
           <MetricsStrip
             averageLikes={averageLikes}
             averageComments={averageComments}
@@ -491,6 +494,7 @@ export function EditorialIdentityCard({
           />
         </div>
       )}
+
 
       {/* Zona accionável */}
       <div className="border-t border-border-default grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border-default/60">
