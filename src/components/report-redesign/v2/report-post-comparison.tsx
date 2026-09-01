@@ -1285,5 +1285,7 @@ function MorePreviewThumb({
           className="absolute inset-0 size-full object-cover blur-[2px]"
         />
       ) : null}
-
+    </div>
+  );
 }
+
