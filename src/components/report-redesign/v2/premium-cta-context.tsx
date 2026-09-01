@@ -192,17 +192,15 @@ export function PremiumCtaProvider({
 
       navigate({
         to: "/checkout/report-full",
-        search: {
+        search: buildProCheckoutSearch({
           source: nextSource,
-          username: handle ?? undefined,
-          // Preserva o relatório de origem: o checkout usa
-          // `report_cache_key` para associar o desbloqueio ao snapshot.
-          report_cache_key: snapshotId ?? undefined,
-          return: typeof window !== "undefined"
-            ? window.location.pathname
-            : "/",
-        },
+          handle,
+          snapshotId,
+          returnPath:
+            typeof window !== "undefined" ? window.location.pathname : "/",
+        }),
       }).catch(() => {});
+
 
     },
     [navigate, snapshotId, handle, variant, premiumUnlocked],
