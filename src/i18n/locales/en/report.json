@@ -283,7 +283,14 @@
       "window_90d": "Reading based on the last 90 days.",
       "sample_span": "Reading based on the recent sample."
     },
-    "fallback_hashtags_absent": "No recurring hashtags in the sample."
+    "fallback_hashtags_absent": "No recurring hashtags in the sample.",
+    "read_proof": {
+      "posts_one": "{{count}} post analysed",
+      "posts_other": "{{count}} posts analysed",
+      "window": "{{days}}-day window",
+      "averages": "{{likes}} likes / {{comments}} comments per post"
+    },
+    "read_more": "Read full analysis"
   },
   "frequency": {
     "title": "Posting frequency",
