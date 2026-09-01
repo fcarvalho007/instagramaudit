@@ -340,6 +340,7 @@ export function buildReadProofItems(
   t: TFunction,
   locale: string,
 ): string[] {
+  const lang: "en" | "pt" = locale.startsWith("pt") ? "pt" : "en";
   const items: string[] = [];
 
   if (typeof input.postsAnalyzed === "number" && input.postsAnalyzed > 0) {
@@ -389,11 +390,8 @@ export function buildReadProofItems(
   ) {
     items.push(
       t("identity.read_proof.averages", {
-        likes: formatCompactNumber(Math.round(input.averageLikes), locale),
-        comments: formatCompactNumber(
-          Math.round(input.averageComments),
-          locale,
-        ),
+        likes: formatCompactNumber(Math.round(input.averageLikes), lang),
+        comments: formatCompactNumber(Math.round(input.averageComments), lang),
         defaultValue: "{{likes}} gostos / {{comments}} comentários por post",
       }),
     );
