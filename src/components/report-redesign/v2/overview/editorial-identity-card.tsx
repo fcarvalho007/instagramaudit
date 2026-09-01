@@ -129,7 +129,7 @@ function verdictLabelToBand(label: EditorialVerdict["verdict_label"]): Band {
  * cache; são cortados apenas na apresentação e o restante fica atrás de
  * "Ver leitura completa". Nenhum dado é perdido.
  */
-const VERDICT_SENTENCE_CAP = 3;
+const VERDICT_SENTENCE_CAP = 2;
 
 export function clampVerdictParagraph(paragraph: string): {
   visible: string;
