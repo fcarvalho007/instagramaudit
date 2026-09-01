@@ -1423,15 +1423,19 @@ function SidebarList({
 
   return (
     <div className={cn("transition-all duration-200", compact ? "space-y-2" : "space-y-3")}>
-      {!premiumUnlocked && !compact && <ProgressSummary items={items} />}
+      {!premiumUnlocked && <ProgressSummary items={items} compact={compact} />}
 
       {premiumUnlocked ? (
         <section className={cn(compact ? "space-y-0.5" : "space-y-1")}>
-          {!compact && (
-            <p className="px-2 text-eyebrow-sm text-content-tertiary">
-              {t("nav.access.section_paid")}
-            </p>
-          )}
+          <p
+            className={cn(
+              "px-2 text-content-tertiary",
+              compact ? "text-eyebrow-sm text-[10px]" : "text-eyebrow-sm",
+            )}
+          >
+            {t("nav.access.section_paid")}
+          </p>
+
           <ul className="space-y-0">
             {items.map((item) => {
               const isDiag = item.block.id === DIAGNOSTIC_SECTION_ID;
