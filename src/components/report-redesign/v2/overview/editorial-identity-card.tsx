@@ -129,7 +129,7 @@ function verdictLabelToBand(label: EditorialVerdict["verdict_label"]): Band {
  * cache; são cortados apenas na apresentação e o restante fica atrás de
  * "Ver leitura completa". Nenhum dado é perdido.
  */
-const VERDICT_SENTENCE_CAP = 3;
+const VERDICT_SENTENCE_CAP = 2;
 
 export function clampVerdictParagraph(paragraph: string): {
   visible: string;
@@ -318,105 +318,6 @@ export function deriveSignals(
 
 /* ── Prova de leitura ──────────────────────────────────────────────── */
 
-interface ReadProofInput {
-  postsAnalyzed?: number;
-  cadenceWindowDays?: number | null;
-  cadenceLabelPt?: string | null;
-  dominantFormat?: string;
-  dominantFormatShare?: number;
-  topHashtags?: ReadonlyArray<string> | null;
-  hashtagsState?: "recurring" | "weak" | "absent" | null;
-  averageLikes?: number;
-  averageComments?: number;
-}
-
-/**
- * Linha factual que prova ao leitor que o perfil foi realmente lido.
- * Só entram itens com dados reais — nada é estimado nem preenchido com
- * placeholders. Exportada para teste.
- */
-export function buildReadProofItems(
-  input: ReadProofInput,
-  t: TFunction,
-  locale: string,
-): string[] {
-  const lang: "en" | "pt" = locale.startsWith("pt") ? "pt" : "en";
-  const items: string[] = [];
-
-  if (typeof input.postsAnalyzed === "number" && input.postsAnalyzed > 0) {
-    items.push(
-      t("identity.read_proof.posts", {
-        count: input.postsAnalyzed,
-        defaultValue: "{{count}} publicações analisadas",
-      }),
-    );
-  }
-
-  if (
-    typeof input.cadenceWindowDays === "number" &&
-    input.cadenceWindowDays > 0
-  ) {
-    items.push(
-      t("identity.read_proof.window", {
-        days: input.cadenceWindowDays,
-        defaultValue: "janela de {{days}} dias",
-      }),
-    );
-  }
-
-  const cadence = input.cadenceLabelPt?.trim();
-  if (cadence) items.push(cadence);
-
-  if (
-    input.dominantFormat &&
-    typeof input.dominantFormatShare === "number" &&
-    input.dominantFormatShare > 0
-  ) {
-    items.push(
-      `${Math.round(input.dominantFormatShare)}% ${input.dominantFormat}`,
-    );
-  }
-
-  if (input.hashtagsState === "recurring") {
-    const tags = (input.topHashtags ?? [])
-      .slice(0, 2)
-      .map((tag) => (tag.startsWith("#") ? tag : `#${tag}`));
-    if (tags.length > 0) items.push(tags.join(", "));
-  }
-
-  if (
-    typeof input.averageLikes === "number" &&
-    typeof input.averageComments === "number"
-  ) {
-    items.push(
-      t("identity.read_proof.averages", {
-        likes: formatCompactNumber(Math.round(input.averageLikes), lang),
-        comments: formatCompactNumber(Math.round(input.averageComments), lang),
-        defaultValue: "{{likes}} gostos / {{comments}} comentários por post",
-      }),
-    );
-  }
-
-  return items;
-}
-
-function ReadProofLine({ items }: { items: string[] }) {
-  if (items.length === 0) return null;
-  return (
-    <ul className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] leading-[1.5] text-content-tertiary tabular-nums">
-      {items.map((item, idx) => (
-        <li key={item} className="flex items-center gap-2">
-          {idx > 0 ? (
-            <span aria-hidden="true" className="text-border-default">
-              ·
-            </span>
-          ) : null}
-          <span>{item}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 /* ── Main Component ────────────────────────────────────────────────── */
 
@@ -519,21 +420,6 @@ export function EditorialIdentityCard({
   const clamped = clampVerdictParagraph(copy.paragraph);
   const [expanded, setExpanded] = useState(false);
 
-  const readProofItems = buildReadProofItems(
-    {
-      postsAnalyzed,
-      cadenceWindowDays,
-      cadenceLabelPt,
-      dominantFormat,
-      dominantFormatShare,
-      topHashtags,
-      hashtagsState,
-      averageLikes,
-      averageComments,
-    },
-    t,
-    i18n.language,
-  );
 
   return (
     <article
@@ -566,25 +452,25 @@ export function EditorialIdentityCard({
             {copy.title}
           </h2>
 
-          <p className="mt-3 max-w-[62ch] text-[16px] leading-[1.6] text-content-primary whitespace-pre-line text-pretty">
+          <p className="mt-3 max-w-[58ch] text-[16px] leading-[1.65] text-content-secondary whitespace-pre-line text-pretty">
             {clamped.visible}
             {clamped.rest && expanded ? ` ${clamped.rest}` : null}
+            {clamped.rest && !expanded ? (
+              <>
+                {" "}
+                <button
+                  type="button"
+                  onClick={() => setExpanded(true)}
+                  className="align-baseline text-[15px] font-medium text-[var(--accent-primary)] underline underline-offset-4 hover:opacity-80"
+                >
+                  {t("identity.read_more", {
+                    defaultValue: "Ver leitura completa",
+                  })}
+                </button>
+              </>
+            ) : null}
           </p>
-          {clamped.rest && !expanded ? (
-            <button
-              type="button"
-              onClick={() => setExpanded(true)}
-              className="mt-1.5 text-[14px] font-medium text-[var(--accent-primary)] underline underline-offset-4 hover:opacity-80"
-            >
-              {t("identity.read_more", { defaultValue: "Ver leitura completa" })}
-            </button>
-          ) : null}
 
-          {readProofItems.length > 0 ? (
-            <div className="mt-4">
-              <ReadProofLine items={readProofItems} />
-            </div>
-          ) : null}
 
           {resolution.source !== "fallback" && resolved.evidence_used.length >= 2 ? (
             <div className="pt-1">
