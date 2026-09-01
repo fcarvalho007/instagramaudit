@@ -410,10 +410,7 @@ export function mapPost(raw: Record<string, unknown>): ProviderPostRow {
     videoPlayCount:
       num(raw.play_count) ?? num(raw.ig_play_count) ?? null,
     videoDuration: num(raw.video_duration),
-    displayUrl:
-      str(raw.display_url) ??
-      str(raw.thumbnail_url) ??
-      str(asRecord(asRecord(raw.image_versions2)?.candidates)?.[0]),
+    displayUrl: pickImageUrl(raw),
     isPinned:
       raw.is_pinned === true ||
       (Array.isArray(raw.timeline_pinned_user_ids) &&
