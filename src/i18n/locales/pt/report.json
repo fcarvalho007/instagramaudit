@@ -481,7 +481,8 @@
       "bridge": "Usa esta leitura como enquadramento: abaixo comparas o mix do perfil com uma referência externa por formato.",
       "mobile_label_profile": "Este perfil",
       "mobile_label_reference": "Referência externa"
-    }
+    },
+    "dominant_label": "Formato dominante"
   },
   "external_source_note": {
     "template": "Fonte externa: {{source}}, dados {{range}}.",
