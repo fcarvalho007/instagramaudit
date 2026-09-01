@@ -125,3 +125,36 @@ describe("Pro + concorrente — camada comparativa cumulativa", () => {
     expect(nav).toContain("premiumUnlocked && competitorCount > 0");
   });
 });
+
+/**
+ * Card Review 01 — o gate gratuito é uma continuação visual do
+ * PostComparisonPreview e existe apenas no Estado A.
+ */
+describe("Card Review 01 — preview + gate 'Grátis com email'", () => {
+  const overview = readFileSync(
+    resolve(root, "src/components/report-redesign/v2/report-overview-block.tsx"),
+    "utf8",
+  );
+  const comparison = readFileSync(
+    resolve(root, "src/components/report-redesign/v2/report-post-comparison.tsx"),
+    "utf8",
+  );
+
+  it("compõe o gate dentro do preview, apenas no ramo anónimo", () => {
+    expect(overview).toContain("gate={<FreeDeepenTeaser />}");
+    // Uma única utilização: não há gate solto no fim do overview.
+    expect(overview.match(/<FreeDeepenTeaser \/>/g)).toHaveLength(1);
+  });
+
+  it("mantém a troca preview → bloco completo condicionada ao acesso", () => {
+    expect(overview).toMatch(/access === "anon" \? \(\s*<PostComparisonPreview/);
+    expect(overview).toContain("<PostComparisonBlock");
+  });
+
+  it("marca o preview com o badge gratuito e mantém a zona protegida sem dados", () => {
+    expect(comparison).toContain("Grátis com email");
+    expect(comparison).toContain("protectedMetrics");
+    expect(comparison).toContain("••••");
+    expect(comparison).not.toContain("9 €");
+  });
+});

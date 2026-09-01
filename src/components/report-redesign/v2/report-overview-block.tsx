@@ -359,6 +359,7 @@ export function ReportOverviewBlock({
                 bottomPosts={result.enriched.bottomPosts}
                 cadenceMethod={enriched.cadence.method}
                 sampleSize={sample?.performancePosts.length ?? 0}
+                gate={<FreeDeepenTeaser />}
               />
             ) : (
               <PostComparisonBlock
@@ -507,9 +508,9 @@ export function ReportOverviewBlock({
             </div>
           ) : null}
 
-          {/* Gate único do Estado A. Em B/C a proposta Pro vive no fim do
+          {/* O gate único do Estado A é composto como continuação visual do
+              PostComparisonPreview. Em B/C a proposta Pro vive no fim do
               relatório (ReportEndOfFreeBlock), depois de Conversas. */}
-          {access === "anon" ? <FreeDeepenTeaser /> : null}
 
 
         </>
@@ -692,21 +693,19 @@ function FreeDeepenTeaser() {
   };
 
   return (
-    <div className="rounded-2xl border border-accent-primary/25 bg-accent-primary/5 p-5 sm:p-6">
-      <p className="text-eyebrow-sm text-accent-primary">Grátis com email</p>
-      <h3 className="mt-2 text-base sm:text-lg font-semibold text-content-primary">
+    <div>
+      <h3 className="text-base sm:text-lg font-semibold text-content-primary">
         Queres ver o que encontrámos nestas publicações?
       </h3>
       <p className="mt-2 max-w-2xl text-sm leading-relaxed text-content-secondary">
-        Melhores e piores conteúdos com os números completos, o mix de formatos
-        e a análise das conversas — temas recorrentes, tom das reacções e
-        sinais de intenção. Tudo sem pagamento e sem password.
+        Guarda esta auditoria e desbloqueia a análise completa das publicações,
+        dos formatos e das conversas.
       </p>
 
       <button
         type="button"
         onClick={scrollToDeepen}
-        className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-primary/90"
+        className="mt-4 inline-flex w-full sm:w-auto min-h-11 items-center justify-center gap-2 rounded-lg bg-accent-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-primary/90"
       >
         Aprofundar gratuitamente
         <span aria-hidden="true">↓</span>

@@ -1071,11 +1071,14 @@ export function PostComparisonPreview({
   bottomPosts,
   cadenceMethod,
   sampleSize,
+  gate,
 }: {
   topPosts: EnrichedPost[];
   bottomPosts: EnrichedPost[];
   cadenceMethod?: CadenceMethod;
   sampleSize?: number;
+  /** Gate gratuito composto como continuação do preview (Estado A). */
+  gate?: React.ReactNode;
 }) {
   const { t } = useTranslation("report");
   // Estado A: um único evento de visualização; o convite vive no gate.
@@ -1099,12 +1102,15 @@ export function PostComparisonPreview({
     });
   }
 
+  /** Rótulos nítidos, valores por revelar. Nenhum dado real no DOM. */
+  const protectedMetrics = ["Envolvimento", "vs. média"];
+
   return (
     <article
       ref={previewRef}
       className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden"
     >
-      <div className="px-5 md:px-6 pt-6 md:pt-8 pb-4 space-y-2">
+      <div className="px-5 md:px-6 pt-6 md:pt-8 pb-4 space-y-3">
         <ReportCardSectionHeader
           title={t("posts.title")}
           eyebrow={(() => {
@@ -1113,9 +1119,12 @@ export function PostComparisonPreview({
           })()}
           bottomMargin={false}
         />
+        <span className="text-eyebrow-sm inline-flex items-center rounded-full border border-accent-primary/25 bg-accent-primary/8 px-2.5 py-1 text-accent-primary">
+          Grátis com email
+        </span>
       </div>
 
-      <div className="px-5 md:px-6 pb-6 md:pb-8 space-y-5">
+      <div className="px-5 md:px-6 pb-6 md:pb-8">
         <div className="grid gap-4 sm:grid-cols-2">
           {items.map(({ post, label, tone }) => (
             <div
@@ -1158,19 +1167,39 @@ export function PostComparisonPreview({
                   </p>
                 </div>
               </div>
-              {/* Faixa protegida: estrutura visível, valores por revelar. */}
-              <div className="border-t border-border-default bg-surface-muted/60 px-3 py-2.5">
-                <div className="flex items-center gap-4" aria-hidden="true">
-                  <div className="h-2.5 w-16 rounded-full bg-content-tertiary/25 blur-[2px]" />
-                  <div className="h-2.5 w-12 rounded-full bg-content-tertiary/25 blur-[2px]" />
-                  <div className="h-2.5 w-10 rounded-full bg-content-tertiary/25 blur-[2px]" />
+              {/* Faixa protegida: rótulos legíveis, valores por revelar.
+                  Os valores são glifos neutros — nenhum dado sanitizado
+                  chega ao DOM. */}
+              <div className="relative border-t border-border-default bg-surface-muted/50 px-3 py-2.5">
+                <div className="grid grid-cols-2 gap-3">
+                  {protectedMetrics.map((metric) => (
+                    <div key={metric} className="min-w-0">
+                      <p className="text-eyebrow-sm truncate text-content-tertiary">
+                        {metric}
+                      </p>
+                      <p
+                        aria-hidden="true"
+                        className="mt-1 select-none text-sm font-semibold text-content-primary/70 blur-[2.5px]"
+                      >
+                        ••••
+                      </p>
+                    </div>
+                  ))}
                 </div>
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 bg-surface-base/35"
+                />
               </div>
             </div>
           ))}
         </div>
 
+        {gate ? (
+          <div className="mt-5 border-t border-border-default pt-5">{gate}</div>
+        ) : null}
       </div>
     </article>
   );
 }
+
