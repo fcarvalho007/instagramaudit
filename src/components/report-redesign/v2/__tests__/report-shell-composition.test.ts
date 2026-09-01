@@ -158,9 +158,11 @@ describe("Card Review 01 — preview + gate 'Grátis com email'", () => {
   );
 
   it("compõe o gate dentro do preview, apenas no ramo anónimo", () => {
-    expect(overview).toContain("gate={<FreeDeepenTeaser />}");
+    expect(overview).toContain(
+      "gate={<FreeDeepenTeaser onConvert={onFreeUnlockClick} />}",
+    );
     // Uma única utilização: não há gate solto no fim do overview.
-    expect(overview.match(/<FreeDeepenTeaser \/>/g)).toHaveLength(1);
+    expect(overview.match(/<FreeDeepenTeaser /g)).toHaveLength(1);
   });
 
   it("mantém a troca preview → bloco completo condicionada ao acesso", () => {
