@@ -63,11 +63,10 @@ function countSentences(paragraph: string): number {
     .filter((s) => s.length > 0).length;
 }
 
-/** Hashtag handling: the paragraph either quotes a `#tag` OR explicitly
- *  acknowledges the absence/weakness of recurring hashtags. */
-const HASHTAG_TOKEN = /#[\p{L}\p{N}_]+/u;
-const HASHTAG_ABSENCE =
-  /\bhashtags?\b[^.!?]{0,160}?(n[ãa]o\s+h[áa]|n[ãa]o\s+criam|n[ãa]o\s+s[ãa]o\s+suficient|ainda\s+n[ãa]o\s+criam|sem\s+assinatura\s+tem[áa]tica|n[ãa]o\s+definem|n[ãa]o\s+chegam|n[ãa]o\s+formam)/i;
+/* Hashtags deixaram de ser obrigatórias no parágrafo do veredicto: os
+ * sinais de amostra (hashtags, cadência, médias) passaram para a linha
+ * factual do cartão 1. Os regex antigos foram removidos. */
+
 
 /**
  * Visual claims in the verdict paragraph require visual evidence. When
