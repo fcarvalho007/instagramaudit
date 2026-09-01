@@ -64,10 +64,6 @@ export function PremiumInterestDialog({
         },
       },
     }).catch(() => {});
-    if (option === "free") {
-      onOpenChange(false);
-      return;
-    }
     trackEvent({
       data: {
         eventType: "payment_cta_clicked",
