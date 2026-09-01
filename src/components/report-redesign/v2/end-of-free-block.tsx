@@ -1,10 +1,8 @@
 import {
   ArrowRight,
   CalendarClock,
-  Lightbulb,
   ListChecks,
   Stethoscope,
-  Users,
 } from "lucide-react";
 import { Trans, useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
