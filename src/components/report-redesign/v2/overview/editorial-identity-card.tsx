@@ -763,23 +763,26 @@ function IndexRuler({
       : null,
   ].filter(Boolean) as string[];
 
+  // Mantém o rótulo flutuante dentro da régua nos extremos.
+  const labelPct = Math.max(9, Math.min(91, valuePct));
+
   return (
-    <div className="flex-1 min-w-0 w-full">
+    <div className="flex-1 min-w-0 w-full pt-7">
       <div
-        className="relative h-1.5 rounded-full bg-surface-muted"
+        className="relative h-2 rounded-full bg-surface-muted"
         role="img"
         aria-label={ariaParts.join(" · ")}
       >
         {/* Barra preenchida até ao pin */}
         <div
-          className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-accent-primary/25 to-accent-primary/55"
+          className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-accent-primary/45 to-accent-primary/80"
           style={{ width: `${valuePct}%` }}
         />
 
         {/* Marcador mediana */}
         {medianPct !== null ? (
           <span
-            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-4 w-px bg-content-tertiary"
+            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-4 w-[2px] rounded-full bg-content-secondary"
             style={{ left: `${medianPct}%` }}
             aria-hidden="true"
             title={t("identity.index.median_tooltip", {
@@ -796,10 +799,10 @@ function IndexRuler({
           aria-hidden="true"
         />
 
-        {/* Label flutuante "esta marca" — desktop only */}
+        {/* Label flutuante "esta marca" */}
         <span
-          className="hidden sm:inline-flex absolute -top-7 -translate-x-1/2 items-center rounded-md bg-accent-primary/10 px-2 py-0.5 text-[11px] font-medium text-accent-primary whitespace-nowrap"
-          style={{ left: `${valuePct}%` }}
+          className="absolute -top-7 -translate-x-1/2 inline-flex items-center rounded-md bg-accent-primary/10 px-2 py-0.5 text-[11px] font-medium text-accent-primary whitespace-nowrap"
+          style={{ left: `${labelPct}%` }}
           aria-hidden="true"
         >
           {t("identity.index.this_brand_label", {
@@ -808,36 +811,35 @@ function IndexRuler({
         </span>
       </div>
 
-      {/* Endpoints 0 / 100 */}
-      <div className="flex justify-between mt-2 text-[11px] text-content-tertiary tabular-nums">
+      {/* Endpoints + legenda na mesma linha */}
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] text-content-tertiary tabular-nums">
         <span>0</span>
+        {medianPct !== null ? (
+          <span className="flex items-center gap-3 text-[12px]">
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="h-2 w-2 rounded-full bg-accent-primary"
+                aria-hidden="true"
+              />
+              {t("identity.index.legend_this", {
+                defaultValue: "este perfil",
+              })}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="h-3 w-px bg-content-secondary"
+                aria-hidden="true"
+              />
+              {t("identity.index.legend_median", {
+                defaultValue: "mediana do escalão",
+              })}
+            </span>
+          </span>
+        ) : null}
         <span>100</span>
       </div>
-
-      {/* Legenda do pin vs mediana */}
-      {medianPct !== null ? (
-        <div className="flex items-center gap-3 mt-2 text-[12px] text-content-tertiary">
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              className="h-2 w-2 rounded-full bg-accent-primary"
-              aria-hidden="true"
-            />
-            {t("identity.index.legend_this", {
-              defaultValue: "este perfil",
-            })}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              className="h-3 w-px bg-content-tertiary"
-              aria-hidden="true"
-            />
-            {t("identity.index.legend_median", {
-              defaultValue: "mediana do escalão",
-            })}
-          </span>
-        </div>
-      ) : null}
     </div>
+
   );
 }
 
