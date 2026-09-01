@@ -100,6 +100,7 @@ export function PremiumCtaProvider({
 }: ProviderProps) {
   const [open, setOpen] = useState(false);
   const [source, setSource] = useState<PremiumCtaSource>("sidebar");
+  const navigate = useNavigate();
 
   const handlePremiumAccessClick = useCallback<
     PremiumCtaContextValue["handlePremiumAccessClick"]
