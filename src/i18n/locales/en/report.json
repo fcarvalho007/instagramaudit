@@ -860,26 +860,15 @@
       "eyebrow": "Access options",
       "title": "Choose how to go deeper",
       "subtitle": "The initial overview is free. Unlock the full report, or book a human reading to turn the diagnosis into next steps.",
-      "free": {
-        "label": "Included",
-        "title": "Initial overview",
-        "price": "€0",
-        "bullets": [
-          "Index and overview",
-          "Recent sample",
-          "Account to save reports"
-        ],
-        "cta": "Start free"
-      },
       "single": {
         "label": "Automatic",
         "title": "Full report",
         "price": "€9",
         "unit": "one-off payment · no subscription",
         "bullets": [
-          "All 6 sections",
-          "Editorial reading + competitors",
-          "Practical recommendations"
+          "Editorial diagnosis with the causes",
+          "Action priorities for 4 weeks",
+          "What to test, fix and repeat"
         ],
         "cta": "Unlock for €9"
       },
@@ -1474,9 +1463,7 @@
     "benefits": {
       "diagnosis": "Editorial diagnosis with the causes behind the results",
       "priorities": "Action priorities for the next 4 weeks",
-      "rhythm": "What to test, fix and repeat",
-      "competitors": "Comparative reading against similar profiles",
-      "opportunities": "Editorial opportunities still untapped"
+      "rhythm": "What to test, fix and repeat"
     },
     "chips": {
       "competitors": "Competitors",

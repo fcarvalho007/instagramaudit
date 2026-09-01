@@ -871,26 +871,15 @@
       "eyebrow": "Opções de acesso",
       "title": "Escolhe como aprofundar a análise",
       "subtitle": "A visão inicial é gratuita. Desbloqueia o relatório completo, ou reserva uma leitura humana para transformares o diagnóstico em próximos passos.",
-      "free": {
-        "label": "Incluído",
-        "title": "Visão inicial",
-        "price": "0€",
-        "bullets": [
-          "Índice e visão geral",
-          "Amostra recente",
-          "Conta para guardar"
-        ],
-        "cta": "Começar grátis"
-      },
       "single": {
         "label": "Automático",
         "title": "Relatório completo",
         "price": "9€",
         "unit": "pagamento único · sem subscrição",
         "bullets": [
-          "Todas as 6 secções",
-          "Leitura editorial + concorrentes",
-          "Recomendações práticas"
+          "Diagnóstico editorial com as causas",
+          "Prioridades de acção para 4 semanas",
+          "O que testar, corrigir e repetir"
         ],
         "cta": "Desbloquear por 9€"
       },
@@ -1485,9 +1474,7 @@
     "benefits": {
       "diagnosis": "Diagnóstico editorial com as causas dos resultados",
       "priorities": "Prioridades de acção para as próximas 4 semanas",
-      "rhythm": "O que testar, corrigir e repetir",
-      "competitors": "Leitura comparada face a perfis semelhantes",
-      "opportunities": "Oportunidades editoriais por explorar"
+      "rhythm": "O que testar, corrigir e repetir"
     },
     "price": {
       "launch": "9",
