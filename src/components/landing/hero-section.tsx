@@ -35,8 +35,8 @@ export function HeroSection() {
             <BlurRevealText
               text={t("hero.subtitle")}
               as="p"
-              className="font-sans text-base md:text-[1.0625rem] leading-[1.55] max-w-xl lg:max-w-none lg:whitespace-nowrap mx-auto lg:mx-0 text-[color:rgb(var(--hero-text-secondary))]"
-              delayMs={500}
+              className="font-sans text-base md:text-[1.0625rem] leading-[1.55] max-w-[46ch] text-balance mx-auto lg:mx-0 text-[color:rgb(var(--hero-text-secondary))]"
+              delayMs={260}
             />
 
             <div className="pt-4 lg:pt-2">
