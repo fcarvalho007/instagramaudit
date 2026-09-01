@@ -538,17 +538,35 @@ export function EditorialIdentityCard({
           locale={i18n.language}
         />
 
-        <div className="min-w-0 space-y-3 border-t border-border-default/70 pt-5">
+        <div className="min-w-0 border-t border-border-default/70 pt-4">
           <p className="text-eyebrow-sm text-content-tertiary">
             {t("identity.verdict_eyebrow", { defaultValue: "Veredicto" })}
           </p>
-          <h2 className="font-display text-[1.375rem] md:text-[1.625rem] font-semibold leading-snug tracking-tight text-content-primary text-pretty">
+          <h2 className="mt-2 font-display text-[1.375rem] md:text-[1.625rem] font-semibold leading-snug tracking-tight text-content-primary text-pretty">
             {copy.title}
           </h2>
 
-          <p className="max-w-[62ch] text-[16px] leading-[1.6] text-content-primary whitespace-pre-line text-pretty">
-            {copy.paragraph}
+          <p className="mt-3 max-w-[62ch] text-[16px] leading-[1.6] text-content-primary whitespace-pre-line text-pretty">
+            {clamped.visible}
+            {clamped.rest && expanded ? ` ${clamped.rest}` : null}
           </p>
+          {clamped.rest && !expanded ? (
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              className="mt-1.5 text-[14px] font-medium text-[var(--accent-primary)] underline underline-offset-4 hover:opacity-80"
+            >
+              {t("identity.read_more", { defaultValue: "Ver leitura completa" })}
+            </button>
+          ) : null}
+
+          {readProofItems.length > 0 ? (
+            <div className="mt-4">
+              <ReadProofLine items={readProofItems} />
+            </div>
+          ) : null}
+
+
 
 
           {resolution.source !== "fallback" && resolved.evidence_used.length >= 2 ? (
