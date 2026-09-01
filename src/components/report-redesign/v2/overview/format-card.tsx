@@ -461,21 +461,25 @@ function FormatProportionBar({
         aria-label={ariaLabel}
         className="grid grid-cols-[1fr_auto] gap-5 md:gap-8 items-stretch rounded-2xl border border-border-subtle/60 bg-surface-base/50 px-5 md:px-7 py-5 md:py-6"
       >
-        {/* Left — editorial percentage */}
+        {/* Left — dominant format: número forte, mas com significado legível */}
         <div className="flex flex-col justify-center min-w-0">
+          <span className="text-eyebrow-sm text-content-tertiary">
+            {t("format.dominant_label", { defaultValue: "Formato dominante" })}
+          </span>
           <span
-            className="font-display font-semibold tabular-nums leading-[0.95] tracking-[-0.02em] text-[3.5rem] sm:text-[4.5rem] md:text-[5.25rem]"
+            className="mt-1.5 font-display font-semibold tabular-nums leading-[0.95] tracking-[-0.02em] text-[2.75rem] sm:text-[3.25rem] md:text-[3.5rem]"
             style={{ color: ACCENT }}
           >
             {dominant.pct}%
           </span>
-          <span className="mt-2 text-[13px] md:text-sm text-content-secondary leading-snug">
-            <span className="font-semibold text-content-primary">
-              {dominantCapital}
-            </span>{" "}
-            · <span className="tabular-nums">{dominant.count}/{total}</span>
+          <span className="mt-1.5 text-[15px] md:text-base font-semibold text-content-primary leading-snug truncate">
+            {dominantCapital}
+          </span>
+          <span className="mt-0.5 text-[13px] text-content-secondary leading-snug tabular-nums">
+            {dominant.count}/{total}
           </span>
         </div>
+
 
         {/* Right — cinematic vertical proportion column */}
         <div className="flex flex-col w-[80px] sm:w-[104px] md:w-[128px] h-[156px] md:h-[180px] rounded-xl overflow-hidden border border-border-subtle/60 shadow-sm">
