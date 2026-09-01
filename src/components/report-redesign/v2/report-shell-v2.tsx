@@ -39,6 +39,8 @@ import { useBlocks } from "./block-config";
 import { ReportBlockSidebar, ReportBlockTopTabs } from "./report-block-nav";
 import { ReportBlockSection } from "./report-block-section";
 import { ReportHeroV2 } from "./report-hero-v2";
+import { REPORT_GRID_ROW_CLASS } from "./report-grid-row";
+
 import { ReportOverviewBlock } from "./report-overview-block";
 import {
   CommentIntelligenceSection,
