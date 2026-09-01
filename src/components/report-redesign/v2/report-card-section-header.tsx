@@ -58,7 +58,7 @@ export function ReportCardSectionHeader({
 }: ReportCardSectionHeaderProps) {
   const underline = REPORT_SECTION_QUALIFIER_UNDERLINE[qualifierTone];
   const hasUnderline = qualifierTone !== "neutral" && underline !== "transparent";
-  const isBlock = qualifierPlacement === "block" && Boolean(qualifier);
+  
 
   return (
     <header
