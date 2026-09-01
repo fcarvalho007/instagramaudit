@@ -51,6 +51,11 @@ export function HeroActionBar() {
       >
         <InstagramGlyph className="size-[18px]" />
         <span className="text-eyebrow-sm">{t("actionBar.microLabel")}</span>
+        <ArrowDown
+          aria-hidden="true"
+          strokeWidth={2.25}
+          className="hero-hint-arrow hidden sm:block size-[18px] shrink-0 -rotate-12"
+        />
       </div>
 
       {/* The bar — glass card with input + button inline */}
