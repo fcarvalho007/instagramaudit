@@ -1,10 +1,15 @@
 /**
- * Comment Intelligence subsection for Block 02 → Q05 "Resposta".
- * Part of the FREE report — no PRO gating.
+ * Comment Intelligence subsection — "Conversas".
+ * Part of the FREE report after email capture (State B) and preserved
+ * unchanged in Pro (State C). No PRO gating, no commercial treatment.
  *
- * Two states:
- *   Available   → CommentIntelligenceSection — full analysis
- *   Unavailable → CommentIntelligenceUnavailable — neutral note
+ * Hierarchy (Card Review 02):
+ *   header → verdict → voice of the audience → signals → next action
+ *   → supporting metrics (measurable only) → sample & methodology
+ *
+ * Truth contract: nothing that depends on nested replies is rendered when
+ * `repliesMeasurable === false`. Zeros that mean "not measured" are never
+ * displayed nor used to classify brand behaviour.
  */
 
 import type { CommentIntelligence } from "@/lib/analysis/types";
@@ -12,11 +17,11 @@ import { useVariantFeatures } from "@/lib/report/report-variant";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { InsightCallout } from "./insight-callout";
+import { ReportCardSectionHeader } from "./report-card-section-header";
 import {
   MessageCircleReply,
   Info,
   MessageCircle,
-  ShieldCheck,
   HelpCircle,
   ShoppingCart,
   ThumbsUp,
@@ -24,7 +29,7 @@ import {
   Ban,
   Loader2,
   BarChart3,
-  Sparkles,
+  MinusCircle,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────
@@ -36,7 +41,8 @@ type BrandReplyStatus =
   | "occasional"
   | "minimal"
   | "absent"
-  | "insufficient";
+  | "insufficient"
+  | "not_measurable";
 
 interface StatusConfig {
   label: string;
@@ -44,13 +50,29 @@ interface StatusConfig {
   editorial: string;
 }
 
-function classifyBrandReply(
+/** Nested replies are only trustworthy when the scraper collected them. */
+export function repliesAreMeasurable(ci: CommentIntelligence): boolean {
+  return ci.repliesMeasurable !== false;
+}
+
+export function classifyBrandReply(
   ci: CommentIntelligence,
   t: (key: string) => string,
 ): {
   status: BrandReplyStatus;
   config: StatusConfig;
 } {
+  // 1. Replies not collected → never a verdict about brand behaviour.
+  if (!repliesAreMeasurable(ci)) {
+    return {
+      status: "not_measurable",
+      config: {
+        label: t("comments.status.not_measurable_label"),
+        tone: "slate",
+        editorial: t("comments.status.not_measurable_body"),
+      },
+    };
+  }
   if (ci.sampleComments < 5) {
     return {
       status: "insufficient",
@@ -101,8 +123,7 @@ function classifyBrandReply(
   };
 }
 
-/* Badge classes — local tone map using semantic tokens where possible.
- * "rose" uses tint-danger with softened text to avoid aggressive red. */
+/* Badge classes — local tone map using semantic tokens where possible. */
 const BADGE_CLASSES: Record<StatusConfig["tone"], string> = {
   emerald: "border-signal-success/20 bg-tint-success text-signal-success",
   amber: "border-signal-warning/20 bg-tint-warning text-signal-warning",
@@ -118,7 +139,7 @@ const BADGE_ICON_CLASSES: Record<StatusConfig["tone"], string> = {
 };
 
 // ─────────────────────────────────────────────────────────────────────
-// Scope note — shared
+// Shared bits
 // ─────────────────────────────────────────────────────────────────────
 
 function ScopeNote() {
@@ -130,25 +151,79 @@ function ScopeNote() {
   );
 }
 
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-eyebrow-sm text-content-tertiary">{children}</p>
+  );
+}
+
+/** Discreet, non-alarming note for small samples. */
+function LowConfidenceNote() {
+  const { t } = useTranslation("report");
+  return (
+    <div className="flex items-start gap-2 rounded-lg border border-border-subtle bg-surface-muted/50 px-3 py-2">
+      <Info
+        className="mt-0.5 h-3.5 w-3.5 shrink-0 text-content-tertiary"
+        aria-hidden="true"
+      />
+      <p className="text-[12px] leading-relaxed text-content-tertiary">
+        <span className="font-semibold text-content-secondary">
+          {t("comments.low_confidence.title")}
+        </span>{" "}
+        {t("comments.low_confidence.body")}
+      </p>
+    </div>
+  );
+}
+
+/** Neutral row shown instead of zeroed reply metrics. */
+function RepliesNotMeasurableNote() {
+  const { t } = useTranslation("report");
+  return (
+    <div className="flex items-start gap-2 rounded-lg border border-border-subtle bg-surface-muted/50 px-3 py-2">
+      <MinusCircle
+        className="mt-0.5 h-3.5 w-3.5 shrink-0 text-content-tertiary"
+        aria-hidden="true"
+      />
+      <p className="text-[12px] leading-relaxed text-content-tertiary">
+        <span className="font-semibold text-content-secondary">
+          {t("comments.replies_not_measurable.label")}
+        </span>{" "}
+        {t("comments.replies_not_measurable.body")}
+      </p>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────
-// Transparency strip — "Amostra analisada"
+// Transparency strip — "Amostra analisada" (secondary, at the end)
 // ─────────────────────────────────────────────────────────────────────
 
 function TransparencyStrip({ data }: { data: CommentIntelligence }) {
   const { t, i18n } = useTranslation("report");
   const lng = i18n.language?.startsWith("en") ? "en-US" : "pt-PT";
+  const measurable = repliesAreMeasurable(data);
+
+  // Only observed values — never a hardcoded universe denominator.
   const items: { label: string; value: string }[] = [
-    { label: t("comments.sample.posts"), value: `${data.samplePosts} / 12` },
-    { label: t("comments.sample.public_comments"), value: data.sampleComments.toLocaleString(lng) },
+    { label: t("comments.sample.posts"), value: data.samplePosts.toLocaleString(lng) },
+    {
+      label: t("comments.sample.public_comments"),
+      value: data.audienceCommentsCount.toLocaleString(lng),
+    },
   ];
-  if (data.sampleReplies > 0) {
-    items.push({ label: t("comments.sample.thread_replies"), value: data.sampleReplies.toLocaleString(lng) });
+  if (measurable) {
+    if (data.sampleReplies > 0) {
+      items.push({
+        label: t("comments.sample.thread_replies"),
+        value: data.sampleReplies.toLocaleString(lng),
+      });
+    }
+    items.push(
+      { label: t("comments.sample.brand_replies"), value: String(data.ownerRepliesCount) },
+      { label: t("comments.sample.brand_reply_rate"), value: `${data.ownerReplyRatePct}%` },
+    );
   }
-  items.push(
-    { label: t("comments.sample.audience_comments"), value: data.audienceCommentsCount.toLocaleString(lng) },
-    { label: t("comments.sample.brand_replies"), value: String(data.ownerRepliesCount) },
-    { label: t("comments.sample.brand_reply_rate"), value: `${data.ownerReplyRatePct}%` },
-  );
 
   return (
     <div className="rounded-lg border border-border-subtle bg-surface-muted/40 p-3 space-y-2.5">
@@ -168,6 +243,11 @@ function TransparencyStrip({ data }: { data: CommentIntelligence }) {
           </div>
         ))}
       </div>
+      {!measurable ? (
+        <p className="text-[10.5px] leading-relaxed text-content-tertiary">
+          {t("comments.sample.top_level_only")}
+        </p>
+      ) : null}
       <p className="text-[10.5px] leading-relaxed text-content-tertiary">
         {t("comments.methodology_note")}
       </p>
@@ -251,10 +331,26 @@ const UNAVAILABLE_REASON_KEYS = new Set([
   "no_valid_post_urls", "comment_scraper_timeout",
 ]);
 
-const TECHNICAL_REASONS = new Set([
-  "processing", "budget_blocked", "comment_scraper_failed",
-  "comment_scraper_timeout", "no_valid_post_urls",
-]);
+
+/** Public-facing buckets — never expose provider/technical detail. */
+type PublicUnavailableState = "processing" | "no_data" | "failed";
+
+function publicUnavailableState(
+  reason: CommentIntelligence["reason"] | undefined,
+): PublicUnavailableState {
+  if (reason === "processing") return "processing";
+  if (reason === "no_posts_with_comments" || reason === "no_valid_post_urls") {
+    return "no_data";
+  }
+  if (
+    reason === "comment_scraper_failed" ||
+    reason === "comment_scraper_timeout" ||
+    reason === "budget_blocked"
+  ) {
+    return "failed";
+  }
+  return "no_data";
+}
 
 export function CommentIntelligenceUnavailable({ data }: { data?: CommentIntelligence | null }) {
   const features = useVariantFeatures();
@@ -262,31 +358,38 @@ export function CommentIntelligenceUnavailable({ data }: { data?: CommentIntelli
   const isPublic = features.debugLabels === "hidden";
   const reason = data?.reason;
 
-  // ── public_mvp: Pro teaser ──
+  // ── public_mvp: neutral state, never a Pro teaser ──
   if (isPublic) {
+    const state = publicUnavailableState(reason);
     return (
-      <div className="mt-5">
-        <div className="rounded-lg border border-accent-gold/20 bg-accent-gold/5 px-4 py-3.5 space-y-1">
+      <div className="mt-5 space-y-3">
+        <ConversationsHeader />
+        <div className="rounded-lg border border-border-default bg-surface-muted/60 px-4 py-3.5 space-y-1.5">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-3.5 w-3.5 shrink-0 text-accent-gold" aria-hidden="true" />
-            <p className="text-[12.5px] font-semibold text-content-secondary">
-              {t("comments.unavailable.pro_title")}
+            {state === "processing" ? (
+              <Loader2
+                className="h-3.5 w-3.5 shrink-0 animate-spin text-content-tertiary"
+                aria-hidden="true"
+              />
+            ) : (
+              <Info className="h-3.5 w-3.5 shrink-0 text-content-tertiary" aria-hidden="true" />
+            )}
+            <p className="text-[12.5px] font-medium text-content-secondary">
+              {t(`comments.unavailable.public.${state}.title`)}
             </p>
           </div>
           <p className="text-[12px] leading-relaxed text-content-tertiary">
-            {t("comments.unavailable.pro_body")}
+            {t(`comments.unavailable.public.${state}.body`)}
           </p>
         </div>
+        <ScopeNote />
       </div>
     );
   }
 
   // ── internal_lab: full technical detail ──
-  const effectiveReason = (reason && TECHNICAL_REASONS.has(reason))
-    ? undefined
-    : reason;
-  const validReason = effectiveReason && UNAVAILABLE_REASON_KEYS.has(effectiveReason)
-    ? effectiveReason
+  const validReason = reason && UNAVAILABLE_REASON_KEYS.has(reason)
+    ? reason
     : null;
   const title = validReason
     ? t(`comments.unavailable.reasons.${validReason}.title`)
@@ -330,6 +433,22 @@ export function CommentIntelligenceUnavailable({ data }: { data?: CommentIntelli
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// Header — post-email reward, same visual language as other cards
+// ─────────────────────────────────────────────────────────────────────
+
+function ConversationsHeader() {
+  const { t } = useTranslation("report");
+  return (
+    <ReportCardSectionHeader
+      eyebrow={t("comments.header.eyebrow")}
+      title={t("comments.header.title")}
+      subtitle={t("comments.header.support")}
+      bottomMargin={false}
+    />
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Full Comment Intelligence Section
 // ─────────────────────────────────────────────────────────────────────
 
@@ -341,82 +460,76 @@ export function CommentIntelligenceSection({ data }: Props) {
   const { t } = useTranslation("report");
   const { config } = classifyBrandReply(data, t);
   const signalChips = buildSignalChips(data, t);
+  const measurable = repliesAreMeasurable(data);
+
+  // Supporting metrics — measurable only, never zero-as-unknown.
+  const metrics: { label: string; value: string }[] = [];
+  if (measurable) {
+    metrics.push(
+      { label: t("comments.metrics.brand_replies"), value: String(data.ownerRepliesCount) },
+      { label: t("comments.metrics.reply_rate"), value: `${data.ownerReplyRatePct}%` },
+      { label: t("comments.metrics.posts_with_reply"), value: `${data.postsWithOwnerReplyPct}%` },
+    );
+  }
+  metrics.push(
+    { label: t("comments.metrics.audience_questions"), value: String(data.questionsFromAudienceCount) },
+    { label: t("comments.metrics.buying_intent"), value: String(data.buyingIntentCount) },
+    { label: t("comments.metrics.complaints"), value: String(data.complaintOrIssueCount) },
+  );
+
+  // topConversationPost depends on owner replies — hide when not measurable.
+  const showTopPost = measurable && Boolean(data.topConversationPost);
 
   return (
-    <div className="mt-5 space-y-4">
-      {/* Sub-card header */}
-      <div className="flex items-center gap-2">
-        <MessageCircleReply
-          className="h-4 w-4 shrink-0 text-content-tertiary"
-          aria-hidden="true"
-        />
-        <h4 className="text-[13px] font-semibold text-content-secondary">
-          {t("comments.subtitle")}
-        </h4>
-      </div>
+    <div className="mt-5 space-y-5">
+      <ConversationsHeader />
 
-      {/* Status badge */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-medium",
-            BADGE_CLASSES[config.tone],
-          )}
-        >
-          <MessageCircle
-            className={cn("h-3 w-3 shrink-0", BADGE_ICON_CLASSES[config.tone])}
-            aria-hidden="true"
-          />
-          {config.label}
+      {/* 1 · Verdict / main signal */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-medium",
+              BADGE_CLASSES[config.tone],
+            )}
+          >
+            <MessageCircle
+              className={cn("h-3 w-3 shrink-0", BADGE_ICON_CLASSES[config.tone])}
+              aria-hidden="true"
+            />
+            {config.label}
+          </div>
         </div>
+
+        <InsightCallout
+          tone={
+            config.tone === "emerald"
+              ? "editorial"
+              : config.tone === "rose"
+                ? "warning"
+                : "suggestion"
+          }
+          label={
+            config.tone === "emerald"
+              ? t("comments.callout.editorial")
+              : config.tone === "rose"
+                ? t("comments.callout.warning")
+                : t("comments.callout.suggestion")
+          }
+        >
+          {config.editorial}
+        </InsightCallout>
+
+        {data.lowConfidence ? <LowConfidenceNote /> : null}
       </div>
 
-      {/* Editorial interpretation */}
-      <InsightCallout
-        tone={config.tone === "emerald" ? "editorial" : config.tone === "rose" ? "warning" : "suggestion"}
-        label={
-          config.tone === "emerald"
-            ? t("comments.callout.editorial")
-            : config.tone === "rose"
-              ? t("comments.callout.warning")
-              : t("comments.callout.suggestion")
-        }
-      >
-        {config.editorial}
-      </InsightCallout>
+      {/* 2 · Voz da audiência — prova humana logo a seguir ao diagnóstico */}
+      <VozDaAudienciaSection data={data} />
 
-      {/* 6-metric grid */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        <MetricCell
-          label={t("comments.metrics.brand_replies")}
-          value={String(data.ownerRepliesCount)}
-        />
-        <MetricCell
-          label={t("comments.metrics.reply_rate")}
-          value={`${data.ownerReplyRatePct}%`}
-        />
-        <MetricCell
-          label={t("comments.metrics.posts_with_reply")}
-          value={`${data.postsWithOwnerReplyPct}%`}
-        />
-        <MetricCell
-          label={t("comments.metrics.audience_questions")}
-          value={String(data.questionsFromAudienceCount)}
-        />
-        <MetricCell
-          label={t("comments.metrics.buying_intent")}
-          value={String(data.buyingIntentCount)}
-        />
-        <MetricCell
-          label={t("comments.metrics.complaints")}
-          value={String(data.complaintOrIssueCount)}
-        />
-      </div>
-
-      {/* Conversation quality signals */}
+      {/* 3 · Sinais observados */}
       {signalChips.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-eyebrow-sm text-content-tertiary">{t("comments.signals.title")}</p>
+          <SectionLabel>{t("comments.signals.title")}</SectionLabel>
           <div className="flex flex-wrap gap-1.5">
             {signalChips.map((chip) => (
               <div
@@ -438,28 +551,27 @@ export function CommentIntelligenceSection({ data }: Props) {
         </div>
       )}
 
-      {/* Recommended action */}
+      {/* 4 · Próxima acção */}
       {data.recommendedConversationAction && (
         <InsightCallout tone="suggestion" label={t("comments.callout.action_label")}>
           {data.recommendedConversationAction}
         </InsightCallout>
       )}
 
-      {/* Voz da audiência — excertos reais classificados */}
-      <VozDaAudienciaSection data={data} />
+      {/* 5 · Métricas de suporte — apenas mensuráveis */}
+      <div className="space-y-2">
+        <SectionLabel>{t("comments.metrics_title")}</SectionLabel>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {metrics.map((m) => (
+            <MetricCell key={m.label} label={m.label} value={m.value} />
+          ))}
+        </div>
+        {!measurable ? <RepliesNotMeasurableNote /> : null}
+      </div>
 
-      {/* Top conversation post */}
-      {data.topConversationPost && (
+      {showTopPost && data.topConversationPost && (
         <div className="rounded-lg border border-border-subtle bg-surface-secondary px-3.5 py-2.5 space-y-1">
-          <div className="flex items-center gap-1.5">
-            <ShieldCheck
-              className="h-3 w-3 shrink-0 text-content-tertiary"
-              aria-hidden="true"
-            />
-            <p className="text-eyebrow-sm text-content-tertiary">
-              {t("comments.top.label")}
-            </p>
-          </div>
+          <SectionLabel>{t("comments.top.label")}</SectionLabel>
           <p className="text-[13px] text-content-secondary">
             <span className="font-semibold tabular-nums">
               {data.topConversationPost.ownerRepliesCount}
@@ -476,19 +588,14 @@ export function CommentIntelligenceSection({ data }: Props) {
         </div>
       )}
 
-      {/* Transparency strip */}
-      <TransparencyStrip data={data} />
-
-      {/* Scope + limitations */}
-      <div className="space-y-1 pt-1">
+      {/* 6 · Amostra e metodologia — secundária, no fim */}
+      <div className="space-y-2 pt-1">
+        <TransparencyStrip data={data} />
         <ScopeNote />
         {data.limitations
           .filter((l) => !l.includes("comentários públicos"))
           .map((l, i) => (
-            <p
-              key={i}
-              className="text-xs leading-relaxed text-content-tertiary"
-            >
+            <p key={i} className="text-xs leading-relaxed text-content-tertiary">
               {l}
             </p>
           ))}
@@ -561,9 +668,7 @@ function VozDaAudienciaSection({ data }: { data: CommentIntelligence }) {
   if (visible.length === 0) {
     return (
       <div className="space-y-1.5">
-        <p className="text-eyebrow-sm text-content-tertiary">
-          {t("comments.voice.title")}
-        </p>
+        <SectionLabel>{t("comments.voice.title")}</SectionLabel>
         <p className="text-xs leading-relaxed text-content-tertiary">
           {t("comments.voice.empty")}
         </p>
@@ -573,10 +678,8 @@ function VozDaAudienciaSection({ data }: { data: CommentIntelligence }) {
 
   return (
     <div className="space-y-2.5">
-      <p className="text-eyebrow-sm text-content-tertiary">
-        {t("comments.voice.title")}
-      </p>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <SectionLabel>{t("comments.voice.title")}</SectionLabel>
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
         {visible.map((group) =>
           group.items.map((it, i) => {
             const Icon = CATEGORY_ICON[group.cat];
