@@ -1,47 +1,50 @@
-# Melhores e piores publicações — imagens reais não aparecem
+# Card 1 (Índice do perfil / Veredicto) — texto mais curto e prova de leitura
 
-## Causa confirmada
+## O que está a acontecer
 
-Os últimos snapshots gravados (por exemplo `augusttojesus`, `faithdrives`, `vivianec.araujo`, `theaisurfer`, `pingodoce`) têm 12 publicações cada, com legenda, likes, comentários e data correctos — mas **`thumbnail_url` e `thumbnail_storage_url` a `null` em 100% das publicações**. O avatar do perfil é guardado correctamente no nosso bucket, logo a persistência de imagens funciona; o que falha é a extracção do URL da imagem da publicação.
+O parágrafo do veredicto é hoje obrigado a ser longo: o prompt pede "90–140 palavras, máximo 4 frases" e o validador rejeita textos com menos de 90 palavras. Além disso, o fallback determinístico acrescenta ainda frases extra (cadência e hashtags) ao fim do parágrafo. Resultado: três blocos de texto corrido antes de o utilizador chegar à evidência.
 
-Todas as recolhas recentes vêm do endpoint `/v2/instagram/user/posts` do provider actual (confirmado nos registos de chamadas). Nesse endpoint as imagens vêm em `image_versions2.candidates[]`, uma lista de objectos `{url, width, height}`.
+Ao mesmo tempo, os dados concretos que provam que o perfil foi mesmo lido (nº de publicações analisadas, janela temporal, cadência real, formato dominante, hashtags recorrentes, médias de gostos e comentários) só aparecem diluídos na prosa ou em baixo, na faixa "Evidência".
 
-O adaptador lê essa lista de forma incorrecta:
+## Alterações propostas
 
-```ts
-// src/lib/analysis/providers/scrapecreators.server.ts (~linha 335)
-displayUrl:
-  str(raw.display_url) ??
-  str(raw.thumbnail_url) ??
-  str(asRecord(asRecord(raw.image_versions2)?.candidates)?.[0]),  // ← devolve sempre null
+### 1. Veredicto mais curto e pragmático
+
+- Prompt do veredicto: passa de "90–140 palavras, máx. 4 frases" para **35–65 palavras, máximo 3 frases**: uma frase de diagnóstico com o número que a sustenta, uma frase com a tensão observada, e nada mais. Sem repetições, sem hedging.
+- Validador alinhado ao novo intervalo (mínimo e máximo de palavras, limite de frases), mantendo todas as outras regras já existentes: sem percentagens soltas, hashtags só com evidência, exigência de rótulos de cadência em `evidence_used`.
+- Fallback determinístico: o parágrafo base fica só com o diagnóstico. As frases de cadência e hashtags deixam de ser coladas ao texto e passam a alimentar a linha de prova de leitura (ponto 2).
+- Compatibilidade com relatórios já gerados: os veredictos longos em cache passam a ser apresentados apenas nas 3 primeiras frases, com o restante acessível num "Ver leitura completa" discreto. Nenhum dado é perdido nem reescrito.
+
+### 2. Linha de prova de leitura ("o que foi lido")
+
+Logo abaixo do veredicto, uma linha compacta de indicadores factuais, construída a partir dos dados que o cartão já recebe:
+
+```text
+12 publicações · janela 90 dias · ~1 post a cada 2–3 dias · 78% Reels · #ia, #inteligenciaartificial · 41 gostos / 2 comentários por post
 ```
 
-`candidates` é um array; `asRecord(...)` sobre um array seguido de `str(objecto)` devolve sempre `null`. Como este endpoint não envia `display_url` nem `thumbnail_url` ao nível do item, o resultado é sempre `null` → nenhum thumbnail chega ao snapshot → o cartão "Melhores e piores publicações" e o preview do Estado A mostram caixas cinzentas vazias.
+Regras: só entram itens com dados reais; nada de placeholders; quando a amostra é insuficiente o item de cadência é omitido em vez de estimado. Esta linha substitui as frases de qualifier que hoje engordam o parágrafo e responde directamente ao "o cliente precisa de perceber que o perfil foi de facto lido".
 
-## Correcção
+### 3. Espaçamentos
 
-1. **Extracção de imagem robusta** em `scrapecreators.server.ts`: helper dedicado que, por ordem, tenta
-   - `display_url` / `thumbnail_url` / `display_src`;
-   - `image_versions2.candidates[]` — o candidato de maior largura com `url` válido;
-   - `image_versions2.additional_candidates.first_frame` / `.igtv_first_frame` (vídeos);
-   - `carousel_media[0].image_versions2.candidates[]` (carrosséis sem imagem de capa própria);
-   - `video_versions[0].url` apenas como último recurso não usado como imagem (ignorado).
-   Devolve `null` quando nada existe, sem lançar.
+- Zona macro: `gap-5` → `gap-4`; separador do veredicto `pt-5` → `pt-4`; ritmo interno `space-y-3` → escala única (eyebrow 8px, título 12px, parágrafo 12px, prova de leitura 16px).
+- Faixa "Evidência": aproximar do bloco anterior (`pb-6` mantém-se, topo reduzido) e remover as linhas em branco duplicadas entre secções.
+- Padding do cartão uniformizado em `px-6 py-6 / sm:px-7 sm:py-7` em todas as zonas, para que a régua do índice, o veredicto e as colunas de forças/limites arranquem na mesma vertical.
+- Largura de leitura do parágrafo mantida em 62ch.
 
-2. **Testes unitários** com fixtures reais das três formas (imagem simples, reel, carrossel) a garantir que o URL escolhido é o de maior resolução e que payloads sem imagem continuam a devolver `null`.
+## Fora de âmbito
 
-3. **Snapshots já gravados**: as análises existentes ficam sem imagem porque o dado nunca foi recolhido. Não há como recuperar sem nova recolha. A cache expira sozinha; para os perfis de teste basta correr nova análise depois do fix. Não vai ser feita nenhuma reescrita retroactiva de dados.
-
-4. **Estado vazio decente** no cartão e no preview: quando não há thumbnail, em vez de um rectângulo cinzento vazio mostra-se o ícone do formato (Reel / Carrossel / Imagem) sobre a superfície neutra. Assim a publicação continua legível mesmo quando o provider não devolve imagem.
-
-## Verificação
-
-- Correr uma análise nova de um perfil de teste e confirmar em base de dados que `thumbnail_url` deixa de ser `null` e que `thumbnail_storage_url` passa a ser preenchido pela persistência já existente.
-- Abrir o relatório e confirmar que "Melhores e piores publicações" mostra as imagens reais nos Estados A, B e C.
-- Suite de testes verde.
+Fórmulas, pesos, score 36/100, bandas, classificação do veredicto, colunas de forças/limitações e a régua do índice não são alterados. Só muda a extensão do texto, a nova linha factual e o espaçamento.
 
 ## Ficheiros afectados
 
-- `src/lib/analysis/providers/scrapecreators.server.ts` — extracção da imagem.
-- novo teste em `src/lib/analysis/providers/__tests__/`.
-- `src/components/report-redesign/v2/report-post-comparison.tsx` — estado vazio da thumbnail.
+- `src/lib/insights/prompt-v2.ts` — regras de extensão do veredicto.
+- `src/lib/insights/validate-v2.ts` — limites de palavras/frases.
+- `src/lib/report/editorial-verdict-fallback.ts` — parágrafo sem qualifiers colados.
+- `src/components/report-redesign/v2/overview/editorial-identity-card.tsx` — linha de prova de leitura, clamp de apresentação, espaçamentos.
+- `src/i18n/locales/pt/report.json` e `en/report.json` — chaves da nova linha e do "Ver leitura completa".
+
+## Validação
+
+- Testes existentes do validador de insights e dos cartões, mais casos novos para o novo intervalo de palavras e para o clamp de veredictos longos.
+- Verificação visual em 390, 1280 e 1440 px nos estados A, B e C, com um veredicto antigo (longo) e um novo (curto).
