@@ -1240,9 +1240,9 @@ function PreviewThumb({
   const url = post.thumbnailUrl;
   const show = Boolean(url) && !imgError;
   return (
-    <div className="relative size-20 shrink-0 overflow-hidden rounded-lg border border-border-subtle bg-surface-muted">
+    <div className="relative w-full aspect-[4/5] overflow-hidden bg-surface-muted">
       <div className="absolute inset-0 flex items-center justify-center text-content-tertiary">
-        <FormatIcon format={post.format} className="size-6 opacity-60" />
+        <FormatIcon format={post.format} className="size-10 opacity-50" />
       </div>
       {show ? (
         <img
@@ -1254,6 +1254,7 @@ function PreviewThumb({
           className="absolute inset-0 size-full object-cover"
         />
       ) : null}
+
     </div>
   );
 }
