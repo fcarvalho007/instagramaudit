@@ -283,7 +283,14 @@
         "window": "Janela: {{days}} dias"
       },
       "disclaimer": "Leitura comparativa — não é uma métrica oficial do Instagram."
-    }
+    },
+    "read_proof": {
+      "posts_one": "{{count}} publicação analisada",
+      "posts_other": "{{count}} publicações analisadas",
+      "window": "janela de {{days}} dias",
+      "averages": "{{likes}} gostos / {{comments}} comentários por publicação"
+    },
+    "read_more": "Ver leitura completa"
   },
   "frequency": {
     "title": "Frequência de publicação",

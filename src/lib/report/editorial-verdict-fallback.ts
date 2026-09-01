@@ -107,49 +107,13 @@ export function buildFallbackVerdict(
   const title = t(`identity.fallback.${key}.title`);
   const baseParagraph = t(`identity.fallback.${key}.paragraph`);
 
-  const qualifierSentences: string[] = [];
-  if (
-    typeof qualifiers.cadenceLabelPt === "string" &&
-    qualifiers.cadenceLabelPt.trim().length > 0
-  ) {
-    qualifierSentences.push(
-      `Na amostra recente, o perfil publica ${qualifiers.cadenceLabelPt.trim()}.`,
-    );
-  } else if (
-    qualifiers.cadenceMethod &&
-    qualifiers.cadenceMethod !== "insufficient"
-  ) {
-    const qKey = qualifiers.cadenceMethod;
-    const sentence = t(`identity.fallback_cadence_qualifier.${qKey}`, {
-      defaultValue: "",
-    });
-    if (sentence) qualifierSentences.push(sentence);
-  }
-  if (qualifiers.hashtagsState) {
-    if (qualifiers.hashtagsState === "recurring") {
-      const tags = (qualifiers.topHashtags ?? [])
-        .slice(0, 2)
-        .map((tag) => (tag.startsWith("#") ? tag : `#${tag}`));
-      if (tags.length > 0) {
-        qualifierSentences.push(
-          `Hashtags recorrentes na amostra: ${tags.join(", ")}.`,
-        );
-      }
-    } else if (qualifiers.hashtagsState === "weak") {
-      qualifierSentences.push("Uso pontual de hashtags, sem assinatura clara.");
-    } else if (qualifiers.hashtagsState === "absent") {
-      qualifierSentences.push("Sem hashtags relevantes na amostra.");
-    }
-  } else if (qualifiers.hasRecurringHashtags === false) {
-    const sentence = t("identity.fallback_hashtags_absent", {
-      defaultValue: "",
-    });
-    if (sentence) qualifierSentences.push(sentence);
-  }
-  const paragraph =
-    qualifierSentences.length > 0
-      ? `${baseParagraph}\n\n${qualifierSentences.join(" ")}`
-      : baseParagraph;
+  // Os sinais de amostra (cadência real, hashtags recorrentes, médias)
+  // deixaram de ser colados ao parágrafo: são renderizados numa linha
+  // factual própria no cartão 1 ("prova de leitura"). O parágrafo fica
+  // só com o diagnóstico curto.
+  void qualifiers;
+  const paragraph = baseParagraph;
+
 
   // Prioridade prática derivada do band (1 frase no infinitivo).
   const priority = t(`identity.fallback_priority.${band}`, {

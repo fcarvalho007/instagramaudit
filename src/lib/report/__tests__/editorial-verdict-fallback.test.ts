@@ -42,55 +42,49 @@ describe("buildFallbackVerdict — qualifiers", () => {
     expect(v.paragraph).not.toContain("Uso pontual");
   });
 
-  it("recurring: cita até 2 hashtags com prefixo `#`", () => {
+  it("recurring: hashtags e cadência NÃO entram no paragraph", () => {
     const v = buildFallbackVerdict(baseMetrics(), t, {
       cadenceLabelPt: "cerca de 1 post a cada 2–3 dias",
       hashtagsState: "recurring",
       topHashtags: ["lifestyle", "porto", "viagens"],
     });
-    expect(v.paragraph).toContain(
-      "Na amostra recente, o perfil publica cerca de 1 post a cada 2–3 dias.",
-    );
-    expect(v.paragraph).toContain("Hashtags recorrentes na amostra: #lifestyle, #porto.");
-    // Não cita a terceira tag.
-    expect(v.paragraph).not.toContain("#viagens");
+    expect(v.paragraph).not.toContain("cerca de 1 post a cada 2–3 dias");
+    expect(v.paragraph).not.toMatch(/#\w+/);
   });
 
-  it("weak: emite frase de uso pontual sem citar tags", () => {
+  it("weak: não acrescenta frase de uso pontual", () => {
     const v = buildFallbackVerdict(baseMetrics(), t, {
       hashtagsState: "weak",
       topHashtags: ["um", "dois"],
     });
-    expect(v.paragraph).toContain("Uso pontual de hashtags, sem assinatura clara.");
+    expect(v.paragraph).not.toContain("Uso pontual de hashtags");
     expect(v.paragraph).not.toMatch(/#\w+/);
   });
 
-  it("absent: emite frase de ausência", () => {
+  it("absent: não acrescenta frase de ausência", () => {
     const v = buildFallbackVerdict(baseMetrics(), t, {
       hashtagsState: "absent",
     });
-    expect(v.paragraph).toContain("Sem hashtags relevantes na amostra.");
+    expect(v.paragraph).not.toContain("Sem hashtags relevantes na amostra.");
   });
 
-  it("cadenceLabelPt tem prioridade sobre cadenceMethod", () => {
+  it("cadenceMethod legado também não é colado ao paragraph", () => {
     const v = buildFallbackVerdict(baseMetrics(), t, {
       cadenceMethod: "window_30d",
       cadenceLabelPt: "cerca de 1 post por dia",
     });
-    expect(v.paragraph).toContain("cerca de 1 post por dia");
-    // Não dispara também o fallback baseado em cadenceMethod (`identity.fallback_cadence_qualifier.window_30d`).
+    expect(v.paragraph).not.toContain("cerca de 1 post por dia");
     expect(v.paragraph).not.toContain("identity.fallback_cadence_qualifier");
   });
 
-  it("hashtagsState tem prioridade sobre hasRecurringHashtags", () => {
+  it("hasRecurringHashtags legado não injecta texto", () => {
     const v = buildFallbackVerdict(baseMetrics(), t, {
       hasRecurringHashtags: false,
       hashtagsState: "recurring",
       topHashtags: ["lifestyle"],
     });
-    expect(v.paragraph).toContain("Hashtags recorrentes na amostra: #lifestyle.");
-    // Não cai no caminho legado i18n.
     expect(v.paragraph).not.toContain("identity.fallback_hashtags_absent");
+    expect(v.paragraph).not.toMatch(/#\w+/);
   });
 
   it("não imprime percentagens", () => {
@@ -107,7 +101,6 @@ describe("buildFallbackVerdict — qualifiers", () => {
       hashtagsState: "absent",
     });
     expect(v.paragraph).not.toContain("Na amostra recente, o perfil publica");
-    expect(v.paragraph).toContain("Sem hashtags relevantes na amostra.");
   });
 
   it("fallback é diagnóstico, não prescritivo (paragraph sem verbos imperativos)", () => {

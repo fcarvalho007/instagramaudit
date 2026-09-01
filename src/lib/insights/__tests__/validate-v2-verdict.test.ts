@@ -10,13 +10,12 @@ function baseSections() {
   return out;
 }
 
-// 99 palavras, 4 frases, contém #lifestyle (hashtag), tem um dígito (`5`),
-// sem `%`, sem métricas privadas, sem verbos prescritivos.
+// ~55 palavras, 3 frases, sem `%`, sem métricas privadas, sem verbos
+// prescritivos. As hashtags deixaram de ser obrigatórias no parágrafo.
 const VALID_PARAGRAPH =
   "O perfil mantém actividade visível com cerca de 5 publicações por semana, dominadas por Reels e centradas em poucos temas recorrentes que dão coerência à grelha. " +
-  "A leitura é feita contra o benchmark do escalão, como se pode consultar nas secções abaixo deste relatório, e o sinal aponta para um perfil acima do habitual. " +
-  "A audiência reage com gostos mas raramente entra em conversa, num padrão típico de consumo silencioso a que vale a pena prestar atenção. " +
-  "Em termos de assinatura temática, a hashtag #lifestyle aparece de forma recorrente e ajuda a localizar o território editorial, sem grande dispersão.";
+  "A audiência reage com gostos mas raramente entra em conversa, num padrão típico de consumo silencioso. " +
+  "O esforço de produção em vídeo não se traduz em conversa proporcional, e o território editorial mantém-se estreito.";
 
 const VALID_VERDICT = {
   verdict_label: "promising",
@@ -50,32 +49,29 @@ describe("validateInsightsV2 — editorial_verdict", () => {
     }
   });
 
-  it("rejects paragraph below 90 words", () => {
+  it("rejects paragraph below 30 words", () => {
     const short = "Texto demasiado curto com a hashtag #lifestyle e o número 5.";
     const r = validateInsightsV2(payload({ paragraph: short }));
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.reason).toBe("PARAGRAPH_TOO_SHORT");
   });
 
-  it("rejects paragraph above 140 words", () => {
-    // 145 palavras curtas + 1 dígito + uma hashtag para não ser apanhado
-    // primeiro pelo HASHTAGS_NOT_HANDLED. Apanha em PARAGRAPH_TOO_LONG.
+  it("rejects paragraph above 70 words", () => {
     const huge =
-      Array.from({ length: 145 }, () => "palavra").join(" ") + " 1 #lifestyle.";
+      Array.from({ length: 80 }, () => "palavra").join(" ") + " 1 #lifestyle.";
     const r = validateInsightsV2(payload({ paragraph: huge }));
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.reason).toBe("PARAGRAPH_TOO_LONG");
   });
 
-  it("rejects paragraph with more than 4 sentences", () => {
-    // 5 frases curtas, 95 palavras, com hashtag e dígito.
-    const filler = Array.from({ length: 17 }, () => "palavra").join(" ");
+  it("rejects paragraph with more than 3 sentences", () => {
+    // 4 frases curtas, ~40 palavras.
+    const filler = Array.from({ length: 8 }, () => "palavra").join(" ");
     const para =
       `Frase um com 5 publicações ${filler}. ` +
       `Frase dois ${filler}. ` +
       `Frase três ${filler}. ` +
-      `Frase quatro ${filler}. ` +
-      `Frase cinco menciona a hashtag #lifestyle ${filler}.`;
+      `Frase quatro ${filler}.`;
     const r = validateInsightsV2(payload({ paragraph: para }));
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.reason).toBe("TOO_MANY_SENTENCES");
@@ -83,8 +79,8 @@ describe("validateInsightsV2 — editorial_verdict", () => {
 
   it("rejects engagement percentage leaked in paragraph", () => {
     const leak = VALID_PARAGRAPH.replace(
-      "acima do habitual",
-      "12% acima do habitual",
+      "consumo silencioso",
+      "consumo silencioso 12% abaixo do escalão",
     );
     const r = validateInsightsV2(payload({ paragraph: leak }));
     expect(r.ok).toBe(false);
@@ -101,33 +97,10 @@ describe("validateInsightsV2 — editorial_verdict", () => {
     if (!r.ok) expect(r.reason).toBe("PRIVATE_METRIC_LEAK");
   });
 
-  it("rejects paragraph that does not handle hashtags", () => {
-    // 99 palavras, 4 frases, sem `#` e sem frase de ausência.
-    const filler = Array.from({ length: 22 }, () => "palavra").join(" ");
-    const para =
-      `O perfil publica 5 vezes por semana ${filler}. ` +
-      `A leitura é feita contra o benchmark ${filler}. ` +
-      `A audiência consome em silêncio ${filler}. ` +
-      `O território editorial é coerente ${filler}.`;
-    const r = validateInsightsV2(payload({ paragraph: para }));
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.reason).toBe("HASHTAGS_NOT_HANDLED");
-  });
-
-  it("accepts paragraph with explicit hashtag absence phrase", () => {
-    const para =
-      "O perfil mantém actividade visível com cerca de 5 publicações por semana, dominadas por Reels e centradas em poucos temas recorrentes que dão coerência à grelha. " +
-      "A leitura é feita contra o benchmark do escalão, como se pode consultar nas secções abaixo deste relatório, e o sinal aponta para um perfil acima do habitual. " +
-      "A audiência reage com gostos mas raramente entra em conversa, num padrão típico de consumo silencioso a que vale a pena prestar atenção. " +
-      "Nesta amostra, as hashtags não são suficientemente claras ou recorrentes para definir um território editorial estável.";
-    const r = validateInsightsV2(payload({ paragraph: para }));
-    expect(r.ok).toBe(true);
-  });
-
   it("rejects paragraph with prescriptive verbs", () => {
     const presc = VALID_PARAGRAPH.replace(
-      "A leitura é feita",
-      "Deve publicar mais carrosséis. A leitura é feita",
+      "A audiência reage",
+      "Deve publicar mais carrosséis. A audiência reage",
     );
     const r = validateInsightsV2(payload({ paragraph: presc }));
     expect(r.ok).toBe(false);
@@ -136,12 +109,12 @@ describe("validateInsightsV2 — editorial_verdict", () => {
   });
 
   it("rejects visual claim without visual_cover evidence", () => {
-    // Insere uma afirmação visual mantendo 4 frases e palavras dentro
-    // do intervalo 90–140. Sem `visual_cover.*` em evidence → deve
+    // Insere uma afirmação visual mantendo 3 frases. Sem
+    // `visual_cover.*` em evidence → deve
     // disparar VISUAL_CLAIM_UNSUPPORTED.
     const para = VALID_PARAGRAPH.replace(
-      "sem grande dispersão.",
-      "sem grande dispersão, e a consistência visual das capas reforça a identidade.",
+      "o território editorial mantém-se estreito.",
+      "a consistência visual das capas reforça a identidade.",
     );
     const r = validateInsightsV2(payload({ paragraph: para }));
     expect(r.ok).toBe(false);
