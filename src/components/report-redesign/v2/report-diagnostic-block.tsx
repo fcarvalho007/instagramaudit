@@ -730,7 +730,10 @@ function renderAudienceCard(
   captionEngagementStrategy?: "active" | "occasional" | "passive" | null,
   captionAsksForCommentsPct?: number | null,
   t?: TR,
+  /** Esconde o estado duplicado do Comment Intelligence (secção "Conversas"). */
+  hideCommentFallback = false,
 ): ReactNode | null {
+
   const tr = t as TR;
   // — State B: data unavailable —
   if (!r.available) {
