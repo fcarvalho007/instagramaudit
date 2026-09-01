@@ -759,12 +759,15 @@ function AnalyzeReady({
           pdfDisabled: shareActions.pdfDisabled,
         }}
       />
-      <DeepenAnalysisCta
-        handle={auditHandle}
-        snapshotId={snapshotId}
-        unlockStatus={unlockStatus}
-        onConvert={() => openConversion("comment_intelligence")}
-      />
+      <ReportGridRow>
+        <DeepenAnalysisCta
+          handle={auditHandle}
+          snapshotId={snapshotId}
+          unlockStatus={unlockStatus}
+          onConvert={() => openConversion("comment_intelligence")}
+        />
+      </ReportGridRow>
+
       <ConversionSheet
         open={conversionOpen}
         onOpenChange={setConversionOpen}
