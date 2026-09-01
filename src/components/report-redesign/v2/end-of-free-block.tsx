@@ -1,11 +1,4 @@
-import {
-  ArrowRight,
-  CalendarClock,
-  Lightbulb,
-  ListChecks,
-  Stethoscope,
-  Users,
-} from "lucide-react";
+import { ArrowRight, CalendarClock, ListChecks, Stethoscope } from "lucide-react";
 import { Trans, useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { PUBLIC_PRODUCTS } from "@/lib/payments/products";
@@ -22,30 +15,24 @@ import { usePremiumCta } from "./premium-cta-context";
  * em variantes não-gated (no gated, o paywall já comunica "há mais").
  */
 export function ReportEndOfFreeBlock({ className }: { className?: string }) {
-  const { handlePremiumAccessClick } = usePremiumCta();
+  const { goToProCheckout } = usePremiumCta();
   const { t } = useTranslation("report");
 
-  const openInterest = () => {
-    handlePremiumAccessClick("lock_gate", {
-      cta: "guarantee_launch_price",
-    });
-  };
+  // Percurso directo: CTA → checkout de 9€, sem modal intermédio.
+  const openInterest = () => goToProCheckout("lock_gate");
 
   const priceLabel = PUBLIC_PRODUCTS.report_full_9.priceLabel;
 
+  // Apenas benefícios garantidos pelo `report_full_9`. Concorrentes e
+  // "oportunidades" saíram por serem condicionais (auditoria 03A).
   const benefits = [
     { icon: Stethoscope, key: "diagnosis" },
     { icon: ListChecks, key: "priorities" },
     { icon: CalendarClock, key: "rhythm" },
-    { icon: Users, key: "competitors" },
-    { icon: Lightbulb, key: "opportunities" },
   ] as const;
 
   return (
-    <section
-      aria-label={t("end_of_free.eyebrow")}
-      className={cn(className)}
-    >
+    <section aria-label={t("end_of_free.eyebrow")} className={cn(className)}>
       <div
         className={cn(
           "mx-auto max-w-xl text-center",
@@ -54,13 +41,10 @@ export function ReportEndOfFreeBlock({ className }: { className?: string }) {
           "shadow-[0_8px_40px_-12px_rgba(15,23,42,0.10),0_2px_8px_rgba(15,23,42,0.04)]",
         )}
         style={{
-          background:
-            "linear-gradient(180deg, #FFFFFF 0%, #F8FAFE 100%)",
+          background: "linear-gradient(180deg, #FFFFFF 0%, #F8FAFE 100%)",
         }}
       >
-        <p className="text-eyebrow-sm text-content-tertiary">
-          {t("end_of_free.eyebrow")}
-        </p>
+        <p className="text-eyebrow-sm text-content-tertiary">{t("end_of_free.eyebrow")}</p>
 
         <h2
           className={cn(
@@ -85,10 +69,7 @@ export function ReportEndOfFreeBlock({ className }: { className?: string }) {
               key={key}
               className="flex items-start gap-3 text-[14.5px] leading-snug text-content-primary"
             >
-              <Icon
-                className="mt-0.5 size-4 shrink-0 text-content-tertiary"
-                aria-hidden="true"
-              />
+              <Icon className="mt-0.5 size-4 shrink-0 text-content-tertiary" aria-hidden="true" />
               <span>{t(`end_of_free.benefits.${key}`)}</span>
             </li>
           ))}

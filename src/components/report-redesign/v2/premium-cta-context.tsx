@@ -7,6 +7,8 @@ import {
   type ReactNode,
 } from "react";
 
+import { useNavigate } from "@tanstack/react-router";
+
 import { trackEvent } from "@/lib/tracking.functions";
 import { trackAnonymousEvent } from "@/lib/analytics/anonymous-funnel";
 
@@ -57,6 +59,14 @@ export interface PremiumCtaContextValue {
    * modal.
    */
   trackPremiumWindowInterest: (windowDays: number) => void;
+  /**
+   * Percurso de compra canónico do Estado B: leva directamente ao
+   * checkout de `report_full_9`, sem modal intermédio. Usado pelas
+   * superfícies com intenção explícita (bloco final e sticky). As
+   * superfícies exploratórias (período, concorrentes, secções da
+   * sidebar) continuam a usar `handlePremiumAccessClick`.
+   */
+  goToProCheckout: (source: PremiumCtaSource) => void;
 }
 
 const PremiumCtaContext = createContext<PremiumCtaContextValue | null>(null);
@@ -90,6 +100,7 @@ export function PremiumCtaProvider({
 }: ProviderProps) {
   const [open, setOpen] = useState(false);
   const [source, setSource] = useState<PremiumCtaSource>("sidebar");
+  const navigate = useNavigate();
 
   const handlePremiumAccessClick = useCallback<
     PremiumCtaContextValue["handlePremiumAccessClick"]
@@ -149,13 +160,63 @@ export function PremiumCtaProvider({
     [snapshotId, handle, variant],
   );
 
+  const goToProCheckout = useCallback<
+    PremiumCtaContextValue["goToProCheckout"]
+  >(
+    (nextSource) => {
+      if (premiumUnlocked) {
+        if (typeof window !== "undefined") {
+          window.setTimeout(() => scrollToBlock("compare"), 0);
+        }
+        return;
+      }
+
+      trackEvent({
+        data: {
+          eventType: "payment_cta_clicked",
+          snapshotId: snapshotId ?? undefined,
+          handle: handle ?? undefined,
+          metadata: {
+            variant,
+            product_code: "report_full_9",
+            source_component: nextSource,
+          },
+        },
+      }).catch(() => {});
+
+      trackAnonymousEvent("pro_cta_clicked", {
+        ...(handle ? { handle } : {}),
+        ...(snapshotId ? { snapshotId } : {}),
+        metadata: { source_component: nextSource },
+      });
+
+      navigate({
+        to: "/checkout/report-full",
+        search: {
+          source: nextSource,
+          username: handle ?? undefined,
+          return: typeof window !== "undefined"
+            ? window.location.pathname
+            : "/",
+        },
+      }).catch(() => {});
+    },
+    [navigate, snapshotId, handle, variant, premiumUnlocked],
+  );
+
   const value = useMemo<PremiumCtaContextValue>(
     () => ({
       premiumUnlocked,
       handlePremiumAccessClick,
       trackPremiumWindowInterest,
+      goToProCheckout,
     }),
-    [premiumUnlocked, handlePremiumAccessClick, trackPremiumWindowInterest],
+    [
+      premiumUnlocked,
+      handlePremiumAccessClick,
+      trackPremiumWindowInterest,
+      goToProCheckout,
+    ],
   );
 
   return (

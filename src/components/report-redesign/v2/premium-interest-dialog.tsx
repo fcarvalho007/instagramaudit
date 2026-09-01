@@ -12,10 +12,11 @@ import { Button } from "@/components/ui/button";
 import { trackEvent } from "@/lib/tracking.functions";
 import { cn } from "@/lib/utils";
 import { CouponInput } from "@/components/pricing/coupon-input";
+import { PUBLIC_PRODUCTS } from "@/lib/payments/products";
 import { useState } from "react";
 
 // Both 9€ and 97€ cards now route to focused checkouts.
-export type PricingOption = "free" | "single_report";
+export type PricingOption = "single_report";
 
 interface Props {
   open: boolean;
@@ -63,10 +64,6 @@ export function PremiumInterestDialog({
         },
       },
     }).catch(() => {});
-    if (option === "free") {
-      onOpenChange(false);
-      return;
-    }
     trackEvent({
       data: {
         eventType: "payment_cta_clicked",
@@ -111,57 +108,44 @@ export function PremiumInterestDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 items-stretch">
-          {/* Card 1 — Free */}
-          <NeutralCard
-            eyebrow={t("premium.dialog.free.label")}
-            eyebrowTone="neutral"
-            title={t("premium.dialog.free.title")}
-            price={t("premium.dialog.free.price")}
-            bullets={t("premium.dialog.free.bullets", { returnObjects: true }) as string[]}
-          >
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={() => handleSelect("free")}
-            >
-              {t("premium.dialog.free.cta")}
-            </Button>
-          </NeutralCard>
-
-          {/* Card 2 — Relatório 9€ */}
+        {/* Duas propostas apenas: relatório automático (produto
+            principal) e leitura humana. A coluna gratuita saiu — quem
+            chega aqui já tem tudo o que ela oferecia. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 items-stretch">
+          {/* Card 1 — Relatório 9€ */}
           <NeutralCard
             eyebrow={t("premium.dialog.single.label")}
             eyebrowTone="secondary"
             title={t("premium.dialog.single.title")}
-            price={t("premium.dialog.single.price")}
-            unit={t("premium.dialog.single.unit")}
+            price={PUBLIC_PRODUCTS.report_full_9.priceLabel}
+            unit={PUBLIC_PRODUCTS.report_full_9.priceNote}
             bullets={t("premium.dialog.single.bullets", { returnObjects: true }) as string[]}
           >
             <Button
               type="button"
-              variant="outline"
-              className="w-full"
+              variant="primary"
+              className="w-full gap-2"
               onClick={() => handleSelect("single_report")}
             >
               {t("premium.dialog.single.cta")}
+              <ArrowRight className="size-4" aria-hidden="true" />
             </Button>
           </NeutralCard>
 
-          {/* Card 3 — Hero diagnóstico 97€ */}
+          {/* Card 2 — Hero diagnóstico 97€ */}
           <HeroCard
             badge={t("premium.dialog.hero.badge")}
             eyebrow={t("premium.dialog.hero.label")}
             title={t("premium.dialog.hero.title")}
-            price={t("premium.dialog.hero.price")}
+            price={PUBLIC_PRODUCTS.authority_diagnosis_97.priceLabel}
             strike={t("premium.dialog.hero.strike")}
             launch={t("premium.dialog.hero.launch")}
             bullets={t("premium.dialog.hero.bullets", { returnObjects: true }) as string[]}
           >
+            {/* Secundário: só o relatório de 9€ é proposta principal. */}
             <Button
               type="button"
-              variant="primary"
+              variant="outline"
               className="w-full gap-2"
               onClick={() => {
                 trackEvent({
@@ -234,8 +218,7 @@ function Eyebrow({ children, tone }: { children: string; tone: EyebrowTone }) {
     <span
       className={cn(
         "inline-flex w-fit items-center rounded-full px-2 py-0.5 text-eyebrow-sm",
-        tone === "neutral" &&
-          "bg-surface-base text-content-tertiary ring-1 ring-border-default",
+        tone === "neutral" && "bg-surface-base text-content-tertiary ring-1 ring-border-default",
         tone === "secondary" &&
           "bg-accent-secondary/10 text-accent-secondary ring-1 ring-accent-secondary/20",
         tone === "primary" &&
@@ -247,20 +230,11 @@ function Eyebrow({ children, tone }: { children: string; tone: EyebrowTone }) {
   );
 }
 
-function BulletList({
-  items,
-  tone,
-}: {
-  items: string[];
-  tone: "muted" | "accent";
-}) {
+function BulletList({ items, tone }: { items: string[]; tone: "muted" | "accent" }) {
   return (
     <ul className="mt-3 space-y-1.5">
       {items.map((b) => (
-        <li
-          key={b}
-          className="flex items-start gap-2 text-xs text-content-secondary"
-        >
+        <li key={b} className="flex items-start gap-2 text-xs text-content-secondary">
           <Check
             aria-hidden="true"
             className={cn(
@@ -301,9 +275,7 @@ function NeutralCard({
       <p className="mt-1 text-3xl font-bold text-content-primary tabular-nums leading-none">
         {price}
       </p>
-      {unit ? (
-        <p className="mt-1 text-xs text-content-tertiary leading-relaxed">{unit}</p>
-      ) : null}
+      {unit ? <p className="mt-1 text-xs text-content-tertiary leading-relaxed">{unit}</p> : null}
       <BulletList items={bullets} tone={eyebrowTone === "neutral" ? "muted" : "accent"} />
       <div className="mt-4 sm:mt-auto pt-2">{children}</div>
     </div>
@@ -348,9 +320,7 @@ function HeroCard({
         <span className="text-3xl font-bold text-content-primary tabular-nums leading-none">
           {price}
         </span>
-        <span className="text-base text-content-tertiary line-through tabular-nums">
-          {strike}
-        </span>
+        <span className="text-base text-content-tertiary line-through tabular-nums">{strike}</span>
       </div>
       <p className="mt-1 text-xs text-content-tertiary leading-relaxed">{launch}</p>
       <BulletList items={bullets} tone="accent" />
