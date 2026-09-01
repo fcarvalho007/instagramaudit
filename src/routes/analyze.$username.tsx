@@ -693,7 +693,7 @@ function AnalyzeReady({
   return (
     <>
       {/* Nível 0: cabeçalho informativo. O único CTA visível ao visitante
-          anónimo é o "Aprofundar gratuitamente" (DeepenAnalysisCta).
+          anónimo é o gate dentro do preview de Publicações-chave.
           Envolvido em `ReportGridRow` para partilhar a grelha do shell. */}
       <ReportGridRow className="pt-3 sm:pt-4">
         <InstantAuditBar
