@@ -1313,7 +1313,9 @@
       "minimal_label": "Barely replies",
       "minimal_body": "A few replies were detected, but in insufficient volume to indicate active participation in the conversation.",
       "absent_label": "No replies detected",
-      "absent_body": "No brand replies were found in the analyzed comments. The audience comments but receives no public response."
+      "absent_body": "No brand replies were found in the analyzed comments. The audience comments but receives no public response.",
+      "not_measurable_label": "Replies not measurable",
+      "not_measurable_body": "Only top-level comments were collected in this sample. The reading below therefore focuses on what the audience says — questions, reactions and intent signals — without drawing conclusions about brand replies."
     },
     "scope_note": "This reading uses public comments accessible on the analyzed posts. It doesn't include DMs, deleted comments, private replies or comments not visible without login.",
     "methodology_note": "Reading based on public comments visible on the analyzed posts. Doesn't include DMs, deleted comments or comments only visible after login.",
@@ -1324,7 +1326,8 @@
       "thread_replies": "Thread replies",
       "audience_comments": "Audience comments",
       "brand_replies": "Brand replies",
-      "brand_reply_rate": "Brand reply rate"
+      "brand_reply_rate": "Brand reply rate",
+      "top_level_only": "Only top-level comments were collected in this sample."
     },
     "signals": {
       "title": "Conversation signals",
@@ -1370,8 +1373,6 @@
     "unavailable": {
       "default_title": "Detailed comment analysis not included",
       "default_body": "Detailed comment analysis is not included in this beta report. The reading below uses public post signals such as comment volume and conversation ratio.",
-      "pro_title": "In-depth comment analysis",
-      "pro_body": "Available in advanced reports. Analyzes questions, objections, praise and real audience signals.",
       "reasons": {
         "processing": {
           "title": "Awaiting comment analysis",
@@ -1401,7 +1402,35 @@
           "title": "Analysis timed out",
           "body": "Comment analysis exceeded the available time. Try again later."
         }
+      },
+      "public": {
+        "processing": {
+          "title": "We are analysing the conversations…",
+          "body": "This part of the analysis is still running. Refresh the report in a few moments."
+        },
+        "no_data": {
+          "title": "Not enough public comments",
+          "body": "The analysed posts did not have enough public comments for a reliable reading of the conversations."
+        },
+        "failed": {
+          "title": "We couldn't complete this part of the analysis",
+          "body": "The conversation reading is not available right now. The rest of the report remains valid."
+        }
       }
+    },
+    "header": {
+      "eyebrow": "Conversations",
+      "title": "What do the conversations reveal?",
+      "support": "We analysed the public comments on recent posts to identify questions, reactions and intent signals."
+    },
+    "metrics_title": "Supporting metrics",
+    "low_confidence": {
+      "title": "Limited sample.",
+      "body": "Read these signals with caution because the available sample is small."
+    },
+    "replies_not_measurable": {
+      "label": "Brand replies: not measurable in this sample.",
+      "body": "Only top-level comments were collected, so brand replies cannot be measured or assessed."
     }
   },
   "positioning": {

@@ -669,21 +669,21 @@
         "period_success_toast_fresh": "Nova análise gerada. 1 crédito consumido.",
         "period_success_toast_neutral": "Análise por período carregada.",
         "period_error_requires_pro": "Esta janela exige acesso Pro activo.",
-    "period_error_window_90d_budget": "A análise de 90 dias está temporariamente indisponível por segurança operacional. Tenta novamente mais tarde ou usa a janela de 30 dias.",
-    "period_error_pro_window_budget": "Análise temporariamente indisponível por segurança operacional. Tenta novamente mais tarde ou usa outra janela de análise.",
-    "period_cache_title": "Análise dos últimos {{days}} dias já disponível",
-    "period_cache_body_minutes": "Existe uma análise recente deste perfil, gerada há {{minutes}} minutos. Podes abrir esta versão sem gastar créditos ou gerar uma nova pesquisa para atualizar os dados.",
-    "period_cache_body_hours": "Existe uma análise recente deste perfil, gerada há {{hours}}h. Podes abrir esta versão sem gastar créditos ou gerar uma nova pesquisa para atualizar os dados.",
-    "period_cache_open_cta": "Abrir análise recente",
-    "period_cache_force_cta": "Gerar nova análise · 1 crédito",
-    "period_cache_note": "A nova análise volta a consultar os dados públicos disponíveis e pode demorar mais alguns segundos.",
-    "period_new_title": "Gerar análise dos últimos {{days}} dias",
-    "period_new_body": "Vamos consultar os dados públicos disponíveis para gerar uma nova análise dos últimos {{days}} dias. Esta ação consome 1 crédito Pro.",
-    "period_new_cta": "Gerar análise · 1 crédito",
-    "period_new_note": "Depois de gerada, esta análise fica disponível em cache durante 24 horas.",
-    "period_empty_title": "Sem créditos disponíveis",
-    "period_empty_body": "Para gerar uma nova análise dos últimos {{days}} dias, é necessário ter pelo menos 1 crédito disponível.",
-    "period_unavailable_toast": "Análise temporariamente indisponível"
+        "period_error_window_90d_budget": "A análise de 90 dias está temporariamente indisponível por segurança operacional. Tenta novamente mais tarde ou usa a janela de 30 dias.",
+        "period_error_pro_window_budget": "Análise temporariamente indisponível por segurança operacional. Tenta novamente mais tarde ou usa outra janela de análise.",
+        "period_cache_title": "Análise dos últimos {{days}} dias já disponível",
+        "period_cache_body_minutes": "Existe uma análise recente deste perfil, gerada há {{minutes}} minutos. Podes abrir esta versão sem gastar créditos ou gerar uma nova pesquisa para atualizar os dados.",
+        "period_cache_body_hours": "Existe uma análise recente deste perfil, gerada há {{hours}}h. Podes abrir esta versão sem gastar créditos ou gerar uma nova pesquisa para atualizar os dados.",
+        "period_cache_open_cta": "Abrir análise recente",
+        "period_cache_force_cta": "Gerar nova análise · 1 crédito",
+        "period_cache_note": "A nova análise volta a consultar os dados públicos disponíveis e pode demorar mais alguns segundos.",
+        "period_new_title": "Gerar análise dos últimos {{days}} dias",
+        "period_new_body": "Vamos consultar os dados públicos disponíveis para gerar uma nova análise dos últimos {{days}} dias. Esta ação consome 1 crédito Pro.",
+        "period_new_cta": "Gerar análise · 1 crédito",
+        "period_new_note": "Depois de gerada, esta análise fica disponível em cache durante 24 horas.",
+        "period_empty_title": "Sem créditos disponíveis",
+        "period_empty_body": "Para gerar uma nova análise dos últimos {{days}} dias, é necessário ter pelo menos 1 crédito disponível.",
+        "period_unavailable_toast": "Análise temporariamente indisponível"
       }
     },
     "status": {
@@ -1324,7 +1324,9 @@
       "minimal_label": "Quase não responde",
       "minimal_body": "Foram detetadas respostas pontuais, mas em volume insuficiente para indicar participação ativa na conversa.",
       "absent_label": "Sem respostas detetadas",
-      "absent_body": "Não foram encontradas respostas da marca nos comentários analisados. A audiência comenta, mas não recebe retorno público."
+      "absent_body": "Não foram encontradas respostas da marca nos comentários analisados. A audiência comenta, mas não recebe retorno público.",
+      "not_measurable_label": "Respostas não mensuráveis",
+      "not_measurable_body": "Nesta amostra só foram recolhidos comentários de primeiro nível. Por isso, a leitura abaixo foca-se no que a audiência diz — perguntas, reacções e sinais de intenção — sem tirar conclusões sobre as respostas da marca."
     },
     "scope_note": "Esta leitura usa comentários públicos acessíveis nos posts analisados. Não inclui DMs, comentários apagados, respostas privadas ou comentários não visíveis sem login.",
     "methodology_note": "Leitura baseada em comentários públicos visíveis nos posts analisados. Não inclui DMs, comentários apagados ou comentários apenas visíveis após login.",
@@ -1335,7 +1337,8 @@
       "thread_replies": "Respostas em thread",
       "audience_comments": "Comentários da audiência",
       "brand_replies": "Respostas da marca",
-      "brand_reply_rate": "Taxa de resposta da marca"
+      "brand_reply_rate": "Taxa de resposta da marca",
+      "top_level_only": "Apenas comentários de primeiro nível foram recolhidos nesta amostra."
     },
     "signals": {
       "title": "Sinais de conversa",
@@ -1381,8 +1384,6 @@
     "unavailable": {
       "default_title": "Análise detalhada de comentários não incluída",
       "default_body": "Análise detalhada de comentários não incluída neste relatório beta. A leitura abaixo usa sinais públicos dos posts, como volume de comentários e rácio de conversa.",
-      "pro_title": "Análise aprofundada de comentários",
-      "pro_body": "Disponível em relatórios avançados. Analisa perguntas, objeções, elogios e sinais reais da audiência.",
       "reasons": {
         "processing": {
           "title": "A aguardar análise de comentários",
@@ -1412,7 +1413,35 @@
           "title": "Análise excedeu o tempo limite",
           "body": "A análise de comentários excedeu o tempo disponível. Tenta novamente mais tarde."
         }
+      },
+      "public": {
+        "processing": {
+          "title": "Estamos a analisar as conversas…",
+          "body": "Esta parte da análise ainda está a correr. Actualiza o relatório dentro de alguns instantes."
+        },
+        "no_data": {
+          "title": "Sem comentários públicos suficientes",
+          "body": "As publicações analisadas não tinham comentários públicos suficientes para uma leitura fiável das conversas."
+        },
+        "failed": {
+          "title": "Não foi possível concluir esta parte da análise",
+          "body": "A leitura das conversas não ficou disponível neste momento. O resto do relatório mantém-se válido."
+        }
       }
+    },
+    "header": {
+      "eyebrow": "Conversas",
+      "title": "O que revelam as conversas?",
+      "support": "Analisámos os comentários públicos das publicações recentes para identificar perguntas, reacções e sinais de intenção."
+    },
+    "metrics_title": "Métricas de suporte",
+    "low_confidence": {
+      "title": "Amostra limitada.",
+      "body": "Interpreta estes sinais com cautela porque a amostra disponível é reduzida."
+    },
+    "replies_not_measurable": {
+      "label": "Respostas da marca: não mensurável nesta amostra.",
+      "body": "Só foram recolhidos comentários de primeiro nível, por isso não é possível medir respostas da marca nem avaliar o seu comportamento de resposta."
     }
   },
   "positioning": {
