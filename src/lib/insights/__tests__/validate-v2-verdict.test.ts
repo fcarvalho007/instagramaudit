@@ -79,8 +79,8 @@ describe("validateInsightsV2 — editorial_verdict", () => {
 
   it("rejects engagement percentage leaked in paragraph", () => {
     const leak = VALID_PARAGRAPH.replace(
-      "acima do habitual",
-      "12% acima do habitual",
+      "consumo silencioso",
+      "consumo silencioso 12% abaixo do escalão",
     );
     const r = validateInsightsV2(payload({ paragraph: leak }));
     expect(r.ok).toBe(false);
@@ -99,8 +99,8 @@ describe("validateInsightsV2 — editorial_verdict", () => {
 
   it("rejects paragraph with prescriptive verbs", () => {
     const presc = VALID_PARAGRAPH.replace(
-      "A leitura é feita",
-      "Deve publicar mais carrosséis. A leitura é feita",
+      "A audiência reage",
+      "Deve publicar mais carrosséis. A audiência reage",
     );
     const r = validateInsightsV2(payload({ paragraph: presc }));
     expect(r.ok).toBe(false);
