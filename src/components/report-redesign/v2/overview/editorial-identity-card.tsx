@@ -452,25 +452,25 @@ export function EditorialIdentityCard({
             {copy.title}
           </h2>
 
-          <p className="mt-3 max-w-[62ch] text-[16px] leading-[1.6] text-content-primary whitespace-pre-line text-pretty">
+          <p className="mt-3 max-w-[58ch] text-[16px] leading-[1.65] text-content-secondary whitespace-pre-line text-pretty">
             {clamped.visible}
             {clamped.rest && expanded ? ` ${clamped.rest}` : null}
+            {clamped.rest && !expanded ? (
+              <>
+                {" "}
+                <button
+                  type="button"
+                  onClick={() => setExpanded(true)}
+                  className="align-baseline text-[15px] font-medium text-[var(--accent-primary)] underline underline-offset-4 hover:opacity-80"
+                >
+                  {t("identity.read_more", {
+                    defaultValue: "Ver leitura completa",
+                  })}
+                </button>
+              </>
+            ) : null}
           </p>
-          {clamped.rest && !expanded ? (
-            <button
-              type="button"
-              onClick={() => setExpanded(true)}
-              className="mt-1.5 text-[14px] font-medium text-[var(--accent-primary)] underline underline-offset-4 hover:opacity-80"
-            >
-              {t("identity.read_more", { defaultValue: "Ver leitura completa" })}
-            </button>
-          ) : null}
 
-          {readProofItems.length > 0 ? (
-            <div className="mt-4">
-              <ReadProofLine items={readProofItems} />
-            </div>
-          ) : null}
 
           {resolution.source !== "fallback" && resolved.evidence_used.length >= 2 ? (
             <div className="pt-1">
