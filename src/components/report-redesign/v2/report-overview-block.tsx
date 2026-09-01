@@ -1,4 +1,6 @@
 import { useMemo, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+
 
 import type { AdapterResult, SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
 import type { AiInsightV2Section } from "@/lib/insights/types";
