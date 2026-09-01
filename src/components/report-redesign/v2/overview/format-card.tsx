@@ -292,6 +292,7 @@ export function FormatCard({
         <ReportCardSectionHeader
           title={t("format.title")}
           qualifier={variationStatus}
+          qualifierPlacement="block"
           qualifierTone={
             variationKey === "varied_high"
               ? "positive"
