@@ -105,15 +105,8 @@ export function EngagementCardRefined({ result }: Props) {
     readingText = t("engagement.reading.above", { mult: aboveMultLabel });
   }
 
-  // Inline status underline colour — mirrors the pattern used in
-  // FrequencyCard / FormatCard so the three Block-1 cards share the
-  // same header treatment (no pill, no uppercase).
-  const statusUnderline =
-    engagementStatus === t("engagement.status.high")
-      ? "rgba(29,158,117,0.50)"
-      : engagementStatus === t("engagement.status.medium")
-        ? "rgba(217,119,6,0.50)"
-        : "rgba(163,45,45,0.50)";
+
+
 
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden">
