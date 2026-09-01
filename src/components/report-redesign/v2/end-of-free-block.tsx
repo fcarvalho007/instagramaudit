@@ -20,23 +20,20 @@ import { usePremiumCta } from "./premium-cta-context";
  * em variantes não-gated (no gated, o paywall já comunica "há mais").
  */
 export function ReportEndOfFreeBlock({ className }: { className?: string }) {
-  const { handlePremiumAccessClick } = usePremiumCta();
+  const { goToProCheckout } = usePremiumCta();
   const { t } = useTranslation("report");
 
-  const openInterest = () => {
-    handlePremiumAccessClick("lock_gate", {
-      cta: "guarantee_launch_price",
-    });
-  };
+  // Percurso directo: CTA → checkout de 9€, sem modal intermédio.
+  const openInterest = () => goToProCheckout("lock_gate");
 
   const priceLabel = PUBLIC_PRODUCTS.report_full_9.priceLabel;
 
+  // Apenas benefícios garantidos pelo `report_full_9`. Concorrentes e
+  // "oportunidades" saíram por serem condicionais (auditoria 03A).
   const benefits = [
     { icon: Stethoscope, key: "diagnosis" },
     { icon: ListChecks, key: "priorities" },
     { icon: CalendarClock, key: "rhythm" },
-    { icon: Users, key: "competitors" },
-    { icon: Lightbulb, key: "opportunities" },
   ] as const;
 
   return (
