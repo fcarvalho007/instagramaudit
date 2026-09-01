@@ -1,19 +1,19 @@
 {
   "cta": {
     "save_audit": "Guardar esta auditoria",
-    "comment_intelligence": "Desbloquear a análise das conversas",
-    "report_end": "Guardar e aprofundar gratuitamente"
+    "comment_intelligence": "Ver a auditoria completa · grátis",
+    "report_end": "Ver a auditoria completa · grátis"
   },
   "headline": {
     "save_audit": "Guarda esta auditoria gratuitamente",
-    "comment_intelligence": "Aprofunda esta auditoria gratuitamente",
-    "report_end": "Aprofunda esta auditoria gratuitamente"
+    "comment_intelligence": "Vê a auditoria completa, grátis",
+    "report_end": "Vê a auditoria completa, grátis"
   },
-  "subcopy": "Guarda o relatório e desbloqueia gratuitamente a análise das conversas.",
+  "subcopy": "Com o teu email vês as publicações completas, o mix de formatos e a análise das conversas.",
   "email_label": "Email",
   "email_placeholder": "nome@empresa.com",
-  "submit": "Desbloquear gratuitamente",
-  "submitting": "A desbloquear…",
+  "submit": "Ver a auditoria completa",
+  "submitting": "A preparar…",
   "microcopy": "Sem pagamento · Podes cancelar comunicações de marketing a qualquer momento",
   "marketing_optin": "Quero receber ocasionalmente conteúdos e novidades sobre marketing digital.",
   "errors": {
@@ -23,9 +23,9 @@
     "lead_failed": "Não foi possível guardar a auditoria. Tenta novamente dentro de momentos."
   },
   "unlock": {
-    "unlocking": "A preparar a análise aprofundada…",
+    "unlocking": "A preparar a auditoria completa…",
     "processing": "Estamos a analisar as conversas das publicações recentes…",
-    "available": "Análise aprofundada disponível. O bloco de conversas foi actualizado.",
+    "available": "Auditoria completa disponível. O bloco de conversas foi actualizado.",
     "degraded": "A análise das conversas está temporariamente indisponível. A auditoria fica guardada e avisamos-te quando abrir.",
     "error": "Guardámos a auditoria, mas não foi possível aprofundar esta parte agora. Tenta novamente dentro de momentos.",
     "saved": "Auditoria guardada. Enviámos-te um link de acesso por email."
@@ -37,13 +37,13 @@
     "thanks": "Obrigado — vamos ter isso em conta."
   },
   "deepen": {
-    "eyebrow": "Próximo nível",
-    "title": "Aprofundar a análise",
-    "body": "A análise de comentários acrescenta leitura de audiência: temas recorrentes, tom das reacções e sinais de intenção nas publicações com melhor desempenho de @{{handle}}."
+    "eyebrow": "Auditoria completa",
+    "title": "A preparar a auditoria completa",
+    "body": "A análise das conversas acrescenta leitura de audiência: temas recorrentes, tom das reacções e sinais de intenção nas publicações de @{{handle}}."
   },
   "gate": {
-    "title": "Já sabes o que está a acontecer. Falta perceber porquê.",
-    "body": "Guarda esta auditoria para ver que conteúdos explicam estes sinais — as publicações completas, o mix de formatos e as conversas que geram.",
-    "cta": "Aprofundar gratuitamente"
+    "title": "Já viste os sinais. Falta ver o conteúdo por trás deles.",
+    "body": "Com o teu email vês as publicações completas, o mix de formatos e a análise das conversas. Grátis, sem pagamento.",
+    "cta": "Ver a auditoria completa · grátis"
   }
 }

@@ -1,19 +1,19 @@
 {
   "cta": {
     "save_audit": "Save this audit",
-    "comment_intelligence": "Unlock the conversation analysis",
-    "report_end": "Save and go deeper, for free"
+    "comment_intelligence": "See the full audit · free",
+    "report_end": "See the full audit · free"
   },
   "headline": {
     "save_audit": "Save this audit, for free",
-    "comment_intelligence": "Go deeper into this audit, for free",
-    "report_end": "Go deeper into this audit, for free"
+    "comment_intelligence": "See the full audit, for free",
+    "report_end": "See the full audit, for free"
   },
-  "subcopy": "Save the report and unlock the conversation analysis for free.",
+  "subcopy": "With your email you get the full posts, the format mix and the conversation analysis.",
   "email_label": "Email",
   "email_placeholder": "name@company.com",
-  "submit": "Unlock for free",
-  "submitting": "Unlocking…",
+  "submit": "See the full audit",
+  "submitting": "Preparing…",
   "microcopy": "No payment · You can opt out of marketing messages at any time",
   "marketing_optin": "I'd like to occasionally receive content and news about digital marketing.",
   "errors": {
@@ -23,9 +23,9 @@
     "lead_failed": "We couldn't save the audit. Try again in a moment."
   },
   "unlock": {
-    "unlocking": "Preparing the deeper analysis…",
+    "unlocking": "Preparing the full audit…",
     "processing": "We're analysing the conversations on recent posts…",
-    "available": "Deeper analysis ready. The conversations block has been updated.",
+    "available": "Full audit available. The conversations block has been updated.",
     "degraded": "Conversation analysis is temporarily unavailable. The audit is saved and we'll let you know when it reopens.",
     "error": "We saved the audit, but we couldn't go deeper right now. Try again in a moment.",
     "saved": "Audit saved. We've emailed you an access link."
@@ -37,13 +37,13 @@
     "thanks": "Thanks — we'll take that into account."
   },
   "deepen": {
-    "eyebrow": "Next level",
-    "title": "Go deeper into the analysis",
-    "body": "Comment analysis adds audience reading: recurring themes, tone of reactions and intent signals in the best-performing posts of @{{handle}}."
+    "eyebrow": "Full audit",
+    "title": "Preparing the full audit",
+    "body": "Conversation analysis adds audience reading: recurring themes, tone of reactions and intent signals in the posts of @{{handle}}."
   },
   "gate": {
-    "title": "You already know what is happening. Now find out why.",
-    "body": "Save this audit to see which content explains these signals — the full posts, the format mix and the conversations they spark.",
-    "cta": "Go deeper, for free"
+    "title": "You have seen the signals. Now see the content behind them.",
+    "body": "With your email you get the full posts, the format mix and the conversation analysis. Free, no payment.",
+    "cta": "See the full audit · free"
   }
 }

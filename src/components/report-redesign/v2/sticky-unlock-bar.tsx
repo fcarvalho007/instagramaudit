@@ -140,11 +140,12 @@ export function StickyUnlockBar() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-white truncate">
-              Agora falta perceber porquê.
+              Diagnóstico e plano de acção
             </p>
             <p className="text-xs text-white/60 truncate">
-              Diagnóstico + prioridades para os próximos 30 dias
+              As causas dos resultados e as prioridades dos próximos 30 dias
             </p>
+
           </div>
           <div className="shrink-0 flex items-baseline gap-1.5">
             <span className="text-base font-semibold tabular-nums text-white">{priceLabel}</span>

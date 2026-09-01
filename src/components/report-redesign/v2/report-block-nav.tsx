@@ -391,8 +391,10 @@ function ProgressSummary({
               "flex-1 rounded-sm",
               compact ? "h-[3px]" : "h-[5px]",
               item.accessBadge === "free" && "bg-emerald-500",
-              item.accessBadge === "free_email" && "bg-emerald-300",
+              item.accessBadge === "free_email" &&
+                "bg-emerald-50 ring-1 ring-inset ring-emerald-400",
               item.accessBadge === "included" && "bg-[rgb(var(--accent-primary))]",
+
               item.access === "locked" && "bg-border-default",
             )}
           />
@@ -424,10 +426,12 @@ function ItemRow({
     : isFree
       ? t("nav.access.badge_free")
       : t("nav.access.badge_premium");
-  const badgeClass =
-    isFree || isFreeEmail
-      ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-      : "bg-surface-muted text-content-secondary ring-border-default";
+  const badgeClass = isFree
+    ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+    : isFreeEmail
+      ? "bg-transparent text-emerald-700 ring-emerald-300"
+      : "bg-tint-primary text-accent-primary ring-accent-primary/25";
+
   return (
     <button
       type="button"
