@@ -27,7 +27,7 @@ export function HeroSection() {
               text={t("hero.headline")}
               as="h1"
               className="font-display text-[2.5rem] sm:text-5xl md:text-6xl lg:text-7xl tracking-[-0.02em] font-medium leading-[1.12] sm:leading-[1.08] lg:leading-[1.06] pb-[0.12em] text-balance max-w-[16ch] sm:max-w-[20ch] lg:max-w-[22ch] mx-auto lg:mx-0 text-[color:rgb(var(--hero-text-primary))]"
-              delayMs={150}
+              delayMs={60}
               highlightTailWords={2}
               highlightClassName="bg-gradient-to-r from-[rgb(var(--hero-cyan-soft))] via-[rgb(var(--hero-cyan))] to-[rgb(var(--hero-violet))] bg-clip-text text-transparent"
             />
