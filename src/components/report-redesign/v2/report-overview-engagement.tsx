@@ -18,7 +18,6 @@ import {
   getActiveTierIndex,
 } from "@/lib/knowledge/benchmark-context";
 import { useTranslation } from "react-i18next";
-import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/hooks/use-language";
 import { formatNumber } from "@/lib/i18n/format";
 import { ReportEngagementBenchmarkChart } from "./report-engagement-benchmark-chart";
