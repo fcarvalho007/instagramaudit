@@ -103,17 +103,13 @@ Veredicto editorial (obrigatório · campo "editorial_verdict") — DIAGNÓSTICO
 - Primeira leitura do relatório. Camada interpretativa: descreve o que os dados sugerem, NÃO prescreve. Recomendações vivem nas "priorities" e no Bloco 02.
 - "verdict_label": "strong" | "promising" | "needs_work" | "limited_data" (OBRIGATÓRIO quando posts_analyzed < 5, cadência inconclusiva ou benchmark em falta).
 - "title": gancho editorial 4–8 palavras, ≤ 60 chars, SEM dígitos, sem ponto final, sem clichés. Ex.: "Audiência fiel mas silenciosa", "Ritmo forte sem tração", "O perfil aparece, mas não prende".
-- "paragraph": 90–140 palavras, MÁXIMO 4 frases curtas. Compreensível por leitor não técnico, útil para marketer. Tom claro, ligeiramente editorial, nunca vago.
-  DEVE cobrir, na ordem natural da leitura (não precisa numerar):
-    1. Presença/actividade: confirmar que o perfil já tem actividade visível.
-    2. Cadência fiável: usar a frase de "cadence_label_pt" do payload tal como vem (não inventar variantes). Quando "hashtags_state" e "cadence_label_pt" indicam amostra insuficiente, deixar claro.
-    3. Envolvimento: NÃO imprimir a percentagem. Explicar que o envolvimento se lê contra o benchmark do escalão e remeter para a comparação mais abaixo no relatório (ex.: "o envolvimento deve ser lido contra o benchmark do escalão, como se pode consultar mais abaixo neste relatório").
-    4. Resposta da audiência: distinguir consumo (gostos) de conversa (comentários). Likes saudáveis (≥ 90% do benchmark) com média de comentários < 2 → enquadrar como "atenção sem conversa" / "audiência silenciosa".
-    5. Hashtags — usar o campo "hashtags_state":
-         · "recurring": citar até 2 tags de "top_hashtags" no formato "#tag1 e #tag2" (sempre com o cardinal). Frase tipo: "As hashtags mais frequentes — como #marketing e #ia — ajudam a perceber o território editorial."
-         · "weak": dizer que as hashtags aparecem mas ainda não criam uma assinatura temática clara. Ex.: "As hashtags aparecem, mas ainda não criam uma assinatura temática clara."
-         · "absent": dizer explicitamente que não há hashtags suficientemente claras ou recorrentes para definir um território editorial. Ex.: "Nesta amostra, não há hashtags suficientemente claras ou recorrentes para ajudar a definir um território editorial."
-  Pode usar 1 metáfora simples ("montra", "vitrina", "porta de entrada") quando ajudar à clareza.
+- "paragraph": 35–65 palavras, MÁXIMO 3 frases curtas. Pragmático, específico, sem enchimento. Compreensível por leitor não técnico, útil para marketer.
+  Estrutura obrigatória:
+    1. Frase 1 — diagnóstico central: o que os dados sugerem sobre este perfil, ancorado num sinal concreto (ritmo real via "cadence_label_pt" tal como vem no payload, formato dominante ou tema recorrente).
+    2. Frase 2 — a tensão observada: distinguir consumo (gostos) de conversa (comentários) ou nomear o desalinhamento entre esforço de produção e resposta obtida.
+    3. Frase 3 (opcional) — apenas se acrescentar informação nova. Nunca uma frase de fecho genérica.
+  O envolvimento lê-se contra o benchmark do escalão, mas SEM imprimir a percentagem.
+  Os dados de amostra (nº de publicações, janela, cadência, hashtags, médias) são mostrados numa linha factual separada do relatório — NÃO os enumerar no parágrafo.
   PROIBIDO no "paragraph":
     - Qualquer percentagem numérica (regex N% / N,N%): a taxa de envolvimento NÃO entra no parágrafo.
     - Inventar métricas privadas: alcance, reach, impressões, saves, partilhas, visitas ao perfil, visualizações de stories.
@@ -121,10 +117,8 @@ Veredicto editorial (obrigatório · campo "editorial_verdict") — DIAGNÓSTICO
     - Repetir KPIs do strip de métricas sem interpretação.
     - Inventar hashtags fora de "top_hashtags".
     - Citar concorrentes quando "competitors_summary.count" é 0.
-  Frases-modelo permitidas:
-    - "O envolvimento deve ser lido contra o benchmark do escalão…"
-    - "A comparação detalhada com perfis semelhantes aparece mais abaixo no relatório."
-    - "Há movimento na montra; falta perceber se o público está mesmo a entrar."
+    - Frases de enquadramento vazias ("é importante notar que", "vale a pena referir", "no geral").
+
 - "priority": 1 frase no infinitivo impessoal com a próxima alavanca prática. ≤ 160 chars. (Renderizada noutras secções do relatório, NÃO no primeiro cartão.)
 - "strengths": exactamente 2 leituras interpretativas (NÃO listas de KPIs crus). Cada uma ≤ 80 chars.
 - "limitations": exactamente 2 limitações editoriais.
