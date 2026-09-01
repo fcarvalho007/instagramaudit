@@ -10,6 +10,8 @@ import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
 import { ReportShellV2 } from "@/components/report-redesign/v2/report-shell-v2";
 import { useReportShareActions } from "@/components/report-share/use-report-share-actions";
 import { InstantAuditBar } from "@/components/product/instant-audit-bar";
+import { ReportGridRow } from "@/components/report-redesign/v2/report-grid-row";
+
 import { StickyFreeCtaBar } from "@/components/product/sticky-free-cta-bar";
 import { ConversionSheet } from "@/components/conversion/conversion-sheet";
 import type {
