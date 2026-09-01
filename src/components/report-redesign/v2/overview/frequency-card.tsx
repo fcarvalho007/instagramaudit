@@ -551,10 +551,11 @@ export function FrequencyCard({
 
   return (
     <article className="rounded-2xl border border-border-default bg-surface-secondary shadow-card overflow-hidden flex flex-col">
-      <div className="px-5 md:px-7 pt-6 md:pt-7 pb-6 md:pb-7">
+      <div className="px-5 md:px-7 pt-5 md:pt-6 pb-5 md:pb-6">
         <ReportCardSectionHeader
           title={t("frequency.title")}
           qualifier={!isInsufficient ? frequencyStatus : undefined}
+          qualifierPlacement="block"
           qualifierTone={
             (statusKey === "high"
               ? "positive"
@@ -568,27 +569,32 @@ export function FrequencyCard({
 
         {!isInsufficient && hasUsableData && (
           <>
-            {/* KPI strip — icon + eyebrow on top, value below (aligned with "Índice do perfil" card pattern) */}
-            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-              <KpiTile
+            {/* KPI: cadência é o indicador principal; consistência e pico dão suporte */}
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] sm:items-center sm:gap-5">
+              <PrimaryKpi
                 icon={<Activity className="h-3.5 w-3.5" aria-hidden="true" />}
                 label={t("frequency.kpi.cadence_label")}
                 unit={t("frequency.kpi.cadence_unit")}
                 value={cadenceValue}
               />
-              <KpiTile
-                icon={<CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />}
-                label={t("frequency.kpi.consistency_label")}
-                value={String(consistencyPct)}
-                valueSuffix="%"
-              />
-              <KpiTile
-                icon={<TrendingUp className="h-3.5 w-3.5" aria-hidden="true" />}
-                label={t("frequency.kpi.peak_label")}
-                value={peakLabel}
-                isCategorical
-              />
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:divide-x sm:divide-border-default/60">
+                <SupportMetric
+                  icon={<CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />}
+                  label={t("frequency.kpi.consistency_label")}
+                  value={String(consistencyPct)}
+                  valueSuffix="%"
+                />
+                <div className="sm:pl-4">
+                  <SupportMetric
+                    icon={<TrendingUp className="h-3.5 w-3.5" aria-hidden="true" />}
+                    label={t("frequency.kpi.peak_label")}
+                    value={peakLabel}
+                    isCategorical
+                  />
+                </div>
+              </div>
             </div>
+
 
             <WeeklyRhythmChart days={windowedDays} t={t} />
 
