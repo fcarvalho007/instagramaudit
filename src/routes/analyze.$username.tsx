@@ -691,37 +691,43 @@ function AnalyzeReady({
   return (
     <>
       {/* Nível 0: cabeçalho informativo. O único CTA visível ao visitante
-          anónimo é o "Aprofundar gratuitamente" (DeepenAnalysisCta). */}
-      <InstantAuditBar
-        handle={auditHandle}
-        snapshotId={snapshotId}
-        {...(leadCaptured ? { onConvert: () => openConversion("save_audit") } : {})}
-      />
+          anónimo é o "Aprofundar gratuitamente" (DeepenAnalysisCta).
+          Envolvido em `ReportGridRow` para partilhar a grelha do shell. */}
+      <ReportGridRow className="pt-3 sm:pt-4">
+        <InstantAuditBar
+          handle={auditHandle}
+          snapshotId={snapshotId}
+          {...(leadCaptured ? { onConvert: () => openConversion("save_audit") } : {})}
+        />
+      </ReportGridRow>
       {!premiumUnlocked && packBalance > 0 ? (
-        <div className="mb-4 rounded-xl border border-accent-primary/40 bg-accent-primary/5 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-content-primary">
-              Tens {packBalance} relatório{packBalance === 1 ? "" : "s"} Pro disponíve{packBalance === 1 ? "l" : "is"} no teu pack.
-            </p>
-            <p className="mt-0.5 text-xs text-content-secondary">
-              Desbloqueia este relatório agora — fica associado a este perfil para sempre.
-            </p>
-            {consumeError ? (
-              <p role="alert" className="mt-1 text-xs text-signal-error">
-                {consumeError}
+        <ReportGridRow>
+          <div className="mb-4 rounded-xl border border-accent-primary/40 bg-accent-primary/5 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-content-primary">
+                Tens {packBalance} relatório{packBalance === 1 ? "" : "s"} Pro disponíve{packBalance === 1 ? "l" : "is"} no teu pack.
               </p>
-            ) : null}
+              <p className="mt-0.5 text-xs text-content-secondary">
+                Desbloqueia este relatório agora — fica associado a este perfil para sempre.
+              </p>
+              {consumeError ? (
+                <p role="alert" className="mt-1 text-xs text-signal-error">
+                  {consumeError}
+                </p>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={handleConsumePackUnlock}
+              disabled={consuming}
+              className="shrink-0 rounded-lg bg-accent-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-primary/90 disabled:opacity-60"
+            >
+              {consuming ? "A desbloquear…" : "Usar 1 relatório Pro"}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={handleConsumePackUnlock}
-            disabled={consuming}
-            className="shrink-0 rounded-lg bg-accent-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-primary/90 disabled:opacity-60"
-          >
-            {consuming ? "A desbloquear…" : "Usar 1 relatório Pro"}
-          </button>
-        </div>
+        </ReportGridRow>
       ) : null}
+
       <ReportShellV2
         result={shownResult}
         snapshotId={snapshotId}
