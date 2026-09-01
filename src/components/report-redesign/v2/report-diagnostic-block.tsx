@@ -25,6 +25,8 @@ import {
   type PriorityBasis,
 } from "@/lib/report/block02-diagnostic";
 import { ReportDiagnosticPriorities } from "./report-diagnostic-priorities";
+import { ReportDiagnosticVerdict } from "./report-diagnostic-verdict";
+
 
 import { ReportDiagnosticGroup } from "./report-diagnostic-group";
 import {
@@ -366,6 +368,9 @@ export function ReportDiagnosticBlock({ result, payload, premiumUnlocked = false
           captionEngagementStrategy,
           captionAsksForCommentsPct,
           t,
+          // A secção "Conversas" já mostra o estado do Comment Intelligence
+          // acima deste bloco — evitar o duplicado dentro do cartão 05.
+          true,
         ),
       ),
     ]);
@@ -380,9 +385,26 @@ export function ReportDiagnosticBlock({ result, payload, premiumUnlocked = false
       groupC.length > 0 ||
       groupD.length > 0;
 
+    const aiVerdict = result.enriched.aiInsightsV2?.sections.hero?.text ?? null;
+    const verdictText =
+      aiVerdict ??
+      (contentType.available && funnel.available && audience.available
+        ? t("diagnostic.verdict_fallback", {
+            content: (contentType.label ?? "—").toLowerCase(),
+            funnel: (funnel.label ?? "—").toLowerCase(),
+            audience: (audience.label ?? "—").toLowerCase(),
+          })
+        : null);
+
     return (
       <div className="space-y-12 md:space-y-14">
         <div id="diagnostico-editorial" className="scroll-mt-24 space-y-10 md:space-y-12">
+          {verdictText ? (
+            <ReportDiagnosticVerdict
+              text={verdictText}
+              source={aiVerdict ? "ai" : "fallback"}
+            />
+          ) : null}
           {hasAnyCard ? (
             <>
               {groupA.length > 0 ? (
@@ -407,17 +429,6 @@ export function ReportDiagnosticBlock({ result, payload, premiumUnlocked = false
                 </div>
               </ReportDiagnosticGroup>
 
-              <ReportDiagnosticGroup
-                letter="E"
-                label={t("diagnostic_groups.E")}
-                questionsCount={1}
-                layout="stack"
-              >
-                <div id="diag-capas" className="scroll-mt-24">
-                  {renderCoverSlot()}
-                </div>
-              </ReportDiagnosticGroup>
-
               {groupC.length > 0 ? (
                 <ReportDiagnosticGroup
                   letter="C"
@@ -439,7 +450,19 @@ export function ReportDiagnosticBlock({ result, payload, premiumUnlocked = false
                   {groupD}
                 </ReportDiagnosticGroup>
               ) : null}
+
+              <ReportDiagnosticGroup
+                letter="E"
+                label={t("diagnostic_groups.E")}
+                questionsCount={1}
+                layout="stack"
+              >
+                <div id="diag-capas" className="scroll-mt-24">
+                  {renderCoverSlot()}
+                </div>
+              </ReportDiagnosticGroup>
             </>
+
           ) : (
             <p className="text-sm text-content-secondary leading-relaxed max-w-2xl">
               {t("diagnostic_groups.small_sample")}
@@ -707,7 +730,10 @@ function renderAudienceCard(
   captionEngagementStrategy?: "active" | "occasional" | "passive" | null,
   captionAsksForCommentsPct?: number | null,
   t?: TR,
+  /** Esconde o estado duplicado do Comment Intelligence (secção "Conversas"). */
+  hideCommentFallback = false,
 ): ReactNode | null {
+
   const tr = t as TR;
   // — State B: data unavailable —
   if (!r.available) {
@@ -728,7 +754,8 @@ function renderAudienceCard(
             {tr("diagnostic_questions.audience.empty_help")}
           </p>
         </div>
-        <CommentIntelligenceUnavailable data={commentIntel} />
+        {!hideCommentFallback && <CommentIntelligenceUnavailable data={commentIntel} />}
+
       </ReportDiagnosticCard>
     );
   }
@@ -769,9 +796,10 @@ function renderAudienceCard(
         captionEngagementStrategy={captionEngagementStrategy}
         captionAsksForCommentsPct={captionAsksForCommentsPct}
       />
-      {!commentIntel?.available && (
+      {!hideCommentFallback && !commentIntel?.available && (
         <CommentIntelligenceUnavailable data={commentIntel} />
       )}
+
     </ReportDiagnosticCard>
   );
 }
