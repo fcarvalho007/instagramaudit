@@ -73,12 +73,6 @@ export function EngagementCardRefined({ result }: Props) {
     pctDiffDirection = t("engagement.kpi.direction_below");
   }
 
-  // Tier label — extract short form from parentheses
-  const tierShort =
-    activeTier?.tierLabel?.match(/\(([^)]+)\)/)?.[1] ??
-    activeTier?.tierLabel ??
-    "—";
-
   // Profile is below benchmark?
   const isBelowBenchmark = gapPp < 0;
 
