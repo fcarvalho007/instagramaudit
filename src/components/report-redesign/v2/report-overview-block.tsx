@@ -78,6 +78,12 @@ export interface Props {
    * - "pro": relatório pago.
    */
   access?: "anon" | "lead" | "pro";
+  /**
+   * Abre o motor único de captura de email (`ConversionSheet`). Ligado
+   * ao gate gratuito do Estado A — é a decisão principal do relatório
+   * gratuito e não deve existir nenhuma outra superfície a competir.
+   */
+  onFreeUnlockClick?: (() => void) | undefined;
 }
 
 export function ReportOverviewBlock({
@@ -86,6 +92,7 @@ export function ReportOverviewBlock({
   payload,
   mode = "all",
   access = "pro",
+  onFreeUnlockClick,
 }: Props) {
   const k = result.data.keyMetrics;
   const enriched = result.enriched;
