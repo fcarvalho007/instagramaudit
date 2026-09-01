@@ -331,10 +331,6 @@ const UNAVAILABLE_REASON_KEYS = new Set([
   "no_valid_post_urls", "comment_scraper_timeout",
 ]);
 
-const TECHNICAL_REASONS = new Set([
-  "processing", "budget_blocked", "comment_scraper_failed",
-  "comment_scraper_timeout", "no_valid_post_urls",
-]);
 
 /** Public-facing buckets — never expose provider/technical detail. */
 type PublicUnavailableState = "processing" | "no_data" | "failed";
