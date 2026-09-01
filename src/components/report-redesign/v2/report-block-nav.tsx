@@ -1490,11 +1490,14 @@ function SidebarList({
       ) : (
         <>
           <section className={cn(compact ? "space-y-0.5" : "space-y-1")}>
-            {!compact && (
-              <p className="px-2 text-eyebrow-sm text-content-tertiary">
-                {t("nav.access.section_free")}
-              </p>
-            )}
+            <p
+              className={cn(
+                "px-2 text-content-tertiary",
+                compact ? "text-eyebrow-sm text-[10px]" : "text-eyebrow-sm",
+              )}
+            >
+              {t("nav.access.section_free")}
+            </p>
             <ul className="space-y-0.5">
               {incluidos.map((item) => (
                 <li key={item.block.id}>
@@ -1511,11 +1514,15 @@ function SidebarList({
 
           {premium.length > 0 && (
             <section className={cn(compact ? "space-y-0.5" : "space-y-1")}>
-              {!compact && (
-                <p className="px-2 text-eyebrow-sm text-content-tertiary">
-                  {t("nav.access.section_premium")}
-                </p>
-              )}
+              <p
+                className={cn(
+                  "px-2 text-content-tertiary",
+                  compact ? "text-eyebrow-sm text-[10px]" : "text-eyebrow-sm",
+                )}
+              >
+                {t("nav.access.section_premium")}
+              </p>
+
               <ul className="space-y-0.5">
                 {premium.map((item) => {
                   const isDiag = item.block.id === DIAGNOSTIC_SECTION_ID;
