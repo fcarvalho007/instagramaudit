@@ -7,6 +7,8 @@ import {
   type ReactNode,
 } from "react";
 
+import { useNavigate } from "@tanstack/react-router";
+
 import { trackEvent } from "@/lib/tracking.functions";
 import { trackAnonymousEvent } from "@/lib/analytics/anonymous-funnel";
 
