@@ -80,6 +80,23 @@ describe("Rota /analyze/$username — um CTA principal por estado", () => {
   it("mantém a leitura do estado de lead no servidor", () => {
     expect(route).toContain("report-access-state");
   });
+
+  // QA 09 — no Estado A o gate do preview é a única decisão principal.
+  it("monta o DeepenAnalysisCta apenas como estado pós-captura", () => {
+    expect(route).toMatch(/unlockStatus !== null && !premiumUnlocked \? \(/);
+    expect(route).not.toMatch(/<DeepenAnalysisCta[\s\S]{0,200}onConvert=/);
+  });
+
+  it("liga o gate gratuito directamente ao motor de conversão", () => {
+    expect(shell).toContain("onFreeUnlockClick={handleUnlockClick}");
+    const overview = readFileSync(
+      resolve(root, "src/components/report-redesign/v2/report-overview-block.tsx"),
+      "utf8",
+    );
+    expect(overview).toContain(
+      "<FreeDeepenTeaser onConvert={onFreeUnlockClick} />",
+    );
+  });
 });
 
 describe("Pro + concorrente — camada comparativa cumulativa", () => {
