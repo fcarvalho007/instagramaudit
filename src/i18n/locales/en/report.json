@@ -393,7 +393,8 @@
       "interpretation_peak_only": "Posting concentrated on <b>{{peak}}</b>. Remaining weekdays are balanced.",
       "interpretation_uniform": "Uniform cadence — no weekday stands out as a gap.",
       "aria_distribution": "Distribution of posts by weekday"
-    }
+    },
+    "reading_label": "Reading"
   },
   "format": {
     "title": "Format",
