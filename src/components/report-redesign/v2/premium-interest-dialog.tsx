@@ -137,7 +137,7 @@ export function PremiumInterestDialog({
             badge={t("premium.dialog.hero.badge")}
             eyebrow={t("premium.dialog.hero.label")}
             title={t("premium.dialog.hero.title")}
-            price={t("premium.dialog.hero.price")}
+            price={PUBLIC_PRODUCTS.authority_diagnosis_97.priceLabel}
             strike={t("premium.dialog.hero.strike")}
             launch={t("premium.dialog.hero.launch")}
             bullets={t("premium.dialog.hero.bullets", { returnObjects: true }) as string[]}
