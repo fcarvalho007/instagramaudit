@@ -119,13 +119,23 @@ function CheckoutFlow() {
       />
     );
   }
-  return <CheckoutSteps />;
+  return <CheckoutSteps identitySource={identityStatus.identity} />;
 }
 
-function CheckoutSteps() {
+function CheckoutSteps({
+  identitySource,
+}: {
+  identitySource: "lead_session" | "report_capture_session";
+}) {
   const search = Route.useSearch();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const createCheckout = useServerFn(createEupagoCheckout);
+  /**
+   * Identidade scoped só autoriza o produto ligado a este relatório. Se o
+   * utilizador aceitar o upsell (produto global), pedimos conta nesse ponto.
+   */
+  const [requiresGlobalAccount, setRequiresGlobalAccount] = useState(false);
 
   const [step, setStep] = useState(1);
   const [reportGoals, setReportGoals] = useState<ReportGoal[]>([]);
