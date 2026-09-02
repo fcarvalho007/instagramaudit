@@ -1,3 +1,8 @@
+import { useId } from "react";
+
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+
 export interface BillingValue {
   name: string;
   tax_id: string;
@@ -54,9 +59,11 @@ interface Props {
   value: BillingValue;
   onChange: (next: BillingValue) => void;
   errors: BillingErrors;
+  /** Bloqueia os campos enquanto o pagamento está a ser preparado. */
+  disabled?: boolean;
 }
 
-export function BillingForm({ value, onChange, errors }: Props) {
+export function BillingForm({ value, onChange, errors, disabled }: Props) {
   const set = <K extends keyof BillingValue>(k: K, v: string) =>
     onChange({ ...value, [k]: v });
 
@@ -67,7 +74,8 @@ export function BillingForm({ value, onChange, errors }: Props) {
         value={value.name}
         onChange={(v) => set("name", v)}
         error={errors.name}
-        autoComplete="organization"
+        autoComplete="name"
+        disabled={disabled}
       />
       <Field
         label="NIF (opcional)"
@@ -76,6 +84,7 @@ export function BillingForm({ value, onChange, errors }: Props) {
         error={errors.tax_id}
         inputMode="numeric"
         autoComplete="off"
+        disabled={disabled}
       />
       <Field
         label="Morada"
@@ -83,6 +92,7 @@ export function BillingForm({ value, onChange, errors }: Props) {
         onChange={(v) => set("address", v)}
         error={errors.address}
         autoComplete="street-address"
+        disabled={disabled}
       />
       <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-4">
         <Field
@@ -93,6 +103,7 @@ export function BillingForm({ value, onChange, errors }: Props) {
           placeholder="1234-567"
           autoComplete="postal-code"
           inputMode="numeric"
+          disabled={disabled}
         />
         <Field
           label="Localidade"
@@ -100,6 +111,7 @@ export function BillingForm({ value, onChange, errors }: Props) {
           onChange={(v) => set("city", v)}
           error={errors.city}
           autoComplete="address-level2"
+          disabled={disabled}
         />
       </div>
       <Field
@@ -109,6 +121,7 @@ export function BillingForm({ value, onChange, errors }: Props) {
         onChange={(v) => set("invoice_email", v)}
         error={errors.invoice_email}
         autoComplete="email"
+        disabled={disabled}
       />
     </div>
   );
@@ -123,6 +136,7 @@ function Field({
   placeholder,
   autoComplete,
   inputMode,
+  disabled,
 }: {
   label: string;
   value: string;
@@ -132,24 +146,36 @@ function Field({
   placeholder?: string;
   autoComplete?: string;
   inputMode?: "text" | "numeric" | "email";
+  disabled?: boolean;
 }) {
+  const id = useId();
+  const errorId = `${id}-error`;
   return (
-    <label className="block">
-      <span className="block text-xs font-semibold text-content-secondary mb-1.5">
+    <div>
+      <label
+        htmlFor={id}
+        className="mb-1.5 block text-xs font-semibold text-content-secondary"
+      >
         {label}
-      </span>
-      <input
+      </label>
+      <Input
+        id={id}
         type={type}
         value={value}
         placeholder={placeholder}
         autoComplete={autoComplete}
         inputMode={inputMode}
+        disabled={disabled}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-border-default bg-white px-3 py-2.5 text-base text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/30 focus:border-accent-primary"
+        className={cn("h-11 text-base", error && "border-signal-error")}
       />
       {error ? (
-        <span className="mt-1 block text-xs text-signal-error">{error}</span>
+        <p id={errorId} className="mt-1 text-xs text-signal-error">
+          {error}
+        </p>
       ) : null}
-    </label>
+    </div>
   );
 }
