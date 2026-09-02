@@ -19,10 +19,10 @@ export interface EditorialSectionMeta {
 
 export const EDITORIAL_V2_SECTIONS: readonly EditorialSectionMeta[] = [
   {
-    id: "abertura",
+    id: "visao-geral",
     displayNumber: "01",
-    title: "Abertura",
+    title: "Visão geral",
     subtitle:
-      "O perfil analisado e a janela de dados considerada nesta auditoria.",
+      "O que os dados desta janela dizem sobre o perfil, antes de entrar em cada métrica.",
   },
 ];
