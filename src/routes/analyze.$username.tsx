@@ -185,7 +185,7 @@ type LoadState =
 
 function AnalyzePage() {
   const { username } = Route.useParams();
-  const { vs, previewLoading, w } = Route.useSearch();
+  const { vs, previewLoading, w, report_design } = Route.useSearch();
   const cleaned = normalizeInstagramHandle(username);
   const { t: tAnalyze } = useTranslation("analyze");
   const { t: tErrors } = useTranslation("errors");
