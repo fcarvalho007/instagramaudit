@@ -30,7 +30,7 @@ import {
 } from "@/components/checkout/report-priority-form";
 import { HumanDiagnosisUpsell } from "@/components/checkout/human-diagnosis-upsell";
 import { createEupagoCheckout } from "@/lib/payments/eupago.functions";
-import { getLeadSessionStatus } from "@/lib/leads/lead-session.functions";
+import { getCheckoutIdentityStatus } from "@/lib/leads/checkout-identity.functions";
 import { trackEvent } from "@/lib/tracking.functions";
 import type { ProductCode } from "@/lib/payments/products";
 
@@ -64,16 +64,26 @@ const searchSchema = z.object({
   status: z.enum(["success"]).optional(),
 });
 
-const leadSessionQueryOptions = queryOptions({
-  queryKey: ["checkout", "lead-session"],
-  queryFn: () => getLeadSessionStatus(),
-  staleTime: 0,
-});
+/**
+ * Identidade do checkout (Ronda 11B.1): aceita `lead_session` (global) ou
+ * `report_capture_session` (scoped ao relatório indicado em
+ * `report_cache_key`). A sessão scoped nunca é promovida a global.
+ */
+const identityQueryOptions = (reportRef?: string) =>
+  queryOptions({
+    queryKey: ["checkout", "lead-session", reportRef ?? null],
+    queryFn: () =>
+      getCheckoutIdentityStatus({
+        data: reportRef ? { report_cache_key: reportRef } : {},
+      }),
+    staleTime: 0,
+  });
 
 export const Route = createFileRoute("/checkout/report-full")({
   validateSearch: (search) => searchSchema.parse(search),
-  loader: ({ context }) =>
-    context.queryClient.ensureQueryData(leadSessionQueryOptions),
+  loaderDeps: ({ search }) => ({ reportRef: search.report_cache_key }),
+  loader: ({ context, deps }) =>
+    context.queryClient.ensureQueryData(identityQueryOptions(deps.reportRef)),
   head: () => ({
     meta: [
       { title: "Relatório completo — Checkout" },
@@ -84,8 +94,10 @@ export const Route = createFileRoute("/checkout/report-full")({
 });
 
 function CheckoutFlow() {
-  const { data: leadStatus } = useSuspenseQuery(leadSessionQueryOptions);
   const search = Route.useSearch();
+  const { data: identityStatus } = useSuspenseQuery(
+    identityQueryOptions(search.report_cache_key),
+  );
   const queryClient = useQueryClient();
   if (search.status === "success") {
     return (
@@ -94,26 +106,36 @@ function CheckoutFlow() {
       />
     );
   }
-  if (!leadStatus.hasLead) {
+  if (identityStatus.identity === "none") {
     return (
       <CheckoutAccountGate
         productCode={SOURCE_PRODUCT}
         exitPath={search.return ?? "/precos"}
         onSignedIn={() => {
           queryClient.invalidateQueries({
-            queryKey: leadSessionQueryOptions.queryKey,
+            queryKey: ["checkout", "lead-session"],
           });
         }}
       />
     );
   }
-  return <CheckoutSteps />;
+  return <CheckoutSteps identitySource={identityStatus.identity} />;
 }
 
-function CheckoutSteps() {
+function CheckoutSteps({
+  identitySource,
+}: {
+  identitySource: "lead_session" | "report_capture_session";
+}) {
   const search = Route.useSearch();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const createCheckout = useServerFn(createEupagoCheckout);
+  /**
+   * Identidade scoped só autoriza o produto ligado a este relatório. Se o
+   * utilizador aceitar o upsell (produto global), pedimos conta nesse ponto.
+   */
+  const [requiresGlobalAccount, setRequiresGlobalAccount] = useState(false);
 
   const [step, setStep] = useState(1);
   const [reportGoals, setReportGoals] = useState<ReportGoal[]>([]);
@@ -217,6 +239,10 @@ function CheckoutSteps() {
       },
     }).catch(() => {});
     trackStepComplete({ upsell_accepted: true, final_product: UPSELL_TARGET });
+    if (identitySource === "report_capture_session") {
+      setRequiresGlobalAccount(true);
+      return;
+    }
     goNext();
   };
 
@@ -255,6 +281,7 @@ function CheckoutSteps() {
           source_product: SOURCE_PRODUCT,
           final_product: selectedProduct,
           upsell_accepted: upsellAccepted,
+          checkout_identity_source: identitySource,
         },
       },
     }).catch(() => {});
@@ -315,6 +342,22 @@ function CheckoutSteps() {
       toast.error(message);
     }
   };
+
+  if (requiresGlobalAccount) {
+    return (
+      <CheckoutAccountGate
+        productCode={UPSELL_TARGET}
+        exitPath={search.return ?? "/precos"}
+        onSignedIn={() => {
+          queryClient.invalidateQueries({
+            queryKey: ["checkout", "lead-session"],
+          });
+          setRequiresGlobalAccount(false);
+          goNext();
+        }}
+      />
+    );
+  }
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
