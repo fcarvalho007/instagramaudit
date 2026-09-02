@@ -13,12 +13,20 @@ describe("Editorial V2 — gate Pro (apresentação)", () => {
     expect(EDITORIAL_V2_PRO_SECTIONS.map((s) => s.id)).toEqual(productionPro);
   });
 
-  it("usa os rótulos numéricos da sidebar de produção", () => {
-    const byId = new Map(COMMERCIAL_SECTIONS.map((s) => [s.id, s.number]));
-    for (const s of EDITORIAL_V2_PRO_SECTIONS) {
-      expect(s.displayNumber).toBe(byId.get(s.id));
-    }
+  it("usa a sequência editorial própria (06/07), não a numeração de produção", () => {
+    expect(EDITORIAL_V2_PRO_SECTIONS.map((s) => s.displayNumber)).toEqual([
+      "06",
+      "07",
+    ]);
   });
+
+  it("não existe secção 08 na sequência editorial", () => {
+    expect(
+      Object.values(EDITORIAL_V2_DISPLAY_NUMBERS).includes("08"),
+    ).toBe(false);
+    expect(EDITORIAL_V2_SECTIONS[0]!.displayNumber).toBe("00");
+  });
+
 
   it("não inventa secções Pro adicionais", () => {
     expect(EDITORIAL_V2_PRO_SECTIONS).toHaveLength(2);
