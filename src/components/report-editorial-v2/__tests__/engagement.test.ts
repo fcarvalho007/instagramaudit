@@ -24,8 +24,8 @@ function makeResult(over: {
       profile: {
         username: "perfil",
         followers: over.followers ?? 12_345,
-        tier: (over.followers ?? 12_345) >= 10_000 ? "Micro" : "Nano",
-        tierRange: (over.followers ?? 12_345) >= 10_000 ? "10K–50K" : "0–10K",
+        // Escalão resolvido pelo helper de produção — nunca duplicado aqui.
+        ...resolveReportTier(over.followers ?? 12_345),
       },
       keyMetrics: {
         engagementRate: over.rate,
