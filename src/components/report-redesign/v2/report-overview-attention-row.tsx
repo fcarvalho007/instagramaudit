@@ -6,7 +6,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { TFunction } from "i18next";
 
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
 import { cn } from "@/lib/utils";
