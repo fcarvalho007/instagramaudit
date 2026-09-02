@@ -30,7 +30,7 @@ import {
 } from "@/components/checkout/report-priority-form";
 import { HumanDiagnosisUpsell } from "@/components/checkout/human-diagnosis-upsell";
 import { createEupagoCheckout } from "@/lib/payments/eupago.functions";
-import { getLeadSessionStatus } from "@/lib/leads/lead-session.functions";
+import { getCheckoutIdentityStatus } from "@/lib/leads/checkout-identity.functions";
 import { trackEvent } from "@/lib/tracking.functions";
 import type { ProductCode } from "@/lib/payments/products";
 
