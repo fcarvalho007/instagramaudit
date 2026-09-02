@@ -76,7 +76,7 @@ export function ReportPlanChooser({ value, onChange }: Props) {
             aria-checked={selected}
             onClick={() => onChange(plan.code)}
             className={cn(
-              "relative text-left rounded-xl border bg-white p-4 transition shadow-[0_18px_48px_-32px_rgba(15,23,42,0.18)]",
+              "relative text-left rounded-xl border bg-white p-4 transition duration-150 ease-out active:scale-[0.99] shadow-[0_18px_48px_-32px_rgba(15,23,42,0.18)]",
               "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40",
               selected
                 ? "border-accent-primary ring-1 ring-accent-primary/30"
