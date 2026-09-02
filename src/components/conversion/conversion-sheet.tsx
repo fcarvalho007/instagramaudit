@@ -1,22 +1,23 @@
 /**
- * Ronda 4 — motor único de conversão pós-valor.
+ * Ronda 4 / Conversion UX 10B — motor único de conversão pós-valor.
  *
  * Um só componente serve os três pontos de entrada ("Guardar esta
  * auditoria", "Aprofundar a análise" e o CTA final): só a headline muda.
  * Pede um único campo (email), com opt-in de marketing separado e não
  * pré-seleccionado. Sem nome, sem password, sem onboarding de 3 passos.
  *
- * Depois da submissão o utilizador fica na mesma página: mostramos o estado
- * real do desbloqueio e, em paralelo, a pergunta contextual de relação —
- * que nunca bloqueia o Comment Intelligence.
+ * 10B — a pergunta de relação só aparece aqui quando não houve oportunidade
+ * de qualificação durante o loading (ex.: cache hit rápido). Se o utilizador
+ * já respondeu ou dispensou nessa sessão, não se repete a pergunta.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, Loader2 } from "lucide-react";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -26,12 +27,15 @@ import type {
   LeadCaptureResponse,
   UnlockStatusCode,
 } from "@/lib/leads/lead-capture";
+import { ProfileRelationshipField } from "@/components/conversion/profile-relationship-field";
+import type { ProfileRelationship } from "@/lib/leads/profile-relationship";
 import {
-  PROFILE_RELATIONSHIPS,
-  PROFILE_RELATIONSHIP_LABELS_EN,
-  PROFILE_RELATIONSHIP_LABELS_PT,
-  type ProfileRelationship,
-} from "@/lib/leads/profile-relationship";
+  QUALIFICATION_QUESTION_ID,
+  clearQualificationPending,
+  normalizeHandle,
+  readQualification,
+  writeQualification,
+} from "@/lib/leads/qualification-session";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -55,7 +59,7 @@ export function ConversionSheet({
   snapshotId,
   onUnlockStarted,
 }: ConversionSheetProps) {
-  const { t, i18n } = useTranslation("conversion");
+  const { t } = useTranslation("conversion");
   const isMobile = useIsMobile();
 
   const [email, setEmail] = useState("");
@@ -63,18 +67,16 @@ export function ConversionSheet({
   const [phase, setPhase] = useState<Phase>("form");
   const [error, setError] = useState<string | null>(null);
   const [unlockStatus, setUnlockStatus] = useState<UnlockStatusCode | null>(null);
-  const [cacheKey, setCacheKey] = useState<string | null>(null);
-  const [grant, setGrant] = useState<string | null>(null);
   const [relationshipDone, setRelationshipDone] = useState(false);
+  /** Estado da qualificação feita (ou dispensada) durante o loading. */
+  const [askRelationship, setAskRelationship] = useState(false);
   const emailStartedRef = useRef(false);
-
-  const relationshipLabels = useMemo(
-    () =>
-      i18n.language?.startsWith("en")
-        ? PROFILE_RELATIONSHIP_LABELS_EN
-        : PROFILE_RELATIONSHIP_LABELS_PT,
-    [i18n.language],
-  );
+  const emailInputRef = useRef<HTMLInputElement | null>(null);
+  const doneRef = useRef<HTMLDivElement | null>(null);
+  const contextRef = useRef<{ cacheKey: string | null; grant: string | null }>({
+    cacheKey: null,
+    grant: null,
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -84,7 +86,22 @@ export function ConversionSheet({
       metadata: { conversion_entry_point: entryPoint },
       dedupeKey: `${snapshotId}:${entryPoint}`,
     });
+    // Só perguntamos aqui se a pergunta nunca apareceu no loading.
+    setAskRelationship(readQualification(handle) === null);
   }, [open, entryPoint, handle, snapshotId]);
+
+  // Desktop: foco no email ao abrir. Mobile: nunca — não forçar o teclado.
+  useEffect(() => {
+    if (!open || isMobile || phase !== "form") return;
+    const id = window.setTimeout(() => emailInputRef.current?.focus(), 80);
+    return () => window.clearTimeout(id);
+  }, [open, isMobile, phase]);
+
+  useEffect(() => {
+    if (phase !== "done" || isMobile) return;
+    const id = window.setTimeout(() => doneRef.current?.focus(), 60);
+    return () => window.clearTimeout(id);
+  }, [phase, isMobile]);
 
   const handleEmailChange = (value: string) => {
     setEmail(value);
@@ -98,6 +115,24 @@ export function ConversionSheet({
       });
     }
   };
+
+  const postRelationship = useCallback(
+    async (relationship: ProfileRelationship) => {
+      const { cacheKey, grant } = contextRef.current;
+      if (!cacheKey) return;
+      try {
+        const res = await fetch("/api/public/report-relationship", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ relationship, cache_key: cacheKey, grant }),
+        });
+        if (res.ok) clearQualificationPending(handle);
+      } catch {
+        /* fail-soft: a qualificação nunca bloqueia o desbloqueio */
+      }
+    },
+    [handle],
+  );
 
   const submit = useCallback(
     async (event: React.FormEvent) => {
@@ -169,8 +204,7 @@ export function ConversionSheet({
           });
         }
 
-        setCacheKey(body.cache_key);
-        setGrant(body.grant);
+        contextRef.current = { cacheKey: body.cache_key, grant: body.grant };
         setUnlockStatus(body.unlock?.status ?? "unavailable");
 
         const status = body.unlock?.status;
@@ -203,45 +237,55 @@ export function ConversionSheet({
         }
 
         setPhase("done");
-        trackAnonymousEvent("relationship_question_viewed", {
-          handle,
-          snapshotId,
-          dedupeKey: snapshotId,
-        });
+
+        // Handoff 10B — relação declarada no loading é sincronizada agora.
+        const stored = readQualification(handle);
+        if (stored?.status === "answered" && stored.relationship) {
+          void postRelationship(stored.relationship);
+        } else if (stored === null) {
+          trackAnonymousEvent("relationship_question_viewed", {
+            handle,
+            snapshotId,
+            dedupeKey: snapshotId,
+          });
+        }
       } catch {
         setPhase("form");
         setError(t("errors.generic"));
       }
     },
-    [email, entryPoint, handle, marketing, onUnlockStarted, phase, snapshotId, t],
+    [email, entryPoint, handle, marketing, onUnlockStarted, phase, postRelationship, snapshotId, t],
   );
 
   const answerRelationship = async (relationship: ProfileRelationship | null) => {
     setRelationshipDone(true);
     if (!relationship) {
+      writeQualification(handle, { status: "skipped" });
       trackAnonymousEvent("relationship_skipped", {
         handle,
         snapshotId,
         dedupeKey: snapshotId,
       });
+      trackAnonymousEvent("qualification_skipped", {
+        handle: normalizeHandle(handle),
+        metadata: { question_id: QUALIFICATION_QUESTION_ID },
+        dedupeKey: normalizeHandle(handle),
+      });
       return;
     }
+    writeQualification(handle, { status: "answered", relationship, pending: true });
     trackAnonymousEvent("relationship_answered", {
       handle,
       snapshotId,
       metadata: { relationship },
       dedupeKey: snapshotId,
     });
-    if (!cacheKey) return;
-    try {
-      await fetch("/api/public/report-relationship", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ relationship, cache_key: cacheKey, grant }),
-      });
-    } catch {
-      /* fail-soft: a qualificação nunca bloqueia o desbloqueio */
-    }
+    trackAnonymousEvent("qualification_answered", {
+      handle: normalizeHandle(handle),
+      metadata: { question_id: QUALIFICATION_QUESTION_ID, relationship },
+      dedupeKey: normalizeHandle(handle),
+    });
+    await postRelationship(relationship);
   };
 
   const unlockMessage = (() => {
@@ -265,7 +309,7 @@ export function ConversionSheet({
 
   const body =
     phase === "done" ? (
-      <div className="space-y-5">
+      <div className="space-y-5" ref={doneRef} tabIndex={-1}>
         <div className="flex items-start gap-3 rounded-xl border border-border-default bg-surface-muted px-4 py-3">
           {unlockStatus === "queued" || unlockStatus === "pending" ? (
             <Loader2
@@ -280,25 +324,17 @@ export function ConversionSheet({
           </p>
         </div>
 
-        {relationshipDone ? (
+        {!askRelationship ? null : relationshipDone ? (
           <p className="text-sm text-content-secondary">{t("relationship.thanks")}</p>
         ) : (
           <div>
             <p className="text-sm text-content-secondary">{t("relationship.intro")}</p>
-            <p className="mt-1 text-base font-semibold text-content-primary">
-              {t("relationship.question", { handle })}
-            </p>
-            <div className="mt-3 grid gap-2">
-              {PROFILE_RELATIONSHIPS.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => void answerRelationship(option)}
-                  className="rounded-lg border border-border-default bg-surface-secondary px-4 py-2.5 text-left text-sm text-content-primary transition hover:border-accent-primary/60"
-                >
-                  {relationshipLabels[option]}
-                </button>
-              ))}
+            <div className="mt-3">
+              <ProfileRelationshipField
+                legend={t("relationship.question", { handle })}
+                name="conversion-profile-relationship"
+                onChange={(value) => void answerRelationship(value)}
+              />
             </div>
             <button
               type="button"
@@ -311,8 +347,18 @@ export function ConversionSheet({
         )}
       </div>
     ) : (
-      <form onSubmit={submit} className="space-y-4">
+      <form onSubmit={submit} className="space-y-4" aria-busy={phase === "submitting"}>
         <p className="text-sm leading-relaxed text-content-secondary">{t("subcopy")}</p>
+
+        <ul className="grid gap-1.5">
+          {(["posts", "formats", "comments"] as const).map((key) => (
+            <li key={key} className="flex items-center gap-2 text-sm text-content-secondary">
+              <Check className="size-3.5 shrink-0 text-accent-primary" aria-hidden="true" />
+              {t(`benefits.${key}`)}
+            </li>
+          ))}
+        </ul>
+
         <div>
           <label
             htmlFor="conversion-email"
@@ -322,6 +368,7 @@ export function ConversionSheet({
           </label>
           <Input
             id="conversion-email"
+            ref={emailInputRef}
             type="email"
             inputMode="email"
             autoComplete="email"
@@ -331,9 +378,19 @@ export function ConversionSheet({
             placeholder={t("email_placeholder")}
             className="mt-1.5"
             aria-invalid={error ? true : undefined}
+            aria-describedby={
+              error ? "conversion-email-error conversion-email-help" : "conversion-email-help"
+            }
           />
+          <p id="conversion-email-help" className="mt-1.5 text-xs text-content-tertiary">
+            {t("email_help")}
+          </p>
           {error ? (
-            <p role="alert" className="mt-1.5 text-sm text-signal-error">
+            <p
+              id="conversion-email-error"
+              role="alert"
+              className="mt-1.5 text-sm text-signal-error"
+            >
               {error}
             </p>
           ) : null}
@@ -348,13 +405,14 @@ export function ConversionSheet({
           <span>{t("marketing_optin")}</span>
         </label>
 
-        <button
+        <Button
           type="submit"
+          size="lg"
           disabled={phase === "submitting"}
-          className="w-full rounded-lg bg-accent-primary px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-primary/90 disabled:opacity-60"
+          className="w-full text-sm font-semibold"
         >
           {phase === "submitting" ? t("submitting") : t("submit")}
-        </button>
+        </Button>
         <p className="text-xs text-content-tertiary">{t("microcopy")}</p>
       </form>
     );

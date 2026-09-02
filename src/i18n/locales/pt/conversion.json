@@ -14,7 +14,7 @@
   "email_placeholder": "nome@empresa.com",
   "submit": "Ver a auditoria completa",
   "submitting": "A preparar…",
-  "microcopy": "Sem pagamento · Podes cancelar comunicações de marketing a qualquer momento",
+  "microcopy": "Sem pagamento. O marketing é opcional.",
   "marketing_optin": "Quero receber ocasionalmente conteúdos e novidades sobre marketing digital.",
   "errors": {
     "invalid_email": "Escreve um email válido para continuar.",
@@ -45,5 +45,15 @@
     "title": "Já viste os sinais. Falta ver o conteúdo por trás deles.",
     "body": "Com o teu email vês as publicações completas, o mix de formatos e a análise das conversas. Grátis, sem pagamento.",
     "cta": "Ver a auditoria completa · grátis"
+  },
+  "email_help": "Usamos o email para te dar acesso à auditoria completa.",
+  "benefits": {
+    "title": "Com o email desbloqueias:",
+    "posts": "Publicações completas",
+    "formats": "Mix de formatos",
+    "comments": "Análise das conversas"
+  },
+  "loading_qualification": {
+    "eyebrow": "Enquanto analisamos…"
   }
 }

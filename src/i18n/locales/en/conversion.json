@@ -14,7 +14,7 @@
   "email_placeholder": "name@company.com",
   "submit": "See the full audit",
   "submitting": "Preparing…",
-  "microcopy": "No payment · You can opt out of marketing messages at any time",
+  "microcopy": "No payment. Marketing is optional.",
   "marketing_optin": "I'd like to occasionally receive content and news about digital marketing.",
   "errors": {
     "invalid_email": "Enter a valid email to continue.",
@@ -45,5 +45,15 @@
     "title": "You have seen the signals. Now see the content behind them.",
     "body": "With your email you get the full posts, the format mix and the conversation analysis. Free, no payment.",
     "cta": "See the full audit · free"
+  },
+  "email_help": "We use your email to give you access to the full audit.",
+  "benefits": {
+    "title": "Your email unlocks:",
+    "posts": "Full posts",
+    "formats": "Format mix",
+    "comments": "Conversation analysis"
+  },
+  "loading_qualification": {
+    "eyebrow": "While we analyse…"
   }
 }

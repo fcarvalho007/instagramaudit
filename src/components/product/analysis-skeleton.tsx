@@ -72,7 +72,14 @@ const LOADER_CSS = `
 
 /* ─── Component ────────────────────────────────────────────────────── */
 
-export function AnalysisSkeleton({ username }: { username?: string }) {
+export function AnalysisSkeleton({
+  username,
+  secondarySlot,
+}: {
+  username?: string;
+  /** Conteúdo secundário opcional (ex.: qualificação anónima). Neutro por omissão. */
+  secondarySlot?: React.ReactNode;
+}) {
   const { t } = useTranslation("analyze");
   const [elapsed, setElapsed] = useState(0);
 
@@ -198,7 +205,10 @@ export function AnalysisSkeleton({ username }: { username?: string }) {
         <p className="max-w-[340px] text-center font-sans text-xs leading-relaxed text-content-tertiary">
           {t("skeleton.footnote")}
         </p>
+
+        {secondarySlot ?? null}
       </div>
+
     </section>
   );
 }
