@@ -435,6 +435,8 @@ function AnalyzeReady({
   expiresAtIso: string | null;
   competitors: string[];
 }) {
+  // Presentation-only design variant (?report_design=editorial_v2).
+  const { report_design } = Route.useSearch();
   const shareActions = useReportShareActions({ snapshotId });
 
   // Onboarding-first flow: chegar a este componente já implica
