@@ -133,9 +133,13 @@ function CheckoutSteps({
   const createCheckout = useServerFn(createEupagoCheckout);
   /**
    * Identidade scoped só autoriza o produto ligado a este relatório. Se o
-   * utilizador aceitar o upsell (produto global), pedimos conta nesse ponto.
+   * utilizador escolher um pack ou aceitar o upsell (produtos globais),
+   * pedimos conta nesse ponto — o servidor recusaria de qualquer forma.
    */
-  const [requiresGlobalAccount, setRequiresGlobalAccount] = useState(false);
+  const [globalGateProduct, setGlobalGateProduct] =
+    useState<ProductCode | null>(null);
+  const requiresGlobalAccount = globalGateProduct !== null;
+
 
   const [step, setStep] = useState(1);
   const [reportGoals, setReportGoals] = useState<ReportGoal[]>([]);
