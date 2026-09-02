@@ -239,6 +239,10 @@ function CheckoutSteps({
       },
     }).catch(() => {});
     trackStepComplete({ upsell_accepted: true, final_product: UPSELL_TARGET });
+    if (identitySource === "report_capture_session") {
+      setRequiresGlobalAccount(true);
+      return;
+    }
     goNext();
   };
 
