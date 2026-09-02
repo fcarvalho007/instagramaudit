@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
+import { resolveReportTier } from "@/lib/report/tiers";
 
 import { buildEditorialEngagementData } from "../engagement/engagement-data";
 import { EditorialEngagement } from "../engagement/editorial-engagement";
