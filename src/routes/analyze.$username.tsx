@@ -113,6 +113,7 @@ export const Route = createFileRoute("/analyze/$username")({
     vs: typeof search.vs === "string" ? search.vs : undefined,
     previewLoading: Number(search.previewLoading) === 1 ? 1 : undefined,
     w: search.w === "30d" || search.w === "90d" ? search.w : undefined,
+    report_design: parseReportDesign(search.report_design),
   }),
   head: ({ params }) => {
     const handle = params.username.replace(/^@/, "");
@@ -740,7 +741,8 @@ function AnalyzeReady({
         </ReportGridRow>
       ) : null}
 
-      <ReportShellV2
+      <ReportPresentation
+        design={report_design}
         result={shownResult}
         snapshotId={snapshotId}
         payload={shownPayload}
