@@ -281,6 +281,7 @@ function CheckoutSteps({
           source_product: SOURCE_PRODUCT,
           final_product: selectedProduct,
           upsell_accepted: upsellAccepted,
+          checkout_identity_source: identitySource,
         },
       },
     }).catch(() => {});
