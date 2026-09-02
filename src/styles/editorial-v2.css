@@ -152,3 +152,10 @@
     animation: none;
   }
 }
+
+/* Gate Pro — wash radial subtil, apenas decorativo */
+.editorial-v2 .ev2-gate {
+  background-image:
+    radial-gradient(120% 90% at 12% 0%, var(--ev2-blue-4) 0%, transparent 62%),
+    radial-gradient(90% 70% at 100% 10%, rgba(58, 150, 217, 0.1) 0%, transparent 60%);
+}
