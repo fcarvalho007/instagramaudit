@@ -8,7 +8,11 @@ import { LoadingQualification } from "@/components/conversion/loading-qualificat
 import { normalizeInstagramHandle } from "@/lib/instagram/normalize-handle";
 import "@/styles/analyze-header-collapse.css";
 import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
-import { ReportShellV2 } from "@/components/report-redesign/v2/report-shell-v2";
+import { ReportPresentation } from "@/components/report-editorial-v2/report-presentation";
+import {
+  parseReportDesign,
+  type ReportDesign,
+} from "@/components/report-editorial-v2/report-presentation-props";
 import { useReportShareActions } from "@/components/report-share/use-report-share-actions";
 import { InstantAuditBar } from "@/components/product/instant-audit-bar";
 import { ReportGridRow } from "@/components/report-redesign/v2/report-grid-row";
@@ -49,6 +53,8 @@ interface AnalyzeSearch {
   previewLoading?: number;
   /** Pro-only public window. Defaults to baseline. */
   w?: "30d" | "90d";
+  /** Presentation-only design variant. Default (undefined) = current report. */
+  report_design?: ReportDesign;
 }
 
 // Module-level dedup: sobrevive a re-mounts dentro do mesmo SPA load,
@@ -107,6 +113,7 @@ export const Route = createFileRoute("/analyze/$username")({
     vs: typeof search.vs === "string" ? search.vs : undefined,
     previewLoading: Number(search.previewLoading) === 1 ? 1 : undefined,
     w: search.w === "30d" || search.w === "90d" ? search.w : undefined,
+    report_design: parseReportDesign(search.report_design),
   }),
   head: ({ params }) => {
     const handle = params.username.replace(/^@/, "");
@@ -428,6 +435,8 @@ function AnalyzeReady({
   expiresAtIso: string | null;
   competitors: string[];
 }) {
+  // Presentation-only design variant (?report_design=editorial_v2).
+  const { report_design } = Route.useSearch();
   const shareActions = useReportShareActions({ snapshotId });
 
   // Onboarding-first flow: chegar a este componente já implica
@@ -734,7 +743,8 @@ function AnalyzeReady({
         </ReportGridRow>
       ) : null}
 
-      <ReportShellV2
+      <ReportPresentation
+        design={report_design}
         result={shownResult}
         snapshotId={snapshotId}
         payload={shownPayload}

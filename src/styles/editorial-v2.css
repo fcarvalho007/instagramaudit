@@ -1,0 +1,154 @@
+/**
+ * Editorial V2 — tokens de apresentação com escopo.
+ *
+ * Todas as variáveis vivem dentro de `.editorial-v2`, pelo que não podem
+ * afectar o relatório de produção nem os tokens globais. Não introduz um
+ * segundo sistema de estilos: são variáveis CSS consumidas via `var(...)`
+ * em classes Tailwind arbitrárias ou em CSS local desta pasta.
+ */
+
+.editorial-v2 {
+  /* Superfícies */
+  --ev2-paper: #f7f9fc;
+  --ev2-paper-mobile: #eff3f8;
+  --ev2-surface: #ffffff;
+
+  /* Texto */
+  --ev2-ink: #0b1524;
+  --ev2-ink-2: #44566e;
+  --ev2-ink-3: #7b8da4;
+  --ev2-ink-4: #a9b7c7;
+
+  /* Fios */
+  --ev2-hair: #e6ebf2;
+  --ev2-hair-2: #d2dce7;
+
+  /* Acento */
+  --ev2-blue: #0e6bb8;
+  --ev2-blue-2: #3a96d9;
+  --ev2-blue-3: #a3cdeb;
+  --ev2-blue-4: #eaf3fb;
+
+  /* Sinais */
+  --ev2-danger: #c0403a;
+  --ev2-danger-bg: #fbedec;
+  --ev2-danger-bd: #f0cfcd;
+  --ev2-warning: #9c6b0c;
+  --ev2-warning-bg: #fbf3e1;
+  --ev2-warning-bd: #eddcb6;
+  --ev2-success: #1c7350;
+  --ev2-success-bg: #e5f2ec;
+  --ev2-success-bd: #c4e0d2;
+
+  /* Espaçamento */
+  --ev2-s1: 8px;
+  --ev2-s2: 16px;
+  --ev2-s3: 24px;
+  --ev2-s4: 32px;
+  --ev2-s5: 48px;
+  --ev2-s6: 64px;
+  --ev2-s7: 96px;
+  --ev2-s8: 120px;
+
+  /* Grelha */
+  --ev2-max: 1440px;
+  --ev2-gutter: 18px;
+  --ev2-band-rhythm: var(--ev2-s6);
+
+  background: var(--ev2-paper-mobile);
+  color: var(--ev2-ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+@media (min-width: 1024px) {
+  .editorial-v2 {
+    --ev2-gutter: 40px;
+    --ev2-band-rhythm: var(--ev2-s7);
+    background: var(--ev2-paper);
+  }
+}
+
+.editorial-v2 h1,
+.editorial-v2 h2,
+.editorial-v2 h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.026em;
+  line-height: 1.12;
+}
+
+.editorial-v2 .ev2-tabular {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Largura e gutters canónicos */
+.editorial-v2 .ev2-wrap {
+  max-width: var(--ev2-max);
+  margin-inline: auto;
+  padding-inline: var(--ev2-gutter);
+}
+
+/* Banda editorial full-bleed com ritmo vertical e separador de 1px */
+.editorial-v2 .ev2-band {
+  padding-block: var(--ev2-band-rhythm);
+  border-top: 1px solid var(--ev2-hair);
+}
+
+.editorial-v2 .ev2-band:first-child {
+  border-top: 0;
+}
+
+/* Grelha de 12 colunas: contexto 1–4, dados 6–12 */
+.editorial-v2 .ev2-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ev2-s4);
+}
+
+.editorial-v2 .ev2-grid > * {
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .editorial-v2 .ev2-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .editorial-v2 .ev2-context {
+    grid-column: 1 / span 4;
+  }
+
+  .editorial-v2 .ev2-data {
+    grid-column: 6 / -1;
+  }
+}
+
+.editorial-v2 :focus-visible {
+  outline: 2px solid var(--ev2-blue);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Revelação contida — desligada com prefers-reduced-motion */
+.editorial-v2 .ev2-reveal {
+  opacity: 0;
+  transform: translateY(12px);
+  animation: ev2-reveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes ev2-reveal {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editorial-v2 .ev2-reveal {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+}
