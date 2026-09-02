@@ -404,8 +404,18 @@ function CheckoutSteps({
               nextLabel="Confirmar desbloqueio"
               onNext={() => {
                 trackStepComplete({ selected_plan: planCode });
+                // Packs são globais e reutilizáveis: exigem conta mesmo
+                // quando a identidade veio da captura do relatório.
+                if (
+                  identitySource === "report_capture_session" &&
+                  planCode !== SOURCE_PRODUCT
+                ) {
+                  setGlobalGateProduct(planCode);
+                  return;
+                }
                 goNext();
               }}
+
             />
           </section>
         ) : null}
