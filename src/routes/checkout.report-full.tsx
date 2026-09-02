@@ -343,6 +343,22 @@ function CheckoutSteps({
     }
   };
 
+  if (requiresGlobalAccount) {
+    return (
+      <CheckoutAccountGate
+        productCode={UPSELL_TARGET}
+        exitPath={search.return ?? "/precos"}
+        onSignedIn={() => {
+          queryClient.invalidateQueries({
+            queryKey: ["checkout", "lead-session"],
+          });
+          setRequiresGlobalAccount(false);
+          goNext();
+        }}
+      />
+    );
+  }
+
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
       <div className="min-w-0">
