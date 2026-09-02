@@ -43,18 +43,29 @@ export function EditorialV2Shell({
 
         {showProGate && <EditorialProGate />}
 
+        {/*
+          TODO (Editorial V2): remover antes de tornar público.
+          Andaime de desenvolvimento — existe apenas dentro de
+          `?report_design=editorial_v2` e nunca no relatório de produção.
+          Substituído pelas secções Pro assim que forem migradas.
+        */}
         {premiumUnlocked && (
-          <section className="ev2-band">
+          <section className="ev2-band" data-ev2-dev-placeholder="pro-sections">
             <div className="ev2-wrap">
-              <p className="max-w-[62ch] text-[15px] leading-[1.65] text-[var(--ev2-ink-2)]">
-                As secções Pro — diagnóstico editorial e prioridades de acção —
-                serão apresentadas nesta mesma camada editorial. Até lá, o
-                relatório completo continua disponível na apresentação por
-                defeito.
-              </p>
+              <div className="rounded-[10px] border border-dashed border-[var(--ev2-hair-2)] p-[var(--ev2-s3)]">
+                <p className="text-[12px] font-medium uppercase tracking-[0.14em] text-[var(--ev2-ink-3)]">
+                  Ambiente de desenvolvimento — Editorial V2
+                </p>
+                <p className="mt-[8px] max-w-[62ch] text-[14px] leading-[1.6] text-[var(--ev2-ink-2)]">
+                  As secções Pro (diagnóstico editorial e prioridades de acção)
+                  ainda não foram migradas para esta camada. Bloco temporário,
+                  não destinado a utilizadores.
+                </p>
+              </div>
             </div>
           </section>
         )}
+
       </div>
     </PremiumCtaProvider>
   );
