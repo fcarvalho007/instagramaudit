@@ -60,6 +60,10 @@ export const ANONYMOUS_FUNNEL_EVENTS = [
   "comment_intelligence_viewed",
   "pro_cta_viewed",
   "pro_cta_clicked",
+  // Conversion UX 10B — qualificação anónima durante o loading
+  "qualification_prompt_viewed",
+  "qualification_answered",
+  "qualification_skipped",
 ] as const;
 
 export type AnonymousFunnelEvent = (typeof ANONYMOUS_FUNNEL_EVENTS)[number];

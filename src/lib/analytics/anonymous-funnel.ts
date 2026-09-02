@@ -40,7 +40,11 @@ export type AnonymousFunnelEvent =
   | "relationship_skipped"
   | "comment_intelligence_started"
   | "comment_intelligence_success"
-  | "comment_intelligence_failed";
+  | "comment_intelligence_failed"
+  // Conversion UX 10B — qualificação anónima durante o loading
+  | "qualification_prompt_viewed"
+  | "qualification_answered"
+  | "qualification_skipped";
 
 interface TrackOptions {
   handle?: string;

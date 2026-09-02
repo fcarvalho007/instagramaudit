@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { AnalysisErrorState } from "@/components/product/analysis-error-state";
 import { AnalysisSkeleton } from "@/components/product/analysis-skeleton";
+import { LoadingQualification } from "@/components/conversion/loading-qualification";
 import { normalizeInstagramHandle } from "@/lib/instagram/normalize-handle";
 import "@/styles/analyze-header-collapse.css";
 import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
@@ -374,7 +375,10 @@ function AnalyzePage() {
           screens sit flush — no phantom spacing or ghost layout. */}
       <div className="-mt-8 -mb-24">
         {state.status === "loading" && (
-          <AnalysisSkeleton username={cleaned} />
+          <AnalysisSkeleton
+            username={cleaned}
+            secondarySlot={<LoadingQualification handle={cleaned} />}
+          />
         )}
         {state.status === "error" && (
           <AnalysisErrorState
