@@ -244,7 +244,7 @@ function CheckoutSteps({
     }).catch(() => {});
     trackStepComplete({ upsell_accepted: true, final_product: UPSELL_TARGET });
     if (identitySource === "report_capture_session") {
-      setRequiresGlobalAccount(true);
+      setGlobalGateProduct(UPSELL_TARGET);
       return;
     }
     goNext();
@@ -357,7 +357,7 @@ function CheckoutSteps({
           queryClient.invalidateQueries({
             queryKey: ["checkout", "lead-session"],
           });
-          setRequiresGlobalAccount(false);
+          setGlobalGateProduct(null);
           goNext();
         }}
       />
