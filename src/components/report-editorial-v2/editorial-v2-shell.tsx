@@ -4,6 +4,7 @@ import { getVariantFeatures } from "@/lib/report/report-variant";
 import { PremiumCtaProvider } from "@/components/report-redesign/v2/premium-cta-context";
 
 import { EditorialOverview } from "./overview/editorial-overview";
+import { EditorialEngagement } from "./engagement/editorial-engagement";
 import { EditorialProGate } from "./gate/editorial-pro-gate";
 import type { ReportPresentationProps } from "./report-presentation-props";
 
