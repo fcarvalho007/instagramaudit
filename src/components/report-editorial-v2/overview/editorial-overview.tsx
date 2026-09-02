@@ -51,7 +51,7 @@ export function EditorialOverview({
             displayNumber={meta.displayNumber}
             title={meta.title}
             subtitle={meta.subtitle}
-            as="h3"
+            headingLevel={3}
           />
           <ProfileContext profile={data.profile} windowLabel={data.windowLabel} />
         </div>
