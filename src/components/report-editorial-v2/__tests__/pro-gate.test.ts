@@ -3,7 +3,11 @@ import { describe, expect, it } from "vitest";
 import { COMMERCIAL_SECTIONS } from "@/components/report-redesign/v2/block-config";
 import { PUBLIC_PRODUCTS } from "@/lib/payments/products";
 
-import { EDITORIAL_V2_PRO_SECTIONS } from "../section-metadata";
+import {
+  EDITORIAL_V2_DISPLAY_NUMBERS,
+  EDITORIAL_V2_PRO_SECTIONS,
+  EDITORIAL_V2_SECTIONS,
+} from "../section-metadata";
 
 describe("Editorial V2 — gate Pro (apresentação)", () => {
   it("lista exactamente as secções Pro públicas de produção", () => {
