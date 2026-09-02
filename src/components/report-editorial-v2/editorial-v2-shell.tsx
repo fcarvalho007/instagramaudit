@@ -42,6 +42,12 @@ export function EditorialV2Shell({
           <EditorialOverview result={result} payload={payload} />
         )}
 
+        {/* Engagement — mesma visibilidade que em produção: vive dentro do
+            bloco de visão geral e é mostrado a anónimos, leads e Pro. */}
+        {features.blockOverview !== "hidden" && (
+          <EditorialEngagement result={result} />
+        )}
+
         {showProGate && <EditorialProGate />}
 
         {/*
