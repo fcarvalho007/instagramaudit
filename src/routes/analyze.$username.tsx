@@ -49,6 +49,8 @@ interface AnalyzeSearch {
   previewLoading?: number;
   /** Pro-only public window. Defaults to baseline. */
   w?: "30d" | "90d";
+  /** Presentation-only design variant. Default (undefined) = current report. */
+  report_design?: ReportDesign;
 }
 
 // Module-level dedup: sobrevive a re-mounts dentro do mesmo SPA load,
