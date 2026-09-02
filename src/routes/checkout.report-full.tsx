@@ -346,7 +346,8 @@ function CheckoutSteps({
   if (requiresGlobalAccount) {
     return (
       <CheckoutAccountGate
-        productCode={UPSELL_TARGET}
+        productCode={globalGateProduct}
+
         exitPath={search.return ?? "/precos"}
         onSignedIn={() => {
           queryClient.invalidateQueries({
