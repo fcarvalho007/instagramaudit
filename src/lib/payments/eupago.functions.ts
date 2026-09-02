@@ -141,8 +141,8 @@ export interface CreateCheckoutResult {
 export const createEupagoCheckout = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => inputSchema.parse(raw))
   .handler(async ({ data }): Promise<CreateCheckoutResult> => {
-    const { getLeadFromCookie } = await import(
-      "@/lib/leads/lead-cookie.server"
+    const { resolveCheckoutIdentity, isScopedCheckoutAllowed } = await import(
+      "@/lib/leads/resolve-checkout-lead.server"
     );
     const { supabaseAdmin } = await import(
       "@/integrations/supabase/client.server"
@@ -156,11 +156,29 @@ export const createEupagoCheckout = createServerFn({ method: "POST" })
       "./coupons.server"
     );
 
-    const leadIdFromCookie = getLeadFromCookie();
-    if (!leadIdFromCookie) {
-      // No / invalid lead_session — stop before any insert or provider call.
+    // Identidade: `lead_session` (global) tem precedência; caso contrário
+    // aceitamos `report_capture_session` desde que esteja assinada, dentro
+    // do TTL e ligada exactamente ao relatório indicado.
+    const identity = await resolveCheckoutIdentity({
+      reportRef: data.report_cache_key ?? null,
+    });
+
+    if (!identity.leadId) {
       // eslint-disable-next-line no-console
-      console.warn("[checkout] missing lead_session cookie");
+      console.warn("[checkout] no valid checkout identity");
+      throw safeCheckoutPrepareError();
+    }
+
+    // Identidade scoped só pode comprar o produto ligado ao relatório.
+    // Packs e diagnóstico humano continuam a exigir sessão global.
+    if (
+      identity.source === "report_capture_session" &&
+      !isScopedCheckoutAllowed(data.product_code)
+    ) {
+      // eslint-disable-next-line no-console
+      console.warn("[checkout] scoped identity cannot buy product", {
+        product: data.product_code,
+      });
       throw safeCheckoutPrepareError();
     }
 
@@ -169,7 +187,7 @@ export const createEupagoCheckout = createServerFn({ method: "POST" })
     const { data: leadRow, error: leadErr } = await supabaseAdmin
       .from("leads")
       .select("id, email")
-      .eq("id", leadIdFromCookie)
+      .eq("id", identity.leadId)
       .maybeSingle();
 
     if (leadErr) {
@@ -179,8 +197,8 @@ export const createEupagoCheckout = createServerFn({ method: "POST" })
     }
     if (!leadRow) {
       // eslint-disable-next-line no-console
-      console.warn("[checkout] lead_session points to missing lead", {
-        leadId: leadIdFromCookie,
+      console.warn("[checkout] identity points to missing lead", {
+        leadId: identity.leadId,
       });
       throw safeCheckoutPrepareError();
     }
