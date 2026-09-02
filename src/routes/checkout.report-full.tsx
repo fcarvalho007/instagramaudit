@@ -133,9 +133,13 @@ function CheckoutSteps({
   const createCheckout = useServerFn(createEupagoCheckout);
   /**
    * Identidade scoped só autoriza o produto ligado a este relatório. Se o
-   * utilizador aceitar o upsell (produto global), pedimos conta nesse ponto.
+   * utilizador escolher um pack ou aceitar o upsell (produtos globais),
+   * pedimos conta nesse ponto — o servidor recusaria de qualquer forma.
    */
-  const [requiresGlobalAccount, setRequiresGlobalAccount] = useState(false);
+  const [globalGateProduct, setGlobalGateProduct] =
+    useState<ProductCode | null>(null);
+  const requiresGlobalAccount = globalGateProduct !== null;
+
 
   const [step, setStep] = useState(1);
   const [reportGoals, setReportGoals] = useState<ReportGoal[]>([]);
@@ -240,7 +244,7 @@ function CheckoutSteps({
     }).catch(() => {});
     trackStepComplete({ upsell_accepted: true, final_product: UPSELL_TARGET });
     if (identitySource === "report_capture_session") {
-      setRequiresGlobalAccount(true);
+      setGlobalGateProduct(UPSELL_TARGET);
       return;
     }
     goNext();
@@ -346,13 +350,14 @@ function CheckoutSteps({
   if (requiresGlobalAccount) {
     return (
       <CheckoutAccountGate
-        productCode={UPSELL_TARGET}
+        productCode={globalGateProduct}
+
         exitPath={search.return ?? "/precos"}
         onSignedIn={() => {
           queryClient.invalidateQueries({
             queryKey: ["checkout", "lead-session"],
           });
-          setRequiresGlobalAccount(false);
+          setGlobalGateProduct(null);
           goNext();
         }}
       />
@@ -399,8 +404,18 @@ function CheckoutSteps({
               nextLabel="Confirmar desbloqueio"
               onNext={() => {
                 trackStepComplete({ selected_plan: planCode });
+                // Packs são globais e reutilizáveis: exigem conta mesmo
+                // quando a identidade veio da captura do relatório.
+                if (
+                  identitySource === "report_capture_session" &&
+                  planCode !== SOURCE_PRODUCT
+                ) {
+                  setGlobalGateProduct(planCode);
+                  return;
+                }
                 goNext();
               }}
+
             />
           </section>
         ) : null}
