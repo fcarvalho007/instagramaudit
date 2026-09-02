@@ -6,10 +6,15 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { TFunction } from "i18next";
 
 import type { AdapterResult } from "@/lib/report/snapshot-to-report-data";
 import { cn } from "@/lib/utils";
+import {
+  computeAttentionSignals,
+  type AttentionIconKey,
+  type AttentionSignal,
+  type AttentionTone,
+} from "@/lib/report/attention-signals";
 
 import { REDESIGN_TOKENS } from "../report-tokens";
 
@@ -17,27 +22,14 @@ interface Props {
   result: AdapterResult;
 }
 
-const FORMAT_PT: Record<string, string> = {
-  Carousels: "Carrosséis",
-  Carousel: "Carrosséis",
-  Sidecar: "Carrosséis",
-  Carrosséis: "Carrosséis",
-  Reels: "Reels",
-  Reel: "Reels",
-  Images: "Imagens",
-  Image: "Imagens",
-  Imagens: "Imagens",
+const SIGNAL_ICONS: Record<AttentionIconKey, LucideIcon> = {
+  "engagement-gap": TrendingDown,
+  "cadence-vs-response": Gauge,
+  "format-concentration": Layers,
 };
 
-type Tone = "warn" | "bad" | "neutral";
-
-interface Signal {
-  key: string;
-  icon: LucideIcon;
-  title: string;
-  body: string;
-  tone: Tone;
-}
+type Tone = AttentionTone;
+type Signal = AttentionSignal;
 
 /**
  * Linha "O que merece atenção primeiro" (Phase 1B.1G).
@@ -48,7 +40,7 @@ interface Signal {
  */
 export function ReportOverviewAttentionRow({ result }: Props) {
   const { t } = useTranslation("report");
-  const signals = computeSignals(result, t).slice(0, 3);
+  const signals = computeAttentionSignals(result, t).slice(0, 3);
   if (signals.length === 0) return null;
 
   return (
@@ -85,7 +77,7 @@ export function ReportOverviewAttentionRow({ result }: Props) {
 }
 
 function SignalCard({ signal }: { signal: Signal }) {
-  const Icon = signal.icon;
+  const Icon = SIGNAL_ICONS[signal.key];
   const toneCls =
     signal.tone === "bad"
       ? {
@@ -136,80 +128,4 @@ function SignalCard({ signal }: { signal: Signal }) {
       </div>
     </article>
   );
-}
-
-// ─── Signal computation ──────────────────────────────────────────────
-
-function computeSignals(result: AdapterResult, t: TFunction<"report", undefined>): Signal[] {
-  const k = result.data.keyMetrics;
-  const benchmarkOk =
-    result.coverage.benchmark === "real" && k.engagementBenchmark > 0;
-
-  const out: Signal[] = [];
-
-  // 1 · Engagement gap
-  if (benchmarkOk && k.engagementDeltaPct <= -10) {
-    const tone: Tone = k.engagementDeltaPct <= -25 ? "bad" : "warn";
-    out.push({
-      key: "engagement-gap",
-      icon: TrendingDown,
-      title: t("attention.engagement_gap_title"),
-      body: t("attention.engagement_gap_body", {
-        rate: formatPct(k.engagementRate),
-        benchmark: formatPct(k.engagementBenchmark),
-      }),
-      tone,
-    });
-  }
-
-  // 2 · Cadence vs response — só quando há benchmark e ritmo é alto
-  if (
-    benchmarkOk &&
-    k.postingFrequencyWeekly >= 5 &&
-    k.engagementDeltaPct <= -25
-  ) {
-    out.push({
-      key: "cadence-vs-response",
-      icon: Gauge,
-      title: t("attention.cadence_vs_response_title"),
-      body: t("attention.cadence_vs_response_body", {
-        rhythm: formatRhythm(k.postingFrequencyWeekly),
-      }),
-      tone: "warn",
-    });
-  }
-
-  // 3 · Format concentration
-  const breakdown = result.data.formatBreakdown ?? [];
-  const nonZero = breakdown.filter((b) => (b.sharePct || 0) > 0).length;
-  const formatLabel = FORMAT_PT[k.dominantFormat] ?? k.dominantFormat;
-  if (
-    formatLabel &&
-    (k.dominantFormatShare >= 70 || (nonZero === 1 && k.dominantFormatShare > 0))
-  ) {
-    out.push({
-      key: "format-concentration",
-      icon: Layers,
-      title: t("attention.format_concentration_title"),
-      body: t("attention.format_concentration_body", {
-        format: formatLabel,
-        share: k.dominantFormatShare,
-      }),
-      tone: "warn",
-    });
-  }
-
-  return out;
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────
-
-function formatPct(n: number): string {
-  if (!Number.isFinite(n)) return "0,00%";
-  return `${n.toFixed(2).replace(".", ",")}%`;
-}
-
-function formatRhythm(n: number): string {
-  if (!Number.isFinite(n)) return "0";
-  return n.toFixed(1).replace(".", ",");
 }
