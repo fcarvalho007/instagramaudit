@@ -8,7 +8,11 @@ import { LoadingQualification } from "@/components/conversion/loading-qualificat
 import { normalizeInstagramHandle } from "@/lib/instagram/normalize-handle";
 import "@/styles/analyze-header-collapse.css";
 import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
-import { ReportShellV2 } from "@/components/report-redesign/v2/report-shell-v2";
+import { ReportPresentation } from "@/components/report-editorial-v2/report-presentation";
+import {
+  parseReportDesign,
+  type ReportDesign,
+} from "@/components/report-editorial-v2/report-presentation-props";
 import { useReportShareActions } from "@/components/report-share/use-report-share-actions";
 import { InstantAuditBar } from "@/components/product/instant-audit-bar";
 import { ReportGridRow } from "@/components/report-redesign/v2/report-grid-row";
