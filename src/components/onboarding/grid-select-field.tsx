@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react";
+import { Check, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -56,7 +56,7 @@ export function GridSelectField({
             <label
               key={opt.value}
               className={cn(
-                "group relative flex cursor-pointer rounded-xl border text-center transition-colors duration-150",
+                "group relative flex cursor-pointer rounded-xl border text-center transition-[color,background-color,border-color,transform] duration-150 ease-out active:scale-[0.99]",
                 compact
                   ? "flex-col items-center justify-center gap-1 min-h-[62px] px-2 py-2"
                   : "flex-col items-center justify-center gap-1.5 min-h-[84px] px-2 py-3",
@@ -94,6 +94,14 @@ export function GridSelectField({
               >
                 {opt.label}
               </span>
+
+              {selected ? (
+                <Check
+                  aria-hidden
+                  className="pointer-events-none absolute right-1.5 top-1.5 size-3.5 text-primary"
+                  strokeWidth={2.5}
+                />
+              ) : null}
 
               <span
                 aria-hidden

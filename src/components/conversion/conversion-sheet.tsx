@@ -175,6 +175,10 @@ export function ConversionSheet({
 
         if (!res.ok || !body?.ok) {
           setPhase("form");
+          window.setTimeout(() => {
+            emailInputRef.current?.focus();
+            emailInputRef.current?.scrollIntoView({ block: "center" });
+          }, 60);
           setError(
             body?.error === "RATE_LIMITED"
               ? t("errors.rate_limited")
@@ -252,6 +256,10 @@ export function ConversionSheet({
       } catch {
         setPhase("form");
         setError(t("errors.generic"));
+        window.setTimeout(() => {
+          emailInputRef.current?.focus();
+          emailInputRef.current?.scrollIntoView({ block: "center" });
+        }, 60);
       }
     },
     [email, entryPoint, handle, marketing, onUnlockStarted, phase, postRelationship, snapshotId, t],
@@ -306,10 +314,25 @@ export function ConversionSheet({
   })();
 
   const title = t(`headline.${entryPoint}`);
+  const eyebrow = `@${handle.replace(/^@/, "")}`;
+
+  const surfaceStyles = (
+    <style>{`
+      .cs-reveal { animation: cs-reveal-kf 220ms ease-out both; }
+      .cs-reveal-delayed { animation-delay: 120ms; }
+      @keyframes cs-reveal-kf {
+        from { opacity: 0; transform: translateY(6px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .cs-reveal { animation: none; }
+      }
+    `}</style>
+  );
 
   const body =
     phase === "done" ? (
-      <div className="space-y-5" ref={doneRef} tabIndex={-1}>
+      <div className="cs-reveal space-y-5" ref={doneRef} tabIndex={-1}>
         <div className="flex items-start gap-3 rounded-xl border border-border-default bg-surface-muted px-4 py-3">
           {unlockStatus === "queued" || unlockStatus === "pending" ? (
             <Loader2
@@ -327,7 +350,7 @@ export function ConversionSheet({
         {!askRelationship ? null : relationshipDone ? (
           <p className="text-sm text-content-secondary">{t("relationship.thanks")}</p>
         ) : (
-          <div>
+          <div className="cs-reveal cs-reveal-delayed">
             <p className="text-sm text-content-secondary">{t("relationship.intro")}</p>
             <div className="mt-3">
               <ProfileRelationshipField
@@ -339,7 +362,7 @@ export function ConversionSheet({
             <button
               type="button"
               onClick={() => void answerRelationship(null)}
-              className="mt-3 text-sm text-content-tertiary underline underline-offset-4"
+              className="mt-2 inline-flex min-h-11 items-center text-sm text-content-tertiary underline underline-offset-4 hover:text-content-secondary"
             >
               {t("relationship.skip")}
             </button>
@@ -422,9 +445,11 @@ export function ConversionSheet({
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side="bottom"
-          className="max-h-[92dvh] overflow-y-auto rounded-t-2xl px-5 pb-8"
+          className="max-h-[92dvh] overflow-y-auto rounded-t-2xl border-border-default px-5 pb-8"
         >
+          {surfaceStyles}
           <SheetHeader className="px-0 text-left">
+            <span className="text-eyebrow-sm text-content-tertiary">{eyebrow}</span>
             <SheetTitle className="font-display text-xl">{title}</SheetTitle>
           </SheetHeader>
           {body}
@@ -435,8 +460,10 @@ export function ConversionSheet({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="border-border-default sm:max-w-md sm:rounded-2xl">
+        {surfaceStyles}
         <DialogHeader>
+          <span className="text-eyebrow-sm text-content-tertiary">{eyebrow}</span>
           <DialogTitle className="font-display text-xl">{title}</DialogTitle>
         </DialogHeader>
         {body}

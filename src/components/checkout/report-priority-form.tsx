@@ -94,7 +94,7 @@ export function ReportPriorityForm({ goals, onChange }: Props) {
             <label
               key={opt.value}
               className={cn(
-                "group relative flex cursor-pointer items-start gap-3 rounded-xl border bg-white p-3.5 transition-all",
+                "group relative flex cursor-pointer items-start gap-3 rounded-xl border bg-white p-3.5 transition duration-150 ease-out active:scale-[0.99]",
                 checked
                   ? "border-accent-primary ring-1 ring-accent-primary/30 shadow-sm"
                   : "border-border-default hover:border-content-tertiary hover:bg-surface-muted/40",
@@ -106,7 +106,11 @@ export function ReportPriorityForm({ goals, onChange }: Props) {
                 value={opt.value}
                 checked={checked}
                 onChange={() => toggle(opt.value)}
-                className="sr-only"
+                className="peer sr-only"
+              />
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 rounded-xl opacity-0 ring-2 ring-accent-primary/40 ring-offset-2 ring-offset-surface-base peer-focus-visible:opacity-100"
               />
               <span
                 aria-hidden="true"

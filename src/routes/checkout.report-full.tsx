@@ -325,7 +325,7 @@ function CheckoutSteps() {
           <section className="space-y-5">
             <header>
               <h1 className="font-fraunces text-2xl sm:text-3xl font-medium text-content-primary leading-tight">
-                Obter relatório completo
+                Desbloquear a Análise Pro
               </h1>
               <p className="mt-2 text-sm text-content-secondary leading-relaxed">
                 Desbloqueia as secções premium agora — ou compra um pack para
@@ -351,9 +351,9 @@ function CheckoutSteps() {
             />
             <ConfirmUnlockCard />
             <StepActions
-              backLabel={search.return ? "Voltar" : "Cancelar"}
+              backLabel={search.return ? "Voltar ao relatório" : "Cancelar"}
               onBack={goBack}
-              nextLabel="Continuar"
+              nextLabel="Confirmar desbloqueio"
               onNext={() => {
                 trackStepComplete({ selected_plan: planCode });
                 goNext();
@@ -442,6 +442,7 @@ function CheckoutSteps() {
                 value={billing}
                 onChange={setBilling}
                 errors={billingErrors}
+                disabled={submitting}
               />
             </div>
 
@@ -554,14 +555,14 @@ function PostPurchaseSuccessPanel({ returnPath }: { returnPath: string }) {
     <div className="mx-auto max-w-xl space-y-6">
       <header className="space-y-2">
         <span className="text-eyebrow-sm text-content-tertiary">
-          Pagamento confirmado
+          Pagamento recebido
         </span>
         <h1 className="font-fraunces text-2xl sm:text-3xl font-medium text-content-primary leading-tight">
-          Relatório desbloqueado
+          A confirmar o pagamento
         </h1>
         <p className="text-sm text-content-secondary leading-relaxed">
-          Obrigado pela tua compra. Já tens acesso a todas as secções do
-          relatório completo.
+          Obrigado pela tua compra. Assim que a confirmação do banco chegar,
+          as secções premium abrem automaticamente no teu relatório.
         </p>
       </header>
 

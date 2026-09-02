@@ -91,7 +91,17 @@ export function LoadingQualification({
   };
 
   return (
-    <div className="w-full border-t border-border-default/70 pt-4">
+    <div className="lq-enter w-full border-t border-border-default/70 pt-4">
+      <style>{`
+        .lq-enter { animation: lq-enter-kf 250ms ease-out both; }
+        @keyframes lq-enter-kf {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .lq-enter { animation: none; }
+        }
+      `}</style>
       <p className="text-center text-eyebrow-sm text-content-tertiary">
         {t("loading_qualification.eyebrow")}
       </p>
@@ -107,7 +117,7 @@ export function LoadingQualification({
         <button
           type="button"
           onClick={skip}
-          className="text-xs text-content-tertiary underline underline-offset-4 hover:text-content-secondary"
+          className="inline-flex min-h-11 items-center px-3 text-xs text-content-tertiary underline underline-offset-4 hover:text-content-secondary"
         >
           {t("relationship.skip")}
         </button>
