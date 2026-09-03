@@ -8,7 +8,24 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import type { Browser, Page } from "playwright";
+
+/**
+ * O Playwright não é dependência do projecto (vive no ambiente de QA), por
+ * isso é carregado por especificador dinâmico e tipado de forma mínima.
+ */
+type Page = {
+  goto: (url: string, opts?: Record<string, unknown>) => Promise<unknown>;
+  waitForSelector: (sel: string, opts?: Record<string, unknown>) => Promise<unknown>;
+  locator: (sel: string) => { count: () => Promise<number> };
+  url: () => string;
+};
+type Browser = {
+  newContext: (opts?: Record<string, unknown>) => Promise<{
+    newPage: () => Promise<Page>;
+    close: () => Promise<void>;
+  }>;
+  close: () => Promise<void>;
+};
 
 const BASE = process.env.EV2_TEST_BASE_URL ?? "http://localhost:8080";
 const HANDLE = process.env.EV2_TEST_HANDLE ?? "karmel.pt";
@@ -34,7 +51,10 @@ async function serverIsUp(): Promise<boolean> {
 beforeAll(async () => {
   if (!(await serverIsUp())) return;
   try {
-    const { chromium } = await import("playwright");
+    const specifier = "playwright";
+    const { chromium } = (await import(/* @vite-ignore */ specifier)) as {
+      chromium: { launch: (o: Record<string, unknown>) => Promise<Browser> };
+    };
     browser = await chromium.launch({ headless: true });
     available = true;
   } catch {
