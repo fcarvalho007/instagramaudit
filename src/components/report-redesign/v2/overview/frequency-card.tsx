@@ -9,6 +9,7 @@ import { computeFrequencia } from "./score-utils";
 import type { SocialinsiderInstagramContext } from "@/lib/knowledge/socialinsider-context";
 import { ExternalSourceNote, formatDateRange } from "./external-source-note";
 import { formatNumber } from "@/lib/i18n/format";
+import { aggregateByWeekday } from "@/lib/report/weekday-counts";
 import {
   ReportCardSectionHeader,
   type ReportSectionQualifierTone,
