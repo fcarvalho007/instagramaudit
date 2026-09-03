@@ -115,6 +115,8 @@ export function EditorialV2Shell({
           </section>
         )}
 
+        {/* TODO (Editorial V2): remover antes do lançamento público. */}
+        <EditorialV2PreviewBadge />
       </div>
     </PremiumCtaProvider>
   );
