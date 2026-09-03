@@ -11,6 +11,7 @@ import { EditorialEngagement } from "./engagement/editorial-engagement";
 import { EditorialFrequency } from "./frequency/editorial-frequency";
 import { EditorialFormatMix } from "./format-mix/editorial-format-mix";
 import { EditorialKeyPosts } from "./key-posts/editorial-key-posts";
+import { EditorialConversations } from "./conversations/editorial-conversations";
 import { EditorialProGate } from "./gate/editorial-pro-gate";
 import type { ReportPresentationProps } from "./report-presentation-props";
 
@@ -80,6 +81,12 @@ export function EditorialV2Shell({
             performanceSampleSize={performanceSampleSize}
             analyticsVisible={leadCaptured || premiumUnlocked}
           />
+        )}
+
+        {/* Conversas — mesma fronteira de produção: só após captura de
+            email ou com Pro; pagar nunca remove o que já foi entregue. */}
+        {(leadCaptured || premiumUnlocked) && (
+          <EditorialConversations result={result} payload={payload} />
         )}
 
 
