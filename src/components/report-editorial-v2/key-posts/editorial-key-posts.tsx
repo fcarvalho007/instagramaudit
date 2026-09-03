@@ -128,14 +128,8 @@ export function buildKeyPostsReading(
 }
 
 function DistributionChart({ data }: { data: EditorialKeyPostsData }) {
-  const W = 100;
-  const H = 46;
-  const padX = 4;
-  const padY = 4;
-  const r = data.points.length > 24 ? 0.9 : data.points.length > 12 ? 1.2 : 1.6;
-
-  const px = (x: number) => padX + x * (W - padX * 2);
-  const py = (y: number) => H - padY - y * (H - padY * 2);
+  const dotSize =
+    data.points.length > 24 ? 7 : data.points.length > 12 ? 9 : 11;
 
   const first = data.points[0];
   const last = data.points[data.points.length - 1];
