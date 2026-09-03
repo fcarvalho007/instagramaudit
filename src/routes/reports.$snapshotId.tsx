@@ -15,7 +15,11 @@ import { useTranslation } from "react-i18next";
 
 import { AnalysisSkeleton } from "@/components/product/analysis-skeleton";
 import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
-import { ReportShellV2 } from "@/components/report-redesign/v2/report-shell-v2";
+import { ReportPresentation } from "@/components/report-editorial-v2/report-presentation";
+import {
+  parseReportDesign,
+  type ReportDesign,
+} from "@/components/report-editorial-v2/report-presentation-props";
 import {
   snapshotToReportData,
   type AdapterResult,
