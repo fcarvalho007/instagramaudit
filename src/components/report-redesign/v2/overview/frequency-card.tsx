@@ -163,29 +163,8 @@ function SupportMetric({
 }
 
 
-/** Aggregate posts/days by weekday (Mon=0..Sun=6). */
-function aggregateByWeekday(days: DayEntry[]): Array<{
-  weekday: number;
-  posts: number;
-  daysTotal: number;
-  daysSilent: number;
-}> {
-  const buckets = Array.from({ length: 7 }, (_, weekday) => ({
-    weekday,
-    posts: 0,
-    daysTotal: 0,
-    daysSilent: 0,
-  }));
-  for (const d of days) {
-    const date = new Date(d.date);
-    if (Number.isNaN(date.getTime())) continue;
-    const idx = (date.getUTCDay() + 6) % 7; // Mon=0
-    buckets[idx].posts += d.postCount;
-    buckets[idx].daysTotal += 1;
-    if (d.postCount === 0) buckets[idx].daysSilent += 1;
-  }
-  return buckets;
-}
+/** Aggregate posts/days by weekday (Mon=0..Sun=6). Shared pure helper. */
+
 
 function pickMostActive(buckets: ReturnType<typeof aggregateByWeekday>) {
   let best = buckets[0];
