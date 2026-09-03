@@ -83,6 +83,12 @@ export function EditorialV2Shell({
           />
         )}
 
+        {/* Conversas — mesma fronteira de produção: só após captura de
+            email ou com Pro; pagar nunca remove o que já foi entregue. */}
+        {(leadCaptured || premiumUnlocked) && (
+          <EditorialConversations result={result} payload={payload} />
+        )}
+
 
         {showProGate && <EditorialProGate />}
 
