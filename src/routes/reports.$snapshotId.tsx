@@ -179,7 +179,8 @@ function SnapshotReportPage() {
         {state.status === "expired" && <ExpiredState handle={state.handle} />}
         {state.status === "error" && <ErrorState message={state.message} />}
         {state.status === "ready" && (
-          <ReportShellV2
+          <ReportPresentation
+            design={report_design}
             result={state.result}
             snapshotId={state.snapshotId}
             payload={state.payload}
