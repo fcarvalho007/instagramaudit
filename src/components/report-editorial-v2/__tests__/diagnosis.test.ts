@@ -59,7 +59,11 @@ describe("Editorial V2 — diagnóstico (06)", () => {
   });
 
   it("devolve estado vazio verdadeiro sem dados", () => {
-    const data = buildEditorialDiagnosisData(makeResult(), undefined);
+    const bare = {
+      data: { topHashtags: [], topKeywords: [], topThemes: [] },
+      enriched: { profile: { bio: null, externalUrls: [] } },
+    } as unknown as AdapterResult;
+    const data = buildEditorialDiagnosisData(bare, undefined);
     expect(data.empty).toBe(true);
     expect(data.threads).toHaveLength(0);
     expect(data.verdict).toBeNull();
