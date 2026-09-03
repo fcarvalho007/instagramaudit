@@ -12,6 +12,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import type { ReportEnriched } from "@/lib/report/snapshot-to-report-data";
+import {
+  computeAmplitudeMultiplier,
+  computeDeltaPct,
+  computeSampleAverage,
+} from "@/lib/report/key-post-stats";
 import type { CadenceMethod } from "@/lib/report/cadence";
 import { cn } from "@/lib/utils";
 import { useTrackOnceInView } from "./use-track-once-in-view";
@@ -128,7 +133,7 @@ export function PostComparisonBlock({
   const bestEng = best?.engagementPct ?? 0;
   const worstEng = worst?.engagementPct ?? 0;
   const multiplier = useMemo(
-    () => (worstEng > 0 ? Math.round(bestEng / worstEng) : 0),
+    () => computeAmplitudeMultiplier(bestEng, worstEng),
     [bestEng, worstEng],
   );
   const multiplierLabel = multiplier > 1 ? `${multiplier}×` : "";
@@ -145,13 +150,14 @@ export function PostComparisonBlock({
         takenAtIso: p.takenAtIso,
       }));
   const total = scatterPosts.length;
-  const avgEng = useMemo(() => {
-    if (total === 0) return 0;
-    return scatterPosts.reduce((s, p) => s + p.engagementPct, 0) / total;
-  }, [scatterPosts, total]);
+  const avgEng = useMemo(
+    () => computeSampleAverage(scatterPosts),
+    [scatterPosts],
+  );
 
-  const bestDelta = avgEng > 0 ? ((bestEng - avgEng) / avgEng) * 100 : 0;
-  const worstDelta = avgEng > 0 ? ((worstEng - avgEng) / avgEng) * 100 : 0;
+  const bestDelta = computeDeltaPct(bestEng, avgEng);
+  const worstDelta = computeDeltaPct(worstEng, avgEng);
+
 
   // Deterministic prescriptive fallback when AI text is missing.
   const aiFallback = useMemo(() => {

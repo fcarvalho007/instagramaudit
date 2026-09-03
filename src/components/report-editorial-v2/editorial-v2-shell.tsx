@@ -1,12 +1,16 @@
 import "@/styles/editorial-v2.css";
 
+import { useMemo } from "react";
+
 import { getVariantFeatures } from "@/lib/report/report-variant";
+import { buildBlock01Sample } from "@/lib/report/block01-sample";
 import { PremiumCtaProvider } from "@/components/report-redesign/v2/premium-cta-context";
 
 import { EditorialOverview } from "./overview/editorial-overview";
 import { EditorialEngagement } from "./engagement/editorial-engagement";
 import { EditorialFrequency } from "./frequency/editorial-frequency";
 import { EditorialFormatMix } from "./format-mix/editorial-format-mix";
+import { EditorialKeyPosts } from "./key-posts/editorial-key-posts";
 import { EditorialProGate } from "./gate/editorial-pro-gate";
 import type { ReportPresentationProps } from "./report-presentation-props";
 
@@ -31,6 +35,14 @@ export function EditorialV2Shell({
 }: ReportPresentationProps) {
   const features = featuresOverride ?? getVariantFeatures(variant);
   const showProGate = leadCaptured && !premiumUnlocked;
+
+  // Mesma amostra de performance que o bloco de produção usa para
+  // dimensionar melhor/pior publicação. Nenhum cálculo novo.
+  const performanceSampleSize = useMemo(() => {
+    const posts = payload?.posts ?? null;
+    if (!Array.isArray(posts) || posts.length === 0) return 0;
+    return buildBlock01Sample(posts).performancePosts.length;
+  }, [payload?.posts]);
 
   return (
     <PremiumCtaProvider
@@ -59,6 +71,17 @@ export function EditorialV2Shell({
         {features.blockOverview !== "hidden" && (
           <EditorialFormatMix result={result} payload={payload} />
         )}
+
+        {/* Publicações-chave — mesma regra de produção: em estado anónimo
+            não se mostram métricas analíticas por publicação. */}
+        {features.blockOverview !== "hidden" && (
+          <EditorialKeyPosts
+            result={result}
+            performanceSampleSize={performanceSampleSize}
+            analyticsVisible={leadCaptured || premiumUnlocked}
+          />
+        )}
+
 
         {showProGate && <EditorialProGate />}
 
