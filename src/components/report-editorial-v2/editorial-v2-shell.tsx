@@ -54,6 +54,11 @@ export function EditorialV2Shell({
           <EditorialFrequency result={result} />
         )}
 
+        {/* Mix de formatos — mesma visibilidade que em produção. */}
+        {features.blockOverview !== "hidden" && (
+          <EditorialFormatMix result={result} payload={payload} />
+        )}
+
         {showProGate && <EditorialProGate />}
 
         {/*
