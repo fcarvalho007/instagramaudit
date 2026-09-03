@@ -358,10 +358,8 @@ export function EditorialKeyPosts({
         </div>
       }
     >
-      {/* Sentinela de revelação: o observador vigia um elemento curto, para
-          que blocos mais altos que o ecrã revelem sempre. */}
-      <div ref={ref} aria-hidden="true" className="h-px w-full" />
       <div
+        ref={ref}
         data-revealed={revealed ? "true" : "false"}
         className="flex flex-col gap-[var(--ev2-s4)] transition-[opacity,transform] duration-700 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none data-[revealed=false]:translate-y-[14px] data-[revealed=false]:opacity-0"
       >
