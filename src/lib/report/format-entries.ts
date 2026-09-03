@@ -25,7 +25,7 @@ export interface BuildFormatEntriesInput {
   /** `result.data.keyMetrics.postsAnalyzed`. */
   postsAnalyzed: number;
   /** `payload.format_stats` (chaves cruas do snapshot). */
-  formatStats?: Record<string, { count?: number } | undefined> | null;
+  formatStats?: Record<string, { count?: number | null } | undefined> | null;
   /** `result.enriched.analysedPostFormats`. */
   analysedPostFormats: ReadonlyArray<{ type: string }>;
 }
