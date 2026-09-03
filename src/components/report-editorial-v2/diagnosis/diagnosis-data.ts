@@ -217,7 +217,7 @@ export function buildEditorialDiagnosisData(
   }
 
   /* 06 — Integração entre canais (regra) */
-  if (integration.available) {
+  if (integration.available && integration.label !== "Sem sinais suficientes") {
     const signals: string[] = [];
     signals.push(
       integration.signals.bioLink.detected
