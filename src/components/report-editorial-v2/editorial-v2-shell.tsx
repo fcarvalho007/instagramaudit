@@ -11,6 +11,7 @@ import { EditorialEngagement } from "./engagement/editorial-engagement";
 import { EditorialFrequency } from "./frequency/editorial-frequency";
 import { EditorialFormatMix } from "./format-mix/editorial-format-mix";
 import { EditorialKeyPosts } from "./key-posts/editorial-key-posts";
+import { EditorialConversations } from "./conversations/editorial-conversations";
 import { EditorialProGate } from "./gate/editorial-pro-gate";
 import type { ReportPresentationProps } from "./report-presentation-props";
 
