@@ -6,6 +6,7 @@ import { PremiumCtaProvider } from "@/components/report-redesign/v2/premium-cta-
 import { EditorialOverview } from "./overview/editorial-overview";
 import { EditorialEngagement } from "./engagement/editorial-engagement";
 import { EditorialFrequency } from "./frequency/editorial-frequency";
+import { EditorialFormatMix } from "./format-mix/editorial-format-mix";
 import { EditorialProGate } from "./gate/editorial-pro-gate";
 import type { ReportPresentationProps } from "./report-presentation-props";
 
