@@ -13,6 +13,7 @@ import { EditorialFormatMix } from "./format-mix/editorial-format-mix";
 import { EditorialKeyPosts } from "./key-posts/editorial-key-posts";
 import { EditorialConversations } from "./conversations/editorial-conversations";
 import { EditorialProGate } from "./gate/editorial-pro-gate";
+import { EditorialV2PreviewBadge } from "./preview-badge";
 import type { ReportPresentationProps } from "./report-presentation-props";
 
 /**
