@@ -15,7 +15,11 @@ import { useTranslation } from "react-i18next";
 
 import { AnalysisSkeleton } from "@/components/product/analysis-skeleton";
 import { ReportThemeWrapper } from "@/components/report/report-theme-wrapper";
-import { ReportShellV2 } from "@/components/report-redesign/v2/report-shell-v2";
+import { ReportPresentation } from "@/components/report-editorial-v2/report-presentation";
+import {
+  parseReportDesign,
+  type ReportDesign,
+} from "@/components/report-editorial-v2/report-presentation-props";
 import {
   snapshotToReportData,
   type AdapterResult,
@@ -36,6 +40,11 @@ export const Route = createFileRoute("/reports/$snapshotId")({
       document.body.setAttribute("data-report-view", "true");
     }
   },
+  // Variante de apresentação (`?report_design=editorial_v2`). Só afecta a
+  // camada visual: dados, gating e entitlements permanecem iguais.
+  validateSearch: (search: Record<string, unknown>): { report_design?: ReportDesign } => ({
+    report_design: parseReportDesign(search.report_design),
+  }),
   head: () => ({
     meta: [
       { title: "Relatório · AuditProfiles" },
@@ -92,6 +101,8 @@ function SnapshotReportPage() {
     const title = tReport("snapshot.metaTitle");
     document.title = title;
   }, [tReport]);
+
+  const { report_design } = Route.useSearch();
 
   useEffect(() => {
     document.body.setAttribute("data-report-view", "true");
@@ -170,7 +181,8 @@ function SnapshotReportPage() {
         {state.status === "expired" && <ExpiredState handle={state.handle} />}
         {state.status === "error" && <ErrorState message={state.message} />}
         {state.status === "ready" && (
-          <ReportShellV2
+          <ReportPresentation
+            design={report_design}
             result={state.result}
             snapshotId={state.snapshotId}
             payload={state.payload}
