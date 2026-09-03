@@ -5,6 +5,7 @@ import { PremiumCtaProvider } from "@/components/report-redesign/v2/premium-cta-
 
 import { EditorialOverview } from "./overview/editorial-overview";
 import { EditorialEngagement } from "./engagement/editorial-engagement";
+import { EditorialFrequency } from "./frequency/editorial-frequency";
 import { EditorialProGate } from "./gate/editorial-pro-gate";
 import type { ReportPresentationProps } from "./report-presentation-props";
 
@@ -46,6 +47,11 @@ export function EditorialV2Shell({
             bloco de visão geral e é mostrado a anónimos, leads e Pro. */}
         {features.blockOverview !== "hidden" && (
           <EditorialEngagement result={result} />
+        )}
+
+        {/* Frequência editorial — mesma visibilidade que em produção. */}
+        {features.blockOverview !== "hidden" && (
+          <EditorialFrequency result={result} />
         )}
 
         {showProGate && <EditorialProGate />}
