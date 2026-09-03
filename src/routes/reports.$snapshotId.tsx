@@ -102,6 +102,8 @@ function SnapshotReportPage() {
     document.title = title;
   }, [tReport]);
 
+  const { report_design } = Route.useSearch();
+
   useEffect(() => {
     document.body.setAttribute("data-report-view", "true");
     return () => {
