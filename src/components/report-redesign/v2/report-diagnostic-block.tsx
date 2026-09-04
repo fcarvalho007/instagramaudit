@@ -79,52 +79,8 @@ function parseCaptionSemanticAnalysis(
   return raw as CaptionSemanticAnalysis;
 }
 
-/**
- * Map an AI-produced priority item into the local `PriorityItem` shape.
- * Infers `category` from action verbs and `basedOn` from keyword hints
- * in title/body. Source is always "ai".
- */
-function inferAiPriorityItem(p: {
-  level: "alta" | "media" | "oportunidade";
-  title: string;
-  body: string;
-  resolves: string;
-}): PriorityItem {
-  const text = `${p.title} ${p.body}`.toLowerCase();
-  let category: PriorityCategory = "oportunidade";
-  if (/\b(corrig|resolve[r]?|reparar|arrumar|endereçar)/.test(text)) {
-    category = "corrigir";
-  } else if (/\b(repetir|manter|continuar|escalar|replicar)/.test(text)) {
-    category = "repetir";
-  } else if (/\b(testar|experimentar|tentar|introduzir|variar|adicionar)/.test(text)) {
-    category = "testar";
-  }
+/* `inferAiPriorityItem` vive agora em `@/lib/report/build-priority-items`. */
 
-  const basedOn: PriorityBasis[] = [];
-  const add = (b: PriorityBasis) => {
-    if (!basedOn.includes(b)) basedOn.push(b);
-  };
-  if (/\b(coment|respond|conversa|audi[êe]ncia)\b/.test(text)) add("Resposta do público");
-  if (/\b(capa|thumbnail|visual|imagem)\b/.test(text)) add("Análise visual das capas");
-  if (/\b(ritmo|frequ[êe]ncia|cad[êe]ncia|semana|semanal|publica)\b/.test(text))
-    add("Frequência editorial");
-  if (/\b(reel|carross|formato)\b/.test(text)) add("Mix de formatos");
-  if (/\b(post[s]? com|melhor post|post-âncora|post ancora|publica[çc][ãa]o-chave)\b/.test(text))
-    add("Publicações-chave");
-  if (/\b(caption|legend|cta|chamada)\b/.test(text)) add("Padrão das captions");
-  if (/\b(bio|link|newsletter|site|canal|whatsapp|dm)\b/.test(text)) add("Integração entre canais");
-  if (basedOn.length === 0) add("Tipo de conteúdo dominante");
-
-  return {
-    level: p.level,
-    category,
-    title: p.title,
-    body: p.body,
-    resolves: p.resolves,
-    basedOn,
-    source: "ai",
-  };
-}
 
 interface Props {
   result: AdapterResult;
