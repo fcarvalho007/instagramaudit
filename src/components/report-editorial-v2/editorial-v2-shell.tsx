@@ -16,6 +16,8 @@ import { EditorialDiagnosis } from "./diagnosis/editorial-diagnosis";
 import { EditorialPriorities } from "./priorities/editorial-priorities";
 
 import { EditorialProGate } from "./gate/editorial-pro-gate";
+import { EditorialReportChrome } from "./chrome/editorial-report-chrome";
+
 import { EditorialV2PreviewBadge } from "./preview-badge";
 import type { ReportPresentationProps } from "./report-presentation-props";
 
@@ -33,10 +35,13 @@ export function EditorialV2Shell({
   result,
   payload,
   snapshotId,
+  actions,
   variant = "public_mvp",
   featuresOverride,
   leadCaptured = false,
   premiumUnlocked = false,
+  competitorHandles = [],
+  isAdminPreview = false,
 }: ReportPresentationProps) {
   const features = featuresOverride ?? getVariantFeatures(variant);
   const showProGate = leadCaptured && !premiumUnlocked;
@@ -57,6 +62,17 @@ export function EditorialV2Shell({
       premiumUnlocked={premiumUnlocked}
     >
       <div className="editorial-v2" data-report-design="editorial_v2">
+        <EditorialReportChrome
+          result={result}
+          actions={actions}
+          premiumUnlocked={premiumUnlocked}
+          leadCaptured={leadCaptured}
+          competitorHandles={competitorHandles}
+          isAdminPreview={isAdminPreview}
+          currentWindowDays={result.data.profile.windowDays ?? null}
+        />
+
+
         {features.blockOverview !== "hidden" && (
           <EditorialOverview result={result} payload={payload} />
         )}
