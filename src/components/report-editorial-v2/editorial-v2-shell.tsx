@@ -94,32 +94,18 @@ export function EditorialV2Shell({
 
         {showProGate && <EditorialProGate />}
 
-        {/*
-          TODO (Editorial V2): remover antes de tornar público.
-          Andaime de desenvolvimento — existe apenas dentro de
-          `?report_design=editorial_v2` e nunca no relatório de produção.
-          Substituído pelas secções Pro assim que forem migradas.
-        */}
         {premiumUnlocked && features.blockDiagnosis !== "hidden" && (
           <EditorialDiagnosis result={result} payload={payload} />
         )}
 
-        {premiumUnlocked && (
-          <section className="ev2-band" data-ev2-dev-placeholder="prioridades">
-            <div className="ev2-wrap">
-              <div className="rounded-[10px] border border-dashed border-[var(--ev2-hair-2)] p-[var(--ev2-s3)]">
-                <p className="text-[12px] font-medium uppercase tracking-[0.14em] text-[var(--ev2-ink-3)]">
-                  Ambiente de desenvolvimento — Editorial V2
-                </p>
-                <p className="mt-[8px] max-w-[62ch] text-[14px] leading-[1.6] text-[var(--ev2-ink-2)]">
-                  A secção 07 — Prioridades de ação ainda não foi migrada para
-                  esta camada. Bloco temporário, não destinado a utilizadores.
-                </p>
-              </div>
-            </div>
-          </section>
+        {/* 07 — Prioridades de ação. Mesmo gate Pro que produção. */}
+        {premiumUnlocked && features.blockDiagnosis !== "hidden" && (
+          <EditorialPriorities
+            result={result}
+            payload={payload}
+            commentIntelligenceFull={features.commentIntelligence === "full"}
+          />
         )}
-
 
         {/* TODO (Editorial V2): remover antes do lançamento público. */}
         <EditorialV2PreviewBadge />
@@ -127,3 +113,4 @@ export function EditorialV2Shell({
     </PremiumCtaProvider>
   );
 }
+
