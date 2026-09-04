@@ -48,7 +48,7 @@ import type { VisualCoverAnalysis } from "@/lib/report/visual-cover-types";
 import { useReportVariant, useVariantFeatures } from "@/lib/report/report-variant";
 import { getEnrichmentState } from "./enrichment-pending";
 import { EnrichmentPlaceholderCard } from "./enrichment-placeholder-card";
-import { sanitizeAiPriorityBody } from "@/lib/insights/sanitize-ai-priorities";
+
 
 /** Parse persisted visual_cover_analysis from snapshot payload. */
 function parseVisualCoverAnalysis(
