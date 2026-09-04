@@ -460,3 +460,21 @@
     flex: 0 0 auto;
   }
 }
+
+.editorial-v2 .ev2-chrome__explore {
+  display: none;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+@media (min-width: 1024px) {
+  .editorial-v2 .ev2-chrome__explore {
+    display: flex;
+  }
+}
+
+.ev2-chrome__sheet-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+}

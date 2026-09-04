@@ -175,7 +175,7 @@ export function EditorialReportChrome({
           {/* Acções */}
           <div className="ev2-chrome__actions">
             {isLiveReport ? (
-              <>
+              <div className="ev2-chrome__explore">
                 <button
                   type="button"
                   onClick={() =>
@@ -207,7 +207,7 @@ export function EditorialReportChrome({
                     <Lock className="size-3" aria-hidden="true" />
                   ) : null}
                 </button>
-              </>
+              </div>
             ) : null}
 
             {!premiumUnlocked ? (
@@ -269,6 +269,40 @@ export function EditorialReportChrome({
               {t("nav.sections_aria", { defaultValue: "Secções do relatório" })}
             </SheetTitle>
           </SheetHeader>
+          {isLiveReport ? (
+            <div className="ev2-chrome__sheet-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  setSheetOpen(false);
+                  if (premiumUnlocked) explore.onPeriodPaidClick(30);
+                  else handlePremiumAccessClick("sidebar_period");
+                }}
+                className="ev2-chrome__btn"
+              >
+                <CalendarClock className="size-3.5" aria-hidden="true" />
+                {t("nav.explore.period_label")}
+                {!premiumUnlocked ? (
+                  <Lock className="size-3" aria-hidden="true" />
+                ) : null}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSheetOpen(false);
+                  explore.onAddCompetitor();
+                }}
+                disabled={explore.atMax}
+                className="ev2-chrome__btn"
+              >
+                <UserPlus className="size-3.5" aria-hidden="true" />
+                {t("nav.explore.add_competitor_short")}
+                {!premiumUnlocked ? (
+                  <Lock className="size-3" aria-hidden="true" />
+                ) : null}
+              </button>
+            </div>
+          ) : null}
           <ul className="ev2-chrome__sheet-list">
             {sections.map((section) => (
               <li key={section.id}>
