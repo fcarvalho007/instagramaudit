@@ -380,3 +380,37 @@
     display: none;
   }
 }
+
+/* Chrome — contenção horizontal em ecrãs estreitos (≥320px). */
+.editorial-v2 .ev2-chrome__inner {
+  flex-wrap: nowrap;
+  padding-inline: 0.75rem;
+}
+
+.editorial-v2 .ev2-chrome__identity {
+  flex: 0 1 auto;
+  overflow: hidden;
+}
+
+.editorial-v2 .ev2-chrome__actions {
+  min-width: 0;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+.editorial-v2 .ev2-chrome__menu-btn {
+  min-width: 0;
+  max-width: none;
+  flex: 0 1 auto;
+}
+
+@media (max-width: 419px) {
+  .editorial-v2 .ev2-chrome__handle,
+  .editorial-v2 .ev2-chrome__window {
+    display: none;
+  }
+  .editorial-v2 .ev2-chrome__mobile-label {
+    display: none;
+  }
+}

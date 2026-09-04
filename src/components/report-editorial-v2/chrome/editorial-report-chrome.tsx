@@ -133,7 +133,7 @@ export function EditorialReportChrome({
                 loading="lazy"
               />
             ) : null}
-            <div className="min-w-0">
+            <div className="min-w-0 hidden xs:block">
               <p className="ev2-chrome__handle">@{handle}</p>
               {typeof currentWindowDays === "number" ? (
                 <p className="ev2-chrome__window">
