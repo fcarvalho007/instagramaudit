@@ -177,63 +177,45 @@ export function ReportDiagnosticBlock({ result, payload, premiumUnlocked = false
     ? contentType.distribution[0]
     : null;
 
-  const prioritySource: "ai" | "deterministic" = aiPriorities?.length
-    ? "ai"
-    : "deterministic";
-
-  const deterministicPriorities = derivePriorities({
-    contentType,
-    funnel,
-    caption,
-    audience,
-    integration,
-    dominantFormatShare: dominantFormat?.sharePct ?? 0,
-    dominantFormatLabel: dominantFormat?.label ?? null,
-    commentIntel:
-      features.commentIntelligence === "full"
-        ? (result.enriched.commentIntelligence ?? null)
-        : null,
-    coverAnalysis: parseVisualCoverAnalysis(payload),
-    cadence: result.enriched.cadence
-      ? {
-          weekly: result.enriched.cadence.weekly,
-          sufficient: result.enriched.cadence.sufficient,
-        }
-      : null,
-  });
-
   // Always guarantee ≥3 priority cards: AI items first (cleaned of any
   // unsupported numbers), then deterministic items merged with a
   // composite dedup key (title + category + first basis).
-  const sanitizationPool = {
-    keyMetrics: km,
-    cadence: result.enriched.cadence ?? null,
-    commentIntelligence: result.enriched.commentIntelligence ?? null,
-    coverAnalysis: parseVisualCoverAnalysis(payload),
-    contentType,
-    caption,
-    audience,
-    integration,
-    dominantFormatShare: dominantFormat?.sharePct ?? 0,
-  };
-
-  const aiMapped: PriorityItem[] = (aiPriorities ?? []).map((p) => {
-    const item = inferAiPriorityItem(p);
-    const { body, sanitized } = sanitizeAiPriorityBody(item.body, sanitizationPool);
-    return sanitized ? { ...item, body } : item;
+  // Lógica pura partilhada — ver `build-priority-items.ts`.
+  const { items: priorityItems, source: prioritySource } = buildPriorityItems({
+    aiPriorities,
+    deterministicArgs: {
+      contentType,
+      funnel,
+      caption,
+      audience,
+      integration,
+      dominantFormatShare: dominantFormat?.sharePct ?? 0,
+      dominantFormatLabel: dominantFormat?.label ?? null,
+      commentIntel:
+        features.commentIntelligence === "full"
+          ? (result.enriched.commentIntelligence ?? null)
+          : null,
+      coverAnalysis: parseVisualCoverAnalysis(payload),
+      cadence: result.enriched.cadence
+        ? {
+            weekly: result.enriched.cadence.weekly,
+            sufficient: result.enriched.cadence.sufficient,
+          }
+        : null,
+    },
+    sanitizationPool: {
+      keyMetrics: km,
+      cadence: result.enriched.cadence ?? null,
+      commentIntelligence: result.enriched.commentIntelligence ?? null,
+      coverAnalysis: parseVisualCoverAnalysis(payload),
+      contentType,
+      caption,
+      audience,
+      integration,
+      dominantFormatShare: dominantFormat?.sharePct ?? 0,
+    },
   });
 
-  const dedupKey = (p: PriorityItem) =>
-    `${p.title.trim().toLowerCase()}|${p.category ?? ""}|${(p.basedOn?.[0] ?? "")}`;
-  const seen = new Set<string>();
-  const priorityItems: PriorityItem[] = [];
-  for (const it of [...aiMapped, ...deterministicPriorities]) {
-    const k = dedupKey(it);
-    if (seen.has(k)) continue;
-    seen.add(k);
-    priorityItems.push(it);
-    if (priorityItems.length >= 6) break;
-  }
 
   // ── Enrichment pending / error placeholders (Pro + Lab only) ─────
   const coverAnalysis = parseVisualCoverAnalysis(payload);
