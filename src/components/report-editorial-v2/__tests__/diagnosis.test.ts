@@ -151,10 +151,11 @@ describe("Editorial V2 — diagnóstico (06)", () => {
     expect(prodShellSrc).toContain('features.blockDiagnosis !== "hidden"');
   });
 
-  it("mantém o placeholder de desenvolvimento apenas para prioridades", () => {
-    expect(shellSrc).toContain('data-ev2-dev-placeholder="prioridades"');
-    expect(shellSrc).not.toContain('data-ev2-dev-placeholder="pro-sections"');
+  it("já não tem qualquer placeholder de desenvolvimento no corpo do relatório", () => {
+    // Fase H migrou 07 — Prioridades; o andaime foi removido.
+    expect(shellSrc).not.toContain("data-ev2-dev-placeholder");
   });
+
 
   it("a produção continua a usar o bloco de diagnóstico existente", () => {
     expect(prodShellSrc).toContain("ReportDiagnosticBlock");

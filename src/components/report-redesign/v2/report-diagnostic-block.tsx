@@ -18,12 +18,9 @@ import {
   type AudienceResponseResult, 
   type IntegrationResult,
 } from "@/lib/report/block02-diagnostic";
-import {
-  derivePriorities,
-  type PriorityItem,
-  type PriorityCategory,
-  type PriorityBasis,
-} from "@/lib/report/block02-diagnostic";
+import { buildPriorityItems } from "@/lib/report/build-priority-items";
+
+
 import { ReportDiagnosticPriorities } from "./report-diagnostic-priorities";
 import { ReportDiagnosticVerdict } from "./report-diagnostic-verdict";
 
@@ -51,7 +48,7 @@ import type { VisualCoverAnalysis } from "@/lib/report/visual-cover-types";
 import { useReportVariant, useVariantFeatures } from "@/lib/report/report-variant";
 import { getEnrichmentState } from "./enrichment-pending";
 import { EnrichmentPlaceholderCard } from "./enrichment-placeholder-card";
-import { sanitizeAiPriorityBody } from "@/lib/insights/sanitize-ai-priorities";
+
 
 /** Parse persisted visual_cover_analysis from snapshot payload. */
 function parseVisualCoverAnalysis(
@@ -78,52 +75,8 @@ function parseCaptionSemanticAnalysis(
   return raw as CaptionSemanticAnalysis;
 }
 
-/**
- * Map an AI-produced priority item into the local `PriorityItem` shape.
- * Infers `category` from action verbs and `basedOn` from keyword hints
- * in title/body. Source is always "ai".
- */
-function inferAiPriorityItem(p: {
-  level: "alta" | "media" | "oportunidade";
-  title: string;
-  body: string;
-  resolves: string;
-}): PriorityItem {
-  const text = `${p.title} ${p.body}`.toLowerCase();
-  let category: PriorityCategory = "oportunidade";
-  if (/\b(corrig|resolve[r]?|reparar|arrumar|endereçar)/.test(text)) {
-    category = "corrigir";
-  } else if (/\b(repetir|manter|continuar|escalar|replicar)/.test(text)) {
-    category = "repetir";
-  } else if (/\b(testar|experimentar|tentar|introduzir|variar|adicionar)/.test(text)) {
-    category = "testar";
-  }
+/* `inferAiPriorityItem` vive agora em `@/lib/report/build-priority-items`. */
 
-  const basedOn: PriorityBasis[] = [];
-  const add = (b: PriorityBasis) => {
-    if (!basedOn.includes(b)) basedOn.push(b);
-  };
-  if (/\b(coment|respond|conversa|audi[êe]ncia)\b/.test(text)) add("Resposta do público");
-  if (/\b(capa|thumbnail|visual|imagem)\b/.test(text)) add("Análise visual das capas");
-  if (/\b(ritmo|frequ[êe]ncia|cad[êe]ncia|semana|semanal|publica)\b/.test(text))
-    add("Frequência editorial");
-  if (/\b(reel|carross|formato)\b/.test(text)) add("Mix de formatos");
-  if (/\b(post[s]? com|melhor post|post-âncora|post ancora|publica[çc][ãa]o-chave)\b/.test(text))
-    add("Publicações-chave");
-  if (/\b(caption|legend|cta|chamada)\b/.test(text)) add("Padrão das captions");
-  if (/\b(bio|link|newsletter|site|canal|whatsapp|dm)\b/.test(text)) add("Integração entre canais");
-  if (basedOn.length === 0) add("Tipo de conteúdo dominante");
-
-  return {
-    level: p.level,
-    category,
-    title: p.title,
-    body: p.body,
-    resolves: p.resolves,
-    basedOn,
-    source: "ai",
-  };
-}
 
 interface Props {
   result: AdapterResult;
@@ -177,63 +130,45 @@ export function ReportDiagnosticBlock({ result, payload, premiumUnlocked = false
     ? contentType.distribution[0]
     : null;
 
-  const prioritySource: "ai" | "deterministic" = aiPriorities?.length
-    ? "ai"
-    : "deterministic";
-
-  const deterministicPriorities = derivePriorities({
-    contentType,
-    funnel,
-    caption,
-    audience,
-    integration,
-    dominantFormatShare: dominantFormat?.sharePct ?? 0,
-    dominantFormatLabel: dominantFormat?.label ?? null,
-    commentIntel:
-      features.commentIntelligence === "full"
-        ? (result.enriched.commentIntelligence ?? null)
-        : null,
-    coverAnalysis: parseVisualCoverAnalysis(payload),
-    cadence: result.enriched.cadence
-      ? {
-          weekly: result.enriched.cadence.weekly,
-          sufficient: result.enriched.cadence.sufficient,
-        }
-      : null,
-  });
-
   // Always guarantee ≥3 priority cards: AI items first (cleaned of any
   // unsupported numbers), then deterministic items merged with a
   // composite dedup key (title + category + first basis).
-  const sanitizationPool = {
-    keyMetrics: km,
-    cadence: result.enriched.cadence ?? null,
-    commentIntelligence: result.enriched.commentIntelligence ?? null,
-    coverAnalysis: parseVisualCoverAnalysis(payload),
-    contentType,
-    caption,
-    audience,
-    integration,
-    dominantFormatShare: dominantFormat?.sharePct ?? 0,
-  };
-
-  const aiMapped: PriorityItem[] = (aiPriorities ?? []).map((p) => {
-    const item = inferAiPriorityItem(p);
-    const { body, sanitized } = sanitizeAiPriorityBody(item.body, sanitizationPool);
-    return sanitized ? { ...item, body } : item;
+  // Lógica pura partilhada — ver `build-priority-items.ts`.
+  const { items: priorityItems, source: prioritySource } = buildPriorityItems({
+    aiPriorities,
+    deterministicArgs: {
+      contentType,
+      funnel,
+      caption,
+      audience,
+      integration,
+      dominantFormatShare: dominantFormat?.sharePct ?? 0,
+      dominantFormatLabel: dominantFormat?.label ?? null,
+      commentIntel:
+        features.commentIntelligence === "full"
+          ? (result.enriched.commentIntelligence ?? null)
+          : null,
+      coverAnalysis: parseVisualCoverAnalysis(payload),
+      cadence: result.enriched.cadence
+        ? {
+            weekly: result.enriched.cadence.weekly,
+            sufficient: result.enriched.cadence.sufficient,
+          }
+        : null,
+    },
+    sanitizationPool: {
+      keyMetrics: km,
+      cadence: result.enriched.cadence ?? null,
+      commentIntelligence: result.enriched.commentIntelligence ?? null,
+      coverAnalysis: parseVisualCoverAnalysis(payload),
+      contentType,
+      caption,
+      audience,
+      integration,
+      dominantFormatShare: dominantFormat?.sharePct ?? 0,
+    },
   });
 
-  const dedupKey = (p: PriorityItem) =>
-    `${p.title.trim().toLowerCase()}|${p.category ?? ""}|${(p.basedOn?.[0] ?? "")}`;
-  const seen = new Set<string>();
-  const priorityItems: PriorityItem[] = [];
-  for (const it of [...aiMapped, ...deterministicPriorities]) {
-    const k = dedupKey(it);
-    if (seen.has(k)) continue;
-    seen.add(k);
-    priorityItems.push(it);
-    if (priorityItems.length >= 6) break;
-  }
 
   // ── Enrichment pending / error placeholders (Pro + Lab only) ─────
   const coverAnalysis = parseVisualCoverAnalysis(payload);
