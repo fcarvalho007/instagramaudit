@@ -414,3 +414,28 @@
     display: none;
   }
 }
+
+/* Chrome — prioridade de espaço: acções nunca são cortadas; as tabs
+   passam a deslizar horizontalmente quando não cabem. */
+@media (min-width: 1024px) {
+  .editorial-v2 .ev2-chrome__actions {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+  .editorial-v2 .ev2-chrome__tabs {
+    flex: 1 1 auto;
+    min-width: 0;
+    -webkit-mask-image: linear-gradient(
+      to right,
+      #000 0,
+      #000 calc(100% - 24px),
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to right,
+      #000 0,
+      #000 calc(100% - 24px),
+      transparent 100%
+    );
+  }
+}
