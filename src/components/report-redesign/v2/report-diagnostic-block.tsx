@@ -19,11 +19,12 @@ import {
   type IntegrationResult,
 } from "@/lib/report/block02-diagnostic";
 import {
-  derivePriorities,
   type PriorityItem,
   type PriorityCategory,
   type PriorityBasis,
 } from "@/lib/report/block02-diagnostic";
+import { buildPriorityItems } from "@/lib/report/build-priority-items";
+
 import { ReportDiagnosticPriorities } from "./report-diagnostic-priorities";
 import { ReportDiagnosticVerdict } from "./report-diagnostic-verdict";
 
