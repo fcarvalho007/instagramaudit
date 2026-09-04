@@ -439,3 +439,24 @@
     );
   }
 }
+
+/* Chrome — mobile: o selector de secções nunca pode ser cortado. */
+@media (max-width: 1023px) {
+  .editorial-v2 .ev2-chrome__actions {
+    overflow: visible;
+    gap: 0.25rem;
+  }
+  .editorial-v2 .ev2-chrome__btn {
+    padding-inline: 0.5rem;
+  }
+  .editorial-v2 .ev2-chrome__cta {
+    padding-inline: 0.5rem;
+    font-size: 0.6875rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .editorial-v2 .ev2-chrome__menu-btn {
+    flex: 0 0 auto;
+  }
+}
