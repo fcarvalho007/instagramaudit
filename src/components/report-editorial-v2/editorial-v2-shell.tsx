@@ -18,6 +18,8 @@ import { EditorialPriorities } from "./priorities/editorial-priorities";
 import { EditorialProGate } from "./gate/editorial-pro-gate";
 import { EditorialReportChrome } from "./chrome/editorial-report-chrome";
 
+import { EditorialMethodology } from "./methodology/editorial-methodology";
+import { EditorialReportFooter } from "./methodology/editorial-report-footer";
 import { EditorialV2PreviewBadge } from "./preview-badge";
 import type { ReportPresentationProps } from "./report-presentation-props";
 
@@ -38,6 +40,7 @@ export function EditorialV2Shell({
   actions,
   variant = "public_mvp",
   featuresOverride,
+  unlocked = false,
   leadCaptured = false,
   premiumUnlocked = false,
   competitorHandles = [],
@@ -124,6 +127,14 @@ export function EditorialV2Shell({
             commentIntelligenceFull={features.commentIntelligence === "full"}
           />
         )}
+
+        {/* Metodologia e fontes — mesma visibilidade que produção
+            (`unlocked && <ReportMethodology />` no shell V2). */}
+        {unlocked && features.methodology !== "hidden" && (
+          <EditorialMethodology result={result} />
+        )}
+
+        <EditorialReportFooter result={result} />
 
         {/* TODO (Editorial V2): remover antes do lançamento público. */}
         <EditorialV2PreviewBadge />
