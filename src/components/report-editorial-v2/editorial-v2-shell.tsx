@@ -91,10 +91,12 @@ export function EditorialV2Shell({
           <EditorialFrequency result={result} />
         )}
 
-        {/* Mix de formatos — mesma visibilidade que em produção. */}
-        {features.blockOverview !== "hidden" && (
-          <EditorialFormatMix result={result} payload={payload} />
-        )}
+        {/* Mix de formatos — escalão `free_email` em produção: só depois da
+            captura de email (ou com Pro). Anónimo não vê a secção. */}
+        {features.blockOverview !== "hidden" &&
+          (leadCaptured || premiumUnlocked) && (
+            <EditorialFormatMix result={result} payload={payload} />
+          )}
 
         {/* Publicações-chave — mesma regra de produção: em estado anónimo
             não se mostram métricas analíticas por publicação. */}
