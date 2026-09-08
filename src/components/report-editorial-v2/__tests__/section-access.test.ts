@@ -25,16 +25,16 @@ describe("Editorial V2 — fronteiras de acesso das secções", () => {
 
   it("não renderiza o mix de formatos a visitantes anónimos", () => {
     const block = shellSource.slice(
-      shellSource.indexOf("EditorialFormatMix") - 400,
-      shellSource.indexOf("EditorialFormatMix") + 120,
+      shellSource.lastIndexOf("EditorialFormatMix") - 400,
+      shellSource.lastIndexOf("EditorialFormatMix") + 120,
     );
     expect(block).toContain("leadCaptured || premiumUnlocked");
   });
 
   it("não renderiza as conversas a visitantes anónimos", () => {
     const block = shellSource.slice(
-      shellSource.indexOf("EditorialConversations") - 400,
-      shellSource.indexOf("EditorialConversations") + 120,
+      shellSource.lastIndexOf("EditorialConversations") - 400,
+      shellSource.lastIndexOf("EditorialConversations") + 120,
     );
     expect(block).toContain("leadCaptured || premiumUnlocked");
   });
