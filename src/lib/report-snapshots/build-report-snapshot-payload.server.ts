@@ -1,3 +1,4 @@
+import { freezeAnalysis } from "./frozen-analysis";
 /**
  * Builds an immutable, lightweight historical payload from an
  * `analysis_snapshots.normalized_payload`.
@@ -84,7 +85,7 @@ export interface BuildReportSnapshotInput {
 
 export interface BuildReportSnapshotResult {
   payload: ReportPayloadV1;
-  payload_schema_version: typeof REPORT_PAYLOAD_SCHEMA_VERSION;
+  payload_schema_version: "report.v1" | "report.v2";
   algorithm_version: string;
 }
 
@@ -113,6 +114,7 @@ export function buildReportSnapshotPayload(
     const caption = truncate(asString(p.caption), MAX_CAPTION_CHARS);
     return {
       id: asString(p.id),
+      is_pinned: asBoolean(p.is_pinned),
       shortcode: asString(p.shortcode),
       permalink: asString(p.permalink),
       format: asString(p.format),
@@ -121,7 +123,7 @@ export function buildReportSnapshotPayload(
       hour_local: asNumber(p.hour_local) ?? null,
       caption,
       caption_length:
-        asNumber(p.caption_length) ?? (asString(p.caption)?.length ?? 0),
+        asNumber(p.caption_length) ?? asString(p.caption)?.length ?? 0,
       hashtags: asStringArray(p.hashtags, MAX_HASHTAGS),
       mentions: asStringArray(p.mentions, MAX_MENTIONS),
       likes: asNumber(p.likes) ?? null,
@@ -155,7 +157,8 @@ export function buildReportSnapshotPayload(
     : undefined;
 
   const payload: ReportPayloadV1 = ReportPayloadV1Schema.parse({
-    schema_version: REPORT_PAYLOAD_SCHEMA_VERSION,
+    schema_version: src.comparison_version === 2 ? "report.v2" : REPORT_PAYLOAD_SCHEMA_VERSION,
+    frozen_analysis: src.comparison_version === 2 ? freezeAnalysis(src) : undefined,
     algorithm_version: input.algorithm_version ?? ALGORITHM_VERSION_V1,
     generated_at: input.generated_at ?? new Date().toISOString(),
     handle: input.instagram_username,
@@ -174,7 +177,7 @@ export function buildReportSnapshotPayload(
 
   return {
     payload,
-    payload_schema_version: REPORT_PAYLOAD_SCHEMA_VERSION,
+    payload_schema_version: payload.schema_version,
     algorithm_version: payload.algorithm_version,
   };
 }

@@ -65,8 +65,7 @@ export interface PublicAnalysisFreshness {
    *  - `fresh_just_now` → acabou de ser scraped, equivalente a `fresh_under_12h`.
    *  - `fallback_stale` → fresh falhou, estamos a servir snapshot antigo.
    */
-  state:
-    | "fresh_just_now"
+  state: "fresh_just_now"
     | "fresh_under_12h"
     | "fresh_12_to_24h"
     | "fallback_stale";
@@ -89,14 +88,14 @@ export interface PublicAnalysisFreshness {
   is_fallback: boolean;
 }
 
-export type CompetitorErrorCode =
-  | "PROFILE_NOT_FOUND"
+export type CompetitorErrorCode = "PROFILE_NOT_FOUND"
   | "POSTS_UNAVAILABLE"
   | "UPSTREAM_FAILED";
 
 export type CompetitorAnalysis =
   | {
       success: true;
+      collection_coverage?: import("@/lib/comparison-readings/coverage").CollectionCoverage;
       profile: PublicAnalysisProfile;
       content_summary: PublicAnalysisContentSummary;
       /**
@@ -195,8 +194,7 @@ export interface PublicAnalysisFailure {
   message: string; // pt-PT, user-facing
 }
 
-export type PublicAnalysisResponse =
-  | PublicAnalysisSuccess
+export type PublicAnalysisResponse = PublicAnalysisSuccess
   | PublicAnalysisFailure;
 
 // ─────────────────────────────────────────────────────────────────────
@@ -293,8 +291,7 @@ export interface CommentIntelligence {
     commentsCount: number;
     ownerRepliesCount: number;
     audienceCommentsCount: number;
-    dominantSignal:
-      | "questions"
+    dominantSignal: "questions"
       | "praise"
       | "complaints"
       | "buying_intent"

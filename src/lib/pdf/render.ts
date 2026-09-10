@@ -1,3 +1,5 @@
+import { comparisonExportSections } from "@/lib/comparison-readings/export";
+import type { ReportBenchmarkInput } from "@/lib/report/snapshot-to-report-data";
 /**
  * Server-side PDF rendering pipeline.
  *
@@ -51,6 +53,9 @@ interface SnapshotPostLoose {
 }
 
 interface NormalizedSnapshotPayload {
+  comparison_version?: number;
+  benchmark_snapshot?: ReportBenchmarkInput;
+  ai_comparison_readings_v2?: unknown;
   profile: PublicAnalysisProfile;
   content_summary: PublicAnalysisContentSummary;
   competitors: CompetitorAnalysis[];
@@ -425,7 +430,13 @@ export async function renderReportPdf({
   // PDF reflects the current reference data even if the snapshot itself was
   // produced before the benchmark engine landed.
   const benchmarkData = await loadBenchmarkReferences();
-  const benchmark = computeBenchmarkPositioning(
+  const benchmark =
+    payload.comparison_version === 2
+      ? (payload.benchmark_snapshot?.positioning ?? {
+          status: "unavailable" as const,
+          reason: "incompatible_methodology" as const,
+        })
+      : computeBenchmarkPositioning(
     {
       followers: profile.followers_count,
       engagement: content_summary.average_engagement_rate,
@@ -473,7 +484,8 @@ export async function renderReportPdf({
     benchmark,
     avatarDataUrl,
     topPosts,
-    recommendations,
+    comparisons: comparisonExportSections(payload),
+    recommendations: payload.comparison_version === 2 ? [] : recommendations,
     aiInsights,
     aiInsightsModel,
     aiInsightsGeneratedAt,

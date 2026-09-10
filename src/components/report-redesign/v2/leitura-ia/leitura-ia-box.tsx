@@ -1,3 +1,4 @@
+import { ComparisonSources } from "./comparison-sources";
 import { cn } from "@/lib/utils";
 import type { CardReading } from "@/lib/comparison-readings/types";
 
@@ -14,15 +15,17 @@ const CONFIDENCE_LABEL: Record<CardReading["confidence"], string> = {
  */
 export function LeituraIaBox({
   reading,
+  sourceLabel = "Leitura IA",
   className,
 }: {
   reading: CardReading | null | undefined;
+  sourceLabel?: string;
   className?: string;
 }) {
   if (!reading) return null;
   return (
     <aside
-      aria-label="Leitura IA"
+      aria-label={sourceLabel}
       className={cn(
         "mt-4 rounded-xl border border-border-subtle bg-surface-muted/60 px-5 py-4 sm:px-6 sm:py-5",
         className,
@@ -30,7 +33,7 @@ export function LeituraIaBox({
     >
       <div className="flex items-center justify-between gap-3 mb-2">
         <p className="text-eyebrow-sm text-[var(--accent-primary)]">
-          ● Leitura IA
+          ● {sourceLabel}
         </p>
         <span className="text-[10px] uppercase tracking-wider text-content-tertiary">
           {CONFIDENCE_LABEL[reading.confidence]}
@@ -42,6 +45,13 @@ export function LeituraIaBox({
       <p className="mt-2 text-sm sm:text-base text-content-secondary leading-relaxed">
         {reading.key_reading}
       </p>
+      {reading.diagnosis && (
+        <div className="mt-3 text-sm text-content-secondary">
+          <p>Interpretação: {reading.diagnosis.interpretation}</p>
+          <p className="mt-2">Aplicabilidade: {reading.diagnosis.transferability}</p>
+        </div>
+      )}
+      <ComparisonSources reading={reading} />
       {reading.recommendation ? (
         <p className="mt-3 text-sm text-content-secondary">
           <span className="font-semibold text-content-primary">Sugestão: </span>

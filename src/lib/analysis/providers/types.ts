@@ -59,6 +59,7 @@ export interface FetchPostsOptions {
   sinceMs?: number;
   /** Hard cap on returned posts. */
   maxPosts: number;
+  maxTotalChargeUsd?: number;
   /** Wall-clock budget for the whole (possibly paginated) fetch. */
   timeoutMs: number;
 }

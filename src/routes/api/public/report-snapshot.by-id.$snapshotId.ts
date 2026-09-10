@@ -1,3 +1,6 @@
+import { snapshotAccess } from "@/lib/report/snapshot-access.server";
+import { sanitizeSnapshotForAccessLevel } from "@/lib/report/sanitize-snapshot";
+import { readFrozenAnalysis } from "@/lib/report-snapshots/frozen-analysis";
 /**
  * GET /api/public/report-snapshot/by-id/:snapshotId
  *
@@ -46,7 +49,7 @@ export const Route = createFileRoute(
 )({
   server: {
     handlers: {
-      GET: async ({ params }) => {
+      GET: async ({ params, request }) => {
         const snapshotId = (params.snapshotId ?? "").trim();
         if (!UUID_RE.test(snapshotId)) {
           return json(
@@ -58,6 +61,8 @@ export const Route = createFileRoute(
             400,
           );
         }
+
+        const accessLevel = await snapshotAccess(request, snapshotId);
 
         // 1. Try report_snapshots first (immutable historical store).
         const { data: rs, error: rsErr } = await supabaseAdmin
@@ -85,6 +90,7 @@ export const Route = createFileRoute(
             return json({
               success: true,
               snapshot: {
+                access_level: accessLevel,
                 id: rs.id,
                 instagram_username: rs.instagram_username,
                 created_at: rs.created_at,
@@ -98,12 +104,16 @@ export const Route = createFileRoute(
             });
           }
 
-          const payload = (rs.report_payload_jsonb ?? {}) as SnapshotPayload;
+          const payload = sanitizeSnapshotForAccessLevel(
+            readFrozenAnalysis(rs.report_payload_jsonb) as Record<string, unknown>,
+            accessLevel,
+          ) as SnapshotPayload;
           const benchmark = await buildReportBenchmarkInput(payload);
 
           return json({
             success: true,
             snapshot: {
+              access_level: accessLevel,
               id: rs.id,
               instagram_username: rs.instagram_username,
               payload,
@@ -155,12 +165,16 @@ export const Route = createFileRoute(
           );
         }
 
-        const payload = (as.normalized_payload ?? {}) as SnapshotPayload;
+        const payload = sanitizeSnapshotForAccessLevel(
+          (as.normalized_payload ?? {}) as Record<string, unknown>,
+          accessLevel,
+        ) as SnapshotPayload;
         const benchmark = await buildReportBenchmarkInput(payload);
 
         return json({
           success: true,
           snapshot: {
+            access_level: accessLevel,
             id: as.id,
             instagram_username: as.instagram_username,
             payload,

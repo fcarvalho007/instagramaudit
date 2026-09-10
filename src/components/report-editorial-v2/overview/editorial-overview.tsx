@@ -1,3 +1,4 @@
+import { ObservedIndicators } from "@/components/report-redesign/v2/overview/observed-indicators";
 import type {
   AdapterResult,
   SnapshotPayload,
@@ -68,7 +69,11 @@ export function EditorialOverview({
           standfirst={data.verdict.paragraph}
         />
 
-        <ProfileIndex score={data.score} headingId="ev2-overview-index" />
+        {payload?.comparison_version === 2 ? (
+          <ObservedIndicators payload={payload} />
+        ) : (
+          <ProfileIndex score={data.score} headingId="ev2-overview-index" />
+        )}
 
         {primary ? (
           <PrimarySignal signal={primary} headingId="ev2-overview-primary" />

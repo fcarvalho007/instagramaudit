@@ -1,104 +1,67 @@
-/**
- * Sanitize numeric tokens in AI-generated priority bodies.
- *
- * The AI is instructed to cite only numbers that appear in the input
- * payload. When the model invents a number (hallucinated reply rate,
- * fabricated comment count, etc.), the UI must not display it.
- *
- * Strategy: extract numeric tokens from the body, compare against the
- * pool of numbers reachable in the user payload (with ±1 tolerance for
- * percentages and rounding tolerance for integers). Unsupported tokens
- * are removed from the string. If the resulting body becomes too short
- * or grammatically empty, fall back to the original (better to show a
- * number that might be slightly off than to crash the card).
- *
- * Pure. No I/O. Defensive against malformed input.
- */
-
+/** Fail closed. A value elsewhere in the payload is never evidence for this claim. */
 export interface SanitizeResult {
-  /** Possibly-cleaned body. */
   body: string;
-  /** True when at least one numeric token was stripped. */
   sanitized: boolean;
 }
-
-const NUM_TOKEN = /\d+(?:[.,]\d+)?%?/g;
-
-/** Collect every numeric-looking token from any nested value of `payload`. */
+export interface PriorityClaim {
+  field: string;
+  value: number;
+  unit: string;
+}
+const UNITS: Record<string, string> = {
+  "profile.followers_count": "",
+  "content_summary.posts_analyzed": "",
+  "content_summary.average_likes": "",
+  "content_summary.average_comments": "",
+  "content_summary.average_engagement_rate": "%",
+  "content_summary.estimated_posts_per_week": "/semana",
+};
+const TOKEN = /\{\{([a-zA-Z_][\w.]*)\}\}/g;
+function at(payload: unknown, path: string): unknown {
+  let value = payload;
+  for (const key of path.split(".")) {
+    if (["__proto__", "prototype", "constructor"].includes(key)) return undefined;
+    value =
+      value && typeof value === "object" && Object.hasOwn(value, key)
+        ? (value as Record<string, unknown>)[key]
+        : undefined;
+  }
+  return value;
+}
+/** Retained for diagnostics only. It is deliberately NOT used as factual validation. */
 export function collectPayloadNumbers(payload: unknown): Set<string> {
-  const out = new Set<string>();
-  const walk = (v: unknown): void => {
-    if (v == null) return;
-    if (typeof v === "number" && Number.isFinite(v)) {
-      out.add(String(Math.round(v)));
-      out.add(String(Math.round(v * 10) / 10));
-      out.add(String(Math.round(v * 100) / 100));
-      return;
-    }
-    if (typeof v === "string") {
-      const m = v.match(NUM_TOKEN);
-      if (m) for (const tok of m) out.add(normalizeNum(tok));
-      return;
-    }
-    if (Array.isArray(v)) {
-      for (const x of v) walk(x);
-      return;
-    }
-    if (typeof v === "object") {
-      for (const x of Object.values(v as Record<string, unknown>)) walk(x);
-    }
+  const values = new Set<string>();
+  const walk = (v: unknown) => {
+    if (typeof v === "number" && Number.isFinite(v)) values.add(String(v));
+    else if (v && typeof v === "object") for (const child of Object.values(v)) walk(child);
   };
   walk(payload);
-  return out;
+  return values;
 }
-
-function normalizeNum(tok: string): string {
-  return tok.replace(",", ".").replace(/%$/, "");
-}
-
-function isSupported(token: string, pool: Set<string>): boolean {
-  const n = Number.parseFloat(normalizeNum(token));
-  if (!Number.isFinite(n)) return true; // not a real number → leave alone
-  // Direct hits (integer + decimal forms).
-  if (pool.has(String(n))) return true;
-  if (pool.has(String(Math.round(n)))) return true;
-  // Rounding tolerance: ±1 for integers/percentages.
-  for (let delta = -1; delta <= 1; delta++) {
-    if (pool.has(String(Math.round(n) + delta))) return true;
-  }
-  // One-decimal tolerance for floats.
-  for (let delta = -1; delta <= 1; delta++) {
-    const candidate = Math.round((n + delta * 0.1) * 10) / 10;
-    if (pool.has(String(candidate))) return true;
-  }
-  return false;
-}
-
-/**
- * Strip unsupported numeric tokens from `body`. Trims duplicated spaces
- * and empty parentheses created by the removal. Returns the original
- * body when stripping would leave fewer than 20 chars (treats the card
- * as still useful and lets the caller decide whether to keep it).
- */
 export function sanitizeAiPriorityBody(
   body: string,
   payload: unknown,
+  claims: readonly PriorityClaim[] = [],
 ): SanitizeResult {
-  if (!body || typeof body !== "string") return { body, sanitized: false };
-  const pool = collectPayloadNumbers(payload);
-  let sanitized = false;
-  const next = body.replace(NUM_TOKEN, (tok) => {
-    if (isSupported(tok, pool)) return tok;
-    sanitized = true;
+  if (!body || typeof body !== "string") return { body: "", sanitized: true };
+  // Legacy free prose with numbers has no field binding and cannot be certified.
+  if (/\d/.test(body.replace(TOKEN, ""))) return { body: "", sanitized: true };
+  let invalid = false;
+  const text = body.replace(TOKEN, (_token, field: string) => {
+    const claim = claims.find((c) => c.field === field);
+    if (
+      !claim ||
+      !Object.hasOwn(UNITS, field) ||
+      claim.unit !== UNITS[field] ||
+      !Number.isFinite(claim.value) ||
+      at(payload, field) !== claim.value
+    ) {
+      invalid = true;
     return "";
+  }
+    return `${new Intl.NumberFormat("pt-PT", { maximumFractionDigits: 2 })
+    .format(claim.value)}${claim.unit}`;
   });
-  if (!sanitized) return { body, sanitized: false };
-  // Tidy up: collapse repeated spaces, strip empty parens, fix " ." → ".".
-  const tidy = next
-    .replace(/\(\s*\)/g, "")
-    .replace(/\s+([.,;:%])/g, "$1")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-  if (tidy.length < 20) return { body, sanitized: false };
-  return { body: tidy, sanitized: true };
+  if (invalid || /\{\{|\}\}/.test(text)) return { body: "", sanitized: true };
+  return { body: text, sanitized: text !== body };
 }

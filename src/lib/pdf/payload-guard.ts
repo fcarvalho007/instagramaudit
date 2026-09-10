@@ -13,6 +13,8 @@ import type {
 } from "@/lib/analysis/types";
 
 export interface NormalizedSnapshotPayload {
+  comparison_version?: number;
+  enrichment_status?: unknown;
   profile: PublicAnalysisProfile;
   content_summary: PublicAnalysisContentSummary;
   competitors: CompetitorAnalysis[];

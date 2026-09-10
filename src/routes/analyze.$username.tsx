@@ -1,3 +1,4 @@
+import { parseComparisonContext } from "@/lib/comparison-readings/context";
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
@@ -49,6 +50,7 @@ import {
 } from "@/lib/report/snapshot-to-report-data";
 
 interface AnalyzeSearch {
+  ctx?: string;
   vs?: string;
   previewLoading?: number;
   /** Pro-only public window. Defaults to baseline. */
@@ -110,6 +112,7 @@ export const Route = createFileRoute("/analyze/$username")({
     }
   },
   validateSearch: (search: Record<string, unknown>): AnalyzeSearch => ({
+    ctx: typeof search.ctx === "string" && search.ctx.length <= 500 ? search.ctx : undefined,
     vs: typeof search.vs === "string" ? search.vs : undefined,
     previewLoading: Number(search.previewLoading) === 1 ? 1 : undefined,
     w: search.w === "30d" || search.w === "90d" ? search.w : undefined,
@@ -183,6 +186,7 @@ type LoadState =
   | { status: "error"; message: string; errorCode?: string }
   | {
       status: "ready";
+      selectionKey: string;
       result: AdapterResult;
       snapshotId: string;
       payload: SnapshotPayload;
@@ -192,7 +196,7 @@ type LoadState =
 
 function AnalyzePage() {
   const { username } = Route.useParams();
-  const { vs, previewLoading, w } = Route.useSearch();
+  const { vs, previewLoading, w, ctx } = Route.useSearch();
   const cleaned = normalizeInstagramHandle(username);
   const { t: tAnalyze } = useTranslation("analyze");
   const { t: tErrors } = useTranslation("errors");
@@ -237,7 +241,10 @@ function AnalyzePage() {
   const competitorsKey = competitors.join(",");
   const windowKind: "baseline" | "30d" | "90d" = w ?? "baseline";
 
-  const [state, setState] = useState<LoadState>({ status: "loading" });
+  const [storedState, setState] = useState<LoadState>({ status: "loading" });
+  const selectionKey = `${cleaned}|${competitorsKey}|${windowKind}|${ctx ?? ""}`;
+  const generation = useRef(0);
+  const state: LoadState = storedState.status === "ready" && storedState.selectionKey !== selectionKey ? {status:"loading"} : storedState;
   // Fase 3: se o backend devolver ONBOARDING_REQUIRED (cookie em falta /
   // expirado), reabrimos o modal de onboarding em vez de mostrar 402.
   const [onboardingOpen, setOnboardingOpen] = useState(false);
@@ -249,6 +256,7 @@ function AnalyzePage() {
   const justOnboardedRef = useRef(false);
 
   const load = useCallback(async () => {
+    const attempt = ++generation.current;
     setState({ status: "loading" });
     const loadStart = Date.now();
 
@@ -282,7 +290,9 @@ function AnalyzePage() {
     // Step 1 — trigger the public analyze pipeline.
     const analysis = await fetchPublicAnalysis(cleaned, competitors, {
       window: windowKind,
+      comparisonContext: parseComparisonContext(ctx),
     });
+    if (attempt !== generation.current) return;
     if (!analysis.success) {
       if (analysis.error_code === "ONBOARDING_REQUIRED") {
         if (justOnboardedRef.current) {
@@ -321,9 +331,10 @@ function AnalyzePage() {
     // Step 2 — fetch the persisted snapshot.
     try {
       const res = await fetch(
-        `/api/public/analysis-snapshot/${encodeURIComponent(cleaned)}`,
+        `/api/public/analysis-snapshot/${encodeURIComponent(cleaned)}${analysis.analysis_snapshot_id ? `?snapshot_id=${encodeURIComponent(analysis.analysis_snapshot_id)}` : ""}`,
       );
       const body = (await res.json().catch(() => null)) as SnapshotResponse | null;
+      if (attempt !== generation.current) return;
       if (!res.ok || !body?.success || !body.snapshot) {
         setState({
           status: "error",
@@ -341,6 +352,7 @@ function AnalyzePage() {
       });
 
       await waitMin();
+      if (attempt !== generation.current) return;
 
       trackAnonymousEvent("anonymous_analysis_success", {
         handle: cleaned,
@@ -355,6 +367,7 @@ function AnalyzePage() {
 
       setState({
         status: "ready",
+        selectionKey,
         result,
         snapshotId: body.snapshot.id,
         payload,
@@ -363,17 +376,19 @@ function AnalyzePage() {
         expiresAtIso: (body.snapshot as { expires_at?: string | null }).expires_at ?? null,
       });
     } catch {
+      if (attempt !== generation.current) return;
       setState({
         status: "error",
         message: tErrors("NETWORK_FETCH"),
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cleaned, competitorsKey, windowKind, tErrors, resolveErrorMessage]);
+  }, [cleaned, competitorsKey, windowKind, ctx, tErrors, resolveErrorMessage]);
 
   useEffect(() => {
     if (forceLoader) return;
     void load();
+    return () => { generation.current += 1; };
   }, [load, forceLoader]);
 
   return (
@@ -479,7 +494,7 @@ function AnalyzeReady({
       try {
         const { data } = await supabase.auth.getUser();
         const username =
-          ((payload as { instagram_username?: string })?.instagram_username) ||
+          (payload as { instagram_username?: string })?.instagram_username ||
           null;
         if (!username) return;
         // Se o user ainda não tem sessão, grava o handle em localStorage
@@ -633,10 +648,9 @@ function AnalyzeReady({
       void (async () => {
         try {
           const res = await fetch(
-            `/api/public/analysis-snapshot/${encodeURIComponent(auditHandle)}`,
+            `/api/public/analysis-snapshot/${encodeURIComponent(auditHandle)}?snapshot_id=${encodeURIComponent(snapshotId)}`,
           );
-          const body = (await res.json().catch(() => null)) as
-            | SnapshotResponse
+          const body = (await res.json().catch(() => null)) as SnapshotResponse
             | null;
           const nextPayload = body?.snapshot?.payload;
           if (
@@ -677,8 +691,7 @@ function AnalyzeReady({
         const res = await fetch(
           `/api/public/report-access-state?snapshotId=${encodeURIComponent(snapshotId)}`,
         );
-        const body = (await res.json().catch(() => null)) as
-          | { leadCaptured?: boolean }
+        const body = (await res.json().catch(() => null)) as { leadCaptured?: boolean }
           | null;
         if (!cancelled && body?.leadCaptured) setServerLeadCaptured(true);
       } catch {

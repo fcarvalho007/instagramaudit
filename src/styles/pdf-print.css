@@ -53,3 +53,16 @@ body.pdf-print-mode * {
   -webkit-print-color-adjust: exact !important;
   print-color-adjust: exact !important;
 }
+@media print {
+  details.comparison-evidence::details-content {
+    display: block !important;
+    content-visibility: visible !important;
+  }
+  details.comparison-evidence > :not(summary) {
+    display: block !important;
+  }
+  details.comparison-evidence a::after {
+    content: " (" attr(href) ")";
+    font-size: 9px;
+  }
+}

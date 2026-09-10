@@ -254,7 +254,7 @@ describe("aggregateCommentIntelligence", () => {
     ];
     const result = aggregateCommentIntelligence(OWNER, batches);
     expect(result.questionsFromAudienceCount).toBe(2); // both have ? so both are questions
-    expect(result.buyingIntentCount).toBe(0); // ? takes precedence over buying_intent
+    expect(result.buyingIntentCount).toBe(2); // buying intent coexists; legacy precedence over buying_intent
   });
 
   it("classifies praise signals", () => {

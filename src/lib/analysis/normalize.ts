@@ -337,6 +337,8 @@ export interface EnrichedPost {
   hour_local: number | null; // 0..23 (UTC — true local hour requires profile timezone)
   likes: number;
   comments: number;
+  likes_observed?: boolean;
+  comments_observed?: boolean;
   video_views: number | null;
   /** Canonical play count (Reels/vídeo). Distinct from `video_views`. */
   video_plays?: number | null;
@@ -602,9 +604,10 @@ function emptyFormatStats(): FormatStats {
 export function enrichPosts(
   rawPosts: unknown,
   followersCount: number,
+  maxPosts = PUBLIC_INSTAGRAM_POSTS_LIMIT,
 ): EnrichedPosts {
   const list = Array.isArray(rawPosts)
-    ? (rawPosts.slice(0, PUBLIC_INSTAGRAM_POSTS_LIMIT) as RawPostExtended[])
+    ? (rawPosts.slice(0, Math.max(0, Math.min(300, maxPosts))) as RawPostExtended[])
     : [];
 
   const posts: EnrichedPost[] = list.map((raw, index) => {
@@ -645,6 +648,8 @@ export function enrichPosts(
       hour_local: date ? lisbonHour(date) : null,
       likes,
       comments,
+      likes_observed: (pickNumber(raw.likesCount, raw.likes) ?? -1) >= 0,
+      comments_observed: (pickNumber(raw.commentsCount, raw.comments) ?? -1) >= 0,
       video_views: pickVideoViews(raw),
       video_plays: pickVideoPlays(raw),
       is_paid_partnership:
@@ -681,7 +686,7 @@ export function enrichPosts(
   for (const fmt of Object.keys(stats) as BenchmarkFormat[]) {
     const c = stats[fmt].count;
     stats[fmt].share_pct =
-      Math.round(((c / posts.length) * 100) * 10) / 10;
+      Math.round((c / posts.length) * 100 * 10) / 10;
     stats[fmt].avg_engagement_pct =
       c > 0 ? Number((sumByFormat[fmt] / c).toFixed(2)) : 0;
   }

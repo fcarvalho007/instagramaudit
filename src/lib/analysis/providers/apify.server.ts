@@ -97,8 +97,8 @@ export const apifyProvider: SocialDataProvider = {
         timeoutMs: options.timeoutMs,
         apifyTimeoutSecs: Math.max(30, Math.floor(options.timeoutMs / 1000) - 5),
         maxItems: options.maxPosts,
-      },
-    );
+      maxTotalChargeUsd: options.maxTotalChargeUsd,
+    });
     const rows = result.items as ProviderPostRow[];
     return {
       ...emptyMeta("apify", `${UNIFIED_ACTOR}:posts`),

@@ -1,3 +1,8 @@
+import {
+  parseComparisonContext,
+  contextSearch,
+  type ComparisonContext,
+} from "@/lib/comparison-readings/context";
 /**
  * Browser-side client for the public analysis endpoint.
  * Always returns a PublicAnalysisResponse — network errors are mapped
@@ -18,6 +23,7 @@ export async function fetchPublicAnalysis(
   username: string,
   competitorUsernames: string[] = [],
   options: {
+    comparisonContext?: ComparisonContext;
     window?: "baseline" | "30d" | "90d";
     /**
      * Pro-only opt-in to bypass a fresh cache hit and force a new provider
@@ -34,8 +40,9 @@ export async function fetchPublicAnalysis(
     .slice(0, 2);
 
   const windowKind = options.window ?? "baseline";
+  const context = parseComparisonContext(options.comparisonContext);
   const force = !!options.forceRefresh;
-  const key = `${cleaned.toLowerCase()}|${competitors.map((c) => c.toLowerCase()).join(",")}|${windowKind}|f=${force ? 1 : 0}`;
+  const key = `${cleaned.toLowerCase()}|${competitors.map((c) => c.toLowerCase()).join(",")}|${windowKind}|f=${force ? 1 : 0}|ctx=${contextSearch(context) ?? ""}`;
   const existing = inflight.get(key);
   if (existing) return existing;
 
@@ -54,12 +61,12 @@ export async function fetchPublicAnalysis(
         instagram_username: cleaned,
         competitor_usernames: competitors,
         window: windowKind,
-        force_refresh: force,
+          comparison_context: context,
+          force_refresh: force,
       }),
     });
 
-    const json = (await res.json().catch(() => null)) as
-      | PublicAnalysisResponse
+    const json = (await res.json().catch(() => null)) as PublicAnalysisResponse
       | null;
 
     if (json && typeof json === "object" && "success" in json) {

@@ -194,6 +194,7 @@ describe("buildInsightsCtx — caption_intelligence / visual_cover", () => {
       ownerUsername: "x",
       ownerRepliesCount: 4,
       ownerReplyRatePct: 8,
+      repliesMeasurable: true,
       postsWithOwnerReplyPct: 40,
       audienceCommentsCount: 52,
       uniqueAudienceCommentersCount: 45,

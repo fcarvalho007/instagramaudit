@@ -50,7 +50,10 @@ export const Route = createFileRoute("/api/public/analysis-snapshot/$username")(
           );
         }
 
-        const { data, error } = await supabaseAdmin
+        const exactId = new URL(request.url).searchParams.get("snapshot_id");
+        if (exactId && !/^[0-9a-f-]{36}$/i.test(exactId))
+          return json({ success: false, error_code: "INVALID_SNAPSHOT_ID" }, 400);
+        let query = supabaseAdmin
           .from("analysis_snapshots")
           .select(
             "id, instagram_username, normalized_payload, created_at, updated_at, expires_at",
@@ -59,8 +62,9 @@ export const Route = createFileRoute("/api/public/analysis-snapshot/$username")(
           .eq("analysis_status", "ready")
           .order("updated_at", { ascending: false })
           .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .limit(1);
+        if (exactId) query = query.eq("id", exactId);
+        const { data, error } = await query.maybeSingle();
 
         if (error) {
           return json(

@@ -26,7 +26,7 @@ export interface AiPriorityInput {
 }
 
 /** Número máximo de prioridades apresentadas — contrato de produção. */
-export const MAX_PRIORITY_ITEMS = 6;
+export const MAX_PRIORITY_ITEMS = 3;
 
 /**
  * Map an AI-produced priority item into the local `PriorityItem` shape.
@@ -90,15 +90,14 @@ export function buildPriorityItems({
   deterministicArgs,
   sanitizationPool,
 }: BuildPriorityItemsArgs): BuildPriorityItemsResult {
-  const source: "ai" | "deterministic" = aiPriorities?.length ? "ai" : "deterministic";
-
   const deterministicPriorities = derivePriorities(deterministicArgs);
 
   const aiMapped: PriorityItem[] = (aiPriorities ?? []).map((p) => {
     const item = inferAiPriorityItem(p);
-    const { body, sanitized } = sanitizeAiPriorityBody(item.body, sanitizationPool);
-    return sanitized ? { ...item, body } : item;
-  });
+    const { body } = sanitizeAiPriorityBody(item.body, sanitizationPool);
+    return { ...item, body };
+  })
+    .filter((item) => item.body.length > 0);
 
   const dedupKey = (p: PriorityItem) =>
     `${p.title.trim().toLowerCase()}|${p.category ?? ""}|${p.basedOn?.[0] ?? ""}`;
@@ -113,5 +112,5 @@ export function buildPriorityItems({
     if (items.length >= MAX_PRIORITY_ITEMS) break;
   }
 
-  return { items, source };
+  return { items, source: items.some((item) => item.source === "ai") ? "ai" : "deterministic" };
 }

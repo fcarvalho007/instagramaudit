@@ -1,3 +1,4 @@
+import { ComparisonValue } from "@/components/report-redesign/v2/leitura-ia/comparison-value";
 import { ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -49,6 +50,8 @@ export function EditorialProGate() {
               transforma os dados num plano de prioridades. É uma interpretação
               fundamentada nos dados recolhidos, não uma prova de causalidade.
             </p>
+
+            <ComparisonValue/>
 
             <ul className="mt-[var(--ev2-s4)] border-t border-[var(--ev2-hair-2)]">
               {EDITORIAL_V2_PRO_SECTIONS.map((s) => (
