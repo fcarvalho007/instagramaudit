@@ -34,32 +34,33 @@ const baseProps = {
 };
 
 describe("parseReportDesign", () => {
-  it("only accepts editorial_v2", () => {
+  it("accepts editorial_v2 and the explicit legacy rollback", () => {
     expect(parseReportDesign("editorial_v2")).toBe("editorial_v2");
+    expect(parseReportDesign("legacy")).toBe("legacy");
     expect(parseReportDesign("nope")).toBeUndefined();
     expect(parseReportDesign(undefined)).toBeUndefined();
   });
 });
 
 describe("ReportPresentation switch", () => {
-  it("renders the production report by default", () => {
+  it("renders Editorial V2 by default", () => {
     const html = renderToStaticMarkup(createElement(ReportPresentation, baseProps));
-    expect(html).toContain('data-shell="production"');
-    expect(html).not.toContain('data-shell="editorial_v2"');
-  });
-
-  it("renders Editorial V2 only when explicitly requested", () => {
-    const html = renderToStaticMarkup(
-      createElement(ReportPresentation, { ...baseProps, design: "editorial_v2" as const }),
-    );
     expect(html).toContain('data-shell="editorial_v2"');
     expect(html).not.toContain('data-shell="production"');
   });
 
+  it("renders the previous report only with the explicit legacy rollback", () => {
+    const html = renderToStaticMarkup(
+      createElement(ReportPresentation, { ...baseProps, design: "legacy" as const }),
+    );
+    expect(html).toContain('data-shell="production"');
+    expect(html).not.toContain('data-shell="editorial_v2"');
+  });
+
   it("passes the same production props to both variants and never leaks `design`", () => {
-    const production = renderToStaticMarkup(createElement(ReportPresentation, baseProps));
-    const editorial = renderToStaticMarkup(
-      createElement(ReportPresentation, { ...baseProps, design: "editorial_v2" as const }),
+    const editorial = renderToStaticMarkup(createElement(ReportPresentation, baseProps));
+    const production = renderToStaticMarkup(
+      createElement(ReportPresentation, { ...baseProps, design: "legacy" as const }),
     );
     const keys = (html: string) => /data-props="([^"]*)"/.exec(html)?.[1];
 

@@ -40,8 +40,8 @@ export const Route = createFileRoute("/reports/$snapshotId")({
       document.body.setAttribute("data-report-view", "true");
     }
   },
-  // Variante de apresentação (`?report_design=editorial_v2`). Só afecta a
-  // camada visual: dados, gating e entitlements permanecem iguais.
+  // Recuo de apresentação (`?report_design=legacy`). Só afecta a camada
+  // visual: dados, gating e entitlements permanecem iguais.
   validateSearch: (search: Record<string, unknown>): { report_design?: ReportDesign } => ({
     report_design: parseReportDesign(search.report_design),
   }),

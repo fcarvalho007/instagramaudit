@@ -9,9 +9,13 @@ import type { ReportShellV2 } from "@/components/report-redesign/v2/report-shell
  */
 export type ReportPresentationProps = ComponentProps<typeof ReportShellV2>;
 
-export type ReportDesign = "default" | "editorial_v2";
+export type ReportDesign = "editorial_v2" | "legacy";
 
-/** Normaliza o search param `?report_design=`. Qualquer outro valor cai no default. */
+/**
+ * Normaliza o recuo de apresentação. Editorial V2 é agora o padrão; apenas
+ * `legacy` selecciona explicitamente o relatório anterior.
+ */
 export function parseReportDesign(value: unknown): ReportDesign | undefined {
-  return value === "editorial_v2" ? "editorial_v2" : undefined;
+  if (value === "editorial_v2" || value === "legacy") return value;
+  return undefined;
 }

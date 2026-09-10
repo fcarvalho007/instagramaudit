@@ -31,6 +31,7 @@ const BASE = process.env.EV2_TEST_BASE_URL ?? "http://localhost:8080";
 const HANDLE = process.env.EV2_TEST_HANDLE ?? "karmel.pt";
 const PROD_URL = `${BASE}/analyze/${HANDLE}`;
 const EV2_URL = `${PROD_URL}?report_design=editorial_v2`;
+const LEGACY_URL = `${PROD_URL}?report_design=legacy`;
 
 const EV2_ROOT = '[data-report-design="editorial_v2"]';
 /** Marcadores de secções migradas distintas (visíveis em sessão anónima). */
@@ -78,10 +79,9 @@ async function open(url: string): Promise<{ page: Page; close: () => Promise<voi
 }
 
 describe.skipIf(!available)("interruptor de desenho do relatório na rota real", () => {
-  it("o URL por defeito monta o shell de produção", async () => {
+  it("o URL por defeito monta o Editorial V2", async () => {
     const { page, close } = await open(PROD_URL);
-    expect(await page.locator(EV2_ROOT).count()).toBe(0);
-    expect(await page.locator("#engagement").count()).toBeGreaterThan(0);
+    expect(await page.locator(EV2_ROOT).count()).toBe(1);
     await close();
   }, 90_000);
 
@@ -107,10 +107,8 @@ describe.skipIf(!available)("interruptor de desenho do relatório na rota real",
     await close();
   }, 90_000);
 
-  it("remover o parâmetro devolve o desenho antigo", async () => {
-    const { page, close } = await open(EV2_URL);
-    expect(await page.locator(EV2_ROOT).count()).toBe(1);
-    await page.goto(PROD_URL, { waitUntil: "domcontentloaded" });
+  it("`?report_design=legacy` devolve o desenho anterior", async () => {
+    const { page, close } = await open(LEGACY_URL);
     await page.waitForSelector("#engagement", { timeout: 45_000 }).catch(() => undefined);
     expect(await page.locator(EV2_ROOT).count()).toBe(0);
     await close();

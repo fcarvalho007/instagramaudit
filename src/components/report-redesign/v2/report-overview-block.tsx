@@ -350,6 +350,7 @@ export function ReportOverviewBlock({
               <PostComparisonPreview
                 topPosts={result.enriched.topPosts}
                 bottomPosts={result.enriched.bottomPosts}
+                allPostsForScatter={result.enriched.allPostsScatter}
                 cadenceMethod={enriched.cadence.method}
                 sampleSize={sample?.performancePosts.length ?? 0}
                 gate={<FreeDeepenTeaser onConvert={onFreeUnlockClick} />}
