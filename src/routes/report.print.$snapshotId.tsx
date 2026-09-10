@@ -1,3 +1,6 @@
+import { ReportShellV2 } from "@/components/report-redesign/v2/report-shell-v2";
+import { ComparisonPrint } from "@/components/report-redesign/v2/leitura-ia/comparison-print";
+import { ObservedIndicators } from "@/components/report-redesign/v2/overview/observed-indicators";
 /**
  * /report/print/$snapshotId — rota dedicada que renderiza um snapshot
  * persistido no mesmo `ReportShell` usado por `/analyze/$username`, mas
@@ -111,7 +114,7 @@ function PrintReportPage() {
     (async () => {
       try {
         const res = await fetch(
-          `/api/public/analysis-snapshot/by-id/${encodeURIComponent(snapshotId)}`,
+          `/api/public/analysis-snapshot/by-id/${encodeURIComponent(snapshotId)}?print_token=${encodeURIComponent(new URLSearchParams(window.location.search).get("print_token") ?? "")}`,
         );
         const body = (await res.json().catch(() => null)) as SnapshotResponse | null;
         if (cancelled) return;
@@ -195,6 +198,7 @@ function PrintReady({
   analyzedAtIso: string | null;
 }) {
   const [ready, setReady] = useState(false);
+  const Shell = payload.comparison_version === 2 ? ReportShellV2 : ReportShell;
 
   // Mark the page as ready only after layout has stabilised:
   //   1. component mount
@@ -202,6 +206,10 @@ function PrintReady({
   //   3. wait for any <img> to finish decoding (avatars, top posts thumbnails)
   useEffect(() => {
     let cancelled = false;
+
+    document
+      .querySelectorAll<HTMLDetailsElement>("details.comparison-evidence")
+      .forEach((el) => (el.open = true));
 
     const decodeAllImages = async () => {
       const imgs = Array.from(document.querySelectorAll("img"));
@@ -253,7 +261,12 @@ function PrintReady({
   return (
     <ReportThemeWrapper>
       <div data-pdf-ready={ready ? "true" : undefined}>
-        <ReportShell
+        {payload.comparison_version === 2 && <ObservedIndicators payload={payload} />}
+        <Shell
+          premiumUnlocked={Boolean(
+            payload.ai_comparison_readings_v2 || payload.profile_experiments_v2,
+          )}
+          competitorHandles={result.data.competitorBreakdown.map((c) => c.username)}
           result={result}
           snapshotId={snapshotId}
           payload={payload}
@@ -266,6 +279,7 @@ function PrintReady({
             pdfDisabled: true,
           }}
         />
+      <ComparisonPrint payload={payload} />
       </div>
     </ReportThemeWrapper>
   );

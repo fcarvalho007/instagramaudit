@@ -84,8 +84,7 @@ export interface InsightsContext {
    */
   cadence: {
     weekly: number | null;
-    method:
-      | "window_30d"
+    method: "window_30d"
       | "window_90d"
       | "sample_span"
       | "insufficient";
@@ -266,7 +265,9 @@ export interface InsightsContext {
   comment_intelligence?: {
     sample_posts: number;
     sample_comments: number;
-    owner_reply_rate_pct: number;
+    owner_reply_rate_pct: number | null;
+    replies_measurable?: boolean;
+    low_confidence?: boolean;
     questions_from_audience_count: number;
     complaint_or_issue_count: number;
     buying_intent_count: number;
@@ -401,8 +402,7 @@ export interface AiInsightsV2Priorities {
  * partir de sinais determinísticos do payload — o modelo nunca os define.
  * ========================================================================= */
 
-export type EditorialVerdictBand =
-  | "strong"
+export type EditorialVerdictBand = "strong"
   | "promising"
   | "needs_work"
   | "limited_data";
@@ -410,7 +410,7 @@ export type EditorialVerdictBand =
 export type EditorialVerdictConfidence = "high" | "medium" | "low";
 
 export type EditorialVerdictWarning =
-  | "low_sample"
+  "low_sample"
   | "stale_data"
   | "cadence_uncertain"
   | "no_market_signals"

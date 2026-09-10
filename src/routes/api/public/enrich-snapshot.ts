@@ -126,15 +126,20 @@ export const Route = createFileRoute("/api/public/enrich-snapshot")({
             continue;
           }
 
-          // Mark as running
-          await supabaseAdmin
+          // Atomic claim: only one worker can move this pending attempt to running.
+          const { data: claimed } = await supabaseAdmin
             .from("enrichment_jobs")
             .update({
               status: "running",
               attempts: job.attempts + 1,
               started_at: new Date().toISOString(),
             })
-            .eq("id", job.id);
+            .eq("id", job.id)
+            .eq("status", "pending")
+            .eq("attempts", job.attempts)
+            .select("id")
+            .maybeSingle();
+          if (!claimed) continue;
 
           // Load snapshot
           const { data: snapshot, error: snapErr } = await supabaseAdmin
@@ -164,18 +169,16 @@ export const Route = createFileRoute("/api/public/enrich-snapshot")({
             job.analysis_event_id,
           );
 
-          if (result.ok) {
-            // Patch snapshot if there's a payload patch
-            if (result.payloadPatch) {
-              const patched = await patchSnapshotPayload(
-                job.snapshot_id,
-                result.payloadPatch,
-              );
-              if (!patched) {
-                console.error(`${LOG} failed to patch snapshot for job`, job.id);
-              }
+          // Preserve successful competitors even when another account failed. Never
+          // mark a job successful if persistence failed; retries reuse stored entries.
+          if (result.payloadPatch) {
+            const patched = await patchSnapshotPayload(job.snapshot_id, result.payloadPatch);
+            if (!patched) {
+              result.ok = false;
+              result.error = "snapshot_patch_failed";
             }
-
+          }
+          if (result.ok) {
             // Distinguish silent skips with a reason (e.g. provider gate /
             // budget) from real successes so admin can audit them.
             const isSkip =
@@ -221,6 +224,20 @@ export const Route = createFileRoute("/api/public/enrich-snapshot")({
             failed += 1;
           }
 
+          // Freeze only terminal presentation state; existing immutable reports stay intact.
+          if ((snapshot.normalized_payload as Record<string, unknown>)?.comparison_version === 2) {
+            const { data: requests } = await supabaseAdmin
+              .from("report_requests")
+              .select("id")
+              .eq("analysis_snapshot_id", job.snapshot_id)
+              .is("report_snapshot_id", null);
+            if (requests?.length) {
+              const { ensureReportSnapshotForRequest } =
+                await import("@/lib/report-snapshots/persist-report-snapshot.server");
+              for (const request of requests)
+                await ensureReportSnapshotForRequest(request.id, "public_unlock");
+            }
+          }
           processed += 1;
         }
 

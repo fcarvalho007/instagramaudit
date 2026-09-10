@@ -1,3 +1,4 @@
+import { isAnalysisSettled } from "@/lib/report-snapshots/frozen-analysis";
 /**
  * Generate a PDF report from a persisted report request.
  *
@@ -257,8 +258,13 @@ export const Route = createFileRoute("/api/generate-report-pdf")({
         // 7) Render PDF.
         let bytes: Uint8Array;
         try {
+          if (
+            snapRow.normalized_payload.comparison_version === 2 &&
+            !isAnalysisSettled(snapRow.normalized_payload as unknown as Record<string, unknown>)
+          )
+            throw new Error("REPORT_PROCESSING");
           bytes = await renderViaBrowser({
-            url: buildSnapshotPrintUrl(snapRow.id),
+            url: buildSnapshotPrintUrl(snapRow.id, "pro"),
             waitForGlobalFn: "pdfReady",
             timeoutSeconds: 90,
           });

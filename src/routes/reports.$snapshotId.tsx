@@ -60,6 +60,7 @@ export const Route = createFileRoute("/reports/$snapshotId")({
 interface SnapshotResponse {
   success: boolean;
   snapshot?: {
+    access_level?: string;
     id: string;
     instagram_username: string;
     payload?: SnapshotPayload;
@@ -82,6 +83,7 @@ type LoadState =
   | { status: "error"; message: string }
   | {
       status: "ready";
+      premiumUnlocked: boolean;
       result: AdapterResult;
       snapshotId: string;
       payload: SnapshotPayload;
@@ -153,6 +155,7 @@ function SnapshotReportPage() {
 
         setState({
           status: "ready",
+          premiumUnlocked: snap.access_level === "pro" || snap.access_level === "internal_lab",
           result,
           snapshotId: snap.id,
           payload,
@@ -188,6 +191,8 @@ function SnapshotReportPage() {
             payload={state.payload}
             analyzedAtIso={state.analyzedAtIso}
             expiresAtIso={state.expiresAtIso}
+            premiumUnlocked={state.premiumUnlocked}
+            competitorHandles={state.result.data.competitorBreakdown.map((c) => c.username)}
             variant="public_mvp"
             actions={{}}
           />

@@ -1,3 +1,5 @@
+import { snapshotAccess } from "@/lib/report/snapshot-access.server";
+import { sanitizeSnapshotForAccessLevel } from "@/lib/report/sanitize-snapshot";
 /**
  * GET /api/public/analysis-snapshot/by-id/:snapshotId
  *
@@ -32,7 +34,7 @@ export const Route = createFileRoute(
 )({
   server: {
     handlers: {
-      GET: async ({ params }) => {
+      GET: async ({ params, request }) => {
         const snapshotId = (params.snapshotId ?? "").trim();
         if (!UUID_RE.test(snapshotId)) {
           return json(
@@ -75,7 +77,10 @@ export const Route = createFileRoute(
           );
         }
 
-        const payload = (data.normalized_payload ?? {}) as SnapshotPayload;
+        const payload = sanitizeSnapshotForAccessLevel(
+          (data.normalized_payload ?? {}) as Record<string, unknown>,
+          await snapshotAccess(request, snapshotId),
+        ) as SnapshotPayload;
         const benchmark = await buildReportBenchmarkInput(payload);
 
         return json({

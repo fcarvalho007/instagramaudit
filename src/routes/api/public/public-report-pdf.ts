@@ -1,3 +1,5 @@
+import { isAnalysisSettled } from "@/lib/report-snapshots/frozen-analysis";
+import { snapshotAccess } from "@/lib/report/snapshot-access.server";
 /**
  * POST /api/public/public-report-pdf
  *
@@ -50,6 +52,7 @@ type SuccessBody = {
 type FailureBody = {
   success: false;
   error_code:
+    | "REPORT_PROCESSING"
     | "INVALID_PAYLOAD"
     | "SNAPSHOT_NOT_FOUND"
     | "MALFORMED_SNAPSHOT"
@@ -185,11 +188,30 @@ export const Route = createFileRoute("/api/public/public-report-pdf")({
           );
         }
 
+        if (
+          snapRow.normalized_payload.comparison_version === 2 &&
+          !isAnalysisSettled(snapRow.normalized_payload as unknown as Record<string, unknown>)
+        )
+          return json(
+            {
+              success: false,
+              error_code: "REPORT_PROCESSING",
+              message: "A análise ainda está a terminar. Volte a exportar quando ficar concluída.",
+            },
+            409,
+          );
+        const access = await snapshotAccess(request);
+        const printAccess = access === "pro" || access === "internal_lab" ? "pro" : "free";
         // 3) Resolve deterministic storage path.
-        const storagePath = buildPublicSnapshotPdfPath({
+        const baseStoragePath = buildPublicSnapshotPdfPath({
           snapshotId: snapRow.id,
           createdAtIso: snapRow.created_at,
         });
+
+        const storagePath =
+          snapRow.normalized_payload.comparison_version === 2
+            ? baseStoragePath.replace(/\.pdf$/, `-${printAccess}-v2.pdf`)
+            : baseStoragePath;
 
         // 4) Cache check — if PDF already exists, just sign and return.
         const cached = await pdfExistsAtPath(storagePath);
@@ -199,7 +221,7 @@ export const Route = createFileRoute("/api/public/public-report-pdf")({
           let bytes: Uint8Array;
           try {
             bytes = await renderViaBrowser({
-              url: buildSnapshotPrintUrl(snapRow.id),
+              url: buildSnapshotPrintUrl(snapRow.id, printAccess),
               waitForGlobalFn: "pdfReady",
               timeoutSeconds: 90,
             });

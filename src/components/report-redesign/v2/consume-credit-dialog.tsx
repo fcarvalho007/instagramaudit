@@ -1,3 +1,5 @@
+import { usePublicAppConfig } from "@/lib/config/use-app-config";
+import { parseComparisonContext, type ComparisonContext } from "@/lib/comparison-readings/context";
 import { useTranslation } from "react-i18next";
 import { Trans } from "react-i18next";
 import { useEffect, useState } from "react";
@@ -16,7 +18,7 @@ import { normalizeInstagramHandle } from "@/lib/instagram/normalize-handle";
 
 export type ConsumeCreditIntent =
   | { kind: "period"; days: number }
-  | { kind: "competitor"; handle?: string };
+  | { kind: "competitor"; handle?: string; context?: ComparisonContext };
 
 /**
  * Cache-state probe result for the period flow. When provided AND
@@ -92,10 +94,23 @@ export function ConsumeCreditDialog({
 }: Props) {
   const { t } = useTranslation("report");
 
+  const { comparisonV2Enabled } = usePublicAppConfig();
+  const [context, setContext] = useState<ComparisonContext>(() =>
+    parseComparisonContext(undefined),
+  );
   const [competitorInput, setCompetitorInput] = useState("");
   useEffect(() => {
     // Reset input whenever the dialog opens or the intent changes.
-    if (open) setCompetitorInput("");
+    if (open) {
+      setCompetitorInput("");
+      setContext(
+        parseComparisonContext(
+          typeof window !== "undefined"
+            ? new URLSearchParams(window.location.search).get("ctx")
+            : undefined,
+        ),
+      );
+    }
   }, [open, intent?.kind]);
 
   if (!intent) {
@@ -187,7 +202,9 @@ export function ConsumeCreditDialog({
     if (isCompetitor) {
       if (atCompetitorLimit) return;
       if (!competitorReady) return;
-      onConfirm({ kind: "competitor", handle: normalized });
+      onConfirm({ kind: "competitor", handle: normalized,
+        context: comparisonV2Enabled ? context : undefined,
+      });
       return;
     }
     // Period: forceRefresh only when cache is fresh AND user clicked the
@@ -287,6 +304,32 @@ export function ConsumeCreditDialog({
                 </p>
               ) : null}
             </div>
+            {comparisonV2Enabled && (
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium">Contexto opcional</legend>
+                {(
+                  [
+                    ["objective", "Objetivo"],
+                    ["sector", "Setor"],
+                    ["market", "Mercado"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <label key={key} className="block text-xs">
+                    {label}
+                    <Input
+                      value={context[key]}
+                      maxLength={key === "objective" ? 160 : 80}
+                      disabled={submitting}
+                      onChange={(e) => setContext((prev) => ({ ...prev, [key]: e.target.value }))}
+                    />
+                  </label>
+                ))}
+                <p className="text-xs text-content-secondary">
+                  Sem contexto, a leitura será descritiva. A seleção não demonstra que os públicos
+                  sejam equivalentes.
+                </p>
+              </fieldset>
+            )}
             <div className="flex gap-2 rounded-md border border-accent-primary/20 bg-accent-primary/8 px-3 py-2.5 text-xs text-content-secondary">
               <Info className="mt-0.5 size-4 shrink-0 text-accent-primary" aria-hidden="true" />
               <p className="leading-relaxed">

@@ -1,3 +1,4 @@
+import { useComparisonReport, ComparisonExperiments } from "./leitura-ia/comparison-report-context";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -93,6 +94,7 @@ interface Props {
  */
 export function ReportDiagnosticBlock({ result, payload, premiumUnlocked = false }: Props) {
   const { t } = useTranslation("report");
+  const comparison = useComparisonReport();
   const posts = payload?.posts ?? [];
   const features = useVariantFeatures();
   const variant = useReportVariant();
@@ -198,9 +200,7 @@ export function ReportDiagnosticBlock({ result, payload, premiumUnlocked = false
         />
       );
     }
-    return (
-      <VisualCoverAnalysisCard posts={posts} analysis={coverAnalysis} />
-    );
+    return <VisualCoverAnalysisCard posts={posts} analysis={coverAnalysis} />;
   };
 
   const renderCaptionSlot = (
@@ -409,13 +409,17 @@ export function ReportDiagnosticBlock({ result, payload, premiumUnlocked = false
           <div className="scroll-mt-24">{renderInsightsPending()}</div>
         ) : null}
 
-        {priorityItems.length > 0 && (
+        {comparison.enhanced ? (
+          <ComparisonExperiments />
+        ) : (
+          priorityItems.length > 0 && (
           <div id="prioridades" className="scroll-mt-24">
             <ReportDiagnosticPriorities
               items={priorityItems}
               source={prioritySource}
             />
           </div>
+        )
         )}
       </div>
     );
@@ -511,13 +515,17 @@ export function ReportDiagnosticBlock({ result, payload, premiumUnlocked = false
 
           {/* Prioridades de ação (AI ou determinísticas) */}
           {renderInsightsPending()}
-          {priorityItems.length > 0 && (
+          {comparison.enhanced ? (
+            <ComparisonExperiments />
+          ) : (
+            priorityItems.length > 0 && (
             <div id="prioridades" className="scroll-mt-24">
               <ReportDiagnosticPriorities
                 items={priorityItems}
                 source={prioritySource}
               />
             </div>
+            )
           )}
         </>
       ) : (

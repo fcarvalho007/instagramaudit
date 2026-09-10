@@ -1,3 +1,4 @@
+import { signPrintToken } from "./print-token.server";
 /**
  * Builds the absolute public URL the PDF provider must fetch.
  *
@@ -18,9 +19,9 @@ function resolveBase(): string {
   return raw.replace(/\/$/, "");
 }
 
-export function buildSnapshotPrintUrl(snapshotId: string): string {
+export function buildSnapshotPrintUrl(snapshotId: string, access: "free" | "pro" = "free"): string {
   if (!snapshotId) {
     throw new Error("buildSnapshotPrintUrl: snapshotId is required");
   }
-  return `${resolveBase()}/report/print/${encodeURIComponent(snapshotId)}?pdf=1`;
+  return `${resolveBase()}/report/print/${encodeURIComponent(snapshotId)}?pdf=1&print_token=${signPrintToken(snapshotId, access)}`;
 }

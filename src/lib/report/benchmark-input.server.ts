@@ -1,3 +1,4 @@
+import { PUBLIC_ENGAGEMENT_METHOD } from "@/lib/benchmark/methodology";
 /**
  * buildReportBenchmarkInput — server-only helper that loads the active
  * `benchmark_references` dataset and produces a `ReportBenchmarkInput`
@@ -49,6 +50,24 @@ const ADAPTER_TO_ENGINE: Record<
 export async function buildReportBenchmarkInput(
   payload: SnapshotPayload | null | undefined,
 ): Promise<ReportBenchmarkInput> {
+  if (payload?.comparison_version === 2) {
+    if (payload.benchmark_snapshot) return payload.benchmark_snapshot;
+    // Current references do not document compatible numerator, denominator,
+    // aggregation and population. Freeze that limitation with the report.
+    return {
+      positioning: { status: "unavailable", reason: "incompatible_methodology" },
+      perFormatReference: { Reels: null, Carousels: null, Imagens: null },
+      tierLabel: "",
+      datasetVersion: "unverified-reference.v1",
+      methodology: {
+        observed: PUBLIC_ENGAGEMENT_METHOD,
+        reference: null,
+        compatible: false,
+        checked_at: payload.analysis_window_end ?? null,
+      },
+      externalReferences: { instagramByFormat: null },
+    };
+  }
   const [data, externalIg] = await Promise.all([
     loadBenchmarkReferences(),
     loadSocialinsiderInstagramContext().catch((e) => {

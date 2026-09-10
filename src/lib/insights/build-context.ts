@@ -369,7 +369,9 @@ function deriveCommentIntelligenceSummary(
   return {
     sample_posts: ci.samplePosts ?? 0,
     sample_comments: ci.sampleComments ?? 0,
-    owner_reply_rate_pct: replyRate,
+    owner_reply_rate_pct: ci.repliesMeasurable === true ? replyRate : null,
+    replies_measurable: ci.repliesMeasurable === true,
+    low_confidence: ci.lowConfidence ?? true,
     questions_from_audience_count: questions,
     complaint_or_issue_count: complaints,
     buying_intent_count: buyingIntent,

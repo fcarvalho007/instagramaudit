@@ -1,3 +1,4 @@
+import { isAnalysisSettled } from "./frozen-analysis";
 /**
  * Phase 2 — Persiste um `report_snapshots` imutável associado a um
  * `report_request`. Idempotente, fail-soft, sem providers.
@@ -20,12 +21,12 @@ import {
 } from "./schema";
 import { getReportSnapshotExpiresAt } from "@/lib/report/retention";
 
-export type PersistSource =
-  | "public_unlock"
+export type PersistSource = "public_unlock"
   | "beta_request"
   | "admin_generate";
 
 export type PersistReason =
+  | "enrichment_pending"
   | "missing_request"
   | "missing_analysis_snapshot"
   | "build_error"
@@ -142,6 +143,13 @@ export async function persistReportSnapshotInternal(
     };
   }
 
+  if (
+    snap.normalized_payload?.comparison_version === 2 &&
+    !isAnalysisSettled(snap.normalized_payload)
+  ) {
+    return { snapshotId: null, created: false, reason: "enrichment_pending" };
+  }
+
   // 5. Construir payload
   const competitors = Array.isArray(rr.competitor_usernames)
     ? (rr.competitor_usernames as string[])
@@ -182,7 +190,7 @@ export async function persistReportSnapshotInternal(
       source_analysis_snapshot_id: rr.analysis_snapshot_id,
       instagram_username: rr.instagram_username,
       competitor_usernames: competitors,
-      payload_schema_version: REPORT_PAYLOAD_SCHEMA_VERSION,
+      payload_schema_version: built.payload_schema_version,
       report_payload_jsonb: built.payload,
       report_version: REPORT_VERSION_FREE_V1,
       algorithm_version: built.algorithm_version,
@@ -254,7 +262,7 @@ export async function persistReportSnapshotInternal(
     snapshotId,
     created,
     sourceAnalysisSnapshotId: rr.analysis_snapshot_id as string,
-    payloadSchemaVersion: REPORT_PAYLOAD_SCHEMA_VERSION,
+    payloadSchemaVersion: built.payload_schema_version,
     reportVersion: REPORT_VERSION_FREE_V1,
     algorithmVersion: built.algorithm_version,
     expiresAt,
@@ -297,7 +305,9 @@ export async function ensureReportSnapshotForRequest(
       } catch {
         /* event tracking is best-effort */
       }
-    } else if (!result.snapshotId && result.reason && result.reason !== "missing_analysis_snapshot") {
+    } else if (!result.snapshotId && result.reason && result.reason !== "missing_analysis_snapshot" &&
+      result.reason !== "enrichment_pending"
+    ) {
       try {
         await recordProductEvent({
           eventType: "report_snapshot_persist_failed",

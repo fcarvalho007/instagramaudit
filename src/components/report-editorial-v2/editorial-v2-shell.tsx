@@ -1,3 +1,9 @@
+import {
+  ComparisonReportProvider,
+  ComparisonSelector,
+  ComparisonReadingPanel,
+  ComparisonExperiments,
+} from "@/components/report-redesign/v2/leitura-ia/comparison-report-context";
 import "@/styles/editorial-v2.css";
 
 import { useMemo } from "react";
@@ -57,7 +63,8 @@ export function EditorialV2Shell({
   }, [payload?.posts]);
 
   return (
-    <PremiumCtaProvider
+    <ComparisonReportProvider payload={payload} enabled={premiumUnlocked}>
+      <PremiumCtaProvider
       snapshotId={snapshotId ?? null}
       handle={result.data.profile.username}
       variant={variant}
@@ -76,25 +83,39 @@ export function EditorialV2Shell({
 
 
         {features.blockOverview !== "hidden" && (
-          <EditorialOverview result={result} payload={payload} />
+          <>
+              <EditorialOverview result={result} payload={payload} />
+              <ComparisonSelector />
+              <ComparisonReadingPanel cardId="overview" />
+            </>
         )}
 
         {/* Engagement — mesma visibilidade que em produção: vive dentro do
             bloco de visão geral e é mostrado a anónimos, leads e Pro. */}
         {features.blockOverview !== "hidden" && (
-          <EditorialEngagement result={result} />
+          <>
+              <EditorialEngagement result={result} />
+              <ComparisonReadingPanel cardId="engagement" />
+            </>
         )}
 
         {/* Frequência editorial — mesma visibilidade que em produção. */}
         {features.blockOverview !== "hidden" && (
-          <EditorialFrequency result={result} />
+          <>
+              <EditorialFrequency result={result} />
+              <ComparisonReadingPanel cardId="cadence" />
+              <ComparisonReadingPanel cardId="weekday_rhythm" />
+            </>
         )}
 
         {/* Mix de formatos — escalão `free_email` em produção: só depois da
             captura de email (ou com Pro). Anónimo não vê a secção. */}
         {features.blockOverview !== "hidden" &&
           (leadCaptured || premiumUnlocked) && (
-            <EditorialFormatMix result={result} payload={payload} />
+            <>
+              <EditorialFormatMix result={result} payload={payload} />
+              <ComparisonReadingPanel cardId="format_mix" />
+            </>
           )}
 
         {/* Publicações-chave — as métricas factuais por publicação são
@@ -107,6 +128,8 @@ export function EditorialV2Shell({
           />
         )}
 
+          {premiumUnlocked && <ComparisonReadingPanel cardId="top_posts" />}
+
         {/* Conversas — mesma fronteira de produção: só após captura de
             email ou com Pro; pagar nunca remove o que já foi entregue. */}
         {(leadCaptured || premiumUnlocked) && (
@@ -117,17 +140,23 @@ export function EditorialV2Shell({
         {showProGate && <EditorialProGate />}
 
         {premiumUnlocked && features.blockDiagnosis !== "hidden" && (
-          <EditorialDiagnosis result={result} payload={payload} />
+          <>
+              <EditorialDiagnosis result={result} payload={payload} />
+              <ComparisonReadingPanel cardId="bio_conversion" />
+            </>
         )}
 
         {/* 07 — Prioridades de ação. Mesmo gate Pro que produção. */}
-        {premiumUnlocked && features.blockDiagnosis !== "hidden" && (
+        {premiumUnlocked && features.blockDiagnosis !== "hidden" &&
+            (payload?.comparison_version === 2 ? (
+              <ComparisonExperiments />
+            ) : (
           <EditorialPriorities
             result={result}
             payload={payload}
             commentIntelligenceFull={features.commentIntelligence === "full"}
           />
-        )}
+            ))}
 
         {/* Metodologia e fontes — mesma visibilidade que produção
             (`unlocked && <ReportMethodology />` no shell V2). */}
@@ -139,6 +168,7 @@ export function EditorialV2Shell({
 
       </div>
     </PremiumCtaProvider>
+    </ComparisonReportProvider>
   );
 }
 

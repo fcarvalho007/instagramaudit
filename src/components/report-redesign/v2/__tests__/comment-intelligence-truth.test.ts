@@ -78,8 +78,9 @@ describe("classifyBrandReply — contrato de mensurabilidade", () => {
     expect(config.tone).toBe("slate");
   });
 
-  it("repliesAreMeasurable trata `undefined` como mensurável (retrocompatível)", () => {
-    expect(repliesAreMeasurable(base())).toBe(true);
+  it("repliesAreMeasurable exige confirmação explícita da recolha", () => {
+    expect(repliesAreMeasurable(base())).toBe(false);
+    expect(repliesAreMeasurable(base({ repliesMeasurable: true }))).toBe(true);
     expect(repliesAreMeasurable(base({ repliesMeasurable: false }))).toBe(false);
   });
 });

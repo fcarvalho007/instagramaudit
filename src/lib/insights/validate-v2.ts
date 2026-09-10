@@ -115,7 +115,7 @@ export const aiInsightsV2ResponseSchema = z.object({
       {} as Record<AiInsightV2Section, typeof itemSchema>,
     ),
   ),
-  priorities: z.array(priorityItemSchema).length(3).optional(),
+  priorities: z.array(priorityItemSchema).max(3).optional(),
   editorial_verdict: editorialVerdictSchema.optional(),
 });
 
@@ -217,10 +217,6 @@ export function validateInsightsV2(raw: unknown): ValidateV2Result {
             `priority=${i} field=${field} token=${ptbr}`,
           );
         }
-      }
-      // body deve conter pelo menos um número (grounding).
-      if (!/\d/.test(body)) {
-        return fail("GENERIC_OUTPUT", `priority=${i} (missing number)`);
       }
       // `resolves` referencia perguntas — apenas 1..8 existem no Bloco 02.
       // Rejeitar números fora desse range para evitar a IA inventar

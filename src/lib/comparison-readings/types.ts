@@ -28,6 +28,22 @@ export const EvidencePointSchema = z.object({
 
 export const ConfidenceSchema = z.enum(["low", "medium", "high"]);
 
+export const SourceExcerptSchema = z.object({
+  side: z.enum(["primary", "competitor"]),
+  post_id: z.string().min(1).max(200),
+  quote: z.string().min(1).max(240),
+  permalink: z.string().nullable().optional(),
+  date: z.string().nullable().optional(),
+});
+export const ExperimentSchema = z.object({
+  hypothesis: z.string().min(1).max(400),
+  execution: z.string().min(1).max(500),
+  effort: z.enum(["baixo", "medio", "alto"]),
+  duration_days: z.number().int().min(7).max(90),
+  intended_posts: z.number().int().min(1).max(24),
+  success_metric: z.enum(["median_likes", "median_comments", "median_engagement_pct"]),
+  evaluation: z.string().min(1).max(400),
+});
 export const CardReadingSchema = z.object({
   card_id: CardIdSchema,
   headline: z.string().min(1).max(120),
@@ -35,7 +51,17 @@ export const CardReadingSchema = z.object({
   evidence_points: z.array(EvidencePointSchema).max(4).default([]),
   recommendation: z.string().max(280).nullable(),
   confidence: ConfidenceSchema,
-  caveats: z.array(z.string().max(160)).max(4).default([]),
+  caveats: z.array(z.string().max(240)).max(6).default([]),
+  sources: z.array(SourceExcerptSchema).max(4).default([]),
+  diagnosis: z
+    .object({
+      pattern: z.string().max(400),
+      interpretation: z.string().max(400),
+      transferability: z.string().max(400),
+    })
+    .optional(),
+  experiment: ExperimentSchema.nullable().optional(),
+  priority_rank: z.number().int().min(1).max(3).nullable().optional(),
 });
 
 export const ComparisonAIReadingsSchema = z.object({
@@ -64,9 +90,15 @@ export const StoredComparisonReadingsSchema = z.object({
   status: z.enum(["ready", "failed"]),
   readings: ComparisonAIReadingsSchema.nullable(),
   error: z.string().optional(),
+  evidence_pack: z.record(z.unknown()).optional(),
 });
 export type StoredComparisonReadings = z.infer<typeof StoredComparisonReadingsSchema>;
 
 export const COMPARISON_READINGS_KEY = "ai_comparison_readings_v1" as const;
-export const COMPARISON_READINGS_PROMPT_VERSION = "v1" as const;
+export const COMPARISON_READINGS_V2_KEY = "ai_comparison_readings_v2" as const;
+export const StoredComparisonCollectionSchema = z.object({
+  version: z.literal(2),
+  by_competitor: z.record(StoredComparisonReadingsSchema),
+});
+export const COMPARISON_READINGS_PROMPT_VERSION = "v2-evidence-2026-09" as const;
 export const COMPARISON_READINGS_MODEL = "google/gemini-3-flash-preview" as const;

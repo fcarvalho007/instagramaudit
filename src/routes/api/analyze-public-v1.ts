@@ -1,3 +1,9 @@
+import { buildProfileExperiments } from "@/lib/comparison-readings/profile-experiments";
+import { buildReportBenchmarkInput } from "@/lib/report/benchmark-input.server";
+import { ComparisonContextSchema, parseComparisonContext } from "@/lib/comparison-readings/context";
+import { comparisonCacheKey } from "@/lib/comparison-readings/cache-key.server";
+import { windowBounds, buildCoverage } from "@/lib/comparison-readings/coverage";
+import { isComparisonV2Enabled } from "@/lib/comparison-readings/config.server";
 /**
  * Public analysis endpoint — primary profile + up to 2 optional competitors.
  *
@@ -119,6 +125,7 @@ const usernameSchema = z
   .pipe(z.string().regex(/^[a-z0-9._]{1,30}$/));
 
 const PayloadSchema = z.object({
+  comparison_context: ComparisonContextSchema.optional(),
   instagram_username: usernameSchema,
   competitor_usernames: z.array(usernameSchema).max(MAX_COMPETITORS).optional().default([]),
   // PR 1: public window for the PRIMARY profile only. Defaults to
@@ -351,10 +358,11 @@ async function fetchProfileWithPosts(
   // ---- Step B: posts inside the window -----------------------------------
   // Runs sequentially (never in parallel) so a single analysis holds at most
   // one global Apify lease at a time.
-  const sinceMs = windowCutoffMs(cfg.onlyPostsNewerThan);
+  const sinceMs = cfg.sinceMs ?? windowCutoffMs(cfg.onlyPostsNewerThan);
   const postsResult = await fetchPosts(username, {
     sinceMs,
     maxPosts: cfg.resultsLimit,
+    maxTotalChargeUsd: cfg.maxTotalChargeUsd,
     timeoutMs: cfg.timeoutMs,
   });
 
@@ -375,10 +383,8 @@ async function fetchProfileWithPosts(
   // Replace the embedded sample with the real window dataset. If the posts
   // call returned nothing we keep the sample rather than pretending the
   // profile has no activity.
-  if (postsResult.rows.length > 0) {
-    row.latestPosts = postsResult.rows;
+  row.latestPosts = postsResult.rows;
     row.analysis_window_truncated = postsResult.truncated;
-  }
 
   return {
     row,
@@ -593,7 +599,12 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           ? parsed.data.window
           : "baseline";
         currentAnalysisWindow = windowKind;
-        const primaryWindowCfg = PUBLIC_WINDOW_CONFIGS[windowKind];
+        const comparisonV2 = isComparisonV2Enabled();
+        const bounds = windowBounds(windowKind, Date.now());
+        const primaryWindowCfg = {
+          ...PUBLIC_WINDOW_CONFIGS[windowKind],
+          sinceMs: bounds.startMs ?? undefined,
+        };
 
         // Dedup competitors: lowercase comparison, drop primary, drop dupes,
         // cap at MAX_COMPETITORS. Original casing preserved for display.
@@ -642,7 +653,9 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
         // Cache key includes the window suffix ONLY for wide windows. For
         // baseline this is byte-identical to the legacy key, so existing
         // Free snapshots remain valid and reachable.
-        const cacheKey = buildCacheKey(primary, competitors, windowKind);
+        const cacheKey = comparisonCacheKey(primary, competitors, windowKind,
+          parsed.data.comparison_context,
+        );
 
         // ── Credit gate (Fase 2) ───────────────────────────────────────
         // Política:
@@ -1075,7 +1088,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 .maybeSingle();
 
               const cachedCode = recentNegative?.error_code as
-                | "PROFILE_PERSONAL_NO_FEED"
+                "PROFILE_PERSONAL_NO_FEED"
                 | "PROFILE_PRIVATE"
                 | undefined;
               if (cachedCode) {
@@ -1243,7 +1256,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               return r.row;
             });
             const competitorRowsP = competitors.map((handle) =>
-              fetchProfileWithPostsLogged(handle).then((r) => {
+              fetchProfileWithPostsLogged(handle, comparisonV2 ? primaryWindowCfg : undefined).then((r) => {
                 if (r.providerCallLogId) providerCallIds.push(r.providerCallLogId);
                 if (r.error) {
                   console.error("[analyze-public-v1] competitor fetch failed", handle, r.error);
@@ -1304,10 +1317,12 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             const primaryPosts = windowMs
               ? allPrimaryPosts.filter((p) => {
                   const ts = postTimestampMs(p as never);
-                  return ts !== null && ts >= Date.now() - windowMs;
+                  return ts !== null && ts >= (bounds.startMs ?? 0) && ts <= bounds.endMs;
                 })
               : allPrimaryPosts;
-            const isPrivateFlag = rawPrimary?.is_private === true || rawPrimary?.private === true;
+            const isPrivateFlag =
+              rawPrimary?.isPrivate === true ||
+              rawPrimary?.is_private === true || rawPrimary?.private === true;
             const profilePostsCount = primaryProfile.posts_count ?? 0;
             const isProfessional = primaryProfile.is_business;
 
@@ -1315,7 +1330,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             // for baseline (where 0 posts means "no feed at all"). For 30d/90d,
             // 0 posts just means "no activity in the window" — proceed with
             // an empty summary so the profile metrics still render.
-            if (windowKind === "baseline" && allPrimaryPosts.length === 0) {
+            if (isPrivateFlag || (windowKind === "baseline" && allPrimaryPosts.length === 0)) {
               // Personal-account heuristic: profile claims posts in its public
               // shell (`postsCount > 0`) but the scraper returned none, AND the
               // account is not flagged as business/creator → almost certainly a
@@ -1349,10 +1364,12 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               primaryPostTimestamps.length > 0 ? Math.min(...primaryPostTimestamps) : null;
             const primaryWindowObservedDays =
               oldestPostMs !== null
-                ? Math.max(1, Math.round((Date.now() - oldestPostMs) / 86_400_000))
+                ? Math.max(1, Math.round((bounds.endMs - oldestPostMs) / 86_400_000))
                 : 0;
             const primaryWindowTruncated =
-              windowMs !== null && primaryPosts.length >= primaryWindowCfg.resultsLimit;
+              windowMs !== null &&
+              (rawPrimary.analysis_window_truncated === true ||
+                primaryPosts.length >= primaryWindowCfg.resultsLimit);
 
             const primarySummary = computeContentSummary(
               primaryPosts,
@@ -1372,9 +1389,18 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               if (!profile) {
                 return competitorFailure(handle, "PROFILE_NOT_FOUND");
               }
-              const posts = Array.isArray((row as { latestPosts?: unknown }).latestPosts)
-                ? ((row as { latestPosts: unknown[] }).latestPosts as Record<string, unknown>[])
+              if (row.isPrivate === true || row.is_private === true || row.private === true)
+                return competitorFailure(handle, "POSTS_UNAVAILABLE");
+              const rawPosts = Array.isArray(row.latestPosts)
+                ? (row.latestPosts as Record<string, unknown>[])
                 : [];
+              const posts =
+                comparisonV2 && bounds.startMs !== null
+                  ? rawPosts.filter((p) => {
+                      const ts = postTimestampMs(p as never);
+                      return ts !== null && ts >= bounds.startMs! && ts <= bounds.endMs;
+                    })
+                  : rawPosts;
               const summary = computeContentSummary(posts, profile.followers_count);
               // Phase 2B: persist deterministic per-post detail for the
               // competitor — reuses `enrichPosts` (same helper as the
@@ -1386,7 +1412,9 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               // also writes `profile.avatar_storage_url`). No additional
               // provider calls here — `posts` is the same `latestPosts[]`
               // already returned by the Apify fetch.
-              const enriched = enrichPosts(posts, profile.followers_count);
+              const enriched = enrichPosts(posts, profile.followers_count,
+                comparisonV2 ? primaryWindowCfg.resultsLimit : undefined,
+              );
               const weekdayCounts = [0, 0, 0, 0, 0, 0, 0];
               const hashtagTally = new Map<string, number>();
               for (const p of enriched.posts) {
@@ -1420,6 +1448,18 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 format_stats: enriched.format_stats,
                 weekday_counts: weekdayCounts,
                 top_hashtags: topHashtags,
+                ...(comparisonV2
+                  ? {
+                      collection_coverage: buildCoverage(
+                        enriched.posts,
+                        bounds,
+                        primaryWindowCfg.resultsLimit,
+                        typeof row.analysis_window_truncated === "boolean"
+                          ? row.analysis_window_truncated
+                          : undefined,
+                      ),
+                    }
+                  : {}),
               };
             });
 
@@ -1430,7 +1470,9 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             // snapshotToReportData adapter can populate the visual report
             // without a second Apify round-trip. Backwards compatible — old
             // snapshots without these fields are still readable.
-            const primaryEnriched = enrichPosts(primaryPosts, primaryProfile.followers_count);
+            const primaryEnriched = enrichPosts(primaryPosts, primaryProfile.followers_count,
+              comparisonV2 ? primaryWindowCfg.resultsLimit : undefined,
+            );
 
             // ─── Market signals (free DataForSEO Trends) ────────────────
             // Reuse cached summary from previous snapshot if still valid.
@@ -1467,7 +1509,22 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             // running, the report still exists and remains usable — just
             // without the AI insights layer. The OpenAI call below upserts
             // a second time on the same cache_key when it succeeds.
+            const benchmarkSnapshot = comparisonV2
+              ? await buildReportBenchmarkInput({
+                  comparison_version: 2,
+                  analysis_window_end: new Date(bounds.endMs).toISOString(),
+                })
+              : undefined;
             const baseNormalizedPayload = {
+              ...(benchmarkSnapshot
+                ? {
+                    benchmark_snapshot: benchmarkSnapshot,
+                    profile_experiments_v2: buildProfileExperiments({
+                      posts: primaryEnriched.posts,
+                      analysis_window_end: new Date(bounds.endMs).toISOString(),
+                    }),
+                  }
+                : {}),
               // R4-A.2: schema versioning. v2 marks payloads that include the
               // R4-A enriched per-post fields (video_duration, coauthors,
               // tagged_users, location_name, music_title, product_type,
@@ -1479,6 +1536,21 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               // case for wide windows. Baseline is written explicitly; legacy
               // baseline snapshots (no key) are treated as baseline downstream.
               analysis_window: windowKind,
+              analysis_window_end: new Date(bounds.endMs).toISOString(),
+              ...(comparisonV2
+                ? {
+                    comparison_version: 2,
+                    comparison_context: parseComparisonContext(parsed.data.comparison_context),
+                    collection_coverage: buildCoverage(
+                      primaryEnriched.posts,
+                      bounds,
+                      primaryWindowCfg.resultsLimit,
+                      typeof rawPrimary.analysis_window_truncated === "boolean"
+                        ? rawPrimary.analysis_window_truncated
+                        : undefined,
+                    ),
+                  }
+                : {}),
               analysis_window_label: primaryWindowCfg.label,
               // Honest window reporting: how many days the sample actually
               // covers, and whether the provider truncated the window.
