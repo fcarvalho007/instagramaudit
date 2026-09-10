@@ -104,8 +104,8 @@ export function EditorialReportChrome({
     primaryHandle: handle,
     existingCompetitors: competitorHandles,
     isAdminPreview,
-    // Mantém a pré-visualização Editorial V2 durante a navegação interna.
-    preserveSearch: { report_design: "editorial_v2" },
+    // Editorial V2 é o padrão; não acrescenta um parâmetro de preview ao URL.
+    preserveSearch: {},
   });
 
   // URL canónico — nunca partilha o parâmetro de pré-visualização.

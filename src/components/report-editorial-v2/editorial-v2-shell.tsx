@@ -20,7 +20,6 @@ import { EditorialReportChrome } from "./chrome/editorial-report-chrome";
 
 import { EditorialMethodology } from "./methodology/editorial-methodology";
 import { EditorialReportFooter } from "./methodology/editorial-report-footer";
-import { EditorialV2PreviewBadge } from "./preview-badge";
 import type { ReportPresentationProps } from "./report-presentation-props";
 
 /**
@@ -98,13 +97,13 @@ export function EditorialV2Shell({
             <EditorialFormatMix result={result} payload={payload} />
           )}
 
-        {/* Publicações-chave — mesma regra de produção: em estado anónimo
-            não se mostram métricas analíticas por publicação. */}
+        {/* Publicações-chave — as métricas factuais por publicação são
+            públicas; as restantes fronteiras free_email/Pro mantêm-se. */}
         {features.blockOverview !== "hidden" && (
           <EditorialKeyPosts
             result={result}
             performanceSampleSize={performanceSampleSize}
-            analyticsVisible={leadCaptured || premiumUnlocked}
+            analyticsVisible
           />
         )}
 
@@ -138,8 +137,6 @@ export function EditorialV2Shell({
 
         <EditorialReportFooter result={result} />
 
-        {/* TODO (Editorial V2): remover antes do lançamento público. */}
-        <EditorialV2PreviewBadge />
       </div>
     </PremiumCtaProvider>
   );

@@ -1068,25 +1068,28 @@ function AiReading({
  * e renderiza apenas o que é seguro mostrar antes da captura de email
  * (thumbnail, etiqueta melhor/pior, formato, data, legenda truncada).
  *
- * Os valores analíticos (engagement, likes, comentários, multiplicador,
- * scatter e leitura editorial) NÃO são renderizados — não há camada de CSS
- * por cima de conteúdo completo.
+ * As três métricas factuais do cartão são públicas. Scatter, leitura
+ * editorial e restantes detalhes continuam dependentes da captura de email.
  */
 export function PostComparisonPreview({
   topPosts,
   bottomPosts,
+  allPostsForScatter,
   cadenceMethod,
   sampleSize,
   gate,
 }: {
   topPosts: EnrichedPost[];
   bottomPosts: EnrichedPost[];
+  /** Amostra real usada pelo relatório para calcular a média. */
+  allPostsForScatter?: ScatterPost[];
   cadenceMethod?: CadenceMethod;
   sampleSize?: number;
   /** Gate gratuito composto como continuação do preview (Estado A). */
   gate?: React.ReactNode;
 }) {
   const { t } = useTranslation("report");
+  const { language } = useLanguage();
   // Estado A: um único evento de visualização; o convite vive no gate.
   const previewRef = useTrackOnceInView<HTMLElement>(
     "post_comparison_preview_viewed",
@@ -1108,8 +1111,12 @@ export function PostComparisonPreview({
     });
   }
 
-  /** Rótulos nítidos, valores por revelar. Nenhum dado real no DOM. */
-  const protectedMetrics = ["Envolvimento", "Interacções", "vs. média"];
+  const average = computeSampleAverage(allPostsForScatter ?? []);
+  const formatDelta = (delta: number): string => {
+    const rounded = Math.round(delta);
+    if (rounded === 0) return "0%";
+    return `${rounded > 0 ? "+" : "−"}${Math.abs(rounded)}%`;
+  };
 
   const shownIds = new Set(items.map((i) => i.post.id));
   const morePosts = [...topPosts, ...bottomPosts].filter(
@@ -1172,29 +1179,25 @@ export function PostComparisonPreview({
                   {post.caption || "—"}
                 </p>
               </div>
-              {/* Faixa protegida: rótulos legíveis, valores por revelar.
-                  Os valores são glifos neutros — nenhum dado sanitizado
-                  chega ao DOM. */}
+              {/* Métricas factuais públicas, calculadas a partir da amostra
+                  real já carregada. */}
               <div className="relative border-t border-border-default bg-surface-muted/50 px-3 py-2.5">
                 <div className="grid grid-cols-3 gap-2">
-                  {protectedMetrics.map((metric) => (
+                  {[
+                    ["Envolvimento", `${formatNumber(post.engagementPct, language, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`],
+                    ["Interacções", formatNumber(post.likes + post.comments, language)],
+                    ["vs. média", average > 0 ? formatDelta(computeDeltaPct(post.engagementPct, average)) : "—"],
+                  ].map(([metric, value]) => (
                     <div key={metric} className="min-w-0">
                       <p className="text-eyebrow-sm truncate text-content-tertiary">
                         {metric}
                       </p>
-                      <p
-                        aria-hidden="true"
-                        className="mt-1 select-none text-sm font-semibold text-content-primary/70 blur-[2.5px]"
-                      >
-                        ••••
+                      <p className="mt-1 tabular-nums text-sm font-semibold text-content-primary">
+                        {value}
                       </p>
                     </div>
                   ))}
                 </div>
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 bg-surface-base/35"
-                />
               </div>
             </div>
           ))}
