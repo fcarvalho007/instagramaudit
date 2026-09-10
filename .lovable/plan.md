@@ -1,65 +1,65 @@
-# Rever a comparação V2 em isolamento e integrar pelo GitHub
+# Rever a integração da comparação V2 sem reverter
 
-## Situação actual — a comunicar antes de mais
+## Situação actual
 
-O pedido chega depois de a integração já ter sido aplicada. O conteúdo do PR está
-neste projecto no commit `bcab66cd` ("Integrou comparação V2 do Codex"), que fica
-na main e sincroniza para o repositório. Não existe forma de criar aqui uma branch
-isolada: qualquer alteração de ficheiros neste projecto entra na main.
+O conteúdo do PR #1 já está neste projecto, no commit `bcab66cd` ("Integrou
+comparação V2 do Codex"). Foi aplicado por cópia de ficheiros, não pelo merge dos
+commits originais. Neste projecto não é possível criar uma branch isolada:
+qualquer alteração aos ficheiros entra na main e sincroniza.
 
-Ou seja, a condição "rever numa branch separada antes de escrever na main" não foi
-cumprida, e a integração foi feita por aplicação de ficheiros, não pelo merge do
-PR #1 com os commits originais.
+O código actual mantém-se. Nada é revertido, salvo se a revisão encontrar um
+problema técnico que o justifique — e nesse caso proponho antes de agir.
 
-Este plano corrige isso.
+## Passo 1 — Equivalência entre o integrado e o PR #1
 
-## Passo 1 — Anular a integração feita por cópia
+Comparação ficheiro a ficheiro entre o estado actual do projecto e a branch
+`codex/credible-comparisons`, feita numa cópia temporária fora do projecto:
 
-Reverter o commit `bcab66cd`, devolvendo o projecto ao estado anterior
-(`7db23e8e` + trabalho local). Fica sem a comparação V2 até o merge oficial.
+- lista das diferenças reais, ficheiro e linhas;
+- separação entre diferenças esperadas (trabalho recente feito aqui: apresentação
+  Editorial V2 por defeito, métricas das publicações) e diferenças não explicadas;
+- qualquer diferença não explicada é analisada individualmente antes de conclusões.
 
-## Passo 2 — Revisão isolada, fora do projecto
+## Passo 2 — Falhas de teste com nomes exactos
 
-Clonar a branch `codex/credible-comparisons` para uma pasta temporária do
-ambiente de trabalho (fora do projecto, logo sem sincronização) e correr aí:
+Duas execuções da bateria completa, ambas fora do projecto sincronizado:
 
-- verificação de tipos e compilação de produção;
-- bateria completa de testes, comparada com a mesma bateria na base, para separar
-  as sete falhas herdadas de regressões novas.
+- na base (`7db23e8e`);
+- no estado integrado actual.
 
-## Passo 3 — Revisão com a flag desligada
+Entrego o nome exacto de cada teste falhado nos dois lados — ficheiro, bloco e
+título — e não apenas a contagem. Depois classifico:
 
-Com `COMPARISON_V2_ENABLED` ausente, verificar explicitamente o que muda mesmo
-assim, porque o PR toca em código partilhado:
+- falha herdada, presente nos dois lados;
+- correcção esperada, falhava na base e passa agora;
+- regressão, passava na base e falha agora.
+
+Só uma regressão justifica proposta de reversão.
+
+## Passo 3 — Comportamento com a nova comparação desligada
+
+Sem `COMPARISON_V2_ENABLED`, verificar o que o PR altera mesmo assim, por tocar
+em código partilhado:
 
 - prioridades e diagnóstico do relatório pago;
-- fronteiras gratuito / com email / pago em todas as secções;
-- abertura de relatórios antigos (`report.v1`) sem regeneração;
-- exportação em PDF, incluindo o caminho gratuito e o pago;
-- normalização de métricas e janelas de 30/90 dias;
-- selecção de concorrentes (máximo dois) e preços/créditos inalterados.
+- fronteiras gratuito / com email / pago em cada secção;
+- abertura de relatórios antigos, sem regeneração;
+- exportação em PDF, no caminho gratuito e no pago;
+- normalização de métricas e janelas de 30 e 90 dias;
+- selecção de concorrentes (máximo dois), preços e créditos inalterados.
 
-Qualquer diferença de números ou de acesso com a flag desligada é bloqueante.
-
-## Passo 4 — Integração pelo GitHub
-
-Depois da revisão aprovada, o PR #1 é integrado no GitHub preservando os commits.
-Não tenho ligação autenticada ao GitHub, por isso este passo é teu: tirar o PR de
-rascunho e carregar em "Merge pull request". O conteúdo volta depois para aqui
-pela sincronização.
-
-Se preferires, indico em vez disso a ordem exacta de comandos para fazeres o merge
-localmente no teu clone.
+Qualquer alteração de números ou de acesso com a flag desligada é bloqueante.
 
 ## Limites desta etapa
 
-- `COMPARISON_V2_ENABLED` fica desligada.
+- A nova comparação fica desligada.
 - Sem publicação do site e sem alterações a dados de produção.
-- Nada de merge manual por cópia de ficheiros.
+- O PR #1 fica aberto até confirmarmos a equivalência e decidirmos como encerrar.
+- Sem reversão sem aprovação prévia.
 
-## Entrega final
+## Entrega
 
-Commit efectivamente integrado, resultado dos testes na branch e na base, resultado
-das verificações com a flag desligada, e a lista do que fica por validar antes de
-ligar a nova comparação (ambiente de teste de pagamentos, vinte comparações reais,
-cinco utilizadores pagantes, custos e margem).
+Diferenças concretas entre o integrado e o PR, nomes exactos das falhas nos dois
+lados com a respectiva classificação, resultado das verificações com a flag
+desligada, e o que fica pendente para a etapa seguinte: percurso completo com
+serviços de teste e avaliação de comparações reais.
