@@ -11,7 +11,7 @@ export type BenchmarkFormat = "Reels" | "Carrosséis" | "Imagens";
 export type PositionStatus = "above" | "aligned" | "below";
 
 export type UnavailableReason =
-  | "missing_inputs"
+  "incompatible_methodology" | "missing_inputs"
   | "no_reference_for_tier";
 
 export interface BenchmarkPositioningAvailable {
@@ -31,8 +31,7 @@ export interface BenchmarkPositioningUnavailable {
   reason: UnavailableReason;
 }
 
-export type BenchmarkPositioning =
-  | BenchmarkPositioningAvailable
+export type BenchmarkPositioning = BenchmarkPositioningAvailable
   | BenchmarkPositioningUnavailable;
 
 export interface BenchmarkEngineInput {

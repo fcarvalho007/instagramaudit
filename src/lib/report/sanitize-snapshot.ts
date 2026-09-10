@@ -19,6 +19,10 @@ export type SnapshotAccessLevel = "free" | "lead" | "pro" | "internal_lab";
  * additions.
  */
 export const PAID_SNAPSHOT_FIELDS = [
+  "profile_experiments_v2",
+  "ai_comparison_readings_v1",
+  "ai_comparison_readings_v2",
+  "comparison_context",
   "ai_insights_v1",
   "ai_insights_v2",
   "visual_cover_analysis",

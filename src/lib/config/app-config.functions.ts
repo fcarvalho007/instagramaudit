@@ -21,6 +21,7 @@ export interface PublicAppConfig {
   contactEmail: string;
   /** When true, the "Comparar concorrente" feature is live (no teaser badge). */
   compareEnabled: boolean;
+  comparisonV2Enabled: boolean;
   /**
    * When true, the 90-day Pro window chip is rendered and the backend
    * accepts `window:"90d"`. Default OFF — high-volume / cost behaviour
@@ -33,6 +34,7 @@ export const PUBLIC_APP_CONFIG_DEFAULTS: PublicAppConfig = {
   freeMonthlyReportLimit: 3,
   contactEmail: "hello@auditprofiles.com",
   compareEnabled: false,
+  comparisonV2Enabled: false,
   proWindow90dEnabled: true,
 };
 
@@ -45,7 +47,9 @@ export const getPublicAppConfig = createServerFn({ method: "GET" }).handler(
       "pro_window_90d_enabled",
     ]);
 
+    const { isComparisonV2Enabled } = await import("@/lib/comparison-readings/config.server");
     return {
+      comparisonV2Enabled: isComparisonV2Enabled(),
       freeMonthlyReportLimit: parseConfigInt(
         map.free_monthly_report_limit,
         PUBLIC_APP_CONFIG_DEFAULTS.freeMonthlyReportLimit,

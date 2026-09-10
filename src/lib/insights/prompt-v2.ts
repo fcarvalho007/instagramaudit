@@ -92,12 +92,12 @@ Formato de saída:
 JSON estrito conforme o schema fornecido. Sem texto antes ou depois. Sem markdown. Sem comentários. Todas as 9 chaves de "sections" são obrigatórias.
 
 Prioridades de ação (obrigatório · campo "priorities"):
-- Devolver exactamente 3 itens accionáveis derivados do diagnóstico editorial (tipo de conteúdo, fase de funil, captions, audiência, integração entre canais, formato dominante).
-- Cada item: { "level": "alta" | "media" | "oportunidade", "title": ≤ 60 chars no infinitivo impessoal, "body": 1 frase ≤ 180 chars com pelo menos um número concreto do payload, "resolves": frase curta a indicar que pergunta(s) do diagnóstico endereça (ex.: "Resolve a Pergunta 06.", "Resolve as Perguntas 02 e 07."). IMPORTANTE: o diagnóstico só tem 7 perguntas (01–07) — NUNCA referenciar "Pergunta 08" ou números superiores.
+- Devolver até 3 itens accionáveis derivados do diagnóstico editorial (tipo de conteúdo, fase de funil, captions, audiência, integração entre canais, formato dominante).
+- Cada item: { "level": "alta" | "media" | "oportunidade", "title": ≤ 60 chars no infinitivo impessoal, "body": 1 frase ≤ 180 chars, sem algarismos; apresentar a ação como hipótese e usar evidência qualitativa observada, "resolves": frase curta a indicar que pergunta(s) do diagnóstico endereça (ex.: "Resolve a Pergunta 06.", "Resolve as Perguntas 02 e 07."). IMPORTANTE: o diagnóstico só tem 7 perguntas (01–07) — NUNCA referenciar "Pergunta 08" ou números superiores.
 - Hierarquia esperada: 1 "alta" (problema mais urgente), 1 "media" (correção estrutural), 1 "oportunidade" (alavanca de crescimento). Se não houver problema "alta", trocar por "media".
 - Distintas entre si — sem repetir a mesma recomendação. Sem citar fontes externas. Sem snake_case.
-- Quando "comment_intelligence" estiver presente, pelo menos 1 prioridade deve citar um número real desse bloco (owner_reply_rate_pct, questions_from_audience_count, complaint_or_issue_count, buying_intent_count, ou top_conversation_post.comments). Nunca inventar números.
-- Quando "visual_cover" estiver presente com overall_score < 70 ou sub_score baixo, pelo menos 1 prioridade pode citar esse número. Nunca inventar números fora do payload.
+- Quando comment_intelligence.replies_measurable não for true, é proibido avaliar a taxa de resposta da marca. Perguntas detetadas não são perguntas sem resposta. Não citar percentagens em prioridades; a evidência numérica é apresentada separadamente.
+- Quando visual_cover estiver presente, pode fundamentar uma hipótese sobre capas; não inferir retenção ou alcance.
 
 Veredicto editorial (obrigatório · campo "editorial_verdict") — DIAGNÓSTICO, não solução:
 - Primeira leitura do relatório. Camada interpretativa: descreve o que os dados sugerem, NÃO prescreve. Recomendações vivem nas "priorities" e no Bloco 02.
@@ -232,7 +232,7 @@ export const RESPONSE_JSON_SCHEMA_V2 = {
       },
       priorities: {
         type: "array",
-        minItems: 3,
+        minItems: 0,
         maxItems: 3,
         items: {
           type: "object",

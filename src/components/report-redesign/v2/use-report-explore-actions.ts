@@ -1,3 +1,5 @@
+import { parseComparisonContext, contextSearch } from "@/lib/comparison-readings/context";
+import { useSearch } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useNavigate } from "@tanstack/react-router";
@@ -60,6 +62,10 @@ export function useReportExploreActions({
   isAdminPreview = false,
   preserveSearch,
 }: UseReportExploreActionsArgs) {
+  const search = useSearch({ strict: false }) as Record<string, unknown>;
+  const currentWindow: "baseline" | "30d" | "90d" =
+    search.w === "30d" || search.w === "90d" ? search.w : "baseline";
+  const context = parseComparisonContext(search.ctx);
   const { t } = useTranslation("report");
   const { handlePremiumAccessClick } = usePremiumCta();
   const fetchBalance = useServerFn(getMyCreditBalance);
@@ -144,6 +150,7 @@ export function useReportExploreActions({
             handle: primaryHandle,
             competitors: existingCompetitors,
             window: windowKind,
+            comparison_context: context,
           },
         })
           .then((state) => {
@@ -157,7 +164,7 @@ export function useReportExploreActions({
           .catch(() => {});
       }
     },
-    [balance, existingCompetitors, primaryHandle, probePeriodCache],
+    [balance, existingCompetitors, primaryHandle, probePeriodCache, search.ctx],
   );
 
   const onConfirmConsume = useCallback(
@@ -193,8 +200,9 @@ export function useReportExploreActions({
           const result = await fetchPublicAnalysis(
             primaryHandle,
             existingCompetitors,
-            { window: windowKind, forceRefresh },
-          );
+            { window: windowKind, forceRefresh,
+            comparisonContext: context,
+          });
           if (result.success) {
             trackEvent({
               data: {
@@ -330,7 +338,10 @@ export function useReportExploreActions({
       const competitorList = [...existingCompetitors, newHandle];
 
       try {
-        const result = await fetchPublicAnalysis(primaryHandle, competitorList);
+        const result = await fetchPublicAnalysis(primaryHandle, competitorList, {
+          window: currentWindow,
+          comparisonContext: nextIntent.context ?? context,
+        });
 
         if (result.success) {
           trackEvent({
@@ -364,7 +375,12 @@ export function useReportExploreActions({
           navigate({
             to: "/analyze/$username",
             params: { username: primaryHandle },
-            search: { ...extraSearch, vs: competitorList.join(",") },
+            search: (prev: Record<string, unknown>) => ({
+              ...prev,
+              ...extraSearch, vs: competitorList.join(","),
+              w: currentWindow === "baseline" ? undefined : currentWindow,
+              ctx: contextSearch(nextIntent.context ?? context),
+            }),
             replace: false,
           }).catch(() => {});
         } else {
@@ -409,6 +425,8 @@ export function useReportExploreActions({
     },
     [
       primaryHandle,
+      currentWindow,
+      search.ctx,
       existingCompetitors,
       submitting,
       navigate,

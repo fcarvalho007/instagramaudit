@@ -1,3 +1,9 @@
+import { validateComparisonReadings } from "./validate";
+import {
+  assertLovableAiDailyBudgetAvailable,
+  invalidateLovableAiBudgetCache,
+} from "@/lib/security/lovable-ai-budget.server";
+import { COMPARISON_READINGS_V2_KEY, StoredComparisonCollectionSchema } from "./types";
 /**
  * Server-only: generate cached AI editorial readings for a comparison.
  *
@@ -38,19 +44,19 @@ function extractJson(text: string): unknown {
   return JSON.parse(candidate.slice(start, end + 1));
 }
 
-export async function generateComparisonReadingsForSnapshot(
+async function generateOneComparison(
   normalizedPayload: AnyRecord,
-  options?: { handle?: string | null; analysisEventId?: string | null },
+  options?: { handle?: string | null; analysisEventId?: string | null; competitorIndex?: number },
 ): Promise<EnrichmentResult> {
   const handle = (options?.handle ?? "").trim();
   const analysisEventId = options?.analysisEventId ?? null;
   const window =
-    typeof (normalizedPayload.meta as AnyRecord | undefined)?.windowLabel ===
+    typeof normalizedPayload.analysis_window ===
     "string"
-      ? ((normalizedPayload.meta as AnyRecord).windowLabel as string)
-      : null;
+      ? normalizedPayload.analysis_window
+      : "baseline";
 
-  const pack = buildComparisonEvidence(normalizedPayload, 0, window);
+  const pack = buildComparisonEvidence(normalizedPayload, options?.competitorIndex ?? 0, window);
   if (!pack) {
     console.info(`${LOG} no usable competitor — skipping`);
     return { ok: true, payloadPatch: null };
@@ -61,8 +67,7 @@ export async function generateComparisonReadingsForSnapshot(
   const evidenceHash = hashEvidencePack(pack, promptVersion, model);
 
   // Idempotency: skip if a ready cache for the same evidence already exists.
-  const cached = normalizedPayload[COMPARISON_READINGS_KEY] as
-    | StoredComparisonReadings
+  const cached = normalizedPayload[COMPARISON_READINGS_KEY] as StoredComparisonReadings
     | undefined;
   if (
     cached &&
@@ -101,6 +106,7 @@ export async function generateComparisonReadingsForSnapshot(
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   const startedAt = Date.now();
 
+  let gatewayRequested = false;
   let stored: StoredComparisonReadings;
   let logStatus: "success" | "timeout" | "http_error" | "network_error" | "config_error" = "success";
   let httpStatus: number | null = null;
@@ -109,6 +115,8 @@ export async function generateComparisonReadingsForSnapshot(
   let totalTokens: number | null = null;
   let logError: string | null = null;
   try {
+    await assertLovableAiDailyBudgetAvailable();
+    gatewayRequested = true;
     const res = await fetch(AI_URL, {
       method: "POST",
       headers: {
@@ -118,7 +126,7 @@ export async function generateComparisonReadingsForSnapshot(
       body: JSON.stringify({
         model,
         temperature: 0.4,
-        max_tokens: 1500,
+        max_tokens: 6000,
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: SYSTEM_PROMPT_V1 },
@@ -151,10 +159,8 @@ export async function generateComparisonReadingsForSnapshot(
     }
 
     const parsed = extractJson(content);
-    const result = ComparisonAIReadingsSchema.safeParse(parsed);
-    if (!result.success) {
-      throw new Error(`schema validation failed: ${result.error.message.slice(0, 200)}`);
-    }
+    const result = validateComparisonReadings(parsed, pack);
+    if (!result.ok) throw new Error(`factual validation failed: ${result.reason}`);
 
     stored = {
       version: "1",
@@ -165,10 +171,11 @@ export async function generateComparisonReadingsForSnapshot(
       window: pack.window,
       generated_at: new Date().toISOString(),
       status: "ready",
-      readings: result.data,
+      readings: result.readings,
+      evidence_pack: pack as unknown as AnyRecord,
     };
     console.info(
-      `${LOG} ok in ${Date.now() - startedAt}ms (${result.data.cards.length} cards)`,
+      `${LOG} ok in ${Date.now() - startedAt}ms (${result.readings.cards.length} cards)`,
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -215,20 +222,75 @@ export async function generateComparisonReadingsForSnapshot(
       totalTokens,
       // Token-based estimate when usage available; flat fallback otherwise.
       // Failed calls still consume gateway quota, so they are charged too.
-      estimatedCostUsd: estimateLovableAiCallCostUsd({
+      estimatedCostUsd: gatewayRequested
+        ? estimateLovableAiCallCostUsd({
         model,
         promptTokens,
         completionTokens,
-      }),
+      })
+        : 0,
       errorMessage: logError ?? undefined,
       analysisEventId,
       sourceContext: "public_analysis",
     });
   }
 
+  invalidateLovableAiBudgetCache();
   return {
     ok: stored.status === "ready",
     payloadPatch: { [COMPARISON_READINGS_KEY]: stored },
     error: stored.status === "failed" ? stored.error : undefined,
+  };
+}
+// The enrichment job owns persistence/claiming. This guard also coalesces concurrent calls in one worker.
+const inFlight = new Map<string, Promise<EnrichmentResult>>();
+export async function generateComparisonReadingsForSnapshot(
+  payload: AnyRecord,
+  options?: { handle?: string | null; analysisEventId?: string | null },
+): Promise<EnrichmentResult> {
+  if (payload.comparison_version !== 2) return generateOneComparison(payload, options);
+  const previous = StoredComparisonCollectionSchema.safeParse(payload[COMPARISON_READINGS_V2_KEY]);
+  const byCompetitor: Record<string, StoredComparisonReadings> = previous.success
+    ? { ...previous.data.by_competitor }
+    : {};
+  let failed = false;
+  for (let index = 0; index < 2; index++) {
+    const pack = buildComparisonEvidence(
+      payload,
+      index,
+      typeof payload.analysis_window === "string" ? payload.analysis_window : "baseline",
+    );
+    if (!pack) continue;
+    const cacheId = hashEvidencePack(
+      pack,
+      COMPARISON_READINGS_PROMPT_VERSION,
+      COMPARISON_READINGS_MODEL,
+    );
+    let pending = inFlight.get(cacheId);
+    if (!pending) {
+      pending = generateOneComparison(
+        { ...payload, [COMPARISON_READINGS_KEY]: byCompetitor[pack.competitor.handle] },
+        { ...options, competitorIndex: index },
+      );
+      inFlight.set(cacheId, pending);
+    }
+    try {
+      const result = await pending;
+      const stored = result.payloadPatch?.[COMPARISON_READINGS_KEY] as
+        StoredComparisonReadings | undefined;
+      if (stored) byCompetitor[pack.competitor.handle] = stored;
+      if (!result.ok) failed = true;
+    } catch {
+      failed = true;
+    } finally {
+      inFlight.delete(cacheId);
+    }
+  }
+  return {
+    ok: !failed,
+    payloadPatch: { [COMPARISON_READINGS_V2_KEY]: { version: 2, by_competitor: byCompetitor } },
+    ...(failed
+      ? { error: "Uma comparação ficou indisponível; as restantes foram preservadas." }
+      : {}),
   };
 }

@@ -1,3 +1,6 @@
+import { publicationUrl } from "@/lib/comparison-readings/publication-url";
+import type { StoredComparisonReadings } from "@/lib/comparison-readings/types";
+import { COMPARISON_METRICS } from "@/lib/comparison-readings/validate";
 /**
  * React-PDF document for the v1 AuditProfiles report.
  *
@@ -6,7 +9,7 @@
  */
 
 import {
-  Document,
+  Document, Link,
   Image,
   Page,
   Text,
@@ -89,6 +92,7 @@ export interface MarketSignalsForPdf {
 }
 
 export interface ReportDocumentInput {
+  comparisons?: StoredComparisonReadings[];
   profile: PublicAnalysisProfile;
   contentSummary: PublicAnalysisContentSummary;
   competitors: CompetitorAnalysis[];
@@ -227,9 +231,7 @@ function ProfileMetricsPage({
           {profile.is_verified ? (
             <Text style={styles.verifiedBadge}>· PERFIL VERIFICADO</Text>
           ) : null}
-          {profile.bio ? (
-            <Text style={styles.identityBio}>{profile.bio}</Text>
-          ) : null}
+          {profile.bio ? <Text style={styles.identityBio}>{profile.bio}</Text> : null}
         </View>
       </View>
 
@@ -690,9 +692,7 @@ function AiInsightsPage({
         impacto e da posição face ao tier de referência. Cada item cita os
         sinais que sustentam a leitura.
       </Text>
-      {sourceLine ? (
-        <Text style={styles.aiSourceNote}>{sourceLine}</Text>
-      ) : null}
+      {sourceLine ? <Text style={styles.aiSourceNote}>{sourceLine}</Text> : null}
 
       {insights.map((item, idx) => {
         const isLast = idx === insights.length - 1;
@@ -859,6 +859,73 @@ function _ReportDocumentImpl(input: ReportDocumentInput) {
           hasAiInsights={hasAiInsights}
         />
       ) : null}
+      {input.comparisons?.map((entry) => (
+        <Page key={entry.competitor_handle} size="A4" style={styles.page}>
+          <Text style={{ fontSize: 18, marginBottom: 12 }}>
+            {entry.model === "deterministic" ? "Experiências do perfil" : "Comparação com"} @
+            {entry.competitor_handle} · {entry.window}
+          </Text>
+          <Text style={{ fontSize: 10, marginBottom: 12 }}>
+            Publicações do período, com interações observadas na recolha. Não representa crescimento
+            histórico, alcance ou resultados comerciais.
+          </Text>
+          {entry.readings!.cards.map((card) => (
+            <View key={card.card_id} style={{ marginBottom: 16 }}>
+              <Text style={{ fontSize: 13, marginBottom: 5 }}>{card.headline}</Text>
+              <Text style={{ fontSize: 10 }}>{card.key_reading}</Text>
+              {card.diagnosis && (
+                <Text style={{ fontSize: 10 }}>
+                  Interpretação: {card.diagnosis.interpretation} {card.diagnosis.transferability}
+                </Text>
+              )}
+              {card.evidence_points.map((e) => (
+                <Text key={e.field} style={{ fontSize: 10 }}>
+                  {e.label}: perfil {String(e.primary_value ?? "Indisponível")}
+                  {e.primary_value === null ? "" : COMPARISON_METRICS[e.field]?.unit} · concorrente{" "}
+                  {String(e.competitor_value ?? "Indisponível")}
+                  {e.competitor_value === null ? "" : COMPARISON_METRICS[e.field]?.unit}
+                </Text>
+              ))}
+              {card.sources.map((source, i) => (
+                <View key={i} style={{ marginTop: 4 }}>
+                  <Text style={{ fontSize: 10 }}>
+                    “{source.quote}” · {source.side === "primary" ? "Perfil" : "Concorrente"} ·{" "}
+                    {source.date}
+                  </Text>
+                  {publicationUrl(source.permalink) && (
+                    <Link style={{ fontSize: 9 }} src={publicationUrl(source.permalink)!}>
+                      Abrir publicação
+                    </Link>
+                  )}
+                </View>
+              ))}
+              {card.caveats.map((text, i) => (
+                <Text key={i} style={{ fontSize: 9, marginTop: 4 }}>
+                  {text}
+                </Text>
+              ))}
+              {card.experiment && (
+                <View style={{ marginTop: 8 }}>
+                  <Text style={{ fontSize: 11 }}>
+                    Experiência proposta · prioridade {card.priority_rank}
+                  </Text>
+                  <Text style={{ fontSize: 10 }}>Hipótese: {card.experiment.hypothesis}</Text>
+                  <Text style={{ fontSize: 10 }}>Execução: {card.experiment.execution}</Text>
+                  <Text style={{ fontSize: 10 }}>
+                    Parâmetros propostos: {card.experiment.duration_days} dias ·{" "}
+                    {card.experiment.intended_posts} publicações · esforço {card.experiment.effort}.
+                  </Text>
+                  <Text style={{ fontSize: 10 }}>
+                    Avaliar:{" "}
+                    {COMPARISON_METRICS[`aggregates.${card.experiment.success_metric}`]?.label}.{" "}
+                    {card.experiment.evaluation}
+                  </Text>
+                </View>
+              )}
+            </View>
+          ))}
+        </Page>
+      ))}
     </Document>
   );
 }

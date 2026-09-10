@@ -1,3 +1,5 @@
+import { ObservedIndicators } from "./observed-indicators";
+import type { SnapshotPayload } from "@/lib/report/snapshot-to-report-data";
 /**
  * Editorial Identity Card — Veredicto executivo (Block 1)
  *
@@ -44,6 +46,7 @@ interface Bullet {
 }
 
 interface EditorialIdentityCardProps {
+  payload?: SnapshotPayload;
   scores: Record<ScoreKey, { value: number; subtitle: string }>;
   /** Veredicto editorial estruturado. Quando presente, tem prioridade
    *  sobre o fallback determinístico. */
@@ -71,8 +74,7 @@ interface EditorialIdentityCardProps {
   competitorsCount?: number;
   /** Método de cadência (window_30d / window_90d / sample_span / insufficient).
    *  Propagado para o fallback para gerar o sufixo "nos últimos 30 dias" etc. */
-  cadenceMethod?:
-    | "window_30d"
+  cadenceMethod?: "window_30d"
     | "window_90d"
     | "sample_span"
     | "insufficient"
@@ -322,6 +324,7 @@ export function deriveSignals(
 /* ── Main Component ────────────────────────────────────────────────── */
 
 export function EditorialIdentityCard({
+  payload,
   scores,
   aiVerdict,
   keyMetrics,
@@ -428,7 +431,10 @@ export function EditorialIdentityCard({
     >
       {/* Zona macro — herói + régua compactos, veredicto logo a seguir */}
       <div className="px-6 py-6 sm:px-7 sm:py-7 flex flex-col gap-4">
-        <IndexBlock
+        {payload?.comparison_version === 2 ? (
+          <ObservedIndicators payload={payload} />
+        ) : (
+          <IndexBlock
           value={overall}
           engagementRatePct={keyMetrics?.engagementRate ?? null}
           engagementBenchmarkPct={
@@ -443,6 +449,7 @@ export function EditorialIdentityCard({
           t={t}
           locale={i18n.language}
         />
+        )}
 
         <div className="min-w-0 border-t border-border-default/70 pt-4">
           <p className="text-eyebrow-sm text-content-tertiary">

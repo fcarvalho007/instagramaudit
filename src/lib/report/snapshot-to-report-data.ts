@@ -1,3 +1,4 @@
+import { matchingCompleteWindows, parseCoverage } from "@/lib/comparison-readings/coverage";
 /**
  * snapshotToReportData — pure adapter from a real Apify snapshot to the
  * ReportData contract consumed by the editorial report layout.
@@ -119,6 +120,13 @@ export interface SnapshotPost {
 }
 
 export interface SnapshotPayload {
+  comparison_version?: number;
+  profile_experiments_v2?: unknown;
+  benchmark_snapshot?: ReportBenchmarkInput;
+  analysis_window_end?: string;
+  collection_coverage?: import("@/lib/comparison-readings/coverage").CollectionCoverage;
+  ai_comparison_readings_v2?: unknown;
+  comparison_context?: { objective?: string; sector?: string; market?: string };
   profile?: SnapshotProfile | null;
   content_summary?: SnapshotContentSummary | null;
   format_stats?: Record<string, SnapshotFormatStat> | null;
@@ -244,6 +252,12 @@ export interface SnapshotInput {
  * so it can travel over the network from server endpoints to client previews.
  */
 export interface ReportBenchmarkInput {
+  methodology?: {
+    observed: unknown;
+    reference: unknown;
+    compatible: boolean;
+    checked_at: string | null;
+  };
   positioning: BenchmarkPositioning;
   perFormatReference: {
     Reels: number | null;
@@ -1037,7 +1051,7 @@ function buildPostingHeatmap(
       if (engCnt[r][c] > 0) cells.push({ r, c, eng: avgMatrix[r][c] });
     }
   }
-  cells.sort((a, b) => (b.eng - a.eng) || (a.r - b.r) || (a.c - b.c));
+  cells.sort((a, b) => b.eng - a.eng || a.r - b.r || a.c - b.c);
   const bestSlots = cells.slice(0, 3).map((cell) => ({
     day: PT_DAY_SHORT[cell.r],
     hour: `${String(cell.c).padStart(2, "0")}h`,
@@ -1230,15 +1244,15 @@ function extractPersistedPriorities(
     const level = (it as { level?: unknown }).level;
     const title =
       typeof (it as { title?: unknown }).title === "string"
-        ? ((it as { title: string }).title.trim())
+        ? (it as { title: string }).title.trim()
         : "";
     const body =
       typeof (it as { body?: unknown }).body === "string"
-        ? ((it as { body: string }).body.trim())
+        ? (it as { body: string }).body.trim()
         : "";
     const resolves =
       typeof (it as { resolves?: unknown }).resolves === "string"
-        ? ((it as { resolves: string }).resolves.trim())
+        ? (it as { resolves: string }).resolves.trim()
         : "";
     if (
       typeof level !== "string" ||
@@ -1378,7 +1392,10 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   // Pure module guarantees: pinned excluded, invalid/future ts excluded,
   // sorted desc, neutral copy when sample is too thin to be reliable.
   // See src/lib/report/cadence.ts for the formula table.
-  const cadence = computeCadence(cadencePosts);
+  const collectedMs = Date.parse(payload.analysis_window_end ?? meta?.generated_at ?? "");
+  const cadence = computeCadence(cadencePosts,
+    Number.isFinite(collectedMs) ? { now: collectedMs } : undefined,
+  );
   const windowDays = cadence.windowDays;
   const profileWithWindow = { ...profile, windowDays };
   keyMetrics.postingFrequencyWeekly = cadence.weekly;
@@ -1461,23 +1478,20 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
             cPerf.length > 0
               ? avg(cPerf, (p) => p.comments)
               : num(s.average_comments, 0),
-          estimatedPostsPerWeek: num(s.estimated_posts_per_week, 0),
+          estimatedPostsPerWeek: payload.comparison_version === 2 ? (computeCadence(cPostsRaw, Number.isFinite(collectedMs) ? {now:collectedMs} : undefined).weekly ?? 0) : num(s.estimated_posts_per_week, 0),
           dominantFormat:
             typeof s.dominant_format === "string" ? s.dominant_format : "—",
           avatarUrl:
             pickAvatarUrl(p),
-          // Today competitors are always fetched in baseline — see
-          // analyze-public-v1.ts (lines 980–983). Window alignment is a
-          // future enhancement; cards label the comparison transparently.
-          windowAligned: false,
+          // Equivalence requires complete coverage of the same absolute interval.
+          windowAligned: matchingCompleteWindows(payload.collection_coverage, parseCoverage(c.collection_coverage)),
           bio:
             typeof p.bio === "string" && p.bio.trim().length > 0
               ? p.bio
               : null,
           externalUrls: Array.isArray(p.external_urls)
-            ? (p.external_urls.filter(
-                (u): u is string => typeof u === "string" && u.length > 0,
-              ))
+            ? p.external_urls.filter(
+                (u): u is string => typeof u === "string" && u.length > 0)
             : [],
           isVerified: p.is_verified === true,
           // Phase 2B — deterministic post-derived detail (optional;
@@ -1621,7 +1635,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
       ? `${sampleSize} publicações`
       : `${windowDays} dias`;
   const kpiSubtitle = isInsufficient
-    ? cadence.notePt ?? "amostra recente insuficiente"
+    ? (cadence.notePt ?? "amostra recente insuficiente")
     : cadence.method === "sample_span"
       ? `ritmo observado nas últimas ${sampleSize} publicações`
       : `${sampleSize} publicações nos últimos ${windowDays} dias`;
@@ -1727,7 +1741,7 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
   })();
   const enrichedAvatarUrl = (() => {
     const prof = payload.profile as
-      | (Record<string, unknown> & { avatar_storage_url?: unknown })
+      (Record<string, unknown> & { avatar_storage_url?: unknown })
       | undefined;
     const candidates = [prof?.avatar_storage_url, prof?.avatar_url];
     for (const v of candidates) {
@@ -1785,11 +1799,9 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
       const mentions = Array.from(
         new Set(
           mentionsRaw
-            .map((m) =>
-              typeof m === "string"
+            .map((m) => (typeof m === "string"
                 ? m.trim().replace(/^@/, "").toLowerCase()
-                : "",
-            )
+                : ""))
             .filter((m) => m.length > 0),
         ),
       ).slice(0, 5);
@@ -1857,11 +1869,9 @@ export function snapshotToReportData(input: SnapshotInput): AdapterResult {
           const mentions = Array.from(
             new Set(
               mentionsRaw
-                .map((m) =>
-                  typeof m === "string"
+                .map((m) => (typeof m === "string"
                     ? m.trim().replace(/^@/, "").toLowerCase()
-                    : "",
-                )
+                    : ""))
                 .filter((m) => m.length > 0),
             ),
           ).slice(0, 5);

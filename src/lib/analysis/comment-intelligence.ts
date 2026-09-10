@@ -31,31 +31,31 @@ export interface PostCommentBatch {
 // Signal classification (heuristic, transient — text never persisted)
 // ─────────────────────────────────────────────────────────────────────
 
-/** Classify a comment's text into a signal category. */
-function classifySignal(text: string | undefined): "question" | "praise" | "complaint" | "buying_intent" | "spam" | null {
-  if (!text) return null;
-  const t = text.toLowerCase().trim();
-  if (t.length < 2) return null;
+/** Signals can overlap: a price question is both a question and commercial intent. */
+export type CommentSignal = "question" | "praise" | "complaint" | "buying_intent" | "spam";
+export function classifyCommentSignals(text: string | undefined): CommentSignal[] {
+  const t = text?.toLowerCase().trim() ?? "";
+  if (t.length < 2) return [];
+  const signals: CommentSignal[] = [];
+  if (/\?/.test(t) ||
+    /^(como|onde|quando|qual|quanto|por ?qu[eê]|what|where|when|how|which|why|can you|do you)/i.test(t,
+    ))
+    signals.push("question");
+  if (/(comprar|preço|quanto custa|encomend|ship|deliver|buy|purchase|price|order|onde (posso |se )?(compra|encontr)|how (much|to (buy|order|get))|marcar (uma )?visita|quero vender|pedido de avalia)/i.test(t,
+    ))
+    signals.push("buying_intent");
+  if (/(não funciona|péssim[oa]|horrível|decepcion|desapon|problema|broken|worst|terrible|disappointing|doesn'?t work|scam|fraud|reclam)/i.test(
+      t,
+    )
+  )
+    signals.push("complaint");
+  if (/(parabéns|incrível|maravilhos[oa]|lindíssim|perfeito|excelente|fantástic|amazing|beautiful|gorgeous|perfect|love this|wonderful|stunning|great|awesome|👏|🔥|❤️|😍|💯)/i.test(t,
+    ))
+    signals.push("praise");
+  if (!signals.length && (/^@\w+\s*$/.test(t) || t.length < 4 || /^[\p{Emoji}\s]+$/u.test(t)))
+    signals.push("spam");
 
-  // Spam / low quality — emoji-only, single word, or tag-only
-  if (/^[\p{Emoji}\s]+$/u.test(t) && t.length < 10) return "spam";
-  if (/^@\w+\s*$/.test(t)) return "spam";
-  if (t.length < 4 && !/\?/.test(t)) return "spam";
-
-  // Question
-  if (/\?/.test(t)) return "question";
-  if (/^(como|onde|quando|qual|quanto|por ?qu[eê]|what|where|when|how|which|why|can you|do you)/i.test(t)) return "question";
-
-  // Buying intent
-  if (/(comprar|preço|quanto custa|encomend|ship|deliver|buy|purchase|price|order|link\s*(na\s*bio|in\s*bio)?|onde (posso |se )?(compra|encontr)|how (much|to (buy|order|get)))/i.test(t)) return "buying_intent";
-
-  // Complaint / issue
-  if (/(não funciona|péssim[oa]|horrível|decepcion|desapon|problema|broken|worst|terrible|disappointing|doesn'?t work|scam|fraud|reclam)/i.test(t)) return "complaint";
-
-  // Praise
-  if (/(parabéns|incrível|maravilhos[oa]|lindíssim|perfeito|excelente|fantástic|amazing|beautiful|gorgeous|perfect|love this|wonderful|stunning|great|awesome|👏|🔥|❤️|😍|💯)/i.test(t)) return "praise";
-
-  return null;
+  return signals;
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -174,7 +174,8 @@ export function aggregateCommentIntelligence(
   // Top 2 posts by audience comment count
   let topCommentPostsList: Array<{ postUrl: string; commentsCount: number }> = [];
 
-  let topPost: {
+  let topPost:
+    | {
     postUrl: string;
     commentsCount: number;
     ownerRepliesCount: number;
@@ -208,20 +209,20 @@ export function aggregateCommentIntelligence(
       complaints: 0,
       buyingIntent: 0,
     };
-    function trackAudience(username: string, text: string | undefined, signal: ReturnType<typeof classifySignal>) {
+    function trackAudience(username: string, text: string | undefined, signal: CommentSignal[]) {
       postStats.audienceCommentsCount++;
-      if (signal === "question") postStats.questions++;
-      else if (signal === "praise") postStats.praise++;
-      else if (signal === "complaint") postStats.complaints++;
-      else if (signal === "buying_intent") postStats.buyingIntent++;
+      if (signal.includes("question")) postStats.questions++;
+      if (signal.includes("praise")) postStats.praise++;
+      if (signal.includes("complaint")) postStats.complaints++;
+      if (signal.includes("buying_intent")) postStats.buyingIntent++;
       // Track longest classified excerpt as "topAudienceComment" candidate.
       // Mirrors `classifiedExcerpts`: only stored when signal classification
       // matched, so the GDPR contract (no raw uncategorised text) holds.
       const isClassified =
-        signal === "question" ||
-        signal === "praise" ||
-        signal === "complaint" ||
-        signal === "buying_intent";
+        signal.includes("question") ||
+        signal.includes("praise") ||
+        signal.includes("complaint") ||
+        signal.includes("buying_intent");
       if (isClassified && text && text.trim().length >= 12) {
         const trimmed = text.trim().slice(0, 140);
         if (!postStats.longestAudienceComment || trimmed.length > postStats.longestAudienceComment.text.length) {
@@ -242,12 +243,12 @@ export function aggregateCommentIntelligence(
         if (commentOwner) uniqueCommenters.add(commentOwner);
 
         // Classify signal (text used transiently, never persisted)
-        const signal = classifySignal(comment.text);
-        if (signal === "question") { questionsCount++; pushExcerpt(excerptQuestions, comment.ownerUsername ?? "", comment.text); }
-        else if (signal === "praise") { praiseCount++; pushExcerpt(excerptPraise, comment.ownerUsername ?? "", comment.text); }
-        else if (signal === "complaint") { complaintCount++; pushExcerpt(excerptComplaints, comment.ownerUsername ?? "", comment.text); }
-        else if (signal === "buying_intent") { buyingIntentCount++; pushExcerpt(excerptBuyingIntent, comment.ownerUsername ?? "", comment.text); }
-        else if (signal === "spam") spamCount++;
+        const signal = classifyCommentSignals(comment.text);
+        if (signal.includes("question")) { questionsCount++; pushExcerpt(excerptQuestions, comment.ownerUsername ?? "", comment.text); }
+        if (signal.includes("praise")) { praiseCount++; pushExcerpt(excerptPraise, comment.ownerUsername ?? "", comment.text); }
+        if (signal.includes("complaint")) { complaintCount++; pushExcerpt(excerptComplaints, comment.ownerUsername ?? "", comment.text); }
+        if (signal.includes("buying_intent")) { buyingIntentCount++; pushExcerpt(excerptBuyingIntent, comment.ownerUsername ?? "", comment.text); }
+        if (signal.includes("spam")) spamCount++;
         trackAudience(comment.ownerUsername ?? "", comment.text, signal);
       }
       postCommentCount++;
@@ -267,12 +268,12 @@ export function aggregateCommentIntelligence(
             totalAudienceComments++;
             if (replyOwner) uniqueCommenters.add(replyOwner);
 
-            const signal = classifySignal(reply.text);
-            if (signal === "question") { questionsCount++; pushExcerpt(excerptQuestions, reply.ownerUsername ?? "", reply.text); }
-            else if (signal === "praise") { praiseCount++; pushExcerpt(excerptPraise, reply.ownerUsername ?? "", reply.text); }
-            else if (signal === "complaint") { complaintCount++; pushExcerpt(excerptComplaints, reply.ownerUsername ?? "", reply.text); }
-            else if (signal === "buying_intent") { buyingIntentCount++; pushExcerpt(excerptBuyingIntent, reply.ownerUsername ?? "", reply.text); }
-            else if (signal === "spam") spamCount++;
+            const signal = classifyCommentSignals(reply.text);
+            if (signal.includes("question")) { questionsCount++; pushExcerpt(excerptQuestions, reply.ownerUsername ?? "", reply.text); }
+            if (signal.includes("praise")) { praiseCount++; pushExcerpt(excerptPraise, reply.ownerUsername ?? "", reply.text); }
+            if (signal.includes("complaint")) { complaintCount++; pushExcerpt(excerptComplaints, reply.ownerUsername ?? "", reply.text); }
+            if (signal.includes("buying_intent")) { buyingIntentCount++; pushExcerpt(excerptBuyingIntent, reply.ownerUsername ?? "", reply.text); }
+            if (signal.includes("spam")) spamCount++;
             trackAudience(reply.ownerUsername ?? "", reply.text, signal);
           }
         }
@@ -317,7 +318,7 @@ export function aggregateCommentIntelligence(
     .filter((p) => p.audienceCommentsCount + p.ownerRepliesCount > 0)
     .sort(
       (a, b) =>
-        (b.ownerRepliesCount + b.audienceCommentsCount) -
+        b.ownerRepliesCount + b.audienceCommentsCount -
         (a.ownerRepliesCount + a.audienceCommentsCount),
     )
     .slice(0, 3)
@@ -415,8 +416,9 @@ export function aggregateCommentIntelligence(
     topConversationPost:
       topPost && topPost.ownerRepliesCount > 0 ? topPost : undefined,
     classifiedExcerpts:
-      (excerptQuestions.length > 0 || excerptPraise.length > 0 || excerptComplaints.length > 0 || excerptBuyingIntent.length > 0)
-        ? { questions: excerptQuestions, praise: excerptPraise, complaints: excerptComplaints, buyingIntent: excerptBuyingIntent }
+      excerptQuestions.length > 0 || excerptPraise.length > 0 || excerptComplaints.length > 0 || excerptBuyingIntent.length > 0
+        ? { questions: excerptQuestions, praise: excerptPraise, complaints: excerptComplaints, buyingIntent: excerptBuyingIntent,
+          }
         : undefined,
     topCommentPosts: topCommentPostsList.length > 0 ? topCommentPostsList : undefined,
     topConversationPosts: topConversationPosts.length > 0 ? topConversationPosts : undefined,

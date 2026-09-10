@@ -1,3 +1,4 @@
+import { useComparisonReport, ComparisonSelector } from "./leitura-ia/comparison-report-context";
 import { useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -91,19 +92,24 @@ export function ReportOverviewBlock({
   result,
   renderInsight: _renderInsight,
   payload,
-  mode = "all",
+  mode: requestedMode = "all",
   access = "pro",
   onFreeUnlockClick,
 }: Props) {
   const k = result.data.keyMetrics;
   const enriched = result.enriched;
 
-  // Optional AI editorial readings (cached server-side; null when missing).
-  const aiReadings = useComparisonReadings(payload);
+  const comparison = useComparisonReport();
+  const mode = comparison.active && access === "pro" ? "all" : requestedMode;
+  const aiReadings = useComparisonReadings(payload,
+    comparison.selected || result.data.competitorBreakdown[0]?.username,
+  );
 
   // TODO: multi-competitor layout (Fase 1.5). Today we render only the first
   // entry; the remaining competitors stay in the legacy gauge.
-  const firstCompetitor = result.data.competitorBreakdown[0] ?? null;
+  const firstCompetitor =
+    result.data.competitorBreakdown.find((c) => c.username.toLowerCase() === comparison.selected) ??
+    result.data.competitorBreakdown[0] ?? null;
   const primaryHandle = result.data.profile.username;
 
   // Single source of truth: derive likes/comments averages from the same
@@ -163,6 +169,7 @@ export function ReportOverviewBlock({
 
   return (
     <div className="relative space-y-8 md:space-y-10">
+      <ComparisonSelector />
 
       {mode === "all" && firstCompetitor ? (
         <ComparisonHero
@@ -193,6 +200,7 @@ export function ReportOverviewBlock({
       {((mode === "all" && !firstCompetitor) || mode === "free") && (
         /* Zona B — Editorial Identity Card (replaces 6-card grid) */
         <EditorialIdentityCard
+          payload={payload}
           scores={scores}
           aiVerdict={enriched.aiInsightsV2?.editorialVerdict ?? null}
           keyMetrics={{
@@ -274,6 +282,7 @@ export function ReportOverviewBlock({
             outliersExcluded={sample?.dateOutliersExcluded ?? 0}
           />
           <EditorialIdentityCard
+            payload={payload}
             scores={scores}
             aiVerdict={enriched.aiInsightsV2?.editorialVerdict ?? null}
             keyMetrics={{

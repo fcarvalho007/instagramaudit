@@ -94,7 +94,7 @@ export type AudienceResponseLabel =
   | "Dados insuficientes";
 
 export type AudienceResponseStatus =
-  | "active"
+  "active"
   | "moderate"
   | "silent"
   | "concentrated"
@@ -535,7 +535,8 @@ export function classifyAudienceResponse(
   let totalComments = 0;
   let postsWithData = 0;        // posts where at least one field is a number
   let postsWithComments = 0;    // posts where comments >= 1
-  let topPost: { index: number; comments: number; likes: number; caption: string; format: string | null; date: string | null } | null = null;
+  let topPost: { index: number; comments: number; likes: number; caption: string; format: string | null; date: string | null;
+  } | null = null;
 
   for (let i = 0; i < posts.length; i++) {
     const p = posts[i];
@@ -876,7 +877,7 @@ function extractAiHeadline(aiText: string): string {
 // ─────────────────────────────────────────────────────────────────────
 
 export type IntegrationLabel =
-  | "Integração clara"
+  "Integração clara"
   | "Integração parcial"
   | "Pouca ligação visível"
   | "Sem sinais suficientes";
@@ -995,7 +996,7 @@ export function inferProbableObjective(args: {
   const scores: Record<ObjectiveLabel, number> = {
     "Notoriedade · marca pessoal": 0,
     "Geração de leads": 0,
-    "Comunidade": 0,
+    Comunidade: 0,
     "Vendas online": 0,
     "Educação de audiência": 0,
   };
@@ -1240,7 +1241,7 @@ export function derivePriorities(args: {
       body:
         "Apenas " +
         integration.signals.explicitCta.sharePct +
-        " % das captions têm uma chamada à acção. Pedir uma acção clara (\"comenta\", \"guarda\", \"link na bio\") aumenta a probabilidade de conversão.",
+        ' % das captions têm uma chamada à acção. Pedir uma acção clara ("comenta", "guarda", "link na bio") aumenta a probabilidade de conversão.',
       resolves: "Resolve a Pergunta 07 — integração entre canais.",
       _score: 7,
     });
@@ -1305,7 +1306,10 @@ export function derivePriorities(args: {
     const buyingIntent = commentIntel.buyingIntentCount ?? 0;
     const topPost = commentIntel.topConversationPosts?.[0] ?? null;
 
-    if (replyRate < 10 && questions >= 3) {
+    if (
+      commentIntel.repliesMeasurable === true &&
+      !commentIntel.lowConfidence &&
+      replyRate < 10 && questions >= 3) {
       out.push({
         level: "alta",
         category: "corrigir",
@@ -1313,11 +1317,10 @@ export function derivePriorities(args: {
         source: "deterministic",
         evidence: [
           { label: "Resposta da marca", value: `${replyRate}%` },
-          { label: "Perguntas sem resposta", value: String(questions) },
+          { label: "Perguntas detetadas", value: String(questions) },
         ],
         title: "Responder às perguntas da audiência",
-        body:
-          `A marca responde apenas em ${replyRate}% dos comentários e há ${questions} perguntas explícitas sem resposta. Responder cria conversa e mostra atenção real.`,
+        body: `A marca responde apenas em ${replyRate}% dos comentários e há ${questions} perguntas explícitas na amostra. Responder cria conversa e mostra atenção real.`,
         resolves: "Resolve a Pergunta 06 — resposta do público.",
         _score: 12,
       });
@@ -1486,56 +1489,6 @@ export function derivePriorities(args: {
     });
   }
 
-  // Fallback útil baseado em integração (preenche se ainda <3)
-  const evidenceRichCount = out.filter(
-    (it) =>
-      it.basedOn.some(
-        (b) => b === "Resposta do público" || b === "Análise visual das capas",
-      ),
-  ).length;
-
-  if (out.length < 3 && integration.available) {
-    out.push({
-      level: "oportunidade",
-      category: "oportunidade",
-      basedOn: ["Integração entre canais"],
-      source: "deterministic",
-      title: "Tornar a ligação entre canais mais visível",
-      body:
-        "Mencionar site, newsletter ou outros canais nas captions ajuda a audiência a sair do Instagram quando faz sentido.",
-      resolves: "Resolve a Pergunta 07 — integração entre canais.",
-      _score: 3,
-    });
-  }
-
-  // Fallback genérico — repetir o que já funciona (sempre disponível)
-  if (out.length < 3 && evidenceRichCount < 2) {
-    out.push({
-      level: "oportunidade",
-      category: "repetir",
-      basedOn: ["Publicações-chave"],
-      source: "deterministic",
-      title: "Repetir o tema do post com mais interacção",
-      body:
-        "Identifica o post com mais comentários ou likes dos últimos 30 dias e replica o ângulo (tema, formato, abertura) noutra peça nas próximas duas semanas.",
-      resolves: "Resolve a Pergunta 05 — resposta do público.",
-      _score: 2,
-    });
-  }
-  if (out.length < 3 && evidenceRichCount < 2) {
-    out.push({
-      level: "oportunidade",
-      category: "testar",
-      basedOn: ["Tipo de conteúdo dominante"],
-      source: "deterministic",
-      title: "Definir 2 rubricas editoriais recorrentes",
-      body:
-        "Criar duas rubricas claras (ex.: dica semanal + bastidores) facilita planeamento, dá ritmo ao perfil e ajuda a audiência a reconhecer o que esperar.",
-      resolves: "Resolve a Pergunta 01 — clareza editorial.",
-      _score: 1,
-    });
-  }
-
   // Boost score for evidence-rich rules (comments / visual cover).
   for (const it of out) {
     const richBasis = it.basedOn.some(
@@ -1556,7 +1509,7 @@ export function derivePriorities(args: {
       return true;
     })
     .sort((a, b) => b._score - a._score)
-    .slice(0, 6)
+    .slice(0, 3)
     .map(({ _score, ...rest }) => rest);
 
   return ranked;

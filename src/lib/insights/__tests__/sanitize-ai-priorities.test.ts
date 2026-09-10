@@ -1,59 +1,41 @@
 import { describe, it, expect } from "vitest";
 import {
-  sanitizeAiPriorityBody,
-  collectPayloadNumbers,
-} from "../sanitize-ai-priorities";
+  sanitizeAiPriorityBody } from "../sanitize-ai-priorities";
 
-describe("sanitizeAiPriorityBody", () => {
-  it("keeps supported numbers verbatim", () => {
-    const payload = { reply_rate: 25, complaints: 3 };
-    const body = "A marca responde em 25% e há 3 queixas.";
-    const r = sanitizeAiPriorityBody(body, payload);
-    expect(r.sanitized).toBe(false);
-    expect(r.body).toBe(body);
+describe("field-bound priority claims", () => {
+  it("rejects unsupported numbers even when removing them leaves a short body", () => {
+    expect(sanitizeAiPriorityBody("Resposta: 87%", {})).toEqual({ body: "", sanitized: true });
   });
 
-  it("tolerates ±1 rounding for percentages", () => {
-    const payload = { reply_rate: 24.6 };
-    const r = sanitizeAiPriorityBody("Reply rate é 25%.", payload);
-    expect(r.sanitized).toBe(false);
+  it("rejects a real number attached to the wrong metric", () => {
+    expect(
+      sanitizeAiPriorityBody("A taxa de resposta da marca é 12%.", {
+        sample_posts: 12,
+        owner_reply_rate_pct: 0,
+      }).body,
+    ).toBe("");
   });
 
-  it("strips unsupported numbers and tidies up", () => {
-    const payload = { reply_rate: 6 };
-    const r = sanitizeAiPriorityBody(
-      "A marca responde em 47% dos comentários, com média de 6 respostas.",
-      payload,
-    );
-    expect(r.sanitized).toBe(true);
-    expect(r.body).not.toMatch(/47/);
-    expect(r.body).toMatch(/6/);
+  it("renders only exact field/value matches", () => {
+    expect(
+      sanitizeAiPriorityBody(
+        "Resposta observada: {{content_summary.average_engagement_rate}}",
+        { content_summary: { average_engagement_rate: 0 } },
+        [{ field: "content_summary.average_engagement_rate", value: 0, unit: "%" }],
+      ).body,
+    ).toBe("Resposta observada: 0%");
+    expect(
+      sanitizeAiPriorityBody(
+        "Resposta: {{content_summary.average_engagement_rate}}",
+        { content_summary: { average_engagement_rate: 10 } },
+        [{ field: "content_summary.average_engagement_rate", value: 12, unit: "%" }],
+      ).body,
+    ).toBe("");
   });
 
-  it("falls back to original when stripping would gut the sentence", () => {
-    const payload = {};
-    const body = "47%.";
-    const r = sanitizeAiPriorityBody(body, payload);
-    expect(r.body).toBe(body); // too short after strip → keep original
-  });
-
-  it("leaves bodies without numbers unchanged", () => {
-    const payload = {};
-    const body = "Responder aos comentários cria conversa visível.";
-    const r = sanitizeAiPriorityBody(body, payload);
-    expect(r.sanitized).toBe(false);
-    expect(r.body).toBe(body);
-  });
-
-  it("collectPayloadNumbers walks nested objects and arrays", () => {
-    const pool = collectPayloadNumbers({
-      a: 10,
-      b: { c: [3, 7] },
-      d: "tem 42 itens",
-    });
-    expect(pool.has("10")).toBe(true);
-    expect(pool.has("3")).toBe(true);
-    expect(pool.has("7")).toBe(true);
-    expect(pool.has("42")).toBe(true);
+  it("keeps non-numeric hypotheses", () => {
+    expect(
+      sanitizeAiPriorityBody("Testar perguntas relacionadas com o tema da publicação.", {}).body,
+    ).toContain("Testar");
   });
 });

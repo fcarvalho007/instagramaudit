@@ -1,35 +1,25 @@
-/**
- * Build the deterministic evidence pack handed to the AI model.
- * Pure function — no I/O, no Date.now(), no randomness.
- *
- * Inputs come from a snapshot's `normalized_payload`. Output is small,
- * stable JSON; the same input always produces the same `evidence_hash`,
- * which drives idempotent caching.
- */
-
+import { publicationUrl } from "./publication-url";
+export { publicationUrl } from "./publication-url";
+/** Canonical, deterministic evidence shared by generation, validation and reports. */
 import { createHash } from "crypto";
+import type { PublicAnalysisProfile, PublicAnalysisContentSummary } from "@/lib/analysis/types";
+import type { EnrichedPost, FormatStats } from "@/lib/analysis/normalize";
+import { computeCadence, normalizePostTimestamp } from "@/lib/report/cadence";
+import { remapUtcCountsToIso } from "@/lib/report/weekday-iso";
 
-type AnyRecord = Record<string, unknown>;
+import { editorialEvidence } from "./editorial-evidence";
+import { parseCoverage, matchingCompleteWindows, type CollectionCoverage } from "./coverage";
 
-function num(v: unknown): number | null {
-  return typeof v === "number" && Number.isFinite(v) ? v : null;
-}
-function str(v: unknown): string | null {
-  return typeof v === "string" && v.length > 0 ? v : null;
-}
-function pick<T extends AnyRecord>(obj: unknown, keys: string[]): T {
-  const out: AnyRecord = {};
-  if (obj && typeof obj === "object") {
-    for (const k of keys) {
-      const v = (obj as AnyRecord)[k];
-      if (v !== undefined) out[k] = v;
-    }
-  }
-  return out as T;
-}
+type Obj = Record<string, unknown>;
+const obj = (v: unknown): Obj =>
+  v && typeof v === "object" && !Array.isArray(v) ? (v as Obj) : {};
+const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null);
+const round = (v: number) => Math.round(v * 100) / 100;
 
 export interface ComparisonEvidencePack {
   window: string | null;
+  context: { objective: string | null; sector: string | null; market: string | null };
   primary: ProfileEvidence;
   competitor: ProfileEvidence;
   deltas: {
@@ -41,18 +31,23 @@ export interface ComparisonEvidencePack {
     has_format_stats_competitor: boolean;
     has_weekday_data_competitor: boolean;
     competitor_bio_present: boolean;
+    comparable_periods: boolean;
     primary_sample_small: boolean;
     competitor_sample_small: boolean;
   };
 }
 
 export interface ProfileEvidence {
+  collection_coverage: CollectionCoverage | null;
+  bio_text: string | null;
+  sampled_posts: ReturnType<typeof editorialEvidence>["sampled_posts"];
+  aggregates: ReturnType<typeof editorialEvidence>["aggregates"];
   handle: string;
   full_name: string | null;
   followers: number | null;
   verified: boolean | null;
   bio_present: boolean;
-  bio_external_url_count: number;
+  bio_external_url_count: number | null;
   posts_analyzed: number | null;
   engagement_rate_pct: number | null;
   posting_frequency_weekly: number | null;
@@ -61,11 +56,14 @@ export interface ProfileEvidence {
   dominant_format: string | null;
   dominant_format_share_pct: number | null;
   format_mix: Array<{ format: string; share_pct: number; count: number | null }>;
-  weekday_counts_iso: number[] | null; // Mon=0..Sun=6
+  weekday_counts_iso: number[] | null;
   weekday_peak_iso: number | null;
   top_hashtags: Array<{ tag: string; uses: number }>;
   top_post_metrics: Array<{
     rank: number;
+    id: string | null;
+    permalink: string | null;
+    caption: string | null;
     type: string | null;
     likes: number | null;
     comments: number | null;
@@ -73,207 +71,185 @@ export interface ProfileEvidence {
   }>;
 }
 
-function profileFromPrimary(payload: AnyRecord): ProfileEvidence {
-  const profile = (payload.profile ?? {}) as AnyRecord;
-  const summary = (payload.content_summary ?? {}) as AnyRecord;
-  const formatStats = (payload.format_stats ?? {}) as AnyRecord;
+/** Only accept Instagram publication URLs; never turn a caption into an executable link. */
 
-  const formatMix: ProfileEvidence["format_mix"] = [];
-  for (const [k, v] of Object.entries(formatStats)) {
-    if (!v || typeof v !== "object") continue;
-    const rec = v as AnyRecord;
-    const share = num(rec.sharePct) ?? num(rec.share_pct);
-    if (share === null) continue;
-    formatMix.push({
-      format: String(k),
-      share_pct: Math.round(share * 10) / 10,
-      count: num(rec.count),
-    });
+function profileEvidence(raw: Obj, referenceTime: number | undefined): ProfileEvidence {
+  // The boundary accepts old snapshots, but all field names below come from the canonical contract.
+  const profile = obj(raw.profile) as Partial<PublicAnalysisProfile>;
+  const summary = obj(raw.content_summary) as Partial<PublicAnalysisContentSummary>;
+  const posts = (Array.isArray(raw.posts) ? raw.posts : []).filter(
+    (p) => p && typeof p === "object",
+  ) as Partial<EnrichedPost>[];
+  const stats = obj(raw.format_stats) as Partial<FormatStats>;
+
+  const formatMix = Object.entries(stats)
+    .flatMap(([format, stat]) => {
+      const share = num(stat?.share_pct);
+      return share === null ? [] : [{
+      format,
+      share_pct: round(share),
+      count: num(stat?.count) }];
+    })
+    .sort((a, b) => b.share_pct - a.share_pct || a.format.localeCompare(b.format));
+  const utc = Array.isArray(raw.weekday_counts) ? (raw.weekday_counts as number[]) : null;
+  const iso = Array.isArray(raw.weekday_counts_iso)
+      ? (raw.weekday_counts_iso as number[]) : null;
+  const weekday = utc
+    ? remapUtcCountsToIso(utc)
+    : iso?.length === 7
+      ? iso.map((n) => num(n) ?? 0)
+      : posts.some((p) => Number.isInteger(p.weekday))
+        ? remapUtcCountsToIso(
+            posts.reduce(
+              (counts, p) => {
+                if (typeof p.weekday === "number" && p.weekday >= 0 && p.weekday < 7)
+                  counts[p.weekday]++;
+                return counts;
+              },
+              [0, 0, 0, 0, 0, 0, 0],
+            ),
+          )
+        : null;
+  const tags = new Map<string, number>();
+  if (posts.length) {
+    for (const p of posts)
+      for (const tag of new Set(p.hashtags ?? [])) {
+        const key = tag.toLowerCase();
+        tags.set(key, (tags.get(key) ?? 0) + 1);
+      }
+  } else if (Array.isArray(raw.top_hashtags)) {
+    for (const item of raw.top_hashtags) {
+      const h = obj(item);
+    const count = num(h.count) ?? num(h.uses);
+    if (str(h.tag) && count !== null) tags.set(str(h.tag)!,
+      count);
+    }
   }
-
-  const topHashtags: ProfileEvidence["top_hashtags"] = Array.isArray(payload.top_hashtags)
-    ? (payload.top_hashtags as AnyRecord[])
-        .slice(0, 8)
-        .map((h) => ({
-          tag: String(h.tag ?? ""),
-          uses: num(h.uses) ?? 0,
-        }))
-        .filter((h) => h.tag.length > 0)
-    : [];
-
-  const posts = Array.isArray(payload.posts) ? (payload.posts as AnyRecord[]) : [];
-  const sortedByLikes = [...posts]
-    .map((p, i) => ({ p, i }))
-    .sort((a, b) => (num(b.p.likes) ?? 0) - (num(a.p.likes) ?? 0))
-    .slice(0, 3);
-
+  // Without a collection timestamp, never reinterpret a historic sample against today's clock.
+  const cadence =
+    referenceTime === undefined ? null : computeCadence(posts, { now: referenceTime });
+  const dominant = str(summary.dominant_format);
   const bio = str(profile.bio);
-  const externalUrls = Array.isArray(profile.external_urls)
-    ? (profile.external_urls as unknown[])
-    : Array.isArray(profile.externalUrls)
-      ? (profile.externalUrls as unknown[])
-      : [];
-
+  const coverage = parseCoverage(raw.collection_coverage);
+  const start = coverage?.requested_start ? Date.parse(coverage.requested_start) : null;
+  const editorial = editorialEvidence(
+    posts,
+    start !== null && Number.isFinite(start) ? start : null,
+    referenceTime ?? null,
+  );
+  const sorted = [...posts].sort(
+    (a, b) =>
+      (num(b.engagement_pct) ?? -1) - (num(a.engagement_pct) ?? -1) ||
+      (num(b.likes) ?? -1) - (num(a.likes) ?? -1) ||
+      String(a.id).localeCompare(String(b.id)),
+  );
   return {
-    handle: String(profile.username ?? profile.handle ?? "").toLowerCase(),
-    full_name: str(profile.full_name) ?? str(profile.fullName),
-    followers: num(profile.followers),
-    verified: typeof profile.verified === "boolean" ? profile.verified : null,
+    collection_coverage: coverage ?? null,
+    bio_text: bio,
+    ...editorial,
+    handle: (str(profile.username)
+    ?? "").replace(/^@/, "").toLowerCase(),
+    full_name: str(profile.display_name),
+    followers: num(profile.followers_count),
+    verified: typeof profile.is_verified === "boolean" ? profile.is_verified : null,
     bio_present: bio !== null,
-    bio_external_url_count: externalUrls.length,
-    posts_analyzed: num(summary.posts_analyzed) ?? num(summary.postsAnalyzed),
-    engagement_rate_pct:
-      num(summary.engagement_rate) ?? num(summary.engagementRate),
-    posting_frequency_weekly:
-      num(summary.posting_frequency_weekly) ?? num(summary.postingFrequencyWeekly),
-    average_likes: num(summary.average_likes) ?? num(summary.averageLikes),
-    average_comments:
-      num(summary.average_comments) ?? num(summary.averageComments),
-    dominant_format: str(summary.dominant_format) ?? str(summary.dominantFormat),
-    dominant_format_share_pct:
-      num(summary.dominant_format_share) ?? num(summary.dominantFormatShare),
-    format_mix: formatMix.sort((a, b) => b.share_pct - a.share_pct),
-    weekday_counts_iso: Array.isArray(payload.weekday_counts_iso)
-      ? (payload.weekday_counts_iso as number[]).map((n) => num(n) ?? 0)
+    bio_external_url_count: Array.isArray(profile.external_urls)
+      ? profile.external_urls.length
       : null,
-    weekday_peak_iso: null, // filled below
-    top_hashtags: topHashtags,
-    top_post_metrics: sortedByLikes.map((x, idx) => ({
-      rank: idx + 1,
-      type: str(x.p.type) ?? str(x.p.media_type),
-      likes: num(x.p.likes),
-      comments: num(x.p.comments),
-      taken_at: str(x.p.taken_at_iso) ?? str(x.p.taken_at),
+    posts_analyzed: num(summary.posts_analyzed),
+    engagement_rate_pct:
+      summary.posts_analyzed === 0 ||
+      (profile.followers_count ?? 0) <= 0 ||
+      posts.some((p) => p.likes_observed === false || p.comments_observed === false)
+        ? null
+        :
+      num(summary.average_engagement_rate),
+    posting_frequency_weekly: cadence?.sufficient ? cadence.weekly : null,
+    average_likes: posts.some((p) => p.likes_observed === false) ? null
+      : num(summary.average_likes),
+    average_comments: posts.some((p) => p.comments_observed === false)
+      ? null
+      :
+      num(summary.average_comments),
+    dominant_format: dominant,
+    dominant_format_share_pct: formatMix.find((f) => f.format === dominant) ?.share_pct ?? null,
+    format_mix: formatMix,
+    weekday_counts_iso: weekday,
+    weekday_peak_iso:
+      weekday && Math.max(...weekday) > 0 ? weekday.indexOf(Math.max(...weekday)) : null,
+    top_hashtags: [...tags]
+      .sort(([a, ac], [b, bc]) => bc - ac || a.localeCompare(b))
+      .slice(0, 8)
+      .map(([tag, uses]) => ({ tag, uses })),
+    top_post_metrics: sorted.slice(0, 3).map((p, i) => ({
+      rank: i + 1,
+      id: str(p.id),
+      permalink: publicationUrl(p.permalink),
+      caption: str(p.caption),
+      type: str(p.format),
+      likes: num(p.likes),
+      comments: num(p.comments),
+      taken_at: Number.isFinite(normalizePostTimestamp(p))
+        ? new Date(normalizePostTimestamp(p)).toISOString()
+        : null,
     })),
   };
 }
 
-function profileFromCompetitor(comp: AnyRecord): ProfileEvidence {
-  const profile = (comp.profile ?? {}) as AnyRecord;
-  const summary = (comp.content_summary ?? comp.summary ?? {}) as AnyRecord;
-  const formatStats = (comp.format_stats ?? comp.formatStats ?? {}) as AnyRecord;
-
-  const formatMix: ProfileEvidence["format_mix"] = [];
-  for (const [k, v] of Object.entries(formatStats)) {
-    if (!v || typeof v !== "object") continue;
-    const rec = v as AnyRecord;
-    const share = num(rec.sharePct) ?? num(rec.share_pct);
-    if (share === null) continue;
-    formatMix.push({
-      format: String(k),
-      share_pct: Math.round(share * 10) / 10,
-      count: num(rec.count),
-    });
-  }
-
-  const bio = str(profile.bio);
-  const externalUrls = Array.isArray(profile.external_urls)
-    ? (profile.external_urls as unknown[])
-    : Array.isArray(profile.externalUrls)
-      ? (profile.externalUrls as unknown[])
-      : [];
-
-  return {
-    handle: String(comp.handle ?? profile.username ?? "").toLowerCase(),
-    full_name: str(profile.full_name) ?? str(profile.fullName),
-    followers: num(profile.followers),
-    verified: typeof profile.verified === "boolean" ? profile.verified : null,
-    bio_present: bio !== null,
-    bio_external_url_count: externalUrls.length,
-    posts_analyzed: num(summary.posts_analyzed) ?? num(summary.postsAnalyzed),
-    engagement_rate_pct:
-      num(summary.engagement_rate) ?? num(summary.engagementRate),
-    posting_frequency_weekly:
-      num(summary.posting_frequency_weekly) ?? num(summary.postingFrequencyWeekly),
-    average_likes: num(summary.average_likes) ?? num(summary.averageLikes),
-    average_comments:
-      num(summary.average_comments) ?? num(summary.averageComments),
-    dominant_format: str(summary.dominant_format) ?? str(summary.dominantFormat),
-    dominant_format_share_pct:
-      num(summary.dominant_format_share) ?? num(summary.dominantFormatShare),
-    format_mix: formatMix.sort((a, b) => b.share_pct - a.share_pct),
-    weekday_counts_iso: Array.isArray(comp.weekday_counts_iso)
-      ? (comp.weekday_counts_iso as number[]).map((n) => num(n) ?? 0)
-      : Array.isArray(comp.weekdayCountsIso)
-        ? (comp.weekdayCountsIso as number[]).map((n) => num(n) ?? 0)
-        : null,
-    weekday_peak_iso: null,
-    top_hashtags: [],
-    top_post_metrics: [],
-  };
-}
-
-function fillPeak(p: ProfileEvidence): ProfileEvidence {
-  if (!p.weekday_counts_iso || p.weekday_counts_iso.length === 0) return p;
-  let peakIdx = 0;
-  let peakVal = -1;
-  for (let i = 0; i < p.weekday_counts_iso.length; i += 1) {
-    if (p.weekday_counts_iso[i] > peakVal) {
-      peakVal = p.weekday_counts_iso[i];
-      peakIdx = i;
-    }
-  }
-  return peakVal > 0 ? { ...p, weekday_peak_iso: peakIdx } : p;
-}
-
-/**
- * Build the evidence pack for a snapshot + competitor index.
- * Returns null when the snapshot has no usable competitor.
- */
 export function buildComparisonEvidence(
-  normalizedPayload: AnyRecord,
+  normalizedPayload: Obj,
   competitorIndex = 0,
   window: string | null = null,
 ): ComparisonEvidencePack | null {
-  const competitors = Array.isArray(normalizedPayload.competitors)
-    ? (normalizedPayload.competitors as AnyRecord[])
-    : [];
-  const usable = competitors.filter((c) => c && c.success !== false);
+  const usable = (Array.isArray(normalizedPayload.competitors)
+    ? normalizedPayload.competitors : [])
+    .map(obj)
+    .filter((c) => c.success !== false && str(obj(c.profile).username));
   const comp = usable[competitorIndex];
   if (!comp) return null;
+  const timestamp =
+    str(normalizedPayload.analysis_window_end) ??
+    str(normalizedPayload.analyzed_at) ??
+    str(normalizedPayload.generated_at);
 
-  let primary = profileFromPrimary(normalizedPayload);
-  let competitor = profileFromCompetitor(comp);
-  primary = fillPeak(primary);
-  competitor = fillPeak(competitor);
-
-  const erPp =
-    primary.engagement_rate_pct !== null &&
-    competitor.engagement_rate_pct !== null
-      ? Math.round(
-          (primary.engagement_rate_pct - competitor.engagement_rate_pct) * 100,
-        ) / 100
-      : null;
-  const freqDelta =
-    primary.posting_frequency_weekly !== null &&
-    competitor.posting_frequency_weekly !== null
-      ? Math.round(
-          (primary.posting_frequency_weekly -
-            competitor.posting_frequency_weekly) *
-            10,
-        ) / 10
-      : null;
-  const followersRatio =
-    primary.followers !== null &&
-    competitor.followers !== null &&
-    competitor.followers > 0
-      ? Math.round((primary.followers / competitor.followers) * 100) / 100
-      : null;
-
+  const epoch = timestamp ? Date.parse(timestamp) : NaN;
+  const referenceTime = Number.isFinite(epoch) ? epoch : undefined;
+  const primary = profileEvidence(normalizedPayload, referenceTime);
+  const competitor = profileEvidence(comp, referenceTime);
+  const diff = (a: number | null, b: number | null) =>
+    a !== null && b !== null
+      ? round(a - b) : null;
   return {
-    window,
+    window: window ?? str(normalizedPayload.analysis_window),
+    context: {
+      objective: str(obj(normalizedPayload.comparison_context).objective),
+      sector: str(obj(normalizedPayload.comparison_context).sector),
+      market: str(obj(normalizedPayload.comparison_context).market),
+    },
     primary,
     competitor,
     deltas: {
-      engagement_rate_pp: erPp,
-      posting_frequency_weekly: freqDelta,
-      followers_ratio: followersRatio,
+      engagement_rate_pp: diff(primary.engagement_rate_pct, competitor.engagement_rate_pct),
+      posting_frequency_weekly: matchingCompleteWindows(
+        primary.collection_coverage,
+        competitor.collection_coverage,
+        )
+        ? diff(primary.posting_frequency_weekly, competitor.posting_frequency_weekly)
+        : null,
+      followers_ratio:
+        primary.followers !== null &&
+    competitor.followers !== null &&
+    competitor.followers > 0
+      ? round(primary.followers / competitor.followers)
+          : null,
     },
     flags: {
+      comparable_periods: matchingCompleteWindows(
+        primary.collection_coverage,
+        competitor.collection_coverage,
+      ),
       has_format_stats_competitor: competitor.format_mix.length > 0,
-      has_weekday_data_competitor:
-        Array.isArray(competitor.weekday_counts_iso) &&
-        competitor.weekday_counts_iso.some((n) => n > 0),
+      has_weekday_data_competitor: competitor.weekday_counts_iso?.some((n) => n > 0) ?? false,
       competitor_bio_present: competitor.bio_present,
       primary_sample_small: (primary.posts_analyzed ?? 0) < 6,
       competitor_sample_small: (competitor.posts_analyzed ?? 0) < 6,
@@ -281,23 +257,13 @@ export function buildComparisonEvidence(
   };
 }
 
-/** Stable string for hashing — sorts object keys recursively. */
 function stableStringify(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
-  if (Array.isArray(value)) {
-    return "[" + value.map(stableStringify).join(",") + "]";
-  }
-  const keys = Object.keys(value as AnyRecord).sort();
-  return (
-    "{" +
-    keys
-      .map(
-        (k) =>
-          JSON.stringify(k) + ":" + stableStringify((value as AnyRecord)[k]),
-      )
-      .join(",") +
-    "}"
-  );
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  return `{${Object.keys(value).sort()
+    .map(
+        (k) => `${JSON.stringify(k)}:${stableStringify((value as Obj)[k])}`)
+    .join(",")}}`;
 }
 
 export function hashEvidencePack(
@@ -305,14 +271,8 @@ export function hashEvidencePack(
   promptVersion: string,
   model: string,
 ): string {
-  const h = createHash("sha256");
-  h.update(promptVersion);
-  h.update("|");
-  h.update(model);
-  h.update("|");
-  h.update(stableStringify(pack));
-  return h.digest("hex");
+  return createHash("sha256")
+    .update(`${promptVersion}|${model}|${stableStringify(pack)}`)
+    .digest("hex");
 }
-
-// re-export helpers used by tests
 export const _internals = { stableStringify };

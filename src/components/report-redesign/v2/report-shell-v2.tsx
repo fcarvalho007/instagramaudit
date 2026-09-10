@@ -1,3 +1,9 @@
+import {
+  ComparisonReportProvider,
+  ComparisonSelector,
+  ComparisonReadingPanel,
+  ComparisonExperiments,
+} from "@/components/report-redesign/v2/leitura-ia/comparison-report-context";
 import { ReportDataProvider } from "@/components/report/report-data-context";
 import { ReportTemporalChart } from "@/components/report/report-temporal-chart";
 import { ReportBenchmarkGauge } from "@/components/report/report-benchmark-gauge";
@@ -203,7 +209,8 @@ export function ReportShellV2({
         variant,
       }}
     >
-    <PremiumCtaProvider
+    <ComparisonReportProvider payload={payload} enabled={premiumUnlocked}>
+              <PremiumCtaProvider
       snapshotId={snapshotId ?? null}
       handle={result.data.profile.username ?? null}
       variant={variant}
@@ -491,7 +498,8 @@ export function ReportShellV2({
         />
       </div>
     </PremiumCtaProvider>
-    </ReportTrackingProvider>
+    </ComparisonReportProvider>
+          </ReportTrackingProvider>
     </ReportDataProvider>
     </VariantFeaturesOverrideProvider>
     </ReportVariantProvider>

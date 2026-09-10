@@ -37,7 +37,7 @@ import {
 // ─────────────────────────────────────────────────────────────────────
 
 type BrandReplyStatus =
-  | "active"
+  "active"
   | "occasional"
   | "minimal"
   | "absent"
@@ -52,7 +52,7 @@ interface StatusConfig {
 
 /** Nested replies are only trustworthy when the scraper collected them. */
 export function repliesAreMeasurable(ci: CommentIntelligence): boolean {
-  return ci.repliesMeasurable !== false;
+  return ci.repliesMeasurable === true;
 }
 
 export function classifyBrandReply(
@@ -152,9 +152,7 @@ function ScopeNote() {
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-eyebrow-sm text-content-tertiary">{children}</p>
-  );
+  return <p className="text-eyebrow-sm text-content-tertiary">{children}</p>;
 }
 
 /** Discreet, non-alarming note for small samples. */
@@ -613,8 +611,7 @@ function MetricCell({
   value,
 }: {
   label: string;
-  value: string;
-}) {
+  value: string }) {
   return (
     <div className="rounded-lg border border-border-subtle bg-surface-secondary px-3 py-2.5">
       <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-content-tertiary break-words leading-tight">

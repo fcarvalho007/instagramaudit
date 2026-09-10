@@ -49,7 +49,8 @@ const PostSchema = z.object({
 });
 
 export const ReportPayloadV1Schema = z.object({
-  schema_version: z.literal("report.v1"),
+  schema_version: z.enum(["report.v1", "report.v2"]),
+  frozen_analysis: z.record(z.string(), z.unknown()).optional(),
   algorithm_version: z.string(),
   generated_at: z.string(),
   handle: z.string(),

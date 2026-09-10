@@ -2,8 +2,8 @@
  * Public analysis window configurations.
  *
  * PR 1 (backend) — Pro users with `report_full_9` entitlement can request
- * a wider analysis window for the PRIMARY profile. Competitors stay on
- * baseline (12 posts) in this phase to control cost and cache complexity.
+ * a wider analysis window. With COMPARISON_V2_ENABLED, the same absolute
+ * bounds and per-account limits apply to the primary and both competitors.
  *
  * Public surface is intentionally restricted to: baseline / 30d / 90d.
  * 60d / 365d remain Lab/admin-only and MUST NOT be accepted by the public
@@ -23,6 +23,8 @@ export const PUBLIC_WINDOW_KINDS: readonly PublicWindowKind[] = [
 export interface PublicWindowConfig {
   /** Apify `resultsLimit` — number of posts inside `latestPosts[]`. */
   resultsLimit: number;
+  /** Fixed request-wide lower boundary, shared by all compared accounts. */
+  sinceMs?: number;
   /** Apify `onlyPostsNewerThan` — omitted for baseline (no time filter). */
   onlyPostsNewerThan?: string;
   /** Local wall-clock timeout for the actor call. */
@@ -71,10 +73,8 @@ export const PUBLIC_WINDOW_CONFIGS: Record<PublicWindowKind, PublicWindowConfig>
 };
 
 export function isPublicWindowKind(value: unknown): value is PublicWindowKind {
-  return (
-    typeof value === "string" &&
-    (PUBLIC_WINDOW_KINDS as readonly string[]).includes(value)
-  );
+  return typeof value === "string" &&
+    (PUBLIC_WINDOW_KINDS as readonly string[]).includes(value);
 }
 
 /** True for any window that requires the Pro entitlement + 1 credit. */

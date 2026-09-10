@@ -1,3 +1,4 @@
+import { ComparisonContextSchema } from "@/lib/comparison-readings/context";
 /**
  * Cache-state probe for the period-consume dialog.
  *
@@ -17,6 +18,7 @@ import { z } from "zod";
 const InputSchema = z.object({
   handle: z.string().min(1).max(100),
   competitors: z.array(z.string().min(1).max(100)).max(2).default([]),
+  comparison_context: ComparisonContextSchema.optional(),
   window: z.enum(["30d", "90d"]),
 });
 
@@ -64,7 +66,10 @@ export const getPeriodCacheState = createServerFn({ method: "POST" })
       );
       const { getBalance } = await import("@/lib/credits/credits.server");
 
-      const cacheKey = buildCacheKey(data.handle, data.competitors, data.window);
+      const { comparisonCacheKey } = await import("@/lib/comparison-readings/cache-key.server");
+      const cacheKey = comparisonCacheKey(data.handle, data.competitors, data.window,
+        data.comparison_context,
+      );
       const [snapshot, balance] = await Promise.all([
         lookupSnapshot(cacheKey),
         getBalance(leadId).catch(() => 0),

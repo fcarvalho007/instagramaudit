@@ -63,13 +63,13 @@ function baseInputs() {
 }
 
 describe("derivePriorities", () => {
-  it("always returns at least 3 items even for a 'healthy' profile", () => {
+  it("does not pad a healthy profile to three priorities", () => {
     const items = derivePriorities({
       ...baseInputs(),
       dominantFormatShare: 35,
       dominantFormatLabel: "Carrossel",
     });
-    expect(items.length).toBeGreaterThanOrEqual(3);
+    expect(items.length).toBeLessThanOrEqual(3);
     for (const it of items) {
       expect(it.category).toBeDefined();
       expect(it.basedOn.length).toBeGreaterThan(0);
@@ -91,7 +91,7 @@ describe("derivePriorities", () => {
       dominantFormatLabel: "Carrossel",
     });
     expect(items.length).toBeLessThanOrEqual(6);
-    expect(items.length).toBeGreaterThanOrEqual(3);
+    expect(items.length).toBeLessThanOrEqual(3);
   });
 
   it("ranks 'alta' levels before 'oportunidade'", () => {
@@ -104,7 +104,7 @@ describe("derivePriorities", () => {
       dominantFormatShare: 35,
       dominantFormatLabel: "Carrossel",
     });
-    expect(items.length).toBeGreaterThanOrEqual(3);
+    expect(items.length).toBeLessThanOrEqual(3);
     // First item should be a high-priority "alta" rule
     expect(items[0].level).toBe("alta");
   });
@@ -119,6 +119,8 @@ describe("derivePriorities", () => {
       ownerUsername: "x",
       ownerRepliesCount: 4,
       ownerReplyRatePct: 6,
+      repliesMeasurable: true,
+      lowConfidence: false,
       postsWithOwnerReplyPct: 20,
       audienceCommentsCount: 70,
       uniqueAudienceCommentersCount: 60,
@@ -183,7 +185,7 @@ describe("derivePriorities", () => {
       dominantFormatShare: 30,
       dominantFormatLabel: "Reel",
     });
-    expect(items.length).toBeGreaterThanOrEqual(3);
+    expect(items.length).toBeLessThanOrEqual(3);
     for (const it of items) {
       expect(it.basedOn).not.toContain("Análise visual das capas");
       expect(it.basedOn).not.toContain("Resposta do público");

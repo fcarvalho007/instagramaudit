@@ -1,3 +1,4 @@
+import { ComparisonValue } from "./leitura-ia/comparison-value";
 import { ArrowRight, Building2, Check, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -106,6 +107,7 @@ export function PremiumInterestDialog({
           <DialogDescription className="text-sm text-content-secondary leading-relaxed">
             {t("premium.dialog.subtitle")}
           </DialogDescription>
+          <ComparisonValue/>
         </DialogHeader>
 
         {/* Duas propostas apenas: relatório automático (produto
