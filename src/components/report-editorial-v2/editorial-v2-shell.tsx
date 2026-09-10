@@ -20,7 +20,6 @@ import { EditorialReportChrome } from "./chrome/editorial-report-chrome";
 
 import { EditorialMethodology } from "./methodology/editorial-methodology";
 import { EditorialReportFooter } from "./methodology/editorial-report-footer";
-import { EditorialV2PreviewBadge } from "./preview-badge";
 import type { ReportPresentationProps } from "./report-presentation-props";
 
 /**
@@ -138,8 +137,6 @@ export function EditorialV2Shell({
 
         <EditorialReportFooter result={result} />
 
-        {/* TODO (Editorial V2): remover antes do lançamento público. */}
-        <EditorialV2PreviewBadge />
       </div>
     </PremiumCtaProvider>
   );

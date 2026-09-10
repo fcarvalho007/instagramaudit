@@ -256,21 +256,21 @@ function PostCard({
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="grid grid-cols-3 gap-[var(--ev2-s2)]">
+          <div className="grid grid-cols-2 gap-x-[var(--ev2-s2)] gap-y-[var(--ev2-s1)]">
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase text-[var(--ev2-ink-3)]">Envolvimento</p>
+              <p className="text-[12px] font-semibold uppercase text-[var(--ev2-ink-3)]">Envolvimento</p>
               <p className="ev2-tabular mt-[3px] text-[18px] font-semibold" style={{ color: accent }}>
                 {formatPtNumber(post.engagementPct)}%
               </p>
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase text-[var(--ev2-ink-3)]">Interacções</p>
+              <p className="text-[12px] font-semibold uppercase text-[var(--ev2-ink-3)]">Interacções</p>
               <p className="ev2-tabular mt-[3px] text-[18px] font-semibold text-[var(--ev2-ink)]">
                 {interactions.toLocaleString("pt-PT")}
               </p>
             </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase text-[var(--ev2-ink-3)]">vs. média</p>
+            <div className="col-span-2 min-w-0 border-t border-[var(--ev2-rule)] pt-[var(--ev2-s1)]">
+              <p className="text-[12px] font-semibold uppercase text-[var(--ev2-ink-3)]">vs. média</p>
               <p className="ev2-tabular mt-[3px] text-[18px] font-semibold text-[var(--ev2-ink)]">
                 {deltaLabel}
               </p>

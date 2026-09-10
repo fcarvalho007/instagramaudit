@@ -217,7 +217,7 @@ describe("Editorial V2 — prioridades de ação (07)", () => {
   it("o placeholder de desenvolvimento de 07 foi removido", () => {
     expect(shellSrc).not.toContain("data-ev2-dev-placeholder");
     expect(shellSrc).not.toContain("Ambiente de desenvolvimento");
-    expect(shellSrc).toContain("EditorialV2PreviewBadge");
+    expect(shellSrc).not.toContain("EditorialV2PreviewBadge");
   });
 
   it("não cria uma secção 08 e mantém 07 como número de apresentação", () => {
