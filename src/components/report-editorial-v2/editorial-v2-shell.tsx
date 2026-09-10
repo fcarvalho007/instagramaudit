@@ -98,13 +98,13 @@ export function EditorialV2Shell({
             <EditorialFormatMix result={result} payload={payload} />
           )}
 
-        {/* Publicações-chave — mesma regra de produção: em estado anónimo
-            não se mostram métricas analíticas por publicação. */}
+        {/* Publicações-chave — as métricas factuais por publicação são
+            públicas; as restantes fronteiras free_email/Pro mantêm-se. */}
         {features.blockOverview !== "hidden" && (
           <EditorialKeyPosts
             result={result}
             performanceSampleSize={performanceSampleSize}
-            analyticsVisible={leadCaptured || premiumUnlocked}
+            analyticsVisible
           />
         )}
 

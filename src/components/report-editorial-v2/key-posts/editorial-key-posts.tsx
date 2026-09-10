@@ -207,6 +207,11 @@ function PostCard({
 }) {
   const accent = tone === "best" ? "var(--ev2-blue)" : "var(--ev2-danger)";
   const caption = post.caption?.trim() ?? "";
+  const interactions = post.likes + post.comments;
+  const deltaLabel =
+    deltaPct === null
+      ? "—"
+      : `${deltaPct >= 0 ? "+" : "−"}${formatPtNumber(Math.abs(deltaPct), 0)}%`;
 
   return (
     <article
@@ -251,30 +256,37 @@ function PostCard({
         </div>
 
         <div className="min-w-0 flex-1">
-          <p
-            className="ev2-tabular text-[28px] leading-[1.1]"
-            style={{ color: accent }}
-          >
-            {formatPtNumber(post.engagementPct)}%
-          </p>
-          <p className="mt-[2px] text-[12px] text-[var(--ev2-ink-3)]">
+          <div className="grid grid-cols-3 gap-[var(--ev2-s2)]">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase text-[var(--ev2-ink-3)]">Envolvimento</p>
+              <p className="ev2-tabular mt-[3px] text-[18px] font-semibold" style={{ color: accent }}>
+                {formatPtNumber(post.engagementPct)}%
+              </p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase text-[var(--ev2-ink-3)]">Interacções</p>
+              <p className="ev2-tabular mt-[3px] text-[18px] font-semibold text-[var(--ev2-ink)]">
+                {interactions.toLocaleString("pt-PT")}
+              </p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase text-[var(--ev2-ink-3)]">vs. média</p>
+              <p className="ev2-tabular mt-[3px] text-[18px] font-semibold text-[var(--ev2-ink)]">
+                {deltaLabel}
+              </p>
+            </div>
+          </div>
+          <p className="mt-[var(--ev2-s1)] text-[12px] text-[var(--ev2-ink-3)]">
             {formatLabelPt(post.format)}
-            {deltaPct !== null
-              ? ` · ${deltaPct >= 0 ? "+" : "−"}${formatPtNumber(Math.abs(deltaPct), 0)}% vs. média`
-              : ""}
           </p>
           <div className="mt-[var(--ev2-s1)] flex flex-wrap items-center gap-[12px] text-[13px] text-[var(--ev2-ink-2)]">
-            <span className="inline-flex items-center gap-[5px]">
+            <span className="inline-flex items-center gap-[5px]" aria-label={`${post.likes.toLocaleString("pt-PT")} gostos`}>
               <Heart aria-hidden="true" className="size-[13px]" />
-              <span className="ev2-tabular">
-                {post.likes.toLocaleString("pt-PT")}
-              </span>
+              <span className="ev2-tabular">{post.likes.toLocaleString("pt-PT")}</span>
             </span>
-            <span className="inline-flex items-center gap-[5px]">
+            <span className="inline-flex items-center gap-[5px]" aria-label={`${post.comments.toLocaleString("pt-PT")} comentários`}>
               <MessageCircle aria-hidden="true" className="size-[13px]" />
-              <span className="ev2-tabular">
-                {post.comments.toLocaleString("pt-PT")}
-              </span>
+              <span className="ev2-tabular">{post.comments.toLocaleString("pt-PT")}</span>
             </span>
           </div>
         </div>

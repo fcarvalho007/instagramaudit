@@ -53,7 +53,7 @@ interface AnalyzeSearch {
   previewLoading?: number;
   /** Pro-only public window. Defaults to baseline. */
   w?: "30d" | "90d";
-  /** Presentation-only design variant. Default (undefined) = current report. */
+  /** Presentation-only rollback. Default (undefined) = Editorial V2. */
   report_design?: ReportDesign;
 }
 
