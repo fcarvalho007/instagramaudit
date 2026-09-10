@@ -1068,9 +1068,8 @@ function AiReading({
  * e renderiza apenas o que é seguro mostrar antes da captura de email
  * (thumbnail, etiqueta melhor/pior, formato, data, legenda truncada).
  *
- * Os valores analíticos (engagement, likes, comentários, multiplicador,
- * scatter e leitura editorial) NÃO são renderizados — não há camada de CSS
- * por cima de conteúdo completo.
+ * As três métricas factuais do cartão são públicas. Scatter, leitura
+ * editorial e restantes detalhes continuam dependentes da captura de email.
  */
 export function PostComparisonPreview({
   topPosts,
@@ -1090,6 +1089,7 @@ export function PostComparisonPreview({
   gate?: React.ReactNode;
 }) {
   const { t } = useTranslation("report");
+  const { language } = useLanguage();
   // Estado A: um único evento de visualização; o convite vive no gate.
   const previewRef = useTrackOnceInView<HTMLElement>(
     "post_comparison_preview_viewed",
@@ -1112,6 +1112,11 @@ export function PostComparisonPreview({
   }
 
   const average = computeSampleAverage(allPostsForScatter ?? []);
+  const formatDelta = (delta: number): string => {
+    const rounded = Math.round(delta);
+    if (rounded === 0) return "0%";
+    return `${rounded > 0 ? "+" : "−"}${Math.abs(rounded)}%`;
+  };
 
   const shownIds = new Set(items.map((i) => i.post.id));
   const morePosts = [...topPosts, ...bottomPosts].filter(
@@ -1181,7 +1186,7 @@ export function PostComparisonPreview({
                   {[
                     ["Envolvimento", `${formatNumber(post.engagementPct, language, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`],
                     ["Interacções", formatNumber(post.likes + post.comments, language)],
-                    ["vs. média", average > 0 ? fmtDelta(computeDeltaPct(post.engagementPct, average)) : "—"],
+                    ["vs. média", average > 0 ? formatDelta(computeDeltaPct(post.engagementPct, average)) : "—"],
                   ].map(([metric, value]) => (
                     <div key={metric} className="min-w-0">
                       <p className="text-eyebrow-sm truncate text-content-tertiary">
