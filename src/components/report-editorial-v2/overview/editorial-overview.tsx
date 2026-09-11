@@ -45,6 +45,7 @@ export function EditorialOverview({
   return (
     <ReportBand
       id="visao-geral"
+      className="ev2-aura"
       labelledBy="ev2-overview-verdict"
       context={
         <div className="flex flex-col gap-[var(--ev2-s4)]">
