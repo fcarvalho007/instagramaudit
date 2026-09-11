@@ -156,13 +156,15 @@ export function EditorialReportChrome({
                 <button
                   key={section.id}
                   type="button"
-                  onClick={() => goTo(section.id)}
+                  onClick={() => goTo(section.scrollTargetId ?? section.id)}
                   aria-current={isActive ? "true" : undefined}
                   className={cn("ev2-chrome__tab", isActive && "is-active")}
                 >
-                  <span className="ev2-chrome__tab-num">
-                    {section.displayNumber}
-                  </span>
+                  {section.displayNumber ? (
+                    <span className="ev2-chrome__tab-num">
+                      {section.displayNumber}
+                    </span>
+                  ) : null}
                   <span className="truncate">{section.label}</span>
                   {section.access === "locked" ? (
                     <Lock className="size-3 shrink-0" aria-hidden="true" />
@@ -308,16 +310,18 @@ export function EditorialReportChrome({
               <li key={section.id}>
                 <button
                   type="button"
-                  onClick={() => goTo(section.id)}
+                  onClick={() => goTo(section.scrollTargetId ?? section.id)}
                   aria-current={section.id === active ? "true" : undefined}
                   className={cn(
                     "ev2-chrome__sheet-item",
                     section.id === active && "is-active",
                   )}
                 >
-                  <span className="ev2-chrome__tab-num">
-                    {section.displayNumber}
-                  </span>
+                  {section.displayNumber ? (
+                    <span className="ev2-chrome__tab-num">
+                      {section.displayNumber}
+                    </span>
+                  ) : null}
                   <span className="flex-1 text-left">{section.label}</span>
                   {section.access === "locked" ? (
                     <Lock className="size-3.5" aria-hidden="true" />
