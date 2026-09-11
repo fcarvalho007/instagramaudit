@@ -16,7 +16,7 @@ export function EditorialVerdict({
     <div className="flex flex-col gap-[var(--ev2-s2)]">
       <h2
         id={headingId}
-        className="max-w-[18ch] text-[36px] leading-[1.08] text-[var(--ev2-ink)] sm:text-[44px] lg:max-w-[20ch] lg:text-[62px]"
+        className="ev2-display-light max-w-[18ch] text-[36px] leading-[1.08] text-[var(--ev2-ink)] sm:text-[44px] lg:max-w-[20ch] lg:text-[62px]"
       >
         {title}
       </h2>
