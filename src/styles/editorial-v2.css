@@ -669,3 +669,44 @@
   font-size: 0.75rem;
   color: var(--ev2-ink-4);
 }
+
+/* ═══ Tipografia de exibição e abertura (revisão face ao modelo) ═══ */
+
+/* Fraunces em peso leve para veredicto e números grandes. */
+.editorial-v2 .ev2-display-light {
+  font-weight: 300;
+  letter-spacing: -0.035em;
+}
+
+/* Abertura: halos difusos, puramente decorativos. */
+.editorial-v2 .ev2-aura {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.editorial-v2 .ev2-aura::before,
+.editorial-v2 .ev2-aura::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  border-radius: 50%;
+  filter: blur(130px);
+  pointer-events: none;
+}
+
+.editorial-v2 .ev2-aura::before {
+  width: 680px;
+  height: 680px;
+  top: -30%;
+  left: -6%;
+  background: radial-gradient(circle, rgba(58, 150, 217, 0.19), transparent 70%);
+}
+
+.editorial-v2 .ev2-aura::after {
+  width: 560px;
+  height: 560px;
+  top: 6%;
+  right: -10%;
+  background: radial-gradient(circle, rgba(14, 107, 184, 0.12), transparent 70%);
+}

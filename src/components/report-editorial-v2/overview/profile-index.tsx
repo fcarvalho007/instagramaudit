@@ -19,7 +19,7 @@ export function ProfileIndex({
     <section
       ref={ref}
       aria-labelledby={headingId}
-      className="rounded-[14px] border border-[var(--ev2-hair-2)] bg-[var(--ev2-surface)] p-[var(--ev2-s3)] lg:p-[var(--ev2-s4)]"
+      className="border-t border-[var(--ev2-hair-2)] pt-[var(--ev2-s4)]"
     >
       <h3
         id={headingId}
@@ -30,7 +30,7 @@ export function ProfileIndex({
       </h3>
 
       <div className="mt-[var(--ev2-s2)] flex flex-col gap-[var(--ev2-s3)] lg:flex-row lg:items-center lg:gap-[var(--ev2-s4)]">
-        <p className="ev2-tabular shrink-0 text-[56px] leading-none text-[var(--ev2-ink)] lg:text-[76px]">
+        <p className="ev2-tabular ev2-display-light shrink-0 font-display text-[72px] leading-[0.85] text-[var(--ev2-ink)] lg:text-[104px]">
           {animated}
           <span className="ml-[6px] text-[0.3em] text-[var(--ev2-ink-3)]">/ 100</span>
         </p>
