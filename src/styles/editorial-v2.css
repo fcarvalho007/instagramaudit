@@ -682,6 +682,7 @@
 .editorial-v2 .ev2-aura {
   position: relative;
   isolation: isolate;
+  overflow: hidden;
 }
 
 .editorial-v2 .ev2-aura::before,
