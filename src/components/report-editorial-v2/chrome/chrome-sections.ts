@@ -14,7 +14,7 @@ import { EDITORIAL_V2_DISPLAY_NUMBERS } from "../section-metadata";
  *
  * As chaves funcionais (tier, gating) continuam a vir de
  * `COMMERCIAL_SECTIONS` + `resolveSectionAccess` — esta camada só
- * traduz para as âncoras e números de apresentação do Editorial V2.
+ * traduz para as âncoras, números e rótulos de apresentação do Editorial V2.
  * Nenhuma regra de acesso é criada aqui.
  */
 
@@ -35,13 +35,42 @@ const EDITORIAL_ORDER: readonly string[] = [
   "prioridades",
 ];
 
+/**
+ * Override de rótulos — só na camada de apresentação do chrome.
+ * `COMMERCIAL_SECTIONS.shortLabel` mantém-se intacto (legacy sidebar,
+ * testes, etc.).
+ */
+const LABEL_MAP: Readonly<Record<string, string>> = {
+  "visao-geral": "Visão",
+  frequencia: "Cadência",
+  formatos: "Formatos",
+  "publicacoes-chave": "Melhor vs Pior",
+  conversas: "Conversas",
+  "diagnostico-editorial": "Diagnóstico",
+  prioridades: "Prioridades",
+};
+
+/**
+ * Secções finais colapsadas num único item teaser quando o utilizador
+ * não é Pro, para um menu mais limpo.
+ */
+const COLLAPSED_IDS: readonly string[] = [
+  "conversas",
+  "diagnostico-editorial",
+  "prioridades",
+];
+
+const COLLAPSED_LABEL = "outros campos no pro";
+
 export interface ChromeSection extends SectionAccess {
   /** Âncora real renderizada pelas secções Editorial V2. */
   id: string;
-  /** Rótulo visual "00"–"07". Nunca uma chave funcional. */
+  /** Rótulo visual "00"–"07". Vazio para o item colapsado. */
   displayNumber: string;
   label: string;
   tier: CommercialSection["tier"];
+  /** Quando presente, o clique navega para esta âncora em vez de `id`. */
+  scrollTargetId?: string;
 }
 
 export function buildChromeSections({
@@ -56,18 +85,48 @@ export function buildChromeSections({
     byAnchor.set(ANCHOR_MAP[section.id] ?? section.id, section);
   }
 
-  return EDITORIAL_ORDER.flatMap((anchor) => {
+  const buildSection = (anchor: string): ChromeSection | null => {
     const source = byAnchor.get(anchor);
     const displayNumber = EDITORIAL_V2_DISPLAY_NUMBERS[anchor];
-    if (!source || !displayNumber) return [];
-    return [
-      {
-        id: anchor,
-        displayNumber,
-        label: source.shortLabel,
-        tier: source.tier,
-        ...resolveSectionAccess(source.tier, premiumUnlocked, leadCaptured),
-      },
-    ];
-  });
+    if (!source || !displayNumber) return null;
+    return {
+      id: anchor,
+      displayNumber,
+      label: LABEL_MAP[anchor] ?? source.shortLabel,
+      tier: source.tier,
+      ...resolveSectionAccess(source.tier, premiumUnlocked, leadCaptured),
+    };
+  };
+
+  // Secções antes do colapso (00–04) — sempre visíveis individualmente.
+  const visibleAnchors = EDITORIAL_ORDER.filter(
+    (a) => !COLLAPSED_IDS.includes(a),
+  );
+  const sections = visibleAnchors
+    .map(buildSection)
+    .filter((s): s is ChromeSection => s !== null);
+
+  if (premiumUnlocked) {
+    // Pro: mostrar todas as secções individualmente com rótulos encurtados.
+    const collapsed = COLLAPSED_IDS.map(buildSection).filter(
+      (s): s is ChromeSection => s !== null,
+    );
+    return [...sections, ...collapsed];
+  }
+
+  // Não-Pro: colapsar as secções finais num único item teaser.
+  const firstCollapsed = COLLAPSED_IDS[0]!;
+  const firstSource = byAnchor.get(firstCollapsed);
+  if (firstSource) {
+    sections.push({
+      id: "outros-campos-pro",
+      displayNumber: "",
+      label: COLLAPSED_LABEL,
+      tier: "pro",
+      scrollTargetId: firstCollapsed,
+      ...resolveSectionAccess("pro", premiumUnlocked, leadCaptured),
+    });
+  }
+
+  return sections;
 }
