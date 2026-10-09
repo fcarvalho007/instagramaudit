@@ -1,10 +1,12 @@
 import { AlertCircle, ArrowLeft, RotateCcw } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/layout/container";
+import { getRestrictedProfilePreview } from "@/lib/analysis/restricted-profile.functions";
 
 interface AnalysisErrorStateProps {
   message?: string;
@@ -28,6 +30,59 @@ function bumpErrorMounts(): number {
   }
 }
 
+function formatCount(n: number): string {
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0");
+}
+
+function RestrictedPreview({ handle }: { handle: string }) {
+  const { t } = useTranslation("analyze");
+  const { data } = useQuery({
+    queryKey: ["restricted-profile-preview", handle],
+    queryFn: () => getRestrictedProfilePreview({ data: { handle } }),
+    staleTime: 60 * 60 * 1000,
+    retry: false,
+  });
+  if (!data) return null;
+  const stats = [
+    { key: "followers", value: data.followers },
+    { key: "following", value: data.following },
+    { key: "posts", value: data.posts },
+  ].filter((s): s is { key: string; value: number } => s.value !== null);
+  if (stats.length === 0) return null;
+
+  return (
+    <section
+      aria-label={t("error.restricted.preview.label")}
+      className="w-full rounded-xl border border-border-default bg-surface-primary p-5 text-left"
+    >
+      <span className="text-eyebrow-sm text-content-tertiary">
+        {t("error.restricted.preview.eyebrow")}
+      </span>
+      {data.fullName && (
+        <p className="mt-2 font-sans text-base font-semibold text-content-primary">
+          {data.fullName}
+        </p>
+      )}
+      <p className="font-sans text-sm text-content-secondary">@{data.handle}</p>
+      <dl className="mt-4 grid grid-cols-3 gap-3">
+        {stats.map((s) => (
+          <div key={s.key}>
+            <dd className="font-sans text-xl font-bold tabular-nums text-content-primary">
+              {formatCount(s.value)}
+            </dd>
+            <dt className="font-sans text-xs text-content-tertiary">
+              {t(`error.restricted.preview.${s.key}`)}
+            </dt>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-4 font-sans text-xs leading-relaxed text-content-tertiary">
+        {t("error.restricted.preview.note")}
+      </p>
+    </section>
+  );
+}
+
 export function AnalysisErrorState({
   message,
   errorCode,
@@ -44,6 +99,8 @@ export function AnalysisErrorState({
   // retry cannot succeed — same treatment as the personal no-feed case.
   const isRestricted = upperCode === "PROFILE_RESTRICTED";
   const isDeadEnd = isPersonalNoFeed || isRestricted;
+  const params = useParams({ strict: false }) as { username?: string };
+  const previewHandle = params.username?.replace(/^@/, "").toLowerCase();
   const mountsRef = useRef<number>(0);
   if (mountsRef.current === 0) {
     mountsRef.current = bumpErrorMounts();
@@ -91,6 +148,7 @@ export function AnalysisErrorState({
               </p>
             )}
           </div>
+          {isRestricted && previewHandle && <RestrictedPreview handle={previewHandle} />}
           <div className="flex flex-col sm:flex-row items-center gap-3">
             {!isDeadEnd && (
               <Button
