@@ -7,12 +7,14 @@ export type NegativeCacheCode =
   | "PROFILE_PERSONAL_NO_FEED"
   | "PROFILE_PRIVATE"
   | "PROFILE_NOT_FOUND"
-  | "PROFILE_UNREADABLE";
+  | "PROFILE_UNREADABLE"
+  | "PROFILE_RESTRICTED";
 
 /** Codes replayed for 24h — the profile itself is the cause. */
 const LONG_TTL_CODES = new Set<NegativeCacheCode>([
   "PROFILE_PERSONAL_NO_FEED",
   "PROFILE_PRIVATE",
+  "PROFILE_RESTRICTED",
 ]);
 
 export const NEGATIVE_CACHE_LONG_TTL_MS = 24 * 60 * 60 * 1000;
@@ -24,6 +26,7 @@ export const NEGATIVE_CACHE_CODES: NegativeCacheCode[] = [
   "PROFILE_PRIVATE",
   "PROFILE_NOT_FOUND",
   "PROFILE_UNREADABLE",
+  "PROFILE_RESTRICTED",
 ];
 
 export function negativeCacheTtlMs(code: NegativeCacheCode): number {
@@ -51,6 +54,8 @@ export function isNegativeCacheHit(
  */
 export function notFoundCode(
   fellBack: boolean,
-): "PROFILE_NOT_FOUND" | "PROFILE_UNREADABLE" {
+  restricted = false,
+): "PROFILE_NOT_FOUND" | "PROFILE_UNREADABLE" | "PROFILE_RESTRICTED" {
+  if (restricted) return "PROFILE_RESTRICTED";
   return fellBack ? "PROFILE_UNREADABLE" : "PROFILE_NOT_FOUND";
 }

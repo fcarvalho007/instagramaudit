@@ -57,6 +57,14 @@ export interface ProviderFailedAttempt {
 
 export interface ProviderProfileResult extends ProviderFetchMeta {
   row: ProviderProfileRow | null;
+  /**
+   * Why `row` is null when the provider answered on purpose (not a failure).
+   * `restricted`: Instagram only shows the profile to logged-in viewers
+   * (age / country restriction), so no public reader can serve it.
+   */
+  unavailableReason?: "restricted";
+  /** Provider message explaining `unavailableReason`, for diagnostics. */
+  unavailableMessage?: string;
 }
 
 export interface ProviderPostsResult extends ProviderFetchMeta {

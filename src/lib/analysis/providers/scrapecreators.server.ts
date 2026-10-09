@@ -279,6 +279,19 @@ export function pickImageUrl(raw: Record<string, unknown>, depth = 0): string | 
 
 
 /** ScrapeCreators user → Apify `details` row. */
+/**
+ * ScrapeCreators answers HTTP 200 with `message: "Profile is restricted"`
+ * when Instagram hides the profile from logged-out viewers.
+ */
+export function restrictedInfo(
+  payload: Record<string, unknown>,
+): { unavailableReason?: "restricted"; unavailableMessage?: string } {
+  const message = typeof payload.message === "string" ? payload.message : "";
+  return /restricted/i.test(message)
+    ? { unavailableReason: "restricted", unavailableMessage: message }
+    : {};
+}
+
 export function mapProfile(
   payload: Record<string, unknown>,
 ): Record<string, unknown> | null {
@@ -505,6 +518,7 @@ export const scrapeCreatorsProvider: SocialDataProvider = {
       actualCostUsd: credits * getCostPerCreditUsd(),
       monetaryCostUsd: credits * getCostPerCreditUsd(),
       row: mapProfile(payload),
+      ...restrictedInfo(payload),
     };
   },
 
