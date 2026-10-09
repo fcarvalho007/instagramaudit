@@ -146,6 +146,8 @@ const PayloadSchema = z.object({
 const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
   INVALID_USERNAME: "Username inválido. Verificar e tentar novamente.",
   PROFILE_NOT_FOUND: "Não foi possível encontrar este perfil. Verificar o username.",
+  PROFILE_UNREADABLE:
+    "Não conseguimos ler este perfil neste momento. Tenta novamente mais tarde.",
   PROFILE_NOT_ALLOWED:
     "A análise automática está em validação. Para já, este teste está limitado aos perfis definidos.",
   PROFILE_PRIVATE: "Perfil privado. A análise pública só funciona com perfis abertos.",
@@ -179,6 +181,7 @@ const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
 const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
   INVALID_USERNAME: 400,
   PROFILE_NOT_FOUND: 404,
+  PROFILE_UNREADABLE: 503,
   PROFILE_NOT_ALLOWED: 403,
   PROFILE_PRIVATE: 404,
   PROFILE_PERSONAL_NO_FEED: 422,
@@ -421,8 +424,26 @@ async function fetchProfileWithPostsLogged(
   row: Record<string, unknown> | null;
   error: unknown | null;
   providerCallLogId: string | null;
+  /** True when the primary provider failed and the fallback served this. */
+  fellBack: boolean;
 }> {
   const startedAt = Date.now();
+  const logFailedAttempts = async (attempts: ProviderFailedAttempt[]) => {
+    for (const a of attempts) {
+      await recordProviderCall({
+        provider: a.provider,
+        actor: a.provider === "apify" ? UNIFIED_ACTOR : "scrapecreators",
+        handle: username,
+        status: a.httpStatus === 504 ? "timeout" : "http_error",
+        postsReturned: 0,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        httpStatus: a.httpStatus,
+        errorMessage: a.message,
+        sourceContext: "public_analysis",
+      });
+    }
+  };
   try {
     const {
       row,
@@ -434,7 +455,9 @@ async function fetchProfileWithPostsLogged(
       creditsRemaining,
       cached,
       endpoint,
+      failedAttempts,
     } = await fetchProfileWithPosts(username, cfg);
+    await logFailedAttempts(failedAttempts);
     const posts = Array.isArray((row as { latestPosts?: unknown })?.latestPosts)
       ? ((row as { latestPosts: unknown[] }).latestPosts.length as number)
       : 0;
@@ -469,8 +492,11 @@ async function fetchProfileWithPostsLogged(
       endpoint,
     });
 
-    return { row, error: null, providerCallLogId };
+    return { row, error: null, providerCallLogId, fellBack: failedAttempts.length > 0 };
   } catch (err) {
+    const carried = (err as { failedAttempts?: ProviderFailedAttempt[] } | null)
+      ?.failedAttempts;
+    if (Array.isArray(carried)) await logFailedAttempts(carried);
     let status: "timeout" | "http_error" | "config_error" | "network_error" = "network_error";
     let httpStatus: number | null = null;
     if (err instanceof ApifyConfigError) {
@@ -498,7 +524,7 @@ async function fetchProfileWithPostsLogged(
       errorMessage: err instanceof Error ? err.message : String(err),
       sourceContext: "public_analysis",
     });
-    return { row: null, error: err, providerCallLogId };
+    return { row: null, error: err, providerCallLogId, fellBack: Array.isArray(carried) && carried.length > 0 };
   }
 }
 
@@ -1256,12 +1282,14 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             // results (status + duration + posts returned) are written to
             // `provider_call_logs` so the admin sees the real Apify ledger.
             const providerCallIds: string[] = [];
+            let primaryFellBack = false;
             // PR 1: PRIMARY uses the window-specific config (baseline / 30d /
             // 90d). Competitors stay on baseline by design — we are not
             // refetching competitors per window in this phase to keep cost,
             // cache and complexity bounded.
             const callPrimary = fetchProfileWithPostsLogged(primary, primaryWindowCfg).then((r) => {
               if (r.providerCallLogId) providerCallIds.push(r.providerCallLogId);
+              primaryFellBack = r.fellBack;
               if (r.error) throw r.error;
               return r.row;
             });
@@ -1287,10 +1315,10 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 cacheKey,
                 dataSource: "fresh",
                 outcome: "not_found",
-                errorCode: "PROFILE_NOT_FOUND",
+                errorCode: notFoundCode(primaryFellBack),
                 providerCallLogId: providerCallIds[0] ?? null,
               });
-              return failure("PROFILE_NOT_FOUND");
+              return failure(notFoundCode(primaryFellBack));
             }
 
             // Classify the empty-feed case. Apify returns the profile shell but
