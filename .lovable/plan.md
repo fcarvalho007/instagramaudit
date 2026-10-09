@@ -1,26 +1,29 @@
-## Diagnóstico — @maisensinomaisformacao
+## Diagnóstico confirmado — @maisensinomaisformacao
 
-O que os registos mostram (09/10/2026, 19:37–19:39 UTC):
-- 4 tentativas, todas com a fonte de dados (Apify) a responder sem erro, mas com **zero resultados** para este perfil.
-- Sem resultados, o sistema classifica como "perfil não encontrado".
-- A fonte está a funcionar: no mesmo período, @italbox, @ach.brito e @clausporto foram analisados com 12 publicações cada.
+Tens razão: a ScrapeCreators é a fonte principal e a Apify a de reserva. O que aconteceu foi isto:
 
-Conclusão: o problema não é da app nem da fonte em geral. A fonte não consegue ler este perfil. As causas mais prováveis são:
-1. O nome do perfil está escrito de outra forma (por exemplo, com ponto ou sublinhado).
-2. O perfil é privado, foi restringido ou tem limite de idade ou de país.
-3. O Instagram bloqueou temporariamente a leitura pública deste perfil.
+1. A ScrapeCreators recusou o pedido porque **a conta ficou sem créditos** (resposta confirmada agora: "Looks like you're out of credits").
+2. A app passou automaticamente para a Apify, como previsto.
+3. A Apify não conseguiu ler este perfil e não devolveu nada. Por isso, a app mostrou "perfil não encontrado", apesar de o perfil existir e ser público.
+4. Os registos só guardam a última fonte usada, que foi a Apify. Por isso, a falta de créditos não aparecia no admin. Nos últimos 30 dias, todas as análises passaram pela Apify sem se notar.
 
-Problema adicional: as 4 tentativas seguidas foram todas pagas (cerca de 0,01 USD no total). Um "não encontrado" recente devia ficar guardado durante uns minutos para evitar cobranças repetidas.
+## O que precisas de fazer (fora da app)
 
-## Proposta (só avança depois da tua aprovação)
+- Comprar créditos na ScrapeCreators. A chave atual mantém-se e não é preciso alterar nada na app.
 
-1. Confirmar no Instagram o nome exato e se o perfil é público. Não exige alterações.
-2. Quando a Apify não devolver nada, tentar uma vez a fonte alternativa (ScrapeCreators) antes de mostrar "perfil não encontrado".
-3. Guardar o resultado "não encontrado" durante 15 minutos para não pagar tentativas repetidas.
-4. Melhorar a mensagem: "Não conseguimos ler este perfil. Confirma o nome e se é público."
+## O que vou corrigir na app
+
+1. **Registar todas as tentativas.** Cada análise passa a registar a falha da ScrapeCreators (por exemplo, sem créditos) e também a chamada à Apify. Assim, ambas as fontes aparecem nos custos e nos erros.
+2. **Alerta no admin.** Em Sistema, aparece um aviso "ScrapeCreators sem créditos — a usar Apify" sempre que isso acontecer nas últimas 24 horas.
+3. **Mensagem honesta.** Quando a fonte de reserva não devolve dados, o utilizador deixa de ver "não encontrado" e passa a ver: "Não conseguimos ler este perfil neste momento. Tenta novamente mais tarde." A mensagem "não encontrado" só aparece quando a fonte principal o confirmar.
+4. **Evitar cobranças repetidas.** Um resultado vazio fica guardado durante 15 minutos para o mesmo perfil. Hoje houve 4 tentativas pagas seguidas.
+5. **Testes** para os pontos 1, 3 e 4.
+
+Mantêm-se os preços, os créditos, as regras de acesso e a ordem das fontes.
 
 ## Detalhes técnicos
-- Os registos mostram `outcome=not_found`, `error_code=PROFILE_NOT_FOUND` e `posts_returned=0`, com `http_status` 200, nos 4 pedidos.
-- O passo 2 fica no encaminhamento de fontes (`providers/router.server.ts`), limitado a uma chamada e registado como custo.
-- O passo 3 aproveita a cache negativa que já existe, mas que não está a ser usada quando o resultado é `not_found`.
-- Mantêm-se os preços, os créditos e as regras de acesso.
+- Prova obtida: `GET /v1/instagram/profile` respondeu com HTTP 402. Em 30 dias, `provider_call_logs` tem apenas linhas `apify`: 31.
+- `withFallback` em `providers/router.server.ts` passa a devolver as tentativas falhadas. `fetchProfileWithPostsLogged` escreve uma linha `status=error` para cada uma, com `http_status=402` e `error_excerpt`.
+- Novo código `PROFILE_UNREADABLE` (pt/en em `errors.json`) quando `fellBack=true` e `row` é nulo. `PROFILE_NOT_FOUND` fica reservado para o vazio do primário.
+- A cache negativa existente passa a cobrir os resultados vazios, com TTL de 15 minutos.
+- O alerta do admin usa uma consulta a `provider_call_logs` (`provider=scrapecreators`, `http_status=402`, 24h).
