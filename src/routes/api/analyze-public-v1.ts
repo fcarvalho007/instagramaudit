@@ -338,6 +338,7 @@ async function fetchProfileWithPosts(
       creditsRemaining,
       cached,
       endpoint,
+      failedAttempts,
     };
   }
 
@@ -358,6 +359,7 @@ async function fetchProfileWithPosts(
       creditsRemaining,
       cached,
       endpoint,
+      failedAttempts,
     };
   }
 
