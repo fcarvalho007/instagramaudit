@@ -168,6 +168,7 @@ export interface PublicAnalysisSuccess {
 export type PublicAnalysisErrorCode =
   | "INVALID_USERNAME"
   | "PROFILE_NOT_FOUND"
+  | "PROFILE_UNREADABLE"
   | "PROFILE_NOT_ALLOWED"
   | "PROFILE_PRIVATE"
   | "PROFILE_PERSONAL_NO_FEED"

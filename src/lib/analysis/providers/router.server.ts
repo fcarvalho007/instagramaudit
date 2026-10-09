@@ -19,6 +19,7 @@ import type {
   FetchPostsOptions,
   ProviderCommentBatch,
   ProviderCommentsResult,
+  ProviderFailedAttempt,
   ProviderId,
   ProviderOperation,
   ProviderPostsResult,
@@ -140,17 +141,30 @@ interface AttemptOutcome<T> {
   fellBack: boolean;
 }
 
+export function toFailedAttempt(
+  provider: ProviderId,
+  err: unknown,
+): ProviderFailedAttempt {
+  const status = (err as { status?: unknown } | null)?.status;
+  return {
+    provider,
+    httpStatus: typeof status === "number" ? status : null,
+    message: (err instanceof Error ? err.message : String(err)).slice(0, 500),
+  };
+}
+
 /** Run `fn` on the primary provider, with at most ONE fallback attempt. */
 async function withFallback<T>(
   operation: ProviderOperation,
   fn: (provider: SocialDataProvider) => Promise<T>,
-): Promise<AttemptOutcome<T>> {
+): Promise<AttemptOutcome<T> & { failed: ProviderFailedAttempt | null }> {
   const primary = selectProvider(operation);
   try {
     return {
       result: await fn(PROVIDERS[primary]),
       provider: primary,
       fellBack: false,
+      failed: null,
     };
   } catch (err) {
     const alternative = fallbackProviderFor(primary);
@@ -163,27 +177,35 @@ async function withFallback<T>(
       result: await fn(PROVIDERS[alternative]),
       provider: alternative,
       fellBack: true,
+      failed: toFailedAttempt(primary, err),
     };
   }
+}
+
+function attachFailed<T extends { failedAttempts?: ProviderFailedAttempt[] }>(
+  result: T,
+  failed: ProviderFailedAttempt | null,
+): T {
+  return failed ? { ...result, failedAttempts: [failed] } : result;
 }
 
 export async function fetchProfile(
   handle: string,
 ): Promise<ProviderProfileResult> {
-  const { result } = await withFallback("profile", (p) =>
+  const { result, failed } = await withFallback("profile", (p) =>
     p.fetchProfile(handle),
   );
-  return result;
+  return attachFailed(result, failed);
 }
 
 export async function fetchPosts(
   handle: string,
   options: FetchPostsOptions,
 ): Promise<ProviderPostsResult> {
-  const { result } = await withFallback("posts", (p) =>
+  const { result, failed } = await withFallback("posts", (p) =>
     p.fetchPosts(handle, options),
   );
-  return result;
+  return attachFailed(result, failed);
 }
 
 /**
