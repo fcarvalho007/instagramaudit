@@ -111,6 +111,7 @@ import {
   type PublicWindowKind,
 } from "@/lib/analysis/window-configs";
 import { fetchPosts, fetchProfile } from "@/lib/analysis/providers/index.server";
+import type { ProviderFailedAttempt } from "@/lib/analysis/providers/types";
 
 import { hasEntitlement } from "@/lib/payments/entitlements.server";
 
@@ -306,6 +307,8 @@ async function fetchProfileWithPosts(
   creditsRemaining: number | null;
   cached: boolean;
   endpoint: string | null;
+  /** Provider attempts that failed before the router fell back. */
+  failedAttempts: ProviderFailedAttempt[];
 }> {
   const wide = cfg.costTier === "wide" && Boolean(cfg.onlyPostsNewerThan);
 
@@ -320,6 +323,9 @@ async function fetchProfileWithPosts(
   let creditsRemaining = profileResult.creditsRemaining;
   let cached = profileResult.cached;
   let endpoint = profileResult.endpoint;
+  const failedAttempts: ProviderFailedAttempt[] = [
+    ...(profileResult.failedAttempts ?? []),
+  ];
 
   if (!row) {
     return {
@@ -366,6 +372,7 @@ async function fetchProfileWithPosts(
     timeoutMs: cfg.timeoutMs,
   });
 
+  failedAttempts.push(...(postsResult.failedAttempts ?? []));
   billedResults += postsResult.billedResults;
   if (typeof postsResult.actualCostUsd === "number") {
     actualCostUsd = (actualCostUsd ?? 0) + postsResult.actualCostUsd;
@@ -396,6 +403,7 @@ async function fetchProfileWithPosts(
     creditsRemaining,
     cached,
     endpoint,
+    failedAttempts,
   };
 }
 
