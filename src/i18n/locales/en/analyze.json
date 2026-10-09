@@ -29,7 +29,15 @@
     },
     "restricted": {
       "title": "Profile with limited access",
-      "cta": "Analyze another profile"
+      "cta": "Analyze another profile",
+      "preview": {
+        "label": "Partial profile reading",
+        "eyebrow": "Partial reading · public Instagram page",
+        "followers": "followers",
+        "following": "following",
+        "posts": "posts",
+        "note": "Source: public Instagram page. Because Instagram only shows posts to signed-in viewers, we do not calculate engagement, frequency or benchmarks for this profile."
+      }
     },
     "personalNoFeed": {
       "title": "We couldn't analyze this profile",

@@ -29,7 +29,15 @@
     },
     "restricted": {
       "title": "Perfil com acesso limitado",
-      "cta": "Analisar outro perfil"
+      "cta": "Analisar outro perfil",
+      "preview": {
+        "label": "Leitura parcial do perfil",
+        "eyebrow": "Leitura parcial · página pública do Instagram",
+        "followers": "seguidores",
+        "following": "a seguir",
+        "posts": "publicações",
+        "note": "Fonte: página pública do Instagram. Como o Instagram só mostra as publicações a quem tem sessão iniciada, não calculamos envolvimento, frequência nem benchmark para este perfil."
+      }
     },
     "personalNoFeed": {
       "title": "Não foi possível analisar este perfil",
