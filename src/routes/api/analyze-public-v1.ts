@@ -112,6 +112,11 @@ import {
 } from "@/lib/analysis/window-configs";
 import { fetchPosts, fetchProfile } from "@/lib/analysis/providers/index.server";
 import type { ProviderFailedAttempt } from "@/lib/analysis/providers/types";
+import {
+  NEGATIVE_CACHE_CODES,
+  isNegativeCacheHit,
+  notFoundCode,
+} from "@/lib/analysis/negative-cache";
 
 import { hasEntitlement } from "@/lib/payments/entitlements.server";
 
@@ -1114,19 +1119,21 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             try {
               const { data: recentNegative } = await supabaseAdmin
                 .from("analysis_events")
-                .select("error_code")
+                .select("error_code, created_at")
                 .eq("handle", primary)
                 .eq("network", "instagram")
-                .in("error_code", ["PROFILE_PERSONAL_NO_FEED", "PROFILE_PRIVATE"])
+                .in("error_code", NEGATIVE_CACHE_CODES)
                 .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
                 .order("created_at", { ascending: false })
                 .limit(1)
                 .maybeSingle();
 
-              const cachedCode = recentNegative?.error_code as
-                "PROFILE_PERSONAL_NO_FEED"
-                | "PROFILE_PRIVATE"
-                | undefined;
+              const cachedCode = isNegativeCacheHit(
+                recentNegative?.error_code,
+                recentNegative?.created_at,
+              )
+                ? recentNegative!.error_code as (typeof NEGATIVE_CACHE_CODES)[number]
+                : undefined;
               if (cachedCode) {
                 console.info(
                   "[analyze-public-v1] negative-cache hit — skipping Apify",

@@ -173,12 +173,21 @@ async function withFallback<T>(
       `[providers] ${primary} ${operation} failed, falling back to ${alternative}:`,
       err instanceof Error ? err.message : String(err),
     );
-    return {
-      result: await fn(PROVIDERS[alternative]),
-      provider: alternative,
-      fellBack: true,
-      failed: toFailedAttempt(primary, err),
-    };
+    const failed = toFailedAttempt(primary, err);
+    try {
+      return {
+        result: await fn(PROVIDERS[alternative]),
+        provider: alternative,
+        fellBack: true,
+        failed,
+      };
+    } catch (fallbackErr) {
+      // Carry the primary failure so callers can still log it.
+      if (fallbackErr && typeof fallbackErr === "object") {
+        (fallbackErr as { failedAttempts?: ProviderFailedAttempt[] }).failedAttempts = [failed];
+      }
+      throw fallbackErr;
+    }
   }
 }
 
