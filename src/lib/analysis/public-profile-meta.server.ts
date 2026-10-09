@@ -20,8 +20,9 @@ export async function fetchPublicProfileMeta(
   try {
     const res = await fetch(`https://www.instagram.com/${encodeURIComponent(handle)}/`, {
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+        // A minimal UA gets the public Open Graph variant of the page; full
+        // browser UAs are served the JS login shell without those tags.
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
         "Accept-Language": "en-US,en;q=0.9",
       },
       signal: AbortSignal.timeout(8_000),
