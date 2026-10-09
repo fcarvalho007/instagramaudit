@@ -1139,6 +1139,9 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 .select("error_code, created_at")
                 .eq("handle", primary)
                 .eq("network", "instagram")
+                // Only real provider verdicts: replays are logged as "cache"
+                // and must not extend the TTL forever.
+                .eq("data_source", "fresh")
                 .in("error_code", NEGATIVE_CACHE_CODES)
                 .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
                 .order("created_at", { ascending: false })
