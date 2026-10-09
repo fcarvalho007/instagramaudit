@@ -1,6 +1,7 @@
 {
   "INVALID_USERNAME": "Invalid username. Please check and try again.",
   "PROFILE_NOT_FOUND": "We couldn't find this profile on Instagram.",
+  "PROFILE_UNREADABLE": "We couldn't read this profile right now. Please try again later.",
   "PROFILE_NOT_ALLOWED": "Public mode is not active for this profile yet.",
   "PROFILE_PRIVATE": "This profile appears to be private.",
   "PROFILE_PERSONAL_NO_FEED": "Works best with public Creator or Business profiles. Some personal profiles may not return enough posts for analysis. This profile appears public, but we couldn't retrieve recent posts from our data source.",
