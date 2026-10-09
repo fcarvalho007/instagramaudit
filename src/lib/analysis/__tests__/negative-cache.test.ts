@@ -21,6 +21,11 @@ describe("negative cache", () => {
     expect(isNegativeCacheHit("PROFILE_PERSONAL_NO_FEED", minutesAgo(25 * 60), NOW)).toBe(false);
   });
 
+  it("keeps a restricted profile for 24 hours", () => {
+    expect(isNegativeCacheHit("PROFILE_RESTRICTED", minutesAgo(23 * 60), NOW)).toBe(true);
+    expect(isNegativeCacheHit("PROFILE_RESTRICTED", minutesAgo(25 * 60), NOW)).toBe(false);
+  });
+
   it("ignores unrelated codes", () => {
     expect(isNegativeCacheHit("UPSTREAM_FAILED", minutesAgo(1), NOW)).toBe(false);
   });
@@ -30,5 +35,10 @@ describe("notFoundCode", () => {
   it("only says not found when the primary provider answered", () => {
     expect(notFoundCode(false)).toBe("PROFILE_NOT_FOUND");
     expect(notFoundCode(true)).toBe("PROFILE_UNREADABLE");
+  });
+
+  it("reports a restricted profile as restricted, never as not found", () => {
+    expect(notFoundCode(false, true)).toBe("PROFILE_RESTRICTED");
+    expect(notFoundCode(true, true)).toBe("PROFILE_RESTRICTED");
   });
 });

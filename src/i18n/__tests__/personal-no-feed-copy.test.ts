@@ -46,6 +46,8 @@ describe("i18n · AnalysisErrorState consome chaves novas", () => {
     expect(src).toContain('error.personalNoFeed.cta');
     // Garante que o retry continua escondido para este código.
     expect(src).toContain('PROFILE_PERSONAL_NO_FEED');
-    expect(src).toMatch(/!isPersonalNoFeed/);
+    // Retry stays hidden for dead-end cases (personal no-feed, restricted).
+    expect(src).toMatch(/isDeadEnd = isPersonalNoFeed || isRestricted/);
+    expect(src).toMatch(/!isDeadEnd/);
   });
 });

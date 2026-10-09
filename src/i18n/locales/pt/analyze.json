@@ -27,6 +27,10 @@
       "title": "Este relatório ainda não tem dados públicos disponíveis.",
       "body": "Os dados deste perfil ainda não foram gerados ou a versão guardada expirou. Tenta novamente mais tarde ou solicita uma nova análise."
     },
+    "restricted": {
+      "title": "Perfil com acesso limitado",
+      "cta": "Analisar outro perfil"
+    },
     "personalNoFeed": {
       "title": "Não foi possível analisar este perfil",
       "cta": "Analisar outro perfil"

@@ -151,6 +151,8 @@ const PayloadSchema = z.object({
 const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
   INVALID_USERNAME: "Username inválido. Verificar e tentar novamente.",
   PROFILE_NOT_FOUND: "Não foi possível encontrar este perfil. Verificar o username.",
+  PROFILE_RESTRICTED:
+    "O Instagram só mostra este perfil a quem tem sessão iniciada, normalmente por restrição de idade ou de país definida pela conta. As nossas fontes de dados leem apenas a versão pública, por isso não é possível analisá-lo. Se o perfil for teu, retira a restrição e volta a tentar.",
   PROFILE_UNREADABLE:
     "Não conseguimos ler este perfil neste momento. Tenta novamente mais tarde.",
   PROFILE_NOT_ALLOWED:
@@ -187,6 +189,7 @@ const HTTP_STATUS: Record<PublicAnalysisErrorCode, number> = {
   INVALID_USERNAME: 400,
   PROFILE_NOT_FOUND: 404,
   PROFILE_UNREADABLE: 503,
+  PROFILE_RESTRICTED: 422,
   PROFILE_NOT_ALLOWED: 403,
   PROFILE_PRIVATE: 404,
   PROFILE_PERSONAL_NO_FEED: 422,
@@ -317,6 +320,8 @@ async function fetchProfileWithPosts(
   endpoint: string | null;
   /** Provider attempts that failed before the router fell back. */
   failedAttempts: ProviderFailedAttempt[];
+  unavailableReason?: "restricted";
+  unavailableMessage?: string;
 }> {
   const wide = cfg.costTier === "wide" && Boolean(cfg.onlyPostsNewerThan);
 
@@ -337,6 +342,8 @@ async function fetchProfileWithPosts(
 
   if (!row) {
     return {
+      unavailableReason: profileResult.unavailableReason,
+      unavailableMessage: profileResult.unavailableMessage,
       row,
       runId,
       actualCostUsd,
@@ -431,6 +438,7 @@ async function fetchProfileWithPostsLogged(
   providerCallLogId: string | null;
   /** True when the primary provider failed and the fallback served this. */
   fellBack: boolean;
+  unavailableReason?: "restricted";
 }> {
   const startedAt = Date.now();
   const logFailedAttempts = async (attempts: ProviderFailedAttempt[]) => {
@@ -461,6 +469,8 @@ async function fetchProfileWithPostsLogged(
       cached,
       endpoint,
       failedAttempts,
+      unavailableReason,
+      unavailableMessage,
     } = await fetchProfileWithPosts(username, cfg);
     await logFailedAttempts(failedAttempts);
     const posts = Array.isArray((row as { latestPosts?: unknown })?.latestPosts)
@@ -491,13 +501,20 @@ async function fetchProfileWithPostsLogged(
       apifyRunId: provider === "apify" ? runId : null,
       httpStatus: 200,
       sourceContext: "public_analysis",
+      errorMessage: unavailableMessage,
       creditsCharged,
       creditsRemaining,
       cached,
       endpoint,
     });
 
-    return { row, error: null, providerCallLogId, fellBack: failedAttempts.length > 0 };
+    return {
+      row,
+      error: null,
+      providerCallLogId,
+      fellBack: failedAttempts.length > 0,
+      unavailableReason,
+    };
   } catch (err) {
     const carried = (err as { failedAttempts?: ProviderFailedAttempt[] } | null)
       ?.failedAttempts;
@@ -1122,6 +1139,9 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 .select("error_code, created_at")
                 .eq("handle", primary)
                 .eq("network", "instagram")
+                // Only real provider verdicts: replays are logged as "cache"
+                // and must not extend the TTL forever.
+                .eq("data_source", "fresh")
                 .in("error_code", NEGATIVE_CACHE_CODES)
                 .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
                 .order("created_at", { ascending: false })
@@ -1290,6 +1310,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             // `provider_call_logs` so the admin sees the real Apify ledger.
             const providerCallIds: string[] = [];
             let primaryFellBack = false;
+            let primaryRestricted = false;
             // PR 1: PRIMARY uses the window-specific config (baseline / 30d /
             // 90d). Competitors stay on baseline by design — we are not
             // refetching competitors per window in this phase to keep cost,
@@ -1297,6 +1318,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
             const callPrimary = fetchProfileWithPostsLogged(primary, primaryWindowCfg).then((r) => {
               if (r.providerCallLogId) providerCallIds.push(r.providerCallLogId);
               primaryFellBack = r.fellBack;
+              primaryRestricted = r.unavailableReason === "restricted";
               if (r.error) throw r.error;
               return r.row;
             });
@@ -1322,10 +1344,10 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
                 cacheKey,
                 dataSource: "fresh",
                 outcome: "not_found",
-                errorCode: notFoundCode(primaryFellBack),
+                errorCode: notFoundCode(primaryFellBack, primaryRestricted),
                 providerCallLogId: providerCallIds[0] ?? null,
               });
-              return failure(notFoundCode(primaryFellBack));
+              return failure(notFoundCode(primaryFellBack, primaryRestricted));
             }
 
             // Classify the empty-feed case. Apify returns the profile shell but
