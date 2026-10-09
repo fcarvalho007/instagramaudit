@@ -40,11 +40,15 @@ export function AnalysisErrorState({
   // endpoint doesn't expose its feed. Retrying won't help and burns Apify
   // credits, so suppress the retry button and only offer a way back.
   const isPersonalNoFeed = upperCode === "PROFILE_PERSONAL_NO_FEED";
+  // Restricted profile: Instagram hides it from logged-out readers, so a
+  // retry cannot succeed — same treatment as the personal no-feed case.
+  const isRestricted = upperCode === "PROFILE_RESTRICTED";
+  const isDeadEnd = isPersonalNoFeed || isRestricted;
   const mountsRef = useRef<number>(0);
   if (mountsRef.current === 0) {
     mountsRef.current = bumpErrorMounts();
   }
-  const showHint = mountsRef.current >= 2 && !isCacheOnly && !isPersonalNoFeed;
+  const showHint = mountsRef.current >= 2 && !isCacheOnly && !isDeadEnd;
 
   // Clear the counter once the user navigates away successfully.
   useEffect(() => {
@@ -67,9 +71,11 @@ export function AnalysisErrorState({
             <h1 className="font-display text-2xl md:text-3xl font-medium text-content-primary tracking-tight">
               {isCacheOnly
                 ? t("error.cacheOnly.title")
-                : isPersonalNoFeed
-                  ? t("error.personalNoFeed.title")
-                  : t("error.title")}
+                : isRestricted
+                  ? t("error.restricted.title")
+                  : isPersonalNoFeed
+                    ? t("error.personalNoFeed.title")
+                    : t("error.title")}
             </h1>
             <p className="font-sans text-sm text-content-secondary leading-relaxed">
               {isCacheOnly
@@ -86,7 +92,7 @@ export function AnalysisErrorState({
             )}
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-3">
-            {!isPersonalNoFeed && (
+            {!isDeadEnd && (
               <Button
                 variant="primary"
                 size="md"
@@ -96,7 +102,7 @@ export function AnalysisErrorState({
                 {t("error.retry")}
               </Button>
             )}
-            {(isCacheOnly || isPersonalNoFeed) && (
+            {(isCacheOnly || isDeadEnd) && (
               <Button
                 variant="outline"
                 size="md"
@@ -104,7 +110,9 @@ export function AnalysisErrorState({
                 asChild
               >
                 <Link to="/">
-                  {isPersonalNoFeed
+                  {isRestricted
+                    ? t("error.restricted.cta")
+                    : isPersonalNoFeed
                     ? t("error.personalNoFeed.cta")
                     : t("error.back")}
                 </Link>
