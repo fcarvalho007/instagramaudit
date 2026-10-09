@@ -32,7 +32,6 @@ export const getRestrictedProfilePreview = createServerFn({ method: "POST" })
         .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
         .limit(1)
         .maybeSingle();
-      console.info("[restricted-profile] event", data.handle, Boolean(event));
       if (!event) return null;
 
       const { fetchPublicProfileMeta } = await import("./public-profile-meta.server");

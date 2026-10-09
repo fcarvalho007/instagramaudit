@@ -27,9 +27,7 @@ export async function fetchPublicProfileMeta(
       },
       signal: AbortSignal.timeout(8_000),
     });
-    const body = res.ok ? await res.text() : "";
-    console.info("[public-profile-meta]", handle, res.status, body.length, body.includes("og:title"));
-    if (res.ok) value = parsePublicProfileMeta(body, handle);
+    if (res.ok) value = parsePublicProfileMeta(await res.text(), handle);
   } catch (err) {
     console.warn("[public-profile-meta] fetch failed", handle, err);
   }
@@ -38,4 +36,3 @@ export async function fetchPublicProfileMeta(
   cache.set(handle, { at: Date.now(), value });
   return value;
 }
-
