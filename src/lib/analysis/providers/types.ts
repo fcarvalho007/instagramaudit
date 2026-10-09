@@ -42,6 +42,17 @@ export interface ProviderFetchMeta {
   cached: boolean;
   /** Provider endpoint / actor identifier for diagnostics. */
   endpoint: string | null;
+  /**
+   * Failed attempts on another provider before this result was served
+   * (set by the router when it fell back). Lets callers log both calls.
+   */
+  failedAttempts?: ProviderFailedAttempt[];
+}
+
+export interface ProviderFailedAttempt {
+  provider: ProviderId;
+  httpStatus: number | null;
+  message: string;
 }
 
 export interface ProviderProfileResult extends ProviderFetchMeta {

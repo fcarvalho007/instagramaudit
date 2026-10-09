@@ -17,7 +17,10 @@ import { SectionError, SectionSkeleton } from "../section-state";
 import { adminFetch } from "@/lib/admin/fetch";
 import type { ScrapeCreatorsCostSummary } from "@/lib/admin/scrapecreators-costs";
 
-type Payload = ScrapeCreatorsCostSummary & { configured: boolean };
+type Payload = ScrapeCreatorsCostSummary & {
+  configured: boolean;
+  out_of_credits_24h?: number;
+};
 
 function fmtAge(seconds: number): string {
   if (seconds < 60) return `há ${seconds}s`;
@@ -91,6 +94,15 @@ export function ScrapeCreatorsCostsCard() {
         <SectionError error={error as Error} onRetry={() => refetch()} />
       ) : (
         <>
+          {(data.out_of_credits_24h ?? 0) > 0 ? (
+            <div
+              role="alert"
+              className="mb-4 rounded-md border border-admin-danger-500/40 bg-admin-danger-50 px-3 py-2 text-[13px] text-admin-danger-700"
+            >
+              ScrapeCreators sem créditos — a usar Apify ({data.out_of_credits_24h}{" "}
+              recusas nas últimas 24 h). Compra créditos para repor a fonte principal.
+            </div>
+          ) : null}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
             <Metric
               label="Créditos 24h"
