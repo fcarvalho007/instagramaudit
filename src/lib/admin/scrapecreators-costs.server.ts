@@ -30,9 +30,9 @@ function isPromotional(): boolean {
 }
 
 export async function fetchScrapeCreatorsCosts(): Promise<
-  ScrapeCreatorsCostSummary & { configured: boolean }
+  ScrapeCreatorsCostSummary & { configured: boolean; out_of_credits_24h: number }
 > {
-  const [logsRes, freshRes, unlocksRes] = await Promise.all([
+  const [logsRes, freshRes, unlocksRes, outOfCreditsRes] = await Promise.all([
     supabaseAdmin
       .from("provider_call_logs")
       .select(
@@ -52,6 +52,13 @@ export async function fetchScrapeCreatorsCosts(): Promise<
       .select("id", { count: "exact", head: true })
       .eq("status", "completed")
       .gte("created_at", new Date(Date.now() - 30 * DAY_MS).toISOString()),
+    // 402 = sem créditos: a app passou para a Apify em silêncio.
+    supabaseAdmin
+      .from("provider_call_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("provider", "scrapecreators")
+      .eq("http_status", 402)
+      .gte("created_at", new Date(Date.now() - DAY_MS).toISOString()),
   ]);
 
   const rows = (logsRes.data ?? []) as unknown as ScrapeCreatorsLogRow[];
@@ -63,7 +70,11 @@ export async function fetchScrapeCreatorsCosts(): Promise<
     commentUnlocks30d: unlocksRes.count ?? 0,
   });
 
-  return { ...summary, configured: Boolean(process.env.SCRAPECREATORS_API_KEY) };
+  return {
+    ...summary,
+    configured: Boolean(process.env.SCRAPECREATORS_API_KEY),
+    out_of_credits_24h: outOfCreditsRes.count ?? 0,
+  };
 }
 
 export interface BalanceSyncResult {
