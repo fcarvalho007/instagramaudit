@@ -12,7 +12,7 @@ export async function fetchPublicProfileMeta(
   handle: string,
 ): Promise<PartialProfile | null> {
   const hit = cache.get(handle);
-  if (hit && Date.now() - hit.at < (hit.value ? TTL_MS : 60 * 1000)) {
+  if (hit && Date.now() - hit.at < (hit.value ? TTL_MS : 3 * 60 * 1000)) {
     return hit.value;
   }
 
