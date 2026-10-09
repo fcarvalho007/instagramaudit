@@ -151,6 +151,7 @@ describe("provider router", () => {
     expect(result.provider).toBe("apify");
     expect(calls.scProfile).toBe(1);
     expect(calls.apProfile).toBe(1);
+    expect(result.failedAttempts?.[0]?.provider).toBe("scrapecreators");
   });
 
   it("C. ScrapeCreators posts fail → Apify posts", async () => {
@@ -183,7 +184,11 @@ describe("provider router", () => {
   it("F. never tries more than two providers per operation", async () => {
     behaviour.scProfileFails = true;
     behaviour.apProfileFails = true;
-    await expect(fetchProfile("acme")).rejects.toThrow();
+    const err = await fetchProfile("acme").catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect(
+      (err as { failedAttempts?: { provider: string }[] }).failedAttempts?.[0]?.provider,
+    ).toBe("scrapecreators");
     expect(calls.scProfile).toBe(1);
     expect(calls.apProfile).toBe(1);
   });
