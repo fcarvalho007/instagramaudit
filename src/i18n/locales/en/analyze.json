@@ -28,15 +28,35 @@
       "body": "The data for this profile hasn't been generated yet or the saved version has expired. Try again later or request a new analysis."
     },
     "restricted": {
-      "title": "Profile with limited access",
+      "eyebrow": "Verification complete",
+      "title": "Partial verification complete",
+      "body": "We found the @{{handle}} profile. The page may be visible on Instagram, but posts were not provided to the data sources used for analysis.",
+      "retry": "Check again",
       "cta": "Analyze another profile",
       "preview": {
         "label": "Partial profile reading",
-        "eyebrow": "Partial reading · public Instagram page",
+        "eyebrow": "Verification result",
         "followers": "followers",
         "following": "following",
         "posts": "posts",
-        "note": "Source: public Instagram page. Because Instagram only shows posts to signed-in viewers, we do not calculate engagement, frequency or benchmarks for this profile."
+        "explanationTitle": "What this means",
+        "note": "The profile is not necessarily private. Instagram may show the page in a browser while limiting post access for external services, without stating the reason publicly. We do not attribute this limitation to the profile owner.",
+        "noEstimates": "Without posts, we do not calculate or estimate engagement, frequency, formats or benchmarks.",
+        "checkedAt": "Last checked: {{date}} · {{source}}",
+        "source": {
+          "fresh": "recent check",
+          "stored": "stored result"
+        },
+        "status": {
+          "profileFound": "Profile found",
+          "basicData": "Public profile data",
+          "postsAvailable": "Posts available for analysis",
+          "metricsCalculated": "Engagement, frequency and benchmarks",
+          "confirmed": "Confirmed",
+          "unavailable": "Unavailable",
+          "no": "No",
+          "notCalculated": "Not calculated"
+        }
       }
     },
     "personalNoFeed": {
