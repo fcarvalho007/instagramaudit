@@ -116,6 +116,7 @@ import {
   NEGATIVE_CACHE_CODES,
   isNegativeCacheHit,
   notFoundCode,
+  shouldReplayNegativeCache,
 } from "@/lib/analysis/negative-cache";
 
 import { hasEntitlement } from "@/lib/payments/entitlements.server";
@@ -1159,7 +1160,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               )
                 ? recentNegative!.error_code as (typeof NEGATIVE_CACHE_CODES)[number]
                 : undefined;
-              if (cachedCode && !(cachedCode === "PROFILE_RESTRICTED" && bypassRestrictedNegativeCache)) {
+              if (cachedCode && shouldReplayNegativeCache(cachedCode, bypassRestrictedNegativeCache)) {
                 console.info(
                   "[analyze-public-v1] negative-cache hit — skipping Apify",
                   primary,

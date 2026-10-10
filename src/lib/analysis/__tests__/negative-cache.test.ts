@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { isNegativeCacheHit, notFoundCode } from "@/lib/analysis/negative-cache";
+import {
+  isNegativeCacheHit,
+  notFoundCode,
+  shouldReplayNegativeCache,
+} from "@/lib/analysis/negative-cache";
 
 const NOW = Date.parse("2026-10-09T20:00:00Z");
 const minutesAgo = (m: number) => new Date(NOW - m * 60_000).toISOString();
@@ -40,5 +44,13 @@ describe("notFoundCode", () => {
   it("reports a restricted profile as restricted, never as not found", () => {
     expect(notFoundCode(false, true)).toBe("PROFILE_RESTRICTED");
     expect(notFoundCode(true, true)).toBe("PROFILE_RESTRICTED");
+  });
+});
+
+describe("restricted recheck", () => {
+  it("bypasses only the stored restricted verdict when the user checks again", () => {
+    expect(shouldReplayNegativeCache("PROFILE_RESTRICTED", true)).toBe(false);
+    expect(shouldReplayNegativeCache("PROFILE_RESTRICTED", false)).toBe(true);
+    expect(shouldReplayNegativeCache("PROFILE_PRIVATE", true)).toBe(true);
   });
 });

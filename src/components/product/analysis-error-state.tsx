@@ -106,7 +106,7 @@ function RestrictedPreview({
             </dt>
             <dd className="flex shrink-0 items-center gap-2 font-sans text-xs font-semibold text-content-primary">
               {row.available ? (
-                <Check className="size-4 text-status-success" aria-hidden="true" />
+                <Check className="size-4 text-content-primary" aria-hidden="true" />
               ) : (
                 <Minus className="size-4 text-content-tertiary" aria-hidden="true" />
               )}
