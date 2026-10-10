@@ -146,13 +146,17 @@ const PayloadSchema = z.object({
    * 90d, per-lead/profile/window/day).
    */
   force_refresh: z.boolean().optional().default(false),
+  // A restricted result may be checked again from its dedicated partial
+  // result screen. This only bypasses the negative cache; all provider,
+  // budget and public rate limits remain active.
+  restricted_recheck: z.boolean().optional().default(false),
 });
 
 const ERROR_MESSAGES: Record<PublicAnalysisErrorCode, string> = {
   INVALID_USERNAME: "Username inválido. Verificar e tentar novamente.",
   PROFILE_NOT_FOUND: "Não foi possível encontrar este perfil. Verificar o username.",
   PROFILE_RESTRICTED:
-    "O Instagram só mostra este perfil a quem tem sessão iniciada, normalmente por restrição de idade ou de país definida pela conta. As nossas fontes de dados leem apenas a versão pública, por isso não é possível analisá-lo. Se o perfil for teu, retira a restrição e volta a tentar.",
+    "Encontrámos o perfil, mas as fontes de dados não devolveram publicações para análise. A página pode continuar visível no Instagram.",
   PROFILE_UNREADABLE:
     "Não conseguimos ler este perfil neste momento. Tenta novamente mais tarde.",
   PROFILE_NOT_ALLOWED:
@@ -1048,6 +1052,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
           // skip the mode guard entirely — the admin action is already gated
           // by token verification, so the global mode stays cache_only and
           // public users are never exposed to fresh provider calls.
+          const bypassRestrictedNegativeCache = parsed.data.restricted_recheck;
           if (!forceRefresh) {
             const executionMode = await getAnalysisExecutionMode();
             if (executionMode === "cache_only") {
@@ -1154,7 +1159,7 @@ export const Route = createFileRoute("/api/analyze-public-v1")({
               )
                 ? recentNegative!.error_code as (typeof NEGATIVE_CACHE_CODES)[number]
                 : undefined;
-              if (cachedCode) {
+              if (cachedCode && !(cachedCode === "PROFILE_RESTRICTED" && bypassRestrictedNegativeCache)) {
                 console.info(
                   "[analyze-public-v1] negative-cache hit — skipping Apify",
                   primary,

@@ -18,6 +18,7 @@ import type { PublicAnalysisResponse } from "./types";
  * único parcial `uniq_credit_ledger_reserve_per_report`.
  */
 const inflight = new Map<string, Promise<PublicAnalysisResponse>>();
+const restrictedHandles = new Set<string>();
 
 export async function fetchPublicAnalysis(
   username: string,
@@ -34,6 +35,7 @@ export async function fetchPublicAnalysis(
   } = {},
 ): Promise<PublicAnalysisResponse> {
   const cleaned = username.trim().replace(/^@/, "");
+  const normalizedHandle = cleaned.toLowerCase();
   const competitors = competitorUsernames
     .map((c) => c.trim().replace(/^@/, ""))
     .filter((c) => c.length > 0)
@@ -42,7 +44,8 @@ export async function fetchPublicAnalysis(
   const windowKind = options.window ?? "baseline";
   const context = parseComparisonContext(options.comparisonContext);
   const force = !!options.forceRefresh;
-  const key = `${cleaned.toLowerCase()}|${competitors.map((c) => c.toLowerCase()).join(",")}|${windowKind}|f=${force ? 1 : 0}|ctx=${contextSearch(context) ?? ""}`;
+  const restrictedRecheck = restrictedHandles.has(normalizedHandle);
+  const key = `${normalizedHandle}|${competitors.map((c) => c.toLowerCase()).join(",")}|${windowKind}|f=${force ? 1 : 0}|rr=${restrictedRecheck ? 1 : 0}|ctx=${contextSearch(context) ?? ""}`;
   const existing = inflight.get(key);
   if (existing) return existing;
 
@@ -63,6 +66,7 @@ export async function fetchPublicAnalysis(
         window: windowKind,
           comparison_context: context,
           force_refresh: force,
+          restricted_recheck: restrictedRecheck,
       }),
     });
 
@@ -70,6 +74,11 @@ export async function fetchPublicAnalysis(
       | null;
 
     if (json && typeof json === "object" && "success" in json) {
+      if (!json.success && json.error_code === "PROFILE_RESTRICTED") {
+        restrictedHandles.add(normalizedHandle);
+      } else if (json.success) {
+        restrictedHandles.delete(normalizedHandle);
+      }
       return json;
     }
 

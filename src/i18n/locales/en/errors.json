@@ -1,7 +1,7 @@
 {
   "INVALID_USERNAME": "Invalid username. Please check and try again.",
   "PROFILE_NOT_FOUND": "We couldn't find this profile on Instagram.",
-  "PROFILE_RESTRICTED": "Instagram only shows this profile to logged-in users, usually because of an age or country restriction set by the account. Our data sources only read the public version, so it can't be analysed. If this is your profile, remove the restriction and try again.",
+  "PROFILE_RESTRICTED": "We found this profile, but the data sources did not return posts for analysis. The page may still be visible on Instagram.",
   "PROFILE_UNREADABLE": "We couldn't read this profile right now. Please try again later.",
   "PROFILE_NOT_ALLOWED": "Public mode is not active for this profile yet.",
   "PROFILE_PRIVATE": "This profile appears to be private.",
