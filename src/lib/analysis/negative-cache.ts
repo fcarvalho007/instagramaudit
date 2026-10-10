@@ -48,6 +48,14 @@ export function isNegativeCacheHit(
   return nowMs - created < negativeCacheTtlMs(code as NegativeCacheCode);
 }
 
+/** A user-requested recheck bypasses only a stored restricted verdict. */
+export function shouldReplayNegativeCache(
+  code: NegativeCacheCode,
+  restrictedRecheck: boolean,
+): boolean {
+  return !(code === "PROFILE_RESTRICTED" && restrictedRecheck);
+}
+
 /**
  * An empty profile only means "not found" when the primary provider said
  * so. If we had to fall back, the backup simply could not read it.

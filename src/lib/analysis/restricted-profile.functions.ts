@@ -10,6 +10,12 @@ import { z } from "zod";
 
 import type { PartialProfile } from "./public-profile-meta";
 
+export interface RestrictedProfilePreviewResult {
+  profile: PartialProfile | null;
+  verifiedAt: string;
+  source: "fresh" | "stored";
+}
+
 const InputSchema = z.object({
   handle: z
     .string()
@@ -20,22 +26,27 @@ const InputSchema = z.object({
 
 export const getRestrictedProfilePreview = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => InputSchema.parse(data))
-  .handler(async ({ data }): Promise<PartialProfile | null> => {
+  .handler(async ({ data }): Promise<RestrictedProfilePreviewResult | null> => {
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: event } = await supabaseAdmin
         .from("analysis_events")
-        .select("id")
+        .select("created_at, data_source")
         .eq("handle", data.handle)
         .eq("network", "instagram")
         .eq("error_code", "PROFILE_RESTRICTED")
         .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
       if (!event) return null;
 
       const { fetchPublicProfileMeta } = await import("./public-profile-meta.server");
-      return await fetchPublicProfileMeta(data.handle);
+      return {
+        profile: await fetchPublicProfileMeta(data.handle),
+        verifiedAt: event.created_at,
+        source: event.data_source === "fresh" ? "fresh" : "stored",
+      };
     } catch (err) {
       console.warn("[restricted-profile] preview failed", err);
       return null;

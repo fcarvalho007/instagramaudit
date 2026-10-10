@@ -1,7 +1,7 @@
 {
   "INVALID_USERNAME": "Nome de utilizador inválido. Confirma e tenta novamente.",
   "PROFILE_NOT_FOUND": "Não encontrámos este perfil no Instagram.",
-  "PROFILE_RESTRICTED": "O Instagram só mostra este perfil a quem tem sessão iniciada, normalmente por restrição de idade ou de país definida pela conta. As nossas fontes de dados leem apenas a versão pública, por isso não é possível analisá-lo. Se o perfil for teu, retira a restrição e volta a tentar.",
+  "PROFILE_RESTRICTED": "Encontrámos este perfil, mas as fontes de dados não devolveram publicações para análise. A página pode continuar visível no Instagram.",
   "PROFILE_UNREADABLE": "Não conseguimos ler este perfil neste momento. Tenta novamente mais tarde.",
   "PROFILE_NOT_ALLOWED": "O modo público ainda não está ativo para este perfil.",
   "PROFILE_PRIVATE": "Este perfil parece ser privado.",

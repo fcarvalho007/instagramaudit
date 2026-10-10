@@ -28,15 +28,35 @@
       "body": "Os dados deste perfil ainda não foram gerados ou a versão guardada expirou. Tenta novamente mais tarde ou solicita uma nova análise."
     },
     "restricted": {
-      "title": "Perfil com acesso limitado",
+      "eyebrow": "Verificação concluída",
+      "title": "Verificação parcial concluída",
+      "body": "Encontrámos o perfil @{{handle}}. A página pode estar visível no Instagram, mas as publicações não foram fornecidas às fontes de dados usadas na análise.",
+      "retry": "Verificar novamente",
       "cta": "Analisar outro perfil",
       "preview": {
         "label": "Leitura parcial do perfil",
-        "eyebrow": "Leitura parcial · página pública do Instagram",
+        "eyebrow": "Resultado da verificação",
         "followers": "seguidores",
         "following": "a seguir",
         "posts": "publicações",
-        "note": "Fonte: página pública do Instagram. Como o Instagram só mostra as publicações a quem tem sessão iniciada, não calculamos envolvimento, frequência nem benchmark para este perfil."
+        "explanationTitle": "O que isto significa",
+        "note": "O perfil não está necessariamente privado. O Instagram pode mostrar a página no navegador e limitar a leitura das publicações por serviços externos, sem indicar publicamente o motivo. Não atribuímos esta limitação ao proprietário do perfil.",
+        "noEstimates": "Sem publicações não calculamos nem estimamos envolvimento, frequência, formatos ou benchmark.",
+        "checkedAt": "Última verificação: {{date}} · {{source}}",
+        "source": {
+          "fresh": "consulta recente",
+          "stored": "resultado guardado"
+        },
+        "status": {
+          "profileFound": "Perfil encontrado",
+          "basicData": "Dados públicos do perfil",
+          "postsAvailable": "Publicações disponíveis para análise",
+          "metricsCalculated": "Envolvimento, frequência e benchmark",
+          "confirmed": "Confirmado",
+          "unavailable": "Indisponíveis",
+          "no": "Não",
+          "notCalculated": "Não calculados"
+        }
       }
     },
     "personalNoFeed": {

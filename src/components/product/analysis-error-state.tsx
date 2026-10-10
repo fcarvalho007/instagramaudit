@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowLeft, RotateCcw } from "lucide-react";
+import { AlertCircle, ArrowLeft, Check, Minus, RotateCcw } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Link, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -34,51 +34,135 @@ function formatCount(n: number): string {
   return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0");
 }
 
-function RestrictedPreview({ handle }: { handle: string }) {
-  const { t } = useTranslation("analyze");
-  const { data } = useQuery({
+function RestrictedPreview({
+  handle,
+  onRetry,
+}: {
+  handle: string;
+  onRetry: () => void;
+}) {
+  const { t, i18n } = useTranslation("analyze");
+  const { data, isPending } = useQuery({
     queryKey: ["restricted-profile-preview", handle],
     queryFn: () => getRestrictedProfilePreview({ data: { handle } }),
-    staleTime: 60 * 60 * 1000,
+    // The analysis retry can create a newer verification event while this
+    // component is remounted. Always refresh this small status query so the
+    // timestamp and fresh/stored label do not lag behind the real check.
+    staleTime: 0,
+    refetchOnMount: "always",
     retry: false,
   });
-  if (!data) return null;
+  const profile = data?.profile ?? null;
   const stats = [
-    { key: "followers", value: data.followers },
-    { key: "following", value: data.following },
-    { key: "posts", value: data.posts },
+    { key: "followers", value: profile?.followers ?? null },
+    { key: "following", value: profile?.following ?? null },
+    { key: "posts", value: profile?.posts ?? null },
   ].filter((s): s is { key: string; value: number } => s.value !== null);
-  if (stats.length === 0) return null;
+  const checkedAt = data?.verifiedAt
+    ? new Intl.DateTimeFormat(i18n.resolvedLanguage === "en" ? "en-GB" : "pt-PT", {
+        dateStyle: "short",
+        timeStyle: "short",
+      }).format(new Date(data.verifiedAt))
+    : null;
+
+  const rows = [
+    { key: "profileFound", available: true },
+    { key: "basicData", available: stats.length > 0 },
+    { key: "postsAvailable", available: false },
+    { key: "metricsCalculated", available: false },
+  ];
 
   return (
     <section
       aria-label={t("error.restricted.preview.label")}
-      className="w-full rounded-xl border border-border-default bg-surface-primary p-5 text-left"
+      className="w-full rounded-lg border border-border-default bg-surface-primary p-5 text-left md:p-6"
     >
       <span className="text-eyebrow-sm text-content-tertiary">
         {t("error.restricted.preview.eyebrow")}
       </span>
-      {data.fullName && (
+      {profile?.fullName && (
         <p className="mt-2 font-sans text-base font-semibold text-content-primary">
-          {data.fullName}
+          {profile.fullName}
         </p>
       )}
-      <p className="font-sans text-sm text-content-secondary">@{data.handle}</p>
-      <dl className="mt-4 grid grid-cols-3 gap-3">
-        {stats.map((s) => (
-          <div key={s.key}>
-            <dd className="font-sans text-xl font-bold tabular-nums text-content-primary">
-              {formatCount(s.value)}
-            </dd>
-            <dt className="font-sans text-xs text-content-tertiary">
-              {t(`error.restricted.preview.${s.key}`)}
+      <p className="font-sans text-sm text-content-secondary">@{handle}</p>
+
+      {stats.length > 0 && (
+        <dl className="mt-5 grid grid-cols-3 gap-3 border-y border-border-default py-4">
+          {stats.map((s) => (
+            <div key={s.key}>
+              <dd className="font-sans text-xl font-bold tabular-nums text-content-primary">
+                {formatCount(s.value)}
+              </dd>
+              <dt className="font-sans text-xs text-content-tertiary">
+                {t(`error.restricted.preview.${s.key}`)}
+              </dt>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      <dl className="mt-5 divide-y divide-border-default border-y border-border-default">
+        {rows.map((row) => (
+          <div key={row.key} className="flex items-center justify-between gap-4 py-3">
+            <dt className="font-sans text-sm text-content-secondary">
+              {t(`error.restricted.preview.status.${row.key}`)}
             </dt>
+            <dd className="flex shrink-0 items-center gap-2 font-sans text-xs font-semibold text-content-primary">
+              {row.available ? (
+                <Check className="size-4 text-content-primary" aria-hidden="true" />
+              ) : (
+                <Minus className="size-4 text-content-tertiary" aria-hidden="true" />
+              )}
+              {t(
+                row.available
+                  ? "error.restricted.preview.status.confirmed"
+                  : row.key === "basicData"
+                    ? "error.restricted.preview.status.unavailable"
+                    : row.key === "postsAvailable"
+                      ? "error.restricted.preview.status.no"
+                      : "error.restricted.preview.status.notCalculated",
+              )}
+            </dd>
           </div>
         ))}
       </dl>
-      <p className="mt-4 font-sans text-xs leading-relaxed text-content-tertiary">
-        {t("error.restricted.preview.note")}
-      </p>
+
+      <div className="mt-5">
+        <h2 className="font-sans text-sm font-semibold text-content-primary">
+          {t("error.restricted.preview.explanationTitle")}
+        </h2>
+        <p className="mt-2 font-sans text-sm leading-relaxed text-content-secondary">
+          {t("error.restricted.preview.note")}
+        </p>
+        <p className="mt-3 font-sans text-xs leading-relaxed text-content-tertiary">
+          {t("error.restricted.preview.noEstimates")}
+        </p>
+      </div>
+
+      {checkedAt && (
+        <p className="mt-5 font-sans text-xs text-content-tertiary">
+          {t("error.restricted.preview.checkedAt", {
+            date: checkedAt,
+            source: t(`error.restricted.preview.source.${data?.source ?? "stored"}`),
+          })}
+        </p>
+      )}
+
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+        <Button
+          variant="primary"
+          size="md"
+          leftIcon={<RotateCcw />}
+          onClick={onRetry}
+          disabled={isPending}
+        >
+          {t("error.restricted.retry")}
+        </Button>
+        <Button variant="outline" size="md" leftIcon={<ArrowLeft />} asChild>
+          <Link to="/">{t("error.restricted.cta")}</Link>
+        </Button>
+      </div>
     </section>
   );
 }
@@ -95,8 +179,8 @@ export function AnalysisErrorState({
   // endpoint doesn't expose its feed. Retrying won't help and burns Apify
   // credits, so suppress the retry button and only offer a way back.
   const isPersonalNoFeed = upperCode === "PROFILE_PERSONAL_NO_FEED";
-  // Restricted profile: Instagram hides it from logged-out readers, so a
-  // retry cannot succeed — same treatment as the personal no-feed case.
+  // Restricted means the providers found the profile shell but could not
+  // read posts. It receives a dedicated partial result and controlled retry.
   const isRestricted = upperCode === "PROFILE_RESTRICTED";
   const isDeadEnd = isPersonalNoFeed || isRestricted;
   const params = useParams({ strict: false }) as { username?: string };
@@ -115,15 +199,15 @@ export function AnalysisErrorState({
   }, []);
 
   return (
-    <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #F6FAFF 0%, #FFFFFF 100%)" }}>
+    <div className="min-h-screen bg-background">
       <Container size="md" as="section" className="py-20 md:py-32">
-        <div className="mx-auto flex max-w-md flex-col items-center gap-6 text-center">
+        <div className="mx-auto flex max-w-xl flex-col items-center gap-6 text-center">
           <div className="flex size-12 items-center justify-center rounded-full border border-border-default bg-surface-secondary text-content-secondary">
             <AlertCircle className="size-5" aria-hidden="true" />
           </div>
           <div className="space-y-2">
             <span className="text-eyebrow-sm text-[0.625rem] text-content-tertiary">
-              {t("error.eyebrow")}
+              {isRestricted ? t("error.restricted.eyebrow") : t("error.eyebrow")}
             </span>
             <h1 className="font-display text-2xl md:text-3xl font-medium text-content-primary tracking-tight">
               {isCacheOnly
@@ -137,7 +221,9 @@ export function AnalysisErrorState({
             <p className="font-sans text-sm text-content-secondary leading-relaxed">
               {isCacheOnly
                 ? t("error.cacheOnly.body")
-                : (message ?? t("error.fallback"))}
+                : isRestricted
+                  ? t("error.restricted.body", { handle: previewHandle })
+                  : (message ?? t("error.fallback"))}
             </p>
             {showHint && (
               <p className="font-sans text-xs text-content-tertiary leading-relaxed pt-1">
@@ -148,7 +234,9 @@ export function AnalysisErrorState({
               </p>
             )}
           </div>
-          {isRestricted && previewHandle && <RestrictedPreview handle={previewHandle} />}
+          {isRestricted && previewHandle && (
+            <RestrictedPreview handle={previewHandle} onRetry={onRetry} />
+          )}
           <div className="flex flex-col sm:flex-row items-center gap-3">
             {!isDeadEnd && (
               <Button
@@ -160,7 +248,7 @@ export function AnalysisErrorState({
                 {t("error.retry")}
               </Button>
             )}
-            {(isCacheOnly || isDeadEnd) && (
+            {(isCacheOnly || isDeadEnd) && !isRestricted && (
               <Button
                 variant="outline"
                 size="md"
