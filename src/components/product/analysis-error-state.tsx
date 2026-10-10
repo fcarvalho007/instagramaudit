@@ -45,7 +45,11 @@ function RestrictedPreview({
   const { data, isPending } = useQuery({
     queryKey: ["restricted-profile-preview", handle],
     queryFn: () => getRestrictedProfilePreview({ data: { handle } }),
-    staleTime: 60 * 60 * 1000,
+    // The analysis retry can create a newer verification event while this
+    // component is remounted. Always refresh this small status query so the
+    // timestamp and fresh/stored label do not lag behind the real check.
+    staleTime: 0,
+    refetchOnMount: "always",
     retry: false,
   });
   const profile = data?.profile ?? null;
@@ -175,8 +179,8 @@ export function AnalysisErrorState({
   // endpoint doesn't expose its feed. Retrying won't help and burns Apify
   // credits, so suppress the retry button and only offer a way back.
   const isPersonalNoFeed = upperCode === "PROFILE_PERSONAL_NO_FEED";
-  // Restricted profile: Instagram hides it from logged-out readers, so a
-  // retry cannot succeed — same treatment as the personal no-feed case.
+  // Restricted means the providers found the profile shell but could not
+  // read posts. It receives a dedicated partial result and controlled retry.
   const isRestricted = upperCode === "PROFILE_RESTRICTED";
   const isDeadEnd = isPersonalNoFeed || isRestricted;
   const params = useParams({ strict: false }) as { username?: string };
